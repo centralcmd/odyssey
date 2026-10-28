@@ -41,7 +41,6 @@ public partial class ExchangeRateSyncSurfaceTests
 
     private static IRenderedComponent<ExchangeRateSyncStatusPanel> RenderPanel(BunitContext ctx, Announced said) =>
         ctx.Render<ExchangeRateSyncStatusPanel>(p => p
-            .Add(x => x.CanRun, true)
             .Add(x => x.OnAnnounce, (string m) => said.Polite.Add(m))
             .Add(x => x.OnAnnounceAssertive, (string m) => said.Assertive.Add(m)));
 
@@ -161,15 +160,13 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task Refresh_status_announces_what_it_read_and_keeps_focus_while_busy()
+    public async Task Refresh_status_announces_what_it_read()
     {
         var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(Scheduled()).Object);
         await using var __ = ctx;
         var said = new Announced([], []);
 
         var cut = RenderPanel(ctx, said);
-        var refresh = cut.FindAll("button").Single(b => b.TextContent.Contains("Refresh status"));
-        Assert.False(refresh.HasAttribute("disabled"));
         await cut.InvokeAsync(cut.Instance.RefreshAsync);
 
         Assert.Equal([$"Status refreshed: {OdsTypeRegistries.ExchangeRateSyncStateOf(ExchangeRateSyncState.Scheduled).Label}"], said.Polite);

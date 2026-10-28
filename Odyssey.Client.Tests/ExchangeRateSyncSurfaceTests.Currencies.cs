@@ -167,6 +167,127 @@ public partial class ExchangeRateSyncSurfaceTests
         sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // ── The header menu: the sync's two actions ───────────────────────────────────────────────────
+
+    private const string RunNowItem = "Run exchange-rate sync job now";
+    private const string RefreshItem = "Refresh exchange-rate sync status";
+
+    private static AngleSharp.Dom.IElement? HeaderMenuTrigger(IRenderedComponent<CurrenciesCard> cut) =>
+        cut.FindAll("button[aria-label='More actions']").SingleOrDefault();
+
+    /// <summary>Opens the page header's ⋯ menu and returns its markup.</summary>
+    private string OpenHeaderMenu(IRenderedComponent<CurrenciesCard> cut)
+    {
+        HeaderMenuTrigger(cut)!.Click();
+        var popover = _popover!;
+        popover.WaitForAssertion(() => Assert.Contains(RefreshItem, popover.Markup));
+        return popover.Markup;
+    }
+
+    private void ClickHeaderItem(IRenderedComponent<CurrenciesCard> cut, string label)
+    {
+        OpenHeaderMenu(cut);
+        _popover!.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains(label)).Click();
+    }
+
+    [Fact]
+    public async Task Without_system_settings_read_the_header_has_no_menu()
+    {
+        var (ctx, _, _) = NewCurrenciesContext([PermissionClaims.CurrenciesRead], Row(null, "USD"));
+        await using var __ = ctx;
+
+        var cut = RenderCurrencies(ctx, "USD");
+
+        Assert.Null(HeaderMenuTrigger(cut));
+    }
+
+    [Fact]
+    public async Task A_sync_reader_can_refresh_status_from_the_header_but_not_run_the_job()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(
+            [PermissionClaims.CurrenciesRead, PermissionClaims.SystemSettingsRead], Row(Currency("USD", enabled: true)));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        cut.WaitForAssertion(() => Assert.NotNull(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.Status));
+        var reads = sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync));
+
+        Assert.DoesNotContain(RunNowItem, OpenHeaderMenu(cut));
+        _popover!.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains(RefreshItem)).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(reads + 1,
+            sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync))));
+    }
+
+    [Fact]
+    public async Task A_settings_writer_runs_the_job_from_the_header()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        cut.WaitForAssertion(() => Assert.NotNull(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.Status));
+
+        ClickHeaderItem(cut, RunNowItem);
+
+        cut.WaitForAssertion(() => sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public async Task Run_now_is_omitted_from_the_header_while_it_cools_down_and_the_panel_says_why()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Success(
+            Scheduled() with { ManualRunAvailableAtUtc = Now.UtcDateTime.AddMinutes(5) }, HttpStatusCode.OK));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        cut.WaitForAssertion(() => Assert.Contains("You can start another run at", cut.Markup));
+
+        Assert.DoesNotContain(RunNowItem, OpenHeaderMenu(cut));
+    }
+
+    [Fact]
+    public async Task Run_now_chosen_with_the_overview_collapsed_opens_it_and_then_runs()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Overview").Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponents<ExchangeRateSyncStatusPanel>()));
+
+        ClickHeaderItem(cut, RunNowItem);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<ExchangeRateSyncStatusPanel>()));
+        cut.WaitForAssertion(() => sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    // ── The list: loaded whole, revealed N at a time, ending in an add row ────────────────────────
+
+    [Fact]
+    public async Task The_list_loads_every_currency_and_ends_in_an_add_row_with_no_pager()
+    {
+        var (ctx, _, currencies) = NewCurrenciesContext(
+            [PermissionClaims.CurrenciesRead, PermissionClaims.CurrenciesCreate], Row(null, "USD"));
+        await using var __ = ctx;
+
+        var cut = RenderCurrencies(ctx, "USD");
+
+        currencies.Verify(c => c.ListAsync(1, OdsPageSizes.All, It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        Assert.Empty(cut.FindComponents<OdsPager>());
+        Assert.Equal("New currency", cut.Find(".odc-add-row .odc-add-row-title").TextContent);
+        Assert.Equal(OdsPageSizes.Batch, cut.FindComponent<OdsPageSizeSelect>().Instance.Options);
+    }
+
+    [Fact]
+    public async Task A_reader_who_cannot_create_gets_no_add_row()
+    {
+        var (ctx, _, _) = NewCurrenciesContext([PermissionClaims.CurrenciesRead], Row(null, "USD"));
+        await using var __ = ctx;
+
+        var cut = RenderCurrencies(ctx, "USD");
+
+        Assert.Empty(cut.FindAll(".odc-add-row"));
+    }
+
     // ── The row's sync parts and the menu ────────────────────────────────────────────────────────
 
     [Fact]

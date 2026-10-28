@@ -20,7 +20,7 @@ namespace Odyssey.Client.Pages.Finance;
 /// attaches no <see cref="ExistingCurrency.Sync"/> projection and refuses the sync filter and sort.
 /// Edits stay in place: a sync change or a purge patches its row from the response, a start date saved
 /// in Edit currency re-reads the current page as every edit there does, and only the user's own search,
-/// filter, sort or page change resets to page 1, so focus never sits on a row that vanished.
+/// filter or sort change replaces the list, so focus never sits on a row that vanished.
 /// </remarks>
 public partial class CurrenciesCard
 {
@@ -31,6 +31,10 @@ public partial class CurrenciesCard
     private OdsLiveAnnouncer? _polite;
     private OdsLiveAnnouncer? _assertive;
     private ExchangeRateSyncStatusPanel? _panel;
+
+    // The panel lives in the Overview, and an @ref keeps naming a disposed component after the Overview
+    // collapses — so whether one is mounted is the Overview's state, not the reference's.
+    private ExchangeRateSyncStatusPanel? MountedPanel => _overviewOpen ? _panel : null;
     private ExchangeRateSyncRunHistory? _runHistory;
     private ExchangeRateSyncStatus? _syncStatus;
 
@@ -81,6 +85,51 @@ public partial class CurrenciesCard
         StateHasChanged();
     }
 
+    // A Run now chosen with the Overview collapsed runs once the panel it opened has read status — after
+    // a render, by which the reference names the new panel.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_runNowWhenMounted && MountedPanel is { Status: not null } panel)
+        {
+            _runNowWhenMounted = false;
+            await panel.RunNowAsync();
+        }
+    }
+
+    // ── The header menu's actions. The panel owns polling and lives in the Overview, so an item chosen
+    // with it collapsed opens it first: the run starting, or the refreshed status, is then in view. ────
+
+    private bool _runNowWhenMounted;
+
+    private async Task RunSyncNowAsync()
+    {
+        if (MountedPanel is not { } panel)
+        {
+            _runNowWhenMounted = true;
+            OpenOverview();
+            return;
+        }
+        await panel.RunNowAsync();
+    }
+
+    // Mounting the panel reads status, which is the refresh.
+    private async Task RefreshSyncStatusAsync()
+    {
+        if (MountedPanel is not { } panel)
+        {
+            OpenOverview();
+            return;
+        }
+        await panel.RefreshAsync();
+    }
+
+    private void OpenOverview()
+    {
+        _overviewOpen = true;
+        PersistPageState();
+        StateHasChanged();
+    }
+
     // A finished run re-reads the page MERGED by code: rows on screen are updated in place, none is
     // inserted or removed until the user's next query.
     private async Task OnRunFinishedAsync(ExchangeRateSyncStatus status)
@@ -97,7 +146,7 @@ public partial class CurrenciesCard
             return;
 
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
-            _page, _pageSize, search: _search, statuses: _statusFilter, sortBy: _sort.Key,
+            1, OdsPageSizes.All, search: _search, statuses: _statusFilter, sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc", ct: ct));
         if (response.IsSuperseded)
             return;
@@ -111,7 +160,7 @@ public partial class CurrenciesCard
 
     // The chips, the banners and the synced count are read from status, which the panel polls only
     // during a run — so a write that changes them re-reads it once.
-    private Task ReloadStatusAsync() => _panel?.ReloadQuietlyAsync() ?? LoadSyncStatusAsync();
+    private Task ReloadStatusAsync() => MountedPanel?.ReloadQuietlyAsync() ?? LoadSyncStatusAsync();
 
     private Task ReloadRunsAsync() => _runHistory?.ReloadAsync() ?? Task.CompletedTask;
 

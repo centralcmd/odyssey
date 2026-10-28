@@ -25,6 +25,7 @@
     <PageHeader Title="Currencies"
                 Icon="@Icons.Material.Filled.Payments"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                ActionMenu="SyncMenu"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New currency"
                 OnPrimaryAction="AddClicked"
@@ -40,7 +41,6 @@
                     <section class="xrs-overview-tile" aria-labelledby="cur-xrs-ov">
                         <h2 class="xrs-overview-ov" id="cur-xrs-ov">Exchange-rate sync</h2>
                         <ExchangeRateSyncStatusPanel @ref="_panel"
-                                                     CanRun="_canWriteSync"
                                                      OnStatus="OnSyncStatus"
                                                      OnRunFinished="OnRunFinishedAsync"
                                                      OnAnnounce="AnnouncePolite"
@@ -57,7 +57,8 @@
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingCurrency" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
-                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Currencies per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
             </div>
         </SearchContent>
     </PageHeader>
@@ -83,10 +84,11 @@
     }
 
     @* A record list (Odyssey Design System · Currencies, RecordCard): one card per currency, one open
-       at a time, server-paged. The code is the mark — symbols repeat ($, kr) where codes never do — and
+       at a time. As on Contracts, the whole (small) set is loaded and revealed N at a time, ending in an
+       add row — no pager. The code is the mark — symbols repeat ($, kr) where codes never do — and
        it is shown nowhere else, so the monogram is part of the row's accessible name. *@
     <div class="acct-list">
-        <OdsInfiniteList TItem="ExistingCurrency" Items="_currencies" BatchSize="@Math.Max(_currencies.Count, 1)"
+        <OdsInfiniteList TItem="ExistingCurrency" Items="_currencies" BatchSize="_batch"
                          ItemKey="@(c => (object)c.CurrencyCode)" Noun="currencies"
                          Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="GetCurrencies"
                          HasFilters="_hasFilters" OnClearFilters="ClearFilters"
@@ -156,14 +158,16 @@
                     <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New currency</OdsButton>
                 }
             </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New currency"
+                               Sub="Add a currency your accounts and budgets can be denominated in."
+                               OnClick="AddClicked" />
+                }
+            </Trailing>
         </OdsInfiniteList>
     </div>
-    @if (_totalCount > 0)
-    {
-        <OdsPager Page="_page" PageChanged="OnPageChanged"
-                  PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
-                  TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
-    }
 
     @if (_canReadSync)
     {
@@ -220,6 +224,19 @@
 }
 
 @code {
+    // ── The header menu: the sync's two actions (issue #351), named for what they do, since a menu item
+    // has no tile around it to say so. Null — no ⋯ at all — without system-settings.read; Run now is
+    // omitted, never greyed, while it cannot start, and the panel says why. The items do not await
+    // their work: MudMenu holds itself open until the handler returns. ─────────────────────────────
+
+    private RenderFragment? SyncMenu => !_canReadSync ? null : @<text>
+        @if (_canWriteSync && ExchangeRateSyncStatusPanel.RunNowReasonFor(_syncStatus, Time.GetUtcNow().UtcDateTime) is null)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.Sync" OnClick="@(() => { _ = RunSyncNowAsync(); })">Run exchange-rate sync job now</MudMenuItem>
+        }
+        <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => { _ = RefreshSyncStatusAsync(); })">Refresh exchange-rate sync status</MudMenuItem>
+    </text>;
+
     // ── Exchange-rate sync tiles (issue #351), after the currency's own, for a sync reader. An archived
     // currency has no projection and its status already says why, so it shows none. The back-fill is in
     // the status and the fetched-rate count in the header, so neither is a tile. ──────────────────────

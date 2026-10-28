@@ -18,12 +18,6 @@ public partial class ExchangeRateSyncStatusPanel
     /// <summary>Consecutive failed reads after which polling stops as stale.</summary>
     internal const int MaxConsecutivePollFailures = 2;
 
-    /// <summary>The caller holds <c>system-settings.update</c>: Run now is offered.</summary>
-    [Parameter] public bool CanRun { get; set; }
-
-    /// <summary>Off on the settings card, where Run now is its own action row.</summary>
-    [Parameter] public bool ShowRunNow { get; set; } = true;
-
     /// <summary>Raised once when a run the panel watched ends — the page re-reads its lists.</summary>
     [Parameter] public EventCallback<ExchangeRateSyncStatus> OnRunFinished { get; set; }
 
@@ -42,7 +36,6 @@ public partial class ExchangeRateSyncStatusPanel
     private bool _loadFailed;
     private bool _refreshing;
     private StaleReason? _stale;
-    private readonly string _reasonId = $"xrs-reason-{Guid.NewGuid():N}";
 
     private CancellationTokenSource? _pollCts;
     private Task? _pollTask;
@@ -121,10 +114,16 @@ public partial class ExchangeRateSyncStatusPanel
     }
 
     /// <summary>Why Run now is unavailable right now, as visible text; null when it can run.</summary>
-    public string? RunNowReason => _status switch
+    public string? RunNowReason => RunNowReasonFor(_status, Time.GetUtcNow().UtcDateTime);
+
+    /// <summary>
+    /// Why a manual run cannot start, from a status alone — the page omits its menu item on the same
+    /// reading, so the item and the panel's note cannot disagree.
+    /// </summary>
+    public static string? RunNowReasonFor(ExchangeRateSyncStatus? status, DateTime utcNow) => status switch
     {
         { CurrentRun: not null } => "A run is in progress",
-        { ManualRunAvailableAtUtc: { } at } when at > Time.GetUtcNow().UtcDateTime =>
+        { ManualRunAvailableAtUtc: { } at } when at > utcNow =>
             $"You can start another run at {ExchangeRateSyncTime.Clock(at)}",
         _ => null,
     };
@@ -307,14 +306,28 @@ public partial class ExchangeRateSyncStatusPanel
 
     // ── Text, built only from status fields ───────────────────────────────────────────────────────
 
-    private string StatusLine(ExchangeRateSyncStatus s) => s.State switch
+    /// <summary>
+    /// The forward-looking row: the state as coloured text (<see cref="Word"/>), then when. The state's own
+    /// label leads, shortened where the full one would not read as a sentence.
+    /// </summary>
+    private (string Word, string Tail) NextRun(ExchangeRateSyncStatus s) => s.State switch
     {
-        ExchangeRateSyncState.Idle => "No currencies are synced.",
-        ExchangeRateSyncState.Scheduled when s.NextRunAtUtc is { } next => $"Next run {Moment(next)}.",
-        ExchangeRateSyncState.CatchingUp when s.NextRunAtUtc is { } next => $"Next batch {Moment(next)}.",
-        ExchangeRateSyncState.Running when s.CurrentRun is { } run => $"Started {ExchangeRateSyncTime.Absolute(run.StartedAtUtc)}.",
-        ExchangeRateSyncState.BackingOff when s.NextRunAtUtc is { } next =>
-            $"{s.ConsecutiveFailures} runs in a row failed. Next try {ExchangeRateSyncTime.Absolute(next)}.",
+        ExchangeRateSyncState.Idle => ("Not syncing", string.Empty),
+        ExchangeRateSyncState.CatchingUp => ("Fetching history", $", next batch at {MomentOrDash(s.NextRunAtUtc)}"),
+        ExchangeRateSyncState.Running => ("Running", $" since {MomentOrDash(s.CurrentRun?.StartedAtUtc)}"),
+        ExchangeRateSyncState.BackingOff => ("Retrying", $" at {MomentOrDash(s.NextRunAtUtc)}"),
+        _ => (OdsTypeRegistries.ExchangeRateSyncStateOf(s.State).Label, $" at {MomentOrDash(s.NextRunAtUtc)}"),
+    };
+
+    private string MomentOrDash(DateTime? utc) => utc is { } at ? Moment(at) : "—";
+
+    /// <summary>A vocabulary tone as TEXT colour — the chip's text colour, never a chip.</summary>
+    private static string ToneClass(OdsChipTone tone) => tone switch
+    {
+        OdsChipTone.Income => "xrs-tone-income",
+        OdsChipTone.Info => "xrs-tone-info",
+        OdsChipTone.Warning or OdsChipTone.Pending => "xrs-tone-warning",
+        OdsChipTone.Error or OdsChipTone.Expense => "xrs-tone-error",
         _ => string.Empty,
     };
 

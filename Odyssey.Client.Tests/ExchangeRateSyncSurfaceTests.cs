@@ -176,7 +176,6 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         var finished = 0;
 
         var cut = ctx.Render<ExchangeRateSyncStatusPanel>(p => p
-            .Add(x => x.CanRun, true)
             .Add(x => x.OnAnnounce, (string m) => announced.Add(m))
             .Add(x => x.OnRunFinished, (ExchangeRateSyncStatus _) => finished++));
 
@@ -245,20 +244,31 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
     }
 
     [Fact]
-    public async Task Run_now_names_its_unavailability_in_text_and_stays_focusable()
+    public async Task The_panel_has_no_buttons_and_notes_when_run_now_can_start_again()
     {
         var sync = ExchangeRateSyncFakes.Client(Scheduled() with { ManualRunAvailableAtUtc = Now.UtcDateTime.AddMinutes(5) });
         var (ctx, _) = NewContext(sync.Object);
         await using var __ = ctx;
 
-        var cut = ctx.Render<ExchangeRateSyncStatusPanel>(p => p.Add(x => x.CanRun, true));
+        var cut = ctx.Render<ExchangeRateSyncStatusPanel>();
 
-        var runNow = cut.FindAll("button").Single(b => b.TextContent.Contains("Run now"));
-        Assert.Equal("true", runNow.GetAttribute("aria-disabled"));
-        Assert.False(runNow.HasAttribute("disabled"));
-        Assert.Contains("You can start another run at", cut.Markup);
-        runNow.Click();
+        // Its actions are the page header's menu items; the note says why Run now is absent there.
+        Assert.Empty(cut.FindAll("button"));
+        Assert.StartsWith("You can start another run at", cut.Find(".xrs-status-note").TextContent.Replace("schedule", "").Trim());
+        await cut.InvokeAsync(cut.Instance.RunNowAsync);
         sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_run_in_progress_needs_no_note_beside_its_running_row()
+    {
+        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(Running(Now.UtcDateTime)).Object);
+        await using var __ = ctx;
+
+        var cut = ctx.Render<ExchangeRateSyncStatusPanel>();
+
+        Assert.Equal("A run is in progress", cut.Instance.RunNowReason);
+        Assert.Empty(cut.FindAll(".xrs-status-note"));
     }
 
     [Fact]
@@ -278,7 +288,19 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         var cut = ctx.Render<ExchangeRateSyncStatusPanel>();
 
         Assert.Contains("Scheduled", cut.Markup);
-        Assert.Contains("Failed · 2 hours ago", cut.Markup);
+        // The result in its tone as text, and the run's time with its distance in brackets.
+        Assert.Contains("xrs-tone-error", cut.Find(".xrs-rows").InnerHtml);
+        Assert.Contains("Failed", cut.Markup);
+        Assert.Contains("(2 hours ago)", cut.Markup);
+        // The state and the result are folded into their rows, and the source carries no label of its own.
+        var rows = cut.FindAll(".xrs-row").ToDictionary(
+            r => r.QuerySelector(".xrs-row-label")!.TextContent.Trim(),
+            r => System.Text.RegularExpressions.Regex.Replace(r.QuerySelector(".xrs-row-value")!.TextContent, @"\s+", " ").Trim());
+        Assert.Equal(["Next run", "Last run", "Source"], rows.Keys);
+        Assert.StartsWith("Scheduled at ", rows["Next run"]);
+        Assert.StartsWith("Failed at ", rows["Last run"]);
+        Assert.Equal(status.Attribution, rows["Source"]);
+        Assert.Empty(cut.FindAll(".odc-chip, .mud-chip"));
         Assert.Contains(OdsTypeRegistries.ExchangeRateSyncErrorOf(ExchangeRateSyncErrorKind.ProviderUnavailable), cut.Markup);
         Assert.Contains(status.Attribution, cut.Markup);
     }
@@ -315,7 +337,7 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         rates.Setup(c => c.GetSummaryAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExchangeRateSummary>.Success(new ExchangeRateSummary
             {
-                TotalCount = 1234, LatestAsOfUtc = Now.UtcDateTime, Attribution = "Source: Provider",
+                TotalCount = 1234, LatestAsOfUtc = Now.UtcDateTime, Attribution = "Provider (licence)",
                 ByStatus = new ExchangeRateStatusCounts { Current = 4, Upcoming = 1, Historical = 1229 },
                 ToCurrencyCodes = ["BASE"], ProviderDisplayName = "Provider",
             }, HttpStatusCode.OK));
@@ -376,7 +398,7 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         var cut = RenderRatesCard(ctx, [PermissionClaims.ExchangeRatesRead], Rate(ExchangeRateSource.Fetched), Rate(ExchangeRateSource.Manual));
 
         Assert.Contains("1,234 rates · latest", cut.Markup);
-        Assert.Contains("· Source: Provider", cut.Markup);
+        Assert.Contains("· Source: Provider (licence)", cut.Markup);
         Assert.Contains(OdsTypeRegistries.ExchangeRateSources[nameof(ExchangeRateProvider.NorgesBank)].Label, cut.Markup);
         Assert.Contains(OdsTypeRegistries.ExchangeRateSources["Manual"].Label, cut.Markup);
     }

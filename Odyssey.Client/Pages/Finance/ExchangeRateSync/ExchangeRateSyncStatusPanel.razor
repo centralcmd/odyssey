@@ -3,12 +3,15 @@
     System · components/ExchangeRateSyncStatusPanel). ONE component, hosted once, in the Currencies
     Overview for a caller holding system-settings.read; it owns the status polling.
 
-      • a chip from EXCHANGE_RATE_SYNC_STATES and a line built only from status fields;
-      • the last FINISHED run, in every state, so a failure is visible beside Scheduled;
-      • the stale notice when polling stopped by its cap or by errors;
-      • the attribution, as the server wrote it;
-      • Run now (focusable while unavailable — AriaDisabled — with the reason as visible text) and
-        Refresh status, which is always available.
+      • BreakdownTile's anatomy: icon · label · value rows, built only from status fields — the state
+        (EXCHANGE_RATE_SYNC_STATES, as coloured text, not a chip), the forward-looking run, the last
+        FINISHED run's time and result in every state (so a failure is visible beside Scheduled), and
+        the attribution, as the server wrote it; times absolute with the relative distance in brackets;
+      • the stale notice when polling stopped by its cap or by errors, and while Run now cools down,
+        when another run can start.
+
+    It has no buttons: "Run exchange-rate sync job now" and "Refresh exchange-rate sync status" are the
+    Currencies header's menu items, which call RunNowAsync / RefreshAsync on it.
 
     Lives under Pages/, not Components/: it injects an API client, which no Ods* atom does.
 *@
@@ -35,54 +38,71 @@
     }
     else
     {
+        @* BreakdownTile's anatomy, so the tile reads like "By status" beside it: icon · label · value rows,
+           a state or an outcome as coloured text rather than a chip, times absolute with the relative
+           distance in brackets. *@
         var state = OdsTypeRegistries.ExchangeRateSyncStateOf(_status.State);
-        <div class="xrs-status-head">
-            <OdsChip Tone="@state.Tone">@state.Label</OdsChip>
-            <span class="xrs-status-line">@StatusLine(_status)</span>
-        </div>
-        <div class="xrs-status-last">
-            <span class="xrs-status-k">Last run</span>
-            @if (_status.LastRun is { } last)
+        var next = NextRun(_status);
+        <div class="xrs-rows">
+            @* The state folded into the forward-looking row: "Scheduled at 23 Oct, 19:00 (in 8 hours)". *@
+            <div class="xrs-row">
+                <span class="material-icons" aria-hidden="true">event</span>
+                <span class="xrs-row-label">Next run</span>
+                <span class="xrs-row-value"><span class="@ToneClass(state.Tone)">@next.Word</span>@next.Tail</span>
+            </div>
+            @if (_status.State == ExchangeRateSyncState.BackingOff)
             {
-                <span>@OdsTypeRegistries.ExchangeRateSyncRunStatusOf(last.Status).Label · @Relative(last.FinishedAtUtc ?? last.StartedAtUtc)</span>
-                @if (last.ErrorKind is { } kind)
-                {
-                    <span class="xrs-status-err">
-                        <span class="material-icons" aria-hidden="true">error_outline</span>@OdsTypeRegistries.ExchangeRateSyncErrorOf(kind)
-                    </span>
-                }
+                <div class="xrs-row">
+                    <span class="material-icons" aria-hidden="true">error_outline</span>
+                    <span class="xrs-row-label">Failures</span>
+                    <span class="@($"xrs-row-value {ToneClass(state.Tone)}")">@_status.ConsecutiveFailures runs in a row</span>
+                </div>
             }
-            else
+            @* The last FINISHED run's result folded into its time, in every state, so a failure is
+               visible beside Scheduled: "Succeeded at 23 Oct, 07:00 (4 hours ago)". *@
+            <div class="xrs-row">
+                <span class="material-icons" aria-hidden="true">history</span>
+                <span class="xrs-row-label">Last run</span>
+                <span class="xrs-row-value">
+                    @if (_status.LastRun is { } run)
+                    {
+                        var outcome = OdsTypeRegistries.ExchangeRateSyncRunStatusOf(run.Status);
+                        <span class="@ToneClass(outcome.Tone)">@outcome.Label</span>@($" at {Moment(run.FinishedAtUtc ?? run.StartedAtUtc)}")
+                        @if (run.ErrorKind is not null)
+                        {
+                            <span class="xrs-row-sub"> · @ErrorText(run)</span>
+                        }
+                    }
+                    else
+                    {
+                        <text>None yet</text>
+                    }
+                </span>
+            </div>
+            @if (!string.IsNullOrEmpty(_status.Attribution))
             {
-                <span>None yet</span>
+                <div class="xrs-row">
+                    <span class="material-icons" aria-hidden="true">account_balance</span>
+                    <span class="xrs-row-label">Source</span>
+                    <span class="xrs-row-value">@_status.Attribution</span>
+                </div>
             }
         </div>
         @if (_stale is { } stale)
         {
-            <div class="xrs-status-stale">
-                <span class="material-icons" aria-hidden="true">@(stale == StaleReason.Errors ? "cloud_off" : "hourglass_bottom")</span>
+            <div class="xrs-status-note">
+                <span class="material-icons warn" aria-hidden="true">@(stale == StaleReason.Errors ? "cloud_off" : "hourglass_bottom")</span>
                 @StaleText(stale)
             </div>
         }
-        @if (!string.IsNullOrEmpty(_status.Attribution))
+        @* Run now is omitted from the page header's menu while it cools down, so the panel says why. A
+           run in progress needs no note: the Next run row already reads "Running since …". *@
+        @if (_status.CurrentRun is null && RunNowReason is { } cooling)
         {
-            <div class="xrs-status-attrib">@_status.Attribution</div>
+            <div class="xrs-status-note">
+                <span class="material-icons" aria-hidden="true">schedule</span>
+                @cooling
+            </div>
         }
-        <div class="xrs-status-actions">
-            @if (ShowRunNow && CanRun)
-            {
-                <OdsButton Icon="sync" AriaDisabled="@(RunNowReason is not null)" OnClick="RunNowAsync"
-                           aria-describedby="@(RunNowReason is null ? null : _reasonId)">Run now</OdsButton>
-            }
-            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_refreshing" AriaDisabled="_refreshing" OnClick="RefreshAsync">Refresh status</OdsButton>
-            @if (ShowRunNow && CanRun && RunNowReason is { } reason)
-            {
-                <span class="xrs-status-reason" id="@_reasonId">@reason</span>
-            }
-            @if (ShowRunNow && !CanRun)
-            {
-                <span class="xrs-status-reason">Requires permission to change system settings</span>
-            }
-        </div>
     }
 </div>

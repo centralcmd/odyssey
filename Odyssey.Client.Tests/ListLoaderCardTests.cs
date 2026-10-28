@@ -111,8 +111,8 @@ public class ListLoaderCardTests
         h.Cut.WaitForAssertion(() =>
         {
             Assert.Contains("USD name", h.Cut.Markup, StringComparison.Ordinal);
-            Assert.Equal("Showing 1–1 of 1 currency.", h.Announcement);
-            Assert.Equal(1, h.Cut.FindComponent<OdsPager>().Instance.TotalCount);
+            Assert.Equal("Showing 1 currency.", h.Announcement);
+            Assert.Empty(h.Cut.FindComponents<OdsPager>());
         });
         Assert.Empty(h.Toasts);
     }

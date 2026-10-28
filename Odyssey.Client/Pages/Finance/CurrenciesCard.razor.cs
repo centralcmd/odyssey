@@ -20,10 +20,9 @@ public partial class CurrenciesCard
     private bool _loadError;
     private string _announce = "";
 
-    // Server pagination (OdsPager): 1-based page + rows-per-page; TotalCount from the PagedResult.
-    private int _page = 1;
-    private int _pageSize = OdsPageSizes.Default[0];
-    private int _totalCount;
+    // Card-list windowing (OdsInfiniteList), as Contracts: the whole set is loaded and revealed
+    // "N at a time".
+    private int _batch = OdsPageSizes.Batch[0];
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
@@ -98,7 +97,7 @@ public partial class CurrenciesCard
         _search = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
-        _pageSize = OdsPageSizes.Restore(state.PageSize);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private CurrenciesPageState BuildPageState() => new()
@@ -109,7 +108,7 @@ public partial class CurrenciesCard
         StatusFilter = [.. _statusFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        PageSize = _pageSize,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
@@ -119,6 +118,7 @@ public partial class CurrenciesCard
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
+    private void OnBatchChanged(int size) { _batch = size; PersistPageState(); StateHasChanged(); }
 
     private sealed class CurrenciesPageState
     {
@@ -128,7 +128,7 @@ public partial class CurrenciesCard
         public List<string> StatusFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
-        public int PageSize { get; set; } = OdsPageSizes.Default[0];
+        public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
     }
 
     private async Task LoadPermissionsAsync()
@@ -154,9 +154,8 @@ public partial class CurrenciesCard
             StateHasChanged();
         }
 
-        // The two-value status filter maps to the server active/archived param only when one is selected.
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
-            _page, _pageSize,
+            1, OdsPageSizes.All,
             search: _search,
             statuses: _statusFilter,
             sortBy: _sort.Key,
@@ -169,11 +168,10 @@ public partial class CurrenciesCard
         if (load.IsSuccess)
         {
             _currencies = [.. load.Items];
-            _totalCount = load.TotalCount;
             _loadError = false;
             _rowErrors.Clear();
-            _announce = _totalCount == 0 ? "No currencies match your filters."
-                : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} currenc{(_totalCount == 1 ? "y" : "ies")}.";
+            _announce = _currencies.Count == 0 ? "No currencies match your filters."
+                : $"Showing {_currencies.Count} currenc{(_currencies.Count == 1 ? "y" : "ies")}.";
         }
         else
         {
@@ -186,27 +184,8 @@ public partial class CurrenciesCard
         StateHasChanged();
     }
 
-    // Reset to page 1, then fetch — for any search / filter / sort / size change. Page navigation
-    // calls GetCurrencies directly so it keeps the requested page.
-    private Task ReloadAsync()
-    {
-        _page = 1;
-        return GetCurrencies();
-    }
-
-    private Task OnPageChanged(int page)
-    {
-        _page = page;
-        return GetCurrencies();
-    }
-
-    private Task OnPageSizeChanged(int size)
-    {
-        _pageSize = size;
-        _page = 1;
-        PersistPageState();
-        return GetCurrencies();
-    }
+    // For any search / filter / sort change.
+    private Task ReloadAsync() => GetCurrencies();
 
     private async Task ClearFilters()
     {
@@ -306,8 +285,8 @@ public partial class CurrenciesCard
         _editCurrencyOpen = true;
     }
 
-    // Refresh in place: reload the overview set and the current page rather than jumping back to
-    // page 1, so the edited row stays where the user was looking at it.
+    // Refresh in place: reload the overview set and the list, so the edited row stays where the user was
+    // looking at it.
     private async Task OnCurrencyEdited()
     {
         _allCurrencies = (await Currencies.ListAllAsync()).ItemsOrToast(Snackbar, "currencies");
@@ -391,8 +370,7 @@ public partial class CurrenciesCard
         ReferenceData.InvalidateCurrencies();
         if (_openCode == currency.CurrencyCode)
             _openCode = null;
-        // Full refresh, not a local Remove: the delete changes the total, so the pager and the current
-        // page have to be re-fetched or the page renders short against a stale count.
+        // Full refresh, not a local Remove: the delete changes the overview's totals too.
         await RefreshAsync();
         return null;
     }
