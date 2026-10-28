@@ -674,6 +674,18 @@ public class ExchangeRateSyncTests
     }
 
     [Fact]
+    public async Task The_currency_list_reports_NOK_as_enabled_with_no_other_currency_enabled()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
+
+        var page = await harness.Currencies.ListAsync(new ExchangeRateSyncCurrenciesQueryParams());
+
+        var nok = Assert.Single(page.Items, item => item.CurrencyCode == "NOK");
+        Assert.True(nok.Locked);
+        Assert.True(nok.Enabled);
+    }
+
+    [Fact]
     public async Task A_purge_deletes_only_fetched_rows_resets_the_watermark_and_is_logged()
     {
         await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));

@@ -52,13 +52,11 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var settings = await settingsLookup.GetAsync(cancellationToken);
         // Only a currency that was ever configured can have fetched rows.
         var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken);
-        var anyEnabled = configured.Values.Any(row => row.Enabled && row.CurrencyCode != Hub
-            && currencies.Any(currency => currency.CurrencyCode == row.CurrencyCode));
 
         var items = currencies
             .Select(currency => Project(
                 currency.CurrencyCode, currency.Name, configured.GetValueOrDefault(currency.CurrencyCode),
-                series, settings, extents, anyEnabled))
+                series, settings, extents))
             .ToList();
 
         IEnumerable<ExistingExchangeRateSyncCurrency> filtered = items;
@@ -194,7 +192,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         series ??= supportedList.Peek();
         var settings = await settingsLookup.GetAsync(cancellationToken);
         var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, [code], cancellationToken);
-        var item = Project(code, currency.Name, row, series, settings, extents, anyEnabled: enable);
+        var item = Project(code, currency.Name, row, series, settings, extents);
         item.FetchedRowCount = await context.ExchangeRates.AsNoTracking()
             .CountAsync(rate => rate.Provider != null && (rate.FromCurrencyCode == code || rate.ToCurrencyCode == code), cancellationToken);
         return item;
@@ -313,8 +311,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         ExchangeRateSyncCurrency? row,
         IReadOnlyList<ProviderSeries>? series,
         ExchangeRateSyncSettings settings,
-        IReadOnlyDictionary<string, ExchangeRateSyncService.FetchedExtent> extents,
-        bool anyEnabled)
+        IReadOnlyDictionary<string, ExchangeRateSyncService.FetchedExtent> extents)
     {
         var effective = row?.HistoryStartDate
             ?? settings.HistoryStartDate
@@ -327,7 +324,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
                 CurrencyCode = code,
                 Name = name,
                 Supported = series is null ? null : true,
-                Enabled = anyEnabled,
+                Enabled = true,
                 Locked = true,
                 EffectiveHistoryStartDate = effective,
                 BackfillComplete = true,

@@ -14,7 +14,7 @@ public sealed record ExistingExchangeRateSyncCurrency
     /// <summary>Whether the provider publishes it; null while the provider list is unavailable — unknown, never false.</summary>
     public bool? Supported { get; set; }
 
-    /// <summary>For NOK: true while any other currency is enabled, since it is part of every fetched pair.</summary>
+    /// <summary>Always true for NOK: it is part of every fetched pair, so its locked switch reads on.</summary>
     public bool Enabled { get; set; }
 
     /// <summary>True for NOK only: the base, with no rows of its own.</summary>
