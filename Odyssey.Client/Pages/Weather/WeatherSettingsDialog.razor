@@ -25,25 +25,21 @@
                                  Foot="Copied from the location now. If the location moves later, weather keeps this position until you apply the move." />
                 <WeatherDisclosure />
             }
-            else
-            {
-                <div class="wx-toggle">
-                    <div class="wx-toggle-text">
-                        <div class="wx-toggle-label" id="wx-en-l">Weather on</div>
-                        <div class="wx-toggle-help" id="wx-en-h">@EnabledHelp</div>
-                    </div>
-                    <OdsSwitch Checked="_enabled" CheckedChanged="@(v => _enabled = v)" Disabled="EnabledLocked"
-                               AriaLabel="Weather on" AriaDescribedBy="wx-en-h" />
-                </div>
-                @if (ReEnablingMoved)
-                {
-                    <OdsAlert Severity="Severity.Warning">The location has moved since weather copied its position. Weather turns back on at the old position; apply the move afterwards from the location’s menu.</OdsAlert>
-                }
-            }
 
-            @if (_enabled)
+            @* Two independent settings: forecast and historical data each fetch on their own, so a place can
+               have either, both or neither (design system · Weather.jsx WeatherSettingsModal). *@
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label" id="wx-fc-l">Forecast</div>
+                    <div class="wx-toggle-help" id="wx-fc-h">@ForecastHelp</div>
+                </div>
+                <OdsSwitch Checked="_forecast" CheckedChanged="@(v => _forecast = v)" Disabled="ForecastLocked"
+                           AriaLabel="Forecast" AriaDescribedBy="wx-fc-h" />
+            </div>
+
+            @if (_forecast)
             {
-                <div class="wx-toggle @(_trackedError is not null ? "error" : null)">
+                <div class="wx-toggle wx-toggle-sub @(_trackedError is not null ? "error" : null)">
                     <div class="wx-toggle-text">
                         <div class="wx-toggle-label" id="wx-tr-l">Refresh on a schedule</div>
                         <div class="wx-toggle-help" id="wx-tr-h">
@@ -66,17 +62,38 @@
                 {
                     <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>All @Cap scheduled places are in use. Saving will be refused unless another place stops refreshing on a schedule.</span></div>
                 }
+            }
 
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label" id="wx-hs-l">Historical data</div>
+                    <div class="wx-toggle-help" id="wx-hs-h">@HistoryToggleHelp</div>
+                </div>
+                <OdsSwitch Checked="_history" CheckedChanged="@(v => _history = v)" Disabled="HistoryLocked"
+                           AriaLabel="Historical data" AriaDescribedBy="wx-hs-h" />
+            </div>
+
+            @if (_history)
+            {
                 <OdsDateField Label="Keep measured history from" Value="_historyFrom" ValueChanged="@(v => _historyFrom = v)"
                               Min="HistoryFloor" Max="DateTime.Today"
                               Placeholder="@(Creating ? WeatherVisuals.Date(DefaultFrom) : "Select date")"
                               Help="@HistoryHelp" Error="@_historyError" />
             }
+
+            @if (NothingToTurnOn)
+            {
+                <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>Turn on the forecast, historical data or both.</span></div>
+            }
+            @if (ReEnablingMoved)
+            {
+                <OdsAlert Severity="Severity.Warning">The location has moved since weather copied its position. Weather turns back on at the old position; apply the move afterwards from the location’s menu.</OdsAlert>
+            }
         </div>
     </ChildContent>
     <Footer>
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
-        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving" OnClick="SaveAsync">
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving" Disabled="NothingToTurnOn" OnClick="SaveAsync">
             @(Creating ? "Turn on weather" : "Save")
         </OdsButton>
     </Footer>

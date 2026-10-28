@@ -117,13 +117,26 @@ public class WeatherClientTests : IDisposable
     }
 
     [Fact]
-    public void Delete_history_is_offered_only_when_off_and_not_the_household_default()
+    public void Delete_history_is_offered_once_historical_data_is_off_whatever_the_forecast()
     {
         var l = Location();
-        Assert.Equal(["Weather settings…", "Delete weather history…"], Labels(l, Row(l) with { Enabled = false }));
-        Assert.Equal(["Weather settings…"], Labels(l, Row(l) with { Enabled = false, IsHouseholdDefault = true }));
-        Assert.Equal(["Weather settings…"], Labels(l, Row(l) with { Enabled = false }, canPurge: false));
-        Assert.Equal(["Continue deleting weather history…"], Labels(l, Row(l) with { Enabled = false, PurgeInProgress = true }));
+        var forecastOnly = Row(l) with { HistoryEnabled = false };
+        var bothOff = Row(l) with { ForecastEnabled = false, HistoryEnabled = false };
+        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], Labels(l, forecastOnly));
+        // The household default keeps its forecast on, so its history can still be deleted.
+        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], Labels(l, forecastOnly with { IsHouseholdDefault = true }));
+        Assert.Equal(["Weather settings…", "Delete weather history…"], Labels(l, bothOff));
+        Assert.Equal(["Weather settings…"], Labels(l, bothOff, canPurge: false));
+        Assert.Equal(["Continue deleting weather history…"], Labels(l, bothOff with { PurgeInProgress = true }));
+    }
+
+    [Fact]
+    public void A_history_only_place_offers_no_forecast_refresh_but_can_still_apply_a_move()
+    {
+        var l = Location();
+        var historyOnly = Row(l) with { ForecastEnabled = false };
+        Assert.Equal(["Weather settings…"], Labels(l, historyOnly));
+        Assert.Equal(["Weather settings…", "Apply new position…"], Labels(Location(60.39299m), historyOnly));
     }
 
     // ── Dashboard card ───────────────────────────────────────────────────────────────────────────────
@@ -260,7 +273,8 @@ public class WeatherClientTests : IDisposable
     {
         LocationId = l.LocationId,
         Name = l.Name,
-        Enabled = true,
+        ForecastEnabled = true,
+        HistoryEnabled = true,
         IsTracked = true,
         Site = new WeatherLocationSiteDto
         {

@@ -80,9 +80,9 @@ public sealed class WeatherReadService
                 from weather in context.WeatherLocations.AsNoTracking()
                 join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
                 where weather.LocationId == locationId
-                select new { weather.Enabled, weather.PurgeStartedAt, weather.IsTracked, location.Archived })
+                select new { weather.ForecastEnabled, weather.PurgeStartedAt, weather.IsTracked, location.Archived })
             .FirstOrDefaultAsync(cancellationToken);
-        var selectable = row is not null && row.Enabled && row.PurgeStartedAt is null && row.Archived is null;
+        var selectable = row is not null && row.ForecastEnabled && row.PurgeStartedAt is null && row.Archived is null;
         return (selectable, selectable && row!.IsTracked);
     }
 
@@ -318,12 +318,22 @@ public sealed class WeatherReadService
 
     public async Task<WeatherLocationOptions> OptionsAsync(CancellationToken cancellationToken)
     {
-        var locations = await (
-                from weather in context.WeatherLocations.AsNoTracking()
-                join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
-                where weather.Enabled && weather.PurgeStartedAt == null && location.Archived == null
-                orderby location.Name, location.LocationId
-                select new WeatherLocationRef { LocationId = location.LocationId, Name = location.Name })
+        var live =
+            from weather in context.WeatherLocations.AsNoTracking()
+            join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
+            where weather.PurgeStartedAt == null && location.Archived == null
+            select new { weather.ForecastEnabled, weather.HistoryEnabled, location.LocationId, location.Name };
+
+        // The forecast places are the dashboard picker's list; the history places are where a location's
+        // Temperature history exists. A place may be in either, both or neither.
+        var locations = await live.Where(w => w.ForecastEnabled)
+            .OrderBy(w => w.Name).ThenBy(w => w.LocationId)
+            .Select(w => new WeatherLocationRef { LocationId = w.LocationId, Name = w.Name })
+            .Take(WeatherRules.OptionsMax)
+            .ToListAsync(cancellationToken);
+        var history = await live.Where(w => w.HistoryEnabled)
+            .OrderBy(w => w.Name).ThenBy(w => w.LocationId)
+            .Select(w => new WeatherLocationRef { LocationId = w.LocationId, Name = w.Name })
             .Take(WeatherRules.OptionsMax)
             .ToListAsync(cancellationToken);
         var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId;
@@ -331,6 +341,7 @@ public sealed class WeatherReadService
         {
             Locations = locations,
             HouseholdDefaultLocationId = household is { } id && locations.Any(l => l.LocationId == id) ? id : null,
+            HistoryLocations = history,
         };
     }
 

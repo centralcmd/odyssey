@@ -99,7 +99,8 @@ public sealed class WeatherLocationService
     public async Task<UpsertResult?> UpsertAsync(
         Guid locationId, UpsertWeatherLocation request, string userId, CancellationToken cancellationToken)
     {
-        var enabled = request.Enabled!.Value;
+        var forecast = request.ForecastEnabled!.Value;
+        var history = request.HistoryEnabled!.Value;
         var tracked = request.IsTracked!.Value;
         var created = false;
         var changes = new List<string>();
@@ -129,12 +130,12 @@ public sealed class WeatherLocationService
                 // Compared against, and copied from, this one row read — so the site written is exactly the
                 // state the Admin reviewed (SB, security note on B).
                 EnsureFingerprint(location, request.ExpectedLocationFingerprint);
-                if (location.Archived is not null && enabled)
+                if (location.Archived is not null && (forecast || history))
                 {
                     throw Conflict(WeatherConflictException.Archived, "Restore the location before turning weather on.");
                 }
 
-                if (enabled && tracked)
+                if (forecast && tracked)
                 {
                     await EnsureTrackedCapacityAsync(locationId, configured, cancellationToken);
                 }
@@ -144,7 +145,8 @@ public sealed class WeatherLocationService
                 weather = new WeatherLocation
                 {
                     LocationId = locationId,
-                    Enabled = enabled,
+                    ForecastEnabled = forecast,
+                    HistoryEnabled = history,
                     IsTracked = tracked,
                     HistoryFrom = request.HistoryFrom ?? DateOnly.FromDateTime(now).AddYears(-1),
                     EnabledAt = now,
@@ -169,25 +171,33 @@ public sealed class WeatherLocationService
                     throw Conflict(WeatherConflictException.PurgeInProgress, "This location's weather history is being deleted.");
                 }
 
-                if (enabled && !weather.Enabled && location.Archived is not null)
+                var turningOn = (forecast && !weather.ForecastEnabled) || (history && !weather.HistoryEnabled);
+                if (turningOn && location.Archived is not null)
                 {
                     throw Conflict(WeatherConflictException.Archived, "Restore the location before turning weather back on.");
                 }
 
-                if (!enabled && weather.Enabled && configured.HouseholdDefaultLocationId == locationId)
+                // The household default is the dashboard's fallback place, so its forecast must stay on; its
+                // historical data is its own and may be turned off.
+                if (!forecast && weather.ForecastEnabled && configured.HouseholdDefaultLocationId == locationId)
                 {
                     throw Conflict(WeatherConflictException.HouseholdDefault,
                         "This is the household's default weather location. Choose another default first.");
                 }
 
-                if (enabled && tracked && !(weather.Enabled && weather.IsTracked))
+                if (forecast && tracked && !(weather.ForecastEnabled && weather.IsTracked))
                 {
                     await EnsureTrackedCapacityAsync(locationId, configured, cancellationToken);
                 }
 
-                if (weather.Enabled != enabled)
+                if (weather.ForecastEnabled != forecast)
                 {
-                    changes.Add(nameof(WeatherLocation.Enabled));
+                    changes.Add(nameof(WeatherLocation.ForecastEnabled));
+                }
+
+                if (weather.HistoryEnabled != history)
+                {
+                    changes.Add(nameof(WeatherLocation.HistoryEnabled));
                 }
 
                 if (weather.IsTracked != tracked)
@@ -201,12 +211,15 @@ public sealed class WeatherLocationService
                     weather.HistoryFrom = historyFrom;
                 }
 
-                if (enabled && !weather.Enabled)
+                if ((forecast || history) && !(weather.ForecastEnabled || weather.HistoryEnabled))
                 {
                     weather.EnabledAt = now;
                 }
 
-                weather.Enabled = enabled;
+                var forecastTurnedOn = forecast && !weather.ForecastEnabled;
+                var historyTurnedOn = history && !weather.HistoryEnabled;
+                weather.ForecastEnabled = forecast;
+                weather.HistoryEnabled = history;
                 weather.IsTracked = tracked;
                 if (changes.Count > 0)
                 {
@@ -214,12 +227,22 @@ public sealed class WeatherLocationService
                     weather.UpdatedByUserId = userId;
                 }
 
-                // Disabling fences off a fetch in flight (§3 Write fencing).
-                if (changes.Contains(nameof(WeatherLocation.Enabled)))
+                // Turning either half off fences off a fetch in flight (§3 Write fencing); turning one on makes
+                // that half due now rather than at whatever time it was last pushed out to.
+                if (changes.Contains(nameof(WeatherLocation.ForecastEnabled)) || changes.Contains(nameof(WeatherLocation.HistoryEnabled)))
                 {
                     var schedule = await context.WeatherLocationSchedules.FirstAsync(s => s.LocationId == locationId, cancellationToken);
                     schedule.Version = Guid.NewGuid();
                     schedule.LeaseUntilUtc = null;
+                    if (forecastTurnedOn && schedule.NextForecastFetchAfterUtc is { } nextForecast && nextForecast > now && schedule.ForecastFailureKind is null)
+                    {
+                        schedule.NextForecastFetchAfterUtc = now;
+                    }
+
+                    if (historyTurnedOn && schedule.NextObservationFetchAfterUtc is { } nextObservation && nextObservation > now && schedule.ObservationFailureKind is null)
+                    {
+                        schedule.NextObservationFetchAfterUtc = now;
+                    }
                 }
             }
 
@@ -266,7 +289,7 @@ public sealed class WeatherLocationService
                 throw Conflict(WeatherConflictException.Archived, "Restore the location before applying its new position.");
             }
 
-            if (!weather.Enabled)
+            if (!weather.ForecastEnabled && !weather.HistoryEnabled)
             {
                 throw Conflict(WeatherConflictException.Disabled, "Turn weather back on before applying the new position.");
             }
@@ -335,11 +358,11 @@ public sealed class WeatherLocationService
 
     // ── Refresh (endpoint 9) ──────────────────────────────────────────────────────────────────────
 
-    /// <summary>Forces a forecast fetch, still honouring MET's <c>Expires</c> and any pause. Null: no enabled row.</summary>
+    /// <summary>Forces a forecast fetch, still honouring MET's <c>Expires</c> and any pause. Null: no row with forecast on.</summary>
     public async Task<WeatherRefreshResult?> RefreshAsync(Guid locationId, string userId, CancellationToken cancellationToken)
     {
         var weather = await context.WeatherLocations.AsNoTracking().FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
-        if (weather is null || !weather.Enabled)
+        if (weather is null || !weather.ForecastEnabled)
         {
             return null;
         }
@@ -380,9 +403,12 @@ public sealed class WeatherLocationService
     // ── Purge (endpoint 10) ───────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Deletes every weather row of the location (amendment 1 order). False when there is no weather row.
-    /// Resumable: an interrupted purge leaves <see cref="WeatherLocation.PurgeStartedAt"/> set and the
-    /// location fenced, and a repeated call skips the preconditions and continues.
+    /// Deletes the location's stored weather (amendment 1 order). False when there is no weather row.
+    /// Allowed once historical data is off. With the forecast off too it deletes everything, the weather row
+    /// included; with the forecast still on it deletes only the measured data and keeps the forecast setup
+    /// (<see cref="WeatherPurgeMode"/>). Resumable: an interrupted purge leaves
+    /// <see cref="WeatherLocation.PurgeStartedAt"/> set and the location fenced, and a repeated call skips the
+    /// preconditions and continues — in the same mode, since nothing can change the forecast flag meanwhile.
     /// </summary>
     public async Task<bool> PurgeAsync(Guid locationId, string userId, CancellationToken cancellationToken)
     {
@@ -392,14 +418,16 @@ public sealed class WeatherLocationService
             return false;
         }
 
+        var mode = weather.ForecastEnabled ? WeatherPurgeMode.HistoryOnly : WeatherPurgeMode.Full;
         if (weather.PurgeStartedAt is null)
         {
-            if (weather.Enabled)
+            if (weather.HistoryEnabled)
             {
-                throw Conflict(WeatherConflictException.StillEnabled, "Turn weather off before deleting its history.");
+                throw Conflict(WeatherConflictException.StillEnabled, "Turn historical weather data off before deleting it.");
             }
 
-            if ((await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId == locationId)
+            // Only a full purge removes the row the household default names.
+            if (mode == WeatherPurgeMode.Full && (await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId == locationId)
             {
                 throw Conflict(WeatherConflictException.HouseholdDefault,
                     "This is the household's default weather location. Choose another default first.");
@@ -429,18 +457,18 @@ public sealed class WeatherLocationService
                     "This location's weather is changing right now. Try again in a minute.");
             }
 
-            logger.LogWarning("Weather history purge for location {LocationId} started by {ActorUserId}.", locationId, userId);
+            logger.LogWarning("Weather history purge ({Mode}) for location {LocationId} started by {ActorUserId}.", mode, locationId, userId);
         }
         else
         {
-            logger.LogWarning("Weather history purge for location {LocationId} resumed by {ActorUserId}.", locationId, userId);
+            logger.LogWarning("Weather history purge ({Mode}) for location {LocationId} resumed by {ActorUserId}.", mode, locationId, userId);
         }
 
         context.ChangeTracker.Clear();
-        var counts = await purger.PurgeAsync(locationId, cancellationToken);
+        var counts = await purger.PurgeAsync(locationId, mode, cancellationToken);
         logger.LogWarning(
-            "Weather history purge for location {LocationId} completed by {ActorUserId}: {Steps} steps, {Runs} runs, {Observations} observations, {Days} days, {Sites} sites.",
-            locationId, userId, counts.Steps, counts.Runs, counts.Observations, counts.Days, counts.Sites);
+            "Weather history purge ({Mode}) for location {LocationId} completed by {ActorUserId}: {Steps} steps, {Runs} runs, {Observations} observations, {Days} days, {Sites} sites.",
+            mode, locationId, userId, counts.Steps, counts.Runs, counts.Observations, counts.Days, counts.Sites);
         return true;
     }
 
@@ -463,7 +491,7 @@ public sealed class WeatherLocationService
     public static IQueryable<WeatherLocation> TrackedQueue(OdysseyContext context) =>
         from weather in context.WeatherLocations.AsNoTracking()
         join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
-        where weather.Enabled && weather.IsTracked && weather.PurgeStartedAt == null && location.Archived == null
+        where weather.ForecastEnabled && weather.IsTracked && weather.PurgeStartedAt == null && location.Archived == null
         orderby weather.EnabledAt, weather.LocationId
         select weather;
 
@@ -479,7 +507,8 @@ public sealed class WeatherLocationService
         {
             LocationId = weather.LocationId,
             Name = location.Name,
-            Enabled = weather.Enabled,
+            ForecastEnabled = weather.ForecastEnabled,
+            HistoryEnabled = weather.HistoryEnabled,
             IsTracked = weather.IsTracked,
             TrackingSuspended = suspended,
             TrackingSuspendedReason = suspended ? WeatherTrackingSuspendedReason.CapReached : null,

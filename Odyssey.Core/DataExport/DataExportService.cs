@@ -551,7 +551,8 @@ public sealed class DataExportService
             .Select(weather => new WeatherLocationExport
             {
                 LocationId = weather.LocationId,
-                Enabled = weather.Enabled,
+                ForecastEnabled = weather.ForecastEnabled,
+                HistoryEnabled = weather.HistoryEnabled,
                 IsTracked = weather.IsTracked,
                 HistoryFrom = weather.HistoryFrom,
                 EnabledAt = weather.EnabledAt,

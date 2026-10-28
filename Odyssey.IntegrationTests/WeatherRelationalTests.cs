@@ -23,6 +23,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     private const string Database = "odyssey_weather";
     private const string PreviousMigration = "_AddLocations";
     private const string ThisMigration = "_AddWeather";
+    private const string SplitMigration = "_SplitWeatherForecastAndHistory";
     private const string AdminId = "weather-admin";
 
     private static readonly DateTime Noon = new(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
@@ -49,6 +50,83 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             [SystemSettingsKeys.WeatherDefaultLocationId, SystemSettingsKeys.WeatherMaxTrackedLocations,
              SystemSettingsKeys.WeatherRefreshIntervalMinutes, SystemSettingsKeys.WeatherUserAgentContact],
             keys.Order(StringComparer.Ordinal));
+    }
+
+    [SkippableFact]
+    public async Task The_split_migration_gives_both_halves_the_old_switch()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        await using var context = NewContext();
+        await MigrationSeam.MigrateToAsync(context, ThisMigration);
+        var on = Guid.NewGuid();
+        var off = Guid.NewGuid();
+        await context.Database.ExecuteSqlRawAsync($"""
+            SET FOREIGN_KEY_CHECKS = 0;
+            INSERT INTO `WeatherLocations` (`LocationId`, `Enabled`, `IsTracked`, `HistoryFrom`, `EnabledAt`, `CurrentSiteVersion`, `CreatedAt`, `UpdatedAt`)
+            VALUES ('{on}', 1, 1, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01'),
+                   ('{off}', 0, 0, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01');
+            SET FOREIGN_KEY_CHECKS = 1;
+            """);
+
+        await MigrationSeam.MigrateToAsync(context, SplitMigration);
+
+        var rows = await context.WeatherLocations.AsNoTracking().ToDictionaryAsync(w => w.LocationId);
+        Assert.True(rows[on].ForecastEnabled);
+        Assert.True(rows[on].HistoryEnabled);
+        Assert.False(rows[off].ForecastEnabled);
+        Assert.False(rows[off].HistoryEnabled);
+    }
+
+    [SkippableFact]
+    public async Task With_the_forecast_on_the_purge_removes_only_the_measured_data()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var locationId = await EnabledLocationAsync();
+        await SeedHistoryAsync(locationId, steps: 50);
+        await using (var context = NewContext())
+        {
+            // A measured-only day goes entirely; the forecast's day loses only its measured half.
+            await context.Database.ExecuteSqlRawAsync($"""
+                INSERT INTO `WeatherDays` (`LocationId`, `LocalDate`, `ObservedMeanTempC`, `ObservedFetchedAtUtc`, `UpdatedAtUtc`)
+                VALUES ('{locationId}', '2026-10-22', 6.8, '2026-10-23 08:02:00', '2026-10-23 08:02:00')
+                """);
+            await context.Database.ExecuteSqlRawAsync(
+                $"UPDATE `WeatherDays` SET `ObservedMeanTempC` = 4.1, `ObservedFetchedAtUtc` = '2026-10-23 08:02:00' WHERE `LocationId` = '{locationId}' AND `LocalDate` = '2026-10-23'");
+            await context.Database.ExecuteSqlRawAsync(
+                $"UPDATE `WeatherLocations` SET `FrostStationId` = 'SN18700', `StationResolvedAtUtc` = '2026-10-23 08:00:00' WHERE `LocationId` = '{locationId}'");
+            await context.Database.ExecuteSqlRawAsync(
+                $"UPDATE `WeatherLocationSchedules` SET `ObservationsCheckedThroughDate` = '2026-10-22', `LastObservationSuccessUtc` = '2026-10-23 08:02:00' WHERE `LocationId` = '{locationId}'");
+            await Admin(context).UpsertAsync(locationId,
+                new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = false, IsTracked = true }, AdminId, CancellationToken.None);
+        }
+
+        await using (var context = NewContext())
+        {
+            Assert.True(await Admin(context).PurgeAsync(locationId, AdminId, CancellationToken.None));
+        }
+
+        await using var verify = NewContext();
+        var row = await verify.WeatherLocations.SingleAsync(w => w.LocationId == locationId);
+        Assert.True(row.ForecastEnabled);
+        Assert.Null(row.PurgeStartedAt);
+        Assert.Null(row.FrostStationId);
+        Assert.Null(row.StationResolvedAtUtc);
+        Assert.Equal(50, await verify.WeatherForecastSteps.CountAsync(s => s.LocationId == locationId));
+        Assert.True(await verify.WeatherForecastRuns.AnyAsync(r => r.LocationId == locationId));
+        Assert.Equal(2, await verify.WeatherLocationSites.CountAsync(s => s.LocationId == locationId));
+        Assert.False(await verify.WeatherObservations.AnyAsync(o => o.LocationId == locationId));
+        var day = await verify.WeatherDays.SingleAsync(d => d.LocationId == locationId);
+        Assert.Equal(new DateOnly(2026, 10, 23), day.LocalDate);
+        Assert.Equal(24, day.ForecastCoverageHours);
+        Assert.Null(day.ObservedMeanTempC);
+        Assert.Null(day.ObservedFetchedAtUtc);
+        var schedule = await verify.WeatherLocationSchedules.SingleAsync(s => s.LocationId == locationId);
+        Assert.Null(schedule.ObservationsCheckedThroughDate);
+        Assert.Null(schedule.LastObservationSuccessUtc);
+        Assert.Null(schedule.LeaseUntilUtc);
     }
 
     [SkippableFact]
@@ -80,7 +158,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            await Admin(context).UpsertAsync(locationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, AdminId, CancellationToken.None);
+            await Admin(context).UpsertAsync(locationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, AdminId, CancellationToken.None);
         }
 
         await using (var context = NewContext())
@@ -113,7 +191,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
         // The state after step 1 and part of step 2: the fence is up, some rows are gone, the rest remain.
         await using (var context = NewContext())
         {
-            await Admin(context).UpsertAsync(locationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, AdminId, CancellationToken.None);
+            await Admin(context).UpsertAsync(locationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, AdminId, CancellationToken.None);
             await context.Database.ExecuteSqlRawAsync(
                 $"UPDATE `WeatherLocations` SET `PurgeStartedAt` = UTC_TIMESTAMP() WHERE `LocationId` = '{locationId}'");
             await context.Database.ExecuteSqlRawAsync(
@@ -127,7 +205,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
             var row = await Admin(context).GetAsync(locationId, CancellationToken.None);
             Assert.True(row!.PurgeInProgress);
             var refused = await Assert.ThrowsAsync<WeatherConflictException>(() => Admin(context).UpsertAsync(locationId,
-                new UpsertWeatherLocation { Enabled = true, IsTracked = true }, AdminId, CancellationToken.None));
+                new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, AdminId, CancellationToken.None));
             Assert.Equal(WeatherConflictException.PurgeInProgress, refused.Code);
         }
 
@@ -153,7 +231,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
         var source = new Forecasts(async () =>
         {
             await using var other = NewContext();
-            await Admin(other).UpsertAsync(locationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, AdminId, CancellationToken.None);
+            await Admin(other).UpsertAsync(locationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, AdminId, CancellationToken.None);
         });
 
         await using (var context = NewContext())
@@ -213,7 +291,7 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
         var result = await Admin(context).UpsertAsync(location.LocationId, new UpsertWeatherLocation
         {
-            Enabled = true,
+            ForecastEnabled = true, HistoryEnabled = true,
             IsTracked = true,
             ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(location),
         }, AdminId, CancellationToken.None);

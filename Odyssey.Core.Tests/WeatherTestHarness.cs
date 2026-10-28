@@ -153,12 +153,13 @@ internal sealed class WeatherTestHarness : IDisposable
     }
 
     /// <summary>A location with weather turned on through the Admin service, the way production gets one.</summary>
-    public async Task<LocationEntity> EnableAsync(string name = "Home", bool tracked = true, string zone = "Europe/Oslo")
+    public async Task<LocationEntity> EnableAsync(
+        string name = "Home", bool tracked = true, string zone = "Europe/Oslo", bool forecast = true, bool history = true)
     {
         var location = await AddLocationAsync(name, zone: zone);
         await Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation
         {
-            Enabled = true,
+            ForecastEnabled = forecast, HistoryEnabled = history,
             IsTracked = tracked,
             ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(location),
         }, AdminId, CancellationToken.None);

@@ -5,8 +5,9 @@
 @inject IWeatherApiClient Weather
 @*
     WeatherPurgeDialog — Delete weather history (issue #348 §5.10; design system · Weather.jsx
-    WeatherPurgeModal). Offered only when weather is off and the place is not the household default, so
-    the two precondition 409s are unreachable from here. A TYPED confirmation (the place's name) is the
+    WeatherPurgeModal). Offered only once historical data is off, so the precondition 409 is unreachable from
+    here. Its scope follows the forecast: still on, only the measured data goes and the forecast keeps
+    running; both off, everything weather-related goes. A TYPED confirmation (the place's name) is the
     security review's requirement. A 504 or a dropped connection means "may still be running"
     (architect N3): the row is re-read, and with purgeInProgress the dialog offers to continue.
 *@
@@ -21,7 +22,7 @@
         <div class="ods-modal-body wx-form">
             @if (_busy)
             {
-                <OdsAlert Severity="Severity.Warning">A forecast fetch is running for this place right now. Try again in a minute.</OdsAlert>
+                <OdsAlert Severity="Severity.Warning">A weather fetch is running for this place right now. Try again in a minute.</OdsAlert>
             }
             @if (_error is not null)
             {
@@ -31,13 +32,25 @@
             {
                 <OdsAlert Severity="Severity.Warning">The deletion was interrupted before it finished. Weather for this place stays paused, and nothing new is stored, until it completes. Continue to delete the rest.</OdsAlert>
             }
-            <p class="wx-lede">This permanently deletes everything Odyssey has stored about the weather at @Location.Name:</p>
-            <ul class="wx-effects">
-                <li>every forecast fetched for it, and the daily summaries built from them;</li>
-                <li>its measured history;</li>
-                <li>every weather position it has used.</li>
-            </ul>
-            <p class="wx-lede">The location itself is kept. Weather can be turned on again later, starting from nothing. Backups follow the deployment’s own retention.</p>
+            @if (HistoryOnly)
+            {
+                <p class="wx-lede">This permanently deletes the measured weather Odyssey has stored for @Location.Name:</p>
+                <ul class="wx-effects">
+                    <li>every measured day — temperature, precipitation and wind;</li>
+                    <li>the MET station it was matched to, which is looked up again if historical data is turned back on.</li>
+                </ul>
+                <p class="wx-lede">The forecast keeps running, and the location and its weather settings are kept. Backups follow the deployment’s own retention.</p>
+            }
+            else
+            {
+                <p class="wx-lede">This permanently deletes everything Odyssey has stored about the weather at @Location.Name:</p>
+                <ul class="wx-effects">
+                    <li>every forecast fetched for it, and the daily summaries built from them;</li>
+                    <li>its measured history;</li>
+                    <li>every weather position it has used.</li>
+                </ul>
+                <p class="wx-lede">The location itself is kept. Weather can be turned on again later, starting from nothing. Backups follow the deployment’s own retention.</p>
+            }
             <OdsField Label="@($"Type {Location.Name} to confirm")" Value="@_typed" ValueChanged="@(v => _typed = v ?? "")"
                       Disabled="_running"
                       Help="@(_running ? "Deleting. This can take up to a minute — keep this dialog open." : "The name must match exactly.")" />
@@ -57,7 +70,7 @@
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
     [Parameter, EditorRequired] public ExistingWeatherLocation Row { get; set; } = default!;
 
-    /// <summary>The purge completed: the row is gone.</summary>
+    /// <summary>The purge completed: the row is gone, or — with the forecast still on — kept without its measured data.</summary>
     [Parameter] public EventCallback OnDeleted { get; set; }
 
     /// <summary>The purge may still be running or stopped part-way; carries the re-read row, when there is one.</summary>
@@ -71,6 +84,9 @@
     private string? _error;
 
     private bool Resuming => Row.PurgeInProgress || _interrupted;
+
+    /// <summary>With the forecast still on, the server deletes only the measured data and keeps the row.</summary>
+    private bool HistoryOnly => Row.ForecastEnabled;
 
     private bool Matches => string.Equals(_typed.Trim(), Location.Name, StringComparison.Ordinal);
 

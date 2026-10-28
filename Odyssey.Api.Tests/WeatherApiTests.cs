@@ -74,7 +74,7 @@ public class WeatherApiTests
     private static async Task<HttpResponseMessage> EnableAsync(HttpClient client, ExistingLocation location, bool tracked = false) =>
         await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new UpsertWeatherLocation
         {
-            Enabled = true,
+            ForecastEnabled = true, HistoryEnabled = true,
             IsTracked = tracked,
             ExpectedLocationFingerprint = Fingerprint(location),
         });
@@ -171,7 +171,7 @@ public class WeatherApiTests
 
         var response = await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new UpsertWeatherLocation
         {
-            Enabled = true,
+            ForecastEnabled = true, HistoryEnabled = true,
             IsTracked = false,
             ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC",
         });
@@ -189,12 +189,43 @@ public class WeatherApiTests
         using var client = factory.CreateClient();
 
         var unknown = await client.PutAsJsonAsync($"/api/weather/locations/{Guid.NewGuid()}",
-            new UpsertWeatherLocation { Enabled = true, IsTracked = false, ExpectedLocationFingerprint = "x" });
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, ExpectedLocationFingerprint = "x" });
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
 
         var location = await CreateLocationAsync(client);
         var missing = await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new { isTracked = false });
         Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
+
+        // Each half is its own required switch: the old single flag is not accepted in place of either.
+        var oldShape = await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}",
+            new { enabled = true, isTracked = false, expectedLocationFingerprint = "x" });
+        Assert.Equal(HttpStatusCode.BadRequest, oldShape.StatusCode);
+        var historyMissing = await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}",
+            new { forecastEnabled = true, isTracked = false, expectedLocationFingerprint = "x" });
+        Assert.Equal(HttpStatusCode.BadRequest, historyMissing.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_history_only_place_is_in_the_history_list_and_not_the_picker()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var location = await CreateLocationAsync(client);
+        var put = await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new UpsertWeatherLocation
+        {
+            ForecastEnabled = false, HistoryEnabled = true, IsTracked = false,
+            ExpectedLocationFingerprint = Fingerprint(location),
+        });
+        Assert.True(put.IsSuccessStatusCode, await put.Content.ReadAsStringAsync());
+
+        using var raw = JsonDocument.Parse(await client.GetStringAsync("/api/weather/locations/options"));
+        Assert.Equal(0, raw.RootElement.GetProperty("locations").GetArrayLength());
+        var history = raw.RootElement.GetProperty("historyLocations");
+        Assert.Equal(location.LocationId, Assert.Single(history.EnumerateArray()).GetProperty("locationId").GetGuid());
+
+        var row = JsonDocument.Parse(await client.GetStringAsync($"/api/weather/locations/{location.LocationId}")).RootElement;
+        Assert.False(row.GetProperty("forecastEnabled").GetBoolean());
+        Assert.True(row.GetProperty("historyEnabled").GetBoolean());
     }
 
     [Fact]
@@ -207,7 +238,7 @@ public class WeatherApiTests
 
         Assert.Equal(HttpStatusCode.Conflict, (await client.DeleteAsync($"/api/weather/locations/{location.LocationId}")).StatusCode);
 
-        await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new UpsertWeatherLocation { Enabled = false, IsTracked = false });
+        await client.PutAsJsonAsync($"/api/weather/locations/{location.LocationId}", new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = false });
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/weather/locations/{location.LocationId}")).StatusCode);
 
         Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/weather/locations/{location.LocationId}")).StatusCode);
@@ -350,7 +381,7 @@ public class WeatherApiTests
         Assert.Equal(home.LocationId, preferences!.HouseholdDefaultLocation!.LocationId);
 
         // …and it cannot then be switched off.
-        var disable = await client.PutAsJsonAsync($"/api/weather/locations/{home.LocationId}", new UpsertWeatherLocation { Enabled = false, IsTracked = false });
+        var disable = await client.PutAsJsonAsync($"/api/weather/locations/{home.LocationId}", new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = false });
         Assert.Equal(HttpStatusCode.Conflict, disable.StatusCode);
     }
 

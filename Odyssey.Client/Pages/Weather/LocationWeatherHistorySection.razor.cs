@@ -232,5 +232,6 @@ public partial class LocationWeatherHistorySection
 
     private static string ShortDate(DateOnly date) => date.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);
 
-    private bool WeatherOff => Row is { Enabled: false };
+    /// <summary>The Admin row says historical data is off: nothing new is measured for this place.</summary>
+    private bool HistoryOff => Row is { HistoryEnabled: false };
 }

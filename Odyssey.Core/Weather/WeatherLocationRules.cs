@@ -19,6 +19,6 @@ public sealed class WeatherLocationRules : IWeatherLocationRules
     public Task<bool> IsSelectableAsync(OdysseyContext context, Guid locationId, CancellationToken cancellationToken) =>
         (from weather in context.WeatherLocations
          join location in context.Locations on weather.LocationId equals location.LocationId
-         where weather.LocationId == locationId && weather.Enabled && weather.PurgeStartedAt == null && location.Archived == null
+         where weather.LocationId == locationId && weather.ForecastEnabled && weather.PurgeStartedAt == null && location.Archived == null
          select weather.LocationId).AnyAsync(cancellationToken);
 }

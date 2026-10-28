@@ -51,7 +51,7 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
-    public async Task A_weather_off_place_re_anchors_on_its_last_measured_day_and_says_so()
+    public async Task A_history_off_place_re_anchors_on_its_last_measured_day_and_says_so()
     {
         var stopped = new DateOnly(2026, 8, 30);
         Serve(measuredFrom: new DateOnly(2026, 1, 1), measuredThrough: stopped);
@@ -61,7 +61,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
         section.WaitForAssertion(() => Assert.Equal(2, requests.Count));
         Assert.Equal((stopped.AddDays(-59), stopped), requests[1]);
-        section.WaitForAssertion(() => Assert.Contains("Weather is off for this place.", section.Markup));
+        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for this place.", section.Markup));
     }
 
     [Fact]
@@ -184,6 +184,19 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task History_turned_off_outranks_an_unconfigured_frost()
+    {
+        // Nothing would be fetched anyway: the place's own switch is the answer, not the instance's setup.
+        Serve(measuredFrom: null, measuredThrough: null, configured: false);
+        await using var ctx = Context();
+
+        var section = Render(ctx, Row(enabled: false), canSetUp: true, canOpenSettings: true);
+
+        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for this place.", section.Markup));
+        Assert.DoesNotContain("not configured", section.Markup);
+    }
+
+    [Fact]
     public async Task History_stored_before_frost_was_unset_still_shows()
     {
         Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday, configured: false);
@@ -197,7 +210,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
     [Theory]
     [InlineData(true, "No measured temperature yet.")]
-    [InlineData(false, "No temperature was measured while weather was on for this place.")]
+    [InlineData(false, "Historical data is turned off for this place.")]
     public async Task Nothing_stored_names_the_reason(bool enabled, string expected)
     {
         Serve(measuredFrom: null, measuredThrough: null);
@@ -296,11 +309,13 @@ public class LocationWeatherHistoryTests : IDisposable
         TimeZoneId = "Europe/Oslo",
     };
 
+    /// <summary>The Admin row; <paramref name="enabled"/> is historical data — the half this section follows.</summary>
     private static ExistingWeatherLocation Row(bool enabled) => new()
     {
         LocationId = Cabin.LocationId,
         Name = Cabin.Name,
-        Enabled = enabled,
+        ForecastEnabled = true,
+        HistoryEnabled = enabled,
         Site = new WeatherLocationSiteDto { Version = 1, TimeZoneId = "Europe/Oslo" },
     };
 

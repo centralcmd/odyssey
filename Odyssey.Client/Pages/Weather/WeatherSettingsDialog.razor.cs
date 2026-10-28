@@ -28,7 +28,8 @@ public partial class WeatherSettingsDialog
 
     private static readonly DateTime HistoryFloor = WeatherRules.HistoryFloor.ToDateTime(TimeOnly.MinValue);
 
-    private bool _enabled;
+    private bool _forecast;
+    private bool _history;
     private bool _tracked;
     private DateTime? _historyFrom;
     private bool _saving;
@@ -43,22 +44,38 @@ public partial class WeatherSettingsDialog
 
     private DateOnly DefaultFrom => DateOnly.FromDateTime(DateTime.Today).AddYears(-1);
 
-    private int UsedElsewhere => TrackedCount - (Row is { IsTracked: true, Enabled: true } ? 1 : 0);
+    private int UsedElsewhere => TrackedCount - (Row is { IsTracked: true, ForecastEnabled: true } ? 1 : 0);
 
     private bool AtCap => Cap is { } cap && UsedElsewhere >= cap;
 
-    private bool EnabledLocked => Row is { IsHouseholdDefault: true } || (Location.Archived is not null && Row is { Enabled: false });
+    private bool Archived => Location.Archived is not null;
 
-    private bool ReEnablingMoved => Row is { Enabled: false } row && _enabled && WeatherVisuals.Moved(row, Location);
+    /// <summary>The household default's forecast cannot be turned off; an archived place's off half cannot be turned on.</summary>
+    private bool ForecastLocked => Row is { IsHouseholdDefault: true } || (Archived && Row is { ForecastEnabled: false });
 
-    private string EnabledHelp =>
+    private bool HistoryLocked => Archived && Row is { HistoryEnabled: false };
+
+    /// <summary>Turning weather on with both halves off would create a row that fetches nothing.</summary>
+    private bool NothingToTurnOn => Creating && !_forecast && !_history;
+
+    private bool ReEnablingMoved =>
+        Row is { ForecastEnabled: false, HistoryEnabled: false } row && (_forecast || _history) && WeatherVisuals.Moved(row, Location);
+
+    private string ForecastHelp =>
         Row is { IsHouseholdDefault: true }
-            ? "This is the household’s default weather location, so it can’t be turned off. Choose another default in System settings → Weather first."
-        : Location.Archived is not null && Row is { Enabled: false }
-            ? "The location is archived. Restore it before turning weather back on."
-        : _enabled
-            ? "Forecasts and measured history are fetched for this place."
-            : "Fetching stops. Everything already stored is kept, and turning weather back on continues where it left off.";
+            ? "This is the household’s default weather location, so its forecast can’t be turned off. Choose another default in System settings → Weather first."
+        : Archived && Row is { ForecastEnabled: false }
+            ? "The location is archived. Restore it before turning the forecast on."
+        : _forecast
+            ? "MET Norway’s forecast is fetched for this place, and it can be picked on the dashboard."
+            : "No forecast is fetched, and the place can’t be picked on the dashboard. Stored forecasts are kept.";
+
+    private string HistoryToggleHelp =>
+        Archived && Row is { HistoryEnabled: false }
+            ? "The location is archived. Restore it before turning historical data on."
+        : _history
+            ? "Measured daily weather is fetched from MET’s Frost service and shown in the location’s Temperature history."
+            : "No measured data is fetched. Everything already stored is kept until you delete it.";
 
     private string HistoryHelp => Creating
         ? $"Empty starts one year back, on {WeatherVisuals.Date(DefaultFrom)}. Earlier days are filled in from MET’s Frost service a year at a time."
@@ -67,7 +84,8 @@ public partial class WeatherSettingsDialog
     protected override void OnInitialized()
     {
         _preview = Location;
-        _enabled = Row?.Enabled ?? true;
+        _forecast = Row?.ForecastEnabled ?? true;
+        _history = Row?.HistoryEnabled ?? true;
         _tracked = Row?.IsTracked ?? !(Cap is { } cap && TrackedCount >= cap);
         _historyFrom = Row?.HistoryFrom.ToDateTime(TimeOnly.MinValue);
     }
@@ -80,7 +98,7 @@ public partial class WeatherSettingsDialog
 
     private async Task SaveAsync()
     {
-        if (_saving)
+        if (_saving || NothingToTurnOn)
             return;
         _saving = true;
         _conflict = null;
@@ -89,7 +107,8 @@ public partial class WeatherSettingsDialog
 
         var result = await Weather.UpsertLocationAsync(Location.LocationId, new UpsertWeatherLocation
         {
-            Enabled = _enabled,
+            ForecastEnabled = _forecast,
+            HistoryEnabled = _history,
             IsTracked = _tracked,
             HistoryFrom = _historyFrom is { } from ? DateOnly.FromDateTime(from) : null,
             ExpectedLocationFingerprint = Creating ? WeatherVisuals.Fingerprint(_preview) : null,

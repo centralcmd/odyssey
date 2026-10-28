@@ -67,7 +67,7 @@ public sealed class WeatherScheduleJob(
                 from weather in context.WeatherLocations.AsNoTracking()
                 join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
                 join schedule in context.WeatherLocationSchedules.AsNoTracking() on weather.LocationId equals schedule.LocationId
-                where weather.Enabled && weather.PurgeStartedAt == null && location.Archived == null
+                where weather.HistoryEnabled && weather.PurgeStartedAt == null && location.Archived == null
                 orderby weather.EnabledAt, weather.LocationId
                 select new { weather.LocationId, schedule.NextObservationFetchAfterUtc })
             .ToListAsync(cancellationToken);
@@ -112,7 +112,7 @@ public sealed class WeatherScheduleJob(
                 from schedule in context.WeatherLocationSchedules
                 join weather in context.WeatherLocations on schedule.LocationId equals weather.LocationId
                 join location in context.Locations on weather.LocationId equals location.LocationId
-                where weather.Enabled && weather.PurgeStartedAt == null
+                where (weather.ForecastEnabled || weather.HistoryEnabled) && weather.PurgeStartedAt == null
                       && (location.Archived != null) != schedule.ArchivedSkipLogged
                 select new { schedule, Archived = location.Archived != null })
             .ToListAsync(cancellationToken);

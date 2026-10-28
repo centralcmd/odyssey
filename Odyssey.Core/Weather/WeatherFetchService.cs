@@ -22,6 +22,13 @@ public enum WeatherFetchMode
     Refresh,
 }
 
+/// <summary>Which half of a location's weather a fetch writes — each is switched on and off on its own.</summary>
+public enum WeatherHalf
+{
+    Forecast,
+    History,
+}
+
 public enum WeatherAttemptStatus
 {
     /// <summary>A request was sent and its result stored (a new run, or a 304 / same <c>updated_at</c>).</summary>
@@ -115,7 +122,7 @@ public sealed class WeatherFetchService
 
         var weather = await context.WeatherLocations.AsNoTracking()
             .FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
-        if (weather is null || !weather.Enabled || weather.PurgeStartedAt is not null
+        if (weather is null || !weather.ForecastEnabled || weather.PurgeStartedAt is not null
             || await IsArchivedAsync(locationId, cancellationToken))
         {
             return new WeatherAttempt(WeatherAttemptStatus.Skipped);
@@ -167,7 +174,7 @@ public sealed class WeatherFetchService
                 break;
         }
 
-        if (!await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken))
+        if (!await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.Forecast, cancellationToken))
         {
             return new WeatherAttempt(WeatherAttemptStatus.Discarded);
         }
@@ -340,7 +347,7 @@ public sealed class WeatherFetchService
 
         var weather = await context.WeatherLocations
             .FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
-        if (weather is null || !weather.Enabled || weather.PurgeStartedAt is not null
+        if (weather is null || !weather.HistoryEnabled || weather.PurgeStartedAt is not null
             || await IsArchivedAsync(locationId, cancellationToken))
         {
             return secret.State;
@@ -398,7 +405,7 @@ public sealed class WeatherFetchService
             if (!lookup.Succeeded)
             {
                 RecordObservationFailure(schedule, lookup.FailureKind ?? WeatherFetchFailureKind.ProviderError, lookup.RetryAfter, now);
-                await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken);
+                await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
                 return secret.State;
             }
 
@@ -407,14 +414,14 @@ public sealed class WeatherFetchService
             // One request per call keeps the scheduler at ≤ 1 request/s: the lookup was this call's request,
             // so the daily fetch waits for the next tick (immediately due when a station was found).
             schedule.NextObservationFetchAfterUtc = lookup.StationId is null ? now.AddHours(24) : now;
-            await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken);
+            await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
             return secret.State;
         }
 
         if (weather.FrostStationId is not { } station)
         {
             schedule.NextObservationFetchAfterUtc = now.AddHours(24);
-            await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken);
+            await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
             return secret.State;
         }
 
@@ -440,7 +447,7 @@ public sealed class WeatherFetchService
             if (!fetched.Succeeded)
             {
                 RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
-                await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken);
+                await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
                 return secret.State;
             }
 
@@ -467,7 +474,7 @@ public sealed class WeatherFetchService
         var moreBackfill = schedule.ObservationsBackfilledFromDate > floor;
         schedule.NextObservationFetchAfterUtc = moreBackfill ? now : NextObservationWindow(site, now, dailyPending: false);
 
-        if (await FencedSaveAsync(schedule, site.SiteVersion, cancellationToken) && inserted.Count > 0)
+        if (await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken) && inserted.Count > 0)
         {
             await RebuildDaysAsync(locationId, timeline, inserted, cancellationToken);
         }
@@ -571,14 +578,17 @@ public sealed class WeatherFetchService
     /// Saves the staged rows and the schedule under the claimed version, after re-checking the fence.
     /// Returns false — with nothing stored — when the job was fenced off.
     /// </summary>
-    private async Task<bool> FencedSaveAsync(WeatherLocationSchedule schedule, int claimedSite, CancellationToken cancellationToken)
+    private async Task<bool> FencedSaveAsync(
+        WeatherLocationSchedule schedule, int claimedSite, WeatherHalf half, CancellationToken cancellationToken)
     {
         var fence = await context.WeatherLocations.AsNoTracking()
             .Where(w => w.LocationId == schedule.LocationId)
-            .Select(w => new { w.Enabled, w.PurgeStartedAt, w.CurrentSiteVersion })
+            .Select(w => new { w.ForecastEnabled, w.HistoryEnabled, w.PurgeStartedAt, w.CurrentSiteVersion })
             .FirstOrDefaultAsync(cancellationToken);
 
-        if (fence is null || !fence.Enabled || fence.PurgeStartedAt is not null || fence.CurrentSiteVersion != claimedSite)
+        // Each half is fenced by its own switch: turning history off must not discard a forecast in flight.
+        var on = fence is not null && (half == WeatherHalf.Forecast ? fence.ForecastEnabled : fence.HistoryEnabled);
+        if (fence is null || !on || fence.PurgeStartedAt is not null || fence.CurrentSiteVersion != claimedSite)
         {
             Discard(schedule.LocationId);
             return false;

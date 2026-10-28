@@ -174,7 +174,8 @@ public sealed class FinanceDatabaseExport
 public sealed class WeatherLocationExport
 {
     public Guid LocationId { get; init; }
-    public bool Enabled { get; init; }
+    public bool ForecastEnabled { get; init; }
+    public bool HistoryEnabled { get; init; }
     public bool IsTracked { get; init; }
     public DateOnly HistoryFrom { get; init; }
     public DateTime EnabledAt { get; init; }

@@ -150,7 +150,7 @@ public class WeatherServiceTests
             switch (action)
             {
                 case "disable":
-                    await h.Admin(other).UpsertAsync(location.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
+                    await h.Admin(other).UpsertAsync(location.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
                     break;
                 case "apply":
                     var live = await other.Locations.SingleAsync(l => l.LocationId == location.LocationId);
@@ -261,7 +261,7 @@ public class WeatherServiceTests
         }
 
         var error = await Assert.ThrowsAsync<WeatherConflictException>(() => service.UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+            new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.FetchInProgress, error.Code);
     }
 
@@ -325,16 +325,16 @@ public class WeatherServiceTests
         var location = await h.AddLocationAsync();
 
         await Assert.ThrowsAsync<DomainValidationException>(() => h.Admin().UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
 
         var stale = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true, ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC" },
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = "v1:0.000:0.000:-:UTC" },
             WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.LocationChanged, stale.Code);
         Assert.DoesNotContain("59.9", stale.Message, StringComparison.Ordinal);
 
         var created = await h.Admin().UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(location) },
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(location) },
             WeatherTestHarness.AdminId, CancellationToken.None);
 
         Assert.True(created!.Created);
@@ -349,11 +349,11 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         Assert.Null(await h.Admin().UpsertAsync(Guid.NewGuid(),
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true, ExpectedLocationFingerprint = "x" }, WeatherTestHarness.AdminId, CancellationToken.None));
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = "x" }, WeatherTestHarness.AdminId, CancellationToken.None));
 
         var archived = await h.AddLocationAsync(archived: true);
         var error = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().UpsertAsync(archived.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(archived) },
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(archived) },
             WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.Archived, error.Code);
     }
@@ -367,12 +367,12 @@ public class WeatherServiceTests
         var cabin = await h.AddLocationAsync("Cabin");
 
         var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => h.Admin().UpsertAsync(cabin.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(cabin) },
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(cabin) },
             WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Contains("isTracked", error.Errors!.Keys);
 
         var untracked = await h.Admin().UpsertAsync(cabin.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = false, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(cabin) },
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(cabin) },
             WeatherTestHarness.AdminId, CancellationToken.None);
         Assert.NotNull(untracked);
     }
@@ -402,7 +402,7 @@ public class WeatherServiceTests
         h.Settings.Value = h.Settings.Value with { HouseholdDefaultLocationId = location.LocationId };
 
         var error = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+            new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.HouseholdDefault, error.Code);
     }
 
@@ -411,11 +411,11 @@ public class WeatherServiceTests
     {
         using var h = new WeatherTestHarness();
         var location = await h.EnableAsync();
-        await h.Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
+        await h.Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
         await MoveAsync(h, location.LocationId, 60.39299m);
 
         var row = (await h.Admin(h.NewContext()).UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None))!.Row;
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None))!.Row;
 
         Assert.Equal(1, row.Site.Version);
         Assert.Equal(59.913m, row.Site.Latitude);
@@ -489,7 +489,7 @@ public class WeatherServiceTests
         var enabled = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin(h.NewContext()).PurgeAsync(location.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.StillEnabled, enabled.Code);
 
-        await h.Admin(h.NewContext()).UpsertAsync(location.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
+        await h.Admin(h.NewContext()).UpsertAsync(location.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
         Assert.True(await h.Admin(h.NewContext()).PurgeAsync(location.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
 
         var check = h.NewContext();
@@ -503,12 +503,175 @@ public class WeatherServiceTests
         Assert.False(await h.Admin(h.NewContext()).PurgeAsync(location.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
     }
 
+    // ── Forecast and historical data are separate halves ─────────────────────────────────────────
+
+    [Fact]
+    public async Task Options_list_forecast_places_for_the_picker_and_history_places_separately()
+    {
+        using var h = new WeatherTestHarness();
+        await h.EnableAsync("Both");
+        await h.EnableAsync("Forecast only", history: false);
+        await h.EnableAsync("History only", forecast: false);
+
+        var options = await h.Read().OptionsAsync(CancellationToken.None);
+
+        Assert.Equal(["Both", "Forecast only"], options.Locations.Select(l => l.Name));
+        Assert.Equal(["Both", "History only"], options.HistoryLocations.Select(l => l.Name));
+    }
+
+    [Fact]
+    public async Task A_history_only_place_is_not_selectable_and_never_fetches_a_forecast_but_measures()
+    {
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var cabin = await h.EnableAsync("Cabin", forecast: false);
+
+        Assert.False(await new WeatherLocationRules().IsSelectableAsync(h.NewContext(), cabin.LocationId, CancellationToken.None));
+        var forecast = await h.Fetch().FetchForecastAsync(cabin.LocationId, WeatherFetchMode.Scheduled, CancellationToken.None);
+        Assert.Equal(WeatherAttemptStatus.Skipped, forecast.Status);
+        // An explicit read of its history is a pure read: not selectable, so no on-demand forecast.
+        await h.Read(h.NewContext()).DailyAsync(Daily(cabin.LocationId, new DateOnly(2026, 10, 20), new DateOnly(2026, 10, 25)), "u1", CancellationToken.None);
+        Assert.Equal(0, h.Forecasts.Calls);
+
+        await h.Fetch(h.NewContext()).FetchObservationsAsync(cabin.LocationId, CancellationToken.None);
+        Assert.Equal(1, h.Observations.StationCalls);
+    }
+
+    [Fact]
+    public async Task A_forecast_only_place_never_fetches_measured_history()
+    {
+        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 9, 0, 0, TimeSpan.Zero));
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var home = await h.EnableAsync(history: false);
+
+        await h.Fetch().FetchObservationsAsync(home.LocationId, CancellationToken.None);
+
+        Assert.Equal(0, h.Observations.StationCalls);
+        Assert.Empty(h.Observations.DailyCalls);
+    }
+
+    [Fact]
+    public async Task The_household_default_may_turn_history_off_but_not_its_forecast()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+        h.Settings.Value = h.Settings.Value with { HouseholdDefaultLocationId = home.LocationId };
+
+        var row = (await h.Admin().UpsertAsync(home.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None))!.Row;
+        Assert.True(row.ForecastEnabled);
+        Assert.False(row.HistoryEnabled);
+
+        var error = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin(h.NewContext()).UpsertAsync(home.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+        Assert.Equal(WeatherConflictException.HouseholdDefault, error.Code);
+    }
+
+    [Fact]
+    public async Task Turning_either_half_on_for_an_archived_location_is_a_409()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync(history: false);
+        var entity = await h.Context.Locations.SingleAsync(l => l.LocationId == home.LocationId);
+        entity.Archived = Noon;
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        var error = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().UpsertAsync(home.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+        Assert.Equal(WeatherConflictException.Archived, error.Code);
+    }
+
+    [Fact]
+    public async Task The_scheduling_cap_counts_forecast_places_only()
+    {
+        using var h = new WeatherTestHarness();
+        h.Settings.Value = h.Settings.Value with { MaxTrackedLocations = 1 };
+        await h.EnableAsync("Home");
+        var cabin = await h.AddLocationAsync("Cabin");
+
+        // IsTracked is a forecast setting: with the forecast off it claims no scheduled place.
+        var historyOnly = await h.Admin().UpsertAsync(cabin.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = true, IsTracked = true, ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(cabin) },
+            WeatherTestHarness.AdminId, CancellationToken.None);
+        Assert.NotNull(historyOnly);
+
+        var error = await Assert.ThrowsAsync<DomainUnprocessableException>(() => h.Admin(h.NewContext()).UpsertAsync(cabin.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+        Assert.Contains("isTracked", error.Errors!.Keys);
+    }
+
+    [Fact]
+    public async Task Purge_is_refused_while_history_is_on_even_with_the_forecast_off()
+    {
+        using var h = new WeatherTestHarness();
+        var cabin = await h.EnableAsync("Cabin", forecast: false);
+
+        var error = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin().PurgeAsync(cabin.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
+        Assert.Equal(WeatherConflictException.StillEnabled, error.Code);
+    }
+
+    [Fact]
+    public async Task With_the_forecast_on_a_purge_removes_only_the_measured_data()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+        h.Settings.Value = h.Settings.Value with { HouseholdDefaultLocationId = home.LocationId };
+        h.Forecasts.Respond = _ => Task.FromResult(WeatherTestHarness.Run(Noon.AddMinutes(-30), Noon, 24, 7));
+        await h.Fetch().FetchForecastAsync(home.LocationId, WeatherFetchMode.Scheduled, CancellationToken.None);
+        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
+        weather.FrostStationId = "SN18700";
+        weather.StationResolvedAtUtc = Noon;
+        // One day measured only, and the forecast's own day measured too.
+        var forecastDay = await h.Context.WeatherDays.FirstAsync(d => d.LocationId == home.LocationId);
+        forecastDay.ObservedMeanTempC = 5;
+        forecastDay.ObservedFetchedAtUtc = Noon;
+        h.Context.WeatherDays.Add(MeasuredDay(home.LocationId, new DateOnly(2026, 9, 1)));
+        h.Context.WeatherObservations.Add(new Odyssey.Context.WeatherObservation
+        {
+            WeatherObservationId = Guid.NewGuid(), LocationId = home.LocationId, SiteVersion = 1, StationId = "SN18700",
+            LocalDate = new DateOnly(2026, 9, 1), MeanTempC = 5,
+        });
+        var schedule = await h.Context.WeatherLocationSchedules.SingleAsync(s => s.LocationId == home.LocationId);
+        schedule.ObservationsCheckedThroughDate = new DateOnly(2026, 10, 22);
+        schedule.LastObservationSuccessUtc = Noon;
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+        await h.Admin().UpsertAsync(home.LocationId,
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
+
+        // The household default is kept, so this purge is allowed for it.
+        Assert.True(await h.Admin(h.NewContext()).PurgeAsync(home.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
+
+        var check = h.NewContext();
+        var row = await check.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
+        Assert.True(row.ForecastEnabled);
+        Assert.Null(row.PurgeStartedAt);
+        Assert.Null(row.FrostStationId);
+        Assert.Null(row.StationResolvedAtUtc);
+        Assert.NotEqual(0, await check.WeatherForecastRuns.CountAsync());
+        Assert.NotEqual(0, await check.WeatherForecastSteps.CountAsync());
+        Assert.Equal(0, await check.WeatherObservations.CountAsync());
+        Assert.False(await check.WeatherDays.AnyAsync(d => d.ObservedFetchedAtUtc != null || d.ObservedMeanTempC != null));
+        Assert.False(await check.WeatherDays.AnyAsync(d => d.LocalDate == new DateOnly(2026, 9, 1)));
+        Assert.True(await check.WeatherDays.AnyAsync(d => d.LocalDate == forecastDay.LocalDate && d.ForecastCoverageHours != null));
+        var afterSchedule = await check.WeatherLocationSchedules.SingleAsync(s => s.LocationId == home.LocationId);
+        Assert.Null(afterSchedule.ObservationsCheckedThroughDate);
+        Assert.Null(afterSchedule.LastObservationSuccessUtc);
+        Assert.Null(afterSchedule.LeaseUntilUtc);
+
+        // The forecast keeps working after the purge.
+        h.Time.Advance(TimeSpan.FromHours(2));
+        var again = await h.Fetch(h.NewContext()).FetchForecastAsync(home.LocationId, WeatherFetchMode.Refresh, CancellationToken.None);
+        Assert.NotEqual(WeatherAttemptStatus.Skipped, again.Status);
+    }
+
     [Fact]
     public async Task Purge_refuses_while_a_fetch_holds_the_lease_and_resumes_once_started()
     {
         using var h = new WeatherTestHarness();
         var location = await h.EnableAsync();
-        await h.Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
+        await h.Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None);
         var context = h.NewContext();
         var schedule = await context.WeatherLocationSchedules.SingleAsync();
         schedule.LeaseUntilUtc = Noon.AddMinutes(1);
@@ -526,7 +689,7 @@ public class WeatherServiceTests
         var row = await h.Admin(h.NewContext()).GetAsync(location.LocationId, CancellationToken.None);
         Assert.True(row!.PurgeInProgress);
         var enable = await Assert.ThrowsAsync<WeatherConflictException>(() => h.Admin(h.NewContext()).UpsertAsync(location.LocationId,
-            new UpsertWeatherLocation { Enabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
+            new UpsertWeatherLocation { ForecastEnabled = true, HistoryEnabled = true, IsTracked = true }, WeatherTestHarness.AdminId, CancellationToken.None));
         Assert.Equal(WeatherConflictException.PurgeInProgress, enable.Code);
 
         Assert.True(await h.Admin(h.NewContext()).PurgeAsync(location.LocationId, WeatherTestHarness.AdminId, CancellationToken.None));
@@ -704,7 +867,7 @@ public class WeatherServiceTests
         weather.FrostStationId = "SN18700";
         h.Context.WeatherDays.Add(MeasuredDay(boat.LocationId, new DateOnly(2026, 8, 30)));
         await h.Context.SaveChangesAsync();
-        await h.Admin().UpsertAsync(boat.LocationId, new UpsertWeatherLocation { Enabled = false, IsTracked = false },
+        await h.Admin().UpsertAsync(boat.LocationId, new UpsertWeatherLocation { ForecastEnabled = false, HistoryEnabled = false, IsTracked = false },
             WeatherTestHarness.AdminId, CancellationToken.None);
         h.Context.ChangeTracker.Clear();
 

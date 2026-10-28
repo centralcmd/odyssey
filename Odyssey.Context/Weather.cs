@@ -22,7 +22,11 @@ public class WeatherLocation
     [Key]
     public Guid LocationId { get; set; }
 
-    public bool Enabled { get; set; }
+    /// <summary>Forecasts are fetched, and the place is selectable on the dashboard.</summary>
+    public bool ForecastEnabled { get; set; }
+
+    /// <summary>Measured days are fetched from MET Norway's Frost service.</summary>
+    public bool HistoryEnabled { get; set; }
 
     public bool IsTracked { get; set; }
 

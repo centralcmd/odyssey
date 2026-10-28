@@ -1013,8 +1013,8 @@ There is **no delete** in this version — a product decision, recorded in issue
 overwrites in place and keeps no previous value anywhere in the application, so erasure is an edit:
 
 1. As **Admin**, find the row on the Locations page (turn on *Archived* in the status filter if it is
-   already archived). **If the location has weather** (issue #348), turn weather off for it and then
-   **Delete weather history** first — the weather tables hold their own copies of the coordinates (the
+   already archived). **If the location has weather** (issue #348), turn **both** its forecast and its
+   historical data off and then **Delete weather history** first — the weather tables hold their own copies of the coordinates (the
    frozen sites and every forecast run), and an edit of the location does not reach them. See
    [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
 2. **Edit** it: replace the name with something neutral (it must stay unique, e.g. `Erased 2026-10-23`),
@@ -1072,11 +1072,14 @@ every surface that displays it.
 
 ### Erasing a location's weather
 
-1. As **Admin**, on the Locations page, turn weather **off** for the place. A household default cannot
-   be turned off: choose another default in `/settings` first.
-2. Choose **Delete weather history** and type the place's name to confirm. This removes every weather
-   row of that place — the sites, every forecast and observation, the day summaries and the schedule —
-   and leaves the location itself untouched.
+1. As **Admin**, on the Locations page, open **Weather settings** for the place and turn **both** the
+   forecast and the historical data off. A household default cannot have its forecast turned off:
+   choose another default in `/settings` first.
+2. Choose **Delete weather history** and type the place's name to confirm. With both halves off this
+   removes every weather row of that place — the sites, every forecast and observation, the day
+   summaries and the schedule — and leaves the location itself untouched. **With the forecast still on
+   it deletes only the measured history** (observations, the measured half of each day, the resolved
+   station); the sites and forecast runs, which hold the coordinates, stay. That is not an erasure.
 3. A large history is deleted in batches. If the request is interrupted, the place shows *deleting* and
    stays blocked; run **Delete weather history** again to finish it.
 4. Then erase the location itself as in the previous section.

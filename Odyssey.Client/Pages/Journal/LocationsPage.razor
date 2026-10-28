@@ -138,7 +138,7 @@
                         }
                         @if (ShowHistory(l))
                         {
-                            <LocationWeatherHistorySection Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)"
+                            <LocationWeatherHistorySection @key="@($"{l.LocationId}:{_historyEpoch}")" Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)"
                                                            CanSetUp="_canUpdateWeather" CanOpenSettings="_canOpenSettings" />
                         }
                     </Details>
@@ -209,11 +209,14 @@
 }
 
 @code {
-    // The row chip — Admin only; nobody else can read weather settings. The words are always present.
+    // The row chip — Admin only; nobody else can read weather settings. The words are always present, and
+    // they name which half is on: forecast and historical data are separate settings.
     private static RenderFragment WeatherChip(ExistingWeatherLocation row, ExistingLocation l) =>
         row.PurgeInProgress ? @<OdsChip Tone="OdsChipTone.Error" Icon="delete_sweep" Class="sm">Weather: deleting</OdsChip>
-        : !row.Enabled ? @<OdsChip Tone="OdsChipTone.Outline" Icon="cloud_off" Class="sm">Weather off</OdsChip>
+        : !row.ForecastEnabled && !row.HistoryEnabled ? @<OdsChip Tone="OdsChipTone.Outline" Icon="cloud_off" Class="sm">Weather off</OdsChip>
         : WeatherVisuals.Moved(row, l) ? @<OdsChip Tone="OdsChipTone.Warning" Icon="wrong_location" Class="sm">Weather: moved</OdsChip>
+        : !row.HistoryEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Forecast only</OdsChip>
+        : !row.ForecastEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="history" Class="sm">History only</OdsChip>
         : @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Weather</OdsChip>;
 
     // When a search matches only archived rows and the filter hides them, say so — otherwise a household

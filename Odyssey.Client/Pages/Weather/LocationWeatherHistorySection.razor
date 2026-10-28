@@ -15,7 +15,7 @@ else if (_bounds is { HasObservationStation: false })
     <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
                       EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no temperature history. Forecasts are not affected.")" />
 }
-else if (_bounds is { ObservationsConfigured: false } && (Latest is null || Earliest is null))
+else if (_bounds is { ObservationsConfigured: false } && !HistoryOff && (Latest is null || Earliest is null))
 {
     @* Nothing stored and nothing can be fetched: say why rather than promise history that will never
        arrive. History stored before the setting was cleared still shows. *@
@@ -24,15 +24,15 @@ else if (_bounds is { ObservationsConfigured: false } && (Latest is null || Earl
 else if (_bounds is not null && (Latest is null || Earliest is null))
 {
     <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
-                      EmptyText="@Text(WeatherOff
-                          ? "No temperature was measured while weather was on for this place."
+                      EmptyText="@Text(HistoryOff
+                          ? "Historical data is turned off for this place."
                           : "No measured temperature yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
 }
 else
 {
     <OdsRecordSection Class="@Cls" Label="Temperature history" Meta="measured · UTC days"
-                      Notice="@(WeatherOff ? Text("Weather is off for this place. This is the temperature measured until it was turned off; nothing new is added.") : null)"
-                      NoticeIconName="@(WeatherOff ? "history" : null)">
+                      Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is the temperature measured until it was turned off; nothing new is added.") : null)"
+                      NoticeIconName="@(HistoryOff ? "history" : null)">
         @if (_bounds is not null)
         {
             <div class="wx-hist-bar">

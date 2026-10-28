@@ -4796,15 +4796,18 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("CurrentSiteVersion")
                         .HasColumnType("int");
 
-                    b.Property<bool>("Enabled")
-                        .HasColumnType("tinyint(1)");
-
                     b.Property<DateTime>("EnabledAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("ForecastEnabled")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<string>("FrostStationId")
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
+
+                    b.Property<bool>("HistoryEnabled")
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateOnly>("HistoryFrom")
                         .HasColumnType("date");

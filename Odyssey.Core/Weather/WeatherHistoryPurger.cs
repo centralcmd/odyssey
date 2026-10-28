@@ -1,9 +1,24 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Weather;
 
 public sealed record WeatherPurgeCounts(int Steps, int Runs, int Observations, int Days, int Sites);
+
+/// <summary>What a purge deletes, decided by whether the location's forecast is still on.</summary>
+public enum WeatherPurgeMode
+{
+    /// <summary>Forecast off too: every weather row of the location, the weather row itself included.</summary>
+    Full,
+
+    /// <summary>
+    /// Forecast still on: only the measured data — the observations, the measured half of each day (a day with
+    /// no forecast half goes entirely), the resolved station and the schedule's observation markers. The
+    /// forecast runs, the sites, the schedule and the weather row stay; the final transaction lifts the fence.
+    /// </summary>
+    HistoryOnly,
+}
 
 /// <summary>
 /// The deletion half of the weather purge (issue #348 §5.10, N2, amendment 1), behind an interface so the
@@ -20,7 +35,7 @@ public sealed record WeatherPurgeCounts(int Steps, int Runs, int Observations, i
 /// </summary>
 public interface IWeatherHistoryPurger
 {
-    Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, CancellationToken cancellationToken);
+    Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, WeatherPurgeMode mode, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -31,8 +46,13 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
 {
     public const int BatchSize = 10_000;
 
-    public async Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, CancellationToken cancellationToken)
+    public async Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, WeatherPurgeMode mode, CancellationToken cancellationToken)
     {
+        if (mode == WeatherPurgeMode.HistoryOnly)
+        {
+            return await PurgeHistoryAsync(locationId, cancellationToken);
+        }
+
         // Steps go run by run, in id batches of at most BatchSize, so every statement is bounded however
         // large one run is; the run's own steps are found through its indexed (RunId, TimeUtc) key. The
         // runs themselves follow.
@@ -75,22 +95,7 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
             runs += await context.WeatherForecastRuns.Where(r => runIds.Contains(r.WeatherForecastRunId)).ExecuteDeleteAsync(cancellationToken);
         }
 
-        var observations = 0;
-        while (true)
-        {
-            var ids = await context.WeatherObservations.AsNoTracking()
-                .Where(o => o.LocationId == locationId)
-                .OrderBy(o => o.WeatherObservationId)
-                .Select(o => o.WeatherObservationId)
-                .Take(BatchSize)
-                .ToListAsync(cancellationToken);
-            if (ids.Count == 0)
-            {
-                break;
-            }
-
-            observations += await context.WeatherObservations.Where(o => ids.Contains(o.WeatherObservationId)).ExecuteDeleteAsync(cancellationToken);
-        }
+        var observations = await DeleteObservationsAsync(locationId, cancellationToken);
 
         var days = await context.WeatherDays.Where(d => d.LocationId == locationId).ExecuteDeleteAsync(cancellationToken);
 
@@ -114,6 +119,74 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
 
         return new WeatherPurgeCounts(steps, runs, observations, days, sites);
     }
+
+    private async Task<WeatherPurgeCounts> PurgeHistoryAsync(Guid locationId, CancellationToken cancellationToken)
+    {
+        var observations = await DeleteObservationsAsync(locationId, cancellationToken);
+
+        // A day with no forecast half was measured only; the rest lose their measured half.
+        var days = await context.WeatherDays
+            .Where(d => d.LocationId == locationId && d.ForecastCoverageHours == null)
+            .ExecuteDeleteAsync(cancellationToken);
+        days += await context.WeatherDays
+            .Where(d => d.LocationId == locationId && d.ObservedFetchedAtUtc != null)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(d => d.ObservedMinTempC, (decimal?)null)
+                .SetProperty(d => d.ObservedMaxTempC, (decimal?)null)
+                .SetProperty(d => d.ObservedMeanTempC, (decimal?)null)
+                .SetProperty(d => d.ObservedMeanWindSpeedMps, (decimal?)null)
+                .SetProperty(d => d.ObservedMaxWindGustMps, (decimal?)null)
+                .SetProperty(d => d.ObservedPrecipitationMm, (decimal?)null)
+                .SetProperty(d => d.ObservedFetchedAtUtc, (DateTime?)null)
+                .SetProperty(d => d.ObservedSiteVersion, (int?)null), cancellationToken);
+
+        // The final transaction: forget the station and the observation markers, then lift the fence.
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
+        {
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            await context.WeatherLocationSchedules.Where(s => s.LocationId == locationId)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(s => s.ObservationsCheckedThroughDate, (DateOnly?)null)
+                    .SetProperty(s => s.ObservationsBackfilledFromDate, (DateOnly?)null)
+                    .SetProperty(s => s.LastObservationSuccessUtc, (DateTime?)null)
+                    .SetProperty(s => s.ObservationFailureKind, (WeatherFetchFailureKind?)null)
+                    .SetProperty(s => s.ObservationConsecutiveFailures, 0)
+                    .SetProperty(s => s.NextObservationFetchAfterUtc, (DateTime?)null)
+                    .SetProperty(s => s.LeaseUntilUtc, (DateTime?)null)
+                    .SetProperty(s => s.Version, Guid.NewGuid()), cancellationToken);
+            await context.WeatherLocations.Where(w => w.LocationId == locationId)
+                .ExecuteUpdateAsync(set => set
+                    .SetProperty(w => w.FrostStationId, (string?)null)
+                    .SetProperty(w => w.StationResolvedAtUtc, (DateTime?)null)
+                    .SetProperty(w => w.PurgeStartedAt, (DateTime?)null), cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        });
+
+        return new WeatherPurgeCounts(0, 0, observations, days, 0);
+    }
+
+    private async Task<int> DeleteObservationsAsync(Guid locationId, CancellationToken cancellationToken)
+    {
+        var observations = 0;
+        while (true)
+        {
+            var ids = await context.WeatherObservations.AsNoTracking()
+                .Where(o => o.LocationId == locationId)
+                .OrderBy(o => o.WeatherObservationId)
+                .Select(o => o.WeatherObservationId)
+                .Take(BatchSize)
+                .ToListAsync(cancellationToken);
+            if (ids.Count == 0)
+            {
+                break;
+            }
+
+            observations += await context.WeatherObservations.Where(o => ids.Contains(o.WeatherObservationId)).ExecuteDeleteAsync(cancellationToken);
+        }
+
+        return observations;
+    }
 }
 
 /// <summary>
@@ -122,8 +195,13 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
 /// </summary>
 public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeatherHistoryPurger
 {
-    public async Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, CancellationToken cancellationToken)
+    public async Task<WeatherPurgeCounts> PurgeAsync(Guid locationId, WeatherPurgeMode mode, CancellationToken cancellationToken)
     {
+        if (mode == WeatherPurgeMode.HistoryOnly)
+        {
+            return await PurgeHistoryAsync(locationId, cancellationToken);
+        }
+
         var steps = await RemoveInBatchesAsync(context.WeatherForecastSteps.Where(s => s.LocationId == locationId), cancellationToken);
         var runs = await RemoveInBatchesAsync(context.WeatherForecastRuns.Where(r => r.LocationId == locationId), cancellationToken);
         var observations = await RemoveInBatchesAsync(context.WeatherObservations.Where(o => o.LocationId == locationId), cancellationToken);
@@ -145,6 +223,51 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
         context.ChangeTracker.Clear();
 
         return new WeatherPurgeCounts(steps, runs, observations, days, sites + remaining.Count);
+    }
+
+    private async Task<WeatherPurgeCounts> PurgeHistoryAsync(Guid locationId, CancellationToken cancellationToken)
+    {
+        var observations = await RemoveInBatchesAsync(context.WeatherObservations.Where(o => o.LocationId == locationId), cancellationToken);
+        var days = await RemoveInBatchesAsync(
+            context.WeatherDays.Where(d => d.LocationId == locationId && d.ForecastCoverageHours == null), cancellationToken);
+
+        foreach (var day in await context.WeatherDays.Where(d => d.LocationId == locationId && d.ObservedFetchedAtUtc != null).ToListAsync(cancellationToken))
+        {
+            day.ObservedMinTempC = null;
+            day.ObservedMaxTempC = null;
+            day.ObservedMeanTempC = null;
+            day.ObservedMeanWindSpeedMps = null;
+            day.ObservedMaxWindGustMps = null;
+            day.ObservedPrecipitationMm = null;
+            day.ObservedFetchedAtUtc = null;
+            day.ObservedSiteVersion = null;
+            days++;
+        }
+
+        var schedule = await context.WeatherLocationSchedules.FirstOrDefaultAsync(s => s.LocationId == locationId, cancellationToken);
+        if (schedule is not null)
+        {
+            schedule.ObservationsCheckedThroughDate = null;
+            schedule.ObservationsBackfilledFromDate = null;
+            schedule.LastObservationSuccessUtc = null;
+            schedule.ObservationFailureKind = null;
+            schedule.ObservationConsecutiveFailures = 0;
+            schedule.NextObservationFetchAfterUtc = null;
+            schedule.LeaseUntilUtc = null;
+            schedule.Version = Guid.NewGuid();
+        }
+
+        var weather = await context.WeatherLocations.FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
+        if (weather is not null)
+        {
+            weather.FrostStationId = null;
+            weather.StationResolvedAtUtc = null;
+            weather.PurgeStartedAt = null;
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        context.ChangeTracker.Clear();
+        return new WeatherPurgeCounts(0, 0, observations, days, 0);
     }
 
     private async Task<int> RemoveInBatchesAsync<T>(IQueryable<T> rows, CancellationToken cancellationToken)

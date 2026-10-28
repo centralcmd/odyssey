@@ -18,15 +18,14 @@ else
     <OdsRecordSection Class="acct-section wx-section" Label="Weather" Meta="@($"position v{Row.Site.Version}")"
                       Notice="@Notice" NoticeTone="@NoticeTone" NoticeIconName="@NoticeIcon">
         <OdsInfoTileGrid>
-            <OdsInfoTile Icon="@(Row.Enabled ? "wb_sunny" : "cloud_off")" Label="Weather" ValueVariant="OdsInfoTileVariant.Text"
-                         Foot="@OdsInfoTile.Caption(Row.Enabled ? $"on since {WeatherVisuals.Date(Row.EnabledAt)}" : "history kept")">
-                <Value>@(Row.PurgeInProgress ? "Deleting history" : Row.Enabled ? "On" : "Off")</Value>
-            </OdsInfoTile>
-            <OdsInfoTile Icon="update" Label="Forecast" ValueVariant="OdsInfoTileVariant.Text" Foot="@ForecastFoot">
+            @* Forecast and historical data are separate settings, so each tile says whether its half is on;
+               there is no single "Weather on" tile. *@
+            <OdsInfoTile Icon="@(Row.ForecastEnabled ? "wb_sunny" : "cloud_off")" Label="Forecast" ValueVariant="OdsInfoTileVariant.Text" Foot="@ForecastFoot">
                 <Value>@ForecastValue</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="history" Label="Measured history" ValueVariant="OdsInfoTileVariant.Sm" Foot="@HistoryFoot">
-                <Value>From @WeatherVisuals.Date(Row.HistoryFrom)</Value>
+            <OdsInfoTile Icon="history" Label="Historical data"
+                         ValueVariant="@(Row.HistoryEnabled && !Row.PurgeInProgress ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)" Foot="@HistoryFoot">
+                <Value>@HistoryValue</Value>
             </OdsInfoTile>
             <OdsInfoTile Icon="my_location" Label="Weather position" ValueVariant="OdsInfoTileVariant.Sm"
                          Foot="@OdsInfoTile.Caption($"{Row.Site.TimeZoneId}{(Row.Site.AltitudeMeters is { } a ? $" · {a} m" : "")} · copied {WeatherVisuals.Date(Row.Site.AppliedAt)}")">
@@ -64,7 +63,7 @@ else
     {
         { PurgeInProgress: true } => @<span>Deleting this place’s weather history was interrupted. Weather stays paused until it completes. @if (CanPurge) {<button type="button" class="loc-link" @onclick="OnPurge">Continue deleting</button>}</span>,
         _ when Location.Archived is not null || Row!.LocationArchived => Text("The location is archived, so weather fetching is paused. Restoring it resumes fetching."),
-        { Enabled: true } when Moved => @<span>The location has moved since weather copied its position. Weather keeps using the old position until you apply the move. @if (CanUpdate) {<button type="button" class="loc-link" @onclick="OnApply">Apply new position</button>}</span>,
+        { ForecastEnabled: true } or { HistoryEnabled: true } when Moved => @<span>The location has moved since weather copied its position. Weather keeps using the old position until you apply the move. @if (CanUpdate) {<button type="button" class="loc-link" @onclick="OnApply">Apply new position</button>}</span>,
         _ when Moved => Text("The location has moved since weather copied its position. Turn weather back on to apply the move."),
         _ => null,
     };
@@ -72,7 +71,7 @@ else
     [Parameter] public bool CanPurge { get; set; }
 
     private OdsRecordSectionTone NoticeTone =>
-        Row is { PurgeInProgress: true } || Location.Archived is not null || Row is { LocationArchived: true } || Row is { Enabled: true } && Moved
+        Row is { PurgeInProgress: true } || Location.Archived is not null || Row is { LocationArchived: true } || Row is { ForecastEnabled: true } or { HistoryEnabled: true } && Moved
             ? OdsRecordSectionTone.Warning
             : OdsRecordSectionTone.Default;
 
@@ -80,17 +79,25 @@ else
         Row is { PurgeInProgress: true } ? "delete_sweep" : Moved && Location.Archived is null ? "wrong_location" : null;
 
     private string ForecastValue =>
-        !Row!.Enabled ? "Not fetched"
+        !Row!.ForecastEnabled ? "Off"
         : Row.TrackingSuspended ? "Paused — schedule full"
         : Row.IsTracked ? "On a schedule" : "When someone looks";
 
-    private RenderFragment? ForecastFoot => WeatherVisuals.FailureOf(Row!.ForecastFailureKind) is { } fail
+    private string HistoryValue =>
+        Row!.PurgeInProgress ? "Deleting history"
+        : Row.HistoryEnabled ? $"From {WeatherVisuals.Date(Row.HistoryFrom)}" : "Off";
+
+    private RenderFragment? ForecastFoot => !Row!.ForecastEnabled
+        ? OdsInfoTile.Caption("not fetched; not on the dashboard")
+        : WeatherVisuals.FailureOf(Row.ForecastFailureKind) is { } fail
         ? Failure(fail)
         : OdsInfoTile.Caption(Row.TrackingSuspended
             ? "Only the first scheduled places refresh. Raise the limit in System settings."
             : Row.LastForecastSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
 
-    private RenderFragment? HistoryFoot => WeatherVisuals.FailureOf(Row!.ObservationFailureKind) is { } fail
+    private RenderFragment? HistoryFoot => !Row!.HistoryEnabled
+        ? OdsInfoTile.Caption("not fetched; stored data kept")
+        : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail
         ? Failure(fail)
         : OdsInfoTile.Caption(!Row.HasObservationStation
             ? "no MET station within 25 km"

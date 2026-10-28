@@ -435,16 +435,20 @@ public partial class LocationsPage
 
     // ── Temperature history (every role) ────────────────────────────────────────────────────────────
 
-    /// <summary>The places the dashboard picker offers (<c>GET /api/weather/locations/options</c>).</summary>
-    private HashSet<Guid> _weatherSelectable = [];
+    /// <summary>The places with historical data on (<c>historyLocations</c> of <c>GET /api/weather/locations/options</c>).</summary>
+    private HashSet<Guid> _historyPlaces = [];
+
+    /// <summary>Bumped when measured data is deleted, so an open Temperature history section reloads.</summary>
+    private int _historyEpoch;
 
     /// <summary>
-    /// On a place the caller can pick on the dashboard — the same list for every role — and, for an Admin,
-    /// also on a place whose weather is off but whose history is kept (design system · Locations.jsx).
+    /// On a place with historical data on — the same list for every role, separate from the dashboard picker's,
+    /// since a place can have history without a forecast — and, for an Admin, on any place with a weather row
+    /// (design system · Locations.jsx).
     /// </summary>
     private bool ShowHistory(ExistingLocation l) =>
         _canReadWeatherData
-        && (_weatherSelectable.Contains(l.LocationId) || ShowWeather && WeatherRow(l) is { PurgeInProgress: false });
+        && (_historyPlaces.Contains(l.LocationId) || ShowWeather && WeatherRow(l) is { PurgeInProgress: false });
 
     private async Task LoadWeatherOptionsAsync()
     {
@@ -454,13 +458,13 @@ public partial class LocationsPage
         // A failed read leaves the set as it was: the section is extra, and an Admin still reaches it by the row.
         if ((await Weather.OptionsAsync()).Value is { } options)
         {
-            _weatherSelectable = [.. options.Locations.Select(o => o.LocationId)];
+            _historyPlaces = [.. options.HistoryLocations.Select(o => o.LocationId)];
             StateHasChanged();
         }
     }
 
     /// <summary>Places on a schedule — what the cap counts.</summary>
-    private int TrackedCount => _weatherRows.Values.Count(r => r is { Enabled: true, IsTracked: true, LocationArchived: false, PurgeInProgress: false });
+    private int TrackedCount => _weatherRows.Values.Count(r => r is { ForecastEnabled: true, IsTracked: true, LocationArchived: false, PurgeInProgress: false });
 
     private async Task LoadWeatherAsync()
     {
@@ -515,15 +519,19 @@ public partial class LocationsPage
         if (canUpdate)
         {
             items.Add(new OdsMenuItem { Icon = "tune", Label = "Weather settings…", OnClick = enable });
-            if (row.Enabled && l.Archived is null)
+            if (l.Archived is null)
             {
-                items.Add(new OdsMenuItem { Icon = "refresh", Label = "Refresh forecast", OnClick = refresh });
-                if (WeatherVisuals.Moved(row, l))
+                if (row.ForecastEnabled)
+                    items.Add(new OdsMenuItem { Icon = "refresh", Label = "Refresh forecast", OnClick = refresh });
+                if ((row.ForecastEnabled || row.HistoryEnabled) && WeatherVisuals.Moved(row, l))
                     items.Add(new OdsMenuItem { Icon = "edit_location_alt", Label = "Apply new position…", OnClick = apply });
             }
         }
 
-        if (canPurge && !row.Enabled && !row.IsHouseholdDefault)
+        // Offered once historical data is off. With the forecast still on it deletes only the measured data; with
+        // both off, everything. A place with its forecast off cannot be the household default, so that refusal
+        // is unreachable here.
+        if (canPurge && !row.HistoryEnabled)
         {
             if (items.Count > 0)
                 items.Add(new OdsMenuItem { Divider = true });
@@ -562,8 +570,9 @@ public partial class LocationsPage
 
     private async Task OnWeatherSaved(ExistingWeatherLocation row)
     {
-        var wasOn = _weatherRows.TryGetValue(row.LocationId, out var before) && before.Enabled;
-        Announce(!wasOn && row.Enabled ? $"Weather is on for {row.Name}." : !row.Enabled && wasOn ? $"Weather is off for {row.Name}. Its history is kept." : $"Weather settings for {row.Name} saved.");
+        var wasOn = _weatherRows.TryGetValue(row.LocationId, out var before) && (before.ForecastEnabled || before.HistoryEnabled);
+        var isOn = row.ForecastEnabled || row.HistoryEnabled;
+        Announce(!wasOn && isOn ? $"Weather is on for {row.Name}." : !isOn && wasOn ? $"Weather is off for {row.Name}. Everything stored is kept." : $"Weather settings for {row.Name} saved.");
         // Re-read every row: the cap's suspension flags are computed across them. Turning weather on or off
         // also changes which places the options list serves, which the history section follows.
         await Task.WhenAll(LoadWeatherAsync(), LoadWeatherOptionsAsync());
@@ -575,13 +584,24 @@ public partial class LocationsPage
         Announce($"Weather for {row.Name} now uses the new position.");
     }
 
-    private void OnWeatherPurged()
+    private async Task OnWeatherPurged()
     {
         if (_wxPurgeLocation is { } l)
         {
-            _weatherRows.Remove(l.LocationId);
-            _weatherSelectable.Remove(l.LocationId);
-            Announce($"Weather history for {l.Name} deleted.");
+            // With the forecast still on, only the measured data went and the row stays: re-read it. Otherwise
+            // the row is gone along with everything else.
+            _historyEpoch++;
+            if (WeatherRow(l) is { ForecastEnabled: true })
+            {
+                Announce($"Measured weather for {l.Name} deleted. The forecast keeps running.");
+                await LoadWeatherAsync();
+            }
+            else
+            {
+                _weatherRows.Remove(l.LocationId);
+                _historyPlaces.Remove(l.LocationId);
+                Announce($"Weather history for {l.Name} deleted.");
+            }
         }
         StateHasChanged();
     }

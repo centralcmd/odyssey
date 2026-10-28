@@ -383,7 +383,13 @@ public sealed record ExistingWeatherLocation
 {
     public Guid LocationId { get; init; }
     public string Name { get; init; } = string.Empty;
-    public bool Enabled { get; init; }
+
+    /// <summary>The forecast half: MET Norway forecasts are fetched, and the place is selectable on the dashboard.</summary>
+    public bool ForecastEnabled { get; init; }
+
+    /// <summary>The history half: measured days are fetched from MET Norway's Frost service.</summary>
+    public bool HistoryEnabled { get; init; }
+
     public bool IsTracked { get; init; }
     public bool TrackingSuspended { get; init; }
     public WeatherTrackingSuspendedReason? TrackingSuspendedReason { get; init; }
@@ -418,8 +424,12 @@ public sealed class WeatherLocationsQueryParams : QueryParams<WeatherLocationSor
 public sealed record UpsertWeatherLocation : IValidatableObject
 {
     [Required]
-    public bool? Enabled { get; set; }
+    public bool? ForecastEnabled { get; set; }
 
+    [Required]
+    public bool? HistoryEnabled { get; set; }
+
+    /// <summary>Scheduled forecast refresh; meaningful only with <see cref="ForecastEnabled"/>.</summary>
     [Required]
     public bool? IsTracked { get; set; }
 
@@ -461,8 +471,13 @@ public sealed record WeatherRefreshResult
 
 public sealed record WeatherLocationOptions
 {
+    /// <summary>The places with forecast on — the dashboard picker's list.</summary>
     public IReadOnlyList<WeatherLocationRef> Locations { get; init; } = [];
+
     public Guid? HouseholdDefaultLocationId { get; init; }
+
+    /// <summary>The places with historical data on — where a location's Temperature history exists.</summary>
+    public IReadOnlyList<WeatherLocationRef> HistoryLocations { get; init; } = [];
 }
 
 public sealed record WeatherPreferences
