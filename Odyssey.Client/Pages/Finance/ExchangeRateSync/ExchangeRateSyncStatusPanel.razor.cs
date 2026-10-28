@@ -101,8 +101,8 @@ public partial class ExchangeRateSyncStatusPanel
     }
 
     /// <summary>
-    /// Re-read status without announcing — after the page changed what it reports (a currency
-    /// switched, a start date saved, a purge), so the chip, the banners and the synced count follow.
+    /// Re-read status without announcing — after the page changed what it reports (a sync started or
+    /// stopped, a start date saved, a purge), so the chip, the banners and the synced count follow.
     /// </summary>
     public async Task ReloadQuietlyAsync()
     {
@@ -129,7 +129,7 @@ public partial class ExchangeRateSyncStatusPanel
         _ => null,
     };
 
-    /// <summary>Start a run (the settings card's Run now row calls this too, so the run it starts is the one polled).</summary>
+    /// <summary>Start a run, and poll it.</summary>
     public async Task RunNowAsync()
     {
         if (RunNowReason is not null)
@@ -309,7 +309,7 @@ public partial class ExchangeRateSyncStatusPanel
 
     private string StatusLine(ExchangeRateSyncStatus s) => s.State switch
     {
-        ExchangeRateSyncState.Idle => "No currencies are switched on.",
+        ExchangeRateSyncState.Idle => "No currencies are synced.",
         ExchangeRateSyncState.Scheduled when s.NextRunAtUtc is { } next => $"Next run {Moment(next)}.",
         ExchangeRateSyncState.CatchingUp when s.NextRunAtUtc is { } next => $"Next batch {Moment(next)}.",
         ExchangeRateSyncState.Running when s.CurrentRun is { } run => $"Started {ExchangeRateSyncTime.Absolute(run.StartedAtUtc)}.",

@@ -1,7 +1,7 @@
 @page "/currencies"
-@using System.Globalization
 @using Odyssey.Dtos.Finance
 @using Odyssey.Client.Authorization
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
 @attribute [Authorize(Policy = PermissionClaims.CurrenciesRead)]
 @implements IDisposable
 @inject ISnackbar Snackbar
@@ -9,11 +9,17 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject ICurrenciesApiClient Currencies
+@inject IExchangeRateSyncApiClient Sync
 @inject IReferenceDataCache ReferenceData
+@inject TimeProvider Time
+@inject IJSRuntime Js
 
 <PageTitle>Currencies</PageTitle>
 
 <OdsLiveAnnouncer Message="@_announce" />
+@* Exchange-rate sync outcomes: polite for results, assertive for failures (issue #351). *@
+<OdsLiveAnnouncer @ref="_polite" />
+<OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
 
 <MudStack Spacing="4">
 
@@ -24,10 +30,24 @@
                 PrimaryActionText="New currency"
                 OnPrimaryAction="AddClicked"
                 ShowPrimaryAction="_canCreate">
-        <SubLine>@_activeCount active · @_archivedCount archived · USD base</SubLine>
+        <SubLine>@_activeCount active · @_archivedCount archived · USD base@(_canReadSync && _syncStatus is { } st ? $" · {st.EnabledCount} synced" : "")</SubLine>
         <OverviewContent>
             <div class="odc-summary-grid">
                 <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No currencies." />
+                @if (_canReadSync)
+                {
+                    @* The sync status panel (issue #351), moved here from /settings/exchange-rate-sync.
+                       It owns status polling, so it stays mounted while the Overview is open only. *@
+                    <section class="xrs-overview-tile" aria-labelledby="cur-xrs-ov">
+                        <h2 class="xrs-overview-ov" id="cur-xrs-ov">Exchange-rate sync</h2>
+                        <ExchangeRateSyncStatusPanel @ref="_panel"
+                                                     CanRun="_canWriteSync"
+                                                     OnStatus="OnSyncStatus"
+                                                     OnRunFinished="OnRunFinishedAsync"
+                                                     OnAnnounce="AnnouncePolite"
+                                                     OnAnnounceAssertive="AnnounceAssertive" />
+                    </section>
+                }
             </div>
         </OverviewContent>
         <SearchContent>
@@ -37,26 +57,46 @@
                                 Placeholder="Search code, name, or symbol…" Class="ph-search" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
-                <OdsSortSelect TRow="ExistingCurrency" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                @if (_canReadSync)
+                {
+                    <OdsMultiSelect Label="Sync" Values="_syncFilter" ValuesChanged="OnSyncFilterChanged"
+                                    Options="SyncOptions" Class="ph-select" />
+                }
+                <OdsSortSelect TRow="ExistingCurrency" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
             </div>
         </SearchContent>
     </PageHeader>
 
+    @if (_canReadSync && UnsupportedEnabled.Count > 0)
+    {
+        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
+            <div class="xrs-banner">
+                <span>@UnsupportedBannerText</span>
+                @if (!ShowingSyncedOnly)
+                {
+                    @* The row it names may be filtered out, so the banner carries the way to it. *@
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="visibility" OnClick="ShowSyncedAsync">Show synced currencies</OdsButton>
+                }
+            </div>
+        </OdsAlert>
+    }
+    @if (_canReadSync && _syncStatus is { SupportedListAvailable: false })
+    {
+        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
+            Couldn’t reach @_syncStatus.ProviderDisplayName to check which currencies are published. Starting a sync still works; the server checks each change.
+        </OdsAlert>
+    }
+
     @{
         var columns = new List<OdsRecordColumn<ExistingCurrency>>
         {
-            new()
-            {
-                Key = "code", HeaderText = "Code", Sortable = true,
-                SortValue = c => c.CurrencyCode,
-                Cell = (c, ctx) => @<span class="d-inline-flex align-center" style="gap:8px;font-family:var(--font-mono);">@c.CurrencyCode @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }</span>
-            },
+            @* No Code column: the avatar shows the code. Code stays a sort key (the default) in Sort by. *@
             new()
             {
                 Key = "name", HeaderText = "Name", Sortable = true,
                 SortValue = c => c.Name.ToLowerInvariant(),
-                Cell = (c, ctx) => @<text>@c.Name</text>
+                Cell = (c, ctx) => @<span class="d-inline-flex align-center flex-wrap" style="gap:8px;">@c.Name @if (ctx.JustSaved) { <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip> }</span>
             },
             new()
             {
@@ -70,12 +110,13 @@
                 SortValue = c => c.MinorUnits,
                 Cell = (c, ctx) => @<text>@c.MinorUnits</text>
             },
-            @* A sample amount rendered in the currency — symbol placement and decimal precision at a
-               glance. Derived, so it is not a server sort key. *@
+            @* A sample amount written as the app writes money everywhere — the figure, then the ISO code —
+               so it shows the currency's decimal precision in the form a user reads. Derived, so it is
+               not a server sort key. *@
             new()
             {
                 Key = "example", HeaderText = "Example", Align = OdsAlign.End, CellClass = "odc-rec-muted",
-                Cell = (c, ctx) => @<text>@c.Symbol@((1234.5m).ToString("N" + c.MinorUnits, CultureInfo.InvariantCulture))</text>
+                Cell = (c, ctx) => @<text>@OdsMoney.Format(1234.5m, c.CurrencyCode, c.MinorUnits)</text>
             },
             new()
             {
@@ -93,6 +134,8 @@
                 </text>
             },
         };
+        if (_canReadSync)
+            columns.AddRange(SyncColumns);
     }
 
     <MudCard Outlined="true">
@@ -115,9 +158,12 @@
                         Sort="_sort"
                         SortChanged="OnSortChanged"
                         Actions="BuildActions"
+                        RenderDetail="@(_canReadSync ? SyncDetail : null)"
                         OnDelete="HandleDelete">
             <Leading Context="c">
-                <OdsAvatar Initials="@c.Symbol" />
+                @* The ISO code, not the symbol: symbols repeat ($, kr) where codes never do. With no Code
+                   column the avatar is the code's only place, so it is named rather than decorative. *@
+                <OdsAvatar Initials="@c.CurrencyCode" Alt="@c.CurrencyCode" />
             </Leading>
             <CreateAction>
                 @if (_canCreate)
@@ -133,12 +179,37 @@
                       TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
         }
     </MudCard>
+
+    @if (_canReadSync)
+    {
+        <section class="xrs-section" aria-labelledby="cur-runs-h">
+            <h2 class="xrs-h" id="cur-runs-h">Run history</h2>
+            <ExchangeRateSyncRunHistory @ref="_runHistory" />
+        </section>
+    }
 </MudStack>
+
+@* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
+@if (_purging is { } purge)
+{
+    <ConfirmFetchedRateDeleteDialog @key="purge.Currency.CurrencyCode"
+                                    Open="_purgeOpen"
+                                    OpenChanged="OnPurgeOpenChanged"
+                                    Icon="delete_sweep"
+                                    Title="@($"Delete fetched rates for {purge.Currency.CurrencyCode}?")"
+                                    Body="@PurgeBody(purge.Currency)"
+                                    ConfirmLabel="Delete fetched rates"
+                                    ReturnFocusToId="@purge.MenuTriggerId"
+                                    OnConfirm="ConfirmPurgeAsync" />
+}
 
 @if (_createKey != Guid.Empty)
 {
     <CreateCurrencyDialog @key="_createKey"
                           @bind-Open="_createOpen"
+                          SyncStartEditable="_canWriteSync"
+                          DefaultSyncStart="_syncStatus?.EffectiveGlobalHistoryStartDate"
+                          OnSyncStartSaved="OnSyncStartSaved"
                           OnSaved="RefreshAsync" />
 }
 
@@ -147,5 +218,98 @@
     <CreateCurrencyDialog @key="_editCurrencyKey"
                           @bind-Open="_editCurrencyOpen"
                           Currency="_editCurrency"
+                          SyncStartEditable="_canWriteSync"
+                          OnSyncStartSaved="OnSyncStartSaved"
                           OnSaved="OnCurrencyEdited" />
+}
+
+@code {
+    // ── Exchange-rate sync cells (issue #351). A row with no projection (archived) reads "—". ─────────
+
+    private static RenderFragment NotApplicable => @<span><span aria-hidden="true">—</span><span class="sr-only">Not applicable</span></span>;
+
+    private IReadOnlyList<OdsRecordColumn<ExistingCurrency>> SyncColumns =>
+    [
+        new()
+        {
+            Key = "sync", HeaderText = "Sync", Sortable = true, SortType = OdsSortType.Status,
+            Cell = SyncCell,
+        },
+        new() { Key = "coverage", HeaderText = "Coverage", CellClass = "odc-rec-muted", Cell = CoverageCell },
+        new() { Key = "backfill", HeaderText = "Backfill", Cell = BackfillCell },
+        new() { Key = "start", HeaderText = "Start date", CellClass = "odc-rec-muted", Cell = StartDateCell },
+    ];
+
+    private RenderFragment SyncCell(ExistingCurrency c, OdsRecordCellContext ctx)
+    {
+        if (c.Sync is not { } s)
+            return NotApplicable;
+        var chip = OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(s));
+        var note = RowNote(s);
+        var error = _rowErrors.GetValueOrDefault(c.CurrencyCode);
+        var busy = _busy.Contains(c.CurrencyCode);
+        return @<div class="xrs-sync" aria-busy="@(busy ? "true" : null)">
+            <span class="xrs-sync-state">
+                <OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>
+                @if (busy)
+                {
+                    <span class="xrs-sync-busy">Saving…</span>
+                }
+            </span>
+            @if (note is not null)
+            {
+                <span class="@($"xrs-sync-note{(s.Supported == false && s.Enabled ? " warn" : "")}")">@note</span>
+            }
+            @if (error is not null)
+            {
+                <span class="xrs-sync-err">
+                    <span class="material-icons" aria-hidden="true">error</span>@error
+                </span>
+            }
+        </div>;
+    }
+
+    private RenderFragment CoverageCell(ExistingCurrency c, OdsRecordCellContext ctx)
+    {
+        if (c.Sync is not { Locked: false } s)
+            return NotApplicable;
+        return s.OldestFetchedDate is { } oldest && s.NewestFetchedDate is { } newest
+            ? @<span class="xrs-mono xrs-range"><span>@ExchangeRateSyncTime.Date(oldest) –</span> <span>@ExchangeRateSyncTime.Date(newest)</span></span>
+            : @<span>Not fetched yet</span>;
+    }
+
+    private RenderFragment BackfillCell(ExistingCurrency c, OdsRecordCellContext ctx)
+    {
+        if (c.Sync is not { Locked: false } s)
+            return NotApplicable;
+        var chip = OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(
+            OdsTypeRegistries.ExchangeRateBackfillOf(s), OdsTypeRegistries.UnknownChip);
+        return @<OdsChip Tone="@chip.Tone" Dot="@chip.Dot">@chip.Label</OdsChip>;
+    }
+
+    private RenderFragment StartDateCell(ExistingCurrency c, OdsRecordCellContext ctx)
+    {
+        if (c.Sync is not { Locked: false } s)
+            return NotApplicable;
+        return s.HistoryStartDate is { } own
+            ? @<span class="xrs-mono">@ExchangeRateSyncTime.Date(own)</span>
+            : @<span>Default (@ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate))</span>;
+    }
+
+    // Read-only, per the RecordTable rule: editing goes through the edit row.
+    private RenderFragment SyncDetail(ExistingCurrency c) => c.Sync is not { } s
+        ? @<OdsEmptyLine Text="Archived currencies are not synced." />
+        : @<OdsInfoTileGrid>
+            <OdsInfoTile Icon="history" Label="Available from" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                <Value>@AvailableFromText(s)</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="table_rows" Label="Fetched rates">
+                <Value>@s.FetchedRowCount.ToString("N0")</Value>
+                <Foot>manual rates not counted</Foot>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="event" Label="Effective start date" ValueVariant="OdsInfoTileVariant.Sm">
+                <Value>@(s.Locked ? "—" : ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate))</Value>
+                <Foot>@(s.HistoryStartDate is null ? "the instance default" : "this currency’s own date")</Foot>
+            </OdsInfoTile>
+        </OdsInfoTileGrid>;
 }

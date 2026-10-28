@@ -30,28 +30,21 @@ public partial class Settings
         _announce = (_announceParity = !_announceParity) ? message : message + "​";
 
     // ── Exchange rates card (issue #351 §3.A) ─────────────────────────────────────────────────────
-    // The status tile hosts the page's ONE ExchangeRateSyncStatusPanel, which owns polling; the Run now
-    // row drives the same panel so the run it starts is the run it watches.
-    private Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncStatusPanel? _syncPanel;
+    // The sync's status, Run now and the per-currency controls live on /currencies; this card keeps the
+    // two instance-wide settings and a link there. Status is read once, for the synced count.
     private Odyssey.Dtos.Finance.ExchangeRateSyncStatus? _syncStatus;
 
-    private void OnSyncStatus(Odyssey.Dtos.Finance.ExchangeRateSyncStatus status)
+    private async Task LoadSyncCountAsync()
     {
-        _syncStatus = status;
-        StateHasChanged();
+        var result = await ExchangeRateSync.GetStatusAsync();
+        if (result.IsSuccess && result.Value is { } status)
+        {
+            _syncStatus = status;
+            StateHasChanged();
+        }
     }
 
-    private Task RunSyncNowAsync() => _syncPanel?.RunNowAsync() ?? Task.CompletedTask;
-
-    private void AnnounceSync(string message) => Announce(message);
-
-    private OdsLiveAnnouncer? _syncAssertive;
-
-    private Task AnnounceSyncAssertive(string message) => _syncAssertive?.Announce(message) ?? Task.CompletedTask;
-
-    private const string RunNowReasonId = "ss-run-now-reason";
-
-    // The three new controls are built here rather than as markup in Settings.razor, whose @code block
+    // The new controls are built here rather than as markup in Settings.razor, whose @code block
     // is capped (SourceConventionTests); each is a plain composition of existing atoms.
 
     // The history start date: a picker over an invariant yyyy-MM-dd string row (issue #351 §3.A).
@@ -71,59 +64,15 @@ public partial class Settings
         builder.CloseComponent();
     };
 
-    // The sync status tile hosts the page's one status panel. Run now is its own row here, so the
-    // panel's button is hidden; the panel still owns Refresh status and the polling.
-    private RenderFragment StatusControl(SettingItem item) => builder =>
-    {
-        builder.OpenElement(0, "div");
-        builder.AddAttribute(1, "class", "ss-status-host");
-        builder.OpenComponent<Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncStatusPanel>(2);
-        builder.AddComponentParameter(3, "CanRun", _hasCountUpdate);
-        builder.AddComponentParameter(4, "ShowRunNow", false);
-        builder.AddComponentParameter(5, "OnStatus",
-            EventCallback.Factory.Create<Odyssey.Dtos.Finance.ExchangeRateSyncStatus>(this, OnSyncStatus));
-        builder.AddComponentParameter(6, "OnAnnounce", EventCallback.Factory.Create<string>(this, AnnounceSync));
-        builder.AddComponentParameter(7, "OnAnnounceAssertive", EventCallback.Factory.Create<string>(this, AnnounceSyncAssertive));
-        builder.AddComponentReferenceCapture(8, panel => _syncPanel = (Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncStatusPanel)panel);
-        builder.CloseComponent();
-        builder.CloseElement();
-    };
-
-    // Run now acts at once and keeps focus while a run is active (AriaDisabled, the reason as text);
     // Manage currencies navigates, so it is a link.
     private RenderFragment ActionControl(SettingItem item) => builder =>
     {
-        if (item.Key == ExchangeRateCurrenciesKey)
-        {
-            builder.OpenComponent<OdsButton>(0);
-            builder.AddComponentParameter(1, nameof(OdsButton.Variant), OdsButtonVariant.Outlined);
-            builder.AddComponentParameter(2, nameof(OdsButton.Icon), "tune");
-            builder.AddComponentParameter(3, nameof(OdsButton.Href), "/settings/exchange-rate-sync");
-            builder.AddComponentParameter(4, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Manage currencies")));
-            builder.CloseComponent();
-            return;
-        }
-
-        var reason = _syncPanel?.RunNowReason;
-        builder.OpenElement(10, "div");
-        builder.AddAttribute(11, "class", "ss-action");
-        if (reason is not null)
-        {
-            builder.OpenElement(12, "span");
-            builder.AddAttribute(13, "class", "ss-action-reason");
-            builder.AddAttribute(14, "id", RunNowReasonId);
-            builder.AddContent(15, reason);
-            builder.CloseElement();
-        }
-        builder.OpenComponent<OdsButton>(16);
-        builder.AddComponentParameter(17, nameof(OdsButton.Icon), "sync");
-        builder.AddComponentParameter(18, nameof(OdsButton.Disabled), IsRowDisabled(item));
-        builder.AddComponentParameter(19, nameof(OdsButton.AriaDisabled), reason is not null);
-        builder.AddAttribute(20, "aria-describedby", reason is null ? null : RunNowReasonId);
-        builder.AddComponentParameter(21, nameof(OdsButton.OnClick), EventCallback.Factory.Create<Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, RunSyncNowAsync));
-        builder.AddComponentParameter(22, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Run now")));
+        builder.OpenComponent<OdsButton>(0);
+        builder.AddComponentParameter(1, nameof(OdsButton.Variant), OdsButtonVariant.Outlined);
+        builder.AddComponentParameter(2, nameof(OdsButton.Icon), "tune");
+        builder.AddComponentParameter(3, nameof(OdsButton.Href), "/currencies");
+        builder.AddComponentParameter(4, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Manage currencies")));
         builder.CloseComponent();
-        builder.CloseElement();
     };
 
     private DateTime? GetDate(string key) => ParseStoredDate(GetText(key));
@@ -198,7 +147,7 @@ public partial class Settings
         // available to holders of that claim.
         _exportAvailable = user.HasPermission(PermissionClaims.DataExport);
 
-        await LoadSettingsAsync();
+        await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync());
     }
 
     private async Task LoadSettingsAsync()
@@ -324,11 +273,11 @@ public partial class Settings
     // Date, Status and Action arrived with the exchange-rate sync card (issue #351 §3.A). Status is a
     // read-only tile hosting a component; Action is a button that acts at once or navigates — Export is
     // one use of that shape and keeps its own member and behaviour. Neither is part of Save.
-    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Status, Action }
+    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
 
     /// <summary>The one non-saving control kinds — never dirty, never validated, never written.</summary>
     internal static bool IsTileOnly(SettingControl control) =>
-        control is SettingControl.Export or SettingControl.Status or SettingControl.Action;
+        control is SettingControl.Export or SettingControl.Action;
 
     /// <summary>
     /// One row. <see cref="Load"/> and <see cref="Write"/> are the catalogue's half of the same
@@ -1058,9 +1007,9 @@ public partial class Settings
                 Write: (p, req) => req.AccountMaxSmartTagsPerAccount =
                     p.IntRequest("accountMaxSmartTagsPerAccount")),
         ]),
-        // Exchange rates (issues #349, #351 §3.A): the two global sync settings save with the page; the
-        // status tile, Run now and Manage currencies act on their own. Which currencies are synced, and
-        // each one's own start date, live on /settings/exchange-rate-sync.
+        // Exchange rates (issues #349, #351 §3.A): the two global sync settings save with the page, and
+        // Manage currencies links to /currencies, where the sync status, Run now, which currencies are
+        // synced, each one's own start date and the run history live.
         new("Exchange rates", Icons.Material.Filled.CurrencyExchange,
         [
             new("exchangeRateHistoryStartDate", "history", "History start date",
@@ -1083,12 +1032,6 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("exchangeRateSyncIntervalHours", dto.ExchangeRateSyncIntervalHours),
                 Write: (p, req) => req.ExchangeRateSyncIntervalHours = p.IntRequest("exchangeRateSyncIntervalHours"),
                 Unit: "hours"),
-            new(ExchangeRateSyncStatusKey, "monitor_heart", "Sync status",
-                "What the sync is doing now and how the last run went.",
-                SettingClaim.None, SettingControl.Status),
-            new(ExchangeRateRunNowKey, "sync", "Run now",
-                "Fetch new rates for every switched-on currency now instead of waiting for the next run.",
-                SettingClaim.Count, SettingControl.Action),
             new(ExchangeRateCurrenciesKey, "payments", "Currencies",
                 "Choose which currencies are synced and from which date.",
                 SettingClaim.None, SettingControl.Action),
@@ -1102,13 +1045,11 @@ public partial class Settings
         _ => true,
     };
 
-    internal const string ExchangeRateSyncStatusKey = "exchangeRateSyncStatus";
-    internal const string ExchangeRateRunNowKey = "exchangeRateRunNow";
     internal const string ExchangeRateCurrenciesKey = "exchangeRateCurrencies";
 
     private bool IsRowDisabled(SettingItem item) => item.Control switch
     {
-        SettingControl.Export or SettingControl.Status => false,
+        SettingControl.Export => false,
         _ => !Editable(item.Claim) || _phase != Phase.Ready || _isSaving,
     };
 
@@ -1318,7 +1259,7 @@ public partial class Settings
 
     private bool IsDirty(SettingItem item) => item.Control switch
     {
-        SettingControl.Export or SettingControl.Status or SettingControl.Action => false,
+        SettingControl.Export or SettingControl.Action => false,
         SettingControl.Date => _texts.TryGetValue(item.Key, out var date)
             && !string.Equals(date.Draft.Trim(), date.Saved, StringComparison.Ordinal),
         SettingControl.Capacity => _capacities.TryGetValue(item.Key, out var cap) &&
@@ -1503,7 +1444,6 @@ public partial class Settings
         SettingControl.Decimal => DecimalControl(item),
         SettingControl.Percent => PercentControl(item),
         SettingControl.Date => DateControl(item),
-        SettingControl.Status => StatusControl(item),
         SettingControl.Action => ActionControl(item),
         _ => ToggleControl(item),
     };
@@ -1548,7 +1488,7 @@ public partial class Settings
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
         item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export
-            or SettingControl.Status or SettingControl.Action)
+            or SettingControl.Action)
         && item.OptionsFrom is null;
 
     /// <summary>
@@ -1558,7 +1498,7 @@ public partial class Settings
     /// </summary>
     private string HelpLine(SettingItem item)
     {
-        // The currencies row says how many are synced — a server count, read from the status panel.
+        // The currencies row says how many are synced — a server count, read from the sync status.
         var description = item.Key == ExchangeRateCurrenciesKey && _syncStatus is { } sync
             ? $"{sync.EnabledCount} currencies synced"
             : item.Description;

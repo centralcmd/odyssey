@@ -33,15 +33,21 @@ public partial class CurrenciesCard
     private bool _searchOpen = true;
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = [];
+    private IReadOnlyCollection<string> _syncFilter = [];
 
-    // Sort (§6.5): Code + Name curated; one OdsTableSort synced with the table headers.
+    // Sort (§6.5): Code + Name curated, plus Sync for a caller who can read it; one OdsTableSort synced
+    // with the table headers.
     private static readonly OdsTableSort DefaultSort = new("code", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
-    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> _sortFields =
+    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> BaseSortFields =
     [
         new() { Key = "code", Label = "Code", Type = OdsSortType.Text },
         new() { Key = "name", Label = "Name", Type = OdsSortType.Text },
     ];
+    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> SyncSortFields =
+        [.. BaseSortFields, new() { Key = "sync", Label = "Sync", Type = OdsSortType.Status }];
+
+    private IReadOnlyList<OdsSortField<ExistingCurrency>> SortFields => _canReadSync ? SyncSortFields : BaseSortFields;
 
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
         [new("active", "Active"), new("archived", "Archived")];
@@ -55,17 +61,23 @@ public partial class CurrenciesCard
 
     private int _activeCount => _allCurrencies.Count(c => c.Archived is null);
     private int _archivedCount => _allCurrencies.Count - _activeCount;
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0;
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0 || (_canReadSync && _syncFilter.Count > 0);
+
+    /// <summary>
+    /// Whether the page runs interactively; a swappable seam for the reason <c>Settings.InteractiveCheck</c>
+    /// is one. Process-wide, so a test that moves it restores it (<c>ExchangeRateSyncCollection</c>).
+    /// </summary>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
 
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
+        await LoadPermissionsAsync();
         await RestorePageStateAsync();
         StateHasChanged();
-        await LoadPermissionsAsync();
-        await RefreshAsync();
+        await Task.WhenAll(RefreshAsync(), LoadSyncStatusAsync());
     }
 
     // Full refresh: reload the unfiltered overview set + the server-filtered display list. Used on load
@@ -86,7 +98,10 @@ public partial class CurrenciesCard
         _searchOpen = state.SearchOpen;
         _search = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
+        // A sync filter or sort saved under a role that could read sync is dropped under one that cannot,
+        // since the server would refuse the request.
+        _syncFilter = _canReadSync ? SyncOptions.KnownValues(state.SyncFilter) : [];
+        _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _pageSize = OdsPageSizes.Restore(state.PageSize);
     }
 
@@ -96,6 +111,7 @@ public partial class CurrenciesCard
         SearchOpen = _searchOpen,
         Search = _search,
         StatusFilter = [.. _statusFilter],
+        SyncFilter = [.. _syncFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         PageSize = _pageSize,
@@ -107,6 +123,7 @@ public partial class CurrenciesCard
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
+    private async Task OnSyncFilterChanged(IReadOnlyCollection<string> values) { _syncFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
 
     private sealed class CurrenciesPageState
@@ -115,6 +132,7 @@ public partial class CurrenciesCard
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> StatusFilter { get; set; } = [];
+        public List<string> SyncFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int PageSize { get; set; } = OdsPageSizes.Default[0];
@@ -127,6 +145,9 @@ public partial class CurrenciesCard
         _canCreate = user.HasPermission(PermissionClaims.CurrenciesCreate);
         _canUpdate = user.HasPermission(PermissionClaims.CurrenciesUpdate);
         _canDelete = user.HasPermission(PermissionClaims.CurrenciesDelete);
+        _canReadSync = user.HasPermission(PermissionClaims.SystemSettingsRead);
+        _canWriteSync = _canReadSync && user.HasPermission(PermissionClaims.SystemSettingsUpdate);
+        _canPurge = _canWriteSync && user.HasPermission(PermissionClaims.ExchangeRatesDelete);
     }
 
     // Server-side fetch (issue #277): search/status/sort applied by the API. Called on first load and
@@ -147,6 +168,7 @@ public partial class CurrenciesCard
             status: _statusFilter,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            sync: _canReadSync ? _syncFilter : null,
             ct: ct));
         if (response.IsSuperseded)
             return;
@@ -157,6 +179,7 @@ public partial class CurrenciesCard
             _currencies = [.. load.Items];
             _totalCount = load.TotalCount;
             _loadError = false;
+            _rowErrors.Clear();
             _announce = _totalCount == 0 ? "No currencies match your filters."
                 : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} currenc{(_totalCount == 1 ? "y" : "ies")}.";
         }
@@ -197,18 +220,24 @@ public partial class CurrenciesCard
     {
         _search = string.Empty;
         _statusFilter = [];
+        _syncFilter = [];
         PersistPageState();
         await ReloadAsync();
     }
 
     private IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c, OdsRecordActionContext ctx)
     {
-        // No "View details": the columns are the whole record, so rows don't expand.
+        // No "View details" without sync: the columns are the whole record, so rows don't expand. A sync
+        // caller's rows expand to the read-only sync detail, through the row's own expand button.
         var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
-        {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
+
+        items.AddRange(SyncActions(c, ctx));
+
+        if (_canUpdate)
+        {
             items.Add(new OdsMenuItem
             {
                 Icon = c.Archived is not null ? "unarchive" : "archive",
@@ -219,11 +248,13 @@ public partial class CurrenciesCard
 
         items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyCode(c.CurrencyCode)) });
 
-        if (_canDelete)
-        {
+        var purge = PurgeAction(c, ctx);
+        if (_canDelete || purge is not null)
             items.Add(new OdsMenuItem { Divider = true });
+        if (purge is not null)
+            items.Add(purge);
+        if (_canDelete)
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
-        }
 
         return items;
     }
@@ -296,6 +327,10 @@ public partial class CurrenciesCard
             // Session-wide currency cache is now stale — every picker must re-fetch (issue #372).
             ReferenceData.InvalidateCurrencies();
             _allCurrencies = (await Currencies.ListAllAsync()).ItemsOrToast(Snackbar, "currencies");
+            // Archiving takes a currency out of the sync and restoring brings it back, so a sync caller
+            // re-reads the page for the row's projection.
+            if (_canReadSync)
+                await GetCurrencies();
         }
 
         StateHasChanged();

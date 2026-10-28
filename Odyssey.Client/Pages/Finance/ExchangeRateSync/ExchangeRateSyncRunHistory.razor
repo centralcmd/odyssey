@@ -1,0 +1,73 @@
+@*
+    ExchangeRateSyncRunHistory — the sync's run log, newest first (issue #351; Odyssey Design System ·
+    ui_kits/web/ExchangeRateSync.jsx, XrsRunHistory). Hosted below the currencies on /currencies for a
+    caller holding system-settings.read; the host calls ReloadAsync after a run finishes or a purge.
+*@
+@using Odyssey.Dtos.Finance
+@implements IDisposable
+@inject IExchangeRateSyncApiClient Sync
+@inject ISnackbar Snackbar
+@inject TimeProvider Time
+
+<MudCard Outlined="true">
+    <OdsRecordTable TRow="ExistingExchangeRateSyncRun"
+                    AriaLabel="Run history"
+                    Rows="_runs"
+                    Loading="_loading"
+                    Error="_error"
+                    OnRetry="LoadAsync"
+                    Noun="runs"
+                    RowKey="@(r => (object)r.Id)"
+                    Columns="Columns"
+                    Actions="RunActions"
+                    RenderDetail="RunDetail">
+        <Empty>
+            <OdsEmptyLine Text="No runs yet. Start syncing a currency or select Run now." />
+        </Empty>
+    </OdsRecordTable>
+    @if (_total > PageSize)
+    {
+        <OdsPager Page="_page" PageChanged="OnPageChanged" PageSize="PageSize"
+                  TotalCount="_total" ShowPageSize="false" Loading="_loading" Label="Run history pages" />
+    }
+</MudCard>
+
+@code {
+    private RenderFragment StartedCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx) => @<span class="xrs-started">
+        <span class="xrs-mono">@ExchangeRateSyncTime.Absolute(r.StartedAtUtc)</span>
+        <span class="xrs-rel">@ExchangeRateSyncTime.Relative(r.StartedAtUtc, Time.GetUtcNow())</span>
+    </span>;
+
+    private RenderFragment StatusCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx)
+    {
+        var chip = OdsTypeRegistries.ExchangeRateSyncRunStatusOf(r.Status);
+        return @<OdsChip Tone="@chip.Tone">@chip.Label</OdsChip>;
+    }
+
+    private RenderFragment ErrorCell(ExistingExchangeRateSyncRun r, OdsRecordCellContext ctx) => @<text>
+        @if (r.ErrorKind is { } kind)
+        {
+            <span>@OdsTypeRegistries.ExchangeRateSyncErrorOf(kind)</span>
+        }
+        else
+        {
+            <span class="xrs-rel" aria-hidden="true">—</span><span class="sr-only">None</span>
+        }
+    </text>;
+
+    private RenderFragment RunDetail(ExistingExchangeRateSyncRun r) => @<OdsInfoTileGrid>
+        <OdsInfoTile Icon="date_range" Label="Span" ValueVariant="OdsInfoTileVariant.Sm">
+            <Value>@SpanText(r)</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="payments" Label="Currencies" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+            <Value>@(r.CurrencyCodes.Count == 0 ? "None" : string.Join(", ", r.CurrencyCodes))</Value>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="content_copy" Label="Already stored">
+            <Value>@r.RowsSkipped.ToString("N0")</Value>
+            <Foot>rows skipped as duplicates</Foot>
+        </OdsInfoTile>
+        <OdsInfoTile Icon="timer" Label="Finished" ValueVariant="OdsInfoTileVariant.Sm">
+            <Value>@(r.FinishedAtUtc is { } done ? ExchangeRateSyncTime.Absolute(done) : "—")</Value>
+        </OdsInfoTile>
+    </OdsInfoTileGrid>;
+}

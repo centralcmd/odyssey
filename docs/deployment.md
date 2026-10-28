@@ -1089,7 +1089,9 @@ every surface that displays it.
 ## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
 
 Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).
-It is off until an Admin enables a currency under *System settings*.
+It is off until an Admin starts syncing a currency on the *Currencies* page (`/currencies`), which also
+shows the sync status, *Run now* and the run history; *System settings* keeps only the start date and
+the interval.
 
 ### Release note
 
@@ -1113,7 +1115,7 @@ It is off until an Admin enables a currency under *System settings*.
   fetched: *Run now* still records a `Running` run, which no process takes; the next run or purge
   started after two minutes marks it *Abandoned* and proceeds, logging a warning that asks whether the
   worker runs. The API reaches Norges Bank too — for the list of published currencies behind the
-  switches — so both containers need egress to `data.norges-bank.no`.
+  Sync column on Currencies — so both containers need egress to `data.norges-bank.no`.
 - **Both runtime images need `tzdata`** for `Europe/Oslo`, and both Dockerfiles already install it.
   Without it the sync runs fail with *Time zone unavailable*; the hosts still start.
 

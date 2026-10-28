@@ -26,6 +26,7 @@ internal static class PageTestContext
         ctx.Services.AddSingleton(new Mock<IPageStateService> { DefaultValueProvider = new EmptySuccess() }.Object);
         ctx.Services.AddSingleton(new Mock<IReferenceDataCache> { DefaultValueProvider = new EmptySuccess() }.Object);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(permissions));
+        ctx.Services.AddSingleton(TimeProvider.System);
 
         // Everything else a page (or a dialog it keeps mounted) injects is an auto-mock answering with
         // an empty success, so only the list under test is ever in flight.

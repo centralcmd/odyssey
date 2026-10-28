@@ -20,7 +20,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The exchange-rate sync frontend (issue #351): the seven vocabularies, the status panel's polling,
+/// The exchange-rate sync frontend (issue #351): the eight vocabularies, the status panel's polling,
 /// the currency rows' save behaviour, and the source rules the spec's acceptance criteria name.
 /// </summary>
 [Collection(ExchangeRateSyncCollection.Name)]
@@ -28,7 +28,7 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 {
     public void Dispose()
     {
-        ExchangeRateSyncPage.InteractiveCheck = static () => OperatingSystem.IsBrowser();
+        CurrenciesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         ExchangeRatesCard.InteractiveCheck = static () => OperatingSystem.IsBrowser();
     }
 
@@ -73,11 +73,15 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 
     // ── Source rules (AC 8, 13) ──────────────────────────────────────────────────────────────────
 
-    // The sync folder plus the two existing exchange-rate surfaces it changed, markup and code-behind.
+    // The sync folder plus the existing surfaces it changed — exchange rates, and Currencies, which hosts
+    // the sync — markup and code-behind.
     // Settings.razor.cs is deliberately outside: its catalogue descriptions are static copy authored
     // with the design system, for every setting, and carry no runtime value.
     private static readonly string[] ChangedSurfaces =
-        ["ExchangeRatesCard.razor", "ExchangeRatesCard.razor.cs", "CreateExchangeRateDialog.razor", "CreateExchangeRateDialog.razor.cs"];
+    [
+        "ExchangeRatesCard.razor", "ExchangeRatesCard.razor.cs", "CreateExchangeRateDialog.razor", "CreateExchangeRateDialog.razor.cs",
+        "CurrenciesCard.razor", "CurrenciesCard.Sync.cs",
+    ];
 
     private static IEnumerable<string> NewSurfaceFiles()
     {
@@ -93,7 +97,8 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
         var names = NewSurfaceFiles().Select(Path.GetFileName).ToHashSet();
 
         Assert.Contains("ExchangeRatesCard.razor.cs", names);
-        Assert.Contains("ExchangeRateSyncPage.razor.cs", names);
+        Assert.Contains("CurrenciesCard.Sync.cs", names);
+        Assert.Contains("ExchangeRateSyncRunHistory.razor", names);
         Assert.Contains("ExchangeRateSyncStatusPanel.razor", names);
     }
 
@@ -287,115 +292,6 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
     };
 
     private IRenderedComponent<MudPopoverProvider>? _popover;
-
-    private (BunitContext Ctx, Mock<IExchangeRateSyncApiClient> Sync) NewPageContext(params ExistingExchangeRateSyncCurrency[] rows)
-    {
-        var sync = ExchangeRateSyncFakes.Client(Scheduled());
-        sync.Setup(c => c.ListCurrenciesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool?>(),
-                It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<PagedResult<ExistingExchangeRateSyncCurrency>>.Success(
-                new PagedResult<ExistingExchangeRateSyncCurrency> { Items = rows, TotalCount = rows.Length }, HttpStatusCode.OK));
-        var (ctx, _) = NewContext(sync.Object);
-        ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(
-            [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete]));
-        _popover = ctx.Render<MudPopoverProvider>();
-        _dialogs = ctx.Render<MudDialogProvider>();
-        ctx.Render<MudSnackbarProvider>();
-        ExchangeRateSyncPage.InteractiveCheck = static () => true;
-        return (ctx, sync);
-    }
-
-    /// <summary>The switch whose accessible name is "Sync {code}" — MudSwitch names its input by <c>aria-labelledby</c>.</summary>
-    private static AngleSharp.Dom.IElement SyncSwitch(IRenderedComponent<ExchangeRateSyncPage> cut, string code)
-    {
-        var label = cut.FindAll("span.mud-sr-only").Single(s => s.TextContent == $"Sync {code}");
-        return cut.Find($"input[aria-labelledby='{label.Id}']");
-    }
-
-    [Fact]
-    public async Task The_base_row_and_an_unpublished_row_explain_themselves_and_are_locked_but_not_busy()
-    {
-        var (ctx, _) = NewPageContext(Currency("BASE", enabled: true, locked: true), Currency("XDR", supported: false));
-        await using var __ = ctx;
-
-        var cut = ctx.Render<ExchangeRateSyncPage>();
-        cut.WaitForAssertion(() => SyncSwitch(cut, "BASE"));
-
-        var baseSwitch = SyncSwitch(cut, "BASE");
-        Assert.Equal("true", baseSwitch.GetAttribute("aria-disabled"));
-        Assert.Null(baseSwitch.GetAttribute("aria-busy"));
-        Assert.Contains("Base currency — always synced", cut.Markup);
-        Assert.Contains("Not published by Provider", cut.Markup);
-        Assert.Equal("true", SyncSwitch(cut, "XDR").GetAttribute("aria-disabled"));
-    }
-
-    [Fact]
-    public async Task A_refused_toggle_leaves_the_model_unchanged_and_links_its_error()
-    {
-        var (ctx, sync) = NewPageContext(Currency("USD"));
-        await using var __ = ctx;
-        sync.Setup(c => c.UpdateCurrencyAsync("USD", It.IsAny<ExchangeRateSyncCurrencyUpdate>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<ExistingExchangeRateSyncCurrency>.Failure(HttpStatusCode.UnprocessableEntity, new ApiProblem
-            {
-                Title = "Unprocessable", Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["enabled"] = ["The provider doesn't publish USD."] },
-            }));
-
-        var cut = ctx.Render<ExchangeRateSyncPage>();
-        cut.WaitForAssertion(() => SyncSwitch(cut, "USD"));
-        var before = SyncSwitch(cut, "USD");
-        before.Change(true);
-
-        cut.WaitForAssertion(() => Assert.Contains("The provider doesn't publish USD.", cut.Markup));
-        sync.Verify(c => c.UpdateCurrencyAsync("USD", It.Is<ExchangeRateSyncCurrencyUpdate>(u => u.Enabled == true), It.IsAny<CancellationToken>()), Times.Once);
-        var after = SyncSwitch(cut, "USD");
-        Assert.NotSame(before, after);
-        Assert.Null(after.GetAttribute("checked"));
-        Assert.Contains("xrs-err-USD", after.GetAttribute("aria-describedby") ?? string.Empty);
-    }
-
-    [Fact]
-    public async Task A_successful_toggle_replaces_the_row_in_place_and_announces_nothing()
-    {
-        var (ctx, sync) = NewPageContext(Currency("USD"), Currency("EUR"));
-        await using var __ = ctx;
-        sync.Setup(c => c.UpdateCurrencyAsync("USD", It.IsAny<ExchangeRateSyncCurrencyUpdate>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<ExistingExchangeRateSyncCurrency>.Success(Currency("USD", enabled: true), HttpStatusCode.OK));
-
-        var cut = ctx.Render<ExchangeRateSyncPage>();
-        cut.WaitForAssertion(() => SyncSwitch(cut, "USD"));
-        SyncSwitch(cut, "USD").Change(true);
-
-        cut.WaitForAssertion(() => Assert.NotNull(SyncSwitch(cut, "USD").GetAttribute("checked")));
-        // No re-query: the list was read once, on load.
-        sync.Verify(c => c.ListCurrenciesAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<bool?>(),
-            It.IsAny<bool?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
-        Assert.All(cut.FindAll("[role=status]"), region => Assert.DoesNotContain("USD", region.TextContent));
-    }
-
-    [Fact]
-    public async Task The_default_view_asks_for_supported_currencies_so_unknown_ones_stay_listed()
-    {
-        var (ctx, sync) = NewPageContext(Currency("USD", supported: null));
-        await using var __ = ctx;
-
-        var cut = ctx.Render<ExchangeRateSyncPage>();
-        cut.WaitForAssertion(() => SyncSwitch(cut, "USD"));
-
-        sync.Verify(c => c.ListCurrenciesAsync(1, It.IsAny<int>(), It.IsAny<string?>(), null, true,
-            It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    [Fact]
-    public async Task The_back_link_is_a_link()
-    {
-        var (ctx, _) = NewPageContext(Currency("USD"));
-        await using var __ = ctx;
-
-        var cut = ctx.Render<ExchangeRateSyncPage>();
-
-        Assert.Contains(cut.FindAll("a"), a => a.GetAttribute("href") == "/settings" && a.TextContent.Contains("System settings"));
-    }
 
     [Fact]
     public void The_poll_interval_is_the_specs_five_seconds() =>

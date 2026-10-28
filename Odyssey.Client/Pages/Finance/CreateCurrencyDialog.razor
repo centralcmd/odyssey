@@ -3,12 +3,22 @@
     One dialog serves both modes: pass an existing currency to prefill and switch into edit mode.
     CurrencyCode is the ISO-4217 primary key, so edit mode locks it; only Symbol, Name and
     Minor units are editable. Archive / restore stays a row action and is preserved here.
+
+    Both modes add the exchange-rate sync start date (issue #351) when the host says the caller may set
+    it (system-settings.update); in edit mode only for a currency with one to set — not the provider's
+    base, not an archived currency. It is a second write, made only when the date differs, after the
+    currency's own; a new currency's is written with sync left off.
 *@
+@using System.Globalization
+@using System.Net
 @using Odyssey.Client.Authorization
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @inject ICurrenciesApiClient Currencies
+@inject IExchangeRateSyncApiClient Sync
 @inject IReferenceDataCache ReferenceData
 @inject ISnackbar Snackbar
+@inject TimeProvider Time
 
 
 
@@ -62,6 +72,19 @@
                      Max="12"
                      HideSpinButtons="true"
                      HelperText="Decimal places — 2 for most currencies, 0 for yen." />
+
+    @if (ShowSyncStart)
+    {
+        @* Empty means the instance default, so there is no separate "Use default". *@
+        <OdsDateField Id="currency-sync-start"
+                      Label="Sync start date"
+                      Value="_syncStart"
+                      ValueChanged="OnSyncStartChanged"
+                      Min="HistoryFloor" Max="TodayUtc"
+                      Placeholder="@SyncStartPlaceholder"
+                      Error="@_syncStartError"
+                      Help="Rates are fetched from this date. Leave empty for the default. Moving it later keeps rates already fetched." />
+    }
 </OdsFormDialog>
 
 @code {
@@ -74,6 +97,39 @@
 
     /// <summary>When set, the dialog edits this currency (code locked). Null = create mode.</summary>
     [Parameter] public ExistingCurrency? Currency { get; set; }
+
+    /// <summary>Whether the caller may set the sync start date (<c>system-settings.update</c>); the host decides.</summary>
+    [Parameter] public bool SyncStartEditable { get; set; }
+
+    /// <summary>Raised with the currency code after its sync start date was saved, for the host to announce.</summary>
+    [Parameter] public EventCallback<string> OnSyncStartSaved { get; set; }
+
+    /// <summary>The instance's effective default start date, for a new currency's placeholder; null when unknown.</summary>
+    [Parameter] public DateOnly? DefaultSyncStart { get; set; }
+
+    private DateTime? _syncStart;
+    private string? _syncStartError;
+
+    // Set once a new currency is created, so a resubmit after a refused start date retries only the date
+    // instead of creating the currency a second time.
+    private string? _createdCode;
+
+    // The base has no start date of its own and an archived currency carries no projection.
+    private bool ShowSyncStart =>
+        SyncStartEditable && (!IsEdit || Currency!.Sync is { Locked: false });
+
+    private ExistingExchangeRateSyncCurrency? EditedSync => IsEdit ? Currency!.Sync : null;
+
+    private string SyncStartPlaceholder =>
+        (EditedSync?.EffectiveHistoryStartDate ?? DefaultSyncStart) is { } effective
+            ? $"Default ({Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncTime.Date(effective)})"
+            : "Default";
+
+    private static DateTime HistoryFloor => ExchangeRateHistoryStartDateRule.Floor.ToDateTime(TimeOnly.MinValue);
+
+    private DateTime TodayUtc => Time.GetUtcNow().UtcDateTime.Date;
+
+    private DateOnly? SyncStartDraft => _syncStart is { } date ? DateOnly.FromDateTime(date) : null;
 
     private string? _currencyCode;
     private string? _name;
@@ -94,6 +150,13 @@
         _name = Currency.Name;
         _symbol = Currency.Symbol;
         _minorUnits = Currency.MinorUnits;
+        _syncStart = Currency.Sync?.HistoryStartDate?.ToDateTime(TimeOnly.MinValue);
+    }
+
+    private void OnSyncStartChanged(DateTime? value)
+    {
+        _syncStart = value;
+        _syncStartError = null;
     }
 
     private async Task<bool> SaveAsync()
@@ -101,7 +164,10 @@
         _codeError = !IsEdit && string.IsNullOrWhiteSpace(_currencyCode);
         _nameError = string.IsNullOrWhiteSpace(_name);
         _symbolError = string.IsNullOrWhiteSpace(_symbol);
-        if (_codeError || _nameError || _symbolError)
+        _syncStartError = ShowSyncStart && _syncStart is { } start && (start.Date < HistoryFloor || start.Date > TodayUtc)
+            ? $"Enter a date between {ExchangeRateHistoryStartDateRule.Floor.ToString(ExchangeRateHistoryStartDateRule.Format, CultureInfo.InvariantCulture)} and today."
+            : null;
+        if (_codeError || _nameError || _symbolError || _syncStartError is not null)
             return false;
 
         if (IsEdit)
@@ -116,19 +182,51 @@
                 Archived = Currency.Archived is not null,
             };
 
-            return Invalidated((await Currencies.UpdateAsync(Currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated."));
+            if (!Invalidated((await Currencies.UpdateAsync(Currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated.")))
+                return false;
+
+            return await SaveSyncStartAsync(Currency.CurrencyCode, EditedSync?.Enabled ?? false, EditedSync?.HistoryStartDate);
         }
 
-        var newCurrency = new NewCurrency
+        if (_createdCode is null)
         {
-            CurrencyCode = _currencyCode!.Trim().ToUpperInvariant(),
-            Name = _name!.Trim(),
-            Symbol = _symbol!.Trim(),
-            MinorUnits = _minorUnits,
-            Archived = false,
-        };
+            var newCurrency = new NewCurrency
+            {
+                CurrencyCode = _currencyCode!.Trim().ToUpperInvariant(),
+                Name = _name!.Trim(),
+                Symbol = _symbol!.Trim(),
+                MinorUnits = _minorUnits,
+                Archived = false,
+            };
 
-        return Invalidated((await Currencies.CreateAsync(newCurrency)).Toast(Snackbar, "Unable to create currency", "Currency created."));
+            if (!Invalidated((await Currencies.CreateAsync(newCurrency)).Toast(Snackbar, "Unable to create currency", "Currency created.")))
+                return false;
+            _createdCode = newCurrency.CurrencyCode;
+        }
+
+        return await SaveSyncStartAsync(_createdCode, enabled: false, saved: null);
+    }
+
+    // The second write, only when the date differs from what is stored. A refusal keeps the dialog open
+    // with the server's message on the field; saving an edit again re-sends the currency's own fields,
+    // which is harmless, and a created currency is not created again.
+    private async Task<bool> SaveSyncStartAsync(string code, bool enabled, DateOnly? saved)
+    {
+        if (!ShowSyncStart || SyncStartDraft == saved)
+            return true;
+
+        var result = await Sync.UpdateCurrencyAsync(code,
+            new ExchangeRateSyncCurrencyUpdate { Enabled = enabled, HistoryStartDate = SyncStartDraft });
+        if (result.IsSuccess)
+        {
+            await OnSyncStartSaved.InvokeAsync(code);
+            return true;
+        }
+
+        _syncStartError = result.Status == HttpStatusCode.Forbidden
+            ? Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncStatusPanel.PermissionMessage
+            : result.Problem?.ErrorFor("historyStartDate") ?? result.Error ?? "The start date couldn’t be saved.";
+        return false;
     }
 
     // Currencies are cached for the whole session (issue #372) — a successful write here has to drop

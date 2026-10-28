@@ -7,7 +7,7 @@ namespace Odyssey.Client.Components;
 public sealed record OdsChipValue(string Label, OdsChipTone Tone, bool Dot = false);
 
 /// <summary>
-/// The seven exchange-rate sync vocabularies (issue #351; Odyssey Design System · docs/reference-data.md,
+/// The eight exchange-rate sync vocabularies (issue #351; Odyssey Design System · docs/reference-data.md,
 /// "Reference data — Exchange-rate sync"), mirrored one-to-one: every surface reads these rather than
 /// spelling a label or tone inline. Each lookup has a fallback for a value the client does not know — a
 /// server newer than the client during a rolling deploy — so an unknown value never throws and never
@@ -71,12 +71,23 @@ public static partial class OdsTypeRegistries
         [ExchangeRateBackfillState.Off] = new("Not synced", OdsChipTone.Outline),
     };
 
+    /// <summary>
+    /// EXCHANGE_RATE_CURRENCY_SYNC — the Sync column and filter on Currencies, keyed by the server's
+    /// <see cref="CurrencySyncState"/>; the state itself comes from the shared <see cref="CurrencySyncStates.Of"/>.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<CurrencySyncState, OdsChipValue> CurrencySyncStateChips = new Dictionary<CurrencySyncState, OdsChipValue>
+    {
+        [CurrencySyncState.On] = new("Synced", OdsChipTone.Income, Dot: true),
+        [CurrencySyncState.Off] = new("Not synced", OdsChipTone.Outline, Dot: true),
+        [CurrencySyncState.NotPublished] = new("Not published", OdsChipTone.Outline),
+    };
+
     public static readonly IReadOnlyDictionary<ExchangeRateSyncErrorKind, string> ExchangeRateSyncErrors = new Dictionary<ExchangeRateSyncErrorKind, string>
     {
         [ExchangeRateSyncErrorKind.ProviderUnavailable] = "Norges Bank didn’t respond",
         [ExchangeRateSyncErrorKind.ProviderRateLimited] = "Norges Bank asked us to slow down",
         [ExchangeRateSyncErrorKind.ProviderMalformed] = "Norges Bank sent data we couldn’t read",
-        [ExchangeRateSyncErrorKind.UnsupportedCurrency] = "A switched-on currency is no longer published",
+        [ExchangeRateSyncErrorKind.UnsupportedCurrency] = "A synced currency is no longer published",
         [ExchangeRateSyncErrorKind.SettingsUnusable] = "A sync setting is invalid",
         [ExchangeRateSyncErrorKind.TimeZoneUnavailable] = "The server is missing time zone data",
         [ExchangeRateSyncErrorKind.Cancelled] = "Stopped when the server shut down",
@@ -103,6 +114,9 @@ public static partial class OdsTypeRegistries
 
     public static string ExchangeRateSyncErrorOf(ExchangeRateSyncErrorKind kind) =>
         ExchangeRateSyncErrors.GetValueOrDefault(kind, SyncErrorFallback);
+
+    public static OdsChipValue CurrencySyncStateOf(CurrencySyncState state) =>
+        CurrencySyncStateChips.GetValueOrDefault(state, UnknownChip);
 
     public static ExchangeRateBackfillState ExchangeRateBackfillOf(ExistingExchangeRateSyncCurrency currency) =>
         !currency.Enabled ? ExchangeRateBackfillState.Off

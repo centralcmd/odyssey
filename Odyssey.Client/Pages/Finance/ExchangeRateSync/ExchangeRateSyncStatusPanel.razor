@@ -1,8 +1,7 @@
 @*
     ExchangeRateSyncStatusPanel — what the exchange-rate sync is doing (issue #351 §3.E; Odyssey Design
-    System · components/ExchangeRateSyncStatusPanel). ONE component, hosted by the System settings card
-    and by the /settings/exchange-rate-sync header; only one instance exists per page, and it owns the
-    status polling.
+    System · components/ExchangeRateSyncStatusPanel). ONE component, hosted once, in the Currencies
+    Overview for a caller holding system-settings.read; it owns the status polling.
 
       • a chip from EXCHANGE_RATE_SYNC_STATES and a line built only from status fields;
       • the last FINISHED run, in every state, so a failure is visible beside Scheduled;
