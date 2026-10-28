@@ -38,9 +38,16 @@ else
            head, so the control in use is never unmounted while a window loads. *@
         <div class="odc-lc wx-hist-card">
             <div class="odc-lc-head wx-hist-head">
-                <div class="odc-lc-controls">
+                <div class="odc-lc-controls wx-hist-lead">
                     <OdsMultiSelect Label="Measures" Icon="insights" Quiet="true" Align="OdsAlign.Start"
                                     Values="_measures" ValuesChanged="PickMeasures" Options="MeasureOptions" />
+                    @* What the values are, behind an info button. A tap opens it too, and the same text describes the
+                       button for a screen reader, since the tooltip's popover is not linked to its trigger. *@
+                    <OdsTooltip Label="@AboutText" Class="wx-hist-about" ShowOnClick="true">
+                        <OdsIconButton Icon="@Icons.Material.Outlined.Info" AriaLabel="About these values" Size="OdsSize.Sm"
+                                       aria-describedby="@AboutId" />
+                    </OdsTooltip>
+                    <span class="odc-sr-only" id="@AboutId">@AboutText</span>
                 </div>
                 @if (_bounds is not null)
                 {
@@ -89,11 +96,11 @@ else
             }
         </div>
 
-        @* The attribution comes from the response, so it shows only once one has arrived. *@
+        @* The attribution stays in view — NLOD and CC BY require it to be visible — and comes from the response, so
+           it shows once one has arrived. What the values are is behind the info button in the card's head. *@
         @if (_phase == Phase.Ready && _response is not null)
         {
             <div class="wx-foot">
-                <span>Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.</span>
                 <WeatherAttributionLine Attribution="_response.Attribution" />
             </div>
         }
@@ -102,6 +109,10 @@ else
 
 @code {
     private const string Cls = "acct-section wx-section wx-hist";
+
+    internal const string AboutText = "Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.";
+
+    private string AboutId => $"wx-hist-about-{Location.LocationId:N}";
 
     private static RenderFragment Text(string text) => b => b.AddContent(0, text);
 

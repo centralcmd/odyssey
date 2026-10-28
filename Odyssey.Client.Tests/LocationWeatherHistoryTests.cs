@@ -61,6 +61,27 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task What_the_values_are_is_behind_an_info_button_and_the_attribution_stays_visible()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
+        await using var ctx = Context();
+
+        var section = Render(ctx);
+
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        var info = section.FindComponents<OdsIconButton>().Single(b => b.Instance.AriaLabel == "About these values");
+        var button = info.Find("button");
+        // The tooltip's popover is not linked to its trigger, so the same text describes the button.
+        var described = section.Find($"#{button.GetAttribute("aria-describedby")}");
+        Assert.Equal(LocationWeatherHistorySection.AboutText, described.TextContent);
+        Assert.NotNull(section.Find(".wx-hist-card .wx-hist-lead").QuerySelector("button[aria-label='About these values']"));
+        // The foot keeps only the attribution, which both licences require to be visible.
+        var foot = section.Find(".wx-foot");
+        Assert.Contains("Weather data from MET Norway", foot.TextContent);
+        Assert.DoesNotContain("midnight to midnight", foot.TextContent);
+    }
+
+    [Fact]
     public async Task A_history_off_place_re_anchors_on_its_last_measured_day_and_says_so()
     {
         var stopped = new DateOnly(2026, 8, 30);
