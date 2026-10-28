@@ -115,7 +115,11 @@
                     </Chips>
 
                     <Actions>
-                        <OdsMenu Items="BuildActions(c)" AriaLabel="@($"Actions for {c.CurrencyCode}")" />
+                        @* An id on the trigger's host, so a confirmation opened from the menu returns focus to it:
+                           the menu item that opened the dialog unmounts with its popover. *@
+                        <span id="@MenuIdFor(c.CurrencyCode)">
+                            <OdsMenu Items="BuildActions(c)" AriaLabel="@($"Actions for {c.CurrencyCode}")" />
+                        </span>
                     </Actions>
 
                     <Alert>
@@ -180,6 +184,7 @@
                                     Title="@($"Delete fetched rates for {purge.CurrencyCode}?")"
                                     Body="@PurgeBody(purge)"
                                     ConfirmLabel="Delete fetched rates"
+                                    ReturnFocusToId="@MenuIdFor(purge.CurrencyCode)"
                                     OnConfirm="ConfirmPurgeAsync" />
 }
 
@@ -192,6 +197,7 @@
                                     Title="@($"Delete {doomed.CurrencyCode}?")"
                                     Body="@($"{doomed.Name} is removed from your currencies. A currency still in use can’t be deleted — archive it instead.")"
                                     ConfirmLabel="Delete currency"
+                                    ReturnFocusToId="@MenuIdFor(doomed.CurrencyCode)"
                                     OnConfirm="ConfirmDeleteAsync" />
 }
 
@@ -224,9 +230,9 @@
     private RenderFragment? SyncMenu => !_canReadSync ? null : @<text>
         @if (_canWriteSync && ExchangeRateSyncStatusPanel.RunNowReasonFor(_syncStatus, Time.GetUtcNow().UtcDateTime) is null)
         {
-            <MudMenuItem Icon="@Icons.Material.Filled.Sync" OnClick="@(() => { _ = RunSyncNowAsync(); })">Run exchange-rate sync job now</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.Sync" OnClick="@(() => Detach(RunSyncNowAsync))">Run exchange-rate sync job now</MudMenuItem>
         }
-        <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => { _ = RefreshSyncStatusAsync(); })">Refresh exchange-rate sync status</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => Detach(RefreshSyncStatusAsync))">Refresh exchange-rate sync status</MudMenuItem>
         @* The run history is the job's record, not a currency's: it lives on System › Background jobs. *@
         <MudMenuItem Icon="@Icons.Material.Filled.History" Href="background-jobs">View exchange-rate sync runs</MudMenuItem>
     </text>;

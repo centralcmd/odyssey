@@ -113,7 +113,14 @@ public partial class CurrenciesCard
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
-    private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
+    private void OnOverviewToggled(bool open)
+    {
+        _overviewOpen = open;
+        // Collapsing the Overview withdraws a Run now still waiting for its panel to mount.
+        if (!open)
+            _runNowWhenMounted = false;
+        PersistPageState();
+    }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
@@ -374,6 +381,10 @@ public partial class CurrenciesCard
         await RefreshAsync();
         return null;
     }
+
+    // The row menu trigger's host. After a confirmed delete the row is gone, and the dialog falls back to
+    // the page heading — never <body>.
+    private static string MenuIdFor(string currencyCode) => $"cur-{currencyCode}-menu";
 
     private Task CopyCode(string currencyCode) =>
         Clipboard.CopyAsync(currencyCode, "Currency code copied to clipboard.");

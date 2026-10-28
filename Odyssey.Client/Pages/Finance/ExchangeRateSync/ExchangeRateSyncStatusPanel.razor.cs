@@ -51,6 +51,9 @@ public partial class ExchangeRateSyncStatusPanel
 
     internal bool IsPolling => _pollTask is { IsCompleted: false };
 
+    /// <summary>The first status read failed, so there is no status to show.</summary>
+    internal bool LoadFailed => _loadFailed;
+
     internal StaleReason? Stale => _stale;
 
     protected override async Task OnInitializedAsync()

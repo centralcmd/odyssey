@@ -297,6 +297,91 @@ public partial class ExchangeRateSyncSurfaceTests
             typeof(Odyssey.Client.Pages.BackgroundJobs).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
                 .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>().Single().Policy);
 
+    [Fact]
+    public async Task A_run_now_whose_overview_could_not_read_status_is_dropped_not_run_later()
+    {
+        var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        cut.FindAll("button").Single(b => b.TextContent.Trim() == "Overview").Click();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindComponents<ExchangeRateSyncStatusPanel>()));
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Title = "down" }));
+
+        ClickHeaderItem(cut, RunNowItem);
+        cut.WaitForAssertion(() => Assert.True(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.LoadFailed));
+
+        // The status comes back; a Refresh now must not start the run chosen before the failure.
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Success(Scheduled(), HttpStatusCode.OK));
+        ClickHeaderItem(cut, RefreshItem);
+        cut.WaitForAssertion(() => Assert.NotNull(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.Status));
+        sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task The_purge_and_delete_confirmations_return_focus_to_the_rows_menu()
+    {
+        var (ctx, _, _) = NewCurrenciesContext(
+            [.. AdminClaims, PermissionClaims.CurrenciesDelete], Row(Currency("USD") with { FetchedRowCount = 12 }));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+        Assert.NotNull(RowOf(cut, "USD").QuerySelector("#cur-USD-menu button[aria-label='Actions for USD']"));
+
+        ClickRowAction(cut, "USD", "Delete fetched rates…");
+        cut.WaitForAssertion(() => Assert.Equal("cur-USD-menu",
+            cut.FindComponents<ConfirmFetchedRateDeleteDialog>().Single().Instance.ReturnFocusToId));
+
+        ClickRowAction(cut, "USD", "Delete");
+        cut.WaitForAssertion(() => Assert.All(cut.FindComponents<ConfirmFetchedRateDeleteDialog>(),
+            dialog => Assert.Equal("cur-USD-menu", dialog.Instance.ReturnFocusToId)));
+    }
+
+    [Theory]
+    [InlineData(false, "unfold_more", "View details")]
+    [InlineData(true, "unfold_less", "Hide details")]
+    public async Task A_runs_details_item_follows_whether_it_is_open(bool expanded, string icon, string label)
+    {
+        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(Scheduled()).Object);
+        await using var __ = ctx;
+        var cut = ctx.Render<ExchangeRateSyncRunHistory>();
+
+        var item = cut.Instance.RunActions(new ExistingExchangeRateSyncRun { Status = ExchangeRateSyncRunStatus.Running },
+            new OdsRecordActionContext { Expanded = expanded, Toggle = () => { }, StartEdit = () => { }, Remove = () => { } }).Single();
+
+        Assert.Equal((icon, label), (item.Icon, item.Label));
+    }
+
+    [Fact]
+    public async Task A_retried_run_history_clears_its_error_and_shows_the_runs()
+    {
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        var fail = true;
+        sync.Setup(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(() => fail
+            ? ApiResult<PagedResult<ExistingExchangeRateSyncRun>>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Title = "down" })
+            : ApiResult<PagedResult<ExistingExchangeRateSyncRun>>.Success(new PagedResult<ExistingExchangeRateSyncRun>
+            {
+                Items = [new ExistingExchangeRateSyncRun { Id = Guid.NewGuid(), Status = ExchangeRateSyncRunStatus.Succeeded, StartedAtUtc = Now.UtcDateTime, RowsInserted = 4 }],
+                TotalCount = 1,
+            }, HttpStatusCode.OK));
+        var (ctx, _) = NewContext(sync.Object);
+        await using var __ = ctx;
+        ctx.Render<MudSnackbarProvider>();
+        var cut = ctx.Render<ExchangeRateSyncRunHistory>();
+        var table = cut.FindComponent<OdsRecordTable<ExistingExchangeRateSyncRun>>();
+        cut.WaitForAssertion(() => Assert.True(table.Instance.Error));
+
+        fail = false;
+        await cut.InvokeAsync(() => table.Instance.OnRetry.InvokeAsync());
+
+        cut.WaitForAssertion(() =>
+        {
+            Assert.False(table.Instance.Error);
+            Assert.False(table.Instance.Loading);
+            Assert.Contains("Succeeded", cut.Markup);
+        });
+    }
+
     // ── The list: loaded whole, revealed N at a time, ending in an add row ────────────────────────
 
     [Fact]

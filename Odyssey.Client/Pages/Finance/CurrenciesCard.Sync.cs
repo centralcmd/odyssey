@@ -85,13 +85,39 @@ public partial class CurrenciesCard
     }
 
     // A Run now chosen with the Overview collapsed runs once the panel it opened has read status — after
-    // a render, by which the reference names the new panel.
+    // a render, by which the reference names the new panel. If that first read fails the request is
+    // dropped, so a later Refresh can never start a run the user chose before the failure.
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (_runNowWhenMounted && MountedPanel is { Status: not null } panel)
+        if (!_runNowWhenMounted || MountedPanel is not { } panel)
+            return;
+
+        if (panel.LoadFailed)
+        {
+            _runNowWhenMounted = false;
+        }
+        else if (panel.Status is not null)
         {
             _runNowWhenMounted = false;
             await panel.RunNowAsync();
+        }
+    }
+
+    /// <summary>
+    /// Runs a menu item's work without holding the menu open — MudMenu waits for its handler — while still
+    /// surfacing a fault the way an awaited handler's would, rather than losing it.
+    /// </summary>
+    private void Detach(Func<Task> work) => _ = ObserveAsync(work);
+
+    private async Task ObserveAsync(Func<Task> work)
+    {
+        try
+        {
+            await work();
+        }
+        catch (Exception ex)
+        {
+            await DispatchExceptionAsync(ex);
         }
     }
 
@@ -114,6 +140,7 @@ public partial class CurrenciesCard
     // Mounting the panel reads status, which is the refresh.
     private async Task RefreshSyncStatusAsync()
     {
+        _runNowWhenMounted = false;
         if (MountedPanel is not { } panel)
         {
             OpenOverview();
@@ -219,9 +246,9 @@ public partial class CurrenciesCard
         // The save is started, not awaited: the menu waits out its item's handler before closing, and it
         // should close at once while the row itself says "Saving…".
         if (s.Enabled)
-            yield return new OdsMenuItem { Icon = "sync_disabled", Label = "Stop sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, false); }) };
+            yield return new OdsMenuItem { Icon = "sync_disabled", Label = "Stop sync", OnClick = EventCallback.Factory.Create(this, () => Detach(() => ToggleSyncAsync(c, false))) };
         else if (s.Supported != false)
-            yield return new OdsMenuItem { Icon = "sync", Label = "Start sync", OnClick = EventCallback.Factory.Create(this, () => { _ = ToggleSyncAsync(c, true); }) };
+            yield return new OdsMenuItem { Icon = "sync", Label = "Start sync", OnClick = EventCallback.Factory.Create(this, () => Detach(() => ToggleSyncAsync(c, true))) };
     }
 
     private OdsMenuItem? PurgeAction(ExistingCurrency c) =>
