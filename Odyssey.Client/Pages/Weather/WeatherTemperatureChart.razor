@@ -1,0 +1,141 @@
+@using Odyssey.Client.Components
+@*
+    WeatherTemperatureChart — the Temperature history plot (design system · Weather.jsx). It reuses
+    LineChart's plot, axis, tooltip and key classes (.odc-lc-*); the band, mean and gap rules are wx-.
+*@
+
+<div class="wx-hist-chart">
+    @* One tab stop: focus opens the readout on the newest day, Left / Right step through the days,
+       Escape or leaving closes it. The live region speaks only for keyboard steps. *@
+    <div class="odc-lc-plot" tabindex="0" role="group" aria-label="@PlotKeyLabel" @ref="_plotRef"
+         @onmouseleave="ClearHover" @onfocus="OnPlotFocus" @onblur="ClearHover" @onkeydown="OnPlotKey">
+        <svg class="odc-line-svg" viewBox="@($"0 0 {F(_vbW)} {F(ViewBoxHeight)}")" preserveAspectRatio="xMidYMid meet"
+             role="img" aria-label="@AriaLabel">
+            <g stroke="var(--chart-grid)" stroke-width="1">
+                @foreach (var v in _ticks)
+                {
+                    @if (v != 0)
+                    {
+                        <line x1="@F(X0)" y1="@F(Sy(v))" x2="@F(X1)" y2="@F(Sy(v))" />
+                    }
+                }
+            </g>
+            @if (_yMin < 0 && _yMax > 0)
+            {
+                <line class="odc-lc-zero" x1="@F(X0)" y1="@F(Sy(0))" x2="@F(X1)" y2="@F(Sy(0))" />
+            }
+            <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
+            <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
+
+            @if (_hover is { } hc && hc < N)
+            {
+                <rect class="wx-hist-hcol" x="@F(Cx(hc) - ColW / 2)" y="@F(YTop)" width="@F(ColW)" height="@F(YBot - YTop)" />
+            }
+
+            @* The low–high band: one closed shape per run of reported days; a lone day is a bar. *@
+            @foreach (var run in BandRuns)
+            {
+                var c = run[0];
+                @if (run.Count == 1)
+                {
+                    <rect class="wx-hist-band" x="@F(Cx(c.Index) - Math.Min(ColW * 0.3, 4))" width="@F(Math.Min(ColW * 0.6, 8))"
+                          y="@F(Sy(D(c.Observed!.MaxTempC)))" height="@F(Math.Max(1, Sy(D(c.Observed.MinTempC)) - Sy(D(c.Observed.MaxTempC))))" rx="2" />
+                }
+                else
+                {
+                    <path class="wx-hist-band" d="@BandPath(run)" />
+                }
+            }
+
+            @* The daily mean: a line per run, a dot for a lone day. *@
+            @foreach (var run in MeanRuns)
+            {
+                var c = run[0];
+                @if (run.Count == 1)
+                {
+                    <circle class="wx-hist-dot" cx="@F(Cx(c.Index))" cy="@F(Sy(D(c.Observed!.MeanTempC)))" r="3" />
+                }
+                else
+                {
+                    <polyline class="wx-hist-mean" points="@MeanPoints(run)" />
+                }
+            }
+
+            @if (_hover is { } ring && ring < N && _cols[ring].HasMean)
+            {
+                <circle class="odc-lc-hring" cx="@F(Cx(ring))" cy="@F(Sy(D(_cols[ring].Observed!.MeanTempC)))" r="6" stroke="var(--brand-text)" />
+            }
+            @foreach (var c in _cols)
+            {
+                var index = c.Index;
+                <rect class="odc-lc-hit" x="@F(Cx(index) - ColW / 2)" y="@F(YTop)" width="@F(ColW)" height="@F(YBot - YTop)"
+                      @onmouseenter="@(() => ShowHover(index, byKey: false))" />
+            }
+        </svg>
+        @if (_hover is { } h && h < N)
+        {
+            var col = _cols[h];
+            <div class="@($"odc-lc-tip{TipEdge(col)}")" style="@TipStyle(col)" aria-hidden="true">
+                <div class="odc-lc-tip-k">@WeatherVisuals.DayLong(col.Date)</div>
+                @if (col.Observed is { } o)
+                {
+                    <div class="wx-hist-tip-v">
+                        <span>High <b>@WeatherVisuals.Temp(o.MaxTempC)</b></span>
+                        <span>Low <b>@WeatherVisuals.Temp(o.MinTempC)</b></span>
+                        <span>Mean <b>@WeatherVisuals.Temp(o.MeanTempC)</b></span>
+                    </div>
+                }
+                else
+                {
+                    <div class="wx-hist-tip-gap">Not measured — the station didn’t report this day</div>
+                }
+            </div>
+        }
+        <div class="odc-sr-only" aria-live="polite">@(_hoverByKey ? TipText : null)</div>
+    </div>
+
+    <div class="odc-lc-marks wx-hist-key" aria-hidden="true">
+        <span class="odc-lc-mark">
+            <svg width="26" height="12" viewBox="0 0 26 12"><rect class="wx-hist-band" x="1" y="1" width="24" height="10" rx="2" /></svg>
+            Daily low to high
+        </span>
+        <span class="odc-lc-mark">
+            <svg width="26" height="12" viewBox="0 0 26 12"><line class="wx-hist-mean" x1="1" y1="6" x2="25" y2="6" /></svg>
+            Daily mean
+        </span>
+        @if (Gaps)
+        {
+            <span class="odc-lc-mark">
+                <svg width="26" height="12" viewBox="0 0 26 12"><line class="wx-hist-mean" x1="1" y1="6" x2="9" y2="6" /><line class="wx-hist-mean" x1="17" y1="6" x2="25" y2="6" /></svg>
+                Break: not measured
+            </span>
+        }
+    </div>
+
+    @* The hidden class sits on a wrapper: a table box is not clipped by its own overflow, so on the table
+       itself the caption overflowed and made the page scroll sideways at phone width. *@
+    <div class="odc-sr-only">
+    <table>
+        <caption>@($"Measured temperature at {LocationName}, {Range}")</caption>
+        <thead><tr><th scope="col">Date</th><th scope="col">High</th><th scope="col">Low</th><th scope="col">Mean</th></tr></thead>
+        <tbody>
+            @foreach (var c in _cols)
+            {
+                <tr>
+                    <th scope="row">@WeatherVisuals.DayLong(c.Date)</th>
+                    @if (c.Observed is { } o)
+                    {
+                        <td>@WeatherVisuals.Temp(o.MaxTempC)</td>
+                        <td>@WeatherVisuals.Temp(o.MinTempC)</td>
+                        <td>@WeatherVisuals.Temp(o.MeanTempC)</td>
+                    }
+                    else
+                    {
+                        <td colspan="3">Not measured</td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+</div>

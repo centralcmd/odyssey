@@ -6,6 +6,7 @@
     toolbar (the DS look). Min / Max disable out-of-range days. Bind via
     @bind-Value.
 *@
+@inject IJSRuntime Js
 
 <MudDatePicker @ref="_picker"
                Date="@Value"
@@ -26,6 +27,7 @@
                HelperText="@HelperText"
                Style="@(Full ? null : "width:fit-content")"
                Class="@Class"
+               InputId="@_inputId"
                @attributes="UserAttributes" />
 
 @code {
@@ -62,10 +64,25 @@
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>Accessible name for a label-less picker — the two ends of a range shown as a period. Applied
+    /// to the inner input, as on <see cref="OdsSelect"/>, because MudDatePicker splats attributes onto its wrapper.</summary>
+    [Parameter] public string? AriaLabel { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
     private MudDatePicker? _picker;
+    private readonly string _inputId = $"odc-dp-{Guid.NewGuid():N}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || string.IsNullOrEmpty(AriaLabel)) return;
+        try { await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel); }
+        catch { /* JS unavailable (e.g. prerender / teardown) */ }
+    }
+
+    /// <summary>Opens the calendar — for a control elsewhere that hands the choice to this picker.</summary>
+    public Task OpenAsync() => _picker?.OpenAsync() ?? Task.CompletedTask;
 
     /// <summary>Moves keyboard focus to the picker's input — for a host whose focused control just
     /// disappeared and must hand focus somewhere meaningful (WCAG 2.4.3).</summary>

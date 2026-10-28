@@ -127,3 +127,59 @@
 
 /* The day strip is focusable because it scrolls; show where focus is. */
 .wx-days:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-md); }
+
+/* ---------- Temperature history (location record) ----------
+   Design system · weather.css. The chart reuses LineChart's plot, axis, tooltip and key classes
+   (.odc-lc-*) so the two read as one family; only the band, the mean and the gap rules are weather's
+   own. The band is a fill and the mean a stroke, so the two are told apart by shape; the band's edges
+   carry a 1px --brand-text rule, which keeps low and high at 3:1 against the surface in both themes
+   where a --chart-1 fill alone would not. */
+.wx-hist-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+.wx-hist-nav { display: inline-flex; align-items: center; gap: var(--space-1); }
+.wx-hist-facts { flex: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.wx-hist-facts dd b { font-weight: var(--fw-medium); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.wx-hist-chart { display: flex; flex-direction: column; gap: var(--space-1); }
+.wx-hist-band { fill: var(--chart-1); fill-opacity: 0.22; stroke: var(--brand-text); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.wx-hist-mean { fill: none; stroke: var(--brand-text); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.wx-hist-dot { fill: var(--brand-text); }
+.wx-hist-hcol { fill: var(--mud-palette-action-default-hover); pointer-events: none; }
+.wx-hist-tip-v { display: flex; gap: 10px; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.wx-hist-tip-v b { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
+.wx-hist-tip-gap { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); max-width: 26ch; white-space: normal; }
+.wx-hist-key { margin-top: 2px; }
+.wx-hist-skel { display: block; height: 300px; }
+
+/* The period is the two ends of the window in DateRangePicker's layout (.odc-dpr), each an
+   OdsDatePicker: either one opens a calendar and makes the window a custom range. No clear button —
+   the window always has two ends. The pill's outline is dropped so the dates read as the period
+   between the arrows; each input keeps a hover fill and its own focus ring. */
+.wx-hist-range.odc-dpr, .wx-hist-range.odc-dpr:focus-within { border-color: transparent; background: transparent; box-shadow: none; padding: 0; gap: var(--space-1); }
+/* MudBlazor's input rules out-rank a two-class selector, so these name the input chain in full; the
+   picker shrinks to its date instead of taking MudBlazor's fixed field width. */
+.wx-hist-range.odc-dpr .mud-picker,
+.wx-hist-range.odc-dpr .mud-input-control,
+.wx-hist-range.odc-dpr .mud-input.mud-input-outlined { width: auto; flex: none; }
+.wx-hist-range.odc-dpr .mud-input.mud-input-outlined > input.mud-input-slot { width: 11ch; padding: 0 var(--space-1); font: var(--fw-regular) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); }
+.wx-hist-range .mud-input { border-radius: var(--radius-sm); padding: 0 var(--space-1); }
+.wx-hist-range .mud-input:hover { background: var(--mud-palette-action-default-hover); }
+.wx-hist-range .mud-input:focus-within { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 1px; }
+
+@media (max-width: 640px) {
+    /* No wrap: in a wrapping column, items stretch to the widest line rather than to the card. */
+    .wx-hist-bar { flex-direction: column; flex-wrap: nowrap; align-items: stretch; }
+    .wx-hist-nav { justify-content: space-between; }
+    /* Four segments and two dates have to fit a phone: the segments share the row, and the dates drop
+       their calendar glyph (the input's hover fill and focus ring still mark them as controls). */
+    .wx-hist-bar .odc-seg { display: flex; min-width: 0; }
+    /* Caption size rather than the design's label size: in the app the nav rail stays at phone width, so a
+       record leaves about 260px where the kit has about 300px, and four label-size segments need 283. */
+    .wx-hist-bar .odc-seg-btn { flex: 1 1 0; min-width: 0; justify-content: center; padding-left: 2px; padding-right: 2px; font-size: var(--fs-caption); white-space: nowrap; }
+    .wx-hist-range { flex: 1 1 auto; justify-content: center; min-width: 0; }
+    .wx-hist-range .mud-input-adornment { display: none; }
+    /* A record card on a phone leaves about 260px: the dates drop to label size and the arrows to 32px so
+       the row holds both ends between them without overflowing. */
+    .wx-hist-range.odc-dpr { gap: 2px; }
+    .wx-hist-range.odc-dpr .mud-input.mud-input-outlined > input.mud-input-slot { width: 10ch; padding: 0 2px; font-size: var(--fs-label); }
+    .wx-hist-range.odc-dpr .mud-input.mud-input-outlined { padding: 0; }
+    .wx-hist-nav .mud-icon-button { width: 32px; height: 32px; padding: 4px; }
+}

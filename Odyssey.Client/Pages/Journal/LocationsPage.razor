@@ -137,6 +137,10 @@
                                                     OnApply="@(() => OpenWeatherApply(l))"
                                                     OnPurge="@(() => OpenWeatherPurge(l))" />
                         }
+                        @if (ShowHistory(l))
+                        {
+                            <LocationWeatherHistorySection Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)" />
+                        }
                     </Details>
                 </OdsRecordCard>
             </RenderItem>

@@ -76,6 +76,7 @@ public partial class LocationsPage
     private bool _canReadWeather;
     private bool _canUpdateWeather;
     private bool _canPurgeWeather;
+    private bool _canReadWeatherData;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -125,9 +126,11 @@ public partial class LocationsPage
         _canUpdateWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
         _canPurgeWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherHistoryDelete);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
+        // Temperature history is weather data, not setup: it follows weather.read, which every role holds.
+        _canReadWeatherData = user.HasPermission(PermissionClaims.WeatherRead);
 
         await RestorePageStateAsync();
-        await Task.WhenAll(LoadLocations(), LoadCounts(), LoadWeatherAsync());
+        await Task.WhenAll(LoadLocations(), LoadCounts(), LoadWeatherAsync(), LoadWeatherOptionsAsync());
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -428,6 +431,32 @@ public partial class LocationsPage
 
     private ExistingWeatherLocation? WeatherRow(ExistingLocation l) => _weatherRows.GetValueOrDefault(l.LocationId);
 
+    // ── Temperature history (every role) ────────────────────────────────────────────────────────────
+
+    /// <summary>The places the dashboard picker offers (<c>GET /api/weather/locations/options</c>).</summary>
+    private HashSet<Guid> _weatherSelectable = [];
+
+    /// <summary>
+    /// On a place the caller can pick on the dashboard — the same list for every role — and, for an Admin,
+    /// also on a place whose weather is off but whose history is kept (design system · Locations.jsx).
+    /// </summary>
+    private bool ShowHistory(ExistingLocation l) =>
+        _canReadWeatherData
+        && (_weatherSelectable.Contains(l.LocationId) || ShowWeather && WeatherRow(l) is { PurgeInProgress: false });
+
+    private async Task LoadWeatherOptionsAsync()
+    {
+        if (!_canReadWeatherData)
+            return;
+
+        // A failed read leaves the set as it was: the section is extra, and an Admin still reaches it by the row.
+        if ((await Weather.OptionsAsync()).Value is { } options)
+        {
+            _weatherSelectable = [.. options.Locations.Select(o => o.LocationId)];
+            StateHasChanged();
+        }
+    }
+
     /// <summary>Places on a schedule — what the cap counts.</summary>
     private int TrackedCount => _weatherRows.Values.Count(r => r is { Enabled: true, IsTracked: true, LocationArchived: false, PurgeInProgress: false });
 
@@ -533,8 +562,9 @@ public partial class LocationsPage
     {
         var wasOn = _weatherRows.TryGetValue(row.LocationId, out var before) && before.Enabled;
         Announce(!wasOn && row.Enabled ? $"Weather is on for {row.Name}." : !row.Enabled && wasOn ? $"Weather is off for {row.Name}. Its history is kept." : $"Weather settings for {row.Name} saved.");
-        // Re-read every row: the cap's suspension flags are computed across them.
-        await LoadWeatherAsync();
+        // Re-read every row: the cap's suspension flags are computed across them. Turning weather on or off
+        // also changes which places the options list serves, which the history section follows.
+        await Task.WhenAll(LoadWeatherAsync(), LoadWeatherOptionsAsync());
     }
 
     private void OnWeatherApplied(ExistingWeatherLocation row)
@@ -548,6 +578,7 @@ public partial class LocationsPage
         if (_wxPurgeLocation is { } l)
         {
             _weatherRows.Remove(l.LocationId);
+            _weatherSelectable.Remove(l.LocationId);
             Announce($"Weather history for {l.Name} deleted.");
         }
         StateHasChanged();

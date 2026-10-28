@@ -1,0 +1,110 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherHistorySection — Temperature history in a location's record, for every role
+    (issue #348; design system · Weather.jsx LocationWeatherHistorySection, components-weather.md).
+*@
+
+@if (Row is { PurgeInProgress: true })
+{
+    @* The place leaves the options list during a purge; for an Admin the Weather section's notice owns it. *@
+}
+else if (_bounds is { HasObservationStation: false })
+{
+    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
+                      EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no temperature history. Forecasts are not affected.")" />
+}
+else if (_bounds is not null && (Latest is null || Earliest is null))
+{
+    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
+                      EmptyText="@Text(WeatherOff
+                          ? "No temperature was measured while weather was on for this place."
+                          : "No measured temperature yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
+}
+else
+{
+    <OdsRecordSection Class="@Cls" Label="Temperature history" Meta="measured · UTC days"
+                      Notice="@(WeatherOff ? Text("Weather is off for this place. This is the temperature measured until it was turned off; nothing new is added.") : null)"
+                      NoticeIconName="@(WeatherOff ? "history" : null)">
+        @if (_bounds is not null)
+        {
+            <div class="wx-hist-bar">
+                <OdsSegmentedControl AriaLabel="Days shown" Options="SpanOptions" Value="@SpanValue" ValueChanged="OnSpanChanged" />
+                <div class="wx-hist-nav">
+                    <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="@($"Earlier {StepLabel}")" Disabled="AtStart" OnClick="Earlier" />
+                    <div class="odc-dpr wx-hist-range" role="group" aria-label="Dates shown">
+                        <OdsDatePicker @ref="_fromPicker" AriaLabel="From" Value="From.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickFrom"
+                                       Min="FromMin" Max="FromMax" Full="false" />
+                        <span class="odc-dpr-dash" aria-hidden="true">–</span>
+                        <OdsDatePicker AriaLabel="To" Value="_end.ToDateTime(TimeOnly.MinValue)" ValueChanged="PickTo"
+                                       Min="ToMin" Max="ToMax" Align="OdsAlign.End" Full="false" />
+                    </div>
+                    <span class="odc-sr-only" aria-live="polite">@Period</span>
+                    <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="@($"Later {StepLabel}")" Disabled="AtEnd" OnClick="Later" />
+                </div>
+            </div>
+        }
+
+        @switch (_phase)
+        {
+            case Phase.RateLimited:
+                @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
+                break;
+            case Phase.Error:
+                @Box("cloud_off", "Temperature history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
+                break;
+            case Phase.Loading:
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
+                break;
+            default:
+                @if (Measured.Count == 0)
+                {
+                    <OdsEmptyLine Pad="OdsSize.Lg">No temperature was measured between @WeatherVisuals.Date(From) and @WeatherVisuals.Date(_end).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
+                }
+                else
+                {
+                    <dl class="wx-facts wx-hist-facts">
+                        @if (Lowest is { } low)
+                        {
+                            <div><dt><OdsMIcon Name="south" Size="13" />Lowest</dt><dd><b>@WeatherVisuals.Temp(low.Observed!.MinTempC)</b> on @ShortDate(low.Date)</dd></div>
+                        }
+                        @if (Highest is { } high)
+                        {
+                            <div><dt><OdsMIcon Name="north" Size="13" />Highest</dt><dd><b>@WeatherVisuals.Temp(high.Observed!.MaxTempC)</b> on @ShortDate(high.Date)</dd></div>
+                        }
+                        @if (AverageOfMeans is { } avg)
+                        {
+                            <div><dt><OdsMIcon Name="thermostat" Size="13" />Average of daily means</dt><dd><b>@WeatherVisuals.Temp(avg)</b></dd></div>
+                        }
+                        <div><dt><OdsMIcon Name="event_available" Size="13" />Days measured</dt><dd><b>@Measured.Count</b> of @DaysShown</dd></div>
+                    </dl>
+                    <WeatherTemperatureChart Days="_response!.Days" From="From" To="_end" LocationName="@Location.Name" />
+                }
+                break;
+        }
+
+        @* The attribution comes from the response, so it shows only once one has arrived. *@
+        @if (_phase == Phase.Ready && _response is not null)
+        {
+            <div class="wx-foot">
+                <span>Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC, so it can sit an hour or two off the local date.</span>
+                <WeatherAttributionLine Attribution="_response.Attribution" />
+            </div>
+        }
+    </OdsRecordSection>
+}
+
+@code {
+    private const string Cls = "acct-section wx-section wx-hist";
+
+    private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
+        <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
+        <div class="wx-empty-text">
+            <div class="wx-empty-title">@title</div>
+            <div>@text</div>
+            <div class="wx-empty-act"><OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="Retry">Try again</OdsButton></div>
+        </div>
+    </div>;
+}
