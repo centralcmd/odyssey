@@ -1,7 +1,7 @@
 @*
     ExchangeRateSyncRunHistory — the sync's run log, newest first (issue #351; Odyssey Design System ·
-    ui_kits/web/ExchangeRateSync.jsx, XrsRunHistory). Hosted below the currencies on /currencies for a
-    caller holding system-settings.read; the host calls ReloadAsync after a run finishes or a purge.
+    ui_kits/web/ExchangeRateSync.jsx, XrsRunHistory). Hosted on System › Background jobs, which needs
+    system-settings.read; it reads the runs when the page opens.
 *@
 @using Odyssey.Dtos.Finance
 @implements IDisposable

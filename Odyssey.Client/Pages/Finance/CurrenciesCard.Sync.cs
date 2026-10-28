@@ -35,7 +35,6 @@ public partial class CurrenciesCard
     // The panel lives in the Overview, and an @ref keeps naming a disposed component after the Overview
     // collapses — so whether one is mounted is the Overview's state, not the reference's.
     private ExchangeRateSyncStatusPanel? MountedPanel => _overviewOpen ? _panel : null;
-    private ExchangeRateSyncRunHistory? _runHistory;
     private ExchangeRateSyncStatus? _syncStatus;
 
     private readonly HashSet<string> _busy = new(StringComparer.Ordinal);
@@ -135,7 +134,7 @@ public partial class CurrenciesCard
     private async Task OnRunFinishedAsync(ExchangeRateSyncStatus status)
     {
         _syncStatus = status;
-        await Task.WhenAll(MergeCurrenciesAsync(), ReloadRunsAsync());
+        await MergeCurrenciesAsync();
     }
 
     private async Task MergeCurrenciesAsync()
@@ -161,8 +160,6 @@ public partial class CurrenciesCard
     // The chips, the banners and the synced count are read from status, which the panel polls only
     // during a run — so a write that changes them re-reads it once.
     private Task ReloadStatusAsync() => MountedPanel?.ReloadQuietlyAsync() ?? LoadSyncStatusAsync();
-
-    private Task ReloadRunsAsync() => _runHistory?.ReloadAsync() ?? Task.CompletedTask;
 
     private Task AnnouncePolite(string message) => _polite?.Announce(message) ?? Task.CompletedTask;
 
@@ -333,7 +330,7 @@ public partial class CurrenciesCard
         var deleted = result.Value?.RowsDeleted ?? 0;
         ReplaceSync(target with { FetchedRowCount = 0, OldestFetchedDate = null, NewestFetchedDate = null });
         await AnnouncePolite($"Deleted {deleted.ToString("N0", CultureInfo.CurrentCulture)} fetched rates for {code}");
-        await Task.WhenAll(ReloadRunsAsync(), ReloadStatusAsync());
+        await ReloadStatusAsync();
         return null;
     }
 }

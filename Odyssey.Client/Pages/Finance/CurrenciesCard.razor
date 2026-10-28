@@ -168,14 +168,6 @@
             </Trailing>
         </OdsInfiniteList>
     </div>
-
-    @if (_canReadSync)
-    {
-        <section class="xrs-section" aria-labelledby="cur-runs-h">
-            <h2 class="xrs-h" id="cur-runs-h">Run history</h2>
-            <ExchangeRateSyncRunHistory @ref="_runHistory" />
-        </section>
-    }
 </MudStack>
 
 @* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
@@ -224,7 +216,7 @@
 }
 
 @code {
-    // ── The header menu: the sync's two actions (issue #351), named for what they do, since a menu item
+    // ── The header menu: the sync's two actions and the way to its runs (issue #351), named for what they do, since a menu item
     // has no tile around it to say so. Null — no ⋯ at all — without system-settings.read; Run now is
     // omitted, never greyed, while it cannot start, and the panel says why. The items do not await
     // their work: MudMenu holds itself open until the handler returns. ─────────────────────────────
@@ -235,6 +227,8 @@
             <MudMenuItem Icon="@Icons.Material.Filled.Sync" OnClick="@(() => { _ = RunSyncNowAsync(); })">Run exchange-rate sync job now</MudMenuItem>
         }
         <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => { _ = RefreshSyncStatusAsync(); })">Refresh exchange-rate sync status</MudMenuItem>
+        @* The run history is the job's record, not a currency's: it lives on System › Background jobs. *@
+        <MudMenuItem Icon="@Icons.Material.Filled.History" Href="background-jobs">View exchange-rate sync runs</MudMenuItem>
     </text>;
 
     // ── Exchange-rate sync tiles (issue #351), after the currency's own, for a sync reader. An archived

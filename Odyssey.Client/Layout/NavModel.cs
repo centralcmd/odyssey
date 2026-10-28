@@ -103,6 +103,7 @@ public static class NavModel
                 new("users", "Users", "manage_accounts", "users", PermissionClaims.UsersRead),
                 new("roles", "Roles", "badge", "roles", PermissionClaims.UsersRead),
                 new("analysis-log", "Analysis log", "policy", "analysis-log", PermissionClaims.FileAnalysisAudit),
+                new("background-jobs", "Background jobs", "update", "background-jobs", PermissionClaims.SystemSettingsRead),
                 new("legal-documents", "Terms of Service", "gavel", "legal-documents", PermissionClaims.UsersManage),
                 new("settings", "Settings", "settings", "settings", PermissionClaims.SystemSettingsRead),
                 new("about", "About", GithubIconKey, "https://github.com/centralcmd/odyssey", External: true),

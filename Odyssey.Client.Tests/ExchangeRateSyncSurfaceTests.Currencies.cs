@@ -147,7 +147,7 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task A_sync_reader_gets_the_row_parts_the_overview_panel_and_run_history_but_no_sync_actions()
+    public async Task A_sync_reader_gets_the_row_parts_and_the_overview_panel_but_no_sync_actions_or_runs()
     {
         var (ctx, sync, _) = NewCurrenciesContext(
             [PermissionClaims.CurrenciesRead, PermissionClaims.SystemSettingsRead], Row(Currency("USD", enabled: true)));
@@ -159,12 +159,13 @@ public partial class ExchangeRateSyncSurfaceTests
         Assert.Contains("Not fetched yet", RowOf(cut, "USD").QuerySelector(".odc-record-meta")!.TextContent);
         Open(cut, "USD");
         Assert.Contains("Coverage", RowOf(cut, "USD").TextContent);
-        Assert.Contains("Run history", cut.Markup);
         Assert.Single(cut.FindComponents<ExchangeRateSyncStatusPanel>());
         Assert.Contains("Synced", RowOf(cut, "USD").TextContent);
         var menu = MenuOf(cut, "USD");
         Assert.DoesNotContain("Stop sync", menu);
-        sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once);
+        // The run history lives on Background jobs, not here.
+        Assert.DoesNotContain("Run history", cut.Markup);
+        sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     // ── The header menu: the sync's two actions ───────────────────────────────────────────────────
@@ -219,6 +220,20 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
+    public async Task The_header_menu_links_a_sync_reader_to_the_runs_on_background_jobs()
+    {
+        var (ctx, _, _) = NewCurrenciesContext(
+            [PermissionClaims.CurrenciesRead, PermissionClaims.SystemSettingsRead], Row(Currency("USD", enabled: true)));
+        await using var __ = ctx;
+        var cut = RenderCurrencies(ctx, "USD");
+
+        OpenHeaderMenu(cut);
+
+        var link = _popover!.FindAll("a").Single(a => a.TextContent.Contains("View exchange-rate sync runs"));
+        Assert.EndsWith("background-jobs", link.GetAttribute("href"));
+    }
+
+    [Fact]
     public async Task A_settings_writer_runs_the_job_from_the_header()
     {
         var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD", enabled: true)));
@@ -258,6 +273,29 @@ public partial class ExchangeRateSyncSurfaceTests
         cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<ExchangeRateSyncStatusPanel>()));
         cut.WaitForAssertion(() => sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Once));
     }
+
+    // ── Background jobs: the run history's page ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Background_jobs_lists_the_syncs_runs_under_its_name()
+    {
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        var (ctx, _) = NewContext(sync.Object);
+        await using var __ = ctx;
+        ctx.Render<MudPopoverProvider>();
+
+        var cut = ctx.Render<Odyssey.Client.Pages.BackgroundJobs>();
+
+        Assert.Equal("Exchange-rate sync", cut.Find("section h2").TextContent);
+        Assert.Single(cut.FindComponents<ExchangeRateSyncRunHistory>());
+        cut.WaitForAssertion(() => sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public void Background_jobs_is_read_under_system_settings_read() =>
+        Assert.Equal(PermissionClaims.SystemSettingsRead,
+            typeof(Odyssey.Client.Pages.BackgroundJobs).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
+                .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>().Single().Policy);
 
     // ── The list: loaded whole, revealed N at a time, ending in an add row ────────────────────────
 
@@ -765,7 +803,7 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
-    public async Task A_confirmed_purge_zeroes_the_row_announces_and_rereads_runs_and_status()
+    public async Task A_confirmed_purge_zeroes_the_row_announces_and_rereads_status()
     {
         var (ctx, sync, _) = NewCurrenciesContext(Row(Currency("USD") with { FetchedRowCount = 12 }));
         await using var __ = ctx;
@@ -773,7 +811,7 @@ public partial class ExchangeRateSyncSurfaceTests
             .ReturnsAsync(ApiResult<ExchangeRatePurgeResult>.Success(new ExchangeRatePurgeResult { RowsDeleted = 12 }, HttpStatusCode.OK));
 
         var cut = RenderCurrencies(ctx, "USD");
-        cut.WaitForAssertion(() => sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once));
+        cut.WaitForAssertion(() => Assert.NotNull(cut.FindComponent<ExchangeRateSyncStatusPanel>().Instance.Status));
         var reads = sync.Invocations.Count(i => i.Method.Name == nameof(IExchangeRateSyncApiClient.GetStatusAsync));
         ClickRowAction(cut, "USD", "Delete fetched rates…");
         Dialogs.WaitForAssertion(() => Assert.Contains("Delete fetched rates for USD?", Dialogs.Markup));
@@ -781,11 +819,7 @@ public partial class ExchangeRateSyncSurfaceTests
         Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Delete fetched rates")).Click();
 
         cut.WaitForAssertion(() => Assert.Contains("Deleted 12 fetched rates for USD", PoliteText(cut)));
-        cut.WaitForAssertion(() =>
-        {
-            sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-            sync.Verify(c => c.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Exactly(reads + 1));
-        });
+        cut.WaitForAssertion(() => sync.Verify(c => c.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Exactly(reads + 1)));
         Assert.DoesNotContain("Delete fetched rates…", MenuOf(cut, "USD"));
     }
 

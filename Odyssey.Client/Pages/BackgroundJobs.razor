@@ -1,0 +1,27 @@
+@page "/background-jobs"
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@attribute [Authorize(Policy = PermissionClaims.SystemSettingsRead)]
+
+<PageTitle>Background jobs</PageTitle>
+
+@*
+    Background jobs — what the server runs on its own, and how each run went (Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx; docs/components-exchange-rate-sync.md, "Background jobs"). Gated on
+    system-settings.read, like the jobs' settings.
+
+    One section per job, headed by its name. It starts with the exchange-rate sync's run history, moved
+    here from Currencies as it was; a job added later gets its own section. A job's controls stay with
+    what it works on: the sync's status, Run now and Refresh are on Currencies, whose header menu links
+    here.
+*@
+
+<MudStack Spacing="6">
+    <PageHeader Title="Background jobs" Icon="@Icons.Material.Filled.Update">
+        <SubLine>What the server runs on its own, and how each run went</SubLine>
+    </PageHeader>
+
+    <section class="bgj-section" aria-labelledby="bgj-xrs-h">
+        <h2 class="bgj-h" id="bgj-xrs-h">Exchange-rate sync</h2>
+        <ExchangeRateSyncRunHistory />
+    </section>
+</MudStack>
