@@ -385,16 +385,38 @@ public class WeatherServiceTests
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
 
+        await Job(h).RunOnceAsync(CancellationToken.None);
+
+        Assert.Equal(1, h.Observations.StationCalls);
+    }
+
+    [Fact]
+    public async Task One_locations_unexpected_failure_does_not_end_the_schedule_run()
+    {
+        using var h = new WeatherTestHarness();
+        await h.EnableAsync("Home");
+        await h.EnableAsync("Cabin");
+        var calls = 0;
+        h.Forecasts.Respond = _ => ++calls == 1
+            ? throw new InvalidOperationException("Something nobody planned for.")
+            : Task.FromResult(new ForecastFetchResult(WeatherFetchOutcome.NotModified));
+        var job = Job(h);
+
+        await job.RunOnceAsync(CancellationToken.None);
+
+        // The queue is ordered, so without isolation the same place would fail first on every tick and the one
+        // behind it would never be fetched.
+        Assert.Equal(2, h.Forecasts.Calls);
+    }
+
+    private static WeatherScheduleJob Job(WeatherTestHarness h)
+    {
         var services = new ServiceCollection()
             .AddScoped(_ => h.NewContext())
             .AddScoped(sp => h.Fetch(sp.GetRequiredService<Odyssey.Context.OdysseyContext>()))
             .AddSingleton<IWeatherSettingsLookup>(h.Settings)
             .BuildServiceProvider();
-        var job = new WeatherScheduleJob(services.GetRequiredService<IServiceScopeFactory>(), h.Time, NullLogger<WeatherScheduleJob>.Instance);
-
-        await job.RunOnceAsync(CancellationToken.None);
-
-        Assert.Equal(1, h.Observations.StationCalls);
+        return new WeatherScheduleJob(services.GetRequiredService<IServiceScopeFactory>(), h.Time, NullLogger<WeatherScheduleJob>.Instance);
     }
 
     // ── Admin: enable / configure / disable ───────────────────────────────────────────────────────

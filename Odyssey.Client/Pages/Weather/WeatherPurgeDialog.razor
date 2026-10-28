@@ -34,7 +34,7 @@
             }
             @if (HistoryOnly)
             {
-                <p class="wx-lede">This permanently deletes the measured weather Odyssey has stored for @Location.Name:</p>
+                <p class="wx-lede" tabindex="-1" @ref="_lede">This permanently deletes the measured weather Odyssey has stored for @Location.Name:</p>
                 <ul class="wx-effects">
                     <li>every measured day — temperature, precipitation and wind;</li>
                     <li>the MET station it was matched to, which is looked up again if historical data is turned back on.</li>
@@ -43,7 +43,7 @@
             }
             else
             {
-                <p class="wx-lede">This permanently deletes everything Odyssey has stored about the weather at @Location.Name:</p>
+                <p class="wx-lede" tabindex="-1" @ref="_lede">This permanently deletes everything Odyssey has stored about the weather at @Location.Name:</p>
                 <ul class="wx-effects">
                     <li>every forecast fetched for it, and the daily summaries built from them;</li>
                     <li>its measured history;</li>
@@ -90,8 +90,17 @@
 
     private bool Matches => string.Equals(_typed.Trim(), Location.Name, StringComparison.Ordinal);
 
+    // The paragraph that says what goes: focus moves here before the run disables every control, so keyboard
+    // focus stays inside the dialog instead of dropping to <body> (WCAG 2.4.3). It is the dialog's own
+    // explanation, so a screen reader lands on what is happening rather than on nothing.
+    private ElementReference _lede;
+
     private async Task RunAsync()
     {
+        try { await _lede.FocusAsync(); }
+        catch (InvalidOperationException) { /* not rendered (prerender / teardown) */ }
+        catch (Microsoft.JSInterop.JSException) { /* the element went away first */ }
+
         _running = true;
         _busy = false;
         _error = null;

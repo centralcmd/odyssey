@@ -835,8 +835,9 @@ That step no longer exists and nothing in the job protects anything, so the moun
 with it. The API creates the ring on first start.
 
 If you ever add a mount back, add it together with the step that needs it, pointing at this same
-volume and using the same `SetApplicationName("Odyssey")` — two services deriving different keys from
-the same files is the failure this arrangement exists to avoid.
+volume and naming the same `DataProtectionKeyRing.ApplicationName` (`Odyssey.Core/SystemSettings/`), as the
+API and the worker do — two services deriving different keys from the same files is the failure this
+arrangement exists to avoid.
 
 **The API's mount must be read-write.** (The worker's is read-only on purpose: it never creates a key.)
 A read-only mount on the API does not fail loudly: Data Protection falls back

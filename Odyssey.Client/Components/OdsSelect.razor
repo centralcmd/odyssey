@@ -75,10 +75,18 @@
 
     private readonly string _inputId = $"odc-select-{Guid.NewGuid():N}";
 
+    // The label applied to the inner input so far: re-applied whenever the parameter changes, not only on the
+    // first render, so a label that follows state never goes stale.
+    private string? _appliedAriaLabel;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || string.IsNullOrEmpty(AriaLabel)) return;
-        try { await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel); }
+        if (string.Equals(AriaLabel, _appliedAriaLabel, StringComparison.Ordinal)) return;
+        try
+        {
+            await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel);
+            _appliedAriaLabel = AriaLabel;
+        }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
 

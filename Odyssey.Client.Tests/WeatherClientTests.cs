@@ -22,7 +22,11 @@ namespace Odyssey.Client.Tests;
 [Collection(nameof(WeatherWidgetSeam))]
 public class WeatherClientTests : IDisposable
 {
-    public void Dispose() => WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
+    public void Dispose()
+    {
+        WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
+        WeatherWidget.LocalNow = static () => DateTime.Now;
+    }
 
     // ── Symbols and units ────────────────────────────────────────────────────────────────────────
 
@@ -145,7 +149,9 @@ public class WeatherClientTests : IDisposable
     public void Ok_shows_now_the_days_and_the_attribution_from_the_response()
     {
         var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        // The card's own clock, pinned, so a run that straddles midnight cannot disagree with itself.
+        WeatherWidget.LocalNow = static () => new DateTime(2026, 10, 23, 12, 0, 0);
+        var today = new DateOnly(2026, 10, 23);
         using var ctx = Context(weather =>
         {
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
@@ -227,6 +233,56 @@ public class WeatherClientTests : IDisposable
         Assert.Same(picker.Instance, card.FindComponent<Odyssey.Client.Components.OdsSelect>().Instance);
         Assert.False(picker.Instance.Disabled);
         Assert.Empty(card.FindAll(".wx-skel"));
+    }
+
+    [Fact]
+    public async Task A_failed_reload_after_a_save_keeps_the_picker_and_says_the_choice_is_saved()
+    {
+        var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
+        var cabin = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Cabin" };
+        var currentCalls = 0;
+        await using var ctx = Context(weather =>
+        {
+            weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherLocationOptions { Locations = [home, cabin], HouseholdDefaultLocationId = home.LocationId }));
+            weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(() => ++currentCalls == 1
+                ? Ok(new WeatherCurrentResponse { Location = home, Status = WeatherStatus.NoData })
+                : ApiResult<WeatherCurrentResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+            weather.Setup(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        });
+        var card = ctx.Render<WeatherWidget>();
+        card.WaitForAssertion(() => Assert.Single(card.FindComponents<Odyssey.Client.Components.OdsSelect>()));
+        var picker = card.FindComponent<Odyssey.Client.Components.OdsSelect>();
+
+        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.LocationId.ToString("D")));
+
+        // The picker the viewer is on stays mounted (WCAG 2.4.3); the failure is said beside it.
+        card.WaitForAssertion(() => Assert.Contains("Your choice is saved, but the weather couldn’t be reloaded.", card.Markup));
+        Assert.Same(picker.Instance, card.FindComponent<Odyssey.Client.Components.OdsSelect>().Instance);
+        Assert.DoesNotContain("Weather couldn’t be loaded", card.Markup);
+    }
+
+    [Fact]
+    public async Task Someone_who_cannot_choose_a_place_never_loads_the_picker_options()
+    {
+        Mock<IWeatherApiClient>? client = null;
+        await using var ctx = Context(weather =>
+        {
+            client = weather;
+            weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
+            {
+                Location = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" }, Status = WeatherStatus.NoData,
+            }));
+        }, claims: [PermissionClaims.WeatherRead]);
+
+        var card = ctx.Render<WeatherWidget>();
+
+        card.WaitForAssertion(() => Assert.Contains("Weather", card.Markup));
+        card.WaitForAssertion(() => client!.Verify(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()), Times.Once));
+        client!.Verify(w => w.OptionsAsync(It.IsAny<CancellationToken>()), Times.Never);
+        client.Verify(w => w.PreferencesAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Single(card.FindAll("h2.wx-ttl"));
     }
 
     [Fact]

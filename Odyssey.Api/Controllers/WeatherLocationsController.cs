@@ -113,7 +113,7 @@ public sealed class WeatherLocationsController(WeatherLocationService service) :
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete every weather record of a location. The location itself is untouched.")]
+    [SwaggerOperation(Summary = "Delete a location's stored weather once its historical data is off. With the forecast still on, only the measured data goes and the forecast setup stays; with both off, every weather record goes. The location itself is untouched.")]
     public async Task<IActionResult> Delete([FromRoute] Guid locationId, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

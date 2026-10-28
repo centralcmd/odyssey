@@ -46,6 +46,7 @@ else
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
     [Parameter] public ExistingWeatherLocation? Row { get; set; }
     [Parameter] public bool CanUpdate { get; set; }
+    [Parameter] public bool CanPurge { get; set; }
     [Parameter] public EventCallback OnApply { get; set; }
     [Parameter] public EventCallback OnPurge { get; set; }
 
@@ -67,8 +68,6 @@ else
         _ when Moved => Text("The location has moved since weather copied its position. Turn weather back on to apply the move."),
         _ => null,
     };
-
-    [Parameter] public bool CanPurge { get; set; }
 
     private OdsRecordSectionTone NoticeTone =>
         Row is { PurgeInProgress: true } || Location.Archived is not null || Row is { LocationArchived: true } || Row is { ForecastEnabled: true } or { HistoryEnabled: true } && Moved

@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
@@ -39,7 +40,10 @@ public partial class WeatherWidget
     /// </summary>
     private DateOnly Today => _current?.Today?.Date ?? ViewerToday;
 
-    private static DateOnly ViewerToday => DateOnly.FromDateTime(DateTime.Now);
+    private static DateOnly ViewerToday => DateOnly.FromDateTime(LocalNow());
+
+    /// <summary>The viewer's clock, as a seam for bUnit, so a run that straddles midnight cannot disagree with itself.</summary>
+    internal static Func<DateTime> LocalNow = static () => DateTime.Now;
 
     /// <summary>The interactivity check, as a seam for bUnit (the <c>Settings.InteractiveCheck</c> pattern).</summary>
     internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
@@ -70,8 +74,9 @@ public partial class WeatherWidget
 
         StateHasChanged();
 
-        var options = Weather.OptionsAsync();
-        var preferences = Weather.PreferencesAsync();
+        // The options and the caller's own place feed only the picker: someone who cannot choose never needs them.
+        var options = _canChoose ? Weather.OptionsAsync() : Task.FromResult(ApiResult<WeatherLocationOptions>.Success(new WeatherLocationOptions(), HttpStatusCode.OK));
+        var preferences = _canChoose ? Weather.PreferencesAsync() : Task.FromResult(ApiResult<WeatherPreferences>.Success(new WeatherPreferences(), HttpStatusCode.OK));
         var current = Weather.CurrentAsync();
         // Yesterday for the measured line, then the days shown. The dates are the place's own local dates;
         // the viewer's today is close enough to choose the window, and the server omits days it lacks.
@@ -80,6 +85,15 @@ public partial class WeatherWidget
         await Task.WhenAll(options, preferences, current, daily);
 
         var currentResult = await current;
+        if ((!currentResult.IsSuccess || currentResult.Value is null) && quiet && _phase == Phase.Ready)
+        {
+            // A quiet reload after a picker save keeps the body and the picker the viewer is on (WCAG 2.4.3):
+            // the choice is already saved, so the failure is reported beside the picker instead of replacing it.
+            _prefError = "Your choice is saved, but the weather couldn’t be reloaded. It shows next time the page loads.";
+            StateHasChanged();
+            return;
+        }
+
         if (!currentResult.IsSuccess || currentResult.Value is null)
         {
             _phase = currentResult.Status == HttpStatusCode.TooManyRequests ? Phase.RateLimited : Phase.Error;
@@ -103,10 +117,7 @@ public partial class WeatherWidget
 
     // ── Picker ─────────────────────────────────────────────────────────────────────────────────────
 
-    private const string FollowDefault = "";
-
-    private WeatherLocationRef? HouseholdDefault =>
-        _options.Locations.FirstOrDefault(l => l.LocationId == _options.HouseholdDefaultLocationId);
+    private WeatherLocationRef? HouseholdDefault => WeatherVisuals.HouseholdDefault(_options);
 
     /// <summary>Two or more selectable places, and a state with a forecast to show — otherwise the name rides in the title.</summary>
     private bool ShowPicker =>
@@ -116,26 +127,9 @@ public partial class WeatherWidget
     /// <summary>With no picker, the place follows the title: "Weather · Home".</summary>
     private string? TitlePlace => _resolved is { } place && !ShowPicker ? $" · {place.Name}" : null;
 
-    private string PickerValue =>
-        _preferences.DefaultLocation is { } own && _options.Locations.Any(l => l.LocationId == own.LocationId)
-            ? own.LocationId.ToString("D")
-            : FollowDefault;
+    private string PickerValue => WeatherVisuals.PickerValue(_options, _preferences.DefaultLocation);
 
-    private IReadOnlyList<OdsOption> PickerOptions
-    {
-        get
-        {
-            var household = HouseholdDefault;
-            var options = new List<OdsOption>
-            {
-                new(FollowDefault, household is not null ? $"{household.Name} (household default)" : "Household default"),
-            };
-            options.AddRange(_options.Locations
-                .Where(l => household is null || l.LocationId != household.LocationId)
-                .Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
-            return options;
-        }
-    }
+    private IReadOnlyList<OdsOption> PickerOptions => WeatherVisuals.PickerOptions(_options);
 
     /// <summary>Saves the caller's own default; the empty choice follows the household default.</summary>
     private async Task ChooseAsync(string value)
@@ -168,7 +162,8 @@ public partial class WeatherWidget
         StateHasChanged();
     }
 
-    private void Retry() => _ = LoadAsync();
+    /// <summary>Awaited, and ignored while a load is already running, so a double press cannot start two.</summary>
+    private Task Retry() => _phase == Phase.Loading ? Task.CompletedTask : LoadAsync();
 
     private void GoTo(string path) => Nav.NavigateTo(path);
 

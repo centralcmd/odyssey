@@ -595,7 +595,7 @@ builder.Services.AddHttpClient<IFileAnalysisProvider, ClaudeFileAnalysisProvider
 // user out; with credentials stored under it, it is also what stops them being lost. That volume is
 // therefore SECRET-BEARING — see docs/deployment.md for the backup and incident-response guidance.
 var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
-var dataProtection = builder.Services.AddDataProtection().SetApplicationName("Odyssey");
+var dataProtection = builder.Services.AddDataProtection().SetApplicationName(Odyssey.Core.SystemSettings.DataProtectionKeyRing.ApplicationName);
 if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
 {
     // A CONFIGURED but unwritable directory fails startup, deliberately. Data Protection's own

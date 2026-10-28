@@ -11,10 +11,10 @@
 <OdsCard Class="ods-outline wx-card" aria-busy="@(_phase == Phase.Loading || _saving ? "true" : null)">
     <OdsCardHeader>
         <div class="odc-card-header-ttl">
-            <span class="wx-ttl" role="heading" aria-level="2">
+            <h2 class="wx-ttl">
                 <OdsMIcon Name="wb_sunny" Size="20" />
                 <span>Weather<span class="wx-ttl-loc">@TitlePlace</span></span>
-            </span>
+            </h2>
         </div>
         @if (ShowPicker)
         {

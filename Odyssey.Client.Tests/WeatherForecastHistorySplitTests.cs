@@ -90,6 +90,67 @@ public class WeatherForecastHistorySplitTests : IAsyncLifetime
         provider.WaitForAssertion(() => Assert.Contains(expected, provider.Markup));
     }
 
+    [Fact]
+    public void Starting_a_delete_moves_focus_to_its_explanation_before_the_controls_are_disabled()
+    {
+        var finish = new TaskCompletionSource<ApiResult>();
+        weather.Setup(w => w.PurgeAsync(HomeLocation.LocationId, It.IsAny<CancellationToken>())).Returns(finish.Task);
+        var provider = ctx.Render<MudDialogProvider>();
+        ctx.Render<WeatherPurgeDialog>(p => p
+            .Add(d => d.Open, true)
+            .Add(d => d.Location, HomeLocation)
+            .Add(d => d.Row, Row() with { HistoryEnabled = false }));
+        provider.WaitForAssertion(() => Assert.Contains("ods-modal", provider.Markup));
+
+        provider.FindComponents<OdsField>().Single().Find("input").Input("Home");
+        int Focuses() => ctx.JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        var before = Focuses();
+
+        provider.FindAll("button").Last(b => b.TextContent.Contains("Delete weather history")).Click();
+
+        // Every control is disabled while it runs, so focus must have been moved somewhere inside the dialog first
+        // — its explanation paragraph — rather than left on the button that just went disabled (WCAG 2.4.3).
+        Assert.Equal(before + 1, Focuses());
+        Assert.True(provider.FindAll("button").Single(b => b.TextContent.Trim() == "Cancel").HasAttribute("disabled"));
+        Assert.Contains("tabindex=\"-1\"", System.Text.RegularExpressions.Regex.Match(provider.Markup, "<p class=\"wx-lede\"[^>]*>").Value);
+        finish.SetResult(ApiResult.Success(HttpStatusCode.NoContent));
+    }
+
+    [Fact]
+    public async Task The_settings_dialog_cannot_be_closed_while_a_save_is_in_flight()
+    {
+        var finish = new TaskCompletionSource<ApiResult<ExistingWeatherLocation>>();
+        weather.Setup(w => w.UpsertLocationAsync(Home.LocationId, It.IsAny<UpsertWeatherLocation>(), It.IsAny<CancellationToken>()))
+            .Returns(finish.Task);
+        var closed = false;
+        var provider = ctx.Render<MudDialogProvider>();
+        ctx.Render<WeatherSettingsDialog>(p => p
+            .Add(d => d.Open, true)
+            .Add(d => d.OpenChanged, (bool open) => { if (!open) closed = true; })
+            .Add(d => d.Location, HomeLocation)
+            .Add(d => d.Row, Row())
+            .Add(d => d.TrackedCount, 1)
+            .Add(d => d.Cap, 5));
+        provider.WaitForAssertion(() => Assert.Contains("ods-modal", provider.Markup));
+
+        provider.FindAll("button").Last(b => b.TextContent.Contains("Save")).Click();
+        provider.WaitForAssertion(() => Assert.True(provider.FindAll("button").Single(b => b.TextContent.Trim() == "Cancel").HasAttribute("disabled")));
+        Assert.False(closed);
+
+        await provider.InvokeAsync(() => finish.SetResult(ApiResult<ExistingWeatherLocation>.Success(Row(), HttpStatusCode.OK)));
+        provider.WaitForAssertion(() => Assert.True(closed));
+    }
+
+    [Fact]
+    public void A_select_reapplies_its_accessible_name_when_the_name_changes()
+    {
+        var select = ctx.Render<OdsSelect>(p => p.Add(s => s.AriaLabel, "Weather location").Add(s => s.Options, [new OdsOption("", "Home")]));
+        select.Render(p => p.Add(s => s.AriaLabel, "Your weather location"));
+
+        var calls = ctx.JSInterop.Invocations["odsSetAttr"];
+        Assert.Equal(["Weather location", "Your weather location"], calls.Select(c => (string?)c.Arguments[2]));
+    }
+
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────────
 
     private static readonly ExistingLocation HomeLocation = new()

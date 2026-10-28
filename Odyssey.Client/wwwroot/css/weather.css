@@ -23,7 +23,7 @@
 
 /* ---------- Card ---------- */
 .wx-card .odc-card-header { gap: var(--space-3); flex-wrap: wrap; }
-.wx-ttl { display: inline-flex; align-items: center; gap: var(--space-2); }
+.wx-ttl { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font: inherit; color: inherit; }
 .wx-ttl .material-icons { color: var(--brand-text); }
 .wx-ttl-loc { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
 .wx-picker { min-width: calc(var(--space-16) * 3 + var(--space-6)); }
@@ -80,6 +80,8 @@
 
 .wx-form { display: flex; flex-direction: column; gap: var(--space-4); }
 .wx-lede { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); text-wrap: pretty; }
+/* The delete dialog moves focus to its explanation while it runs; a programmatic focus target needs no ring. */
+.wx-lede:focus { outline: none; }
 .wx-effects { margin: calc(var(--space-2) * -1) 0 0; padding-left: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 
 .wx-site { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }

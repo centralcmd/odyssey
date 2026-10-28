@@ -97,7 +97,8 @@ public partial class LocationWeatherHistorySection
         StateHasChanged();
     }
 
-    private void Retry() => _ = LoadAsync(firstLoad: _bounds is null);
+    /// <summary>Awaited, and ignored while a load is already running, so a double press cannot start two.</summary>
+    private Task Retry() => _phase == Phase.Loading ? Task.CompletedTask : LoadAsync(firstLoad: _bounds is null);
 
     // ── The window ──────────────────────────────────────────────────────────────────────────────────
 

@@ -146,4 +146,9 @@ public partial class WeatherSettingsDialog
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+
+    /// <summary>The user's way out; refused while a save is in flight.</summary>
+    private Task CancelAsync() => _saving ? Task.CompletedTask : CloseAsync();
+
+    private Task OnOpenChanged(bool open) => open || !_saving ? OpenChanged.InvokeAsync(open) : Task.CompletedTask;
 }

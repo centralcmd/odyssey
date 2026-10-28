@@ -45,7 +45,7 @@ public static class WorkerHost
     private static void AddReadOnlyKeyRing(HostApplicationBuilder builder)
     {
         var dataProtection = builder.Services.AddDataProtection()
-            .SetApplicationName(DataProtectionApplicationName)
+            .SetApplicationName(DataProtectionKeyRing.ApplicationName)
             .DisableAutomaticKeyGeneration();
 
         var keysPath = builder.Configuration["DataProtection:KeysPath"];
@@ -55,6 +55,4 @@ public static class WorkerHost
         }
     }
 
-    /// <summary>Must equal the API's <c>SetApplicationName</c>, or the two derive different keys from the same files.</summary>
-    public const string DataProtectionApplicationName = "Odyssey";
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Web;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Weather;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -35,11 +36,10 @@ public partial class Preferences
     // The caller's own weather place. Not part of the page's preferences blob: it is its own
     // server-owned user-preferences row, written only through PUT /api/weather/preferences, which
     // checks the place is selectable. "" follows the household default, as on the dashboard card.
-    private const string FollowHouseholdDefault = "";
     private bool _canChooseWeather;
     private WeatherLocationOptions _weatherOptions = new();
-    private string _weatherLocation = FollowHouseholdDefault;
-    private string _savedWeatherLocation = FollowHouseholdDefault;
+    private string _weatherLocation = WeatherVisuals.FollowHouseholdDefault;
+    private string _savedWeatherLocation = WeatherVisuals.FollowHouseholdDefault;
     private string? _weatherError;
 
     /// <summary>The interactivity check, as a seam for bUnit (the <c>WeatherWidget.InteractiveCheck</c> pattern).</summary>
@@ -102,21 +102,7 @@ public partial class Preferences
         _canChooseWeather && _weatherOptions.Locations.Count > 1
         && Matches("Weather location", "Place the weather card on your dashboard shows");
 
-    private IReadOnlyList<OdsOption> WeatherLocationOptions
-    {
-        get
-        {
-            var household = _weatherOptions.Locations.FirstOrDefault(l => l.LocationId == _weatherOptions.HouseholdDefaultLocationId);
-            var options = new List<OdsOption>
-            {
-                new(FollowHouseholdDefault, household is not null ? $"{household.Name} (household default)" : "Household default"),
-            };
-            options.AddRange(_weatherOptions.Locations
-                .Where(l => household is null || l.LocationId != household.LocationId)
-                .Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
-            return options;
-        }
-    }
+    private IReadOnlyList<OdsOption> WeatherLocationOptions => WeatherVisuals.PickerOptions(_weatherOptions);
 
     private bool Matches(string title, string description) =>
         string.IsNullOrWhiteSpace(_searchText) ||
@@ -187,10 +173,7 @@ public partial class Preferences
             return;
 
         _weatherOptions = loaded;
-        _weatherLocation = _savedWeatherLocation =
-            own.DefaultLocation is { } place && loaded.Locations.Any(l => l.LocationId == place.LocationId)
-                ? place.LocationId.ToString("D")
-                : FollowHouseholdDefault;
+        _weatherLocation = _savedWeatherLocation = WeatherVisuals.PickerValue(loaded, own.DefaultLocation);
         _canChooseWeather = true;
     }
 

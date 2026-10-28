@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Odyssey.Context.Secrets;
+using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
 using Xunit;
@@ -69,7 +70,7 @@ public sealed class WorkerHostTests : IDisposable
     {
         // The API's configuration (Odyssey.Api/Program.cs): same application name, keys persisted to the volume.
         var api = new ServiceCollection();
-        api.AddDataProtection().SetApplicationName(WorkerHost.DataProtectionApplicationName).PersistKeysToFileSystem(keys);
+        api.AddDataProtection().SetApplicationName(DataProtectionKeyRing.ApplicationName).PersistKeysToFileSystem(keys);
         api.AddSingleton<ISecretProtector, SecretProtector>();
         using var apiProvider = api.BuildServiceProvider();
         var ciphertext = apiProvider.GetRequiredService<ISecretProtector>().Protect("WeatherFrostClientId", "frost-client-id");
@@ -98,13 +99,15 @@ public sealed class WorkerHostTests : IDisposable
         Assert.Empty(keys.GetFiles());
     }
 
-    /// <summary>The application name is declared twice, once per host; a mismatch derives different keys from the same files.</summary>
+    /// <summary>Both hosts name the one shared constant; a literal in either would let the two drift and derive different keys.</summary>
     [Fact]
-    public void The_api_uses_the_same_data_protection_application_name()
+    public void Both_hosts_name_the_shared_data_protection_application_name()
     {
-        var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Api", "Program.cs"));
-
-        Assert.Contains($".SetApplicationName(\"{WorkerHost.DataProtectionApplicationName}\")", program, StringComparison.Ordinal);
+        foreach (var host in new[] { Path.Combine("Odyssey.Api", "Program.cs"), Path.Combine("Odyssey.Worker", "WorkerHost.cs") })
+        {
+            var source = File.ReadAllText(Path.Combine(RepositoryRoot(), host));
+            Assert.Contains($".SetApplicationName({nameof(DataProtectionKeyRing)}.{nameof(DataProtectionKeyRing.ApplicationName)})", source.Replace("Odyssey.Core.SystemSettings.", ""), StringComparison.Ordinal);
+        }
     }
 
     private static string RepositoryRoot()

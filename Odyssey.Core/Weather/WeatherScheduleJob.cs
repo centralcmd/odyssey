@@ -24,6 +24,10 @@ public sealed class WeatherScheduleJob(
     ILogger<WeatherScheduleJob> logger) : IPeriodicJob
 {
     public static readonly TimeSpan Tick = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// The pause between two requests to MET. It is per process: the deployment runs ONE worker, so this is the
+    /// instance's rate. Running several workers multiplies it — the rows coordinate who fetches what, not how fast.
+    /// </summary>
     public static readonly TimeSpan RequestSpacing = TimeSpan.FromSeconds(1);
     private static readonly TimeSpan UnreadableLogInterval = TimeSpan.FromHours(1);
 
@@ -55,8 +59,21 @@ public sealed class WeatherScheduleJob(
         {
             // A fresh scope per location, so one location's tracked entities or failed save cannot leak.
             await using var inner = scopes.CreateAsyncScope();
-            var attempt = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
-                .FetchForecastAsync(locationId, WeatherFetchMode.Scheduled, cancellationToken);
+            WeatherAttempt attempt;
+            try
+            {
+                attempt = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
+                    .FetchForecastAsync(locationId, WeatherFetchMode.Scheduled, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // One location's unexpected failure must not end the run: the queue is ordered, so it would
+                // come first again on every tick and starve every place behind it.
+                logger.LogError(ex, "Scheduled weather forecast fetch for location {LocationId} failed unexpectedly.", locationId);
+                await Task.Delay(RequestSpacing, time, cancellationToken);
+                continue;
+            }
+
             if (attempt.Status is not (WeatherAttemptStatus.Skipped or WeatherAttemptStatus.NotConfigured))
             {
                 await Task.Delay(RequestSpacing, time, cancellationToken);
@@ -83,8 +100,20 @@ public sealed class WeatherScheduleJob(
         foreach (var row in enabled.Where(r => r.FirstLookupPending || r.NextObservationFetchAfterUtc is null || r.NextObservationFetchAfterUtc <= now))
         {
             await using var inner = scopes.CreateAsyncScope();
-            var state = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
-                .FetchObservationsAsync(row.LocationId, cancellationToken);
+            SecretReadState state;
+            try
+            {
+                state = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
+                    .FetchObservationsAsync(row.LocationId, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // As for forecasts: one location's unexpected failure must not starve the places behind it.
+                logger.LogError(ex, "Weather observation fetch for location {LocationId} failed unexpectedly.", row.LocationId);
+                await Task.Delay(RequestSpacing, time, cancellationToken);
+                continue;
+            }
+
             if (state == SecretReadState.Unreadable)
             {
                 LogUnreadable();

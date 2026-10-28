@@ -189,6 +189,16 @@ services:
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
+    # The same hardening as docker-compose.prod.yml, since the worker needs none of what it removes: a
+    # non-root app with no port, no capabilities and nothing to write outside /tmp. Keeping dev identical
+    # means a job that starts needing more fails here first, not in production.
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
     depends_on:
       migrations:
         condition: service_completed_successfully

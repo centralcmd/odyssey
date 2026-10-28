@@ -7,7 +7,10 @@
     while the dialog was open is a 409 rather than a silent snapshot of something nobody reviewed.
 *@
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="wb_sunny" RequiredLegend="false"
+@* While a save is in flight the dialog cannot be dismissed (as WeatherPurgeDialog): OdsModal derives Esc, scrim and
+   the close button from OnClose having a delegate, so it is withheld, and an OpenChanged(false) arriving anyway is
+   refused — otherwise OnSaved could fire for a dialog the user already closed. *@
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_saving ? default : EventCallback.Factory.Create(this, CancelAsync))" Icon="wb_sunny" RequiredLegend="false"
           Title="@(b => b.AddContent(0, Creating ? "Turn on weather" : "Weather settings"))"
           Subtitle="@(b => b.AddContent(0, Location.Name))">
     <ChildContent>
@@ -30,7 +33,7 @@
                have either, both or neither (design system · Weather.jsx WeatherSettingsModal). *@
             <div class="wx-toggle">
                 <div class="wx-toggle-text">
-                    <div class="wx-toggle-label" id="wx-fc-l">Forecast</div>
+                    <div class="wx-toggle-label">Forecast</div>
                     <div class="wx-toggle-help" id="wx-fc-h">@ForecastHelp</div>
                 </div>
                 <OdsSwitch Checked="_forecast" CheckedChanged="@(v => _forecast = v)" Disabled="ForecastLocked"
@@ -41,7 +44,7 @@
             {
                 <div class="wx-toggle wx-toggle-sub @(_trackedError is not null ? "error" : null)">
                     <div class="wx-toggle-text">
-                        <div class="wx-toggle-label" id="wx-tr-l">Refresh on a schedule</div>
+                        <div class="wx-toggle-label">Refresh on a schedule</div>
                         <div class="wx-toggle-help" id="wx-tr-h">
                             @(_tracked
                                 ? "The forecast is refreshed in the background, so the dashboard is current when someone opens it."
@@ -66,7 +69,7 @@
 
             <div class="wx-toggle">
                 <div class="wx-toggle-text">
-                    <div class="wx-toggle-label" id="wx-hs-l">Historical data</div>
+                    <div class="wx-toggle-label">Historical data</div>
                     <div class="wx-toggle-help" id="wx-hs-h">@HistoryToggleHelp</div>
                 </div>
                 <OdsSwitch Checked="_history" CheckedChanged="@(v => _history = v)" Disabled="HistoryLocked"
@@ -92,7 +95,7 @@
         </div>
     </ChildContent>
     <Footer>
-        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CancelAsync">Cancel</OdsButton>
         <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving" Disabled="NothingToTurnOn" OnClick="SaveAsync">
             @(Creating ? "Turn on weather" : "Save")
         </OdsButton>

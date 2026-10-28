@@ -1,4 +1,5 @@
 using System.Globalization;
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Weather;
@@ -16,6 +17,34 @@ public sealed record WeatherFailureInfo(string Label, string Help);
 /// </summary>
 public static class WeatherVisuals
 {
+    // ── The caller's own weather place (the dashboard picker and the Preferences row) ─────────────
+
+    /// <summary>The picker value that follows the household default — sent as <c>defaultLocationId: null</c>.</summary>
+    public const string FollowHouseholdDefault = "";
+
+    public static WeatherLocationRef? HouseholdDefault(WeatherLocationOptions options) =>
+        options.Locations.FirstOrDefault(l => l.LocationId == options.HouseholdDefaultLocationId);
+
+    /// <summary>The household default first, labelled as such, then every other selectable place.</summary>
+    public static IReadOnlyList<OdsOption> PickerOptions(WeatherLocationOptions options)
+    {
+        var household = HouseholdDefault(options);
+        var items = new List<OdsOption>
+        {
+            new(FollowHouseholdDefault, household is not null ? $"{household.Name} (household default)" : "Household default"),
+        };
+        items.AddRange(options.Locations
+            .Where(l => household is null || l.LocationId != household.LocationId)
+            .Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
+        return items;
+    }
+
+    /// <summary>The caller's own place, or the household default when it is unset or no longer selectable.</summary>
+    public static string PickerValue(WeatherLocationOptions options, WeatherLocationRef? own) =>
+        own is not null && options.Locations.Any(l => l.LocationId == own.LocationId)
+            ? own.LocationId.ToString("D")
+            : FollowHouseholdDefault;
+
     private sealed record Symbol(string Base, string Label, string Icon, string Night);
 
     private static Symbol S(string b, string label, string icon, string? night = null) => new(b, label, icon, night ?? icon);
