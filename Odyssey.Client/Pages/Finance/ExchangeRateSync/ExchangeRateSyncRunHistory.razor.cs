@@ -35,6 +35,9 @@ public partial class ExchangeRateSyncRunHistory
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
+    /// <summary>Re-read the page in view — Background jobs' Refresh runs.</summary>
+    public Task ReloadAsync() => LoadAsync();
+
     private async Task LoadAsync()
     {
         // A retry after a failed read blanks the table for the spinner, as the first load does; a page

@@ -292,6 +292,27 @@ public partial class ExchangeRateSyncSurfaceTests
     }
 
     [Fact]
+    public async Task Refresh_runs_rereads_the_runs_on_their_page_and_says_so()
+    {
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        var (ctx, _) = NewContext(sync.Object);
+        await using var __ = ctx;
+        var popover = ctx.Render<MudPopoverProvider>();
+        var cut = ctx.Render<Odyssey.Client.Pages.BackgroundJobs>();
+        cut.WaitForAssertion(() => sync.Verify(c => c.ListRunsAsync(1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once));
+
+        cut.Find("button[aria-label='More actions']").Click();
+        popover.WaitForAssertion(() => Assert.Contains("Refresh runs", popover.Markup));
+        popover.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains("Refresh runs")).Click();
+
+        cut.WaitForAssertion(() =>
+        {
+            sync.Verify(c => c.ListRunsAsync(1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+            Assert.Contains("Runs refreshed", cut.FindComponent<OdsLiveAnnouncer>().Markup);
+        });
+    }
+
+    [Fact]
     public void Background_jobs_is_read_under_system_settings_read() =>
         Assert.Equal(PermissionClaims.SystemSettingsRead,
             typeof(Odyssey.Client.Pages.BackgroundJobs).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
