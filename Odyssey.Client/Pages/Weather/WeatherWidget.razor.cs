@@ -156,9 +156,12 @@ public partial class WeatherWidget
         var name = next is { } chosen ? _options.Locations.FirstOrDefault(l => l.LocationId == chosen)?.Name : HouseholdDefault?.Name;
         await LoadAsync(quiet: true);
         _saving = false;
-        _announce = next is not null
-            ? $"Weather now shows {name}. This is saved for you only."
-            : $"Weather follows the household default{(name is not null ? $", {name}" : "")}.";
+        // A failed reload has already said the choice is saved but not shown; announcing the new place as
+        // shown would contradict it.
+        _announce = _prefError is not null ? _prefError
+            : next is not null
+                ? $"Weather now shows {name}. This is saved for you only."
+                : $"Weather follows the household default{(name is not null ? $", {name}" : "")}.";
         StateHasChanged();
     }
 

@@ -96,10 +96,18 @@ public partial class WeatherSettingsDialog
         _trackedError = null;
     }
 
+    // The dialog body: focus moves here before a save disables Save and Cancel, so keyboard focus stays inside
+    // the dialog instead of dropping to <body> (WCAG 2.4.3) — the WeatherPurgeDialog pattern.
+    private ElementReference _body;
+
     private async Task SaveAsync()
     {
         if (_saving || NothingToTurnOn)
             return;
+        try { await _body.FocusAsync(); }
+        catch (InvalidOperationException) { /* not rendered (prerender / teardown) */ }
+        catch (Microsoft.JSInterop.JSException) { /* the element went away first */ }
+
         _saving = true;
         _conflict = null;
         _trackedError = null;

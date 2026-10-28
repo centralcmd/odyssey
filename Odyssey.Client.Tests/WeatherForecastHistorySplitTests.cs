@@ -133,9 +133,14 @@ public class WeatherForecastHistorySplitTests : IAsyncLifetime
             .Add(d => d.Cap, 5));
         provider.WaitForAssertion(() => Assert.Contains("ods-modal", provider.Markup));
 
+        int Focuses() => ctx.JSInterop.Invocations.Count(i => i.Identifier == "Blazor._internal.domWrapper.focus");
+        var before = Focuses();
+
         provider.FindAll("button").Last(b => b.TextContent.Contains("Save")).Click();
         provider.WaitForAssertion(() => Assert.True(provider.FindAll("button").Single(b => b.TextContent.Trim() == "Cancel").HasAttribute("disabled")));
         Assert.False(closed);
+        // Save and Cancel are both disabled, so focus was moved to the dialog body first (WCAG 2.4.3).
+        Assert.Equal(before + 1, Focuses());
 
         await provider.InvokeAsync(() => finish.SetResult(ApiResult<ExistingWeatherLocation>.Success(Row(), HttpStatusCode.OK)));
         provider.WaitForAssertion(() => Assert.True(closed));

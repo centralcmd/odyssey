@@ -261,6 +261,7 @@ public class WeatherClientTests : IDisposable
         card.WaitForAssertion(() => Assert.Contains("Your choice is saved, but the weather couldn’t be reloaded.", card.Markup));
         Assert.Same(picker.Instance, card.FindComponent<Odyssey.Client.Components.OdsSelect>().Instance);
         Assert.DoesNotContain("Weather couldn’t be loaded", card.Markup);
+        Assert.DoesNotContain("Weather now shows Cabin", card.Markup);
     }
 
     [Fact]

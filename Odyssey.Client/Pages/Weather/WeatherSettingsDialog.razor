@@ -14,7 +14,7 @@
           Title="@(b => b.AddContent(0, Creating ? "Turn on weather" : "Weather settings"))"
           Subtitle="@(b => b.AddContent(0, Location.Name))">
     <ChildContent>
-        <div class="ods-modal-body wx-form">
+        <div class="ods-modal-body wx-form" tabindex="-1" @ref="_body" aria-busy="@(_saving ? "true" : null)">
             @if (_conflict is not null)
             {
                 <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
