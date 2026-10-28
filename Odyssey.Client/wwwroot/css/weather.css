@@ -158,6 +158,13 @@
 .wx-hist-card .wx-hist-facts > div { align-items: center; text-align: center; }
 /* The picker and the info button about the values, side by side. */
 .wx-hist-lead { display: inline-flex; align-items: center; gap: 2px; }
+/* The attribution closes the ledger row on the right, or stands alone at the card's bottom right when nothing
+   was measured. The ledger keeps its left inset but drops the right one, so the attribution ends on the card's
+   content edge; on a narrow card it wraps rather than running out of it. */
+.wx-hist-attr { margin-left: auto; text-align: right; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-hist-foot { display: flex; justify-content: flex-end; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-hist-chart .odc-sc-legend { padding-right: 0; }
+.wx-hist-attr .wx-attr, .wx-hist-foot .wx-attr { white-space: normal; }
 /* The about tooltip is a paragraph, not a label: it wraps at about 34ch and reads left-aligned. */
 .mud-tooltip.wx-hist-about { max-width: 34ch; text-align: left; white-space: normal; font-weight: var(--fw-regular); }
 .wx-hist-facts { flex: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }

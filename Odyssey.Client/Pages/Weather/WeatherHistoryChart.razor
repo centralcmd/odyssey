@@ -171,6 +171,11 @@
                 <span class="odc-sc-leg-name">@(HasBars ? "Shaded: not measured" : "Break: not measured")</span>
             </span>
         }
+        @* The section's attribution closes the row, on the right. *@
+        @if (LegendEnd is not null)
+        {
+            <span class="wx-hist-attr">@LegendEnd</span>
+        }
     </div>
 
     @* The hidden class sits on a wrapper: a table box is not clipped by its own overflow, so on the table

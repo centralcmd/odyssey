@@ -81,6 +81,7 @@ else
                     @if (Measured.Count == 0)
                     {
                         <OdsEmptyLine Pad="OdsSize.Lg">Nothing was measured between @WeatherVisuals.Date(_from) and @WeatherVisuals.Date(_to).@(AtStart ? "" : " Earlier days may have it.")</OdsEmptyLine>
+                        <div class="wx-hist-foot">@Attribution</div>
                     }
                     else
                     {
@@ -90,20 +91,13 @@ else
                                 <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
                             }
                         </dl>
-                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@Location.Name" Measures="_measures" />
+                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@Location.Name" Measures="_measures"
+                                             LegendEnd="Attribution" />
                     }
                     break;
             }
         </div>
 
-        @* The attribution stays in view — NLOD and CC BY require it to be visible — and comes from the response, so
-           it shows once one has arrived. What the values are is behind the info button in the card's head. *@
-        @if (_phase == Phase.Ready && _response is not null)
-        {
-            <div class="wx-foot">
-                <WeatherAttributionLine Attribution="_response.Attribution" />
-            </div>
-        }
     </OdsRecordSection>
 }
 
@@ -111,6 +105,11 @@ else
     private const string Cls = "acct-section wx-section wx-hist";
 
     internal const string AboutText = "Daily values from the MET Norway station nearest the weather position. A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.";
+
+    // The attribution sits in the card, bottom right: at the end of the ledger row, or on its own line when nothing
+    // was measured. NLOD and CC BY require it to be visible, and it comes from the response, so it shows once one
+    // has arrived. What the values are is behind the info button in the card's head.
+    private RenderFragment Attribution => @<WeatherAttributionLine Attribution="_response?.Attribution" />;
 
     private string AboutId => $"wx-hist-about-{Location.LocationId:N}";
 

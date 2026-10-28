@@ -61,7 +61,7 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
-    public async Task What_the_values_are_is_behind_an_info_button_and_the_attribution_stays_visible()
+    public async Task What_the_values_are_is_behind_an_info_button_and_the_attribution_ends_the_ledger()
     {
         Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
         await using var ctx = Context();
@@ -75,10 +75,11 @@ public class LocationWeatherHistoryTests : IDisposable
         var described = section.Find($"#{button.GetAttribute("aria-describedby")}");
         Assert.Equal(LocationWeatherHistorySection.AboutText, described.TextContent);
         Assert.NotNull(section.Find(".wx-hist-card .wx-hist-lead").QuerySelector("button[aria-label='About these values']"));
-        // The foot keeps only the attribution, which both licences require to be visible.
-        var foot = section.Find(".wx-foot");
-        Assert.Contains("Weather data from MET Norway", foot.TextContent);
-        Assert.DoesNotContain("midnight to midnight", foot.TextContent);
+        // The attribution, which both licences require to be visible, closes the ledger row inside the card.
+        var attribution = section.Find(".wx-hist-card .odc-sc-legend > .wx-hist-attr");
+        Assert.Contains("Weather data from MET Norway", attribution.TextContent);
+        Assert.Empty(section.FindAll(".wx-foot"));
+        Assert.DoesNotContain("midnight to midnight", section.Find(".wx-hist-card .odc-sc-legend").TextContent);
     }
 
     [Fact]

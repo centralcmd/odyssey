@@ -26,6 +26,9 @@ public partial class WeatherHistoryChart : IAsyncDisposable
     /// <summary>The measure keys to plot, in one unit; the first leads the ledger and the gap key.</summary>
     [Parameter] public IReadOnlyList<string> Measures { get; set; } = [WeatherMeasures.Temperature];
 
+    /// <summary>Closes the ledger row on the right — the section puts the data attribution there.</summary>
+    [Parameter] public RenderFragment? LegendEnd { get; set; }
+
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     internal sealed record Column(int Index, DateOnly Date, WeatherDayObserved? Observed)
