@@ -1301,6 +1301,97 @@ public class ExchangeRateSyncTests
         return (DateOnly.Parse(from, CultureInfo.InvariantCulture), DateOnly.Parse(to, CultureInfo.InvariantCulture));
     }
 
+    // ── The provider list's non-waiting read (the currency list's) ─────────────────────────────────
+
+    private static readonly IReadOnlyList<ProviderSeries> SeriesA =
+        [new ProviderSeries("USD", new DateOnly(1980, 12, 10), new DateOnly(2026, 10, 22))];
+
+    private static readonly IReadOnlyList<ProviderSeries> SeriesB =
+        [new ProviderSeries("EUR", new DateOnly(1999, 1, 4), new DateOnly(2026, 10, 22))];
+
+    [Fact]
+    public async Task An_expired_list_is_answered_at_once_while_one_background_refresh_replaces_it()
+    {
+        var clock = new MutableClock(Now);
+        var cache = new ExchangeRateSupportedListCache(clock);
+        await cache.GetAsync(_ => Task.FromResult(SeriesA), CancellationToken.None);
+        clock.Advance(ExchangeRateSyncConstants.SupportedListTtl + TimeSpan.FromMinutes(1));
+        var pending = new TaskCompletionSource<IReadOnlyList<ProviderSeries>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var fetches = 0;
+        Task<IReadOnlyList<ProviderSeries>> Fetch(CancellationToken _) { Interlocked.Increment(ref fetches); return pending.Task; }
+
+        // The refresh never completes on its own, so a read that waited on it would hang here.
+        Assert.Same(SeriesA, cache.GetWithoutWaiting(Fetch));
+        Assert.Same(SeriesA, cache.GetWithoutWaiting(Fetch));
+        await WaitUntil(() => Volatile.Read(ref fetches) == 1);
+        Assert.Equal(1, Volatile.Read(ref fetches));
+
+        pending.SetResult(SeriesB);
+        await WaitUntil(() => ReferenceEquals(cache.GetWithoutWaiting(Fetch), SeriesB));
+        Assert.Equal(1, Volatile.Read(ref fetches));
+    }
+
+    [Fact]
+    public async Task A_provider_outage_keeps_answering_the_last_good_list_and_retries_only_after_the_failure_entry()
+    {
+        var clock = new MutableClock(Now);
+        var cache = new ExchangeRateSupportedListCache(clock);
+        await cache.GetAsync(_ => Task.FromResult(SeriesA), CancellationToken.None);
+        clock.Advance(ExchangeRateSyncConstants.SupportedListTtl + TimeSpan.FromMinutes(1));
+        var fetches = 0;
+        Task<IReadOnlyList<ProviderSeries>> Down(CancellationToken _)
+        {
+            Interlocked.Increment(ref fetches);
+            throw new ExchangeRateProviderException(ExchangeRateSyncErrorKind.ProviderUnavailable);
+        }
+
+        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
+        await WaitUntil(() => cache.Peek() is null && Volatile.Read(ref fetches) == 1);
+
+        // Inside the failure entry: still the last good list, and no new attempt.
+        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
+        await Task.Delay(50);
+        Assert.Equal(1, Volatile.Read(ref fetches));
+
+        clock.Advance(ExchangeRateSyncConstants.SupportedListFailureTtl + TimeSpan.FromSeconds(1));
+        Assert.Same(SeriesA, cache.GetWithoutWaiting(Down));
+        await WaitUntil(() => Volatile.Read(ref fetches) == 2);
+    }
+
+    [Fact]
+    public async Task With_no_list_yet_the_read_answers_null_and_starts_the_first_fetch()
+    {
+        var cache = new ExchangeRateSupportedListCache(new MutableClock(Now));
+
+        Assert.Null(cache.GetWithoutWaiting(_ => Task.FromResult(SeriesA)));
+
+        await WaitUntil(() => ReferenceEquals(cache.GetWithoutWaiting(_ => Task.FromResult(SeriesB)), SeriesA));
+    }
+
+    [Fact]
+    public async Task An_unexpected_failure_in_the_background_is_cached_as_a_failure_not_thrown()
+    {
+        var cache = new ExchangeRateSupportedListCache(new MutableClock(Now));
+
+        Assert.Null(cache.GetWithoutWaiting(_ => throw new InvalidOperationException("boom")));
+
+        // Cached as a failure: a waiting read inside the failure entry answers null without fetching.
+        await Task.Delay(50);
+        var fetched = false;
+        Assert.Null(await cache.GetAsync(_ => { fetched = true; return Task.FromResult(SeriesA); }, CancellationToken.None));
+        Assert.False(fetched);
+    }
+
+    private static async Task WaitUntil(Func<bool> condition)
+    {
+        for (var i = 0; i < 200 && !condition(); i++)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.True(condition(), "The condition did not hold within two seconds.");
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         private Harness(OdysseyContext context, StubProvider provider, MutableClock clock, FakeSettings settings)

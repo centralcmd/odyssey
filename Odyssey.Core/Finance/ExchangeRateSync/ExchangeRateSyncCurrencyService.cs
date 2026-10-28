@@ -113,7 +113,12 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var configured = await context.ExchangeRateSyncCurrencies.AsNoTracking()
             .ToDictionaryAsync(row => row.CurrencyCode, StringComparer.Ordinal, cancellationToken);
 
-        var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
+        // Every currency list — every currency picker — derives its statuses from this, so it never waits
+        // on the provider once a list has been fetched: an expired or failed entry answers from the last
+        // good list and refreshes in the background. Only with no list at all (the first read after the
+        // host starts) does it wait, rather than report every status as if nothing were published.
+        var series = supportedList.GetWithoutWaiting(client.GetSeriesAsync)
+            ?? await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
         var settings = await settingsLookup.GetAsync(cancellationToken);
         // Only a currency that was ever configured can have fetched rows.
         var extents = withExtents
