@@ -6,6 +6,10 @@
 
 .wx-muted { color: var(--mud-palette-text-secondary); }
 .wx-attr { color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+/* A link inside a sentence (an empty line's way out): it takes the sentence's own size and weight, so it
+   reads as part of the text rather than a button (design system · weather.css). */
+.wx-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.wx-link:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
 .wx-attr a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
 .wx-attr a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
 

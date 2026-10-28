@@ -156,29 +156,31 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
-    public async Task Without_a_frost_client_id_an_admin_is_told_what_to_add_and_where()
+    public async Task Without_a_frost_client_id_an_admin_is_pointed_at_system_settings()
     {
         Serve(measuredFrom: null, measuredThrough: null, configured: false);
         await using var ctx = Context();
 
         var section = Render(ctx, Row(enabled: true), canSetUp: true, canOpenSettings: true);
 
-        section.WaitForAssertion(() => Assert.Contains("needs a client ID", section.Markup));
-        Assert.Contains("Open System settings", section.Markup);
+        section.WaitForAssertion(() => Assert.Contains("Historical weather service is not configured. See", section.Markup));
+        var link = section.Find("a.wx-link");
+        Assert.Equal("/settings", link.GetAttribute("href"));
+        Assert.Equal("system settings", link.TextContent);
         Assert.DoesNotContain("No MET Norway station", section.Markup);
         Assert.DoesNotContain("check back later", section.Markup);
     }
 
     [Fact]
-    public async Task Without_a_frost_client_id_everyone_else_is_told_an_administrator_must_finish_setup()
+    public async Task Without_a_frost_client_id_everyone_else_gets_the_message_without_the_link()
     {
         Serve(measuredFrom: null, measuredThrough: null, configured: false);
         await using var ctx = Context();
 
         var section = Render(ctx);
 
-        section.WaitForAssertion(() => Assert.Contains("An administrator needs to finish setting it up", section.Markup));
-        Assert.DoesNotContain("Open System settings", section.Markup);
+        section.WaitForAssertion(() => Assert.Contains("Historical weather service is not configured.", section.Markup));
+        Assert.Empty(section.FindAll("a.wx-link"));
     }
 
     [Fact]
@@ -190,7 +192,7 @@ public class LocationWeatherHistoryTests : IDisposable
         var section = Render(ctx, canSetUp: true);
 
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
-        Assert.DoesNotContain("needs a client ID", section.Markup);
+        Assert.DoesNotContain("not configured", section.Markup);
     }
 
     [Theory]

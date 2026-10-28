@@ -106,15 +106,9 @@ else
 
     private static RenderFragment Text(string text) => b => b.AddContent(0, text);
 
-    private RenderFragment NotConfiguredText => CanSetUp
-        ? @<span class="wx-sec-empty">
-              Measured temperature comes from MET Norway’s Frost service, which needs a client ID. Add one in System settings → Weather, and history starts filling in from the next morning.
-              @if (CanOpenSettings)
-              {
-                  <OdsButton Variant="OdsButtonVariant.Outlined" Icon="settings" OnClick="OpenSettings">Open System settings</OdsButton>
-              }
-          </span>
-        : Text("Measured temperature isn’t set up yet. An administrator needs to finish setting it up for this household.");
+    private RenderFragment NotConfiguredText => CanSetUp && CanOpenSettings
+        ? @<span>Historical weather service is not configured. See <a class="wx-link" href="/settings">system settings</a>.</span>
+        : Text("Historical weather service is not configured.");
 
     private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
         <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
