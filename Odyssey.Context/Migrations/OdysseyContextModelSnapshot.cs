@@ -2127,6 +2127,10 @@ namespace Odyssey.Context.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<DateTime?>("ClaimedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("CurrencyCodes")
                         .IsRequired()
                         .HasMaxLength(256)

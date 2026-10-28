@@ -64,13 +64,16 @@ public sealed class ExchangeRateSyncService(
                 last.AddSeconds(ExchangeRateSyncConstants.ManualRunCooldownSeconds));
         }
 
-        var run = await TryStartAsync(ExchangeRateSyncTrigger.Manual, userId, cancellationToken)
+        // A run with nothing to do is finished here, so it is inserted already claimed: an unclaimed row
+        // could be taken by a worker between the insert and the finish, failing this request's save.
+        var nothingEnabled = (await EnabledCodesAsync(cancellationToken)).Count == 0;
+        var run = await TryStartAsync(ExchangeRateSyncTrigger.Manual, userId, claimNow: nothingEnabled, cancellationToken)
             ?? throw new DomainConflictException("An exchange-rate sync run or purge is already in progress.");
 
         logger.LogInformation(
             "Exchange-rate sync run {RunId} started manually by user {UserId}.", run.ExchangeRateSyncRunId, userId);
 
-        if ((await EnabledCodesAsync(cancellationToken)).Count == 0)
+        if (nothingEnabled)
         {
             await FinishAsync(run, ExchangeRateSyncRunStatus.Skipped, null, cancellationToken);
         }
@@ -82,8 +85,12 @@ public sealed class ExchangeRateSyncService(
     /// Inserts a <c>Running</c> row for <paramref name="trigger"/>, or returns null while another run or
     /// purge holds the guard. Stale <c>Running</c> rows are abandoned first.
     /// </summary>
-    public async Task<ExchangeRateSyncRun?> TryStartAsync(
-        ExchangeRateSyncTrigger trigger, string? userId, CancellationToken cancellationToken = default)
+    public Task<ExchangeRateSyncRun?> TryStartAsync(
+        ExchangeRateSyncTrigger trigger, string? userId, CancellationToken cancellationToken = default) =>
+        TryStartAsync(trigger, userId, claimNow: trigger != ExchangeRateSyncTrigger.Manual, cancellationToken);
+
+    private async Task<ExchangeRateSyncRun?> TryStartAsync(
+        ExchangeRateSyncTrigger trigger, string? userId, bool claimNow, CancellationToken cancellationToken)
     {
         await AbandonStaleAsync(cancellationToken);
 
@@ -99,6 +106,9 @@ public sealed class ExchangeRateSyncService(
             Provider = ExchangeRateProvider.NorgesBank,
             Status = ExchangeRateSyncRunStatus.Running,
             StartedAtUtc = Now,
+            // A manual run is started by the API and executed by the worker, which claims it; every other
+            // run is executed by the process that starts it.
+            ClaimedAtUtc = claimNow ? Now : null,
         };
         context.ExchangeRateSyncRuns.Add(run);
         try
@@ -146,6 +156,41 @@ public sealed class ExchangeRateSyncService(
         }
 
         await ExecuteAsync(run.ExchangeRateSyncRunId, cancellationToken);
+        return run.ExchangeRateSyncRunId;
+    }
+
+    /// <summary>
+    /// Claims the oldest manual run no process has taken yet, or returns null. Every worker replica asks;
+    /// the <see cref="ExchangeRateSyncRun.ClaimedAtUtc"/> concurrency token lets exactly one save succeed.
+    /// Stale runs are abandoned first, so a request no worker took in time is never executed late.
+    /// </summary>
+    public async Task<Guid?> ClaimRequestedRunAsync(CancellationToken cancellationToken = default)
+    {
+        await AbandonStaleAsync(cancellationToken);
+
+        var run = await context.ExchangeRateSyncRuns
+            .Where(value => value.Status == ExchangeRateSyncRunStatus.Running
+                && value.Trigger == ExchangeRateSyncTrigger.Manual
+                && value.ClaimedAtUtc == null)
+            .OrderBy(value => value.StartedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (run is null)
+        {
+            return null;
+        }
+
+        run.ClaimedAtUtc = Now;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another replica claimed it between the read and here.
+            context.Entry(run).State = EntityState.Detached;
+            return null;
+        }
+
         return run.ExchangeRateSyncRunId;
     }
 

@@ -230,11 +230,12 @@ public class ExchangeRateSyncApiTests
     }
 
     /// <summary>
-    /// The hosted scheduler itself (not registered under Testing, so built by hand here): a run queued
-    /// through the channel dispatcher is picked up and finished, and stopping the host stops the loop.
+    /// The worker's job (no test host registers it, so built by hand here): a manual run the API started
+    /// is left unclaimed for the worker, which claims and finishes it on its next tick — and a second claim
+    /// of the same run finds nothing.
     /// </summary>
     [Fact]
-    public async Task The_scheduler_executes_a_queued_run_and_stops_with_the_host()
+    public async Task The_worker_job_claims_and_finishes_a_manual_run_once()
     {
         await using var factory = new ApiFactory(Admin);
         await SeedAsync(factory);
@@ -247,32 +248,22 @@ public class ExchangeRateSyncApiTests
         using (var scope = factory.Services.CreateScope())
         {
             runId = (await scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>()
-                .TryStartAsync(ExchangeRateSyncTrigger.Manual, "admin"))!.ExchangeRateSyncRunId;
+                .StartManualAsync("admin")).ExchangeRateSyncRunId;
         }
 
-        var dispatcher = new Odyssey.Api.ExchangeRateSync.ChannelExchangeRateSyncDispatcher();
-        using var scheduler = new Odyssey.Api.ExchangeRateSync.ExchangeRateSyncScheduler(
-            dispatcher,
-            factory.Services.GetRequiredService<IServiceScopeFactory>(),
-            TimeProvider.System,
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<Odyssey.Api.ExchangeRateSync.ExchangeRateSyncScheduler>.Instance);
-        await scheduler.StartAsync(CancellationToken.None);
-        await dispatcher.DispatchAsync(runId, CancellationToken.None);
+        await new ExchangeRateSyncJob(factory.Services.GetRequiredService<IServiceScopeFactory>())
+            .RunOnceAsync(CancellationToken.None);
 
-        var status = ExchangeRateSyncRunStatus.Running;
-        for (var attempt = 0; attempt < 100 && status == ExchangeRateSyncRunStatus.Running; attempt++)
+        using (var scope = factory.Services.CreateScope())
         {
-            await Task.Delay(100);
-            using var scope = factory.Services.CreateScope();
-            status = (await scope.ServiceProvider.GetRequiredService<OdysseyContext>().ExchangeRateSyncRuns
-                .AsNoTracking().SingleAsync(run => run.ExchangeRateSyncRunId == runId)).Status;
+            var run = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().ExchangeRateSyncRuns
+                .AsNoTracking().SingleAsync(value => value.ExchangeRateSyncRunId == runId);
+            Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+            Assert.NotNull(run.ClaimedAtUtc);
+            Assert.True(run.RowsInserted > 0);
+
+            Assert.Null(await scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>().ClaimRequestedRunAsync());
         }
-
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, status);
-
-        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(5));
-        await scheduler.StopAsync(stop.Token);
-        Assert.True(scheduler.ExecuteTask!.IsCompleted);
     }
 
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, OdysseyApiFactory? sharingStoreWith = null)

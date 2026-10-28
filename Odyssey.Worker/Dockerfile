@@ -32,7 +32,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:819bd3649d8bf53f35527c68
 WORKDIR /app
 COPY --from=build /app/publish .
 
-# tzdata (issue #348): the weather job composes each location's days in its own IANA zone, and the alpine
+# tzdata (issues #348, #349): the weather job composes each location's days in its own IANA zone, the
+# exchange-rate sync job dates Norges Bank's rates in Europe/Oslo, and the alpine
 # runtime image ships no time-zone database. Asserted at startup by TimeZoneDataGuard, as in the API. No
 # ICU: unlike the API (issue #48), nothing this host runs compares or folds text, and TimeZoneInfo reads
 # the zone files directly. The optional CA mount is the API's, for the same apk-over-TLS reason; nothing

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -309,6 +310,69 @@ public class ExchangeRateSyncTests
 
         Assert.Equal(ExchangeRateSyncRunStatus.Skipped, run.Status);
         Assert.Equal(ExchangeRateSyncState.Idle, (await harness.Sync.GetStatusAsync()).State);
+    }
+
+    [Fact]
+    public async Task A_manual_run_is_left_for_the_worker_to_claim_and_every_other_run_is_claimed_by_its_starter()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("RUB");
+
+        var manual = await harness.Sync.StartManualAsync("admin");
+        Assert.Null(manual.ClaimedAtUtc);
+
+        Assert.Equal(manual.ExchangeRateSyncRunId, await harness.Sync.ClaimRequestedRunAsync());
+        Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
+        await harness.Sync.ExecuteAsync(manual.ExchangeRateSyncRunId);
+
+        var scheduled = (await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null))!;
+        Assert.Equal(Now, scheduled.ClaimedAtUtc);
+        Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
+    }
+
+    [Fact]
+    public async Task A_manual_run_with_nothing_to_do_is_inserted_claimed_so_no_worker_takes_it()
+    {
+        await using var harness = await Harness.CreateAsync();
+
+        var run = await harness.Sync.StartManualAsync("admin");
+
+        Assert.NotNull(run.ClaimedAtUtc);
+        Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
+    }
+
+    [Fact]
+    public async Task A_request_no_worker_took_in_time_is_abandoned_not_executed_late()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("RUB");
+        var manual = await harness.Sync.StartManualAsync("admin");
+
+        harness.Clock.Advance(TimeSpan.FromMinutes(2 * ExchangeRateSyncConstants.RunTimeoutMinutes + 1));
+
+        Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
+        var abandoned = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId);
+        Assert.Equal(ExchangeRateSyncErrorKind.Abandoned, abandoned.ErrorKind);
+    }
+
+    [Fact]
+    public async Task The_job_executes_a_requested_run_before_looking_for_a_scheduled_one()
+    {
+        await using var harness = await Harness.CreateAsync();
+        await harness.EnableAsync("RUB");
+        var manual = await harness.Sync.StartManualAsync("admin");
+        var services = new ServiceCollection()
+            .AddScoped(_ => harness.Sync)
+            .BuildServiceProvider();
+
+        await new ExchangeRateSyncJob(services.GetRequiredService<IServiceScopeFactory>())
+            .RunOnceAsync(CancellationToken.None);
+
+        var runs = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync();
+        var only = Assert.Single(runs);
+        Assert.Equal(manual.ExchangeRateSyncRunId, only.ExchangeRateSyncRunId);
+        Assert.NotEqual(ExchangeRateSyncRunStatus.Running, only.Status);
+        Assert.NotNull(only.FinishedAtUtc);
     }
 
     [Fact]

@@ -12,7 +12,7 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    [Migration("20261028033804_AddExchangeRateSync")]
+    [Migration("20261028185423_AddExchangeRateSync")]
     partial class AddExchangeRateSync
     {
         /// <inheritdoc />
@@ -2129,6 +2129,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("ExchangeRateSyncRunId")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ClaimedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("CurrencyCodes")
                         .IsRequired()

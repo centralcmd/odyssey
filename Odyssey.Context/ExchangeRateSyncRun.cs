@@ -55,6 +55,15 @@ public class ExchangeRateSyncRun
 
     public int RowsDeleted { get; set; }
 
+    /// <summary>
+    /// When the process that executes the run took it. A scheduled run and a purge are claimed by whoever
+    /// inserts them; a manual run is inserted by the API and left unclaimed, and the first
+    /// <c>Odyssey.Worker</c> replica to set this wins it — the concurrency token makes a second claim of
+    /// the same row fail on save, so two replicas never execute one run.
+    /// </summary>
+    [ConcurrencyCheck]
+    public DateTime? ClaimedAtUtc { get; set; }
+
     /// <summary><c>1</c> while <see cref="Status"/> is <c>Running</c>, else <c>NULL</c>; database-generated.</summary>
     public int? RunningGuard { get; private set; }
 }

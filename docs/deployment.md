@@ -1109,13 +1109,18 @@ It is off until an Admin enables a currency under *System settings*.
   they were fetched, so they then read as manual. `Down()` restores schema, not provenance.
 - **No new claims**, so nobody needs to sign out. No new configuration: the start date and interval are
   System settings, and nothing is carried over from the environment (both keys are new).
-- **The runtime image needs `tzdata`** for `Europe/Oslo`, which the API Dockerfile already installs.
-  Without it the sync runs fail with *Time zone unavailable*; the API still starts.
+- **The sync runs in `Odyssey.Worker`**, like every background job. Without a running worker nothing is
+  fetched: *Run now* still records a `Running` run, which no process takes and which is marked
+  *Abandoned* after 20 minutes. The API reaches Norges Bank too — for the list of published currencies
+  behind the switches — so both containers need egress to `data.norges-bank.no`.
+- **Both runtime images need `tzdata`** for `Europe/Oslo`, and both Dockerfiles already install it.
+  Without it the sync runs fail with *Time zone unavailable*; the hosts still start.
 
 ### The data flow
 
-The scheduler runs inside the API process, wakes every minute and starts a run when one is due (after
-the configured interval, or 5 minutes later while history is still being backfilled). A run sends
+The worker's sync job wakes every 15 seconds. It first takes any manual run the API started — exactly one
+worker replica can claim it — and otherwise starts a run when one is due (after the configured interval,
+or 5 minutes later while history is still being backfilled). A run sends
 Norges Bank only **currency codes and dates** — no user, account, amount or other household data, and
 no API key. The enabled set does reveal which currencies the household cares about. The host is a
 compile-time constant, redirects are not followed, responses are capped at 10 MB, and each run makes at

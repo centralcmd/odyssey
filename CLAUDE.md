@@ -564,9 +564,11 @@ fetched one; there is no separate source column. Four rules are easy to get back
 - **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
   date; the bounded lookups keep their exclusive `AsOf < bound`.
 - **The run guard is the `RunningGuard` generated column's unique index**, real MariaDB only; a purge
-  takes it too, through a `Purge` run row. The scheduler (`ExchangeRateSyncScheduler`, the first
-  `BackgroundService` in `Odyssey.Api`) keeps no schedule in memory and is **not registered under
-  `Testing`**, where run-now executes inline.
+  takes it too, through a `Purge` run row. Runs execute in `Odyssey.Worker` (`ExchangeRateSyncJob`), which
+  keeps no schedule in memory. The API only *starts* a manual run: it inserts the `Running` row unclaimed,
+  and the first worker replica to set `ClaimedAtUtc` — a concurrency token — executes it. A scheduled run
+  or a purge is claimed by whoever inserts it, and so is a manual run with nothing to do, which the API
+  finishes `Skipped` at once. Under `Testing` no worker runs, so run-now claims and executes inline.
 - **A fetched row is never edited in place** (`422` keyed `source`), and deleting one needs
   `system-settings.update` on top of `exchangerates.delete` — decided in the service from the row.
 

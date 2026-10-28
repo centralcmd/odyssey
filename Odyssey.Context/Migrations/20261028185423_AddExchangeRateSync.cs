@@ -72,6 +72,7 @@ namespace Odyssey.Context.Migrations
                     RowsSkipped = table.Column<int>(type: "int", nullable: false),
                     RowsRejected = table.Column<int>(type: "int", nullable: false),
                     RowsDeleted = table.Column<int>(type: "int", nullable: false),
+                    ClaimedAtUtc = table.Column<DateTime>(type: "datetime(6)", nullable: true),
                     RunningGuard = table.Column<int>(type: "int", nullable: true, computedColumnSql: "IF(`Status` = 0, 1, NULL)", stored: false)
                 },
                 constraints: table =>

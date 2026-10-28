@@ -51,7 +51,11 @@ public static class ExchangeRateSyncConstants
 
     public const int ManualRunCooldownSeconds = 60;
 
-    public static readonly TimeSpan SchedulerTick = TimeSpan.FromSeconds(60);
+    /// <summary>
+    /// How often the worker's sync job looks for work. Short because it is also how long a Run now waits to
+    /// be picked up; an idle tick is a few indexed reads and no outbound request.
+    /// </summary>
+    public static readonly TimeSpan SchedulerTick = TimeSpan.FromSeconds(15);
 
     /// <summary>After this many consecutive failed sync runs the interval doubles, capped at <see cref="MaxBackoffHours"/>.</summary>
     public const int BackoffAfterFailures = 3;

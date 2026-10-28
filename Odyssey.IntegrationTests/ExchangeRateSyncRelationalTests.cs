@@ -200,6 +200,42 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     }
 
     /// <summary>
+    /// Two worker replicas racing to claim one manual run on the real engine: the <c>ClaimedAtUtc</c>
+    /// concurrency token lets exactly one save succeed, so the run is executed once.
+    /// </summary>
+    [SkippableFact]
+    public async Task Two_workers_claiming_one_manual_run_take_it_exactly_once()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+
+        for (var round = 0; round < 5; round++)
+        {
+            Guid runId;
+            await using (var start = NewContext())
+            {
+                var (sync, _) = Services(start);
+                runId = (await sync.TryStartAsync(ExchangeRateSyncTrigger.Manual, null))!.ExchangeRateSyncRunId;
+            }
+
+            var claimed = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+            {
+                await using var context = NewContext();
+                var (sync, _) = Services(context);
+                return await sync.ClaimRequestedRunAsync();
+            }));
+
+            Assert.Equal(runId, Assert.Single(claimed, id => id is not null));
+
+            await using var cleanup = NewContext();
+            var running = await cleanup.ExchangeRateSyncRuns.SingleAsync(run => run.ExchangeRateSyncRunId == runId);
+            Assert.NotNull(running.ClaimedAtUtc);
+            running.Status = ExchangeRateSyncRunStatus.Succeeded;
+            await cleanup.SaveChangesAsync();
+        }
+    }
+
+    /// <summary>
     /// The new read queries (issue #349 §3, §5) translated by MySQL's provider, not EF InMemory: the
     /// grouped-MAX latest lookup with the NOK hop, the status rank and filter, the summary, the run log
     /// and the per-currency list with its fetched extents.
