@@ -394,7 +394,9 @@ public class WeatherApiTests
         var history = raw.RootElement.GetProperty("history");
         Assert.Equal(JsonValueKind.Null, history.GetProperty("measuredFrom").ValueKind);
         Assert.Equal(JsonValueKind.Null, history.GetProperty("measuredThrough").ValueKind);
-        Assert.Equal(JsonValueKind.False, history.GetProperty("hasObservationStation").ValueKind);
+        // Nothing has looked a station up yet, so none is reported missing; Frost is not configured here.
+        Assert.Equal(JsonValueKind.True, history.GetProperty("hasObservationStation").ValueKind);
+        Assert.Equal(JsonValueKind.False, history.GetProperty("observationsConfigured").ValueKind);
     }
 
     [Fact]

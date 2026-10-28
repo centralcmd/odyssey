@@ -310,6 +310,21 @@ public sealed class WeatherFetchService
     // ── Observations ──────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
+    /// Whether <see cref="FetchObservationsAsync"/> can run at all: a MET contact and a Frost client ID are both
+    /// set. An unreadable client ID counts as set — that is a fault an Admin repairs, not a missing setup.
+    /// </summary>
+    public async Task<bool> ObservationsConfiguredAsync(CancellationToken cancellationToken)
+    {
+        if ((await settings.GetAsync(cancellationToken)).Contact is null)
+        {
+            return false;
+        }
+
+        var secret = await secrets.GetAsync(SecretSettingKeys.WeatherFrostClientId, cancellationToken);
+        return secret.State != SecretReadState.NotSet;
+    }
+
+    /// <summary>
     /// One Frost step for one location (§3 observations): resolve the station, then either the daily fetch
     /// of the last seven days or one year of backfill — one request per call, so the scheduler stays at or
     /// below 1 request/s. Returns the secret's state so the scheduler can log an unreadable one.

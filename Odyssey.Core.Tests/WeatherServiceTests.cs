@@ -719,8 +719,10 @@ public class WeatherServiceTests
     }
 
     [Fact]
-    public async Task Daily_history_bounds_are_empty_with_no_station_and_nothing_measured()
+    public async Task A_position_never_looked_up_is_not_reported_as_having_no_station()
     {
+        // Frost not configured is the ordinary way to get here: no lookup has run, so nothing is known about
+        // stations, and saying "none within 25 km" would send an administrator after the wrong cause.
         using var h = new WeatherTestHarness();
         var home = await h.EnableAsync();
 
@@ -728,7 +730,41 @@ public class WeatherServiceTests
 
         Assert.Null(daily.History!.MeasuredFrom);
         Assert.Null(daily.History.MeasuredThrough);
-        Assert.False(daily.History.HasObservationStation);
+        Assert.True(daily.History.HasObservationStation);
+        Assert.False(daily.History.ObservationsConfigured);
+        Assert.True((await h.Admin().ListAsync(new WeatherLocationsQueryParams(), CancellationToken.None)).Items.Single().HasObservationStation);
+    }
+
+    [Fact]
+    public async Task A_lookup_that_found_nothing_reports_no_station()
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+        var weather = await h.Context.WeatherLocations.SingleAsync(w => w.LocationId == home.LocationId);
+        weather.StationResolvedAtUtc = Noon;
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
+
+        var daily = await h.Read().DailyAsync(Daily(home.LocationId, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
+
+        Assert.False(daily.History!.HasObservationStation);
+        Assert.False((await h.Admin(h.NewContext()).ListAsync(new WeatherLocationsQueryParams(), CancellationToken.None)).Items.Single().HasObservationStation);
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    [InlineData(true, false, false)]
+    public async Task Observations_are_configured_with_both_a_contact_and_a_frost_client_id(bool contact, bool clientId, bool expected)
+    {
+        using var h = new WeatherTestHarness();
+        var home = await h.EnableAsync();
+        if (!contact) h.Settings.Value = h.Settings.Value with { Contact = null };
+        if (clientId) h.Secrets.Frost = SecretResult.Found("frost-client");
+
+        var daily = await h.Read().DailyAsync(Daily(home.LocationId, new DateOnly(2026, 10, 1), new DateOnly(2026, 10, 22)), "u1", CancellationToken.None);
+
+        Assert.Equal(expected, daily.History!.ObservationsConfigured);
     }
 
     private static WeatherDailyQuery Daily(Guid locationId, DateOnly from, DateOnly to) =>

@@ -499,7 +499,8 @@ public sealed class WeatherLocationService
             LocationFingerprint = WeatherCoordinates.Fingerprint(location),
             PurgeInProgress = weather.PurgeStartedAt is not null,
             IsHouseholdDefault = rowContext.HouseholdDefault == weather.LocationId,
-            HasObservationStation = weather.FrostStationId is not null,
+            // As on the daily response: no station only once a lookup came back empty, never before one ran.
+            HasObservationStation = weather.FrostStationId is not null || weather.StationResolvedAtUtc is null,
             LastForecastSuccessUtc = Utc(schedule?.LastForecastSuccessUtc),
             ForecastFailureKind = schedule?.ForecastFailureKind,
             LastObservationSuccessUtc = Utc(schedule?.LastObservationSuccessUtc),

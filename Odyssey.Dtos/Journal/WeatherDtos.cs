@@ -258,8 +258,18 @@ public sealed record WeatherHistoryBounds
     /// <summary>The newest stored local date with a measured half; null when none is stored.</summary>
     public DateOnly? MeasuredThrough { get; init; }
 
-    /// <summary>Whether Frost has a station within range of the location's current weather position.</summary>
+    /// <summary>
+    /// False only once a station lookup for the current weather position has come back empty. A position
+    /// never looked up yet — Frost not configured, the Worker not run, a fresh move — reads as true, so it
+    /// is never reported as having no station when nobody has asked.
+    /// </summary>
     public bool HasObservationStation { get; init; }
+
+    /// <summary>
+    /// Whether measured history can be fetched at all: a MET contact address and a Frost client ID are both
+    /// set. Lets the client say why nothing is measured instead of promising it will arrive.
+    /// </summary>
+    public bool ObservationsConfigured { get; init; }
 }
 
 public sealed record WeatherDailyResponse
@@ -391,6 +401,8 @@ public sealed record ExistingWeatherLocation
 
     public bool PurgeInProgress { get; init; }
     public bool IsHouseholdDefault { get; init; }
+
+    /// <summary>False only once a station lookup came back empty; an unresolved position reads as true.</summary>
     public bool HasObservationStation { get; init; }
     public DateTime? LastForecastSuccessUtc { get; init; }
     public WeatherFetchFailureKind? ForecastFailureKind { get; init; }

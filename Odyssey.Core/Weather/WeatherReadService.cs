@@ -484,13 +484,16 @@ public sealed class WeatherReadService
             .GroupBy(d => d.LocationId)
             .Select(g => new { From = g.Min(d => d.LocalDate), Through = g.Max(d => d.LocalDate) })
             .FirstOrDefaultAsync(cancellationToken);
-        var hasStation = await context.WeatherLocations.AsNoTracking()
-            .AnyAsync(w => w.LocationId == locationId && w.FrostStationId != null, cancellationToken);
+        // "No station" is a lookup's answer, never the absence of one: an unresolved position is not reported
+        // as having no station just because nothing has asked Frost yet.
+        var knownToHaveNone = await context.WeatherLocations.AsNoTracking()
+            .AnyAsync(w => w.LocationId == locationId && w.FrostStationId == null && w.StationResolvedAtUtc != null, cancellationToken);
         return new WeatherHistoryBounds
         {
             MeasuredFrom = measured?.From,
             MeasuredThrough = measured?.Through,
-            HasObservationStation = hasStation,
+            HasObservationStation = !knownToHaveNone,
+            ObservationsConfigured = await fetch.ObservationsConfiguredAsync(cancellationToken),
         };
     }
 
