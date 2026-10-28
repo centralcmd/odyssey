@@ -277,6 +277,15 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var runId = run.ExchangeRateSyncRunId;
         run.CurrencyCodes = code;
 
+        // Read again under the guard: the check above is a fast refusal that leaves no run row, but a sync
+        // started between it and the guard would otherwise lose its rates to the purge.
+        if (await context.ExchangeRateSyncCurrencies.AsNoTracking().AnyAsync(value => value.CurrencyCode == code && value.Enabled, cancellationToken))
+        {
+            await sync.FinishAsync(run, ExchangeRateSyncRunStatus.Skipped, null, CancellationToken.None);
+            throw new DomainUnprocessableException(
+                $"{code} is still synced and would be fetched again on the next run. Stop its sync first.", "enabled");
+        }
+
         var deleted = 0;
         try
         {

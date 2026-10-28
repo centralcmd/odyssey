@@ -233,8 +233,16 @@ public sealed class ExchangeRateSyncService(
         }
 
         context.ChangeTracker.Clear();
-        var tracked = await context.ExchangeRateSyncRuns.FirstAsync(
+        // A run row deleted under the run (a hand edit, a restore) leaves nothing to finish; it holds no
+        // guard any more either, so log it and stop rather than throw out of the job.
+        var tracked = await context.ExchangeRateSyncRuns.FirstOrDefaultAsync(
             value => value.ExchangeRateSyncRunId == runId, CancellationToken.None);
+        if (tracked is null)
+        {
+            logger.LogWarning("Exchange-rate sync run {RunId} was removed before it finished; its outcome is not recorded.", runId);
+            return;
+        }
+
         tracked.RowsInserted = outcome.RowsInserted;
         tracked.RowsSkipped = outcome.RowsSkipped;
         tracked.RowsRejected = outcome.RowsRejected;
