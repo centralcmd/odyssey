@@ -175,6 +175,28 @@ public class ExchangeRateSyncPhaseZeroTests
     }
 
     [Fact]
+    public async Task LiveAnnouncer_Announce_PlaysOverlappingMessagesInTurn()
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsLiveAnnouncer>();
+        var shown = new List<string>();
+        cut.OnMarkupUpdated += (_, _) =>
+        {
+            var text = cut.Find("[role=status]").TextContent;
+            if (text.Length > 0 && (shown.Count == 0 || shown[^1] != text))
+                shown.Add(text);
+        };
+
+        // Called back to back, as a row save and a run finishing can be.
+        var first = cut.InvokeAsync(() => cut.Instance.Announce("Sync started for USD"));
+        var second = cut.InvokeAsync(() => cut.Instance.Announce("Run finished"));
+        await Task.WhenAll(first, second);
+
+        cut.WaitForAssertion(() => Assert.Equal(["Sync started for USD", "Run finished"], shown));
+        Assert.Equal("Run finished", cut.Find("[role=status]").TextContent);
+    }
+
+    [Fact]
     public async Task LiveAnnouncer_MessageParameter_StillAnnounces()
     {
         await using var ctx = NewContext();
