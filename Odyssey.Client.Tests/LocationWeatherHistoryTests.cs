@@ -155,6 +155,44 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Empty(section.FindComponents<OdsSegmentedControl>());
     }
 
+    [Fact]
+    public async Task Without_a_frost_client_id_an_admin_is_told_what_to_add_and_where()
+    {
+        Serve(measuredFrom: null, measuredThrough: null, configured: false);
+        await using var ctx = Context();
+
+        var section = Render(ctx, Row(enabled: true), canSetUp: true, canOpenSettings: true);
+
+        section.WaitForAssertion(() => Assert.Contains("needs a client ID", section.Markup));
+        Assert.Contains("Open System settings", section.Markup);
+        Assert.DoesNotContain("No MET Norway station", section.Markup);
+        Assert.DoesNotContain("check back later", section.Markup);
+    }
+
+    [Fact]
+    public async Task Without_a_frost_client_id_everyone_else_is_told_an_administrator_must_finish_setup()
+    {
+        Serve(measuredFrom: null, measuredThrough: null, configured: false);
+        await using var ctx = Context();
+
+        var section = Render(ctx);
+
+        section.WaitForAssertion(() => Assert.Contains("An administrator needs to finish setting it up", section.Markup));
+        Assert.DoesNotContain("Open System settings", section.Markup);
+    }
+
+    [Fact]
+    public async Task History_stored_before_frost_was_unset_still_shows()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday, configured: false);
+        await using var ctx = Context();
+
+        var section = Render(ctx, canSetUp: true);
+
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        Assert.DoesNotContain("needs a client ID", section.Markup);
+    }
+
     [Theory]
     [InlineData(true, "No measured temperature yet.")]
     [InlineData(false, "No temperature was measured while weather was on for this place.")]
@@ -271,7 +309,7 @@ public class LocationWeatherHistoryTests : IDisposable
     };
 
     /// <summary>Answers every daily request with each measured day of the range, and the given bounds.</summary>
-    private void Serve(DateOnly? measuredFrom, DateOnly? measuredThrough, bool station = true) =>
+    private void Serve(DateOnly? measuredFrom, DateOnly? measuredThrough, bool station = true, bool configured = true) =>
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), Cabin.LocationId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((DateOnly from, DateOnly to, Guid? _, CancellationToken _) =>
             {
@@ -285,12 +323,14 @@ public class LocationWeatherHistoryTests : IDisposable
                     Location = new WeatherLocationRef { LocationId = Cabin.LocationId, Name = Cabin.Name },
                     Status = days.Count > 0 ? WeatherStatus.Ok : WeatherStatus.NoData,
                     Days = days,
-                    History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station },
+                    History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station, ObservationsConfigured = configured },
                 }, HttpStatusCode.OK);
             });
 
-    private IRenderedComponent<LocationWeatherHistorySection> Render(BunitContext ctx, ExistingWeatherLocation? row = null) =>
-        ctx.Render<LocationWeatherHistorySection>(p => p.Add(c => c.Location, Cabin).Add(c => c.Row, row));
+    private IRenderedComponent<LocationWeatherHistorySection> Render(
+        BunitContext ctx, ExistingWeatherLocation? row = null, bool canSetUp = false, bool canOpenSettings = false) =>
+        ctx.Render<LocationWeatherHistorySection>(p => p.Add(c => c.Location, Cabin).Add(c => c.Row, row)
+            .Add(c => c.CanSetUp, canSetUp).Add(c => c.CanOpenSettings, canOpenSettings));
 
     private static IRenderedComponent<OdsIconButton> Nav(IRenderedComponent<LocationWeatherHistorySection> section, string direction) =>
         section.FindComponents<OdsIconButton>().Single(b => b.Instance.AriaLabel.StartsWith(direction, StringComparison.Ordinal));

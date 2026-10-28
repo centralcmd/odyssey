@@ -139,7 +139,8 @@
                         }
                         @if (ShowHistory(l))
                         {
-                            <LocationWeatherHistorySection Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)" />
+                            <LocationWeatherHistorySection Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)"
+                                                           CanSetUp="_canUpdateWeather" CanOpenSettings="_canOpenSettings" />
                         }
                     </Details>
                 </OdsRecordCard>

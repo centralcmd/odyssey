@@ -77,6 +77,7 @@ public partial class LocationsPage
     private bool _canUpdateWeather;
     private bool _canPurgeWeather;
     private bool _canReadWeatherData;
+    private bool _canOpenSettings;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
     private Guid _createKey = Guid.Empty;
@@ -128,6 +129,7 @@ public partial class LocationsPage
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         // Temperature history is weather data, not setup: it follows weather.read, which every role holds.
         _canReadWeatherData = user.HasPermission(PermissionClaims.WeatherRead);
+        _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
 
         await RestorePageStateAsync();
         await Task.WhenAll(LoadLocations(), LoadCounts(), LoadWeatherAsync(), LoadWeatherOptionsAsync());

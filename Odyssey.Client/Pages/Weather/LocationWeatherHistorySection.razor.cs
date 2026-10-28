@@ -18,7 +18,14 @@ public partial class LocationWeatherHistorySection
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
     [Parameter] public ExistingWeatherLocation? Row { get; set; }
 
+    /// <summary>weather.locations.update — picks the Admin copy when history cannot be fetched yet.</summary>
+    [Parameter] public bool CanSetUp { get; set; }
+
+    /// <summary>system-settings.update — offers the way to the setting that is missing.</summary>
+    [Parameter] public bool CanOpenSettings { get; set; }
+
     [Inject] private IWeatherApiClient Weather { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     internal enum Phase { Loading, Ready, RateLimited, Error }
 
@@ -227,4 +234,6 @@ public partial class LocationWeatherHistorySection
     private static string ShortDate(DateOnly date) => date.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);
 
     private bool WeatherOff => Row is { Enabled: false };
+
+    private void OpenSettings() => Nav.NavigateTo("/settings");
 }

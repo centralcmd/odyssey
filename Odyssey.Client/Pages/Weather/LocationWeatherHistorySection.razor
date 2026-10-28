@@ -11,8 +11,15 @@
 }
 else if (_bounds is { HasObservationStation: false })
 {
+    @* The server sends false only once Frost was asked and found none — never because nobody has asked. *@
     <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true"
                       EmptyText="@Text("No MET Norway station measures within 25 km of this place, so there is no temperature history. Forecasts are not affected.")" />
+}
+else if (_bounds is { ObservationsConfigured: false } && (Latest is null || Earliest is null))
+{
+    @* Nothing stored and nothing can be fetched: say why rather than promise history that will never
+       arrive. History stored before the setting was cleared still shows. *@
+    <OdsRecordSection Class="@Cls" Label="Temperature history" Empty="true" EmptyText="@NotConfiguredText" />
 }
 else if (_bounds is not null && (Latest is null || Earliest is null))
 {
@@ -98,6 +105,16 @@ else
     private const string Cls = "acct-section wx-section wx-hist";
 
     private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    private RenderFragment NotConfiguredText => CanSetUp
+        ? @<span class="wx-sec-empty">
+              Measured temperature comes from MET Norway’s Frost service, which needs a client ID. Add one in System settings → Weather, and history starts filling in from the next morning.
+              @if (CanOpenSettings)
+              {
+                  <OdsButton Variant="OdsButtonVariant.Outlined" Icon="settings" OnClick="OpenSettings">Open System settings</OdsButton>
+              }
+          </span>
+        : Text("Measured temperature isn’t set up yet. An administrator needs to finish setting it up for this household.");
 
     private RenderFragment Box(string icon, string title, string text) => @<div class="wx-empty">
         <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
