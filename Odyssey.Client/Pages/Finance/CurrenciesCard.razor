@@ -56,11 +56,6 @@
                                 Placeholder="Search code, name, or symbol…" Class="ph-search" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
-                @if (_canReadSync)
-                {
-                    <OdsMultiSelect Label="Sync" Values="_syncFilter" ValuesChanged="OnSyncFilterChanged"
-                                    Options="SyncOptions" Class="ph-select" />
-                }
                 <OdsSortSelect TRow="ExistingCurrency" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
             </div>
@@ -72,10 +67,10 @@
         <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
             <div class="xrs-banner">
                 <span>@UnsupportedBannerText</span>
-                @if (!ShowingSyncedOnly)
+                @if (!ShowingUnpublishedOnly)
                 {
                     @* The row it names may be filtered out, so the banner carries the way to it. *@
-                    <OdsButton Variant="OdsButtonVariant.Text" Icon="visibility" OnClick="ShowSyncedAsync">Show synced currencies</OdsButton>
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="visibility" OnClick="ShowUnpublishedAsync">Show them</OdsButton>
                 }
             </div>
         </OdsAlert>
@@ -108,19 +103,9 @@
                                Open="@(_openCode == c.CurrencyCode)"
                                OnToggle="@(open => _openCode = open ? c.CurrencyCode : null)">
                     <Chips>
-                        @if (c.Archived is not null)
-                        {
-                            <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
-                        }
-                        @if (_canReadSync && c.Sync is { } sync)
-                        {
-                            var chip = OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(sync));
-                            <OdsChip Tone="@chip.Tone" Dot="@chip.Dot" Class="sm">@chip.Label</OdsChip>
-                            @if (sync.Supported == false && sync.Enabled)
-                            {
-                                <OdsChip Tone="OdsChipTone.Warning" Icon="warning" Class="sm problem">No longer published</OdsChip>
-                            }
-                        }
+                        @* The one derived status, everyone's (issue #351). *@
+                        @{ var status = OdsTypeRegistries.CurrencyStatusOf(c.Status); }
+                        <OdsChip Tone="@status.Tone" Dot="@status.Dot" Class="sm">@status.Label</OdsChip>
                         @if (_busy.Contains(c.CurrencyCode))
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Class="sm">Saving…</OdsChip>
@@ -150,12 +135,16 @@
                             </OdsInfoTile>
                             <OdsInfoTile Icon="pin" Label="Minor units" Foot="@OdsInfoTile.Caption("decimal places")"><Value>@c.MinorUnits</Value></OdsInfoTile>
                             <OdsInfoTile Icon="payments" Label="Example" ValueVariant="OdsInfoTileVariant.Sm"><Value>@Example(c)</Value></OdsInfoTile>
-                            <OdsInfoTile Icon="@(c.Archived is null ? "task_alt" : "inventory_2")" Label="Status" ValueVariant="OdsInfoTileVariant.Sm">
-                                <Value>@(c.Archived is null ? "Active" : "Archived")</Value>
+                            @* The status, everyone's; for a sync reader its foot names the source — the row's one
+                               naming of it, since it is the same provider on every synced row — or carries the
+                               base's note. *@
+                            <OdsInfoTile Icon="@StatusIcon(c.Status)" Label="Status" ValueVariant="OdsInfoTileVariant.Sm"
+                                         Foot="@OdsInfoTile.Caption(StatusFoot(c))">
+                                <Value>@OdsTypeRegistries.CurrencyStatusOf(c.Status).Label</Value>
                             </OdsInfoTile>
-                            @if (_canReadSync)
+                            @if (_canReadSync && c.Sync is { } sync)
                             {
-                                @SyncTiles(c)
+                                @SyncTiles(sync)
                             }
                         </OdsInfoTileGrid>
                     </Details>
@@ -231,27 +220,24 @@
 }
 
 @code {
-    // ── Exchange-rate sync tiles (issue #351), after the currency's own. An archived currency has no
-    // projection, so it shows one tile saying why. ────────────────────────────────────────────────────
+    // ── Exchange-rate sync tiles (issue #351), after the currency's own, for a sync reader. An archived
+    // currency has no projection and its status already says why, so it shows none. The back-fill is in
+    // the status and the fetched-rate count in the header, so neither is a tile. ──────────────────────
 
-    private RenderFragment SyncTiles(ExistingCurrency c) => c.Sync is not { } s
-        ? @<OdsInfoTile Icon="sync_disabled" Label="Sync" ValueVariant="OdsInfoTileVariant.Text"><Value>Archived currencies are not synced.</Value></OdsInfoTile>
-        : @<text>
-            @* The one place the source is named per currency: it is the same provider on every synced
-               row, so the header does not repeat it. *@
-            <OdsInfoTile Icon="sync" Label="Sync" ValueVariant="OdsInfoTileVariant.Text" Foot="@OdsInfoTile.Caption(RowNote(s))">
-                <Value>@(CurrencySyncStates.Of(s) == CurrencySyncState.On
-                    ? $"Synced from {ProviderName}"
-                    : OdsTypeRegistries.CurrencySyncStateOf(CurrencySyncStates.Of(s)).Label)</Value>
-            </OdsInfoTile>
+    private static string StatusIcon(CurrencyStatus? status) =>
+        status is { } known && OdsTypeRegistries.CurrencyStatuses.TryGetValue(known, out var entry) ? entry.Icon : "help";
+
+    private string? StatusFoot(ExistingCurrency c) => !_canReadSync || c.Sync is not { } s ? null
+        : s.Locked ? RowNote(s)
+        : c.Status is CurrencyStatus.Synced or CurrencyStatus.FetchingHistory ? $"from {ProviderName}"
+        : null;
+
+    private RenderFragment SyncTiles(ExistingExchangeRateSyncCurrency s) => @<text>
             @if (!s.Locked)
             {
                 <OdsInfoTile Icon="date_range" Label="Coverage" ValueVariant="OdsInfoTileVariant.Sm"
                              Foot="@OdsInfoTile.Caption(s.NewestFetchedDate is { } newest ? $"to {ExchangeRateSyncTime.Date(newest)}" : null)">
                     <Value>@(s.OldestFetchedDate is { } oldest ? ExchangeRateSyncTime.Date(oldest) : "Not fetched yet")</Value>
-                </OdsInfoTile>
-                <OdsInfoTile Icon="downloading" Label="Backfill" ValueVariant="OdsInfoTileVariant.Sm">
-                    <Value>@(OdsTypeRegistries.ExchangeRateBackfillStates.GetValueOrDefault(OdsTypeRegistries.ExchangeRateBackfillOf(s), OdsTypeRegistries.UnknownChip).Label)</Value>
                 </OdsInfoTile>
                 <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
                              Foot="@OdsInfoTile.Caption(s.HistoryStartDate is null ? "the instance default" : "this currency’s own date")">

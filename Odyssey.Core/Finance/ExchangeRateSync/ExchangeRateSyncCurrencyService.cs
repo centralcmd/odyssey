@@ -95,10 +95,16 @@ public sealed partial class ExchangeRateSyncCurrencyService(
 
     /// <summary>
     /// The sync projection of every non-archived currency, keyed nowhere and unpaged: the currencies list
-    /// attaches it to its rows and filters and sorts by it. <see cref="ExistingExchangeRateSyncCurrency.FetchedRowCount"/>
-    /// is left at 0; <see cref="FillFetchedRowCountsAsync"/> fills it for the rows actually returned.
+    /// derives every row's status from it, and attaches it for a caller allowed to see it.
+    /// <see cref="ExistingExchangeRateSyncCurrency.FetchedRowCount"/> is left at 0;
+    /// <see cref="FillFetchedRowCountsAsync"/> fills it for the rows actually returned.
     /// </summary>
-    public async Task<List<ExistingExchangeRateSyncCurrency>> ProjectAllAsync(CancellationToken cancellationToken = default)
+    /// <param name="withExtents">
+    /// Whether to read the fetched date extents (the coverage), which scans the fetched rates. The status
+    /// needs none of it, so a caller who gets only the status skips it.
+    /// </param>
+    public async Task<List<ExistingExchangeRateSyncCurrency>> ProjectAllAsync(
+        CancellationToken cancellationToken = default, bool withExtents = true)
     {
         var currencies = await context.Currencies.AsNoTracking()
             .Where(currency => currency.Archived == null)
@@ -110,7 +116,9 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         var series = await supportedList.GetAsync(client.GetSeriesAsync, cancellationToken);
         var settings = await settingsLookup.GetAsync(cancellationToken);
         // Only a currency that was ever configured can have fetched rows.
-        var extents = await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken);
+        var extents = withExtents
+            ? await sync.FetchedExtentsAsync(ExchangeRateSyncClock.Oslo, configured.Keys.ToList(), cancellationToken)
+            : new Dictionary<string, ExchangeRateSyncService.FetchedExtent>();
 
         return currencies
             .Select(currency => Project(

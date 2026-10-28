@@ -72,15 +72,20 @@ public static partial class OdsTypeRegistries
     };
 
     /// <summary>
-    /// EXCHANGE_RATE_CURRENCY_SYNC — the Sync column and filter on Currencies, keyed by the server's
-    /// <see cref="CurrencySyncState"/>; the state itself comes from the shared <see cref="CurrencySyncStates.Of"/>.
+    /// CURRENCY_STATUSES — a currency's one derived status (the server's <see cref="CurrencyStatus"/>, issue
+    /// #351), for its chip, the Status filter and the By status breakdown, in reading order. The breakdown
+    /// tone and icon ride along, so the chip and the breakdown cannot disagree.
     /// </summary>
-    public static readonly IReadOnlyDictionary<CurrencySyncState, OdsChipValue> CurrencySyncStateChips = new Dictionary<CurrencySyncState, OdsChipValue>
-    {
-        [CurrencySyncState.On] = new("Synced", OdsChipTone.Income, Dot: true),
-        [CurrencySyncState.Off] = new("Not synced", OdsChipTone.Outline, Dot: true),
-        [CurrencySyncState.NotPublished] = new("Not published", OdsChipTone.Outline),
-    };
+    public static readonly IReadOnlyDictionary<CurrencyStatus, (OdsChipValue Chip, string Tone, string Icon)> CurrencyStatuses =
+        new Dictionary<CurrencyStatus, (OdsChipValue, string, string)>
+        {
+            [CurrencyStatus.Synced] = (new("Synced", OdsChipTone.Income, Dot: true), "income", "sync"),
+            [CurrencyStatus.FetchingHistory] = (new("Fetching history", OdsChipTone.Info, Dot: true), "info", "downloading"),
+            [CurrencyStatus.NoLongerPublished] = (new("No longer published", OdsChipTone.Warning, Dot: true), "warning", "warning"),
+            [CurrencyStatus.Manual] = (new("Manual", OdsChipTone.Default, Dot: true), "default", "edit_note"),
+            [CurrencyStatus.NotPublished] = (new("Not published", OdsChipTone.Outline, Dot: true), "outline", "block"),
+            [CurrencyStatus.Archived] = (new("Archived", OdsChipTone.Outline, Dot: true), "outline", "inventory_2"),
+        };
 
     public static readonly IReadOnlyDictionary<ExchangeRateSyncErrorKind, string> ExchangeRateSyncErrors = new Dictionary<ExchangeRateSyncErrorKind, string>
     {
@@ -115,8 +120,9 @@ public static partial class OdsTypeRegistries
     public static string ExchangeRateSyncErrorOf(ExchangeRateSyncErrorKind kind) =>
         ExchangeRateSyncErrors.GetValueOrDefault(kind, SyncErrorFallback);
 
-    public static OdsChipValue CurrencySyncStateOf(CurrencySyncState state) =>
-        CurrencySyncStateChips.GetValueOrDefault(state, UnknownChip);
+    /// <summary>The chip for a currency's status; <see cref="UnknownChip"/> for none or a value this client does not know.</summary>
+    public static OdsChipValue CurrencyStatusOf(CurrencyStatus? status) =>
+        status is { } known && CurrencyStatuses.TryGetValue(known, out var entry) ? entry.Chip : UnknownChip;
 
     public static ExchangeRateBackfillState ExchangeRateBackfillOf(ExistingExchangeRateSyncCurrency currency) =>
         !currency.Enabled ? ExchangeRateBackfillState.Off

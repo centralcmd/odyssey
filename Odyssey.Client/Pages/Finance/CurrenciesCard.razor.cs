@@ -33,35 +33,34 @@ public partial class CurrenciesCard
     private bool _searchOpen = true;
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = [];
-    private IReadOnlyCollection<string> _syncFilter = [];
 
-    // Sort (§6.5): Code + Name curated, plus Sync for a caller who can read it; one OdsTableSort synced
-    // with the table headers.
+    // Sort (§6.5): Code, Name and the derived Status — everyone's, like the filter.
     private static readonly OdsTableSort DefaultSort = new("code", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
-    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> BaseSortFields =
+    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> SortFields =
     [
         new() { Key = "code", Label = "Code", Type = OdsSortType.Text },
         new() { Key = "name", Label = "Name", Type = OdsSortType.Text },
+        new() { Key = "status", Label = "Status", Type = OdsSortType.Status },
     ];
-    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> SyncSortFields =
-        [.. BaseSortFields, new() { Key = "sync", Label = "Sync", Type = OdsSortType.Status }];
 
-    private IReadOnlyList<OdsSortField<ExistingCurrency>> SortFields => _canReadSync ? SyncSortFields : BaseSortFields;
-
+    // The one Status filter (issue #351): the server's CurrencyStatus names, in reading order.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+    [
+        .. OdsTypeRegistries.CurrencyStatuses.Select(entry => new OdsOption(entry.Key.ToString(), entry.Value.Chip.Label)),
+    ];
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allCurrencies, not the server-filtered display list, so they stay accurate under an active filter.
+    // Every status is listed, zero counts included, as the contract breakdown does.
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _allCurrencies, c => c.Archived is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+        _allCurrencies.Where(c => c.Status is not null), c => c.Status!.Value,
+        [.. OdsTypeRegistries.CurrencyStatuses.Select(entry =>
+            new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon))]);
 
     private int _activeCount => _allCurrencies.Count(c => c.Archived is null);
     private int _archivedCount => _allCurrencies.Count - _activeCount;
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0 || (_canReadSync && _syncFilter.Count > 0);
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0;
 
     /// <summary>
     /// Whether the page runs interactively; a swappable seam for the reason <c>Settings.InteractiveCheck</c>
@@ -98,9 +97,6 @@ public partial class CurrenciesCard
         _searchOpen = state.SearchOpen;
         _search = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        // A sync filter or sort saved under a role that could read sync is dropped under one that cannot,
-        // since the server would refuse the request.
-        _syncFilter = _canReadSync ? SyncOptions.KnownValues(state.SyncFilter) : [];
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _pageSize = OdsPageSizes.Restore(state.PageSize);
     }
@@ -111,7 +107,6 @@ public partial class CurrenciesCard
         SearchOpen = _searchOpen,
         Search = _search,
         StatusFilter = [.. _statusFilter],
-        SyncFilter = [.. _syncFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         PageSize = _pageSize,
@@ -123,7 +118,6 @@ public partial class CurrenciesCard
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
-    private async Task OnSyncFilterChanged(IReadOnlyCollection<string> values) { _syncFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
 
     private sealed class CurrenciesPageState
@@ -132,7 +126,6 @@ public partial class CurrenciesCard
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> StatusFilter { get; set; } = [];
-        public List<string> SyncFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int PageSize { get; set; } = OdsPageSizes.Default[0];
@@ -165,10 +158,9 @@ public partial class CurrenciesCard
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
             _page, _pageSize,
             search: _search,
-            status: _statusFilter,
+            statuses: _statusFilter,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
-            sync: _canReadSync ? _syncFilter : null,
             ct: ct));
         if (response.IsSuperseded)
             return;
@@ -220,7 +212,6 @@ public partial class CurrenciesCard
     {
         _search = string.Empty;
         _statusFilter = [];
-        _syncFilter = [];
         PersistPageState();
         await ReloadAsync();
     }

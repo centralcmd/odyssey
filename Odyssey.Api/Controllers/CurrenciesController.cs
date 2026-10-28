@@ -30,7 +30,8 @@ public sealed class CurrenciesController : ControllerBase
 
     /// <summary>
     /// A currency's sync projection is system-settings data, so <see cref="ExistingCurrency.Sync"/>
-    /// follows <c>system-settings.read</c> — decided here because the service has no principal.
+    /// follows <c>system-settings.read</c> — decided here because the service has no principal. The
+    /// derived <see cref="ExistingCurrency.Status"/> is everyone's.
     /// </summary>
     private bool CanReadSync() =>
         User.HasPermission(PermissionClaims.SystemSettingsRead);
@@ -39,25 +40,24 @@ public sealed class CurrenciesController : ControllerBase
     [Authorize(Policy = PermissionClaims.CurrenciesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingCurrency>))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "List currencies.",
-        Description = @"List currencies with search, sorting and pagination. For a caller holding
-                        system-settings.read, each non-archived row carries its exchange-rate sync
-                        projection (sync), and the sync filter and sortBy=sync apply; without the claim
-                        either is a 403, since the result alone would disclose the sync state.")]
+        Description = @"List currencies with search, sorting and pagination. Every row carries its derived
+                        status (Synced, FetchingHistory, NoLongerPublished, Manual, NotPublished,
+                        Archived), which statuses= filters and sortBy=status orders, for every caller.
+                        A caller holding system-settings.read also gets each non-archived row's
+                        exchange-rate sync projection (sync). status=active|archived is the older
+                        archival filter, kept for the currency pickers.")]
     public async Task<IActionResult> Get(
         [FromQuery] CurrenciesQueryParams query,
         CancellationToken cancellationToken = default)
     {
+        // The status needs the projection for everyone; only the detail (coverage, counts) is the claim's.
         var canReadSync = CanReadSync();
-        if (!canReadSync && (query.Sync is { Length: > 0 } || query.SortBy == CurrencySortBy.Sync))
-            return Forbid();
-
-        var sync = canReadSync ? await syncCurrencies.ProjectAllAsync(cancellationToken) : null;
-        var result = await currencyService.ListAsync(query, sync, cancellationToken);
-        if (sync is not null)
+        var sync = await syncCurrencies.ProjectAllAsync(cancellationToken, withExtents: canReadSync);
+        var result = await currencyService.ListAsync(query, sync, attachSync: canReadSync, cancellationToken);
+        if (canReadSync)
         {
             await syncCurrencies.FillFetchedRowCountsAsync(
                 result.Items.Select(item => item.Sync).OfType<ExistingExchangeRateSyncCurrency>().ToList(), cancellationToken);

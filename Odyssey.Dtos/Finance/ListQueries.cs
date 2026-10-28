@@ -105,15 +105,17 @@ public sealed class PropertyEventsQueryParams : QueryParams<PropertyEventSortBy>
 }
 
 /// <summary>
-/// Currencies list query: filter by archival status and, for a caller holding
-/// <c>system-settings.read</c>, by sync state (<c>?sync=On&amp;sync=NotPublished</c>; empty = all).
+/// Currencies list query. <see cref="Statuses"/> filters by the derived <see cref="CurrencyStatus"/>
+/// (<c>?statuses=Synced&amp;statuses=Manual</c>; empty = all; duplicates ignored, an out-of-range value
+/// matches nothing). <see cref="Status"/> is the older archival filter, kept for the currency pickers,
+/// which ask for every currency that is not archived.
 /// </summary>
 public sealed class CurrenciesQueryParams : QueryParams<CurrencySortBy>
 {
     public ArchivalStatus? Status { get; set; }
 
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
-    public CurrencySyncState[]? Sync { get; set; }
+    public CurrencyStatus[]? Statuses { get; set; }
 }
 
 /// <summary>

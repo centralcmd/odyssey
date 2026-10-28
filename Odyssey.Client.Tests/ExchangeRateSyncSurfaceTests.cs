@@ -288,6 +288,8 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
     private static ExistingExchangeRateSyncCurrency Currency(string code, bool enabled = false, bool locked = false, bool? supported = true) => new()
     {
         CurrencyCode = code, Name = code + " name", Enabled = enabled, Locked = locked, Supported = supported,
+        // A synced fixture is caught up unless a test says otherwise, so it reads Synced.
+        BackfillComplete = enabled || locked,
         EffectiveHistoryStartDate = new DateOnly(2026, 1, 1), FirstAvailableDate = new DateOnly(1999, 1, 4),
     };
 

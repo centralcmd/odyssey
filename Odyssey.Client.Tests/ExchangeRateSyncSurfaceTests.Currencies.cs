@@ -29,12 +29,16 @@ public partial class ExchangeRateSyncSurfaceTests
         PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete,
     ];
 
-    /// <summary>A currency row carrying <paramref name="sync"/>; an archived one carries none, as the server sends it.</summary>
+    /// <summary>
+    /// A currency row carrying <paramref name="sync"/> and the status the server derives from it with the
+    /// shared rule; an archived one carries no projection, as the server sends it.
+    /// </summary>
     private static ExistingCurrency Row(ExistingExchangeRateSyncCurrency? sync, string? code = null, bool archived = false) => new()
     {
         CurrencyCode = code ?? sync!.CurrencyCode, Name = (code ?? sync!.CurrencyCode) + " name", Symbol = "¤", MinorUnits = 2,
         Archived = archived ? Now.UtcDateTime : null,
         Sync = archived ? null : sync,
+        Status = CurrencyStatuses.Of(archived, archived ? null : sync),
     };
 
     private static Mock<ICurrenciesApiClient> CurrenciesReturning(params ExistingCurrency[] rows)
@@ -138,8 +142,8 @@ public partial class ExchangeRateSyncSurfaceTests
         Assert.DoesNotContain("Exchange-rate sync", cut.Markup);
         Assert.Empty(cut.FindComponents<ExchangeRateSyncStatusPanel>());
         sync.VerifyNoOtherCalls();
-        currencies.Verify(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
-            It.IsAny<string?>(), It.IsAny<string?>(), null, It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+        // The status is everyone's: the row shows it, with no other sync part.
+        Assert.Contains("Manual", RowOf(cut, "USD").TextContent);
     }
 
     [Fact]
@@ -213,39 +217,42 @@ public partial class ExchangeRateSyncSurfaceTests
 
         Open(cut, "USD");
         var body = RowOf(cut, "USD").TextContent;
-        Assert.Contains("Synced from Provider", body);
+        Assert.Contains("from Provider", body);
         Assert.Contains("Earliest rate", body);
         Assert.Contains("first day Provider publishes", body);
         Assert.DoesNotContain("Available from", body);
     }
 
     [Fact]
-    public async Task An_archived_row_has_no_sync_chip_says_why_in_its_body_and_has_no_sync_actions()
+    public async Task An_archived_row_reads_archived_has_no_sync_detail_and_no_sync_actions()
     {
         var (ctx, _, _) = NewCurrenciesContext(Row(null, "CHF", archived: true));
         await using var __ = ctx;
 
         var cut = RenderCurrencies(ctx, "CHF");
 
-        Assert.DoesNotContain("synced", RowOf(cut, "CHF").QuerySelector(".odc-record-head")!.TextContent, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("Archived", RowOf(cut, "CHF").QuerySelector(".odc-record-head")!.TextContent);
         Open(cut, "CHF");
-        Assert.Contains("Archived currencies are not synced.", RowOf(cut, "CHF").TextContent);
+        Assert.DoesNotContain("Coverage", RowOf(cut, "CHF").TextContent);
         var menu = MenuOf(cut, "CHF");
         Assert.DoesNotContain("Start sync", menu);
     }
 
     [Fact]
-    public async Task The_sync_filter_is_sent_as_state_names()
+    public async Task The_one_status_filter_is_sent_as_status_names_and_offers_every_status()
     {
-        var (ctx, _, currencies) = NewCurrenciesContext(Row(Currency("USD")));
+        var (ctx, _, currencies) = NewCurrenciesContext([PermissionClaims.CurrenciesRead], Row(Currency("USD")));
         await using var __ = ctx;
         var cut = RenderCurrencies(ctx, "USD");
 
-        await cut.InvokeAsync(() => cut.FindComponents<Odyssey.Client.Components.OdsMultiSelect>()
-            .Single(m => m.Instance.Label == "Sync").Instance.ValuesChanged.InvokeAsync(["On"]));
+        var filters = cut.FindComponents<Odyssey.Client.Components.OdsMultiSelect>();
+        var status = Assert.Single(filters);
+        Assert.Equal("Status", status.Instance.Label);
+        Assert.Equal(Enum.GetNames<CurrencyStatus>(), status.Instance.Options.Select(o => o.Value));
+        await cut.InvokeAsync(() => status.Instance.ValuesChanged.InvokeAsync(["Synced"]));
 
         currencies.Verify(c => c.ListAsync(1, It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
-            It.IsAny<string?>(), It.IsAny<string?>(), It.Is<IReadOnlyCollection<string>?>(s => s != null && s.SequenceEqual(new[] { "On" })),
+            It.IsAny<string?>(), It.IsAny<string?>(), It.Is<IReadOnlyCollection<string>?>(s => s != null && s.SequenceEqual(new[] { "Synced" })),
             It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -289,7 +296,7 @@ public partial class ExchangeRateSyncSurfaceTests
         // A refusal opens the row: the reason is its alert, never hidden behind a collapsed card.
         cut.WaitForAssertion(() => Assert.Contains("The provider doesn't publish USD.", RowOf(cut, "USD").TextContent));
         Assert.Equal("true", RowOf(cut, "USD").QuerySelector(".odc-record-trigger")!.GetAttribute("aria-expanded"));
-        Assert.Contains("Not synced", RowOf(cut, "USD").TextContent);
+        Assert.Contains("Manual", RowOf(cut, "USD").TextContent);
         cut.WaitForAssertion(() => Assert.Contains("Couldn’t start syncing USD.", AssertiveText(cut)));
     }
 
@@ -699,7 +706,7 @@ public partial class ExchangeRateSyncSurfaceTests
                 It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<CancellationToken>()))
             .Returns(userQuery.Task);
         _ = cut.InvokeAsync(() => cut.FindComponents<Odyssey.Client.Components.OdsMultiSelect>()
-            .Single(m => m.Instance.Label == "Sync").Instance.ValuesChanged.InvokeAsync(["NotPublished"]));
+            .Single(m => m.Instance.Label == "Status").Instance.ValuesChanged.InvokeAsync(["NotPublished"]));
         _time!.Advance(ExchangeRateSyncStatusPanel.PollInterval);
         // The page's own read and the panel's, both Running, then the poll that sees the run end.
         cut.WaitForAssertion(() => sync.Verify(c => c.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Exactly(3)));

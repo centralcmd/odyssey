@@ -15,14 +15,18 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
 
     /// <summary>Server-side paged list (issue #277): search over code/name + allowlisted sort.</summary>
     /// <param name="sync">
-    /// Every non-archived currency's sync projection, for a caller allowed to see it; <c>null</c> otherwise.
-    /// When given, it is attached to the returned rows and the <see cref="CurrenciesQueryParams.Sync"/>
-    /// filter and the <see cref="CurrencySortBy.Sync"/> key read it; when <c>null</c>, both are ignored, so
-    /// gating them is the caller's job. An archived currency has no projection and matches no sync state.
+    /// Every non-archived currency's sync projection, which the derived <see cref="CurrencyStatus"/> is
+    /// computed from — for every caller. <c>null</c> reads every non-archived currency as
+    /// <see cref="CurrencyStatus.Manual"/>.
+    /// </param>
+    /// <param name="attachSync">
+    /// Whether the projection itself is attached to the rows (<see cref="ExistingCurrency.Sync"/>) — only for
+    /// a caller allowed to see the sync's detail, which the caller decides. The status is attached always.
     /// </param>
     public async Task<PagedResult<ExistingCurrency>> ListAsync(
         CurrenciesQueryParams query,
         IReadOnlyCollection<ExistingExchangeRateSyncCurrency>? sync = null,
+        bool attachSync = false,
         CancellationToken cancellationToken = default)
     {
         var q = context.Currencies.AsNoTracking().AsQueryable();
@@ -43,22 +47,30 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             _ => q,
         };
 
-        // The sync state is not a column, so the filter and the sort run on the code lists it splits into;
-        // EF translates each Contains to an IN, keeping the paging in the database.
-        var byState = (sync ?? [])
-            .GroupBy(item => CurrencySyncStates.Of(item))
+        // The status is not a column, so the filter and the sort run on the code lists it splits into; EF
+        // translates each Contains to an IN, keeping the paging in the database. An archived currency is
+        // Archived by its own column; a non-archived one with no projection is Manual.
+        var projected = (sync ?? []).ToDictionary(item => item.CurrencyCode, StringComparer.Ordinal);
+        var byStatus = projected.Values
+            .GroupBy(item => CurrencyStatuses.Of(archived: false, item))
             .ToDictionary(group => group.Key, group => group.Select(item => item.CurrencyCode).ToList());
-        var on = byState.GetValueOrDefault(CurrencySyncState.On) ?? [];
-        var off = byState.GetValueOrDefault(CurrencySyncState.Off) ?? [];
-        var notPublished = byState.GetValueOrDefault(CurrencySyncState.NotPublished) ?? [];
+        List<string> CodesOf(CurrencyStatus status) => byStatus.GetValueOrDefault(status) ?? [];
+        var projectedCodes = projected.Keys.ToList();
+        var synced = CodesOf(CurrencyStatus.Synced);
+        var fetching = CodesOf(CurrencyStatus.FetchingHistory);
+        var unpublished = CodesOf(CurrencyStatus.NoLongerPublished);
+        var notPublished = CodesOf(CurrencyStatus.NotPublished);
 
         // Out-of-range values match nothing; duplicates are ignored.
-        if (sync is not null && query.Sync is { Length: > 0 } states)
+        if (query.Statuses is { Length: > 0 } statuses)
         {
-            var allowed = states.Distinct()
-                .SelectMany(state => byState.GetValueOrDefault(state) ?? [])
-                .ToList();
-            q = q.Where(c => allowed.Contains(c.CurrencyCode));
+            var wanted = statuses.ToHashSet();
+            var wantArchived = wanted.Contains(CurrencyStatus.Archived);
+            var wantUnprojected = wanted.Contains(CurrencyStatus.Manual);
+            var allowed = wanted.SelectMany(CodesOf).ToList();
+            q = q.Where(c => (wantArchived && c.Archived != null)
+                || (c.Archived == null && (allowed.Contains(c.CurrencyCode)
+                    || (wantUnprojected && !projectedCodes.Contains(c.CurrencyCode)))));
         }
 
         var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: true);
@@ -67,24 +79,31 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             CurrencySortBy.Name => ascending ? q.OrderBy(c => c.Name) : q.OrderByDescending(c => c.Name),
             CurrencySortBy.Symbol => ascending ? q.OrderBy(c => c.Symbol) : q.OrderByDescending(c => c.Symbol),
             CurrencySortBy.MinorUnits => ascending ? q.OrderBy(c => c.MinorUnits) : q.OrderByDescending(c => c.MinorUnits),
-            // Status sorts on the derived archival flag (active before archived when ascending).
-            CurrencySortBy.Status => ascending ? q.OrderBy(c => c.Archived != null) : q.OrderByDescending(c => c.Archived != null),
-            // Synced, not synced, not published, then the rows with no projection (archived).
-            CurrencySortBy.Sync when sync is not null => ascending
-                ? q.OrderBy(c => on.Contains(c.CurrencyCode) ? 0 : off.Contains(c.CurrencyCode) ? 1 : notPublished.Contains(c.CurrencyCode) ? 2 : 3)
-                : q.OrderByDescending(c => on.Contains(c.CurrencyCode) ? 0 : off.Contains(c.CurrencyCode) ? 1 : notPublished.Contains(c.CurrencyCode) ? 2 : 3),
+            // The derived status, in its reading order (the enum's): synced first, archived last.
+            CurrencySortBy.Status => ascending
+                ? q.OrderBy(c => c.Archived != null ? (int)CurrencyStatus.Archived
+                    : synced.Contains(c.CurrencyCode) ? (int)CurrencyStatus.Synced
+                    : fetching.Contains(c.CurrencyCode) ? (int)CurrencyStatus.FetchingHistory
+                    : unpublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NoLongerPublished
+                    : notPublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NotPublished
+                    : (int)CurrencyStatus.Manual)
+                : q.OrderByDescending(c => c.Archived != null ? (int)CurrencyStatus.Archived
+                    : synced.Contains(c.CurrencyCode) ? (int)CurrencyStatus.Synced
+                    : fetching.Contains(c.CurrencyCode) ? (int)CurrencyStatus.FetchingHistory
+                    : unpublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NoLongerPublished
+                    : notPublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NotPublished
+                    : (int)CurrencyStatus.Manual),
             _ => ascending ? q.OrderBy(c => c.CurrencyCode) : q.OrderByDescending(c => c.CurrencyCode),
         };
         q = sorted.ThenBy(c => c.CurrencyCode);
 
         var page = await q.ToPagedResultAsync(query.Offset, query.Limit, c => c.Adapt<ExistingCurrency>(), cancellationToken);
-        if (sync is not null)
+        foreach (var item in page.Items)
         {
-            var byCode = sync.ToDictionary(item => item.CurrencyCode, StringComparer.Ordinal);
-            foreach (var item in page.Items)
-            {
-                item.Sync = item.Archived is null ? byCode.GetValueOrDefault(item.CurrencyCode) : null;
-            }
+            var projection = item.Archived is null ? projected.GetValueOrDefault(item.CurrencyCode) : null;
+            item.Status = CurrencyStatuses.Of(item.Archived is not null, projection);
+            if (attachSync)
+                item.Sync = projection;
         }
 
         return page;

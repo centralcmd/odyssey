@@ -40,17 +40,10 @@ public partial class CurrenciesCard
     private ExistingExchangeRateSyncCurrency? _purging;
     private bool _purgeOpen;
 
-    // The Sync filter's values are the server's CurrencySyncState names.
-    private static readonly IReadOnlyList<OdsOption> SyncOptions =
-    [
-        .. Enum.GetValues<CurrencySyncState>()
-            .Select(state => new OdsOption(state.ToString(), OdsTypeRegistries.CurrencySyncStateOf(state).Label)),
-    ];
-
     private string? ProviderName => _syncStatus?.ProviderDisplayName;
 
-    private bool ShowingSyncedOnly =>
-        _syncFilter.Count == 1 && _syncFilter.Contains(nameof(CurrencySyncState.On));
+    private bool ShowingUnpublishedOnly =>
+        _statusFilter.Count == 1 && _statusFilter.Contains(nameof(CurrencyStatus.NoLongerPublished));
 
     private IReadOnlyList<string> UnsupportedEnabled => _syncStatus?.UnsupportedEnabledCodes ?? [];
 
@@ -104,8 +97,8 @@ public partial class CurrenciesCard
             return;
 
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
-            _page, _pageSize, search: _search, status: _statusFilter, sortBy: _sort.Key,
-            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc", sync: _syncFilter, ct: ct));
+            _page, _pageSize, search: _search, statuses: _statusFilter, sortBy: _sort.Key,
+            sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc", ct: ct));
         if (response.IsSuperseded)
             return;
         if (!response.Value.IsSuccess || response.Value.Value is not { } page)
@@ -126,7 +119,7 @@ public partial class CurrenciesCard
 
     private Task AnnounceAssertive(string message) => _assertive?.Announce(message) ?? Task.CompletedTask;
 
-    private Task ShowSyncedAsync() => OnSyncFilterChanged([nameof(CurrencySyncState.On)]);
+    private Task ShowUnpublishedAsync() => OnStatusFilterChanged([nameof(CurrencyStatus.NoLongerPublished)]);
 
     // ── Rows ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -161,8 +154,12 @@ public partial class CurrenciesCard
     private void ReplaceSync(ExistingExchangeRateSyncCurrency updated)
     {
         var row = _currencies.FirstOrDefault(c => c.CurrencyCode == updated.CurrencyCode);
-        if (row is not null)
-            row.Sync = updated;
+        if (row is null)
+            return;
+        row.Sync = updated;
+        // The same shared rule the server derives the list's status with, so a patched row cannot read
+        // differently from a re-read one.
+        row.Status = CurrencyStatuses.Of(row.Archived is not null, updated);
     }
 
     // Each sync item is offered only when it can act; an unavailable one is omitted, never greyed. The

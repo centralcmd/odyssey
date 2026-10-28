@@ -15,13 +15,14 @@ namespace Odyssey.ApiClient.Resources;
 public interface ICurrenciesApiClient
 {
     /// <summary>
-    /// One page of currencies for the admin list. <paramref name="sync"/> takes
-    /// <see cref="CurrencySyncState"/> names and, like <c>sortBy=Sync</c>, needs
-    /// <c>system-settings.read</c>; a caller holding it also gets each row's <see cref="ExistingCurrency.Sync"/>.
+    /// One page of currencies for the Currencies page. <paramref name="statuses"/> takes
+    /// <see cref="CurrencyStatus"/> names; every row carries its <see cref="ExistingCurrency.Status"/>, and a
+    /// caller holding <c>system-settings.read</c> also gets its <see cref="ExistingCurrency.Sync"/>.
+    /// <paramref name="status"/> is the older archival filter (<c>active</c> / <c>archived</c>).
     /// </summary>
     Task<ApiResult<PagedResult<ExistingCurrency>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? status = null,
-        string? sortBy = null, string? sortDir = null, IReadOnlyCollection<string>? sync = null,
+        string? sortBy = null, string? sortDir = null, IReadOnlyCollection<string>? statuses = null,
         CancellationToken ct = default);
 
     /// <summary>Every currency in one window — the currency pickers.</summary>
@@ -45,14 +46,14 @@ public sealed class CurrenciesApiClient(IOdysseyApi api) : ICurrenciesApiClient
 
     public Task<ApiResult<PagedResult<ExistingCurrency>>> ListAsync(
         int page, int pageSize, string? search = null, IReadOnlyCollection<string>? status = null,
-        string? sortBy = null, string? sortDir = null, IReadOnlyCollection<string>? sync = null,
+        string? sortBy = null, string? sortDir = null, IReadOnlyCollection<string>? statuses = null,
         CancellationToken ct = default) =>
         api.GetPagedAsync<ExistingCurrency>(
             PagedQuery.For(Base)
                 .Window(page, pageSize)
                 .Add("search", search)
                 .AddSingle("status", status)
-                .AddMany("sync", sync)
+                .AddMany("statuses", statuses)
                 .Add("sortBy", sortBy)
                 .Add("sortDir", sortDir)
                 .Build(),
