@@ -52,9 +52,8 @@ public static class GlobalExceptionHandler
             // The file store's 503 (issue #346 §9): a degraded volume usually recovers within a probe interval,
             // so the client is told when to try again.
             case FileStorageUnavailableException unavailable:
-                logger.LogWarning(unavailable,
-                    "File storage unavailable on {Method} {Path}: {Message}",
-                    context.Request.Method, context.Request.Path, unavailable.Message);
+                // The message only: it names at most the volume, and the request path is caller-supplied.
+                logger.LogWarning("File storage unavailable: {Message}", unavailable.Message);
                 context.Response.Headers.RetryAfter =
                     FileStorageUnavailableException.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 return WriteAsync(context, unavailable.StatusCode, unavailable.Message,
