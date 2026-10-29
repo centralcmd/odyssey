@@ -185,7 +185,8 @@
             if (!Invalidated((await Currencies.UpdateAsync(Currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated.")))
                 return false;
 
-            return await SaveSyncStartAsync(Currency.CurrencyCode, EditedSync?.Enabled ?? false, EditedSync?.HistoryStartDate);
+            return await SaveSyncStartAsync(Currency.CurrencyCode, EditedSync?.Enabled ?? false, EditedSync?.HistoryStartDate)
+                || await CurrencyWrittenAsync();
         }
 
         if (_createdCode is null)
@@ -204,7 +205,17 @@
             _createdCode = newCurrency.CurrencyCode;
         }
 
-        return await SaveSyncStartAsync(_createdCode, enabled: false, saved: null);
+        return await SaveSyncStartAsync(_createdCode, enabled: false, saved: null)
+            || await CurrencyWrittenAsync();
+    }
+
+    // The currency itself was written but the start date was refused, so the dialog stays open and
+    // OdsFormDialog will not raise OnSaved. The host still has to show the written currency, even if the
+    // user then cancels.
+    private async Task<bool> CurrencyWrittenAsync()
+    {
+        await OnSaved.InvokeAsync();
+        return false;
     }
 
     // The second write, only when the date differs from what is stored. A refusal keeps the dialog open

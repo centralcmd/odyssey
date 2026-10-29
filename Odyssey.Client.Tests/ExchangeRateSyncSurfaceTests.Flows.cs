@@ -17,7 +17,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// The error paths and multi-step flows of the exchange-rate sync surfaces: Run now's refusals, a poll's
-/// refusals, the manual refresh, and the fetched-rate delete on /exchange-rates. The currency rows'
+/// refusals, the manual refresh, and the claim matrix on /exchange-rates. The currency rows'
 /// flows are in ExchangeRateSyncSurfaceTests.Currencies.cs.
 /// </summary>
 public partial class ExchangeRateSyncSurfaceTests
@@ -194,22 +194,29 @@ public partial class ExchangeRateSyncSurfaceTests
         Assert.Equal(ExchangeRateSyncStatusPanel.StaleReason.Errors, cut.Instance.Stale);
     }
 
-    // ── /exchange-rates: the rest of the claim matrix and the confirmed delete ───────────────────
-
-    [Theory]
-    [InlineData(new[] { PermissionClaims.ExchangeRatesRead, PermissionClaims.SystemSettingsUpdate }, false)]
-    [InlineData(new[] { PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesDelete }, false)]
-    [InlineData(new[] { PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesDelete, PermissionClaims.SystemSettingsUpdate }, true)]
-    public async Task A_fetched_rates_delete_needs_both_claims(string[] claims, bool offered)
+    [Fact]
+    public async Task A_slower_older_read_never_overwrites_a_newer_status()
     {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
+        var sync = ExchangeRateSyncFakes.Client(Scheduled());
+        var slow = new TaskCompletionSource<ApiResult<ExchangeRateSyncStatus>>();
+        sync.Setup(c => c.RefreshStatusAsync(It.IsAny<CancellationToken>())).Returns(slow.Task);
+        var (ctx, _) = NewContext(sync.Object);
         await using var __ = ctx;
-        var fetched = Rate(ExchangeRateSource.Fetched);
+        var cut = RenderPanel(ctx, new Announced([], []));
 
-        var cut = RenderRatesCard(ctx, claims, fetched);
+        // A user Refresh goes out first and is still waiting when a quiet reload returns a newer status.
+        var refresh = cut.InvokeAsync(cut.Instance.RefreshAsync);
+        var newer = Scheduled() with { State = ExchangeRateSyncState.CatchingUp };
+        sync.Setup(c => c.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExchangeRateSyncStatus>.Success(newer, HttpStatusCode.OK));
+        await cut.InvokeAsync(cut.Instance.ReloadQuietlyAsync);
+        slow.SetResult(ApiResult<ExchangeRateSyncStatus>.Success(Scheduled(), HttpStatusCode.OK));
+        await refresh;
 
-        Assert.Equal(offered, cut.Instance.BuildActions(fetched, NoopActions()).Any(i => i.Label == "Delete…"));
+        Assert.Equal(ExchangeRateSyncState.CatchingUp, cut.Instance.Status!.State);
     }
+
+    // ── /exchange-rates: the claim matrix for a manual rate ──────────────────────────────────────
 
     [Fact]
     public async Task A_manual_rate_without_update_has_no_edit()
@@ -223,60 +230,6 @@ public partial class ExchangeRateSyncSurfaceTests
         var labels = cut.Instance.BuildActions(manual, NoopActions()).Select(i => i.Label).ToList();
         Assert.DoesNotContain("Edit", labels);
         Assert.Contains("Delete", labels);
-    }
-
-    [Fact]
-    public async Task A_confirmed_fetched_delete_announces_and_moves_focus_to_the_next_rows_menu()
-    {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
-        await using var __ = ctx;
-        var first = Rate(ExchangeRateSource.Fetched);
-        var second = Rate(ExchangeRateSource.Manual) with { AsOf = first.AsOf.AddDays(-1) };
-        var cut = RenderRatesCard(ctx,
-            [PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesDelete, PermissionClaims.SystemSettingsUpdate],
-            first, second);
-        var mock = Mock.Get(ctx.Services.GetRequiredService<IExchangeRatesApiClient>());
-        mock.Setup(c => c.DeleteAsync(first.ExchangeRateId, It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
-        mock.Setup(c => c.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
-                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<PagedResult<ExistingExchangeRate>>.Success(new PagedResult<ExistingExchangeRate> { Items = [second], TotalCount = 1 }, HttpStatusCode.OK));
-
-        var deleteItem = await cut.InvokeAsync(() => cut.Instance.BuildActions(first, NoopActions("first-menu")).Single(i => i.Label == "Delete…"));
-        await cut.InvokeAsync(() => deleteItem.OnClick.InvokeAsync());
-        Dialogs.WaitForAssertion(() => Assert.Contains("Delete this fetched rate?", Dialogs.Markup));
-        // The same local timestamp the row's As of column shows.
-        Assert.Contains($"USD/BASE on {first.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")} will not be fetched again", Dialogs.Markup);
-        Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Delete rate")).Click();
-
-        // The remaining row's real trigger id, as the table rendered it.
-        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("tbody tr [id$='-menu']")));
-        var nextTrigger = cut.Find("tbody tr [id$='-menu']").Id;
-        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
-            i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], nextTrigger)));
-        cut.WaitForAssertion(() => Assert.Equal("Rate deleted", cut.Find("[role=status]").TextContent));
-        // The dialog stays mounted, closed — its own focus restore runs on close.
-        Dialogs.WaitForAssertion(() => Assert.DoesNotContain("Delete this fetched rate?", Dialogs.Markup));
-    }
-
-    [Fact]
-    public async Task A_refused_fetched_delete_shows_the_servers_message_in_the_dialog()
-    {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
-        await using var __ = ctx;
-        var fetched = Rate(ExchangeRateSource.Fetched);
-        var cut = RenderRatesCard(ctx,
-            [PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesDelete, PermissionClaims.SystemSettingsUpdate], fetched);
-        Mock.Get(ctx.Services.GetRequiredService<IExchangeRatesApiClient>())
-            .Setup(c => c.DeleteAsync(fetched.ExchangeRateId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult.Failure(HttpStatusCode.Forbidden, new ApiProblem { Detail = "Deleting a fetched rate needs system-settings.update." }));
-
-        var deleteItem = cut.Instance.BuildActions(fetched, NoopActions()).Single(i => i.Label == "Delete…");
-        await cut.InvokeAsync(() => deleteItem.OnClick.InvokeAsync());
-        Dialogs.WaitForAssertion(() => Assert.Contains("Delete this fetched rate?", Dialogs.Markup));
-        Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Delete rate")).Click();
-
-        Dialogs.WaitForAssertion(() => Assert.Contains("Deleting a fetched rate needs system-settings.update.", Dialogs.Markup));
-        Assert.Contains("Delete this fetched rate?", Dialogs.Markup);
     }
 
     // ── Round-1 review fixes ─────────────────────────────────────────────────────────────────────

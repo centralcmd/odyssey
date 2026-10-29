@@ -52,7 +52,7 @@ public partial class CurrenciesCard
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allCurrencies, not the server-filtered display list, so they stay accurate under an active filter.
     // Every status is listed, zero counts included, as the contract breakdown does.
-    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
+    internal IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
         _allCurrencies.Where(c => c.Status is not null), c => c.Status!.Value,
         [.. OdsTypeRegistries.CurrencyStatuses.Select(entry =>
             new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon))]);

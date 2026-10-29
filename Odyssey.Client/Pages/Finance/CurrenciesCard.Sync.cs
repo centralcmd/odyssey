@@ -181,6 +181,9 @@ public partial class CurrenciesCard
 
         var fresh = page.Items.ToDictionary(c => c.CurrencyCode, StringComparer.Ordinal);
         _currencies = [.. _currencies.Select(c => fresh.GetValueOrDefault(c.CurrencyCode, c))];
+        // The "By status" tile counts _allCurrencies, which a filtered page cannot refresh: re-read it too.
+        if ((await Currencies.ListAllAsync()) is { IsSuccess: true, Value: { } all })
+            _allCurrencies = [.. all];
         StateHasChanged();
     }
 
@@ -224,15 +227,16 @@ public partial class CurrenciesCard
             ? $"{ProviderName} has data from {ExchangeRateSyncTime.Date(first)}"
             : $"{ProviderName} doesn’t publish {s.CurrencyCode}";
 
+    // Patches both lists: the cards read _currencies, the "By status" tile _allCurrencies.
     private void ReplaceSync(ExistingExchangeRateSyncCurrency updated)
     {
-        var row = _currencies.FirstOrDefault(c => c.CurrencyCode == updated.CurrencyCode);
-        if (row is null)
-            return;
-        row.Sync = updated;
-        // The same shared rule the server derives the list's status with, so a patched row cannot read
-        // differently from a re-read one.
-        row.Status = CurrencyStatuses.Of(row.Archived is not null, updated);
+        foreach (var row in _currencies.Concat(_allCurrencies).Where(c => c.CurrencyCode == updated.CurrencyCode))
+        {
+            row.Sync = updated;
+            // The same shared rule the server derives the list's status with, so a patched row cannot read
+            // differently from a re-read one.
+            row.Status = CurrencyStatuses.Of(row.Archived is not null, updated);
+        }
     }
 
     // Each sync item is offered only when it can act; an unavailable one is omitted, never greyed. The

@@ -39,7 +39,10 @@ public partial class ExchangeRateSyncStatusPanel
 
     private CancellationTokenSource? _pollCts;
     private Task? _pollTask;
-    private bool _readInFlight;
+    private int _readsInFlight;
+    // Latest-read-wins: a user Refresh or a quiet reload can overlap a poll, and a slower, older response
+    // must never overwrite the status a newer one already applied.
+    private int _readSequence;
     private int _consecutiveFailures;
     private int _readFailures;
     private bool _permissionLost;
@@ -201,7 +204,7 @@ public partial class ExchangeRateSyncStatusPanel
             while (await timer.WaitForNextTickAsync(ct))
             {
                 // A tick that lands while the previous read is still out is skipped, never queued.
-                if (_readInFlight)
+                if (_readsInFlight > 0)
                     continue;
                 var keepGoing = true;
                 await InvokeAsync(async () => keepGoing = await PollOnceAsync());
@@ -226,12 +229,17 @@ public partial class ExchangeRateSyncStatusPanel
     /// </summary>
     private async Task<bool> ReadStatusAsync(bool announce, bool refreshList = false)
     {
-        _readInFlight = true;
+        var sequence = ++_readSequence;
+        _readsInFlight++;
         ApiResult<ExchangeRateSyncStatus> result;
         try
         { result = await (refreshList ? Sync.RefreshStatusAsync() : Sync.GetStatusAsync()); }
         finally
-        { _readInFlight = false; }
+        { _readsInFlight--; }
+
+        // Superseded: the newer read applies its own outcome; polling carries on while a run is shown.
+        if (sequence != _readSequence)
+            return _status?.CurrentRun is not null;
 
         if (!result.IsSuccess || result.Value is null)
         {

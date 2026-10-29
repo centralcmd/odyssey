@@ -550,6 +550,9 @@ public partial class ExchangeRateSyncSurfaceTests
         ClickRowAction(cut, "USD", "Start sync");
 
         cut.WaitForAssertion(() => Assert.Contains("Synced", RowOf(cut, "USD").TextContent));
+        // The "By status" tile counts the unfiltered list, which has to follow the patched row.
+        var started = OdsTypeRegistries.CurrencyStatuses[CurrencyStatuses.Of(false, Currency("USD", enabled: true))].Chip.Label;
+        Assert.Equal(1, cut.Instance.StatusRows.Single(row => row.Label == started).Count);
         sync.Verify(c => c.UpdateCurrencyAsync("USD", It.Is<ExchangeRateSyncCurrencyUpdate>(u => u.Enabled == true), It.IsAny<CancellationToken>()), Times.Once);
         cut.WaitForAssertion(() => Assert.Contains("Sync started for USD", PoliteText(cut)));
         cut.WaitForAssertion(() => sync.Verify(c => c.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Exactly(reads + 1)));
@@ -777,7 +780,8 @@ public partial class ExchangeRateSyncSurfaceTests
 
         Dialogs.WaitForAssertion(() => Assert.Contains("Too early for this currency.", Dialogs.Markup));
         Assert.Contains("Sync start date", Dialogs.Markup);
-        Assert.Empty(events.Saved);
+        // The currency itself was written, so the host refreshes even though the dialog stays open.
+        Assert.Single(events.Saved);
         Assert.Empty(events.SyncStartSaved);
     }
 
@@ -835,10 +839,11 @@ public partial class ExchangeRateSyncSurfaceTests
         Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Create currency")).Click();
 
         Dialogs.WaitForAssertion(() => Assert.Contains("Too early.", Dialogs.Markup));
-        Assert.Empty(events.Saved);
+        // Created already, so the host lists it even if the user cancels now.
+        Assert.Single(events.Saved);
         Dialogs.FindAll("button").Single(b => b.TextContent.Contains("Create currency")).Click();
 
-        Dialogs.WaitForAssertion(() => Assert.Single(events.Saved));
+        Dialogs.WaitForAssertion(() => Assert.Equal(2, events.Saved.Count));
         Assert.Equal(["DKK"], events.SyncStartSaved);
         currencies.Verify(c => c.CreateAsync(It.Is<NewCurrency>(n => n.CurrencyCode == "DKK"), It.IsAny<CancellationToken>()), Times.Once);
         sync.Verify(c => c.UpdateCurrencyAsync("DKK",
