@@ -1,0 +1,102 @@
+@*
+    One file volume in the Storage health panel: state, free space, files per feature, waiting to be erased,
+    integrity and the disk check (Odyssey Design System · StorageHealth.jsx, STH_VolumeTile). Every state is
+    a word; the tone only colours it.
+*@
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@using Odyssey.Dtos.Application
+@inject TimeProvider Time
+
+<StorageHealthTile HeadingId="@($"{PanelId}-vol-{Volume.Name}")">
+    <Heading>Volume · <span class="mono">@Volume.Name</span></Heading>
+    <ChildContent>
+        <StorageHealthRow Icon="storage" Label="State" Tone="@StateTone">@StateWord(Volume.State)</StorageHealthRow>
+        @if (Configured && UsedPercent is { } used)
+        {
+            <div class="sth-space">
+                <StorageHealthRow Icon="data_usage" Label="Free space">
+                    @StorageHealth.Bytes(Volume.FreeBytes!.Value) of @StorageHealth.Bytes(Volume.TotalBytes!.Value)
+                </StorageHealthRow>
+                <OdsProgressBar Value="used"
+                                Tone="@(used >= 95 ? OdsProgressTone.Expense : used >= 80 ? OdsProgressTone.Pending : OdsProgressTone.Income)"
+                                AriaLabel="@($"{Volume.Name}: {used}% used")" />
+            </div>
+        }
+        <StorageHealthRow Icon="folder" Label="Files">
+            <ChildContent>@(Files > 0 ? $"{StorageHealth.Count(Files)} · {StorageHealth.Bytes(Bytes)}" : "None")</ChildContent>
+            <Sub>
+                @foreach (var feature in Volume.Features)
+                {
+                    <span class="sth-feat">
+                        @if (StorageHealth.FeatureLabel(feature.FeatureKey) is { } label)
+                        {
+                            @label
+                        }
+                        else
+                        {
+                            <span class="mono">@feature.FeatureKey</span>
+                        }
+                        @(Breakdown ? $" {StorageHealth.Count(feature.ObjectCount)} · {StorageHealth.Bytes(feature.CommittedBytes)}" : null)
+                    </span>
+                }
+            </Sub>
+        </StorageHealthRow>
+        @if (Configured)
+        {
+            <StorageHealthRow Icon="delete_sweep" Label="Waiting to be erased">@StorageHealth.Count(Volume.PendingDeleteCount)</StorageHealthRow>
+            <StorageHealthRow Icon="verified" Label="Integrity" Tone="@(Volume.IntegrityFaultCount > 0 ? "error" : null)">
+                <ChildContent>@(Volume.IntegrityFaultCount > 0 ? $"{StorageHealth.Count(Volume.IntegrityFaultCount)} failed" : "No faults")</ChildContent>
+                <Sub>@(Volume.LastScrubAtUtc is { } scrub ? $"checked {When(scrub)}" : "not checked yet")</Sub>
+            </StorageHealthRow>
+            <StorageHealthRow Icon="rule_folder" Label="Disk check" Tone="@(Volume.ReconciliationHalted ? "warning" : null)"
+                              Sub="@QuarantineLine">
+                @DiskCheckWord
+            </StorageHealthRow>
+        }
+    </ChildContent>
+</StorageHealthTile>
+
+@code {
+    [Parameter, EditorRequired] public FileStorageVolumeStatus Volume { get; set; } = default!;
+
+    /// <summary>The panel's id; the tile's heading id derives from it.</summary>
+    [Parameter, EditorRequired] public string PanelId { get; set; } = string.Empty;
+
+    private string DiskCheckWord => Volume.ReconciliationHalted ? "Paused"
+        : Volume.LastPassOrphanCount is > 0 ? $"{StorageHealth.Count(Volume.LastPassOrphanCount.Value)} unknown in last pass"
+        : "Clean";
+
+    private RenderFragment? QuarantineLine => Volume.QuarantinedCount > 0
+        ? builder => builder.AddContent(0, $"{StorageHealth.Count(Volume.QuarantinedCount)} stray file{StorageHealth.Plural(Volume.QuarantinedCount)} set aside for 7 days")
+        : null;
+
+    private bool Configured => Volume.State != FileStorageVolumeState.NotConfigured;
+
+    private int Files => Volume.Features.Sum(f => f.ObjectCount);
+
+    private long Bytes => Volume.Features.Sum(f => f.CommittedBytes);
+
+    /// <summary>A per-feature breakdown only when there is more than one feature, or one with no label.</summary>
+    private bool Breakdown => Volume.Features.Count > 1 || Volume.Features.Any(f => StorageHealth.FeatureLabel(f.FeatureKey) is null);
+
+    private int? UsedPercent => Volume is { TotalBytes: > 0 and var total, FreeBytes: { } free }
+        ? (int)Math.Round((total - free) * 100d / total)
+        : null;
+
+    private string StateTone => Volume.State switch
+    {
+        FileStorageVolumeState.Available => "ok",
+        FileStorageVolumeState.Degraded => "error",
+        _ => "warning",
+    };
+
+    internal static string StateWord(FileStorageVolumeState state) => state switch
+    {
+        FileStorageVolumeState.Available => "Available",
+        FileStorageVolumeState.Degraded => "Degraded",
+        FileStorageVolumeState.NotConfigured => "Not configured",
+        _ => state.ToString(),
+    };
+
+    private string When(DateTime utc) => $"{ExchangeRateSyncTime.Absolute(utc)} ({ExchangeRateSyncTime.Relative(utc, Time.GetUtcNow())})";
+}

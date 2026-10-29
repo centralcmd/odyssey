@@ -1,0 +1,16 @@
+@*
+    The Storage health panel's tile shell (Odyssey Design System · admin.css `.sth-tile`): an overline heading
+    and a column of StorageHealthRows. h5, one level below the panel's h4.
+*@
+<section class="sth-tile" aria-labelledby="@HeadingId">
+    <h5 class="sth-tile-ov" id="@HeadingId">@Heading</h5>
+    <div class="sth-rows">@ChildContent</div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string HeadingId { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public RenderFragment Heading { get; set; } = default!;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

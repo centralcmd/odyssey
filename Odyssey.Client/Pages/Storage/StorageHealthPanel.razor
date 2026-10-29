@@ -1,0 +1,146 @@
+@*
+    StorageHealthPanel — the read-only status panel at the top of System settings → Storage (Odyssey
+    Design System · ui_kits/web/StorageHealth.jsx and components/StorageHealthPanel; issue #346 A3.1/A3.2).
+
+    File storage and the worker that erases deleted files run where an administrator cannot see them,
+    and a stopped worker silently stops erasure. This puts those conditions on the page an administrator
+    already uses; the page header's signal rollup points here (StorageHealth.PanelId).
+
+    It renders what the host fetched and changes nothing. Rules the host keeps:
+      • no file-storage.read, no panel — not an empty card;
+      • every state is TEXT: a tone colours the word, an icon sits beside a note, but the word and the
+        sentence carry the meaning alone;
+      • nothing here can leak a path — the API returns none (#346 §7.3);
+      • times are absolute, with the relative distance in brackets.
+
+    The design's thumbnail-worker row is absent: it reads GET /api/photos/stats, which arrives with
+    photo thumbnails (issue #362). Until then the Background work tile carries file clean-up alone.
+
+    Headings sit one level below the section card's h3: h4 for the panel, h5 for each tile.
+*@
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@using Odyssey.Dtos.Application
+@inject TimeProvider Time
+
+<section class="sth" id="@Id" tabindex="-1" aria-labelledby="@($"{Id}-h")"
+         aria-busy="@(Phase == StorageHealthPhase.Loading || Refreshing ? "true" : null)">
+    <div class="sth-head">
+        <h4 class="sth-h" id="@($"{Id}-h")">Storage health</h4>
+        @if (Phase == StorageHealthPhase.Ready)
+        {
+            <span class="sth-checked">
+                @if (CheckedAt is { } checkedAt)
+                {
+                    <span>Checked @ExchangeRateSyncTime.Absolute(checkedAt)</span>
+                }
+                <OdsIconButton Icon="@Icons.Material.Filled.Refresh" AriaLabel="Refresh storage health" Size="OdsSize.Sm"
+                               Disabled="Refreshing" OnClick="@(() => OnRefresh.InvokeAsync())" />
+            </span>
+        }
+    </div>
+
+    @if (Phase == StorageHealthPhase.Loading)
+    {
+        <div class="sth-grid" aria-hidden="true">
+            @foreach (var _ in Enumerable.Range(0, 2))
+            {
+                <div class="sth-sk">
+                    <span class="sth-sk-line w40"></span><span class="sth-sk-line"></span><span class="sth-sk-line"></span><span class="sth-sk-line w70"></span>
+                </div>
+            }
+        </div>
+        <span class="sth-sr">Loading storage health…</span>
+    }
+    else if (Phase == StorageHealthPhase.Error)
+    {
+        <div class="sth-note error" role="alert">
+            <span class="material-icons" aria-hidden="true">cloud_off</span>
+            <div class="sth-note-body"><strong>Couldn’t load storage health.</strong> The settings below are unaffected.</div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="@(() => OnRetry.InvokeAsync())">Retry</OdsButton>
+        </div>
+    }
+    else if (Volumes is null || Volumes.Count == 0)
+    {
+        <div class="sth-note info">
+            <span class="material-icons" aria-hidden="true">info</span>
+            <div class="sth-note-body"><strong>No file volumes are configured.</strong> Features that keep files on disk, such as photo thumbnails, are switched off. Photos still show their originals.</div>
+        </div>
+    }
+    else
+    {
+        var issues = StorageHealth.Issues(Volumes);
+        if (issues.Count > 0)
+        {
+            <ul class="sth-notes" aria-label="Needs attention">
+                @foreach (var issue in issues)
+                {
+                    <li @key="issue.Id" class="@($"sth-note {SeverityClass(issue.Severity)}")">
+                        <span class="material-icons" aria-hidden="true">@NoteIcon(issue.Severity)</span>
+                        <div class="sth-note-body"><strong>@issue.Title</strong> @issue.Text</div>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <div class="sth-ok">
+                <span class="material-icons" aria-hidden="true">check_circle</span>
+                Everything is working. Deleted files are being erased on schedule.
+            </div>
+        }
+
+        <div class="sth-grid">
+            @foreach (var volume in Volumes)
+            {
+                <StorageVolumeTile @key="volume.Name" Volume="volume" PanelId="@Id" />
+            }
+            <StorageHealthTile HeadingId="@($"{Id}-work")">
+                <Heading>Background work</Heading>
+                <ChildContent>
+                    <StorageHealthRow Icon="cleaning_services" Label="File clean-up"
+                                      Tone="@(Volumes[0].MaintenanceStale ? "warning" : "ok")"
+                                      Sub="@CleanupLine(Volumes[0])">
+                        @(Volumes[0].MaintenanceStale ? Volumes[0].MaintenanceLastCompletedAtUtc is null ? "Never completed" : "Stalled" : "On schedule")
+                    </StorageHealthRow>
+                </ChildContent>
+            </StorageHealthTile>
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter] public IReadOnlyList<FileStorageVolumeStatus>? Volumes { get; set; }
+
+    [Parameter] public StorageHealthPhase Phase { get; set; } = StorageHealthPhase.Ready;
+
+    [Parameter] public bool Refreshing { get; set; }
+
+    /// <summary>When the shown data was read, UTC.</summary>
+    [Parameter] public DateTime? CheckedAt { get; set; }
+
+    [Parameter] public EventCallback OnRefresh { get; set; }
+
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    [Parameter] public string Id { get; set; } = StorageHealth.PanelId;
+
+    /// <summary>"last completed 29 Oct, 18:20 (40 minutes ago)".</summary>
+    private RenderFragment? CleanupLine(FileStorageVolumeStatus maintenance) => maintenance.MaintenanceLastCompletedAtUtc is { } completed
+        ? builder => builder.AddContent(0,
+            $"last completed {ExchangeRateSyncTime.Absolute(completed)} ({ExchangeRateSyncTime.Relative(completed, Time.GetUtcNow())})")
+        : null;
+
+    private static string SeverityClass(StorageIssueSeverity severity) => severity switch
+    {
+        StorageIssueSeverity.Error => "error",
+        StorageIssueSeverity.Warning => "warning",
+        _ => "info",
+    };
+
+    private static string NoteIcon(StorageIssueSeverity severity) => severity switch
+    {
+        StorageIssueSeverity.Error => "error_outline",
+        StorageIssueSeverity.Warning => "warning_amber",
+        _ => "info",
+    };
+}

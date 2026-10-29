@@ -9,6 +9,7 @@
 @inject ISecretSettingsApiClient SecretSettings
 @inject Odyssey.ApiClient.Resources.IWeatherApiClient Weather
 @inject Odyssey.ApiClient.Resources.IExchangeRateSyncApiClient ExchangeRateSync
+@inject Odyssey.ApiClient.Resources.IFileStorageApiClient FileStorage
 @inject TimeProvider Time
 @inject Odyssey.ApiClient.Resources.IDataExportApiClient DataExport
 @inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
@@ -239,6 +240,16 @@
                         </div>
                     }
                     <div class="ss-sect-body">
+                        @if (sec.Panel == StorageHealthPanelKey && _canReadStorage)
+                        {
+                            @* Read-only, above the two settings it explains (issue #346). No claim, no panel. *@
+                            <Odyssey.Client.Pages.Storage.StorageHealthPanel Volumes="_storageVolumes"
+                                                                            Phase="_storagePhase"
+                                                                            Refreshing="_storageRefreshing"
+                                                                            CheckedAt="_storageCheckedAt"
+                                                                            OnRefresh="RefreshStorageHealthAsync"
+                                                                            OnRetry="RetryStorageHealthAsync" />
+                        }
                         <div class="odc-sfield-grid">
                             @foreach (var item in sec.Items)
                             {
