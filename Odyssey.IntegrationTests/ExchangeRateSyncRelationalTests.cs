@@ -3,6 +3,7 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging.Abstractions;
 using MySqlConnector;
 using Odyssey.Context;
@@ -310,7 +311,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     {
         var client = new NorgesBankClient(
             new HttpClient(new RefusingHandler()) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
-        var list = new ExchangeRateSupportedList(context, client, TimeProvider.System, NullLogger<ExchangeRateSupportedList>.Instance);
+        var list = new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), TimeProvider.System, NullLogger<ExchangeRateSupportedList>.Instance);
         var settings = new FixedSettings();
         var sync = new ExchangeRateSyncService(
             context, client, list, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);

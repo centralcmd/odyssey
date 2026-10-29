@@ -40,7 +40,8 @@ public static class ExchangeRateSyncServiceCollectionExtensions
         services.AddTransient(sp => new NorgesBankClient(
             sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(NorgesBankClient)),
             sp.GetRequiredService<ExchangeRateSyncPacing>()));
-        // A singleton: the 24 h provider list and its single-flight gate must outlive a request. One per host.
+        // Scoped, on the caller's context: the list lives in the database and the refresh window's last
+        // attempt in the host's IMemoryCache, so nothing it holds has to outlive a request.
         services.AddScoped<ExchangeRateSupportedList>();
         services.AddScoped<IExchangeRateSyncSettingsLookup, ExchangeRateSyncSettingsLookup>();
         services.AddScoped<ExchangeRateSyncService>();

@@ -119,7 +119,7 @@ public sealed class CurrenciesController : ControllerBase
         [FromBody] [SwaggerParameter("NewCurrency", Required = true,
             Description = @"The currency with the updated values.")] NewCurrency newCurrency, CancellationToken cancellationToken = default)
     {
-        var updated = await currencyService.Update(code, newCurrency, cancellationToken);
+        var updated = await currencyService.Update(code, newCurrency, User.ActingUserId(), cancellationToken);
         if (updated is null)
             return this.NotFoundProblem($"Currency {code} not found.");
 

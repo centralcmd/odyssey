@@ -334,7 +334,7 @@ public sealed class ExchangeRateSyncService(
             var span = group.Key;
             var codes = group.ToList();
             requests++;
-            if (await FetchAndWriteAsync(codes, span, oslo, outcome, requests > 1, cancellationToken))
+            if (await FetchAndWriteAsync(codes, span, oslo, outcome, requests > 1, backfill: false, cancellationToken))
             {
                 foreach (var state in codes)
                 {
@@ -360,34 +360,20 @@ public sealed class ExchangeRateSyncService(
             var span = group.Key;
             var codes = group.ToList();
             requests++;
-            if (await FetchAndWriteAsync(codes, span, oslo, outcome, requests > 1, cancellationToken))
+            if (await FetchAndWriteAsync(codes, span, oslo, outcome, requests > 1, backfill: true, cancellationToken))
             {
                 foreach (var state in codes)
                 {
-                    state.BackfilledFrom = state.FirstObservation is { } first && first > span.From ? first : span.From;
+                    state.BackfilledFrom = BackfillWatermark(state, span);
                     state.NewestFetched ??= span.To;
-                    state.Watermarked = true;
                 }
             }
         }
-
-        // The watermarks advance only over chunks that committed.
-        var advanced = states.Where(state => state.Watermarked).ToList();
-        if (advanced.Count > 0)
-        {
-            context.ChangeTracker.Clear();
-            var codes = advanced.Select(state => state.Code).ToList();
-            var rows = await context.ExchangeRateSyncCurrencies
-                .Where(row => codes.Contains(row.CurrencyCode))
-                .ToListAsync(CancellationToken.None);
-            foreach (var row in rows)
-            {
-                row.BackfilledFrom = advanced.First(state => state.Code == row.CurrencyCode).BackfilledFrom;
-            }
-
-            await context.SaveChangesAsync(CancellationToken.None);
-        }
     }
+
+    /// <summary>Where a currency's backfill stands once <paramref name="span"/> has committed.</summary>
+    private static DateOnly BackfillWatermark(CurrencyPlan plan, DateSpan span) =>
+        plan.FirstObservation is { } first && first > span.From ? first : span.From;
 
     /// <summary>One request's fetch, checks and idempotent write. Returns whether it committed.</summary>
     private async Task<bool> FetchAndWriteAsync(
@@ -396,6 +382,7 @@ public sealed class ExchangeRateSyncService(
         TimeZoneInfo oslo,
         RunOutcome outcome,
         bool spaced,
+        bool backfill,
         CancellationToken cancellationToken)
     {
         if (spaced)
@@ -471,6 +458,20 @@ public sealed class ExchangeRateSyncService(
                     Provider = ExchangeRateProvider.NorgesBank,
                 });
                 outcome.RowsInserted++;
+            }
+        }
+
+        if (backfill)
+        {
+            // The watermark moves in the same save as the chunk's rows, so a fault or the timeout later in
+            // the run never re-requests a chunk that already committed.
+            var watermarks = plans.ToDictionary(plan => plan.Code, plan => BackfillWatermark(plan, span), StringComparer.Ordinal);
+            var syncRows = await context.ExchangeRateSyncCurrencies
+                .Where(row => codes.Contains(row.CurrencyCode))
+                .ToListAsync(CancellationToken.None);
+            foreach (var row in syncRows)
+            {
+                row.BackfilledFrom = watermarks[row.CurrencyCode];
             }
         }
 
@@ -609,10 +610,14 @@ public sealed class ExchangeRateSyncService(
             .Where(run => run.Trigger != ExchangeRateSyncTrigger.Purge && run.Status != ExchangeRateSyncRunStatus.Running)
             .OrderByDescending(run => run.StartedAtUtc)
             .Take(ExchangeRateSyncConstants.RunRetention)
-            .Select(run => new { run.Status, run.FinishedAtUtc, run.RowsInserted })
+            .Select(run => new { run.Status, run.ErrorKind, run.FinishedAtUtc, run.RowsInserted })
             .ToListAsync(cancellationToken);
+        // Only a fault of the provider or the run counts towards the backoff. A Run now no worker picked up
+        // (Abandoned) or a run stopped by a shutdown or its timeout (Cancelled) says nothing about the
+        // provider, so — like a skipped run — it neither counts nor breaks the streak.
         var failures = recentSync
-            .Where(run => run.Status != ExchangeRateSyncRunStatus.Skipped)
+            .Where(run => run.Status != ExchangeRateSyncRunStatus.Skipped
+                && run.ErrorKind is not (ExchangeRateSyncErrorKind.Abandoned or ExchangeRateSyncErrorKind.Cancelled))
             .TakeWhile(run => run.Status == ExchangeRateSyncRunStatus.Failed)
             .Count();
         var lastFinished = recentSync.FirstOrDefault()?.FinishedAtUtc;
@@ -875,7 +880,6 @@ public sealed class ExchangeRateSyncService(
 
         public bool Failed { get; set; }
 
-        public bool Watermarked { get; set; }
 
         /// <summary>
         /// From the day after the newest fetched date to today, capped at one request. A currency with no

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
@@ -22,14 +23,24 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// list only when that context has nothing pending, and detaches what it wrote. At worst one fetch goes
 /// unstored; a half-made edit of the caller's is never saved by it.
 /// </para>
+/// <para>
+/// <b>The refresh window counts attempts, not only successes.</b> A failed fetch stores nothing, so a window
+/// read off the stored copy alone would let every Refresh status repeat the full fetch, timeouts and retry
+/// included, for as long as the provider is down. The last attempt is held in the host's
+/// <see cref="IMemoryCache"/>: the bound is one attempt per window per process, which is what a
+/// <c>system-settings.read</c> holder could otherwise multiply.
+/// </para>
 /// </remarks>
 public sealed class ExchangeRateSupportedList(
     OdysseyContext context,
     NorgesBankClient client,
+    IMemoryCache cache,
     TimeProvider timeProvider,
     ILogger<ExchangeRateSupportedList> logger)
 {
     private const ExchangeRateProvider Provider = ExchangeRateProvider.NorgesBank;
+
+    private const string AttemptCacheKey = "ExchangeRateSync:SupportedListAttempt";
 
     /// <summary>The stored list and when it was fetched; null until a first fetch has been stored.</summary>
     public async Task<StoredSupportedList?> ReadAsync(CancellationToken cancellationToken = default)
@@ -72,17 +83,33 @@ public sealed class ExchangeRateSupportedList(
     /// <summary>
     /// The list as of at most <see cref="ExchangeRateSyncConstants.SupportedListRefreshInterval"/> ago — for a
     /// sync run and Refresh status. A stored copy that recent is used as it is, so neither can make more than
-    /// one request in that window; otherwise it fetches. Null when a fetch was needed and failed.
+    /// one request in that window; otherwise it fetches. Null when a fetch was needed and failed, or when
+    /// one was already attempted in the window without storing a list.
     /// </summary>
     public async Task<IReadOnlyList<ProviderSeries>?> RefreshAsync(CancellationToken cancellationToken = default)
     {
-        if (await ReadAsync(cancellationToken) is { } stored
-            && timeProvider.GetUtcNow().UtcDateTime - stored.FetchedAtUtc < ExchangeRateSyncConstants.SupportedListRefreshInterval)
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var window = ExchangeRateSyncConstants.SupportedListRefreshInterval;
+        if (await ReadAsync(cancellationToken) is { } stored && now - stored.FetchedAtUtc < window)
         {
             return stored.Series;
         }
 
-        return await FetchAsync(cancellationToken);
+        if (cache.TryGetValue(AttemptCacheKey, out DateTime attempted) && now - attempted < window)
+        {
+            return null;
+        }
+
+        // Recorded before the fetch, so concurrent callers in this process do not each start one.
+        cache.Set(AttemptCacheKey, now, window);
+        var fetched = await FetchAsync(cancellationToken);
+        if (fetched is not null)
+        {
+            // A fetch that succeeded but could not be stored must not hold the next caller off.
+            cache.Remove(AttemptCacheKey);
+        }
+
+        return fetched;
     }
 
     /// <summary>Whether a series is offered: published within the last 30 days.</summary>

@@ -37,6 +37,13 @@ public sealed class NorgesBankClient(HttpClient http, ExchangeRateSyncPacing pac
         await pacing.Delay(ExchangeRateSyncConstants.RequestSpacing, cancellationToken);
         var first = await GetDatesAsync("firstNObservations=1", cancellationToken);
 
+        // The whole NOK dataflow is never legitimately empty: a 404 or an empty body here is an outage or a
+        // changed endpoint, and storing it would mark every enabled currency unsupported.
+        if (newest.Count == 0)
+        {
+            throw new ExchangeRateProviderException(ExchangeRateSyncErrorKind.ProviderMalformed);
+        }
+
         return newest
             .Select(pair => new ProviderSeries(
                 pair.Key, first.TryGetValue(pair.Key, out var since) ? since : null, pair.Value))

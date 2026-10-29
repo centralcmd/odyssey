@@ -141,9 +141,11 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
     /// Updates a currency; <c>null</c> when the code is unknown. Archiving one also switches its
     /// exchange-rate sync off, in the same save — the job skips an archived currency anyway, and a sync
     /// left on would resume silently on restore and back-fill the whole gap. Restoring never switches it
-    /// back on. <see cref="CurrencyUpdated.SyncStopped"/> tells the caller, which owns the audit line.
+    /// back on. <see cref="CurrencyUpdated.SyncStopped"/> tells the caller, which owns the audit line;
+    /// <paramref name="userId"/> is stamped on the stopped sync row, as a switch flipped by hand would be.
     /// </summary>
-    public async Task<CurrencyUpdated?> Update(string currencyCode, NewCurrency putCurrency, CancellationToken cancellationToken = default)
+    public async Task<CurrencyUpdated?> Update(
+        string currencyCode, NewCurrency putCurrency, string? userId = null, CancellationToken cancellationToken = default)
     {
         var normalizedCode = NormalizeCode(currencyCode);
         if (!string.Equals(normalizedCode, NormalizeCode(putCurrency.CurrencyCode), StringComparison.Ordinal))
@@ -182,6 +184,7 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             // The start date is kept, for when someone restarts it; fetched rates are kept, as on a stop.
             sync.Enabled = false;
             sync.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+            sync.UpdatedByUserId = userId;
             syncStopped = true;
         }
 

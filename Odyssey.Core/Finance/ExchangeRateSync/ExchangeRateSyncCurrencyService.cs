@@ -195,10 +195,15 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         }
 
         var enable = update.Enabled == true;
+        var row = await context.ExchangeRateSyncCurrencies.FirstOrDefaultAsync(value => value.CurrencyCode == code, cancellationToken);
+        var oldEnabled = row?.Enabled ?? false;
+        var oldStart = row?.HistoryStartDate;
         IReadOnlyList<ProviderSeries>? series = null;
-        if (enable)
+        if (enable && !oldEnabled)
         {
-            // Live, not the stored copy: starting a sync acts on what the provider publishes today.
+            // Live, not the stored copy: starting a sync acts on what the provider publishes today. Only on
+            // the off-to-on transition — editing the start date of a currency already syncing must not
+            // depend on the provider being up, and a run reports a series that has since gone.
             series = await supportedList.FetchAsync(cancellationToken)
                 ?? throw new ExchangeRateSupportedListUnavailableException();
             if (!series.Any(value => value.CurrencyCode == code && ExchangeRateSupportedList.IsFresh(value, TodayUtc)))
@@ -208,9 +213,6 @@ public sealed partial class ExchangeRateSyncCurrencyService(
             }
         }
 
-        var row = await context.ExchangeRateSyncCurrencies.FirstOrDefaultAsync(value => value.CurrencyCode == code, cancellationToken);
-        var oldEnabled = row?.Enabled ?? false;
-        var oldStart = row?.HistoryStartDate;
         if (row is null)
         {
             row = new ExchangeRateSyncCurrency { CurrencyCode = code };
