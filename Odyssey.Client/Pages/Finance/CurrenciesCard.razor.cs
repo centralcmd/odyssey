@@ -20,10 +20,9 @@ public partial class CurrenciesCard
     private bool _loadError;
     private string _announce = "";
 
-    // Server pagination (OdsPager): 1-based page + rows-per-page; TotalCount from the PagedResult.
-    private int _page = 1;
-    private int _pageSize = OdsPageSizes.Default[0];
-    private int _totalCount;
+    // Card-list windowing (OdsInfiniteList), as Contracts: the whole set is loaded and revealed
+    // "N at a time".
+    private int _batch = OdsPageSizes.Batch[0];
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
@@ -34,38 +33,49 @@ public partial class CurrenciesCard
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    // Sort (§6.5): Code + Name curated; one OdsTableSort synced with the table headers.
+    // Sort: Code, Name and the derived Status — everyone's, like the filter.
     private static readonly OdsTableSort DefaultSort = new("code", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
-    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> _sortFields =
+    private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> SortFields =
     [
         new() { Key = "code", Label = "Code", Type = OdsSortType.Text },
         new() { Key = "name", Label = "Name", Type = OdsSortType.Text },
+        new() { Key = "status", Label = "Status", Type = OdsSortType.Status },
     ];
 
+    // The one Status filter: the server's CurrencyStatus names, in reading order.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+    [
+        .. OdsTypeRegistries.CurrencyStatuses.Select(entry => new OdsOption(entry.Key.ToString(), entry.Value.Chip.Label)),
+    ];
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allCurrencies, not the server-filtered display list, so they stay accurate under an active filter.
-    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _allCurrencies, c => c.Archived is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+    // Every status is listed, zero counts included, as the contract breakdown does.
+    internal IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
+        _allCurrencies.Where(c => c.Status is not null), c => c.Status!.Value,
+        [.. OdsTypeRegistries.CurrencyStatuses.Select(entry =>
+            new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon))]);
 
     private int _activeCount => _allCurrencies.Count(c => c.Archived is null);
     private int _archivedCount => _allCurrencies.Count - _activeCount;
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _statusFilter.Count > 0;
 
+    /// <summary>
+    /// Whether the page runs interactively; a swappable seam for the reason <c>Settings.InteractiveCheck</c>
+    /// is one. Process-wide, so a test that moves it restores it (<c>ExchangeRateSyncCollection</c>).
+    /// </summary>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
+        await LoadPermissionsAsync();
         await RestorePageStateAsync();
         StateHasChanged();
-        await LoadPermissionsAsync();
-        await RefreshAsync();
+        await Task.WhenAll(RefreshAsync(), LoadSyncStatusAsync());
     }
 
     // Full refresh: reload the unfiltered overview set + the server-filtered display list. Used on load
@@ -86,8 +96,8 @@ public partial class CurrenciesCard
         _searchOpen = state.SearchOpen;
         _search = state.Search ?? string.Empty;
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
-        _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
-        _pageSize = OdsPageSizes.Restore(state.PageSize);
+        _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
+        _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
 
     private CurrenciesPageState BuildPageState() => new()
@@ -98,16 +108,24 @@ public partial class CurrenciesCard
         StatusFilter = [.. _statusFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
-        PageSize = _pageSize,
+        BatchSize = _batch,
     };
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
-    private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
+    private void OnOverviewToggled(bool open)
+    {
+        _overviewOpen = open;
+        // Collapsing the Overview withdraws a Run now still waiting for its panel to mount.
+        if (!open)
+            _runNowWhenMounted = false;
+        PersistPageState();
+    }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
+    private void OnBatchChanged(int size) { _batch = size; PersistPageState(); StateHasChanged(); }
 
     private sealed class CurrenciesPageState
     {
@@ -117,7 +135,7 @@ public partial class CurrenciesCard
         public List<string> StatusFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
-        public int PageSize { get; set; } = OdsPageSizes.Default[0];
+        public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
     }
 
     private async Task LoadPermissionsAsync()
@@ -127,6 +145,9 @@ public partial class CurrenciesCard
         _canCreate = user.HasPermission(PermissionClaims.CurrenciesCreate);
         _canUpdate = user.HasPermission(PermissionClaims.CurrenciesUpdate);
         _canDelete = user.HasPermission(PermissionClaims.CurrenciesDelete);
+        _canReadSync = user.HasPermission(PermissionClaims.SystemSettingsRead);
+        _canWriteSync = _canReadSync && user.HasPermission(PermissionClaims.SystemSettingsUpdate);
+        _canPurge = _canWriteSync && user.HasPermission(PermissionClaims.ExchangeRatesDelete);
     }
 
     // Server-side fetch (issue #277): search/status/sort applied by the API. Called on first load and
@@ -140,11 +161,10 @@ public partial class CurrenciesCard
             StateHasChanged();
         }
 
-        // The two-value status filter maps to the server active/archived param only when one is selected.
         var response = await _listLoader.RunAsync(ct => Currencies.ListAsync(
-            _page, _pageSize,
+            1, OdsPageSizes.All,
             search: _search,
-            status: _statusFilter,
+            statuses: _statusFilter,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
@@ -155,10 +175,10 @@ public partial class CurrenciesCard
         if (load.IsSuccess)
         {
             _currencies = [.. load.Items];
-            _totalCount = load.TotalCount;
             _loadError = false;
-            _announce = _totalCount == 0 ? "No currencies match your filters."
-                : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} currenc{(_totalCount == 1 ? "y" : "ies")}.";
+            _rowErrors.Clear();
+            _announce = _currencies.Count == 0 ? "No currencies match your filters."
+                : $"Showing {_currencies.Count} currenc{(_currencies.Count == 1 ? "y" : "ies")}.";
         }
         else
         {
@@ -171,27 +191,8 @@ public partial class CurrenciesCard
         StateHasChanged();
     }
 
-    // Reset to page 1, then fetch — for any search / filter / sort / size change. Page navigation
-    // calls GetCurrencies directly so it keeps the requested page.
-    private Task ReloadAsync()
-    {
-        _page = 1;
-        return GetCurrencies();
-    }
-
-    private Task OnPageChanged(int page)
-    {
-        _page = page;
-        return GetCurrencies();
-    }
-
-    private Task OnPageSizeChanged(int size)
-    {
-        _pageSize = size;
-        _page = 1;
-        PersistPageState();
-        return GetCurrencies();
-    }
+    // For any search / filter / sort change.
+    private Task ReloadAsync() => GetCurrencies();
 
     private async Task ClearFilters()
     {
@@ -201,14 +202,47 @@ public partial class CurrenciesCard
         await ReloadAsync();
     }
 
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c, OdsRecordActionContext ctx)
+    // ── The record list: one card open at a time (RecordCard rule) ─────────────────────────────────
+    private string? _openCode;
+
+    // One meta line: symbol · decimals · the example amount · and, for a sync caller, the coverage.
+    private IReadOnlyList<RenderFragment?> MetaFor(ExistingCurrency c)
     {
-        // No "View details": the columns are the whole record, so rows don't expand.
+        var meta = new List<RenderFragment?>
+        {
+            string.IsNullOrWhiteSpace(c.Symbol) ? null : Text(c.Symbol),
+            Text($"{c.MinorUnits} {(c.MinorUnits == 1 ? "decimal" : "decimals")}"),
+            Text(Example(c)),
+        };
+        if (_canReadSync && CoverageText(c.Sync) is { } coverage)
+            meta.Add(Text(coverage));
+        return meta;
+    }
+
+    private static RenderFragment Text(string value) => b => b.AddContent(0, value);
+
+    // The fetched-rate count, beside the coverage: what a purge would delete (manual rates not counted).
+    // Never for the base, which has no rates of its own, or a currency never synced that holds none.
+    private IReadOnlyList<OdsRecordCount> CountsFor(ExistingCurrency c) =>
+        _canReadSync && c.Sync is { Locked: false } s && (s.Enabled || s.FetchedRowCount > 0)
+            ? [new OdsRecordCount("cloud_download", s.FetchedRowCount.ToString("N0"), "Fetched rates")]
+            : [];
+
+    // A sample amount written as the app writes money everywhere — the figure, then the ISO code — so it
+    // shows the currency's decimal precision in the form a user reads.
+    internal static string Example(ExistingCurrency c) => OdsMoney.Format(1234.5m, c.CurrencyCode, c.MinorUnits);
+
+    internal IReadOnlyList<OdsMenuItem> BuildActions(ExistingCurrency c)
+    {
         var items = new List<OdsMenuItem>();
 
         if (_canUpdate)
-        {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(c)) });
+
+        items.AddRange(SyncActions(c));
+
+        if (_canUpdate)
+        {
             items.Add(new OdsMenuItem
             {
                 Icon = c.Archived is not null ? "unarchive" : "archive",
@@ -219,11 +253,13 @@ public partial class CurrenciesCard
 
         items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyCode(c.CurrencyCode)) });
 
-        if (_canDelete)
-        {
+        var purge = PurgeAction(c);
+        if (_canDelete || purge is not null)
             items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
-        }
+        if (purge is not null)
+            items.Add(purge);
+        if (_canDelete)
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, () => DeleteClicked(c)) });
 
         return items;
     }
@@ -256,8 +292,8 @@ public partial class CurrenciesCard
         _editCurrencyOpen = true;
     }
 
-    // Refresh in place: reload the overview set and the current page rather than jumping back to
-    // page 1, so the edited row stays where the user was looking at it.
+    // Refresh in place: reload the overview set and the list, so the edited row stays where the user was
+    // looking at it.
     private async Task OnCurrencyEdited()
     {
         _allCurrencies = (await Currencies.ListAllAsync()).ItemsOrToast(Snackbar, "currencies");
@@ -287,7 +323,11 @@ public partial class CurrenciesCard
             Archived = archived,
         };
 
-        if ((await Currencies.UpdateAsync(currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", "Currency updated."))
+        // Archiving a synced currency switches its sync off on the server, in the same save; say so, since
+        // nothing on the archived row shows it afterwards.
+        var stopsSync = archived && currency.Archived is null && currency.Sync is { Enabled: true, Locked: false };
+        var success = stopsSync ? $"{currency.CurrencyCode} archived. Its sync was stopped." : "Currency updated.";
+        if ((await Currencies.UpdateAsync(currency.CurrencyCode, update)).Toast(Snackbar, "Update failed", success))
         {
             currency.Name = update.Name;
             currency.Symbol = update.Symbol;
@@ -296,30 +336,55 @@ public partial class CurrenciesCard
             // Session-wide currency cache is now stale — every picker must re-fetch (issue #372).
             ReferenceData.InvalidateCurrencies();
             _allCurrencies = (await Currencies.ListAllAsync()).ItemsOrToast(Snackbar, "currencies");
+            // Archiving takes a currency out of the sync and restoring brings it back, so a sync caller
+            // re-reads the page for the row's projection.
+            if (_canReadSync)
+            {
+                await GetCurrencies();
+                if (stopsSync)
+                    await ReloadStatusAsync();
+            }
         }
 
         StateHasChanged();
     }
 
-    private async Task HandleDelete(object key)
+    // ── Delete: a record list has no inline confirm, so it asks first ─────────────────────────────
+    private ExistingCurrency? _deleting;
+    private bool _deleteOpen;
+
+    private void DeleteClicked(ExistingCurrency currency)
     {
         if (!_canDelete)
             return;
-
-        var currency = _currencies.FirstOrDefault(c => string.Equals(c.CurrencyCode, (string)key, StringComparison.Ordinal));
-        if (currency is null)
-            return;
-
-        if ((await Currencies.DeleteAsync(currency.CurrencyCode)).Toast(Snackbar, "Delete failed", "Currency deleted."))
-        {
-            ReferenceData.InvalidateCurrencies();
-            // Full refresh, not a local Remove: the delete changes the total, so the pager and the
-            // current page have to be re-fetched or the page renders short against a stale count.
-            await RefreshAsync();
-        }
-
-        StateHasChanged();
+        _deleting = currency;
+        _deleteOpen = true;
     }
+
+    private void OnDeleteOpenChanged(bool open) => _deleteOpen = open;
+
+    // Null closes the dialog; a refusal (a currency still in use) stays in it as the server's message.
+    private async Task<string?> ConfirmDeleteAsync()
+    {
+        if (_deleting is not { } currency || !_canDelete)
+            return null;
+
+        var result = await Currencies.DeleteAsync(currency.CurrencyCode);
+        if (!result.IsSuccess)
+            return string.IsNullOrWhiteSpace(result.Error) ? "The currency couldn’t be deleted." : result.Error;
+
+        Snackbar.Add("Currency deleted.", Severity.Success);
+        ReferenceData.InvalidateCurrencies();
+        if (_openCode == currency.CurrencyCode)
+            _openCode = null;
+        // Full refresh, not a local Remove: the delete changes the overview's totals too.
+        await RefreshAsync();
+        return null;
+    }
+
+    // The row menu trigger's host. After a confirmed delete the row is gone, and the dialog falls back to
+    // the page heading — never <body>.
+    private static string MenuIdFor(string currencyCode) => $"cur-{currencyCode}-menu";
 
     private Task CopyCode(string currencyCode) =>
         Clipboard.CopyAsync(currencyCode, "Currency code copied to clipboard.");

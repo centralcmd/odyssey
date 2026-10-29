@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
 using Xunit;
@@ -44,6 +45,16 @@ public sealed class WorkerHostTests : IDisposable
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<WeatherFetchService>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISecretSettingsReader>());
+    }
+
+    [Fact]
+    public void The_graph_resolves_and_hosts_the_exchange_rate_sync_job()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<ExchangeRateSyncJob>);
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>());
     }
 
     [Fact]

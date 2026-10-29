@@ -56,8 +56,8 @@ public class CurrencyServiceTests
             Archived = true,
         });
 
-        Assert.NotNull(archived!.Archived);
-        var archivedAt = archived.Archived;
+        Assert.NotNull(archived!.Currency.Archived);
+        var archivedAt = archived.Currency.Archived;
 
         var archivedAgain = await service.Update("NOK", new NewCurrency
         {
@@ -68,7 +68,7 @@ public class CurrencyServiceTests
             Archived = true,
         });
 
-        Assert.Equal(archivedAt, archivedAgain!.Archived);
+        Assert.Equal(archivedAt, archivedAgain!.Currency.Archived);
     }
 
     [Fact]

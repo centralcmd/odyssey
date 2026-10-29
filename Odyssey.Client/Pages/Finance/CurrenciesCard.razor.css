@@ -1,0 +1,29 @@
+/* Exchange-rate sync on /currencies (Odyssey Design System · ui_kits/web/exchange-rate-sync.css).
+   Every text colour is text-secondary or stronger — never the disabled alpha — the base row included. */
+
+/* The status panel's well in the Overview, beside By status: BreakdownTile's ground, border and overline,
+   two grid tracks wide where there is room, since the panel's actions need the width. */
+.xrs-overview-tile {
+    grid-column: span 2;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+    padding: 14px var(--space-4);
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: 10px;
+    background: var(--mud-palette-background);
+}
+.xrs-overview-ov {
+    margin: 0;
+    font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
+.xrs-banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-4); }
+
+@media (max-width: 640px) {
+    .xrs-overview-tile { grid-column: auto; }
+}

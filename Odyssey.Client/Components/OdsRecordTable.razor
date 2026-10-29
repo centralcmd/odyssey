@@ -17,6 +17,19 @@
       • the loading / refetching / error / empty states, delegated to OdsListStatus
         (pass Loading + Error + HasFilters rather than assembling them per page)
 
+    INTERACTIVE CELLS. A row click whose target sits inside an interactive element (input, button,
+    a, select, textarea, label, [role=switch], [role=menuitem]) is ignored, so a switch or a link in
+    a cell never expands its row. The click target is not part of Blazor's MouseEventArgs, so a
+    capture-phase listener (odsRecTrackClicks) records it on the table and the row handler asks.
+
+    FOCUS. The chevron and a row click leave focus where it is, so the aria-expanded control can be
+    pressed again to undo. The row menu's View details moves focus into the detail panel (its first
+    focusable element, else the panel itself) and its Collapse returns it to the chevron, because the
+    menu item unmounts with its popover. StartEdit moves focus to
+    the edit row's first field after the row menu has closed and restored its own focus; ending an
+    edit (Save, Cancel, or a caller action through OdsRecordEditContext.Done) returns it to the row's
+    menu trigger, whose id OdsRecordActionContext.MenuTriggerId hands to a dialog's ReturnFocusToId.
+
     EXPANSION IS OPT-IN. A table given neither RenderDetail nor RenderEdit has
     nothing to expand into, so it renders no chevron, ignores row clicks and
     drops the pointer cursor — a surface whose columns already show every field
@@ -48,7 +61,7 @@
    wrapper scrolls it in place instead of pushing the whole page sideways. No tab stop of its own:
    every row carries focusable controls, and focusing one scrolls it into view. *@
 <div class="odc-rec-scroll">
-    <table class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
+    <table id="@_tableId" class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
         <thead>
             <tr>
                 @if (Leading is not null)
@@ -83,7 +96,7 @@
                 var expanded = _openIds.Contains(rk);
                 var editing = _editIds.Contains(rk);
                 var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
-                <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClick(rk, editing))">
+                <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClickAsync(rk, editing))">
                     @if (Leading is not null)
                     {
                         <td>@Leading(row)</td>
@@ -98,14 +111,16 @@
                         <div class="odc-rec-actions" @onclick:stopPropagation="true">
                             @if (Actions is not null)
                             {
-                                <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
+                                <span id="@MenuIdFor(rk)" class="odc-rec-menu">
+                                    <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
+                                </span>
                             }
                             @if (CanExpand)
                             {
-                                <button type="button" class="odc-rec-expand"
+                                <button type="button" id="@ExpandIdFor(rk)" class="odc-rec-expand"
                                         aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
                                         aria-controls="@(expanded ? detailId : null)"
-                                        disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
+                                        disabled="@editing" @onclick="@(() => ToggleRow(rk, fromMenu: false))" @onclick:stopPropagation="true">
                                     <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
                                 </button>
                             }
@@ -116,7 +131,7 @@
                 {
                     <tr class="odc-rec-detail-row" id="@detailId">
                         <td class="odc-rec-detail-cell" colspan="@ColSpan">
-                            <div class="odc-rec-panel @(editing ? "editing" : null)">
+                            <div class="odc-rec-panel @(editing ? "editing" : null)" id="@PanelIdFor(rk)" tabindex="-1">
                                 @if (editing && RenderEdit is not null)
                                 {
                                     @RenderEdit(row, EditCtx(rk))

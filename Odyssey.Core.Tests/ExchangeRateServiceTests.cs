@@ -186,7 +186,7 @@ public class ExchangeRateServiceTests
         var currentUsdEur = await service.Create(Rate("USD", "EUR", 0.95m, Utc(3)));
         var onlyUsdSek = await service.Create(Rate("USD", "SEK", 10m, Utc(2)));
 
-        var page = await service.ListAsync(new ExchangeRatesQueryParams { Status = ExchangeRateStatus.Current });
+        var page = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current] });
 
         Assert.Equal(
             new[] { currentUsdEur.ExchangeRateId, onlyUsdSek.ExchangeRateId }.OrderBy(id => id),
@@ -203,7 +203,7 @@ public class ExchangeRateServiceTests
         await service.Create(Rate("USD", "EUR", 0.95m, Utc(3)));   // current for USD→EUR
         await service.Create(Rate("USD", "SEK", 10m, Utc(2)));     // current (only one for its pair)
 
-        var page = await service.ListAsync(new ExchangeRatesQueryParams { Status = ExchangeRateStatus.Historical });
+        var page = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Historical] });
 
         Assert.Equal(superseded.ExchangeRateId, Assert.Single(page.Items).ExchangeRateId);
     }
@@ -312,10 +312,10 @@ public class ExchangeRateServiceTests
         Assert.Equal(older.ExchangeRateId, latest!.ExchangeRateId);
         Assert.Equal(0.99m, latest.Rate);
 
-        var currentPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = ExchangeRateStatus.Current });
+        var currentPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current] });
         Assert.Equal(older.ExchangeRateId, Assert.Single(currentPage.Items).ExchangeRateId);
 
-        var historicalPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = ExchangeRateStatus.Historical });
+        var historicalPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Historical] });
         Assert.Equal(newer.ExchangeRateId, Assert.Single(historicalPage.Items).ExchangeRateId);
     }
 
@@ -341,7 +341,7 @@ public class ExchangeRateServiceTests
         Assert.Equal(createdFirst.ExchangeRateId, latest!.ExchangeRateId);
         Assert.Equal(0.99m, latest.Rate);
 
-        var currentPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = ExchangeRateStatus.Current });
+        var currentPage = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current] });
         Assert.Equal(createdFirst.ExchangeRateId, Assert.Single(currentPage.Items).ExchangeRateId);
         Assert.DoesNotContain(currentPage.Items, r => r.ExchangeRateId == createdSecond.ExchangeRateId);
     }

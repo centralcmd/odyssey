@@ -1,0 +1,5 @@
+.xr-dialog-help {
+    margin: var(--space-1) 0 0;
+    font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}

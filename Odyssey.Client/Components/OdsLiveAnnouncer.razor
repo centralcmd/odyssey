@@ -7,12 +7,23 @@
     server fetch that the user triggered by typing, filtering, sorting or paging —
     changes that otherwise happen silently. Use Assertive="true" (role="alert")
     for errors that should interrupt; the default is polite.
+
+    Announce(text) re-announces an identical message: an unchanged
+    string renders nothing new, so it clears the region and sets the text on the
+    next render — "Rate deleted" twice in a row is read twice.
+
+    Announcements are queued and played one at a time. Two that overlapped used to
+    race on the clear-then-set, so the first could be replaced in the same frame and
+    never read ("Sync started for USD" lost to "Run finished"). Each now renders on
+    its own, and one with another waiting behind it stays up for Dwell first.
 *@
 
 <div role="@(Assertive ? "alert" : "status")"
      aria-live="@(Assertive ? "assertive" : "polite")"
      aria-atomic="true"
-     class="sr-only">@Message</div>
+     class="sr-only">@_text</div>
+
+@implements IDisposable
 
 @code {
     /// <summary>The text announced to assistive technology. Update it to fire an announcement.</summary>
@@ -20,4 +31,58 @@
 
     /// <summary>When true, announce as <c>role="alert"</c> (assertive) rather than polite <c>role="status"</c>.</summary>
     [Parameter] public bool Assertive { get; set; }
+
+    private string? _text;
+    private string? _lastMessage;
+    private readonly Queue<string> _pending = new();
+    private Task? _playing;
+
+    /// <summary>How long an announcement stays in the region before a queued one replaces it.</summary>
+    internal static readonly TimeSpan Dwell = TimeSpan.FromMilliseconds(250);
+
+    protected override void OnParametersSet()
+    {
+        if (Message != _lastMessage)
+        {
+            _lastMessage = Message;
+            _text = Message;
+        }
+    }
+
+    /// <summary>
+    /// Announce <paramref name="message"/>, even when it equals the text already in the region. Completes
+    /// once it has been shown, after any announcement queued before it.
+    /// </summary>
+    public Task Announce(string message)
+    {
+        _pending.Enqueue(message);
+        // One player at a time; a call made while it plays joins its queue and waits for it.
+        if (_playing is not { IsCompleted: false })
+            _playing = PlayAsync();
+        return _playing;
+    }
+
+    private async Task PlayAsync()
+    {
+        while (_pending.TryDequeue(out var message))
+        {
+            _text = string.Empty;
+            StateHasChanged();
+            // Long enough for the cleared region to render before the text returns; a same-frame swap
+            // would be coalesced into no change at all.
+            await Task.Delay(50);
+            if (_disposed)
+                return;
+            _text = message;
+            StateHasChanged();
+            if (_pending.Count > 0)
+                await Task.Delay(Dwell);
+            if (_disposed)
+                return;
+        }
+    }
+
+    private bool _disposed;
+
+    public void Dispose() => _disposed = true;
 }

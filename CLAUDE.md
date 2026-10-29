@@ -553,6 +553,28 @@ into two tables. What contains it, and must not be loosened:
   event is read under `properties.read`, and an "estimate added" line would disclose what
   `properties.estimates.read` withholds.
 
+**Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
+through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
+fetched one; there is no separate source column. Four rules are easy to get backwards:
+
+- **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
+  `UpdatedAt ?? CreatedAt`, then the id — and source plays no part. `CurrencyConversionService` (direct
+  vs. hop: the later UTC date wins, the same date goes to direct) and every status rule in
+  `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
+- **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
+  date; the bounded lookups keep their exclusive `AsOf < bound`.
+- **The run guard is the `RunningGuard` generated column's unique index**, real MariaDB only; a purge
+  takes it too, through a `Purge` run row. Runs execute in `Odyssey.Worker` (`ExchangeRateSyncJob`), which
+  keeps no schedule in memory. The API only *starts* a manual run: it inserts the `Running` row unclaimed,
+  and the first worker replica to set `ClaimedAtUtc` — a concurrency token — executes it. A scheduled run
+  or a purge is claimed by whoever inserts it, and so is a manual run with nothing to do, which the API
+  finishes `Skipped` at once. A request no worker claims within `UnclaimedRequestTimeout` (2 minutes) is
+  abandoned, so a missing worker cannot hold the guard for the whole stale window. Under `Testing` no
+  worker runs, so run-now claims and executes inline.
+- **A fetched row is never edited in place nor deleted on its own** (both `422` keyed `source`, for
+  every caller) — the sync fills only beyond its fetched extents, so a row removed from inside them is
+  never refetched. Fetched rates leave only through the per-currency purge.
+
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
 counterparty, still taking a pinned connection and a blocking ten-second acquire on every contact

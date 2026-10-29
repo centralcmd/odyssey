@@ -1,0 +1,43 @@
+/* The sync status panel (Odyssey Design System · ui_kits/web/exchange-rate-sync.css) in
+   BreakdownTile's anatomy and fonts (.odc-breakdown-row): icon · label · value in the caption font, the
+   label secondary and the value primary, right-aligned and tabular; a rule before the notes. */
+.xrs-status { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.xrs-rows { display: flex; flex-direction: column; gap: 6px; }
+.xrs-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+.xrs-row .material-icons { font-size: var(--icon-sm); flex: none; }
+.xrs-row-label { flex: none; }
+.xrs-row-value {
+    margin-left: auto;
+    min-width: 0;
+    text-align: right;
+    color: var(--mud-palette-text-primary);
+    font-weight: var(--fw-medium);
+    font-variant-numeric: tabular-nums;
+}
+.xrs-row-sub { font-weight: var(--fw-regular); color: var(--mud-palette-text-secondary); }
+
+/* A state or an outcome as coloured text: the chip's text colour for its tone. */
+.xrs-tone-income { color: var(--finance-income); }
+.xrs-tone-info { color: var(--info-text); }
+.xrs-tone-warning { color: var(--pending-text); }
+.xrs-tone-error { color: var(--finance-expense); }
+
+/* Below the rows, ruled off as the breakdown's total: the stale and cooling-down notes. */
+.xrs-status-note {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--mud-palette-divider);
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.xrs-status-note + .xrs-status-note { padding-top: 0; border-top: 0; }
+.xrs-status-note .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.xrs-status-note .material-icons.warn { color: var(--mud-palette-warning); }

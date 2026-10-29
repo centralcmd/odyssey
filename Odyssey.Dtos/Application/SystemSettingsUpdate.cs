@@ -472,4 +472,19 @@ public sealed record SystemSettingsUpdate
     /// </summary>
     [StringLength(36, ErrorMessage = "Choose a location from the list.")]
     public string? WeatherDefaultLocationId { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Exchange-rate sync (issue #349 §8). Both take the ordinary write claim: nothing here is a
+    // credential or a destination.
+    // ---------------------------------------------------------------------------------------------
+
+    /// <summary>
+    /// <c>yyyy-MM-dd</c>, on or after 1980-01-01 and on or before today (UTC); empty returns to the
+    /// dynamic default. The "today" bound needs a clock, so it is checked in the service.
+    /// </summary>
+    [StringLength(ExchangeRateHistoryStartDateRule.MaxLength)]
+    public string? ExchangeRateHistoryStartDate { get; set; }
+
+    [Range(SystemSettingsBounds.ExchangeRateSyncIntervalHoursMin, SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax)]
+    public int? ExchangeRateSyncIntervalHours { get; set; }
 }

@@ -22,6 +22,16 @@ namespace Odyssey.Api.SystemSettings;
 internal static class SettingAdvisories
 {
     /// <summary>
+    /// The exchange-rate interval below six hours (issue #349 §8): Norges Bank publishes once per
+    /// business day, so a shorter interval only adds requests that find nothing new.
+    /// </summary>
+    public static string? SyncIntervalBelowPublication(SystemSettingsDto dto, AdvisoryContext context) =>
+        dto.ExchangeRateSyncIntervalHours < 6
+            ? $"Set to {dto.ExchangeRateSyncIntervalHours.ToString(CultureInfo.InvariantCulture)} h. Norges Bank "
+              + "publishes once per business day, so runs more often than every 6 h mostly find nothing new."
+            : null;
+
+    /// <summary>
     /// The cost advisory shape: fires only when the saved value is strictly above the shipped default,
     /// and names both numbers plus what the extra costs.
     ///

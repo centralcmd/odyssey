@@ -17,4 +17,16 @@ public sealed record ExistingCurrency
     public required string Symbol { get; set; }
 
     public DateTime? Archived { get; set; }
+
+    /// <summary>
+    /// The currency's exchange-rate sync projection. Filled only for a caller holding
+    /// <c>system-settings.read</c>, and never for an archived currency, which the sync does not cover.
+    /// </summary>
+    public ExistingExchangeRateSyncCurrency? Sync { get; set; }
+
+    /// <summary>
+    /// The derived <see cref="CurrencyStatus"/>, for every caller. Set by the list endpoint; null on the
+    /// single-currency reads and writes, which do not compute the sync projection it is derived from.
+    /// </summary>
+    public CurrencyStatus? Status { get; set; }
 }

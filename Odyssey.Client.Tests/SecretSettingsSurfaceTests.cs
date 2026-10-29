@@ -659,6 +659,7 @@ public class SecretSettingsSurfaceTests : IDisposable
 
         ctx.Services.AddSingleton(settings.Object);
         ctx.Services.AddSingleton(secretClient);
+        ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
         ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);

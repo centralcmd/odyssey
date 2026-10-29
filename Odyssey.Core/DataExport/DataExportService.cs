@@ -340,6 +340,7 @@ public sealed class DataExportService
                 Rate = rate.Rate,
                 AsOf = rate.AsOf,
                 CreatedAt = rate.CreatedAt,
+                Provider = rate.Provider,
             });
 
     private IQueryable<TransactionExport> TransactionsQuery() =>

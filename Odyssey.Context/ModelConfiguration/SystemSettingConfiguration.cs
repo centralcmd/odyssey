@@ -132,7 +132,11 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // and seed the design system's own defaults (a 45-day look-ahead, six rendered rows).
             new SystemSetting { Key = SystemSettingsKeys.ContractEndingWindowDays, Value = "45", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.ContractChargeWindowDays, Value = "45", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.ContractMaxSummaryCharges, Value = "6", UpdatedAt = seededAt }
+            new SystemSetting { Key = SystemSettingsKeys.ContractMaxSummaryCharges, Value = "6", UpdatedAt = seededAt },
+            // Exchange-rate sync (issue #349). The start date seeds EMPTY — "1 January of the current
+            // UTC year" — because a compile-time seed cannot name this year.
+            new SystemSetting { Key = SystemSettingsKeys.ExchangeRateHistoryStartDate, Value = SystemSettingsDefaults.ExchangeRateHistoryStartDate, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.ExchangeRateSyncIntervalHours, Value = "24", UpdatedAt = seededAt }
         );
     }
 }

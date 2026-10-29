@@ -1,0 +1,14 @@
+/* The detail line of a rate row — why a fetched rate has no Edit. */
+.xr-detail-line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+    font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+
+.xr-detail-line .material-icons {
+    font-size: var(--icon-md);
+    color: var(--mud-palette-text-secondary);
+}

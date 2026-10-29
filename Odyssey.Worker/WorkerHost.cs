@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Configuration;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
@@ -31,6 +32,8 @@ public static class WorkerHost
         // Jobs. Each is an Odyssey.Core.Jobs.IPeriodicJob, written and tested in Odyssey.Core.
         services.AddWeatherFetching();
         services.AddPeriodicJob<WeatherScheduleJob>();
+        services.AddExchangeRateSync();
+        services.AddPeriodicJob<ExchangeRateSyncJob>();
 
         return builder;
     }

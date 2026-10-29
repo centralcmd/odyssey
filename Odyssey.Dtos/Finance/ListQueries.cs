@@ -104,19 +104,56 @@ public sealed class PropertyEventsQueryParams : QueryParams<PropertyEventSortBy>
     public ContractEventSource? Source { get; set; }
 }
 
-/// <summary>Currencies list query: filter by archival status.</summary>
+/// <summary>
+/// Currencies list query. <see cref="Statuses"/> filters by the derived <see cref="CurrencyStatus"/>
+/// (<c>?statuses=Synced&amp;statuses=Manual</c>; empty = all; duplicates ignored, an out-of-range value
+/// matches nothing). <see cref="Status"/> is the older archival filter, kept for the currency pickers,
+/// which ask for every currency that is not archived.
+/// </summary>
 public sealed class CurrenciesQueryParams : QueryParams<CurrencySortBy>
 {
     public ArchivalStatus? Status { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public CurrencyStatus[]? Statuses { get; set; }
 }
 
-/// <summary>Exchange-rates list query: filter by target currency code(s) and current/historical status.</summary>
+/// <summary>
+/// Exchange-rates list query: filter by target currency code(s), derived status(es) and source(s). The
+/// status and source filters take several values (<c>?status=Current&amp;status=Upcoming</c>; empty = all,
+/// issue #349 §5.6); the service ignores duplicates and drops an out-of-range numeric value, so
+/// <c>status=99</c> matches nothing.
+/// </summary>
 public sealed class ExchangeRatesQueryParams : QueryParams<ExchangeRateSortBy>
 {
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
     public string[]? ToCurrencies { get; set; }
 
-    public ExchangeRateStatus? Status { get; set; }
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public ExchangeRateStatus[]? Status { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public ExchangeRateSource[]? Source { get; set; }
+}
+
+/// <summary>The per-currency sync configuration list (issue #349 §5.1).</summary>
+public sealed class ExchangeRateSyncCurrenciesQueryParams : QueryParams<ExchangeRateSyncCurrencySortBy>
+{
+    public bool? Enabled { get; set; }
+
+    /// <summary>
+    /// <c>true</c> excludes only currencies KNOWN to be unsupported; one whose support is unknown (the
+    /// provider list is unavailable) is kept, so the default filter never empties the list in the
+    /// degraded state. <c>false</c> returns only the known-unsupported ones.
+    /// </summary>
+    public bool? Supported { get; set; }
+}
+
+/// <summary>The sync run log (issue #349 §5.4), newest first.</summary>
+public sealed class ExchangeRateSyncRunsQueryParams : QueryParams<ExchangeRateSyncRunSortBy>
+{
+    [EnumDataType(typeof(ExchangeRateSyncRunStatus))]
+    public ExchangeRateSyncRunStatus? Status { get; set; }
 }
 
 /// <summary>Files list query: filter by upload date bounds (UTC) and derived kind.</summary>

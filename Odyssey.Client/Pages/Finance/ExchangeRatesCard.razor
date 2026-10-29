@@ -22,7 +22,7 @@
                 PrimaryActionText="New rate"
                 OnPrimaryAction="AddClicked"
                 ShowPrimaryAction="_canCreate">
-        <SubLine>@_allRates.Count rates · @_pairCount pairs@(_latestAsOf is null ? "" : $" · latest {_latestAsOf.Value.ToLocalTime():MMM dd, yyyy, HH:mm}")</SubLine>
+        <SubLine>@SubLineText</SubLine>
         <OverviewContent>
             <div class="odc-summary-grid">
                 <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No rates." />
@@ -34,6 +34,7 @@
                                 DebounceInterval="300" OnSearch="ReloadAsync"
                                 Placeholder="Search pair, e.g. USD/EUR…" Class="ph-search" />
                 <OdsMultiSelect Label="Target" Values="_toFilter" ValuesChanged="OnToFilterChanged" Options="_toOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Source" Values="_sourceFilter" ValuesChanged="OnSourceFilterChanged" Options="_sourceOptions" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingExchangeRate" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
@@ -68,17 +69,14 @@
             new()
             {
                 Key = "status", HeaderText = "Status", Sortable = true, SortType = OdsSortType.Status,
-                SortValue = r => _currentIds.Contains(r.ExchangeRateId) ? 0 : 1,
-                Cell = (r, ctx) => @<text>
-                    @if (_currentIds.Contains(r.ExchangeRateId))
-                    {
-                        <OdsChip Tone="OdsChipTone.Info" Dot="true">Current</OdsChip>
-                    }
-                    else
-                    {
-                        <OdsChip Dot="true">Historical</OdsChip>
-                    }
-                </text>
+                SortValue = r => (int)r.Status,
+                Cell = (r, ctx) => ChipFor(OdsTypeRegistries.ExchangeRateStatusOf(r.Status))
+            },
+            @* Who supplied the rate — typed in, or fetched from a provider. *@
+            new()
+            {
+                Key = "source", HeaderText = "Source",
+                Cell = (r, ctx) => ChipFor(OdsTypeRegistries.ExchangeRateSourceOf(r))
             },
             new()
             {
@@ -95,7 +93,8 @@
         };
     }
 
-    <MudCard Outlined="true">
+    @* tabindex=-1 so focus has somewhere to land when the last row on a page is deleted. *@
+    <MudCard Outlined="true" id="xr-rates-card" tabindex="-1">
         <OdsRecordTable TRow="ExistingExchangeRate"
                         AriaLabel="Exchange rates"
                         Rows="@_rates"
@@ -117,9 +116,11 @@
                         KeepDirOnColumnChange="true"
                         Tiebreak="@((a, b) => b.AsOf.CompareTo(a.AsOf))"
                         Actions="BuildActions"
+                        RenderDetail="DetailFor"
                         OnDelete="HandleDelete">
             <Leading Context="r">
-                <OdsAvatar Icon="currency_exchange" />
+                @{ var mark = MarkColours(r.Status); }
+                <OdsAvatar Icon="currency_exchange" Bg="@mark.Bg" Fg="@mark.Fg" />
             </Leading>
             <CreateAction>
                 @if (_canCreate)
@@ -141,6 +142,7 @@
 {
     <CreateExchangeRateDialog @key="_createKey"
                               @bind-Open="_createOpen"
+                              Summary="_summary"
                               OnSaved="RefreshAsync" />
 }
 
@@ -150,4 +152,28 @@
                               @bind-Open="_editRateOpen"
                               Rate="_editRate"
                               OnSaved="OnRateEdited" />
+}
+
+@code {
+    // A fetched rate says why it has no Edit and how to override it; a manual one says it was typed in.
+    // Every value in the sentence comes from the summary.
+    private RenderFragment DetailFor(ExistingExchangeRate rate) => @<div class="xr-detail-line">
+        <span class="material-icons" aria-hidden="true">@(IsFetched(rate) ? "lock" : "edit_note")</span>
+        @if (IsFetched(rate) && _summary is { } summary)
+        {
+            <span>Fetched rates can’t be edited. Add a manual rate dated later than @summary.FetchedRateLocalTime @summary.FetchedRateTimeZoneLabel that day to override it.</span>
+        }
+        else if (IsFetched(rate))
+        {
+            <span>Fetched rates can’t be edited. Add a later manual rate to override it.</span>
+        }
+        else if (rate.UpdatedAt is { } edited)
+        {
+            <span>Entered by hand, last edited @edited.ToLocalTime().ToString("MMM dd, yyyy, HH:mm").</span>
+        }
+        else
+        {
+            <span>Entered by hand.</span>
+        }
+    </div>;
 }

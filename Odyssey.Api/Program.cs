@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Authorization;
 using Odyssey.Core.Email;
 using Odyssey.Core.DataExport;
 using Odyssey.Core.FileExport;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Legal;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.UserAdministration;
@@ -517,6 +518,20 @@ if (builder.Configuration.GetValue<bool>("UseInMemoryDatabase") || builder.Envir
 else
 {
     builder.Services.AddScoped<Odyssey.Core.Weather.IWeatherHistoryPurger, Odyssey.Core.Weather.RelationalWeatherHistoryPurger>();
+}
+
+// Exchange-rate sync (issue #349). The fetch path is shared with Odyssey.Worker, which executes every run; the
+// API reads the provider's list, writes the switches and purges, and only STARTS a manual run.
+builder.Services.AddExchangeRateSync();
+builder.Services.AddScoped<Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncCurrencyService>();
+// Under Testing no worker runs, so run-now executes inline and no test leaves a Running row holding the guard.
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<Odyssey.Api.ExchangeRateSync.IExchangeRateSyncDispatcher, Odyssey.Api.ExchangeRateSync.InlineExchangeRateSyncDispatcher>();
+}
+else
+{
+    builder.Services.AddSingleton<Odyssey.Api.ExchangeRateSync.IExchangeRateSyncDispatcher, Odyssey.Api.ExchangeRateSync.WorkerExchangeRateSyncDispatcher>();
 }
 
 builder.Services.AddSingleton(TimeProvider.System);

@@ -90,14 +90,49 @@ public class CurrenciesApiClientTests
         Assert.Contains("sortBy=asOf", query);
     }
 
+    // Issue #349: status and source each repeat their key, the shape the server binds into an array.
     [Fact]
-    public async Task Rates_ListAllAsync_is_unfiltered_and_full_window()
+    public async Task Rates_ListAsync_repeats_the_status_and_source_keys_for_several_values()
     {
         var (client, handler) = Create(api => new ExchangeRatesApiClient(api));
 
-        await client.ListAllAsync();
+        await client.ListAsync(1, 50, status: ["Current", "Upcoming"], source: ["Fetched", "Manual"]);
 
         var query = handler.LastRequest!.RequestUri!.Query;
-        Assert.Equal($"?offset=0&limit={PagedQuery.LimitAll}", query);
+        Assert.Contains("status=Current", query);
+        Assert.Contains("status=Upcoming", query);
+        Assert.Contains("source=Fetched", query);
+        Assert.Contains("source=Manual", query);
+    }
+
+    [Fact]
+    public async Task Rates_ListAsync_sends_no_status_or_source_when_none_is_chosen()
+    {
+        var (client, handler) = Create(api => new ExchangeRatesApiClient(api));
+
+        await client.ListAsync(1, 50, status: null, source: []);
+
+        var query = handler.LastRequest!.RequestUri!.Query;
+        Assert.DoesNotContain("status=", query);
+        Assert.DoesNotContain("source=", query);
+    }
+
+    [Fact]
+    public async Task Rates_GetSummaryAsync_hits_the_summary_route()
+    {
+        var (client, handler) = Create(api => new ExchangeRatesApiClient(api));
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"totalCount":5,"byStatus":{"current":3,"historical":1,"upcoming":1},"bySource":{"manual":2,"fetched":3},"pairCount":3,"attribution":"Norges Bank (NLOD 2.0)"}""",
+                System.Text.Encoding.UTF8, "application/json"),
+        };
+
+        var summary = await client.GetSummaryAsync();
+
+        Assert.Equal("/api/exchange-rates/summary", handler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal(HttpMethod.Get, handler.LastRequest.Method);
+        Assert.Equal(1, summary.Value!.ByStatus.Upcoming);
+        Assert.Equal(3, summary.Value.BySource.Fetched);
     }
 }

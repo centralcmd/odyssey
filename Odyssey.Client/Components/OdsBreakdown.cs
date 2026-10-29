@@ -16,6 +16,10 @@ public static class OdsBreakdown
         "pending" => "var(--finance-pending)",
         "info" => "var(--sea-400)",
         "tag" => "var(--tag-text)",
+        // The problem tones a status can carry (a currency's No longer published / Syncing off), so a
+        // breakdown row's icon matches its chip.
+        "warning" => "var(--mud-palette-warning)",
+        "error" => "var(--mud-palette-error)",
         _ => "var(--mud-palette-text-secondary)", // outline / neutral
     };
 

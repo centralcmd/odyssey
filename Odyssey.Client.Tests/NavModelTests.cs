@@ -93,7 +93,14 @@ public class NavModelTests
 
     [Fact]
     public void VisibleItems_system_shows_all_to_admin() =>
-        Assert.Equal(6, NavModel.VisibleItems(Module("system"), Admin).Count);
+        Assert.Equal(7, NavModel.VisibleItems(Module("system"), Admin).Count);
+
+    /// <summary>Background jobs (issue #351) is read under the claim that gates the jobs' settings.</summary>
+    [Fact]
+    public void BackgroundJobs_isGatedBySystemSettingsRead() =>
+        Assert.Equal(
+            PermissionClaims.SystemSettingsRead,
+            NavModel.VisibleItems(Module("system"), Admin).Single(p => p.Key == "background-jobs").Claim);
 
     /// <summary>
     /// The Terms of Service authoring surface (issue #354) is gated by <c>users.manage</c> — the same

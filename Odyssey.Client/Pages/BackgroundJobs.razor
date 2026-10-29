@@ -1,0 +1,50 @@
+@page "/background-jobs"
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@attribute [Authorize(Policy = PermissionClaims.SystemSettingsRead)]
+
+<PageTitle>Background jobs</PageTitle>
+
+@*
+    Background jobs — what the server runs on its own, and how each run went (Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx; docs/components-exchange-rate-sync.md, "Background jobs"). Gated on
+    system-settings.read, like the jobs' settings.
+
+    One section per job, headed by its name. It starts with the exchange-rate sync's run history, moved
+    here from Currencies as it was; a job added later gets its own section. A job's controls stay with
+    what it works on: the sync's status, Run now and Refresh are on Currencies, whose header menu links
+    here.
+
+    The page's one action is the header menu's "Refresh runs": it re-reads every section's runs, each
+    keeping its page, and announces it politely, so a Running row can be seen to finish without a reload.
+    Nothing polls.
+*@
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<MudStack Spacing="6">
+    <PageHeader Title="Background jobs" Icon="@Icons.Material.Filled.Update">
+        <SubLine>What the server runs on its own, and how each run went</SubLine>
+        <ActionMenu>
+            <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh runs</MudMenuItem>
+        </ActionMenu>
+    </PageHeader>
+
+    <section class="bgj-section" aria-labelledby="bgj-xrs-h">
+        <h2 class="bgj-h" id="bgj-xrs-h">Exchange-rate sync</h2>
+        <ExchangeRateSyncRunHistory @ref="_exchangeRateSyncRuns" />
+    </section>
+</MudStack>
+
+@code {
+    private OdsLiveAnnouncer? _announcer;
+    private ExchangeRateSyncRunHistory? _exchangeRateSyncRuns;
+
+    // Every section's runs, each re-read on the page it shows.
+    private async Task RefreshAsync()
+    {
+        if (_exchangeRateSyncRuns is not null)
+            await _exchangeRateSyncRuns.ReloadAsync();
+        if (_announcer is not null)
+            await _announcer.Announce("Runs refreshed");
+    }
+}

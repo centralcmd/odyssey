@@ -1086,6 +1086,57 @@ every surface that displays it.
 4. Then erase the location itself as in the previous section.
 5. Copies outside the live rows age out with your backup retention. The Admin data export carries only
    the per-place weather *settings*, never coordinates or history.
+## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
+
+Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).
+It is off until an Admin starts syncing a currency on the *Currencies* page (`/currencies`), which also
+shows the sync status, *Run now* and the run history; *System settings* keeps only the start date and
+the interval.
+
+### Release note
+
+- **Existing direct rates can lose to a NOK hop.** A pair with no direct rate now converts through NOK
+  (`A → NOK → B`), and when both exist the one dated later wins — the direct rate keeps the tie on the
+  same UTC date. So a hand-entered `USD → EUR` dated 2025 stops being used once USD and EUR sync. That
+  is intended.
+- **A date-only manual rate loses to the same day's fetched rate.** Fetched rates are stamped at 16:00
+  Norwegian time (14:00 or 15:00 UTC); a manual rate entered for a date is stamped 00:00. To override a
+  fetched day, enter a manual rate with a later time.
+- **Future-dated rates now count only from their date** and list with the status *Upcoming*. Before,
+  a rate dated next week was already used for conversions.
+- **Fetched rates cannot be edited or deleted one by one.** `PUT` and `DELETE /api/exchange-rates/{id}`
+  on one are a `422`, whoever asks: the sync never refetches a day removed from inside what it already
+  holds, so a single delete would leave a gap that conversions silently bridge with an older rate.
+  Fetched rates leave per currency, through *Delete fetched rates* once its sync is off (Admin). Owner
+  keeps editing and deleting manual rates.
+- **Rolling back the migration** (`AddExchangeRateSync`) keeps the rows but drops the column that says
+  they were fetched, so they then read as manual. `Down()` restores schema, not provenance.
+- **No new claims**, so nobody needs to sign out. No new configuration: the start date and interval are
+  System settings, and nothing is carried over from the environment (both keys are new).
+- **The sync runs in `Odyssey.Worker`**, like every background job. Without a running worker nothing is
+  fetched: *Run now* still records a `Running` run, which no process takes; the next run or purge
+  started after two minutes marks it *Abandoned* and proceeds, logging a warning that asks whether the
+  worker runs. The API reaches Norges Bank too — for the list of published currencies behind the
+  Sync column on Currencies — so both containers need egress to `data.norges-bank.no`.
+- **Both runtime images need `tzdata`** for `Europe/Oslo`, and both Dockerfiles already install it.
+  Without it the sync runs fail with *Time zone unavailable*; the hosts still start.
+
+### The data flow
+
+The worker's sync job wakes every 15 seconds. It first takes any manual run the API started — exactly one
+worker replica can claim it — and otherwise starts a run when one is due (after the configured interval,
+or 5 minutes later while history is still being backfilled). A run sends
+Norges Bank only **currency codes and dates** — no user, account, amount or other household data, and
+no API key. The enabled set does reveal which currencies the household cares about. The host is a
+compile-time constant, redirects are not followed, responses are capped at 10 MB, and each run makes at
+most 10 requests at least 1 s apart. Rates are published under NLOD 2.0; Odyssey shows the credit
+*Source: Norges Bank (NLOD 2.0)* wherever fetched rates appear.
+
+The run log (`ExchangeRateSyncRuns`, newest 500 kept) records each run's trigger, status, error kind,
+span, currencies and row counts. Per-currency changes and purges are also written to the application
+log under the System settings audit category (`Odyssey.Api.SystemSettings.SystemSettingsService`), and
+manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
+user's id.
 
 ## Security checklist
 

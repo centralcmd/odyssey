@@ -29,6 +29,69 @@ public partial class Settings
     private void Announce(string message) =>
         _announce = (_announceParity = !_announceParity) ? message : message + "​";
 
+    // ── Exchange rates card ─────────────────────────────────────────────────────
+    // The sync's status, Run now and the per-currency controls live on /currencies; this card keeps the
+    // two instance-wide settings and a link there. Status is read once, for the synced count.
+    private Odyssey.Dtos.Finance.ExchangeRateSyncStatus? _syncStatus;
+
+    private async Task LoadSyncCountAsync()
+    {
+        var result = await ExchangeRateSync.GetStatusAsync();
+        if (result.IsSuccess && result.Value is { } status)
+        {
+            _syncStatus = status;
+            StateHasChanged();
+        }
+    }
+
+    // The new controls are built here rather than as markup in Settings.razor, whose @code block
+    // is capped (SourceConventionTests); each is a plain composition of existing atoms.
+
+    // The history start date: a picker over an invariant yyyy-MM-dd string row.
+    private RenderFragment DateControl(SettingItem item) => builder =>
+    {
+        builder.OpenComponent<OdsDateField>(0);
+        builder.AddComponentParameter(1, nameof(OdsDateField.Id), ControlId(item.Key));
+        builder.AddComponentParameter(2, nameof(OdsDateField.Value), GetDate(item.Key));
+        builder.AddComponentParameter(3, nameof(OdsDateField.ValueChanged),
+            EventCallback.Factory.Create<DateTime?>(this, v => SetDate(item.Key, v)));
+        builder.AddComponentParameter(4, nameof(OdsDateField.Min), (DateTime?)ExchangeRateHistoryStartDateRule.Floor.ToDateTime(TimeOnly.MinValue));
+        builder.AddComponentParameter(5, nameof(OdsDateField.Max), (DateTime?)Time.GetUtcNow().UtcDateTime.Date);
+        builder.AddComponentParameter(6, nameof(OdsDateField.Placeholder), item.Placeholder ?? "Select date");
+        builder.AddComponentParameter(7, nameof(OdsDateField.Disabled), IsRowDisabled(item));
+        builder.AddComponentParameter(8, nameof(OdsDateField.Error), FieldStateFor(item));
+        builder.AddComponentParameter(9, nameof(OdsDateField.DescribedBy), DescribedBy(item));
+        builder.CloseComponent();
+    };
+
+    // Manage currencies navigates, so it is a link.
+    private RenderFragment ActionControl(SettingItem item) => builder =>
+    {
+        builder.OpenComponent<OdsButton>(0);
+        builder.AddComponentParameter(1, nameof(OdsButton.Variant), OdsButtonVariant.Outlined);
+        builder.AddComponentParameter(2, nameof(OdsButton.Icon), "tune");
+        builder.AddComponentParameter(3, nameof(OdsButton.Href), "/currencies");
+        builder.AddComponentParameter(4, nameof(OdsButton.ChildContent), (RenderFragment)(b => b.AddContent(0, "Manage currencies")));
+        builder.CloseComponent();
+    };
+
+    private DateTime? GetDate(string key) => ParseStoredDate(GetText(key));
+
+    private void SetDate(string key, DateTime? value) => SetText(key, FormatStoredDate(value));
+
+    /// <summary>The stored yyyy-MM-dd text of a Date row as the picker's value; empty or malformed is null.</summary>
+    internal static DateTime? ParseStoredDate(string stored) =>
+        DateOnly.TryParseExact(stored.Trim(), ExchangeRateHistoryStartDateRule.Format,
+            System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var date)
+            ? date.ToDateTime(TimeOnly.MinValue)
+            : null;
+
+    /// <summary>Invariant yyyy-MM-dd, empty ↔ null (SEC F6): the row stays a string on the wire.</summary>
+    internal static string FormatStoredDate(DateTime? value) =>
+        value is { } d
+            ? DateOnly.FromDateTime(d).ToString(ExchangeRateHistoryStartDateRule.Format, System.Globalization.CultureInfo.InvariantCulture)
+            : string.Empty;
+
     private enum Phase { Loading, Ready, Error }
     private Phase _phase = Phase.Loading;
 
@@ -84,7 +147,7 @@ public partial class Settings
         // available to holders of that claim.
         _exportAvailable = user.HasPermission(PermissionClaims.DataExport);
 
-        await LoadSettingsAsync();
+        await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync());
     }
 
     private async Task LoadSettingsAsync()
@@ -207,7 +270,14 @@ public partial class Settings
     // import (§9) — all four groups do now that Tasks gained an export row cap as a follow-up
     // (previously "Non-Goal 2": no export cap at all).
     internal enum SettingClaim { None, Security, Count }
-    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent }
+    // Date and Action arrived with the exchange-rate sync card. Action is a button that
+    // acts at once or navigates — Export is one use of that shape and keeps its own member and behaviour.
+    // Neither is part of Save.
+    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
+
+    /// <summary>The one non-saving control kinds — never dirty, never validated, never written.</summary>
+    internal static bool IsTileOnly(SettingControl control) =>
+        control is SettingControl.Export or SettingControl.Action;
 
     /// <summary>
     /// One row. <see cref="Load"/> and <see cref="Write"/> are the catalogue's half of the same
@@ -937,6 +1007,35 @@ public partial class Settings
                 Write: (p, req) => req.AccountMaxSmartTagsPerAccount =
                     p.IntRequest("accountMaxSmartTagsPerAccount")),
         ]),
+        // Exchange rates: the two global sync settings save with the page, and
+        // Manage currencies links to /currencies, where the sync status, Run now, which currencies are
+        // synced, each one's own start date and the run history live.
+        new("Exchange rates", Icons.Material.Filled.CurrencyExchange,
+        [
+            new("exchangeRateHistoryStartDate", "history", "History start date",
+                "Leave empty to start from 1 January of the current year. Rates already fetched are kept when "
+                + "this moves later.",
+                SettingClaim.Count, SettingControl.Date, Max: ExchangeRateHistoryStartDateRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.ExchangeRateHistoryStartDate),
+                Load: (p, dto) => p.SetTextLoaded("exchangeRateHistoryStartDate", dto.ExchangeRateHistoryStartDate),
+                Write: (p, req) => req.ExchangeRateHistoryStartDate = p.TextRequest("exchangeRateHistoryStartDate"),
+                Placeholder: "1 January this year",
+                AllowEmpty: true,
+                Rule: ExchangeRateHistoryStartDateRule.Validate),
+            new("exchangeRateSyncIntervalHours", "schedule", "Sync interval",
+                "How long the sync waits after a finished run before the next one, once every currency has "
+                + "caught up. Norges Bank publishes once per business day.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.ExchangeRateSyncIntervalHoursMin,
+                Max: SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax,
+                Field: nameof(SystemSettingsUpdate.ExchangeRateSyncIntervalHours),
+                Load: (p, dto) => p.SetIntLoaded("exchangeRateSyncIntervalHours", dto.ExchangeRateSyncIntervalHours),
+                Write: (p, req) => req.ExchangeRateSyncIntervalHours = p.IntRequest("exchangeRateSyncIntervalHours"),
+                Unit: "hours"),
+            new(ExchangeRateCurrenciesKey, "payments", "Currencies",
+                "Choose which currencies are synced and from which date.",
+                SettingClaim.None, SettingControl.Action),
+        ]),
     ];
 
     private bool Editable(SettingClaim claim) => claim switch
@@ -945,6 +1044,8 @@ public partial class Settings
         SettingClaim.Count => _hasCountUpdate,
         _ => true,
     };
+
+    internal const string ExchangeRateCurrenciesKey = "exchangeRateCurrencies";
 
     private bool IsRowDisabled(SettingItem item) => item.Control switch
     {
@@ -1158,7 +1259,9 @@ public partial class Settings
 
     private bool IsDirty(SettingItem item) => item.Control switch
     {
-        SettingControl.Export => false,
+        SettingControl.Export or SettingControl.Action => false,
+        SettingControl.Date => _texts.TryGetValue(item.Key, out var date)
+            && !string.Equals(date.Draft.Trim(), date.Saved, StringComparison.Ordinal),
         SettingControl.Capacity => _capacities.TryGetValue(item.Key, out var cap) &&
             (cap.Unlimited != cap.SavedUnlimited || (!cap.Unlimited && cap.Value != cap.SavedValue)),
         SettingControl.Toggle => _bools.TryGetValue(item.Key, out var b) && b.Draft != b.Saved,
@@ -1221,7 +1324,10 @@ public partial class Settings
         if (_serverErrors.TryGetValue(item.Key, out var fromServer))
             return fromServer;
 
-        if (item.Control == SettingControl.Text)
+        if (IsTileOnly(item.Control))
+            return null;
+
+        if (item.Control is SettingControl.Text or SettingControl.Date)
         {
             var text = GetText(item.Key).Trim();
             if (text.Length == 0)
@@ -1230,7 +1336,12 @@ public partial class Settings
                 return $"Must be {item.Max:N0} characters or fewer";
             // Length first, then shape: a 300-character URL should be told it is too long rather than
             // handed the rule's own sentence about schemes and fragments.
-            return item.Rule?.Invoke(text);
+            if (item.Rule?.Invoke(text) is { } ruleError)
+                return ruleError;
+            // A Date row is also bounded above by today (UTC); the server enforces it with its own clock.
+            if (item.Control == SettingControl.Date && GetDate(item.Key) is { } date && date.Date > Time.GetUtcNow().UtcDateTime.Date)
+                return "Enter a date on or before today.";
+            return null;
         }
 
         if (item.Control is SettingControl.Decimal or SettingControl.Percent)
@@ -1332,6 +1443,8 @@ public partial class Settings
         SettingControl.Text => item.OptionsFrom is null ? TextControl(item) : SelectControl(item),
         SettingControl.Decimal => DecimalControl(item),
         SettingControl.Percent => PercentControl(item),
+        SettingControl.Date => DateControl(item),
+        SettingControl.Action => ActionControl(item),
         _ => ToggleControl(item),
     };
 
@@ -1374,7 +1487,8 @@ public partial class Settings
     /// names itself through <c>aria-labelledby</c> on the title instead.
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
-        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export)
+        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export
+            or SettingControl.Action)
         && item.OptionsFrom is null;
 
     /// <summary>
@@ -1384,7 +1498,11 @@ public partial class Settings
     /// </summary>
     private string HelpLine(SettingItem item)
     {
-        var parts = new List<string>(3) { item.Description };
+        // The currencies row says how many are synced — a server count, read from the sync status.
+        var description = item.Key == ExchangeRateCurrenciesKey && _syncStatus is { } sync
+            ? $"{sync.EnabledCount} currencies synced"
+            : item.Description;
+        var parts = new List<string>(3) { description };
 
         // The marker in the outline says WHICH WAY; the range belongs here, where there is room for
         // it. Resolved through MinFor/MaxFor so a server-published bound is the one quoted.

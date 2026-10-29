@@ -61,6 +61,14 @@ public sealed class ExchangeRatesController : ControllerBase
         return Ok(rate);
     }
 
+    [HttpGet("summary", Name = "GetExchangeRateSummary")]
+    [Authorize(Policy = PermissionClaims.ExchangeRatesRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExchangeRateSummary))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Counts by status and source, the currencies in use and the attribution.")]
+    public async Task<IActionResult> GetSummary(CancellationToken cancellationToken = default) =>
+        Ok(await exchangeRateService.GetSummaryAsync(cancellationToken));
+
     [HttpGet("{id}", Name = "GetExchangeRate")]
     [Authorize(Policy = PermissionClaims.ExchangeRatesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingExchangeRate))]
@@ -101,7 +109,8 @@ public sealed class ExchangeRatesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Correct a rate's Rate/AsOf.", Description = @"Corrects the Rate and AsOf of an existing exchange rate record. The currency pair is the record's identity and can't be changed.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Correct a rate's Rate/AsOf.", Description = @"Corrects the Rate and AsOf of an existing manual exchange rate record. The currency pair is the record's identity and can't be changed. A fetched rate is refused with 422 keyed source.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID of the exchange rate record to update.")] Guid id,
@@ -121,7 +130,8 @@ public sealed class ExchangeRatesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ExchangeRatesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove a mistaken exchange rate row.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Remove a mistaken manual exchange rate row. A fetched row is refused; the per-currency purge removes those.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID of the exchange rate record to delete.")] Guid id, CancellationToken cancellationToken = default)

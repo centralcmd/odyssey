@@ -3,17 +3,36 @@
 
     The Preferences "Dark mode" control and any instant setting. A MudSwitch.
     Two-way bindable via @bind-Checked.
+
+    Two focusable "can't change now" states, distinct from Disabled — a native disabled drops focus
+    out of the control:
+      Busy          a save is in flight: aria-disabled + aria-busy, changes ignored, focus kept.
+      AriaDisabled  permanently locked (a base-currency row): aria-disabled only, changes ignored.
+    Both render MudSwitch ReadOnly, so the input stays in the tab order and keeps its checked state.
+    Only the track dims; the label keeps full text contrast.
+
+    ResetToModel() rebuilds the input (a new @key) so its checked state matches Checked after a
+    refused change — Blazor does not re-patch a value that did not change — and hands focus back.
+    ResetKey is the same thing as a parameter (the design system's resetKey): a table row bumps it,
+    since a row has no @ref to call the method through.
 *@
 
+@inject IJSRuntime Js
+
 <MudSwitch T="bool"
+           @key="_resetKey"
            Value="@Checked"
            ValueChanged="OnValueChanged"
            Label="@Label"
            AriaLabel="@AriaLabel"
            Disabled="@Disabled"
+           ReadOnly="@(Busy || AriaDisabled)"
            Color="Color.Primary"
-           Class="@Class"
+           Class="@SwitchClass"
            @attributes="UserAttributes"
+           id="@_inputId"
+           aria-disabled="@(Busy || AriaDisabled ? "true" : null)"
+           aria-busy="@(Busy ? "true" : null)"
            aria-describedby="@AriaDescribedBy" />
 
 @code {
@@ -49,13 +68,70 @@
 
     [Parameter] public bool Disabled { get; set; }
 
+    /// <summary>A save is in flight: <c>aria-disabled</c> + <c>aria-busy</c>, changes ignored, focus kept.</summary>
+    [Parameter] public bool Busy { get; set; }
+
+    /// <summary>Permanently locked: <c>aria-disabled</c> only, changes ignored, focus kept.</summary>
+    [Parameter] public bool AriaDisabled { get; set; }
+
+    /// <summary>Bump to rebuild the input from <see cref="Checked"/> and return focus to it, as
+    /// <see cref="ResetToModel"/> does. The first value is the baseline and resets nothing.</summary>
+    [Parameter] public int ResetKey { get; set; }
+
     [Parameter] public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
+    private readonly string _inputId = $"ods-switch-{Guid.NewGuid():N}";
+    private int _resetKey;
+    private bool _focusAfterReset;
+    private int? _lastResetKey;
+
+    protected override void OnParametersSet()
+    {
+        if (_lastResetKey is { } last && last != ResetKey)
+        {
+            _resetKey++;
+            _focusAfterReset = true;
+        }
+        _lastResetKey = ResetKey;
+    }
+
+    private string? SwitchClass
+    {
+        get
+        {
+            var state = Busy ? "odc-switch-busy" : AriaDisabled ? "odc-switch-locked" : null;
+            return string.Join(' ', new[] { state, Class }.Where(c => !string.IsNullOrEmpty(c))) is { Length: > 0 } c ? c : null;
+        }
+    }
+
+    /// <summary>
+    /// Rebuild the input from <see cref="Checked"/> after a refused change and return focus to it —
+    /// the Blazor counterpart of the design system's <c>resetKey</c>.
+    /// </summary>
+    public void ResetToModel()
+    {
+        _resetKey++;
+        _focusAfterReset = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusAfterReset)
+            return;
+        _focusAfterReset = false;
+        try
+        { await Js.InvokeVoidAsync("odsFocusById", _inputId); }
+        catch (JSException) { }
+    }
+
     private Task OnValueChanged(bool value)
     {
+        if (Busy || AriaDisabled)
+            return Task.CompletedTask;
         Checked = value;
         return CheckedChanged.InvokeAsync(value);
     }

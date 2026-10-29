@@ -39,6 +39,15 @@ public partial class OdsRecordCard
     /// </summary>
     [Parameter] public OdsRecordImage? Image { get; set; }
 
+    /// <summary>
+    /// A short TEXT identity (up to three characters) rendered as the mark instead of
+    /// <see cref="Icon"/> — for a record whose identity is a code rather than a type, such as a
+    /// currency's ISO code. Unlike the glyph it is NOT aria-hidden: it is part of the trigger's
+    /// accessible name, so a list that shows the code nowhere else still announces it. Precedence:
+    /// <see cref="Image"/> → <see cref="Monogram"/> → <see cref="Icon"/>.
+    /// </summary>
+    [Parameter] public string? Monogram { get; set; }
+
     /// <summary>The type's (or type-equivalent's) colour, any CSS color. Sets <c>--rec</c> on the
     /// card, inherited by every icon and single-series chart inside it. Omit for the brand accent.</summary>
     [Parameter] public string? Accent { get; set; }

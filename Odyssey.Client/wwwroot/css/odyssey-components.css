@@ -829,6 +829,18 @@
 .odc-btn-icon { font-size: 18px; line-height: 1; }
 .odc-btn-icon.start { margin-inline-end: 8px; }
 .odc-btn-icon.end { margin-inline-start: 8px; }
+/* OdsButton AriaDisabled — the focusable unavailable state: MudBlazor's own disabled
+   look, without the native disabled that would drop focus. */
+.mud-button-root.odc-btn-aria-disabled,
+.mud-button-root.odc-btn-aria-disabled:hover {
+    color: var(--mud-palette-action-disabled);
+    background-color: var(--mud-palette-action-disabled-background);
+    border-color: transparent;
+    box-shadow: none;
+    cursor: not-allowed;
+}
+.mud-button-root.mud-button-text.odc-btn-aria-disabled,
+.mud-button-root.mud-button-outlined.odc-btn-aria-disabled { background-color: transparent; }
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
    A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
@@ -4216,6 +4228,9 @@ tr:focus-within > .odc-rowactions.reveal,
     background: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent)); color: oklch(from var(--rec, var(--brand-text)) var(--glyph-l, l) c h);
 }
 .odc-record-mark .material-icons { font-size: var(--icon-xl); }
+/* Text mark — a short code (a currency's ISO code) in place of the type glyph.
+   Same box and accent ground; the text is the glyph's colour, at body size. */
+.odc-record-mark.mono { font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); letter-spacing: 0.02em; }
 /* Image mark — the record's own picture in place of its type glyph. The accent
    stays with the card; only this mark's content (and, for a logo, its ground)
    changes. `.ground` is the neutral letterbox; `.round` is a photograph. */
@@ -4681,3 +4696,25 @@ tr:focus-within > .odc-rowactions.reveal,
   .loc-result-name, .loc-result-desc { white-space: normal; overflow-wrap: anywhere; }
 }
 .loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
+
+/* OdsSwitch Busy / AriaDisabled: focusable, aria-disabled. An unavailable switch dims its
+   track and thumb only — the label keeps full text contrast, unlike the native disabled state. A busy
+   switch is in flight, not inactive, so it keeps full contrast (WCAG 1.4.11) and spins a ring on its
+   thumb instead; under reduced motion the ring stands still. */
+.odc-switch-locked { cursor: not-allowed; }
+.odc-switch-locked .mud-switch-track,
+.odc-switch-locked .mud-switch-button { opacity: 0.6; }
+.odc-switch-busy { cursor: progress; }
+.odc-switch-busy .mud-switch-button::after {
+    content: "";
+    position: absolute;
+    inset: 25%;
+    border-radius: 50%;
+    border: var(--border-strong) solid var(--mud-palette-primary);
+    border-right-color: transparent;
+    animation: odc-switch-spin 0.8s linear infinite;
+    pointer-events: none;
+}
+@keyframes odc-switch-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
+

@@ -64,12 +64,16 @@ public class OdysseyContextModelTests
 
         var exchangeRateIndexes = context.Model.FindEntityType(typeof(ExchangeRate))!.GetIndexes();
 
+        // Issue #349: the lookup index is now the PREFIX of the unique (From, To, AsOf, Provider) index
+        // that makes a fetched row idempotent, so it still serves the latest-rate lookup.
         Assert.Contains(exchangeRateIndexes, index =>
-            index.Properties.Select(property => property.Name)
+            index.IsUnique
+            && index.Properties.Select(property => property.Name)
                 .SequenceEqual([
                     nameof(ExchangeRate.FromCurrencyCode),
                     nameof(ExchangeRate.ToCurrencyCode),
                     nameof(ExchangeRate.AsOf),
+                    nameof(ExchangeRate.Provider),
                 ]));
     }
 }

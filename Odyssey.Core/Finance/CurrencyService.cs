@@ -1,6 +1,7 @@
 using Odyssey.Core;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
+using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
@@ -13,8 +14,19 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
     private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
 
     /// <summary>Server-side paged list (issue #277): search over code/name + allowlisted sort.</summary>
+    /// <param name="sync">
+    /// Every non-archived currency's sync projection, which the derived <see cref="CurrencyStatus"/> is
+    /// computed from — for every caller. <c>null</c> reads every non-archived currency as
+    /// <see cref="CurrencyStatus.SyncingOff"/>.
+    /// </param>
+    /// <param name="attachSync">
+    /// Whether the projection itself is attached to the rows (<see cref="ExistingCurrency.Sync"/>) — only for
+    /// a caller allowed to see the sync's detail, which the caller decides. The status is attached always.
+    /// </param>
     public async Task<PagedResult<ExistingCurrency>> ListAsync(
         CurrenciesQueryParams query,
+        IReadOnlyCollection<ExistingExchangeRateSyncCurrency>? sync = null,
+        bool attachSync = false,
         CancellationToken cancellationToken = default)
     {
         var q = context.Currencies.AsNoTracking().AsQueryable();
@@ -35,19 +47,66 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             _ => q,
         };
 
+        // The status is not a column, so the filter and the sort run on the code lists it splits into; EF
+        // translates each Contains to an IN, keeping the paging in the database. An archived currency is
+        // Archived by its own column; a non-archived one with no projection is Syncing off.
+        var projected = (sync ?? []).ToDictionary(item => item.CurrencyCode, StringComparer.Ordinal);
+        var byStatus = projected.Values
+            .GroupBy(item => CurrencyStatuses.Of(archived: false, item))
+            .ToDictionary(group => group.Key, group => group.Select(item => item.CurrencyCode).ToList());
+        List<string> CodesOf(CurrencyStatus status) => byStatus.GetValueOrDefault(status) ?? [];
+        var projectedCodes = projected.Keys.ToList();
+        var synced = CodesOf(CurrencyStatus.Synced);
+        var fetching = CodesOf(CurrencyStatus.FetchingHistory);
+        var unpublished = CodesOf(CurrencyStatus.NoLongerPublished);
+        var notPublished = CodesOf(CurrencyStatus.NotPublished);
+
+        // Out-of-range values match nothing; duplicates are ignored.
+        if (query.Statuses is { Length: > 0 } statuses)
+        {
+            var wanted = statuses.ToHashSet();
+            var wantArchived = wanted.Contains(CurrencyStatus.Archived);
+            var wantUnprojected = wanted.Contains(CurrencyStatus.SyncingOff);
+            var allowed = wanted.SelectMany(CodesOf).ToList();
+            q = q.Where(c => (wantArchived && c.Archived != null)
+                || (c.Archived == null && (allowed.Contains(c.CurrencyCode)
+                    || (wantUnprojected && !projectedCodes.Contains(c.CurrencyCode)))));
+        }
+
         var ascending = ListQuery.Ascending(query.SortDir, naturalDefaultAscending: true);
         var sorted = query.SortBy switch
         {
             CurrencySortBy.Name => ascending ? q.OrderBy(c => c.Name) : q.OrderByDescending(c => c.Name),
             CurrencySortBy.Symbol => ascending ? q.OrderBy(c => c.Symbol) : q.OrderByDescending(c => c.Symbol),
             CurrencySortBy.MinorUnits => ascending ? q.OrderBy(c => c.MinorUnits) : q.OrderByDescending(c => c.MinorUnits),
-            // Status sorts on the derived archival flag (active before archived when ascending).
-            CurrencySortBy.Status => ascending ? q.OrderBy(c => c.Archived != null) : q.OrderByDescending(c => c.Archived != null),
+            // The derived status, in its reading order (the enum's): synced first, archived last.
+            CurrencySortBy.Status => ascending
+                ? q.OrderBy(c => c.Archived != null ? (int)CurrencyStatus.Archived
+                    : synced.Contains(c.CurrencyCode) ? (int)CurrencyStatus.Synced
+                    : fetching.Contains(c.CurrencyCode) ? (int)CurrencyStatus.FetchingHistory
+                    : unpublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NoLongerPublished
+                    : notPublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NotPublished
+                    : (int)CurrencyStatus.SyncingOff)
+                : q.OrderByDescending(c => c.Archived != null ? (int)CurrencyStatus.Archived
+                    : synced.Contains(c.CurrencyCode) ? (int)CurrencyStatus.Synced
+                    : fetching.Contains(c.CurrencyCode) ? (int)CurrencyStatus.FetchingHistory
+                    : unpublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NoLongerPublished
+                    : notPublished.Contains(c.CurrencyCode) ? (int)CurrencyStatus.NotPublished
+                    : (int)CurrencyStatus.SyncingOff),
             _ => ascending ? q.OrderBy(c => c.CurrencyCode) : q.OrderByDescending(c => c.CurrencyCode),
         };
         q = sorted.ThenBy(c => c.CurrencyCode);
 
-        return await q.ToPagedResultAsync(query.Offset, query.Limit, c => c.Adapt<ExistingCurrency>(), cancellationToken);
+        var page = await q.ToPagedResultAsync(query.Offset, query.Limit, c => c.Adapt<ExistingCurrency>(), cancellationToken);
+        foreach (var item in page.Items)
+        {
+            var projection = item.Archived is null ? projected.GetValueOrDefault(item.CurrencyCode) : null;
+            item.Status = CurrencyStatuses.Of(item.Archived is not null, projection);
+            if (attachSync)
+                item.Sync = projection;
+        }
+
+        return page;
     }
 
     public async Task<ExistingCurrency?> Get(string currencyCode, CancellationToken cancellationToken = default)
@@ -78,7 +137,15 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
         return currency.Adapt<ExistingCurrency>();
     }
 
-    public async Task<ExistingCurrency?> Update(string currencyCode, NewCurrency putCurrency, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Updates a currency; <c>null</c> when the code is unknown. Archiving one also switches its
+    /// exchange-rate sync off, in the same save — the job skips an archived currency anyway, and a sync
+    /// left on would resume silently on restore and back-fill the whole gap. Restoring never switches it
+    /// back on. <see cref="CurrencyUpdated.SyncStopped"/> tells the caller, which owns the audit line;
+    /// <paramref name="userId"/> is stamped on the stopped sync row, as a switch flipped by hand would be.
+    /// </summary>
+    public async Task<CurrencyUpdated?> Update(
+        string currencyCode, NewCurrency putCurrency, string? userId = null, CancellationToken cancellationToken = default)
     {
         var normalizedCode = NormalizeCode(currencyCode);
         if (!string.Equals(normalizedCode, NormalizeCode(putCurrency.CurrencyCode), StringComparison.Ordinal))
@@ -94,14 +161,36 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
 
         Validate(putCurrency, normalizedCode);
 
+        var archiving = currency.Archived is null && putCurrency.Archived;
+        if (archiving && normalizedCode == ExchangeRateSyncConstants.BaseCurrencyCode
+            && await context.ExchangeRateSyncCurrencies.AnyAsync(row => row.Enabled && row.CurrencyCode != normalizedCode, cancellationToken))
+        {
+            // Every synced rate is quoted against the base, so archiving it would quietly break conversion.
+            throw new DomainUnprocessableException(
+                $"{normalizedCode} is the base every synced rate is quoted against. Stop syncing every currency before archiving it.",
+                "archived");
+        }
+
         currency.Name = putCurrency.Name.Trim();
         currency.MinorUnits = putCurrency.MinorUnits;
         currency.Symbol = putCurrency.Symbol.Trim();
         ApplyArchiveTransition(currency, putCurrency.Archived);
 
+        var syncStopped = false;
+        if (archiving
+            && await context.ExchangeRateSyncCurrencies.FirstOrDefaultAsync(
+                row => row.CurrencyCode == normalizedCode && row.Enabled, cancellationToken) is { } sync)
+        {
+            // The start date is kept, for when someone restarts it; fetched rates are kept, as on a stop.
+            sync.Enabled = false;
+            sync.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+            sync.UpdatedByUserId = userId;
+            syncStopped = true;
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
-        return currency.Adapt<ExistingCurrency>();
+        return new CurrencyUpdated(currency.Adapt<ExistingCurrency>(), syncStopped);
     }
 
     public async Task Delete(string currencyCode, CancellationToken cancellationToken = default)
@@ -238,3 +327,6 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
         }
     }
 }
+
+/// <summary>An updated currency, and whether archiving it switched its exchange-rate sync off.</summary>
+public sealed record CurrencyUpdated(ExistingCurrency Currency, bool SyncStopped);

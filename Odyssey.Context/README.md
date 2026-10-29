@@ -117,7 +117,8 @@ Columns across the model name the user who created, updated, attached, uploaded,
 a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `JournalEntry`,
 `JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `Contract.CreatedByUserId`; `AttachedByUserId` on the file-link
 tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
-`FileAnalysisCandidateTransaction.ReviewedByUserId`.
+`FileAnalysisCandidateTransaction.ReviewedByUserId`; and, for the exchange-rate sync (issue #349),
+`ExchangeRateSyncCurrency.UpdatedByUserId` and `ExchangeRateSyncRun.RequestedByUserId`.
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of
 them naming an account that no longer existed, and no transaction could span the two contexts to fix

@@ -68,6 +68,12 @@
     /// to the inner input, as on <see cref="OdsSelect"/>, because MudDatePicker splats attributes onto its wrapper.</summary>
     [Parameter] public string? AriaLabel { get; set; }
 
+    /// <summary>
+    /// The id of text elsewhere in the form that explains this field. Added to the inner input's
+    /// <c>aria-describedby</c> after MudBlazor's own helper text, which it keeps.
+    /// </summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -77,14 +83,29 @@
     // The label applied to the inner input so far: re-applied whenever the parameter changes, not only on the
     // first render, so a label that follows state never goes stale.
     private string? _appliedAriaLabel;
+    private string? _appliedDescribedBy;
+
+    // MudBlazor names its helper text after the input id; setting the attribute replaces Mud's own value,
+    // so the helper is listed first to keep it.
+    private string? DescribedBy => string.IsNullOrEmpty(AriaDescribedBy) ? null
+        : string.IsNullOrEmpty(HelperText) ? AriaDescribedBy
+        : $"{_inputId}-helper-text {AriaDescribedBy}";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (string.Equals(AriaLabel, _appliedAriaLabel, StringComparison.Ordinal)) return;
         try
         {
-            await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel);
-            _appliedAriaLabel = AriaLabel;
+            if (!string.Equals(AriaLabel, _appliedAriaLabel, StringComparison.Ordinal))
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel);
+                _appliedAriaLabel = AriaLabel;
+            }
+
+            if (!string.Equals(DescribedBy, _appliedDescribedBy, StringComparison.Ordinal))
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-describedby", DescribedBy);
+                _appliedDescribedBy = DescribedBy;
+            }
         }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }

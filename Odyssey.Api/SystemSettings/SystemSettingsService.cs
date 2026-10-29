@@ -116,6 +116,18 @@ public sealed class SystemSettingsService(
             }
         }
 
+        // The one clock-dependent bound (issue #349 §8): the shared static rule cannot see "today", so
+        // the exchange-rate start date's upper end is checked here, against the injected clock.
+        if (ExchangeRateHistoryStartDateRule.TryParse(request.ExchangeRateHistoryStartDate, out var startDate)
+            && startDate > DateOnly.FromDateTime(timeProvider.GetUtcNow().UtcDateTime))
+        {
+            const string field = nameof(SystemSettingsUpdate.ExchangeRateHistoryStartDate);
+            throw new DomainValidationException(
+                $"Setting '{field}' must be on or before today.",
+                "system-settings.invalid.exchange-rate-history-start-date",
+                field);
+        }
+
         // Phases 1c and 2 run inside ONE transaction, unconditionally (issue #8 §5.8). The reason is
         // G4/G7: changing the SMTP host, or turning STARTTLS off, must clear the stored relay
         // credential, and the two writes have to land together or not at all. If they can interleave,

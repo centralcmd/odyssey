@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -12,8 +13,9 @@ namespace Odyssey.Client.Pages.Finance;
 public partial class ExchangeRatesCard
 {
     private List<ExistingExchangeRate> _rates = new();
-    private List<ExistingExchangeRate> _allRates = new();
-    private HashSet<Guid> _currentIds = new();
+    // The whole table's counts, currencies and attribution — one summary call, so the
+    // page cost no longer grows with the fetched history the way loading every row did.
+    private ExchangeRateSummary? _summary;
     private bool _isLoading = true;
     private bool _refetching;
     // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
@@ -35,7 +37,7 @@ public partial class ExchangeRatesCard
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _toFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
-    private IReadOnlyList<string> _toCodes = [];
+    private IReadOnlyCollection<string> _sourceFilter = [];
 
     // Sort (§6.6): As-of date (default) · Currency pair · Rate; one OdsTableSort synced with headers.
     private static readonly OdsTableSort DefaultSort = new("asOf", OdsSortDirection.Desc);
@@ -47,27 +49,90 @@ public partial class ExchangeRatesCard
         new() { Key = "rate", Label = "Rate", Type = OdsSortType.Number },
     ];
 
-    private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _rates, r => _currentIds.Contains(r.ExchangeRateId) ? "current" : "historical",
-        new OdsBreakdownDef<string>("current", "Current", "income", "bolt"),
-        new OdsBreakdownDef<string>("historical", "Historical", "outline", "history"));
+    // The "By status" tile counts the WHOLE table from the summary, never the page in view.
+    private IReadOnlyList<OdsBreakdownRow> StatusRows => _summary is not { } summary ? [] :
+        OdsBreakdown.CountedStatusRows<ExchangeRateStatus>(
+            status => status switch
+            {
+                ExchangeRateStatus.Current => summary.ByStatus.Current,
+                ExchangeRateStatus.Upcoming => summary.ByStatus.Upcoming,
+                _ => summary.ByStatus.Historical,
+            },
+            StatusDef(ExchangeRateStatus.Current, "income", "bolt"),
+            StatusDef(ExchangeRateStatus.Upcoming, "info", "schedule"),
+            StatusDef(ExchangeRateStatus.Historical, "outline", "history"));
 
-    private IReadOnlyList<OdsOption> _toOptions => [.. _toCodes.Select(OdsOption.From)];
+    // The row's mark takes its status chip's colour pair (Odyssey Design System · reference-data.md, rate
+    // status): Current green, Upcoming blue, Historical the secondary-text grey Archived and Draft wear.
+    // The chip still carries the label.
+    internal static (string Bg, string Fg) MarkColours(ExchangeRateStatus status) => status switch
+    {
+        ExchangeRateStatus.Current => ("var(--finance-income-soft)", "var(--finance-income)"),
+        ExchangeRateStatus.Upcoming => ("var(--info-soft)", "var(--info-text)"),
+        _ => ("color-mix(in srgb, var(--mud-palette-text-secondary) var(--tint-soft), transparent)", "var(--mud-palette-text-secondary)"),
+    };
+
+    private static OdsBreakdownDef<ExchangeRateStatus> StatusDef(ExchangeRateStatus status, string tone, string icon) =>
+        new(status, OdsTypeRegistries.ExchangeRateStatusOf(status).Label, tone, icon);
+
+    private IReadOnlyList<OdsOption> _toOptions => [.. (_summary?.ToCurrencyCodes ?? []).Select(OdsOption.From)];
+
+    // Values are the enum names the API binds; labels come from the shared vocabularies.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("current", "Current"), new("historical", "Historical")];
+    [
+        .. new[] { ExchangeRateStatus.Current, ExchangeRateStatus.Upcoming, ExchangeRateStatus.Historical }
+            .Select(s => new OdsOption(s.ToString(), OdsTypeRegistries.ExchangeRateStatusOf(s).Label)),
+    ];
 
-    private int _pairCount => _allRates.Select(r => $"{r.FromCurrencyCode}>{r.ToCurrencyCode}").Distinct().Count();
-    private DateTime? _latestAsOf => _allRates.Count == 0 ? null : _allRates.Max(r => r.AsOf);
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _toFilter.Count > 0 || _statusFilter.Count > 0;
+    private static readonly IReadOnlyList<OdsOption> _sourceOptions =
+    [
+        new(nameof(ExchangeRateSource.Manual), OdsTypeRegistries.ExchangeRateSources["Manual"].Label),
+        new(nameof(ExchangeRateSource.Fetched), OdsTypeRegistries.ExchangeRateSources[nameof(ExchangeRateProvider.NorgesBank)].Label),
+    ];
+
+    private string SubLineText
+    {
+        get
+        {
+            if (_summary is not { } summary)
+                return string.Empty;
+            var text = $"{summary.TotalCount.ToString("N0", CultureInfo.CurrentCulture)} rate{(summary.TotalCount == 1 ? "" : "s")}";
+            if (summary.LatestAsOfUtc is { } latest)
+                text += $" · latest {latest.ToLocalTime():MMM dd, yyyy, HH:mm}";
+            if (!string.IsNullOrEmpty(summary.Attribution))
+                text += $" · Source: {summary.Attribution}";
+            return text;
+        }
+    }
+
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _toFilter.Count > 0 || _statusFilter.Count > 0 || _sourceFilter.Count > 0;
+
+    private static RenderFragment ChipFor(OdsChipValue chip) => builder =>
+    {
+        builder.OpenComponent<OdsChip>(0);
+        builder.AddComponentParameter(1, nameof(OdsChip.Tone), chip.Tone);
+        builder.AddComponentParameter(2, nameof(OdsChip.Dot), chip.Dot);
+        builder.AddComponentParameter(3, nameof(OdsChip.ChildContent), (RenderFragment)(b => b.AddContent(0, chip.Label)));
+        builder.CloseComponent();
+    };
+
+    private static bool IsFetched(ExistingExchangeRate rate) => rate.Source == ExchangeRateSource.Fetched;
+
 
     // Both figures live on ExchangeRateFigures so the zero guard and the format are testable.
     private static string Fmt(decimal n) => ExchangeRateFigures.Format(n);
 
     private static decimal Inverse(decimal rate) => ExchangeRateFigures.Inverse(rate);
 
+    /// <summary>
+    /// Whether the page runs interactively; a swappable seam for the reason <c>Settings.InteractiveCheck</c>
+    /// is one. Process-wide, so a test that moves it restores it (<c>ExchangeRateSyncCollection</c>).
+    /// </summary>
+    internal static Func<bool> InteractiveCheck { get; set; } = static () => OperatingSystem.IsBrowser();
+
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         await RestorePageStateAsync();
@@ -89,6 +154,7 @@ public partial class ExchangeRatesCard
         _search = state.Search ?? string.Empty;
         _toFilter = state.TargetFilter ?? [];
         _statusFilter = _statusOptions.KnownValues(state.StatusFilter);
+        _sourceFilter = _sourceOptions.KnownValues(state.SourceFilter);
         _sort = OdsSortHelpers.Resolve(_sortFields, state.SortField, state.SortDirection, DefaultSort);
         _pageSize = OdsPageSizes.Restore(state.PageSize);
     }
@@ -100,6 +166,7 @@ public partial class ExchangeRatesCard
         Search = _search,
         TargetFilter = [.. _toFilter],
         StatusFilter = [.. _statusFilter],
+        SourceFilter = [.. _sourceFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         PageSize = _pageSize,
@@ -112,6 +179,7 @@ public partial class ExchangeRatesCard
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnToFilterChanged(IReadOnlyCollection<string> values) { _toFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
+    private async Task OnSourceFilterChanged(IReadOnlyCollection<string> values) { _sourceFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
 
     private sealed class RatesPageState
@@ -121,6 +189,7 @@ public partial class ExchangeRatesCard
         public string Search { get; set; } = string.Empty;
         public List<string> TargetFilter { get; set; } = [];
         public List<string> StatusFilter { get; set; } = [];
+        public List<string> SourceFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int PageSize { get; set; } = OdsPageSizes.Default[0];
@@ -135,13 +204,12 @@ public partial class ExchangeRatesCard
         _canDelete = user.HasPermission(PermissionClaims.ExchangeRatesDelete);
     }
 
-    // Full refresh (issue #277): the current/historical badge and the Target-filter options are
-    // derived from the whole rate set, so we fetch it once (unfiltered) for that, then fetch the
-    // server-filtered/sorted display slice. Used on load and after create/delete.
+    // Full refresh: the summary (counts, target options, attribution) and then the display slice.
+    // Used on load and after create, edit or delete — any of which can change a pair's Current row.
     private async Task RefreshAsync()
     {
-        _allRates = (await ExchangeRates.ListAllAsync()).ItemsOrToast(Snackbar, "exchange rates");
-        RecomputeDerived();
+        if ((await ExchangeRates.GetSummaryAsync()).OrToast(Snackbar, "Unable to load the exchange-rate summary") is { } summary)
+            _summary = summary;
         await ReloadAsync();
     }
 
@@ -155,12 +223,16 @@ public partial class ExchangeRatesCard
             StateHasChanged();
         }
 
-        // current/historical is a two-value toggle: filter only when exactly one is selected.
+        // Every option selected means no filter: sending them all would also drop the Upcoming rows the
+        // server lists beside them.
+        var status = _statusFilter.Count == _statusOptions.Count ? null : _statusFilter;
+        var source = _sourceFilter.Count == _sourceOptions.Count ? null : _sourceFilter;
         var response = await _listLoader.RunAsync(ct => ExchangeRates.ListAsync(
             _page, _pageSize,
             search: _search,
             toCurrencies: _toFilter,
-            status: _statusFilter,
+            status: status,
+            source: source,
             sortBy: _sort.Key,
             sortDir: _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
             ct: ct));
@@ -185,22 +257,6 @@ public partial class ExchangeRatesCard
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
-    }
-
-    // The current rate for a (From, To) pair is the one with the latest AsOf (CreatedAt breaks ties);
-    // everything else is historical. Derived from the full set so the badge stays correct under filters.
-    private void RecomputeDerived()
-    {
-        _currentIds = _allRates
-            .GroupBy(r => (r.FromCurrencyCode, r.ToCurrencyCode))
-            .Select(g => g.OrderByDescending(r => r.AsOf).ThenByDescending(r => r.CreatedAt).First().ExchangeRateId)
-            .ToHashSet();
-
-        _toCodes = _allRates
-            .Select(r => r.ToCurrencyCode)
-            .Distinct()
-            .OrderBy(code => code)
-            .ToList();
     }
 
     // Reset to page 1, then fetch — for any search / filter / sort / size change. Page navigation
@@ -230,23 +286,26 @@ public partial class ExchangeRatesCard
         _search = string.Empty;
         _toFilter = [];
         _statusFilter = [];
+        _sourceFilter = [];
         PersistPageState();
         await ReloadAsync();
     }
 
-    private IReadOnlyList<OdsMenuItem> BuildActions(ExistingExchangeRate r, OdsRecordActionContext ctx)
+    internal IReadOnlyList<OdsMenuItem> BuildActions(ExistingExchangeRate r, OdsRecordActionContext ctx)
     {
-        // No "View details": every field a rate has is already a column, so rows don't expand.
         var items = new List<OdsMenuItem>();
 
-        if (_canUpdate)
+        // A fetched rate is never edited in place (a 422 keyed source): the Edit item is absent.
+        if (_canUpdate && !IsFetched(r))
         {
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(r)) });
         }
 
         items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(r.ExchangeRateId)) });
 
-        if (_canDelete)
+        // Nor is one deleted on its own (a 422 keyed source): the sync would never refill the gap, so fetched
+        // rates leave only through the per-currency purge on Currencies.
+        if (_canDelete && !IsFetched(r))
         {
             items.Add(new OdsMenuItem { Divider = true });
             items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });

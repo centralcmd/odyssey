@@ -44,6 +44,11 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // stored), so it belongs in the strict-200 matrix. The two write endpoints are not here — they
         // are 204-returning mutations, and their claim boundary is covered in Odyssey.Api.Tests.
         ("/api/system-settings/secrets", PermissionClaims.SystemSettingsRead),
+        // Exchange-rate sync (issue #349): the three reads the Currencies page makes. Each is a flat 200
+        // from the stored state alone — status reads the stored provider list, never Norges Bank.
+        ("/api/system-settings/exchange-rate-sync/currencies", PermissionClaims.SystemSettingsRead),
+        ("/api/system-settings/exchange-rate-sync/status", PermissionClaims.SystemSettingsRead),
+        ("/api/system-settings/exchange-rate-sync/runs", PermissionClaims.SystemSettingsRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -80,6 +85,19 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/users/{Guid.NewGuid()}", PermissionClaims.UsersDelete), // Admin-only discriminator.
     ];
 
+    // Write endpoints stacking two [Authorize] policies: a role must hold EVERY claim, so one holding
+    // only one of them is the case worth pinning. Probed the same non-mutating way, against a currency
+    // code that does not exist. The sync's other writes — PUT a currency, POST runs, POST status/refresh —
+    // start work or call Norges Bank, so they stay in Odyssey.Api.Tests rather than on the shared stack.
+    private static readonly (string Endpoint, string[] RequiredClaims)[] MultiClaimWriteEndpoints =
+    [
+        ("/api/system-settings/exchange-rate-sync/currencies/ZZZ/rates",
+            [PermissionClaims.SystemSettingsUpdate, PermissionClaims.ExchangeRatesDelete]),
+    ];
+
+    private static IEnumerable<(string Endpoint, string[] RequiredClaims)> AllWriteGatedEndpoints =>
+        WriteGatedEndpoints.Select(e => (e.Endpoint, new[] { e.RequiredClaim })).Concat(MultiClaimWriteEndpoints);
+
     [SkippableFact]
     public async Task Unauthenticated_requests_are_challenged_with_401()
     {
@@ -95,7 +113,7 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
                 $"Anonymous GET {endpoint}: expected 401, got {(int)response.StatusCode} {response.StatusCode}.");
         }
 
-        foreach (var (endpoint, _) in WriteGatedEndpoints)
+        foreach (var (endpoint, _) in AllWriteGatedEndpoints)
         {
             var response = await client.DeleteAsync(endpoint);
             Assert.True(
@@ -179,9 +197,10 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
             var client = await fixture.CreateAuthenticatedClientAsync(user.Email, user.Password);
             var claims = ClaimsForRole(user.Role);
 
-            foreach (var (endpoint, requiredClaim) in WriteGatedEndpoints)
+            foreach (var (endpoint, requiredClaims) in AllWriteGatedEndpoints)
             {
-                if (claims.Contains(requiredClaim))
+                var requiredClaim = string.Join("' + '", requiredClaims);
+                if (requiredClaims.All(claims.Contains))
                 {
                     // Authorized: send a valid antiforgery token so the write clears the antiforgery
                     // gate and actually reaches the handler. The target id is random, so the exact
