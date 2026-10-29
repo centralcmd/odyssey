@@ -571,8 +571,9 @@ fetched one; there is no separate source column. Four rules are easy to get back
   finishes `Skipped` at once. A request no worker claims within `UnclaimedRequestTimeout` (2 minutes) is
   abandoned, so a missing worker cannot hold the guard for the whole stale window. Under `Testing` no
   worker runs, so run-now claims and executes inline.
-- **A fetched row is never edited in place** (`422` keyed `source`), and deleting one needs
-  `system-settings.update` on top of `exchangerates.delete` — decided in the service from the row.
+- **A fetched row is never edited in place nor deleted on its own** (both `422` keyed `source`, for
+  every caller) — the sync fills only beyond its fetched extents, so a row removed from inside them is
+  never refetched. Fetched rates leave only through the per-currency purge.
 
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no

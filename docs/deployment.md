@@ -1104,9 +1104,11 @@ the interval.
   fetched day, enter a manual rate with a later time.
 - **Future-dated rates now count only from their date** and list with the status *Upcoming*. Before,
   a rate dated next week was already used for conversions.
-- **Fetched rates cannot be edited.** `PUT /api/exchange-rates/{id}` on one is a `422`; deleting one
-  needs `system-settings.update` as well as `exchangerates.delete` (Admin). Owner keeps editing and
-  deleting manual rates.
+- **Fetched rates cannot be edited or deleted one by one.** `PUT` and `DELETE /api/exchange-rates/{id}`
+  on one are a `422`, whoever asks: the sync never refetches a day removed from inside what it already
+  holds, so a single delete would leave a gap that conversions silently bridge with an older rate.
+  Fetched rates leave per currency, through *Delete fetched rates* once its sync is off (Admin). Owner
+  keeps editing and deleting manual rates.
 - **Rolling back the migration** (`AddExchangeRateSync`) keeps the rows but drops the column that says
   they were fetched, so they then read as manual. `Down()` restores schema, not provenance.
 - **No new claims**, so nobody needs to sign out. No new configuration: the start date and interval are

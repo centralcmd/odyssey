@@ -25,6 +25,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
     private const string Database = "odyssey_exchange_rate_sync";
     private const string PreviousMigration = "_AddLocations";
     private const string ThisMigration = "_AddExchangeRateSync";
+    private const string SeriesMigration = "_AddExchangeRateProviderSeries";
 
     private static readonly DateTime AsOf = new(2026, 10, 22, 14, 0, 0, DateTimeKind.Utc);
 
@@ -52,6 +53,33 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         Assert.Equal(1L, await MigrationSeam.CountAsync(context,
             "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() "
             + "AND INDEX_NAME = 'IX_ExchangeRates_FromCurrencyCode_ToCurrencyCode_AsOf' AND SEQ_IN_INDEX = 1"));
+    }
+
+    /// <summary>
+    /// The stored provider list: up creates the table keyed on (provider, code), so one provider cannot
+    /// list a currency twice, and down drops it without touching the sync's own tables.
+    /// </summary>
+    [SkippableFact]
+    public async Task The_provider_series_migration_keys_one_row_per_code_and_its_down_drops_only_that_table()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+
+        await using var context = NewContext();
+        await MigrationSeam.MigrateToAsync(context, ThisMigration);
+        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateProviderSeries"));
+
+        await MigrationSeam.MigrateToAsync(context, SeriesMigration);
+        const string insert = "INSERT INTO `ExchangeRateProviderSeries` "
+            + "(`Provider`, `CurrencyCode`, `FirstObservation`, `NewestObservation`, `FetchedAtUtc`) "
+            + "VALUES (1, 'USD', '1980-12-10', '2026-10-22', NOW())";
+        await context.Database.ExecuteSqlRawAsync(insert);
+        await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync(insert));
+        Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `ExchangeRateProviderSeries`"));
+
+        await MigrationSeam.MigrateToAsync(context, ThisMigration);
+        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateProviderSeries"));
+        Assert.True(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
     }
 
     [SkippableFact]

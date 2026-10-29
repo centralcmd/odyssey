@@ -1472,16 +1472,6 @@ public class ExchangeRateSyncTests
         Assert.Equal(EntityState.Added, h.Context.Entry(h.Context.Currencies.Local.Single(c => c.CurrencyCode == "ZZZ")).State);
     }
 
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        for (var i = 0; i < 1000 && !condition(); i++)
-        {
-            await Task.Delay(10);
-        }
-
-        Assert.True(condition(), "The condition did not hold within ten seconds.");
-    }
-
     private sealed class Harness : IAsyncDisposable
     {
         private Harness(OdysseyContext context, StubProvider provider, MutableClock clock, FakeSettings settings)
