@@ -472,6 +472,8 @@ public sealed record SystemSettingsUpdate
     /// </summary>
     [StringLength(36, ErrorMessage = "Choose a location from the list.")]
     public string? WeatherDefaultLocationId { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Exchange-rate sync (issue #349 §8). Both take the ordinary write claim: nothing here is a
     // credential or a destination.
     // ---------------------------------------------------------------------------------------------

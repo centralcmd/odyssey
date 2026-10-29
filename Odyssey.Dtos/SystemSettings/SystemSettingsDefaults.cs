@@ -316,6 +316,7 @@ public static class SystemSettingsDefaults
 
     /// <summary>Empty: no household default weather location.</summary>
     public const string WeatherDefaultLocationId = "";
+
     // ── Exchange-rate sync (issue #349) ─────────────────────────────────────────────────────────
 
     /// <summary>
