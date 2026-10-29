@@ -339,22 +339,27 @@ public partial class OdsRecordTable<TRow>
                 return;
         }
         catch (JSException) { }
-        ToggleRow(id);
+        ToggleRow(id, fromMenu: false);
     }
 
-    private void ToggleRow(object id)
+    // Focus moves only for the row menu's View details / Collapse, whose item unmounts with its popover.
+    // The chevron and a row click keep focus where it is, so the aria-expanded control that was just
+    // activated can be pressed again to undo it (WCAG 2.4.3, 3.2.2).
+    private void ToggleRow(object id, bool fromMenu)
     {
         if (!CanExpand)
             return;
         if (_openIds.Contains(id))
         {
             _openIds.Remove(id);
-            _pendingFocus = (FocusMove.Chevron, id);
+            if (fromMenu)
+                _pendingFocus = (FocusMove.Chevron, id);
         }
         else
         {
             OpenRow(id);
-            _pendingFocus = (FocusMove.IntoPanel, id);
+            if (fromMenu)
+                _pendingFocus = (FocusMove.IntoPanel, id);
         }
     }
 
@@ -427,7 +432,7 @@ public partial class OdsRecordTable<TRow>
     {
         Expanded = expanded,
         Editing = editing,
-        Toggle = () => ToggleRow(id),
+        Toggle = () => ToggleRow(id, fromMenu: true),
         StartEdit = () => StartEdit(id),
         Remove = () => DoDelete(id),
         MenuTriggerId = MenuIdFor(id),

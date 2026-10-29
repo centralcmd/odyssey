@@ -18,13 +18,14 @@
 @* Href renders MudButton's own <a> — navigation is a link, not a button (issue #351). AriaDisabled is
    the focusable unavailable state: aria-disabled, clicks swallowed, focus kept — for an action that
    becomes unavailable while it has focus (Run now once a run starts), where a native disabled would
-   drop focus to <body>. *@
+   drop focus to <body>. It also drops the href: swallowing the click alone would leave a link announced
+   as disabled that still navigates. *@
 <MudButton Variant="@MudVariant"
            Color="@MudColor"
            FullWidth="@Full"
            Disabled="@(Disabled || (Loading && !AriaDisabled))"
            ButtonType="@Type"
-           Href="@Href"
+           Href="@(AriaDisabled ? null : Href)"
            OnClick="HandleClickAsync"
            Class="@ButtonClass"
            aria-label="@AriaLabel"

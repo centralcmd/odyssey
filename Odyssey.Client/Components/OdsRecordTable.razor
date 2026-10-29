@@ -118,7 +118,7 @@
                                 <button type="button" id="@ExpandIdFor(rk)" class="odc-rec-expand"
                                         aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
                                         aria-controls="@(expanded ? detailId : null)"
-                                        disabled="@editing" @onclick="@(() => ToggleRow(rk))" @onclick:stopPropagation="true">
+                                        disabled="@editing" @onclick="@(() => ToggleRow(rk, fromMenu: false))" @onclick:stopPropagation="true">
                                     <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
                                 </button>
                             }

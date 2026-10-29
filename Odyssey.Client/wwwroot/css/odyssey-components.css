@@ -4697,9 +4697,10 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
 
-/* OdsSwitch Busy / AriaDisabled (issue #351): focusable, aria-disabled. Only the track and thumb dim —
-   the label keeps full text contrast, unlike the native disabled state. A busy switch spins a ring on
-   its thumb. */
+/* OdsSwitch Busy / AriaDisabled (issue #351): focusable, aria-disabled. An unavailable switch dims its
+   track and thumb only — the label keeps full text contrast, unlike the native disabled state. A busy
+   switch is in flight, not inactive, so it keeps full contrast (WCAG 1.4.11) and spins a ring on its
+   thumb instead; under reduced motion the ring stands still. */
 .odc-switch-locked { cursor: not-allowed; }
 .odc-switch-locked .mud-switch-track,
 .odc-switch-locked .mud-switch-button { opacity: 0.6; }
@@ -4715,7 +4716,7 @@ tr:focus-within > .odc-rowactions.reveal,
     pointer-events: none;
 }
 @keyframes odc-switch-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation-duration: 2.4s; } }
+@media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
 
 /* Exchange rates card (issue #351 §3.A): the status tile hosts the sync status panel beside its label;
    Run now's unavailability reason sits left of its button, as visible text. Global, not in

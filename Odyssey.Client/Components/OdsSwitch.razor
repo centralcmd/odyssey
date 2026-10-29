@@ -102,7 +102,7 @@
     {
         get
         {
-            var state = Busy ? "odc-switch-busy odc-switch-locked" : AriaDisabled ? "odc-switch-locked" : null;
+            var state = Busy ? "odc-switch-busy" : AriaDisabled ? "odc-switch-locked" : null;
             return string.Join(' ', new[] { state, Class }.Where(c => !string.IsNullOrEmpty(c))) is { Length: > 0 } c ? c : null;
         }
     }

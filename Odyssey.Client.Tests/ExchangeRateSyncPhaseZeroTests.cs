@@ -48,6 +48,9 @@ public class ExchangeRateSyncPhaseZeroTests
 
         input.Change(true);
         Assert.Equal(0, changes);
+        // In flight, not inactive: no dimming class, so the track keeps its non-text contrast (1.4.11).
+        Assert.Empty(cut.FindAll(".odc-switch-locked"));
+        Assert.NotEmpty(cut.FindAll(".odc-switch-busy"));
     }
 
     [Fact]
@@ -155,6 +158,40 @@ public class ExchangeRateSyncPhaseZeroTests
         Assert.Equal(0, clicks);
     }
 
+    [Fact]
+    public async Task Button_AriaDisabled_DropsTheHref_SoTheLinkCannotNavigate()
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsButton>(p => p
+            .Add(b => b.Href, "/settings")
+            .Add(b => b.AriaDisabled, true)
+            .AddChildContent("System settings"));
+
+        Assert.Empty(cut.FindAll("[href]"));
+        Assert.Equal("true", cut.Find("[aria-disabled]").GetAttribute("aria-disabled"));
+    }
+
+    // ── OdsDatePicker ────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Text elsewhere in the form is added to the input's description after MudBlazor's own helper, whose
+    /// element id the picker derives — so the id it names must be one that is really rendered.
+    /// </summary>
+    [Fact]
+    public async Task DatePicker_AriaDescribedBy_KeepsTheHelperAndAddsTheOuterText()
+    {
+        await using var ctx = NewContext();
+        ctx.Render<MudPopoverProvider>();
+        var cut = ctx.Render<OdsDatePicker>(p => p
+            .Add(d => d.HelperText, "Defaults to now.")
+            .Add(d => d.AriaDescribedBy, "outer-help"));
+
+        var set = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsSetAttr" && Equals(i.Arguments[1], "aria-describedby"));
+        var ids = ((string)set.Arguments[2]!).Split(' ');
+        Assert.Equal("outer-help", ids[^1]);
+        Assert.Contains("Defaults to now.", cut.Find($"[id='{ids[0]}']").TextContent);
+    }
+
     // ── OdsLiveAnnouncer ─────────────────────────────────────────────────────
 
     [Fact]
@@ -233,7 +270,7 @@ public class ExchangeRateSyncPhaseZeroTests
     }
 
     [Fact]
-    public async Task RecordTable_PlainRowClickStillExpands_AndFocusMovesIntoThePanel()
+    public async Task RecordTable_PlainRowClickStillExpands_AndLeavesFocusAlone()
     {
         await using var ctx = NewContext();
         var cut = RenderTable(ctx);
@@ -241,22 +278,45 @@ public class ExchangeRateSyncPhaseZeroTests
         cut.FindAll("tbody tr")[0].Click();
 
         Assert.Single(cut.FindAll("tr.expanded"));
-        var panel = cut.Find(".odc-rec-panel");
-        Assert.Equal("-1", panel.GetAttribute("tabindex"));
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], panel.Id));
+        Assert.DoesNotContain(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn");
     }
 
+    /// <summary>
+    /// The chevron is the aria-expanded control the user just pressed: focus stays on it both ways, so
+    /// pressing it again undoes the expand (WCAG 2.4.3, 3.2.2).
+    /// </summary>
     [Fact]
-    public async Task RecordTable_Collapse_ReturnsFocusToTheChevron()
+    public async Task RecordTable_TheChevronKeepsFocusWhenItExpandsAndCollapses()
     {
         await using var ctx = NewContext();
         var cut = RenderTable(ctx);
+
         cut.FindAll("button.odc-rec-expand")[0].Click();
+        Assert.Single(cut.FindAll("tr.expanded"));
+        cut.FindAll("button.odc-rec-expand")[0].Click();
+
+        Assert.Empty(cut.FindAll("tr.expanded"));
+        Assert.DoesNotContain(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn");
+    }
+
+    /// <summary>The row menu's View details and Collapse unmount their item, so those move focus.</summary>
+    [Fact]
+    public async Task RecordTable_TheMenusToggleMovesFocusIntoThePanelAndBackToTheChevron()
+    {
+        await using var ctx = NewContext();
+        var contexts = new Dictionary<string, OdsRecordActionContext>();
+        var cut = RenderTable(ctx, actions: (row, c) => { contexts[row.Id] = c; return []; });
         var chevronId = cut.FindAll("button.odc-rec-expand")[0].Id;
 
-        cut.FindAll("button.odc-rec-expand")[0].Click();
+        await cut.InvokeAsync(contexts["a"].Toggle);
+        cut.Render();
+        var panel = cut.Find(".odc-rec-panel");
+        Assert.Equal("-1", panel.GetAttribute("tabindex"));
+        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], panel.Id)));
 
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], chevronId));
+        await cut.InvokeAsync(contexts["a"].Toggle);
+        cut.Render();
+        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], chevronId)));
     }
 
     [Fact]
