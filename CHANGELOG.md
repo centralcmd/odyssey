@@ -5,6 +5,25 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.41.0](https://github.com/centralcmd/odyssey/compare/v0.40.0...v0.41.0) (2026-10-29)
+
+
+### Features
+
+* household locations with a geocoding search proxy ([#352](https://github.com/centralcmd/odyssey/issues/352)) ([7bb6ed8](https://github.com/centralcmd/odyssey/commit/7bb6ed80edf8590d8f48e3084e6ab25c6d99f604))
+* sync exchange rates from norges bank ([#354](https://github.com/centralcmd/odyssey/issues/354)) ([d1e1d77](https://github.com/centralcmd/odyssey/commit/d1e1d771f1d789786db52f8e1f6231f316e38252))
+* weather from MET Norway for household locations ([#355](https://github.com/centralcmd/odyssey/issues/355)) ([14492a8](https://github.com/centralcmd/odyssey/commit/14492a8b64b03c0042fc6c9b2a1952cb294a8c41))
+
+
+### Bug Fixes
+
+* **aspire:** start the stack on fedora and speed up the integration tier ([#364](https://github.com/centralcmd/odyssey/issues/364)) ([2d83cda](https://github.com/centralcmd/odyssey/commit/2d83cdaae94e167c5afcbc2df1ba202ef8f091e5))
+
+
+### CI/CD
+
+* Bump anthropics/claude-code-action ([#369](https://github.com/centralcmd/odyssey/issues/369)) ([6de5775](https://github.com/centralcmd/odyssey/commit/6de5775bec565e8a1b46686e97d1d8025169db35))
+
 ## [0.40.0](https://github.com/centralcmd/odyssey/compare/v0.39.0...v0.40.0) (2026-10-22)
 
 
