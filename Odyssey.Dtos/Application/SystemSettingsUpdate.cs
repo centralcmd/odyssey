@@ -487,4 +487,12 @@ public sealed record SystemSettingsUpdate
 
     [Range(SystemSettingsBounds.ExchangeRateSyncIntervalHoursMin, SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax)]
     public int? ExchangeRateSyncIntervalHours { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
+    // for deleted personal data, so every change is audited.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.FileStorageDeletionGraceHoursMin, SystemSettingsBounds.FileStorageDeletionGraceHoursMax)]
+    public int? FileStorageDeletionGraceHours { get; set; }
 }

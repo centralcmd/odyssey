@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 
 namespace Odyssey.Api;
@@ -47,6 +48,17 @@ public static class GlobalExceptionHandler
                     context.Request.Method, context.Request.Path, disabled.Message);
                 return WriteAsync(context, disabled.StatusCode, disabled.Message,
                     extensions: new Dictionary<string, object?> { ["code"] = disabled.Code });
+
+            // The file store's 503 (issue #346 §9): a degraded volume usually recovers within a probe interval,
+            // so the client is told when to try again.
+            case FileStorageUnavailableException unavailable:
+                logger.LogWarning(unavailable,
+                    "File storage unavailable on {Method} {Path}: {Message}",
+                    context.Request.Method, context.Request.Path, unavailable.Message);
+                context.Response.Headers.RetryAfter =
+                    FileStorageUnavailableException.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                return WriteAsync(context, unavailable.StatusCode, unavailable.Message,
+                    extensions: DomainExtensions(unavailable));
 
             case DomainException domain:
                 logger.LogInformation(domain,

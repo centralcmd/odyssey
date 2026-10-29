@@ -68,6 +68,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         (SystemSettingsKeys.ExchangeRateHistoryStartDate, SystemSettingsDefaults.ExchangeRateHistoryStartDate),
         (SystemSettingsKeys.ExchangeRateSyncIntervalHours,
             $"{SystemSettingsDefaults.ExchangeRateSyncIntervalHours}"),
+        (SystemSettingsKeys.FileStorageDeletionGraceHours,
+            $"{SystemSettingsDefaults.FileStorageDeletionGraceHours}"),
     ];
 
     [SkippableFact]
@@ -92,8 +94,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // migration deleted the three summary-limit rows, and -5 when the standalone
             // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
             // (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync start
-            // date and interval (issue #349).
-            Assert.Equal(71, rows.Count);
+            // date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346).
+            Assert.Equal(72, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

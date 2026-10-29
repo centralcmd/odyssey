@@ -23,6 +23,10 @@
     <None Include="..\TestShared\Fixtures\met-symbol-codes.txt" Link="Fixtures\met-symbol-codes.txt" CopyToOutputDirectory="PreserveNewest" />
     <None Include="Fixtures\NorgesBank\*.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
+    <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
@@ -55,6 +56,31 @@ public sealed class WorkerHostTests : IDisposable
         Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<ExchangeRateSyncJob>);
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>());
+    }
+
+    /// <summary>A3-3: the file store's maintenance job is hosted here, on the shared registration.</summary>
+    [Fact]
+    public void The_graph_resolves_and_hosts_the_file_storage_maintenance_job()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<FileStorageMaintenanceJob>);
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<FileStorageSweeper>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IObjectStore>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<FileStorageVerifier>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
+    }
+
+    /// <summary>The worker verifies the volumes before any job runs, waiting for the API to initialise a new one (A3.2).</summary>
+    [Fact]
+    public void Program_verifies_file_storage_before_the_host_runs()
+    {
+        var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Worker", "Program.cs"));
+
+        var verify = program.IndexOf("VerifyFileStorageForWorkerAsync(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(2))", StringComparison.Ordinal);
+        Assert.True(verify > 0);
+        Assert.True(verify < program.IndexOf("host.Run();", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -740,7 +740,7 @@ currency and then delete it. From now on, deleting a currency that is still in u
 
 ## Backups
 
-The only stateful pieces are two named volumes — back both up:
+The stateful pieces are three named volumes — back up all three:
 
 - `mariadb_data` — all application data. A nightly logical dump is recommended:
   ```bash
@@ -752,6 +752,11 @@ The only stateful pieces are two named volumes — back both up:
   held the auth-cookie and antiforgery signing keys; since issue #444 it is also what decrypts any
   credential an administrator stores under **System settings → Credentials**. The `api` mounts it
   read-write and the `worker` read-only. See the section below.
+- `files_primary` (Docker names it `odyssey_files_primary`) — the `primary` **file volume** (issue
+  #346). It holds users' files on disk, under their original names. Back it up **after** the database
+  dump, within the deletion grace period — the order matters; see
+  [File storage → Backup and restore](#backup-and-restore). No feature stores files in it yet, so today it
+  holds only its `.odyssey-volume.json` marker.
 
 ### The Data Protection keys volume
 
@@ -906,7 +911,9 @@ stack.
 
 ## Rollback
 
-Set `IMAGE_TAG` back to the previous version and re-run pull + up. Note that **schema
+Set `IMAGE_TAG` back to the previous version and re-run pull + up. Rolling back to an image whose
+file-storage catalogue lacks a feature that has stored files logs a Critical and keeps going; see
+[File storage → Rolling back and removing a feature](#rolling-back-and-removing-a-feature). Note that **schema
 migrations are forward-only** — if the newer release added a migration, rolling the images
 back does not roll the database back. Take a DB backup before deploying a release that
 includes migrations.
@@ -1138,6 +1145,234 @@ log under the System settings audit category (`Odyssey.Api.SystemSettings.System
 manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
 user's id.
 
+## File storage (filesystem volumes)
+
+Issue #346 adds a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of
+as `LONGBLOB` rows in MariaDB. It is the foundation photo thumbnails (issue #362) build on. **In this
+release no feature stores files in it yet**: existing uploads stay in the database, and the shipped
+`primary` volume holds only its marker. What changes for an operator is that two containers now mount a
+third named volume, verify it at startup, and refuse to start on a misconfiguration.
+
+### Release note
+
+- **A third named volume, `files_primary`**, is mounted read-write into **`api` and `worker`** at
+  `/var/odyssey/files/primary`, with `FileStorage__Volumes__primary__RootPath` set on both. Both come
+  from the base `docker-compose.yml`, so the production overlay needs no edit. `docker compose pull` and
+  `up -d` create the volume, and the API **initialises** it on first start: it writes
+  `.odyssey-volume.json` and records the volume in the new `FileStorageVolumes` table. The worker waits
+  (up to 2 minutes) for the API to do that, then verifies it.
+- **One migration**, `AddFileSystemObjectStorage`: four new tables (`FileStorageVolumes`,
+  `StoredObjects`, `FileStorageOrphanSightings`, `FileStorageMaintenanceLeases`) and one settings row.
+  Schema only, additive; `Down()` drops all of it.
+- **One new setting**, **System settings → Storage → Deletion grace period** (default 24 h, 1–168 h). It
+  takes the security claim and every change is audited.
+- **One new claim**, `file-storage.read`, Admin only, reconciled onto the role by the migrations job. It
+  gates **System settings → Storage health**. An administrator already signed in must **sign out and back
+  in** to see the panel: claims are baked into the auth cookie.
+- **The worker now stops if a file volume fails verification** — and with it the weather and exchange-rate
+  jobs it hosts. Before this release the worker needed only a database. Once a release adds a storage
+  feature (photo thumbnails), a worker started with no `FileStorage__*` configuration at all will not start
+  either.
+
+### The image owns the mount point
+
+Both the API and the worker image create `/var/odyssey/files/primary` owned by `app` (UID 1654) with
+mode `0750`. Docker copies that ownership into a **fresh, empty** named volume the first time it is
+mounted, so the default setup needs nothing. Files are written `0640` and folders `0750`, so nothing on a
+volume is readable by other users.
+
+A **bind mount** (a host directory instead of a named volume) is not initialised by Docker. Create it
+yourself, owned by UID 1654, before the first start:
+
+```bash
+sudo mkdir -p /srv/odyssey/files/fastssd
+```
+
+```bash
+sudo chown 1654:1654 /srv/odyssey/files/fastssd && sudo chmod 0750 /srv/odyssey/files/fastssd
+```
+
+Mount it `noexec,nosuid,nodev` where the filesystem allows. Supported backings are **local** filesystems
+with POSIX rename and hard links — ext4, XFS, btrfs. NFS, SMB and CIFS are not supported. A fresh ext4
+filesystem's `lost+found` is fine: it is on the list of entries an "empty" root may hold.
+
+### Configuration
+
+Volumes and bindings are **deploy-time configuration, never settings**: an editable path would be an
+arbitrary filesystem read/write primitive. Set them as environment variables, **identically on `api` and
+`worker`** — the worker erases what the API stores, so a volume configured on one and not the other is a
+defect (`Odyssey.Worker.Tests` compares the two compose blocks).
+
+| Variable | Meaning |
+|---|---|
+| `FileStorage__Volumes__<name>__RootPath` | An absolute path to an **existing** directory. `<name>` is letters and digits, starting with a letter (`primary`, `fastssd`). |
+| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). No feature exists in this release, so the shipped files bind nothing. |
+
+Several features may share one volume: each writes under its own folder. Volume names and feature keys
+are matched case-insensitively. Inside a volume, files sit under their sanitized original names
+(`photo-thumbnails/3f/a2/<photo id>/IMG_2041_256.webp`), so a volume is browsable on disk.
+
+**Adding a volume on another disk.** Put it in your own override file, on both services, and bind the
+feature to it:
+
+```yaml
+# docker-compose.override.yml (or a file you pass with -f after the prod overlay)
+services:
+  api:
+    environment:
+      FileStorage__Volumes__fastssd__RootPath: /var/odyssey/files/fastssd
+      FileStorage__Bindings__PhotoThumbnails: fastssd
+    volumes:
+      - /srv/odyssey/files/fastssd:/var/odyssey/files/fastssd
+  worker:
+    environment:
+      FileStorage__Volumes__fastssd__RootPath: /var/odyssey/files/fastssd
+      FileStorage__Bindings__PhotoThumbnails: fastssd
+    volumes:
+      - /srv/odyssey/files/fastssd:/var/odyssey/files/fastssd
+```
+
+**Rebinding a feature** to another volume affects **new** files only. Existing files stay where they are
+and are still read from the old volume, which must therefore stay configured while it holds any. Moving
+files between volumes is not supported in this release.
+
+**Removing a volume.** A volume that holds no live files can simply be removed from configuration; the API
+logs a Warning and lists it as *Not configured* on the Storage health panel. A volume that still holds
+files cannot: the API refuses to start with `MissingVolume`.
+
+**Renaming a volume** in configuration declares a *new* volume. Don't: if the old name held files, startup
+stops with `MissingVolume`, and the renamed root carries the old name's marker (`WrongVolume`).
+
+### Startup checks
+
+The API verifies every volume before it listens, and the worker repeats the checks before any job runs.
+**Any failure stops the container**, with a log line naming the check, the configuration key and the
+remedy:
+
+```
+File storage startup check VolumeLost failed: Volume 'primary' is empty and has no marker, but the
+database says it holds files. Key: FileStorage:Volumes:primary:RootPath. Remedy: …
+```
+
+With **no volume configured, no storage feature in the build and nothing stored**, the checks are a
+no-op and the store is simply unavailable (the panel says "No file volumes are configured").
+
+| Check | Means | Fix |
+|---|---|---|
+| `InvalidName` | A volume name or a binding is not letters and digits | Rename it. |
+| `InvalidRootPath` | `RootPath` is empty or relative | Use an absolute path. |
+| `RootNotFound` | The root does not exist. **The API never creates a root**, so a mistyped or unmounted path cannot silently become a directory on the container's ephemeral layer | Mount the volume, or create the directory (owned by UID 1654). |
+| `OverlappingVolumes` | Two volumes are the same directory, or one is inside the other (after resolving links) | Give each volume its own directory. |
+| `ForbiddenLocation` | A root is `/`, or overlaps the Data Protection keys directory, the application directory, the content root or `/tmp` | Use a dedicated directory. |
+| `UnboundFeature` / `UnknownFeature` / `UnknownVolume` | A storage feature has no binding; a binding names a feature this version lacks (a typo); a binding names an unconfigured volume | Correct `FileStorage__Bindings__*`. |
+| `NotWritable` | The probe write in the root failed | `chown 1654:1654` and `chmod 0750` the root. |
+| `WrongVolume` | The root's marker belongs to another volume (another name, or another id under this name), or is unreadable | You mounted the wrong disk. Mount the right one, or restore the marker from this volume's backup. |
+| `UnknownMarker` | The root carries a marker this database has never seen, and either the root still holds files or the database already has volumes | Its files belong to another database. Point the volume at an empty directory, or restore the matching database. |
+| `VolumeLost` | The root is empty and unmarked, but the database says it held files — what `docker compose down -v`, a mistyped bind mount or an unmounted disk all look like | Mount the right disk or restore the volume from backup. **The API never re-initialises it**, which would hide the loss. If the files are truly gone and regenerable, see [Backup and restore](#backup-and-restore). |
+| `UnrecognisedContent` | The root has no marker but is not empty | Point the volume at an empty directory. |
+| `MissingVolume` | A volume that holds files was removed from configuration | Configure it again. |
+| `NotInitialised` (worker only) | The API did not initialise a new volume within 2 minutes | Start the API, then the worker (`restart: unless-stopped` retries on its own under Compose; under Aspire, restart it). |
+
+**After a database reset** (a fresh database beside surviving volumes), an **empty** marked volume is
+adopted with a Warning: its marker's id is recorded again. A marked volume that still holds files is
+`UnknownMarker`, by design: those files belong to a database that no longer exists.
+
+A rollback past a feature (`B4`) does **not** stop startup; see below.
+
+### Running, and when a disk goes away
+
+A volume that fails **after** startup — an unmount, a read-only remount, I/O errors, a full disk — does not
+stop the process. The volume becomes **Degraded**: its reads and writes return `503` with `Retry-After: 60`
+(a full disk returns `507`), the Storage health panel says so, and the condition is re-checked at most every
+15 seconds and clears on its own once the disk answers. A single missing file is not a degraded volume: that
+file alone returns an integrity error. The next restart re-runs the startup checks. `/healthz` is unchanged.
+
+The **Storage health** panel at **System settings → Storage** (claim `file-storage.read`) shows, per
+volume: its state, free space, files per feature, files waiting to be erased, integrity faults, and the
+disk check; and, for the instance, whether file clean-up is on schedule. Anything needing attention is
+listed above the tiles and in the page header's signal.
+
+### Deletion, erasure and the grace period
+
+Deleting something that owns stored files makes them unreadable at once. Their bytes leave the disk on
+the worker's **hourly maintenance job**:
+
+- **Ordinary deletes** wait for the **deletion grace period** (default 24 h), so a backup that copies the
+  volume after the database dump still contains every file the dump references. Removal happens within
+  grace + 2 hours: ≤ 26 h at the default, ≤ 170 h at the maximum.
+- **Personal data** — features declared *Immediate*, and any delete driven by erasure such as an account
+  deletion — skips the grace and is removed within **2 hours**.
+- A stored grace that cannot be used (unparseable, `0`, out of range) makes the job use **168 h** and log a
+  Warning; the settings page shows the row as faulted. Fix the value at `/settings`.
+
+The maintenance job runs in every worker replica; a lease row (`FileStorageMaintenanceLeases`) elects one
+runner per hour, and a crashed runner's lease expires within 5 minutes. **Erasure depends on the worker.**
+If the panel says *File clean-up hasn't completed in over 3 hours*, the worker is down or crash-looping:
+check `docker compose ps worker` and its logs.
+
+Each pass also: sweeps abandoned writes (an upload whose request failed) after an hour; re-hashes up to 200
+files (512 MiB, 20 s) against their recorded SHA-256 and flags a file whose mismatch reproduces — a flagged
+file returns an error rather than wrong content, and is cleared if it matches again after a restore; and
+walks up to 256 folders of the disk looking for files the database does not know.
+
+### The disk check: quarantine and its breaker
+
+A file on a volume with no database row (left behind by a crash, or a restore that did not match) is first
+**sighted**, and only **quarantined** in the *next* pass and at least 24 hours later: it is moved to
+`.quarantine/<date>/<id>/…` on the same volume and deleted 7 days after that. A full pass over a large
+volume takes days; the progress is stored, so a restart resumes it.
+
+**The breaker.** If one pass finds more unknown files than max(100, 1 % of the volume's files), the volume's
+clean-up is **halted** with a Critical log, and nothing is quarantined until a later pass finds fewer. That
+is the signature of a database restored without its volume (or the wrong database). The panel reports
+*The disk check … has paused clean-up*. Restore the matching volume (or database); the halt clears on its
+own.
+
+Files the store could not have written (a name that breaks its rules, a file placed by hand) are left alone
+and counted. Nothing outside the feature folders, `.tmp` and `.quarantine` is ever touched.
+
+### Backup and restore
+
+1. **Order matters.** Dump the database **first**, then copy each file volume, finishing within the
+   deletion grace period. Every file the dump says exists is then in the copy, with one deliberate
+   exception: an *Immediate* erasure, which is not preserved. Extra files in the copy are harmless — the disk
+   check tidies them.
+   ```bash
+   docker run --rm -v odyssey_files_primary:/v:ro -v "$PWD":/backup alpine \
+     tar -C /v -czf /backup/files-primary-$(date +%F).tar.gz .
+   ```
+2. **Restore both together.** Never restore the database alone over a live volume: an older dump makes newer
+   files look orphaned, and the breaker halts rather than quarantine them — and clears once the matching
+   volume is back.
+3. **A volume of regenerable files only** (thumbnails) may be left out of backups. Restored without it, the
+   root comes back empty while the database says it held files, so the API stops with `VolumeLost` by
+   design; the feature's own documentation gives its reset procedure.
+4. **After a restore** the sweeps and the disk check tidy up whatever was in flight at backup time, and the
+   integrity scrub flags any genuinely missing file.
+
+**A volume backup holds file names and contents.** File names are personal data
+(`Passport_Ola_Nordmann.jpg`), on disk and in `StoredObjects.RelativePath`; they never appear in logs, error
+bodies or the status endpoint. **Bytes are not encrypted by the application**, the same posture as the
+database's `LONGBLOB` columns: encrypt the host disk (LUKS / dm-crypt), and treat a copied volume as
+directly browsable.
+
+### Rolling back and removing a feature
+
+Rolling back to an image that lacks a storage feature which has written files logs a **Critical** at
+startup and lists the feature on the panel. It does not stop: that feature's pending deletions still
+complete (the database's own foreign key refuses any still referenced), its abandoned writes are swept,
+and its committed files are kept, unserved, until the feature returns.
+
+**Removing a feature on purpose takes two releases.** First ship a release that keeps the feature in the
+catalogue and releases all its files; remove it only once **no `StoredObjects` row with its key remains, in
+any state** (the panel's per-feature counts show when).
+
+### Scale-out
+
+The deployment model is **one API container**. Worker replicas are safe: the maintenance lease and the
+features' own row claims coordinate them. Each process keeps its own *Degraded* flag; the panel shows the
+API's view, and a volume degraded only in the worker shows in the worker's log.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**
@@ -1161,6 +1396,13 @@ user's id.
 - [ ] `dataprotection_keys` is backed up, and stored **separately** from the database dump — it is
       secret-bearing once any credential is stored under System settings → Credentials.
 - [ ] The API started cleanly, i.e. the keys directory is writable (see the upgrade note above).
+- [ ] The API and the worker started cleanly with every file volume verified (`docker compose logs api
+      worker | grep "File storage"` shows no `check … failed`), and **System settings → Storage**
+      reports each volume *Available* — see [File storage](#file-storage-filesystem-volumes).
+- [ ] File volumes are mounted into `api` and `worker` **only**, on a local filesystem (ext4, XFS,
+      btrfs), with `noexec,nosuid,nodev` for a bind mount, and the host disk is encrypted (LUKS) — a copied
+      volume is directly browsable.
+- [ ] Each file volume is backed up after the database dump, within the deletion grace period.
 - [ ] Roles are assigned on the understanding that **any** of them can read every contact's aliases
       (maiden and former names included), middle names and dates of death, and export the lot — see
       [the section above](#who-can-read-contact-personal-data).

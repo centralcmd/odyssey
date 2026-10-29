@@ -72,11 +72,12 @@ public class AuthorizationPolicyTests
     /// #167 added the six <c>properties.*</c> claims. 101 once issue #350 added <c>locations.read</c>,
     /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
     /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
-    /// <c>weather.locations.update</c> and <c>weather.history.delete</c>.
+    /// <c>weather.locations.update</c> and <c>weather.history.delete</c>. 107 once issue #346 added
+    /// <c>file-storage.read</c>.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(106, DeclaredClaims().Count());
+        Assert.Equal(107, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

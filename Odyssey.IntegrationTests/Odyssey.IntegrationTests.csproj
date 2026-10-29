@@ -33,6 +33,7 @@
   <ItemGroup>
     <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
   </ItemGroup>
 
 </Project>

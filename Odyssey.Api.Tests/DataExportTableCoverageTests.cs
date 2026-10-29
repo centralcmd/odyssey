@@ -97,6 +97,14 @@ public class DataExportTableCoverageTests
         // The provider's list of published currencies (issue #351): a stored copy of the provider's own
         // data, re-fetched by every run, so there is nothing of the user's to export.
         ["ExchangeRateProviderSeries"] = "Application: the exchange-rate provider's currency list, re-fetched",
+        // Filesystem object storage (issue #346 §7.8, §11). StoredObjects and the orphan sightings hold users'
+        // file NAMES (the store keeps an upload's sanitized original name on disk), so they are personal data —
+        // but they are infrastructure beneath features: a consumer exports its own rows, and the bytes never
+        // ride along in this document (Non-Goal 9). The volumes and the lease are operational.
+        ["FileStorageVolumes"] = "Application: file-storage volumes, operational",
+        ["StoredObjects"] = "Application: file-storage objects, infrastructure beneath features; personal data, never exported",
+        ["FileStorageOrphanSightings"] = "Application: file-storage reconciliation sightings; personal data, never exported",
+        ["FileStorageMaintenanceLeases"] = "Application: file-storage maintenance lease, operational",
         ["LicenseAcceptances"] = "Application/Legal: out of scope",
         ["TermsOfServiceVersions"] = "Application/Legal: out of scope",
         ["TermsOfServiceAcceptances"] = "Application/Legal: out of scope",

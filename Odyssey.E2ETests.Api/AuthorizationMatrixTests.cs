@@ -49,6 +49,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/system-settings/exchange-rate-sync/currencies", PermissionClaims.SystemSettingsRead),
         ("/api/system-settings/exchange-rate-sync/status", PermissionClaims.SystemSettingsRead),
         ("/api/system-settings/exchange-rate-sync/runs", PermissionClaims.SystemSettingsRead),
+        // File-volume telemetry (issue #346) — Admin-only through its own claim, reconciled onto the role by
+        // RoleClaimSeeder. A flat 200 whether or not volumes are configured ([] when the store is not set up).
+        ("/api/file-storage/volumes", PermissionClaims.FileStorageRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503

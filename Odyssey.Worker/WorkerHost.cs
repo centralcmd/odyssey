@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Configuration;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
@@ -34,6 +35,11 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
+        // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
+        // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. Program.cs verifies the
+        // volumes before any job starts.
+        services.AddFileStorage();
+        services.AddPeriodicJob<FileStorageMaintenanceJob>();
 
         return builder;
     }

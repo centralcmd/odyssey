@@ -24,6 +24,7 @@ using Microsoft.AspNetCore.Authorization;
 using Odyssey.Core.Email;
 using Odyssey.Core.DataExport;
 using Odyssey.Core.FileExport;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Legal;
 using Odyssey.Core.SystemSettings;
@@ -537,6 +538,11 @@ else
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddScoped<DataExportService>();
 
+// Filesystem object storage (issue #346). Shared with Odyssey.Worker, which runs the maintenance job: the API
+// registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration
+// (FileStorage:Volumes / FileStorage:Bindings), verified below before the host listens.
+builder.Services.AddFileStorage();
+
 builder.Services.AddScoped<AdminFileExportService>();
 
 builder.Services.Configure<FileAnalysisOptions>(
@@ -688,6 +694,12 @@ GlobalizationGuard.EnsureIcuAvailable();
 
 // Location time zones need a time-zone database, which the alpine image ships only with tzdata (issue #350).
 TimeZoneDataGuard.EnsureTimeZoneDataAvailable();
+
+// File storage (issue #346 §3.6): every misconfiguration stops the API here, before Kestrel listens — a wrong
+// mount, a lost volume, an unbound feature. The API is the only host that writes a volume's marker, so it is the
+// one that initialises an empty volume or adopts one after a database reset. With no volumes configured and
+// nothing stored (or on the EF InMemory provider) this is a no-op and the store is simply unavailable.
+await app.Services.VerifyFileStorageAsync(FileStorageVerifyMode.Initialize);
 
 // Key-ring diagnostics (issue #444 §10). The DETECTED REPOSITORY TYPE is logged, not the config key:
 // the config key is the cause, the repository type is the actual condition, and the durability check
