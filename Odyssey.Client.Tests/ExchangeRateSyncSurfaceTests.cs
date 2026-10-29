@@ -76,7 +76,10 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
     // The sync folder plus the existing surfaces it changed — exchange rates, and Currencies, which hosts
     // the sync — markup and code-behind.
     // Settings.razor.cs is deliberately outside: its catalogue descriptions are static copy authored
-    // with the design system, for every setting, and carry no runtime value.
+    // with the design system, for every setting, and carry no runtime value. So is OdsTypeRegistries:
+    // its source chip and run-error labels name the provider on purpose, because they are design-system
+    // vocabulary keyed per ExchangeRateProvider member (a second provider is a second key, not a changed
+    // string), mirrored from the artifact and parity-checked by OdsTypeRegistriesTests.
     private static readonly string[] ChangedSurfaces =
     [
         "ExchangeRatesCard.razor", "ExchangeRatesCard.razor.cs", "CreateExchangeRateDialog.razor", "CreateExchangeRateDialog.razor.cs",

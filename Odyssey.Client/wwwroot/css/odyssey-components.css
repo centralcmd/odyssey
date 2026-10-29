@@ -4718,9 +4718,3 @@ tr:focus-within > .odc-rowactions.reveal,
 @keyframes odc-switch-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
 
-/* Exchange rates card (issue #351 §3.A): the status tile hosts the sync status panel beside its label;
-   Run now's unavailability reason sits left of its button, as visible text. Global, not in
-   Settings.razor.css: these elements are built in the code-behind, which scoped CSS does not reach. */
-.ss-status-host { flex: 1 1 360px; min-width: 0; max-width: 560px; }
-.ss-action { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2) var(--space-3); }
-.ss-action-reason { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }

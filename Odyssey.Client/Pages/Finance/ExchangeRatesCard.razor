@@ -159,9 +159,13 @@
     // Every value in the sentence comes from the summary (issue #351 §3.C).
     private RenderFragment DetailFor(ExistingExchangeRate rate) => @<div class="xr-detail-line">
         <span class="material-icons" aria-hidden="true">@(IsFetched(rate) ? "lock" : "edit_note")</span>
-        @if (IsFetched(rate))
+        @if (IsFetched(rate) && _summary is { } summary)
         {
-            <span>Fetched rates can't be edited. Add a manual rate dated later than @_summary?.FetchedRateLocalTime @_summary?.FetchedRateTimeZoneLabel that day to override it.</span>
+            <span>Fetched rates can’t be edited. Add a manual rate dated later than @summary.FetchedRateLocalTime @summary.FetchedRateTimeZoneLabel that day to override it.</span>
+        }
+        else if (IsFetched(rate))
+        {
+            <span>Fetched rates can’t be edited. Add a later manual rate to override it.</span>
         }
         else if (rate.UpdatedAt is { } edited)
         {

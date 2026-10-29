@@ -234,7 +234,7 @@
         }
         <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => Detach(RefreshSyncStatusAsync))">Refresh exchange-rate sync status</MudMenuItem>
         @* The run history is the job's record, not a currency's: it lives on System › Background jobs. *@
-        <MudMenuItem Icon="@Icons.Material.Filled.History" Href="background-jobs">View exchange-rate sync runs</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Filled.History" Href="/background-jobs">View exchange-rate sync runs</MudMenuItem>
     </text>;
 
     // ── Exchange-rate sync tiles (issue #351), after the currency's own, for a sync reader. An archived

@@ -191,9 +191,19 @@ public partial class CurrenciesCard
     // during a run — so a write that changes them re-reads it once.
     private Task ReloadStatusAsync() => MountedPanel?.ReloadQuietlyAsync() ?? LoadSyncStatusAsync();
 
-    private Task AnnouncePolite(string message) => _polite?.Announce(message) ?? Task.CompletedTask;
+    // Started, not awaited: the announcer plays its queue on its own, and a caller held for the clear and
+    // the dwell would delay the work it is announcing. The order between announcements is the queue's.
+    private Task AnnouncePolite(string message)
+    {
+        _ = _polite?.Announce(message);
+        return Task.CompletedTask;
+    }
 
-    private Task AnnounceAssertive(string message) => _assertive?.Announce(message) ?? Task.CompletedTask;
+    private Task AnnounceAssertive(string message)
+    {
+        _ = _assertive?.Announce(message);
+        return Task.CompletedTask;
+    }
 
     private Task ShowUnpublishedAsync() => OnStatusFilterChanged([nameof(CurrencyStatus.NoLongerPublished)]);
 

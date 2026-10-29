@@ -56,7 +56,7 @@ public partial class Settings
         builder.AddComponentParameter(3, nameof(OdsDateField.ValueChanged),
             EventCallback.Factory.Create<DateTime?>(this, v => SetDate(item.Key, v)));
         builder.AddComponentParameter(4, nameof(OdsDateField.Min), (DateTime?)ExchangeRateHistoryStartDateRule.Floor.ToDateTime(TimeOnly.MinValue));
-        builder.AddComponentParameter(5, nameof(OdsDateField.Max), (DateTime?)DateTime.UtcNow.Date);
+        builder.AddComponentParameter(5, nameof(OdsDateField.Max), (DateTime?)Time.GetUtcNow().UtcDateTime.Date);
         builder.AddComponentParameter(6, nameof(OdsDateField.Placeholder), item.Placeholder ?? "Select date");
         builder.AddComponentParameter(7, nameof(OdsDateField.Disabled), IsRowDisabled(item));
         builder.AddComponentParameter(8, nameof(OdsDateField.Error), FieldStateFor(item));
@@ -270,9 +270,9 @@ public partial class Settings
     // import (§9) — all four groups do now that Tasks gained an export row cap as a follow-up
     // (previously "Non-Goal 2": no export cap at all).
     internal enum SettingClaim { None, Security, Count }
-    // Date, Status and Action arrived with the exchange-rate sync card (issue #351 §3.A). Status is a
-    // read-only tile hosting a component; Action is a button that acts at once or navigates — Export is
-    // one use of that shape and keeps its own member and behaviour. Neither is part of Save.
+    // Date and Action arrived with the exchange-rate sync card (issue #351 §3.A). Action is a button that
+    // acts at once or navigates — Export is one use of that shape and keeps its own member and behaviour.
+    // Neither is part of Save.
     internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
 
     /// <summary>The one non-saving control kinds — never dirty, never validated, never written.</summary>
@@ -1339,7 +1339,7 @@ public partial class Settings
             if (item.Rule?.Invoke(text) is { } ruleError)
                 return ruleError;
             // A Date row is also bounded above by today (UTC); the server enforces it with its own clock.
-            if (item.Control == SettingControl.Date && GetDate(item.Key) is { } date && date.Date > DateTime.UtcNow.Date)
+            if (item.Control == SettingControl.Date && GetDate(item.Key) is { } date && date.Date > Time.GetUtcNow().UtcDateTime.Date)
                 return "Enter a date on or before today.";
             return null;
         }
