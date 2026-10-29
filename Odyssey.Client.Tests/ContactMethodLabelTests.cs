@@ -365,9 +365,12 @@ public class ContactMethodLabelTests
     private static string LabelError(IRenderedComponent<IComponent> cut) =>
         cut.FindAll(".odc-field-help.error").Select(e => e.TextContent.Trim()).FirstOrDefault() ?? "";
 
+    // The rows portal into MudPopoverProvider, which renders on its own dispatch after the click
+    // returns, so a bare FindAll can run before they exist and read an empty list.
     private static List<string> OfferedLabels(IRenderedComponent<IComponent> cut)
     {
         cut.Find(".odc-select-trigger").Click();
+        cut.WaitForElement(".odc-typesel-lab");
         return [.. cut.FindAll(".odc-typesel-lab").Select(l => l.TextContent.Trim())];
     }
 
