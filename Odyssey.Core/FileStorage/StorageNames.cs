@@ -12,11 +12,11 @@ namespace Odyssey.Core.FileStorage;
 /// </summary>
 public static partial class StorageNames
 {
-    public const string NamePattern = "^[A-Za-z][A-Za-z0-9]{0,63}$";
-    public const string RootFolderPattern = "^[a-z0-9][a-z0-9-]{0,31}$";
-    public const string SegmentPattern = "^[a-z0-9][a-z0-9_-]{0,31}$";
-    public const string SuffixPattern = "^[A-Za-z0-9_-]{1,32}$";
-    public const string ExtensionPattern = @"^\.[a-z0-9]{1,10}$";
+    public const string NamePattern = @"^[A-Za-z][A-Za-z0-9]{0,63}\z";
+    public const string RootFolderPattern = @"^[a-z0-9][a-z0-9-]{0,31}\z";
+    public const string SegmentPattern = @"^[a-z0-9][a-z0-9_-]{0,31}\z";
+    public const string SuffixPattern = @"^[A-Za-z0-9_-]{1,32}\z";
+    public const string ExtensionPattern = @"^\.[a-z0-9]{1,10}\z";
 
     /// <summary>Layout depth below the feature root.</summary>
     public const int MinSegments = 1;
@@ -51,7 +51,7 @@ public static partial class StorageNames
     /// A file name the store can have produced: it starts with a letter, mark, digit, <c>_</c> or <c>(</c> —
     /// never <c>.</c> or <c>-</c> — holds only the sanitizer's allow-list, and ends in a mapped extension.
     /// </summary>
-    [GeneratedRegex(@"^[\p{L}\p{M}\p{Nd}_(][\p{L}\p{M}\p{Nd} ._()\-]*\.[a-z0-9]{1,10}$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^[\p{L}\p{M}\p{Nd}_(][\p{L}\p{M}\p{Nd} ._()\-]*\.[a-z0-9]{1,10}\z", RegexOptions.CultureInvariant)]
     private static partial Regex FileNameRegex();
 
     /// <summary>A volume name or a feature key.</summary>

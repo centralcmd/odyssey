@@ -265,3 +265,13 @@ public static class VolumeFileSystem
         return left.StartsWith(right, StringComparison.Ordinal) || right.StartsWith(left, StringComparison.Ordinal);
     }
 }
+
+/// <summary>
+/// How the store names a failure in a log line. Never the exception itself: an I/O message embeds the full path,
+/// and a database duplicate-key message the key value — both carry a user's file name, which is personal data.
+/// </summary>
+public static class FileStorageLog
+{
+    public static string Describe(Exception exception) =>
+        $"{exception.GetType().Name} (0x{exception.HResult:X8})";
+}

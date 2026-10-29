@@ -80,7 +80,7 @@
     private bool Breakdown => Volume.Features.Count > 1 || Volume.Features.Any(f => StorageHealth.FeatureLabel(f.FeatureKey) is null);
 
     private int? UsedPercent => Volume is { TotalBytes: > 0 and var total, FreeBytes: { } free }
-        ? (int)Math.Round((total - free) * 100d / total)
+        ? (int)Math.Clamp(Math.Round((total - free) * 100d / total), 0, 100)
         : null;
 
     private string StateTone => Volume.State switch

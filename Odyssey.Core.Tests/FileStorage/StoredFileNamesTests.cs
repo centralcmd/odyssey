@@ -105,6 +105,20 @@ public class StoredFileNamesTests
     public void The_catalogue_free_check_refuses_reserved_and_catalogue_roots(string path, bool conforming) =>
         Assert.Equal(conforming, StorageNames.IsConformingPathWithoutCatalogue(path, new StorageFeatureCatalogue(TestStorageFeatures.All)));
 
+    /// <summary>.NET's <c>$</c> also matches before a final newline; every shape rule anchors with <c>\z</c>.</summary>
+    [Fact]
+    public void No_shape_rule_accepts_a_trailing_newline()
+    {
+        Assert.False(StorageNames.IsValidName("primary\n"));
+        Assert.False(StorageNames.IsValidRootFolder("test-files\n"));
+        Assert.False(StorageNames.IsValidSegment("3f\n"));
+        Assert.False(StorageNames.IsValidSuffix("_256\n"));
+        Assert.False(StorageNames.IsValidExtension(".jpg\n"));
+        Assert.False(StorageNames.IsConformingFileName("a b.pdf\n"));
+        Assert.False(StorageNames.IsConformingPath("test-files/3f/x.pdf\n", "test-files"));
+        Assert.True(StorageNames.IsConformingPath("test-files/3f/x.pdf", "test-files"));
+    }
+
     [Fact]
     public void Shard_gives_two_hex_segments()
     {

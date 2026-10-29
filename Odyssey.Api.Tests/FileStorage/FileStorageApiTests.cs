@@ -47,6 +47,9 @@ public class FileStorageApiTests
         Assert.Equal(3000, usage.CommittedBytes);
         Assert.NotNull(primary.FreeBytes);
         Assert.Contains("\"state\":\"Available\"", body, StringComparison.Ordinal);
+        // Feature keys are canonical PascalCase on the wire, compared case-sensitively.
+        Assert.Contains("\"boundFeatures\":[\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"featureKey\":\"TestFiles\"", body, StringComparison.Ordinal);
 
         Assert.DoesNotContain("/", body.Replace("\\u002F", "/"), StringComparison.Ordinal);
         Assert.DoesNotContain("Passport", body, StringComparison.Ordinal);
@@ -73,6 +76,25 @@ public class FileStorageApiTests
         Assert.Equal(2, volumes!.Count);
         Assert.All(volumes, v => Assert.Equal(completed, v.MaintenanceLastCompletedAtUtc));
         Assert.Single(volumes.Select(v => v.MaintenanceStale).Distinct());
+    }
+
+    public static TheoryData<string> NonAdminRoles => new() { "Owner", "User", "Guest" };
+
+    [Theory]
+    [MemberData(nameof(NonAdminRoles))]
+    public async Task Every_role_but_admin_gets_a_403(string role)
+    {
+        var claims = role switch
+        {
+            "Owner" => Odyssey.Context.Authorization.RolePermissions.OwnerClaims,
+            "User" => Odyssey.Context.Authorization.RolePermissions.UserClaims,
+            _ => Odyssey.Context.Authorization.RolePermissions.GuestClaims,
+        };
+        Assert.DoesNotContain(PermissionClaims.FileStorageRead, claims);
+        await using var factory = FileStorageApiFactory.Create(claims);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(VolumesPath)).StatusCode);
     }
 
     [Fact]

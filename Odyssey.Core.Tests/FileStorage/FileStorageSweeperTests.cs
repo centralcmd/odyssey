@@ -129,6 +129,41 @@ public class FileStorageSweeperTests : FileStorageTestBase
         Assert.Contains(host.Logs.At(LogLevel.Warning), m => m.Contains("deletion grace", StringComparison.Ordinal));
     }
 
+    /// <summary>
+    /// The resolver's degraded value is max(last-known-good, default) — 24 here, with a healthy 24 cached first. The
+    /// sweeper must still use 168, for a corrupt row and for a failed query alike.
+    /// </summary>
+    [Fact]
+    public async Task A_degraded_read_after_a_healthy_one_still_resolves_to_168_hours()
+    {
+        var host = await NewHostAsync();
+        await using var scope = host.Scope();
+        var sweeper = scope.ServiceProvider.GetRequiredService<FileStorageSweeper>();
+        Assert.Equal(24, await sweeper.ResolveGraceHoursAsync(default)); // warms the watermark
+
+        await SetGraceAsync(host, "abc");
+        Assert.Equal(168, await sweeper.ResolveGraceHoursAsync(default));
+
+        // A failed query: the sweeper's own context is gone.
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var failing = new FileStorageSweeper(
+            DisposedContext(), scope.ServiceProvider.GetRequiredService<StorageFeatureCatalogue>(),
+            host.Registry, new FileStorageSweepMemory(),
+            scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(), Clock,
+            Microsoft.Extensions.Logging.Abstractions.NullLogger<FileStorageSweeper>.Instance);
+        Assert.Equal(168, await failing.ResolveGraceHoursAsync(default));
+        _ = context;
+    }
+
+    private OdysseyContext DisposedContext()
+    {
+        var options = new DbContextOptionsBuilder<OdysseyContext>();
+        UseDatabase(options);
+        var context = new OdysseyContext(options.Options);
+        context.Dispose();
+        return context;
+    }
+
     [Theory]
     [InlineData(null, 24)]
     [InlineData("1", 1)]

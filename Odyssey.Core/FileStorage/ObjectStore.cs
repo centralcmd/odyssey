@@ -68,7 +68,7 @@ public sealed partial class ObjectStore(
 
     private const int BufferSize = 81920;
 
-    [GeneratedRegex(@"^(?<stem>.*) \((?<n>[0-9]{1,2})\)$", RegexOptions.CultureInvariant)]
+    [GeneratedRegex(@"^(?<stem>.*) \((?<n>[0-9]{1,2})\)\z", RegexOptions.CultureInvariant)]
     private static partial Regex NumberedMarker();
 
     public async Task<StoredObject> PutAsync(
@@ -118,34 +118,48 @@ public sealed partial class ObjectStore(
             : StoredFileNames.SanitizeStem(originalFileName, suffix, extension!);
 
         // A stray file the unique index cannot see makes a move fail; its name is excluded and the reservation retried.
+        // The content is written ONCE: the input stream is drained by the first write, so a retry renames the finished
+        // part file to the new reservation's name rather than reading the stream again (which would store 0 bytes).
         var strays = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        string? tempPath = null;
+        long size = 0;
+        string hash = string.Empty;
         while (true)
         {
             var row = await ReserveAsync(volume, feature, folder, stem, suffix, extension!, strays, cancellationToken);
             var finalPath = VolumeFileSystem.Contain(volume.RootPath, row.RelativePath, feature.RootFolder);
-
-            if (space.Measure(volume.RootPath) is { } measured && measured.Free < FreeSpaceFloorBytes)
-            {
-                throw new FileStorageFullException($"File volume '{volume.Name}' is below its free-space floor.");
-            }
-
-            var tempPath = Path.Combine(tempFolder, $"{row.Id:N}.part");
-            var (size, hash) = await WriteTempAsync(volume, tempPath, content, maxBytes, cancellationToken);
+            var rowTempPath = Path.Combine(tempFolder, $"{row.Id:N}.part");
 
             try
             {
+                if (tempPath is null)
+                {
+                    if (space.Measure(volume.RootPath) is { } measured && measured.Free < FreeSpaceFloorBytes)
+                    {
+                        throw new FileStorageFullException($"File volume '{volume.Name}' is below its free-space floor.");
+                    }
+
+                    (size, hash) = await WriteTempAsync(volume, rowTempPath, content, maxBytes, cancellationToken);
+                }
+                else
+                {
+                    // The part file follows its reservation, so the abandoned-write sweep still finds it by id.
+                    File.Move(tempPath, rowTempPath, overwrite: false);
+                }
+
+                tempPath = rowTempPath;
                 VolumeFileSystem.CreateDirectory(folderPath);
                 VolumeFileSystem.EnsureNoLinks(volume.RootPath, folderPath);
                 File.Move(tempPath, finalPath, overwrite: false);
             }
-            catch (IOException ex) when (VolumeFileSystem.IsAlreadyExists(ex))
+            catch (IOException ex) when (VolumeFileSystem.IsAlreadyExists(ex) && tempPath == rowTempPath)
             {
                 // Not ours: release the reservation now (the abandoned-write sweep would delete "its" final file).
                 strays.Add(Path.GetFileName(finalPath));
-                VolumeFileSystem.TryDelete(tempPath);
                 await DeleteReservationAsync(row.Id, cancellationToken);
                 if (strays.Count > MaxReservationAttempts)
                 {
+                    VolumeFileSystem.TryDelete(tempPath);
                     throw new FileStorageUnavailableException("The file could not be stored under a free name.");
                 }
 
@@ -153,7 +167,11 @@ public sealed partial class ObjectStore(
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                VolumeFileSystem.TryDelete(tempPath);
+                if (tempPath is not null)
+                {
+                    VolumeFileSystem.TryDelete(tempPath);
+                }
+
                 throw VolumeFailure(volume, ex);
             }
 
@@ -479,7 +497,10 @@ public sealed partial class ObjectStore(
     {
         if (!VolumeFileSystem.IsVolumeFailure(cause))
         {
-            return cause;
+            // Not the volume's fault, but never rethrown raw either: an I/O message carries the full path, and the
+            // global handler would log it.
+            logger.LogError("A file operation on volume {Volume} failed ({Failure}).", volume.Name, FileStorageLog.Describe(cause));
+            return new FileStorageUnavailableException($"File volume '{volume.Name}' could not complete the operation.");
         }
 
         volumes.MarkDegraded(volume, cause);
@@ -502,7 +523,8 @@ public sealed partial class ObjectStore(
 
     private StoreContractViolationException ContractViolation(string message)
     {
+        // The detail is for the log; the response body says only that the server is at fault.
         logger.LogError("File storage contract violation (a code defect): {Message}", message);
-        return new StoreContractViolationException(message);
+        return new StoreContractViolationException("The server could not store or read the file.");
     }
 }

@@ -19,6 +19,7 @@ public partial class Settings
     private StorageHealthPhase _storagePhase = StorageHealthPhase.Loading;
     private bool _storageRefreshing;
     private DateTime? _storageCheckedAt;
+    private bool _storageRefreshFailed;
 
     private async Task LoadStorageHealthAsync()
     {
@@ -33,8 +34,14 @@ public partial class Settings
             _storageVolumes = volumes;
             _storageCheckedAt = Time.GetUtcNow().UtcDateTime;
             _storagePhase = StorageHealthPhase.Ready;
+            _storageRefreshFailed = false;
         }
-        else if (_storagePhase != StorageHealthPhase.Ready)
+        else if (_storagePhase == StorageHealthPhase.Ready)
+        {
+            // A failed REFRESH keeps what was shown, and the panel says how old it is.
+            _storageRefreshFailed = true;
+        }
+        else
         {
             _storagePhase = StorageHealthPhase.Error;
         }
@@ -44,6 +51,11 @@ public partial class Settings
 
     private async Task RefreshStorageHealthAsync()
     {
+        if (_storageRefreshing)
+        {
+            return;
+        }
+
         _storageRefreshing = true;
         StateHasChanged();
         var before = _storageCheckedAt;
@@ -53,11 +65,19 @@ public partial class Settings
         StateHasChanged();
     }
 
+    /// <summary>
+    /// Retry replaces the button that was clicked with the loading skeleton, so focus would fall to
+    /// <c>&lt;body&gt;</c> (WCAG 2.4.3). It is announced, and focus goes to the panel itself (<c>tabindex="-1"</c>)
+    /// once the result is in.
+    /// </summary>
     private async Task RetryStorageHealthAsync()
     {
         _storagePhase = StorageHealthPhase.Loading;
+        Announce("Loading storage health.");
         StateHasChanged();
         await LoadStorageHealthAsync();
+        Announce(_storagePhase == StorageHealthPhase.Ready ? "Storage health loaded." : "Couldn't load storage health.");
+        await JumpToElementAsync(StorageHealth.PanelId);
     }
 
     /// <summary>

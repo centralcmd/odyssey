@@ -109,12 +109,85 @@ public class ObjectStoreTests : FileStorageTestBase
         Directory.CreateDirectory(folder);
         await File.WriteAllTextAsync(Path.Combine(folder, "IMG.jpg"), "stray");
 
-        var row = await PutCommittedAsync(host, TestStorageFeatures.Files, Owner, "IMG.jpg");
+        var row = await PutCommittedAsync(host, TestStorageFeatures.Files, Owner, "IMG.jpg", length: 1024);
 
         Assert.EndsWith("/IMG (2).jpg", row.RelativePath);
         Assert.Equal("stray", await File.ReadAllTextAsync(Path.Combine(folder, "IMG.jpg")));
+        // The retry stores the content, not an empty file: the input stream was drained by the first attempt.
+        var stored = await File.ReadAllBytesAsync(Path.Combine(PrimaryRoot, row.RelativePath));
+        Assert.Equal(Bytes(1024).ToArray(), stored);
+        Assert.Equal(1024, row.SizeBytes);
+        Assert.Equal(Convert.ToHexStringLower(SHA256.HashData(stored)), row.Sha256Hash);
+        Assert.Empty(Directory.EnumerateFiles(Path.Combine(PrimaryRoot, ".tmp")));
         await using var scope = host.Scope();
         Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<OdysseyContext>().StoredObjects.CountAsync());
+    }
+
+    [Fact]
+    public async Task A_stray_collision_with_a_non_seekable_stream_still_stores_every_byte()
+    {
+        var host = await NewHostAsync();
+        var folder = Path.Combine(PrimaryRoot, "test-files", "3f", "a2", Owner.ToString("N"));
+        Directory.CreateDirectory(folder);
+        await File.WriteAllTextAsync(Path.Combine(folder, "IMG.jpg"), "stray");
+        await File.WriteAllTextAsync(Path.Combine(folder, "IMG (2).jpg"), "stray");
+
+        await using var scope = host.Scope();
+        var payload = Bytes(70_000).ToArray();
+        var row = await scope.ServiceProvider.GetRequiredService<IObjectStore>()
+            .PutAsync("TestFiles", Owner, "IMG.jpg", null, "image/jpeg", new ForwardOnlyStream(payload), 100_000, default);
+
+        Assert.EndsWith("/IMG (3).jpg", row.RelativePath);
+        Assert.Equal(payload, await File.ReadAllBytesAsync(Path.Combine(PrimaryRoot, row.RelativePath)));
+        Assert.Equal(70_000, row.SizeBytes);
+        await using var check = host.Scope();
+        Assert.Equal(1, await check.ServiceProvider.GetRequiredService<OdysseyContext>().StoredObjects.CountAsync());
+    }
+
+    private sealed class ForwardOnlyStream(byte[] data) : Stream
+    {
+        private int position;
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => throw new NotSupportedException();
+        public override long Position { get => throw new NotSupportedException(); set => throw new NotSupportedException(); }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            var n = Math.Min(count, data.Length - position);
+            Array.Copy(data, position, buffer, offset, n);
+            position += n;
+            return n;
+        }
+
+        public override void Flush() { }
+        public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+        public override void SetLength(long value) => throw new NotSupportedException();
+        public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// No log line in the store carries an exception object: an I/O message embeds the full path and a duplicate-key
+    /// message the key, and both carry a user's file name. Failures are named by <c>FileStorageLog.Describe</c>.
+    /// </summary>
+    [Fact]
+    public void No_file_storage_log_line_carries_an_exception_object()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(root.FullName, "Odyssey.sln")))
+        {
+            root = root.Parent!;
+        }
+
+        var offenders = Directory.EnumerateFiles(Path.Combine(root.FullName, "Odyssey.Core", "FileStorage"), "*.cs")
+            .SelectMany(file => File.ReadLines(file).Select((line, i) => (file, line, i)))
+            .Where(x => System.Text.RegularExpressions.Regex.IsMatch(x.line, @"logger\.Log\w*\(\s*(ex|cause|exception|failure|probeFailure)\s*,"))
+            .Select(x => $"{Path.GetFileName(x.file)}:{x.i + 1}")
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "Log FileStorageLog.Describe(ex), not the exception: " + string.Join(", ", offenders));
     }
 
     [Fact]

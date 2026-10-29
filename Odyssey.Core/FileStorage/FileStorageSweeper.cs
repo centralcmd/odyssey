@@ -138,6 +138,16 @@ public sealed class FileStorageSweeper(
                 await context.SaveChangesAsync(cancellationToken);
 
                 VolumeFileSystem.TryDelete(Path.Combine(volume.RootPath, StorageNames.TempFolder, $"{id:N}.part"));
+
+                // The path is free in the index from the save above: a new writer may already have reserved it, and
+                // its file is not this row's to delete.
+                var path = row.RelativePath;
+                if (await context.StoredObjects.AsNoTracking().AnyAsync(o => o.VolumeId == row.VolumeId && o.RelativePath == path, cancellationToken))
+                {
+                    swept++;
+                    continue;
+                }
+
                 DeleteFileOrThrow(fullPath);
                 VolumeFileSystem.RemoveEmptyFolders(Path.GetDirectoryName(fullPath)!, stopAt);
                 swept++;
@@ -148,7 +158,7 @@ public sealed class FileStorageSweeper(
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DbUpdateException)
             {
-                logger.LogError(ex, "Sweeping abandoned write {StoredObjectId} failed; the disk reconciliation will find any file left behind.", id);
+                logger.LogError("Sweeping abandoned write {StoredObjectId} failed; the disk reconciliation will find any file left behind ({Failure}).", id, FileStorageLog.Describe(ex));
             }
             finally
             {
@@ -200,7 +210,7 @@ public sealed class FileStorageSweeper(
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DbUpdateException)
             {
-                logger.LogError(ex, "Deleting stored object {StoredObjectId} failed; it stays pending and is retried next tick.", id);
+                logger.LogError("Deleting stored object {StoredObjectId} failed; it stays pending and is retried next tick ({Failure}).", id, FileStorageLog.Describe(ex));
             }
             finally
             {
@@ -335,7 +345,7 @@ public sealed class FileStorageSweeper(
                 }
                 catch (DbUpdateException ex)
                 {
-                    logger.LogError(ex, "Releasing unreferenced stored object {StoredObjectId} failed.", id);
+                    logger.LogError("Releasing unreferenced stored object {StoredObjectId} failed ({Failure}).", id, FileStorageLog.Describe(ex));
                 }
                 finally
                 {
@@ -426,7 +436,7 @@ public sealed class FileStorageSweeper(
             }
             catch (DbUpdateException ex)
             {
-                logger.LogError(ex, "Recording the integrity check of stored object {StoredObjectId} failed.", id);
+                logger.LogError("Recording the integrity check of stored object {StoredObjectId} failed ({Failure}).", id, FileStorageLog.Describe(ex));
             }
             finally
             {
@@ -462,7 +472,7 @@ public sealed class FileStorageSweeper(
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            logger.LogWarning(ex, "Reading a stored object for the integrity scrub failed; it is checked again next tick.");
+            logger.LogWarning("Reading a stored object for the integrity scrub failed; it is checked again next tick ({Failure}).", FileStorageLog.Describe(ex));
             return null;
         }
     }
@@ -498,7 +508,7 @@ public sealed class FileStorageSweeper(
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or DbUpdateException)
             {
-                logger.LogError(ex, "Disk reconciliation of volume {Volume} failed; it resumes from its cursor next tick.", volume.Name);
+                logger.LogError("Disk reconciliation of volume {Volume} failed; it resumes from its cursor next tick ({Failure}).", volume.Name, FileStorageLog.Describe(ex));
             }
             finally
             {
@@ -844,7 +854,7 @@ public sealed class FileStorageSweeper(
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            logger.LogError(ex, "Quarantining an orphan file on volume {Volume} failed; it is retried next pass.", volume.Name);
+            logger.LogError("Quarantining an orphan file on volume {Volume} failed; it is retried next pass ({Failure}).", volume.Name, FileStorageLog.Describe(ex));
             return false;
         }
     }

@@ -360,7 +360,7 @@ public sealed class FileStorageVerifier(
         }
     }
 
-    private static bool TryWriteMarker(string markerPath, VolumeMarker marker)
+    internal static bool TryWriteMarker(string markerPath, VolumeMarker marker)
     {
         try
         {

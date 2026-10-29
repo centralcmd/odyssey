@@ -33,8 +33,11 @@
                 {
                     <span>Checked @ExchangeRateSyncTime.Absolute(checkedAt)</span>
                 }
+                @* Never disabled while a refresh runs: a native-disabled button that holds focus drops it to
+                   <body> (WCAG 2.4.3). The host ignores a click that lands while one is in flight. *@
                 <OdsIconButton Icon="@Icons.Material.Filled.Refresh" AriaLabel="Refresh storage health" Size="OdsSize.Sm"
-                               Disabled="Refreshing" OnClick="@(() => OnRefresh.InvokeAsync())" />
+                               aria-disabled="@(Refreshing ? "true" : null)"
+                               OnClick="@(() => OnRefresh.InvokeAsync())" />
             </span>
         }
     </div>
@@ -68,6 +71,13 @@
     }
     else
     {
+        if (RefreshFailed && CheckedAt is { } shownAt)
+        {
+            <div class="sth-note warning" role="status">
+                <span class="material-icons" aria-hidden="true">cloud_off</span>
+                <div class="sth-note-body"><strong>Couldn’t refresh storage health.</strong> Showing what was read at @ExchangeRateSyncTime.Absolute(shownAt).</div>
+            </div>
+        }
         var issues = StorageHealth.Issues(Volumes);
         if (issues.Count > 0)
         {
@@ -117,6 +127,9 @@
 
     /// <summary>When the shown data was read, UTC.</summary>
     [Parameter] public DateTime? CheckedAt { get; set; }
+
+    /// <summary>The last refresh failed; the panel still shows the data read at <see cref="CheckedAt"/>, and says so.</summary>
+    [Parameter] public bool RefreshFailed { get; set; }
 
     [Parameter] public EventCallback OnRefresh { get; set; }
 

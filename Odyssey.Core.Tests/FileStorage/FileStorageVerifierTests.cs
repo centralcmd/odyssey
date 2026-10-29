@@ -135,12 +135,15 @@ public class FileStorageVerifierTests : FileStorageTestBase
     [SkippableFact]
     public async Task V1_an_unwritable_root_fails()
     {
-        Skip.If(OperatingSystem.IsWindows() || Environment.UserName == "root", "root writes through any mode bits");
+        Skip.If(OperatingSystem.IsWindows(), "Unix modes only");
         var root = Root("primary");
         if (!OperatingSystem.IsWindows())
         {
             new DirectoryInfo(root).UnixFileMode = UnixFileMode.UserRead | UnixFileMode.UserExecute;
         }
+
+        // Decided by what the process can actually do, not by its name: a privileged process writes through any mode.
+        Skip.If(VolumeFileSystem.TryProbeWrite(root, out _), "this process can write through mode 0500 (it is privileged)");
 
         Assert.Equal("NotWritable", (await FailsAsync(Primary(), AllBound)).Check);
     }
@@ -164,6 +167,24 @@ public class FileStorageVerifierTests : FileStorageTestBase
         var again = await NewHostAsync();
         Assert.Equal(row.Id, again.Registry.Find("primary")!.Id);
         Assert.Equal(Clock.GetUtcNow().UtcDateTime, (await VolumeRowAsync(again)).LastSeenAtUtc);
+    }
+
+    /// <summary>
+    /// The marker race (AC 23): a marker that a racing writer created between the emptiness check and the write is
+    /// never overwritten — the write is create-new and reports the collision, and the verifier then evaluates the
+    /// marker that exists (V2/V3).
+    /// </summary>
+    [Fact]
+    public void A_marker_is_created_new_and_never_overwritten()
+    {
+        var root = Root("primary");
+        var marker = Path.Combine(root, StorageNames.MarkerFileName);
+        var theirs = new VolumeMarker(Guid.NewGuid(), "primary", DateTime.UtcNow, 1);
+        Assert.True(FileStorageVerifier.TryWriteMarker(marker, theirs));
+        var written = File.ReadAllText(marker);
+
+        Assert.False(FileStorageVerifier.TryWriteMarker(marker, new VolumeMarker(Guid.NewGuid(), "primary", DateTime.UtcNow, 1)));
+        Assert.Equal(written, File.ReadAllText(marker));
     }
 
     [Fact]

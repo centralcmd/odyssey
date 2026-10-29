@@ -137,7 +137,7 @@ public sealed class FileStorageVolumeRegistry(ILogger<FileStorageVolumeRegistry>
     {
         if (!volume.Degraded)
         {
-            logger.LogError(cause, "File volume {Volume} is degraded; its reads and writes return 503 until it recovers.", volume.Name);
+            logger.LogError("File volume {Volume} is degraded; its reads and writes return 503 until it recovers ({Failure}).", volume.Name, FileStorageLog.Describe(cause));
             volume.LastProbeAt = time.GetUtcNow();
         }
 
@@ -214,6 +214,8 @@ public sealed class FileStorageVolumeRegistry(ILogger<FileStorageVolumeRegistry>
         var now = time.GetUtcNow();
         if (now - volume.LastProbeAt >= RecheckInterval)
         {
+            // Stamped before probing, so the rest of a burst skips straight past.
+            volume.LastProbeAt = now;
             _ = ProbeAsync(volume, CancellationToken.None);
         }
 

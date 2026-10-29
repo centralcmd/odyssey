@@ -145,7 +145,7 @@ public sealed class FileStorageMaintenanceJob(
         catch (DbUpdateException ex)
         {
             // The lease expires on its own; the next tick re-claims it.
-            logger.LogWarning(ex, "Releasing the file-storage maintenance lease failed; it expires on its own.");
+            logger.LogWarning("Releasing the file-storage maintenance lease failed; it expires on its own ({Failure}).", FileStorageLog.Describe(ex));
         }
     }
 }

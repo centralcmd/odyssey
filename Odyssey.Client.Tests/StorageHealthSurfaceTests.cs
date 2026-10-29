@@ -295,6 +295,63 @@ public class StorageHealthSurfaceTests : IDisposable
     }
 
     [Fact]
+    public async Task Refresh_is_never_disabled_so_focus_stays_on_it_and_a_click_in_flight_is_ignored()
+    {
+        await using var ctx = NewComponentContext();
+
+        var panel = ctx.Render<StorageHealthPanel>(p => p
+            .Add(x => x.Volumes, [Volume()])
+            .Add(x => x.Refreshing, true)
+            .Add(x => x.CheckedAt, DateTime.UtcNow));
+
+        var refresh = panel.Find("button[aria-label='Refresh storage health']");
+        Assert.False(refresh.HasAttribute("disabled"));
+        Assert.Equal("true", refresh.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
+    public async Task A_failed_refresh_keeps_the_data_and_says_how_old_it_is()
+    {
+        await using var ctx = NewPageContext([Volume()], out var storage);
+        var page = ctx.Render<Settings>();
+        storage.Setup(client => client.GetVolumesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<FileStorageVolumeStatus>>.Failure(new HttpRequestException("down")));
+
+        page.Find("button[aria-label='Refresh storage health']").Click();
+
+        page.WaitForAssertion(() =>
+        {
+            var panel = page.Find("section.sth");
+            Assert.Contains("Couldn’t refresh storage health.", panel.TextContent, StringComparison.Ordinal);
+            Assert.Contains("Everything is working", panel.TextContent, StringComparison.Ordinal);
+        });
+    }
+
+    [Fact]
+    public async Task Retry_moves_focus_to_the_panel_once_the_result_is_in()
+    {
+        await using var ctx = NewPageContext(null, out var storage);
+        var page = ctx.Render<Settings>();
+        storage.Setup(client => client.GetVolumesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<IReadOnlyList<FileStorageVolumeStatus>>.Success([Volume()], HttpStatusCode.OK));
+
+        page.Find("section.sth .sth-note button").Click();
+
+        page.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
+            call => call.Identifier == "odsFocusById" && Equals(call.Arguments[0], StorageHealth.PanelId)));
+    }
+
+    [Fact]
+    public async Task Used_space_is_clamped_to_zero_to_a_hundred()
+    {
+        await using var ctx = NewComponentContext();
+
+        var panel = ctx.Render<StorageHealthPanel>(p => p.Add(x => x.Volumes, [Volume(v => { v.FreeBytes = 600; v.TotalBytes = 500; })]));
+
+        Assert.Equal("primary: 0% used", panel.Find("[role=progressbar]").GetAttribute("aria-label"));
+    }
+
+    [Fact]
     public void The_grace_row_is_a_security_claim_hours_field_bounded_by_the_shared_pair()
     {
         var row = Settings.AllItems.Single(item => item.Key == "fileStorageDeletionGraceHours");
