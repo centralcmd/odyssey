@@ -5,7 +5,7 @@ namespace Odyssey.Client.Pages.Finance.ExchangeRateSync;
 /// <summary>
 /// How the exchange-rate sync surfaces write a moment: an absolute local time, and a relative phrase
 /// ("in 8 hours", "4 hours ago") computed against an injected clock, so a test can pin it and a render
-/// recomputes it (issue #351 §3.B, FE N2).
+/// recomputes it.
 /// </summary>
 public static class ExchangeRateSyncTime
 {

@@ -7,7 +7,7 @@ namespace Odyssey.Client.Components;
 public sealed record OdsChipValue(string Label, OdsChipTone Tone, bool Dot = false);
 
 /// <summary>
-/// The eight exchange-rate sync vocabularies (issue #351; Odyssey Design System · docs/reference-data.md,
+/// The eight exchange-rate sync vocabularies (Odyssey Design System · docs/reference-data.md,
 /// "Reference data — Exchange-rate sync"), mirrored one-to-one: every surface reads these rather than
 /// spelling a label or tone inline. Each lookup has a fallback for a value the client does not know — a
 /// server newer than the client during a rolling deploy — so an unknown value never throws and never

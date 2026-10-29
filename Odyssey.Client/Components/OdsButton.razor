@@ -15,7 +15,7 @@
 @* Icon / IconRight are Material Icons ligatures (DS convention), not MudBlazor
    SVG constants — render them as material-icons spans rather than via MudButton's
    StartIcon/EndIcon (which expect SVG and would silently show nothing). *@
-@* Href renders MudButton's own <a> — navigation is a link, not a button (issue #351). AriaDisabled is
+@* Href renders MudButton's own <a> — navigation is a link, not a button. AriaDisabled is
    the focusable unavailable state: aria-disabled, clicks swallowed, focus kept — for an action that
    becomes unavailable while it has focus (Run now once a run starts), where a native disabled would
    drop focus to <body>. It also drops the href: swallowing the click alone would leave a link announced

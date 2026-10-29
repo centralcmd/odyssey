@@ -370,7 +370,7 @@ public class ExchangeRateSyncPhaseZeroTests
         var cut = ctx.Render<OdsModal>(p => p
             .Add(m => m.Open, true)
             .Add(m => m.ReturnFocusToId, "row-a-menu")
-            .Add(m => m.Title, (RenderFragment)(b => b.AddContent(0, "Delete this fetched rate?"))));
+            .Add(m => m.Title, (RenderFragment)(b => b.AddContent(0, "Delete USD?"))));
 
         cut.Render(p => p.Add(m => m.Open, false));
 

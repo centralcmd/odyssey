@@ -1,4 +1,4 @@
-/* The detail line of a rate row (issue #351 §3.C) — why a fetched rate has no Edit. */
+/* The detail line of a rate row — why a fetched rate has no Edit. */
 .xr-detail-line {
     display: flex;
     align-items: flex-start;

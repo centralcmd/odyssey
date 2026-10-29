@@ -13,7 +13,7 @@ namespace Odyssey.Client.Pages.Finance;
 public partial class ExchangeRatesCard
 {
     private List<ExistingExchangeRate> _rates = new();
-    // The whole table's counts, currencies and attribution (issue #351 §3.C) — one summary call, so the
+    // The whole table's counts, currencies and attribution — one summary call, so the
     // page cost no longer grows with the fetched history the way loading every row did.
     private ExchangeRateSummary? _summary;
     private bool _isLoading = true;

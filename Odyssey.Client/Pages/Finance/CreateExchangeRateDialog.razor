@@ -48,7 +48,7 @@
                    HelperText="@(IsEdit ? "When this rate takes effect." : "Defaults to now when left empty.")"
                    AriaDescribedBy="@(ShowsPrecedence ? _precedenceHelpId : null)" />
 
-    @* Precedence over a fetched rate, in the summary's own words (issue #351 §3.C): every value is
+    @* Precedence over a fetched rate, in the summary's own words: every value is
        server data, so a provider or time-zone change never leaves the dialog stating an old rule. *@
     @if (ShowsPrecedence && Summary is { } summary)
     {

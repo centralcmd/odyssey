@@ -33,7 +33,7 @@ public partial class CurrenciesCard
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    // Sort (§6.5): Code, Name and the derived Status — everyone's, like the filter.
+    // Sort: Code, Name and the derived Status — everyone's, like the filter.
     private static readonly OdsTableSort DefaultSort = new("code", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
     private static readonly IReadOnlyList<OdsSortField<ExistingCurrency>> SortFields =
@@ -43,7 +43,7 @@ public partial class CurrenciesCard
         new() { Key = "status", Label = "Status", Type = OdsSortType.Status },
     ];
 
-    // The one Status filter (issue #351): the server's CurrencyStatus names, in reading order.
+    // The one Status filter: the server's CurrencyStatus names, in reading order.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
     [
         .. OdsTypeRegistries.CurrencyStatuses.Select(entry => new OdsOption(entry.Key.ToString(), entry.Value.Chip.Label)),

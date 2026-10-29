@@ -29,7 +29,7 @@ public partial class Settings
     private void Announce(string message) =>
         _announce = (_announceParity = !_announceParity) ? message : message + "​";
 
-    // ── Exchange rates card (issue #351 §3.A) ─────────────────────────────────────────────────────
+    // ── Exchange rates card ─────────────────────────────────────────────────────
     // The sync's status, Run now and the per-currency controls live on /currencies; this card keeps the
     // two instance-wide settings and a link there. Status is read once, for the synced count.
     private Odyssey.Dtos.Finance.ExchangeRateSyncStatus? _syncStatus;
@@ -47,7 +47,7 @@ public partial class Settings
     // The new controls are built here rather than as markup in Settings.razor, whose @code block
     // is capped (SourceConventionTests); each is a plain composition of existing atoms.
 
-    // The history start date: a picker over an invariant yyyy-MM-dd string row (issue #351 §3.A).
+    // The history start date: a picker over an invariant yyyy-MM-dd string row.
     private RenderFragment DateControl(SettingItem item) => builder =>
     {
         builder.OpenComponent<OdsDateField>(0);
@@ -270,7 +270,7 @@ public partial class Settings
     // import (§9) — all four groups do now that Tasks gained an export row cap as a follow-up
     // (previously "Non-Goal 2": no export cap at all).
     internal enum SettingClaim { None, Security, Count }
-    // Date and Action arrived with the exchange-rate sync card (issue #351 §3.A). Action is a button that
+    // Date and Action arrived with the exchange-rate sync card. Action is a button that
     // acts at once or navigates — Export is one use of that shape and keeps its own member and behaviour.
     // Neither is part of Save.
     internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
@@ -1007,7 +1007,7 @@ public partial class Settings
                 Write: (p, req) => req.AccountMaxSmartTagsPerAccount =
                     p.IntRequest("accountMaxSmartTagsPerAccount")),
         ]),
-        // Exchange rates (issues #349, #351 §3.A): the two global sync settings save with the page, and
+        // Exchange rates: the two global sync settings save with the page, and
         // Manage currencies links to /currencies, where the sync status, Run now, which currencies are
         // synced, each one's own start date and the run history live.
         new("Exchange rates", Icons.Material.Filled.CurrencyExchange,

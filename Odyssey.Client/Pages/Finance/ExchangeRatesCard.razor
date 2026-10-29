@@ -72,7 +72,7 @@
                 SortValue = r => (int)r.Status,
                 Cell = (r, ctx) => ChipFor(OdsTypeRegistries.ExchangeRateStatusOf(r.Status))
             },
-            @* Who supplied the rate — typed in, or fetched from a provider (issue #351 §3.C). *@
+            @* Who supplied the rate — typed in, or fetched from a provider. *@
             new()
             {
                 Key = "source", HeaderText = "Source",
@@ -156,7 +156,7 @@
 
 @code {
     // A fetched rate says why it has no Edit and how to override it; a manual one says it was typed in.
-    // Every value in the sentence comes from the summary (issue #351 §3.C).
+    // Every value in the sentence comes from the summary.
     private RenderFragment DetailFor(ExistingExchangeRate rate) => @<div class="xr-detail-line">
         <span class="material-icons" aria-hidden="true">@(IsFetched(rate) ? "lock" : "edit_note")</span>
         @if (IsFetched(rate) && _summary is { } summary)

@@ -11,7 +11,7 @@ using Odyssey.Dtos.Finance;
 namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
-/// Exchange-rate sync on the Currencies page (issue #351; Odyssey Design System ·
+/// Exchange-rate sync on the Currencies page (Odyssey Design System ·
 /// docs/components-exchange-rate-sync.md, "Currencies"). It used to be its own page at
 /// /settings/exchange-rate-sync; both tables listed one row per currency, so it was merged here.
 /// </summary>

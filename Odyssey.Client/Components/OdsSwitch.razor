@@ -5,7 +5,7 @@
     Two-way bindable via @bind-Checked.
 
     Two focusable "can't change now" states, distinct from Disabled — a native disabled drops focus
-    out of the control (issue #351 Phase 0):
+    out of the control:
       Busy          a save is in flight: aria-disabled + aria-busy, changes ignored, focus kept.
       AriaDisabled  permanently locked (a base-currency row): aria-disabled only, changes ignored.
     Both render MudSwitch ReadOnly, so the input stays in the tab order and keeps its checked state.

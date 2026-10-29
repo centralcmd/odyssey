@@ -16,7 +16,7 @@
 <PageTitle>Currencies</PageTitle>
 
 <OdsLiveAnnouncer Message="@_announce" />
-@* Exchange-rate sync outcomes: polite for results, assertive for failures (issue #351). *@
+@* Exchange-rate sync outcomes: polite for results, assertive for failures. *@
 <OdsLiveAnnouncer @ref="_polite" />
 <OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
 
@@ -30,13 +30,13 @@
                 PrimaryActionText="New currency"
                 OnPrimaryAction="AddClicked"
                 ShowPrimaryAction="_canCreate">
-        <SubLine>@_activeCount active · @_archivedCount archived · USD base@(_canReadSync && _syncStatus is { } st ? $" · {st.EnabledCount} synced" : "")</SubLine>
+        <SubLine>@_activeCount active · @_archivedCount archived@(_canReadSync && _syncStatus is { } st ? $" · {st.EnabledCount} synced" : "")</SubLine>
         <OverviewContent>
             <div class="odc-summary-grid">
                 <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No currencies." />
                 @if (_canReadSync)
                 {
-                    @* The sync status panel (issue #351), moved here from /settings/exchange-rate-sync.
+                    @* The sync status panel, moved here from /settings/exchange-rate-sync.
                        It owns status polling, so it stays mounted while the Overview is open only. *@
                     <section class="xrs-overview-tile" aria-labelledby="cur-xrs-ov">
                         <h2 class="xrs-overview-ov" id="cur-xrs-ov">Exchange-rate sync</h2>
@@ -105,7 +105,7 @@
                                Open="@(_openCode == c.CurrencyCode)"
                                OnToggle="@(open => _openCode = open ? c.CurrencyCode : null)">
                     <Chips>
-                        @* The one derived status, everyone's (issue #351). *@
+                        @* The one derived status, everyone's. *@
                         @{ var status = OdsTypeRegistries.CurrencyStatusOf(c.Status); }
                         <OdsChip Tone="@status.Tone" Dot="@status.Dot" Class="sm">@status.Label</OdsChip>
                         @if (_busy.Contains(c.CurrencyCode))
@@ -222,7 +222,7 @@
 }
 
 @code {
-    // ── The header menu: the sync's two actions and the way to its runs (issue #351), named for what they do, since a menu item
+    // ── The header menu: the sync's two actions and the way to its runs, named for what they do, since a menu item
     // has no tile around it to say so. Null — no ⋯ at all — without system-settings.read; Run now is
     // omitted, never greyed, while it cannot start, and the panel says why. The items do not await
     // their work: MudMenu holds itself open until the handler returns. ─────────────────────────────
@@ -237,7 +237,7 @@
         <MudMenuItem Icon="@Icons.Material.Filled.History" Href="/background-jobs">View exchange-rate sync runs</MudMenuItem>
     </text>;
 
-    // ── Exchange-rate sync tiles (issue #351), after the currency's own, for a sync reader. An archived
+    // ── Exchange-rate sync tiles, after the currency's own, for a sync reader. An archived
     // currency has no projection and its status already says why, so it shows none. The back-fill is in
     // the status and the fetched-rate count in the header, so neither is a tile. ──────────────────────
 

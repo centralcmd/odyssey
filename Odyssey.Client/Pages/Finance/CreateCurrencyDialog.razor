@@ -4,7 +4,7 @@
     CurrencyCode is the ISO-4217 primary key, so edit mode locks it; only Symbol, Name and
     Minor units are editable. Archive / restore stays a row action and is preserved here.
 
-    Both modes add the exchange-rate sync start date (issue #351) when the host says the caller may set
+    Both modes add the exchange-rate sync start date when the host says the caller may set
     it (system-settings.update); in edit mode only for a currency with one to set — not the provider's
     base, not an archived currency. It is a second write, made only when the date differs, after the
     currency's own; a new currency's is written with sync left off.

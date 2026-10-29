@@ -11,7 +11,7 @@ public partial class ExchangeRateSyncStatusPanel
 {
     /// <summary>
     /// How often the panel re-reads status while a run is active. A UI choice, not a server value — the
-    /// one numeric constant the surface's source-lint allows (issue #351 §5).
+    /// one numeric constant the surface's source-lint allows.
     /// </summary>
     public static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(5);
 
@@ -181,7 +181,7 @@ public partial class ExchangeRateSyncStatusPanel
     internal const string PermissionMessage =
         "You no longer have permission to do this. Sign out and in again if your role changed.";
 
-    // ── Polling (issue #351 §5): single-flight, capped by the run timeout, stopped by failures ────────
+    // ── Polling: single-flight, capped by the run timeout, stopped by failures ────────
 
     private void StartPolling()
     {

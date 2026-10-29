@@ -22,8 +22,10 @@
     a cell never expands its row. The click target is not part of Blazor's MouseEventArgs, so a
     capture-phase listener (odsRecTrackClicks) records it on the table and the row handler asks.
 
-    FOCUS (issue #351 Phase 0). Expanding moves focus into the detail panel (its first focusable
-    element, else the panel itself); collapsing returns it to the chevron. StartEdit moves focus to
+    FOCUS. The chevron and a row click leave focus where it is, so the aria-expanded control can be
+    pressed again to undo. The row menu's View details moves focus into the detail panel (its first
+    focusable element, else the panel itself) and its Collapse returns it to the chevron, because the
+    menu item unmounts with its popover. StartEdit moves focus to
     the edit row's first field after the row menu has closed and restored its own focus; ending an
     edit (Save, Cancel, or a caller action through OdsRecordEditContext.Done) returns it to the row's
     menu trigger, whose id OdsRecordActionContext.MenuTriggerId hands to a dialog's ReturnFocusToId.

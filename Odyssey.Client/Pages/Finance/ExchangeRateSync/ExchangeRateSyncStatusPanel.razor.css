@@ -1,4 +1,4 @@
-/* The sync status panel (issue #351; Odyssey Design System · ui_kits/web/exchange-rate-sync.css) in
+/* The sync status panel (Odyssey Design System · ui_kits/web/exchange-rate-sync.css) in
    BreakdownTile's anatomy and fonts (.odc-breakdown-row): icon · label · value in the caption font, the
    label secondary and the value primary, right-aligned and tabular; a rule before the notes. */
 .xrs-status { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }

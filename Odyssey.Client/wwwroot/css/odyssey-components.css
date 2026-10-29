@@ -829,7 +829,7 @@
 .odc-btn-icon { font-size: 18px; line-height: 1; }
 .odc-btn-icon.start { margin-inline-end: 8px; }
 .odc-btn-icon.end { margin-inline-start: 8px; }
-/* OdsButton AriaDisabled — the focusable unavailable state (issue #351): MudBlazor's own disabled
+/* OdsButton AriaDisabled — the focusable unavailable state: MudBlazor's own disabled
    look, without the native disabled that would drop focus. */
 .mud-button-root.odc-btn-aria-disabled,
 .mud-button-root.odc-btn-aria-disabled:hover {
@@ -4697,7 +4697,7 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .loc-picked:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
 
-/* OdsSwitch Busy / AriaDisabled (issue #351): focusable, aria-disabled. An unavailable switch dims its
+/* OdsSwitch Busy / AriaDisabled: focusable, aria-disabled. An unavailable switch dims its
    track and thumb only — the label keeps full text contrast, unlike the native disabled state. A busy
    switch is in flight, not inactive, so it keeps full contrast (WCAG 1.4.11) and spins a ring on its
    thumb instead; under reduced motion the ring stands still. */
