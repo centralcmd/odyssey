@@ -145,14 +145,12 @@ public class FileStorageSweeperTests : FileStorageTestBase
         Assert.Equal(168, await sweeper.ResolveGraceHoursAsync(default));
 
         // A failed query: the sweeper's own context is gone.
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var failing = new FileStorageSweeper(
             DisposedContext(), scope.ServiceProvider.GetRequiredService<StorageFeatureCatalogue>(),
             host.Registry, new FileStorageSweepMemory(),
             scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>(), Clock,
             Microsoft.Extensions.Logging.Abstractions.NullLogger<FileStorageSweeper>.Instance);
         Assert.Equal(168, await failing.ResolveGraceHoursAsync(default));
-        _ = context;
     }
 
     private OdysseyContext DisposedContext()
