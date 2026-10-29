@@ -26,6 +26,8 @@ public class ContactMethodLabelTests
     private static readonly Guid ContactId = Guid.Parse("33333333-3333-3333-3333-333333333333");
     private static readonly Guid PhoneId = Guid.Parse("44444444-4444-4444-4444-444444444444");
 
+    static ContactMethodLabelTests() => BunitContext.DefaultWaitTimeout = TimeSpan.FromSeconds(10);
+
     // ── Registry parity and the per-type projection (§16.11) ─────────────────
 
     /// <summary>
@@ -362,8 +364,10 @@ public class ContactMethodLabelTests
 
     private static string SelectedLabel(IRenderedComponent<IComponent> cut) => cut.Find(".odc-select-val").TextContent.Trim();
 
+    // Waits rather than defaulting to "": an absent error must fail the test, not satisfy a
+    // DoesNotContain on an empty string.
     private static string LabelError(IRenderedComponent<IComponent> cut) =>
-        cut.FindAll(".odc-field-help.error").Select(e => e.TextContent.Trim()).FirstOrDefault() ?? "";
+        cut.WaitForElement(".odc-field-help.error").TextContent.Trim();
 
     // The rows portal into MudPopoverProvider, which renders on its own dispatch after the click
     // returns, so a bare FindAll can run before they exist and read an empty list.
@@ -374,8 +378,8 @@ public class ContactMethodLabelTests
         return [.. cut.FindAll(".odc-typesel-lab").Select(l => l.TextContent.Trim())];
     }
 
-    // Driven through the picker's own ValueChanged rather than by clicking a popover row: MudMenu
-    // closes asynchronously, so a click dispatched into a popover that is already tearing down lands
+    // Driven through the picker's own ValueChanged rather than by clicking a popover row: the
+    // popover closes asynchronously, so a click dispatched into a popover that is already tearing down lands
     // on nothing — which showed up as an intermittently empty write list, not as a failed click.
     private static void PickLabel(IRenderedComponent<IComponent> cut, string key)
     {
