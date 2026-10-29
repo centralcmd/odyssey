@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:230c3fbae0ceedc70bca04eed2bfb5694e8b248cadbb81010f41b7a993601f55 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:cc02b814237a76c4735fb6eeee87181597b5e56f2ce458a435e527674d91f4d7 AS build
 
 COPY . /src
 WORKDIR /src
@@ -31,7 +31,7 @@ RUN dotnet publish Odyssey.Client/Odyssey.Client.csproj -c Release -o /app/publi
 # Unprivileged nginx: runs as the non-root "nginx" user (UID 101) and listens on 8080 instead of
 # 80, so no part of the web tier runs as root. The site config (nginx.conf) listens on 8080 to
 # match; Caddy and the compose port mappings target 8080.
-FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:26b0bf6fbf07297983cb341998d79c831508787de26627dd2a112321b9c3a4af AS final
+FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS final
 COPY Odyssey.Client/nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
 EXPOSE 8080

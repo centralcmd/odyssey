@@ -68,6 +68,7 @@ updates:
       - "/Odyssey.Api"
       - "/Odyssey.Client"
       - "/Odyssey.MigrationService"
+      - "/Odyssey.Worker"
     schedule:
       interval: "weekly"
     commit-message:
