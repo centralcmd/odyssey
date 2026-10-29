@@ -414,7 +414,7 @@ public class ExchangeRateServiceTests
             Rate = 0.92m,
         });
 
-        await service.Delete(created.ExchangeRateId, mayDeleteFetched: false);
+        await service.Delete(created.ExchangeRateId);
 
         Assert.Null(await service.Get(created.ExchangeRateId));
         Assert.Null(await service.GetLatest("USD", "EUR"));

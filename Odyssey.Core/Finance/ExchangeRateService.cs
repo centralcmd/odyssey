@@ -247,12 +247,12 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     }
 
     /// <summary>
-    /// Deletes one rate; a missing id is an idempotent no-op. A FETCHED row additionally needs
-    /// <c>system-settings.update</c> (issue #349 §4): the caller passes whether it holds it as
-    /// <paramref name="mayDeleteFetched"/>, and the rule is decided here against the row, since only the
-    /// row says whether it was fetched.
+    /// Deletes one MANUAL rate; a missing id is an idempotent no-op. A fetched row is refused, whoever asks:
+    /// the sync fills only past its fetched extents, so a row removed from inside them is never fetched again
+    /// and a conversion would silently fall back to an older leg. Fetched rates leave as a whole, through the
+    /// per-currency purge.
     /// </summary>
-    public async Task Delete(Guid exchangeRateId, bool mayDeleteFetched, CancellationToken cancellationToken = default)
+    public async Task Delete(Guid exchangeRateId, CancellationToken cancellationToken = default)
     {
         var rate = await context.ExchangeRates.FirstOrDefaultAsync(value => value.ExchangeRateId == exchangeRateId, cancellationToken);
         if (rate is null)
@@ -260,10 +260,11 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
             return;
         }
 
-        if (rate.Provider is not null && !mayDeleteFetched)
+        if (rate.Provider is not null)
         {
-            throw new DomainForbiddenException(
-                $"Exchange rate {exchangeRateId} was fetched; deleting it requires the '{PermissionClaims.SystemSettingsUpdate}' claim.");
+            throw new DomainUnprocessableException(
+                $"Exchange rate {exchangeRateId} was fetched and cannot be deleted on its own. Turn the currency's sync off and delete its fetched rates instead.",
+                "source");
         }
 
         context.ExchangeRates.Remove(rate);

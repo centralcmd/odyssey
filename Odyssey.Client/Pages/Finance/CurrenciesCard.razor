@@ -177,28 +177,28 @@
 @* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
 @if (_purging is { } purge)
 {
-    <ConfirmFetchedRateDeleteDialog @key="purge.CurrencyCode"
-                                    Open="_purgeOpen"
-                                    OpenChanged="OnPurgeOpenChanged"
-                                    Icon="delete_sweep"
-                                    Title="@($"Delete fetched rates for {purge.CurrencyCode}?")"
-                                    Body="@PurgeBody(purge)"
-                                    ConfirmLabel="Delete fetched rates"
-                                    ReturnFocusToId="@MenuIdFor(purge.CurrencyCode)"
-                                    OnConfirm="ConfirmPurgeAsync" />
+    <ConfirmDeleteDialog @key="purge.CurrencyCode"
+                         Open="_purgeOpen"
+                         OpenChanged="OnPurgeOpenChanged"
+                         Icon="delete_sweep"
+                         Title="@($"Delete fetched rates for {purge.CurrencyCode}?")"
+                         Body="@PurgeBody(purge)"
+                         ConfirmLabel="Delete fetched rates"
+                         ReturnFocusToId="@MenuIdFor(purge.CurrencyCode)"
+                         OnConfirm="ConfirmPurgeAsync" />
 }
 
 @* A record list has no inline confirm, so Delete asks first, in the same anatomy as the purge. *@
 @if (_deleting is { } doomed)
 {
-    <ConfirmFetchedRateDeleteDialog @key="@($"delete-{doomed.CurrencyCode}")"
-                                    Open="_deleteOpen"
-                                    OpenChanged="OnDeleteOpenChanged"
-                                    Title="@($"Delete {doomed.CurrencyCode}?")"
-                                    Body="@($"{doomed.Name} is removed from your currencies. A currency still in use can’t be deleted — archive it instead.")"
-                                    ConfirmLabel="Delete currency"
-                                    ReturnFocusToId="@MenuIdFor(doomed.CurrencyCode)"
-                                    OnConfirm="ConfirmDeleteAsync" />
+    <ConfirmDeleteDialog @key="@($"delete-{doomed.CurrencyCode}")"
+                         Open="_deleteOpen"
+                         OpenChanged="OnDeleteOpenChanged"
+                         Title="@($"Delete {doomed.CurrencyCode}?")"
+                         Body="@($"{doomed.Name} is removed from your currencies. A currency still in use can’t be deleted — archive it instead.")"
+                         ConfirmLabel="Delete currency"
+                         ReturnFocusToId="@MenuIdFor(doomed.CurrencyCode)"
+                         OnConfirm="ConfirmDeleteAsync" />
 }
 
 @if (_createKey != Guid.Empty)

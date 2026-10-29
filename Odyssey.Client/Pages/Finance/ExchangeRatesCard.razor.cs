@@ -1,7 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
@@ -31,9 +30,6 @@ public partial class ExchangeRatesCard
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
-    // Deleting a FETCHED rate also needs system-settings.update — the server decides from the row, and
-    // the menu only offers what it would allow.
-    private bool _canDeleteFetched;
 
     private const string PageStateKey = "exchange-rates-page";
     private bool _overviewOpen = true;
@@ -206,7 +202,6 @@ public partial class ExchangeRatesCard
         _canCreate = user.HasPermission(PermissionClaims.ExchangeRatesCreate);
         _canUpdate = user.HasPermission(PermissionClaims.ExchangeRatesUpdate);
         _canDelete = user.HasPermission(PermissionClaims.ExchangeRatesDelete);
-        _canDeleteFetched = _canDelete && user.HasPermission(PermissionClaims.SystemSettingsUpdate);
     }
 
     // Full refresh: the summary (counts, target options, attribution) and then the display slice.
@@ -249,9 +244,6 @@ public partial class ExchangeRatesCard
         {
             _rates = [.. load.Items];
             _totalCount = load.TotalCount;
-            var shown = _rates.Select(x => x.ExchangeRateId).ToHashSet();
-            foreach (var gone in _menuTriggers.Keys.Where(k => !shown.Contains(k)).ToList())
-                _menuTriggers.Remove(gone);
             _loadError = false;
             _announce = _totalCount == 0 ? "No rates match your filters."
                 : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} rate{(_totalCount == 1 ? "" : "s")}.";
@@ -302,7 +294,6 @@ public partial class ExchangeRatesCard
     internal IReadOnlyList<OdsMenuItem> BuildActions(ExistingExchangeRate r, OdsRecordActionContext ctx)
     {
         var items = new List<OdsMenuItem>();
-        _menuTriggers[r.ExchangeRateId] = ctx.MenuTriggerId;
 
         // A fetched rate is never edited in place (a 422 keyed source): the Edit item is absent.
         if (_canUpdate && !IsFetched(r))
@@ -312,13 +303,12 @@ public partial class ExchangeRatesCard
 
         items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(r.ExchangeRateId)) });
 
-        if (IsFetched(r) ? _canDeleteFetched : _canDelete)
+        // Nor is one deleted on its own (a 422 keyed source): the sync would never refill the gap, so fetched
+        // rates leave only through the per-currency purge on Currencies.
+        if (_canDelete && !IsFetched(r))
         {
             items.Add(new OdsMenuItem { Divider = true });
-            items.Add(IsFetched(r)
-                // Deleting a fetched rate leaves a gap the sync will not refill, so it is confirmed.
-                ? new OdsMenuItem { Icon = "delete", Label = "Delete…", Danger = true, OnClick = EventCallback.Factory.Create(this, () => StartDeleteFetched(r, ctx.MenuTriggerId)) }
-                : new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", Danger = true, OnClick = EventCallback.Factory.Create(this, ctx.Remove) });
         }
 
         return items;
@@ -370,62 +360,6 @@ public partial class ExchangeRatesCard
         }
 
         StateHasChanged();
-    }
-
-    // ── Deleting one fetched rate (issue #351 §3.D) ──────────────────────────
-    private readonly Dictionary<Guid, string> _menuTriggers = [];
-    private (ExistingExchangeRate Rate, string MenuTriggerId)? _deletingFetched;
-    private OdsLiveAnnouncer? _announcer;
-    private bool _deleteFetchedOpen;
-
-    private void StartDeleteFetched(ExistingExchangeRate rate, string menuTriggerId)
-    {
-        if (!_canDeleteFetched)
-            return;
-        _deletingFetched = (rate, menuTriggerId);
-        _deleteFetchedOpen = true;
-    }
-
-    private void OnDeleteFetchedOpenChanged(bool open) => _deleteFetchedOpen = open;
-
-    // The same local timestamp the row's As of column shows, so the dialog names the row the user is
-    // looking at — a date alone can read as a different day from the provider's in a far-east zone.
-    private static string FetchedDeleteBody(ExistingExchangeRate rate) =>
-        $"{rate.FromCurrencyCode}/{rate.ToCurrencyCode} on {rate.AsOf.ToLocalTime().ToString("MMM dd, yyyy hh:mm tt")} will not be fetched again, leaving a gap in the history.";
-
-    private async Task<string?> ConfirmDeleteFetchedAsync()
-    {
-        if (_deletingFetched is not { } target)
-            return null;
-
-        var result = await ExchangeRates.DeleteAsync(target.Rate.ExchangeRateId);
-        if (!result.IsSuccess)
-            return string.IsNullOrWhiteSpace(result.Error) ? "The rate couldn't be deleted." : result.Error;
-
-        // Where focus goes once the row is gone: the next row's menu button, else the previous row's,
-        // else the table — never <body>. Worked out before the refresh replaces the rows.
-        var index = _rates.FindIndex(x => x.ExchangeRateId == target.Rate.ExchangeRateId);
-        await RefreshAsync();
-        var next = index >= 0 && index < _rates.Count ? _rates[index] : index - 1 >= 0 && index - 1 < _rates.Count ? _rates[index - 1] : null;
-        _focusAfterDelete = next is not null && _menuTriggers.TryGetValue(next.ExchangeRateId, out var id) ? id : "xr-rates-card";
-        if (_announcer is not null)
-            await _announcer.Announce("Rate deleted");
-        return null;
-    }
-
-    private string? _focusAfterDelete;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_focusAfterDelete is not { } target)
-            return;
-        _focusAfterDelete = null;
-        try
-        {
-            // After the dialog's own focus restore, which would otherwise land on the deleted row's gone trigger.
-            await Js.InvokeVoidAsync("odsFocusFirstIn", target, true, 3);
-        }
-        catch (JSException) { }
     }
 
     private Task CopyId(Guid exchangeRateId) =>

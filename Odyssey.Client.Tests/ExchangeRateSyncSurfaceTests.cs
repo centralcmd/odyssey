@@ -377,33 +377,23 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
     }
 
     [Fact]
-    public async Task A_fetched_rate_has_no_edit_and_its_delete_needs_both_claims()
+    public async Task A_fetched_rate_has_neither_edit_nor_delete_whatever_the_claims()
     {
         var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
         await using var __ = ctx;
         var fetched = Rate(ExchangeRateSource.Fetched);
         var manual = Rate(ExchangeRateSource.Manual);
 
-        var cut = RenderRatesCard(ctx, [PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate, PermissionClaims.ExchangeRatesDelete], fetched, manual);
+        var cut = RenderRatesCard(ctx,
+            [PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesUpdate, PermissionClaims.ExchangeRatesDelete, PermissionClaims.SystemSettingsUpdate],
+            fetched, manual);
 
         var fetchedItems = cut.Instance.BuildActions(fetched, NoopActions()).Select(i => i.Label).ToList();
         var manualItems = cut.Instance.BuildActions(manual, NoopActions()).Select(i => i.Label).ToList();
         Assert.DoesNotContain("Edit", fetchedItems);
-        Assert.DoesNotContain("Delete…", fetchedItems);   // exchangerates.delete alone is not enough
+        Assert.DoesNotContain(fetchedItems, label => label?.StartsWith("Delete", StringComparison.Ordinal) == true);
         Assert.Contains("Edit", manualItems);
         Assert.Contains("Delete", manualItems);
-    }
-
-    [Fact]
-    public async Task An_administrator_gets_a_confirmed_delete_on_a_fetched_rate()
-    {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client().Object);
-        await using var __ = ctx;
-        var fetched = Rate(ExchangeRateSource.Fetched);
-
-        var cut = RenderRatesCard(ctx, [PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesDelete, PermissionClaims.SystemSettingsUpdate], fetched);
-
-        Assert.Contains("Delete…", cut.Instance.BuildActions(fetched, NoopActions()).Select(i => i.Label));
     }
 
     [Fact]

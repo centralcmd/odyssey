@@ -130,16 +130,13 @@ public sealed class ExchangeRatesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ExchangeRatesDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Remove a mistaken exchange rate row. A fetched row also requires system-settings.update.")]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Remove a mistaken manual exchange rate row. A fetched row is refused; the per-currency purge removes those.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID of the exchange rate record to delete.")] Guid id, CancellationToken cancellationToken = default)
     {
-        // A fetched row also needs system-settings.update; the service decides, since only the row says
-        // whether it was fetched (issue #349 §4).
-        await exchangeRateService.Delete(
-            id, User.HasPermission(PermissionClaims.SystemSettingsUpdate), cancellationToken);
+        await exchangeRateService.Delete(id, cancellationToken);
         return NoContent();
     }
 }

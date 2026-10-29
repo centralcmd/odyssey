@@ -240,11 +240,14 @@ public class ExchangeRateSyncApiTests
         var put = await ownerClient.PutAsJsonAsync($"/api/exchange-rates/{fetchedId}", new UpdateExchangeRate { Rate = 1m, AsOf = FixedNow });
         Assert.Equal(HttpStatusCode.UnprocessableEntity, put.StatusCode);
         Assert.Contains("source", await put.Content.ReadAsStringAsync());
-        Assert.Equal(HttpStatusCode.Forbidden, (await ownerClient.DeleteAsync($"/api/exchange-rates/{fetchedId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, (await ownerClient.DeleteAsync($"/api/exchange-rates/{fetchedId}")).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await ownerClient.DeleteAsync($"/api/exchange-rates/{Guid.NewGuid()}")).StatusCode);
 
+        // Not even an administrator deletes one fetched row: the purge is the only way out for those.
         using var adminClient = admin.CreateClient();
-        Assert.Equal(HttpStatusCode.NoContent, (await adminClient.DeleteAsync($"/api/exchange-rates/{fetchedId}")).StatusCode);
+        var adminDelete = await adminClient.DeleteAsync($"/api/exchange-rates/{fetchedId}");
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, adminDelete.StatusCode);
+        Assert.Contains("source", await adminDelete.Content.ReadAsStringAsync());
     }
 
     [Fact]

@@ -128,7 +128,7 @@ public class ExchangeRateHopAndStatusTests
     }
 
     [Fact]
-    public async Task A_fetched_rate_is_never_corrected_in_place_and_needs_the_settings_claim_to_delete()
+    public async Task A_fetched_rate_is_never_corrected_in_place_nor_deleted_on_its_own()
     {
         await using var context = Create();
         var fetched = Rate("USD", "NOK", 10m, Now.AddDays(-1), fetched: true);
@@ -140,11 +140,11 @@ public class ExchangeRateHopAndStatusTests
         var refused = await Assert.ThrowsAsync<DomainUnprocessableException>(() =>
             service.Update(fetched.ExchangeRateId, new UpdateExchangeRate { Rate = 9m, AsOf = Now }));
         Assert.True(refused.Errors!.ContainsKey("source"));
-        await Assert.ThrowsAsync<DomainForbiddenException>(() => service.Delete(fetched.ExchangeRateId, mayDeleteFetched: false));
+        var deleteRefused = await Assert.ThrowsAsync<DomainUnprocessableException>(() => service.Delete(fetched.ExchangeRateId));
+        Assert.True(deleteRefused.Errors!.ContainsKey("source"));
 
-        await service.Delete(manual.ExchangeRateId, mayDeleteFetched: false);
-        await service.Delete(fetched.ExchangeRateId, mayDeleteFetched: true);
-        Assert.Empty(context.ExchangeRates);
+        await service.Delete(manual.ExchangeRateId);
+        Assert.Equal(fetched.ExchangeRateId, Assert.Single(context.ExchangeRates).ExchangeRateId);
     }
 
     [Fact]

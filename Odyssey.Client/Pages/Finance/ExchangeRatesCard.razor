@@ -8,11 +8,10 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IExchangeRatesApiClient ExchangeRates
-@inject IJSRuntime Js
 
 <PageTitle>Exchange Rates</PageTitle>
 
-<OdsLiveAnnouncer @ref="_announcer" Message="@_announce" />
+<OdsLiveAnnouncer Message="@_announce" />
 
 <MudStack Spacing="4">
 
@@ -153,19 +152,6 @@
                               @bind-Open="_editRateOpen"
                               Rate="_editRate"
                               OnSaved="OnRateEdited" />
-}
-
-@* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
-@if (_deletingFetched is { } fetched)
-{
-    <Odyssey.Client.Pages.Finance.ExchangeRateSync.ConfirmFetchedRateDeleteDialog
-        Open="_deleteFetchedOpen"
-        OpenChanged="OnDeleteFetchedOpenChanged"
-        Title="Delete this fetched rate?"
-        Body="@FetchedDeleteBody(fetched.Rate)"
-        ConfirmLabel="Delete rate"
-        ReturnFocusToId="@fetched.MenuTriggerId"
-        OnConfirm="ConfirmDeleteFetchedAsync" />
 }
 
 @code {
