@@ -260,7 +260,7 @@ public sealed class FileStorageVerifier(
                 // V6: compose down -v, a mistyped bind mount or an unmounted disk all look like this. Re-initialising
                 // would hide the data loss.
                 throw Fail("VolumeLost", $"Volume '{name}' is empty and has no marker, but the database says it holds files.", key,
-                    "Mount the right disk or restore the volume from a backup. See docs/deployment.md → file storage recovery.");
+                    "Mount the right disk or restore the volume from a backup. See docs/deployment.md → File storage → Startup checks.");
             }
 
             if (mode == FileStorageVerifyMode.VerifyOnly)
