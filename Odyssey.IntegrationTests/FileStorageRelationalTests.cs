@@ -263,6 +263,65 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             "SELECT COUNT(*) FROM `FileStorageMaintenanceLeases` WHERE `HolderId` IS NULL AND `LastCompletedAtUtc` IS NOT NULL"));
     }
 
+    /// <summary>The overdue count's SQL, and the worker's verdict written beside a lease claim on the real engine.</summary>
+    [SkippableFact]
+    public async Task Overdue_deletes_are_counted_and_a_failed_worker_check_is_recorded_and_reported()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+        var api = await HostAsync();
+        await PutCommittedAsync(api, Guid.NewGuid(), "kept.jpg");
+        await using (var context = NewContext())
+        {
+            var volumeId = (await context.FileStorageVolumes.SingleAsync()).Id;
+            await InsertObjectAsync(context, volumeId, "test-files/a/immediate.jpg", state: 2, hash: "'h'", deleteRequested: true);
+        }
+
+        clock.Advance(FileStorageStatusService.OverdueAfter - TimeSpan.FromMinutes(1));
+        Assert.Equal(0, (await StatusAsync(api)).OverdueDeleteCount);
+        clock.Advance(TimeSpan.FromMinutes(2));
+        Assert.Equal(1, (await StatusAsync(api)).OverdueDeleteCount);
+
+        // The worker's mount is wrong: an empty directory where the volume should be.
+        var root = Path.Combine(volumes.FullName, "primary");
+        Directory.Move(root, root + "-aside");
+        Directory.CreateDirectory(root);
+        var worker = FileStorageTestHost.Create(UseDatabase,
+            new Dictionary<string, string> { ["primary"] = root },
+            TestStorageFeatures.All.ToDictionary(f => f.Key, _ => "primary"),
+            TestStorageFeatures.All,
+            clock);
+        hosts.Add(worker);
+        var job = worker.Services.GetRequiredService<FileStorageMaintenanceJob>();
+        Assert.True(await job.TryClaimAsync(Guid.NewGuid(), default)); // a claim moves the version the record must not disturb
+
+        using var stopping = new CancellationTokenSource();
+        var run = job.RunOnceAsync(stopping.Token);
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+        while ((await StatusAsync(api)).MaintenanceHaltedCheck is null)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The worker's verdict was never recorded.");
+            await Task.Delay(50);
+        }
+
+        var status = await StatusAsync(api);
+        Assert.Equal(("VolumeLost", clock.GetUtcNow().UtcDateTime), (status.MaintenanceHaltedCheck, status.MaintenanceHaltedAtUtc));
+        await using (var context = NewContext())
+        {
+            Assert.Equal(1L, await MigrationSeam.CountAsync(context,
+                "SELECT COUNT(*) FROM `FileStorageMaintenanceLeases` WHERE `HolderId` IS NOT NULL AND `VerificationFailedCheck` = 'VolumeLost'"));
+        }
+
+        await stopping.CancelAsync();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
+    }
+
+    private static async Task<Dtos.Application.FileStorageVolumeStatus> StatusAsync(FileStorageTestHost host)
+    {
+        await using var scope = host.Scope();
+        return (await scope.ServiceProvider.GetRequiredService<FileStorageStatusService>().GetVolumesAsync(default)).Single();
+    }
+
     [SkippableFact]
     public async Task A_relational_host_with_a_catalogue_and_no_volumes_fails_B1_and_one_with_nothing_set_up_is_a_no_op()
     {

@@ -37,6 +37,12 @@ public sealed record FileStorageVolumeStatus
 
     public int PendingDeleteCount { get; set; }
 
+    /// <summary>
+    /// The pending deletes still on disk more than <c>OverdueAfter</c> (two hours) past their erase time — the grace
+    /// the maintenance job resolves, or none for an immediate release. Erasure of personal data is not keeping up.
+    /// </summary>
+    public int OverdueDeleteCount { get; set; }
+
     public int IntegrityFaultCount { get; set; }
 
     /// <summary>Free space on the volume's filesystem; null when it cannot be read (or it is not configured).</summary>
@@ -67,6 +73,15 @@ public sealed record FileStorageVolumeStatus
     /// like <see cref="MaintenanceLastCompletedAtUtc"/>.
     /// </summary>
     public bool MaintenanceStale { get; set; }
+
+    /// <summary>
+    /// The startup check that has stopped the maintenance job in a worker (a check name, e.g. <c>VolumeLost</c>), or
+    /// null. Only that job stops; the worker's other jobs keep running. Instance-wide.
+    /// </summary>
+    public string? MaintenanceHaltedCheck { get; set; }
+
+    /// <summary>When <see cref="MaintenanceHaltedCheck"/> was recorded. Instance-wide.</summary>
+    public DateTime? MaintenanceHaltedAtUtc { get; set; }
 }
 
 /// <summary>One feature's committed objects on one volume.</summary>

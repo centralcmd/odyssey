@@ -1169,10 +1169,14 @@ third named volume, verify it at startup, and refuse to start on a misconfigurat
 - **One new claim**, `file-storage.read`, Admin only, reconciled onto the role by the migrations job. It
   gates **System settings → Storage health**. An administrator already signed in must **sign out and back
   in** to see the panel: claims are baked into the auth cookie.
-- **The worker now stops if a file volume fails verification** — and with it the weather and exchange-rate
-  jobs it hosts. Before this release the worker needed only a database. Once a release adds a storage
-  feature (photo thumbnails), a worker started with no `FileStorage__*` configuration at all will not start
-  either.
+- **A file volume that fails verification in the worker stops file clean-up only.** Weather and
+  exchange-rate sync keep running, and the worker container stays up — so `docker compose ps` no longer
+  shows the fault. The Storage health panel does: *File clean-up is stopped: the worker's storage check
+  failed*, naming the check. The worker re-runs the checks every 10 minutes and resumes on its own once
+  they pass. Once a release adds a storage feature (photo thumbnails), a worker with no `FileStorage__*`
+  configuration at all reports the same way.
+- **A second migration**, `RecordFileStorageVerificationFailure`: two nullable columns on
+  `FileStorageMaintenanceLeases`. Schema only, additive.
 
 ### The image owns the mount point
 
@@ -1245,9 +1249,11 @@ stops with `MissingVolume`, and the renamed root carries the old name's marker (
 
 ### Startup checks
 
-The API verifies every volume before it listens, and the worker repeats the checks before any job runs.
-**Any failure stops the container**, with a log line naming the check, the configuration key and the
-remedy:
+The API verifies every volume before it listens; **any failure stops the API container**. The worker runs
+the same checks (verify-only) before its file clean-up job's first pass; **a failure there stops that job
+only** — weather and exchange-rate sync keep running — and the worker re-runs the checks every **10
+minutes**, resuming clean-up on its own once they pass. Either way the log line names the check, the
+configuration key and the remedy:
 
 ```
 File storage startup check VolumeLost failed: Volume 'primary' is empty and has no marker, but the
@@ -1271,7 +1277,20 @@ no-op and the store is simply unavailable (the panel says "No file volumes are c
 | `VolumeLost` | The root is empty and unmarked, but the database says it held files — what `docker compose down -v`, a mistyped bind mount or an unmounted disk all look like | Mount the right disk or restore the volume from backup. **The API never re-initialises it**, which would hide the loss. If the files are truly gone and regenerable, see [Backup and restore](#backup-and-restore). |
 | `UnrecognisedContent` | The root has no marker but is not empty | Point the volume at an empty directory. |
 | `MissingVolume` | A volume that holds files was removed from configuration | Configure it again. |
-| `NotInitialised` (worker only) | The API did not initialise a new volume within 2 minutes | Start the API, then the worker (`restart: unless-stopped` retries on its own under Compose; under Aspire, restart it). |
+| `NotInitialised` (worker only) | The API did not initialise a new volume within 2 minutes | Start the API. The worker re-checks every 10 minutes and resumes clean-up on its own; restart it to resume at once. |
+
+**In the worker, a failed check is reported, not fatal.** The container keeps running, so look at the
+Storage health panel or the log rather than `docker compose ps`: the panel shows *File clean-up is
+stopped: the worker's storage check failed*, the check's name and when; the log has the remedy:
+
+```
+docker compose logs worker | grep "File storage startup check"
+```
+
+The verdict is recorded on the `FileStorageMaintenanceLeases` row (`VerificationFailedCheck`,
+`VerificationFailedAtUtc`) and cleared by the next worker whose checks pass. With several worker replicas
+the latest verdict wins: a replica with a wrong mount and one with a right one would take turns, so give
+them identical mounts.
 
 **After a database reset** (a fresh database beside surviving volumes), an **empty** marked volume is
 adopted with a Warning: its marker's id is recorded again. A marked volume that still holds files is
@@ -1288,9 +1307,10 @@ stop the process. The volume becomes **Degraded**: its reads and writes return `
 file alone returns an integrity error. The next restart re-runs the startup checks. `/healthz` is unchanged.
 
 The **Storage health** panel at **System settings → Storage** (claim `file-storage.read`) shows, per
-volume: its state, free space, files per feature, files waiting to be erased, integrity faults, and the
-disk check; and, for the instance, whether file clean-up is on schedule. Anything needing attention is
-listed above the tiles and in the page header's signal.
+volume: its state, free space, files per feature, files waiting to be erased (and how many of those are
+**overdue**), integrity faults, and the disk check; and, for the instance, whether file clean-up is on
+schedule, stalled, or stopped by a failed worker check. Anything needing attention is listed above the
+tiles and in the page header's signal.
 
 ### Deletion, erasure and the grace period
 
@@ -1308,7 +1328,15 @@ the worker's **hourly maintenance job**:
 The maintenance job runs in every worker replica; a lease row (`FileStorageMaintenanceLeases`) elects one
 runner per hour, and a crashed runner's lease expires within 5 minutes. **Erasure depends on the worker.**
 If the panel says *File clean-up hasn't completed in over 3 hours*, the worker is down or crash-looping:
-check `docker compose ps worker` and its logs.
+check `docker compose ps worker` and its logs. If it says *File clean-up is stopped*, the worker is up but
+its storage check failed; see [Startup checks](#startup-checks).
+
+**Overdue erasure.** A file still on disk more than **2 hours** after its erase time — the grace above, or
+none for personal data — is counted as *overdue* on its volume, and the panel raises it as an error: personal
+data is being kept longer than the grace allows. The count uses the same grace the job erases by (168 h
+while a stored grace is faulted), so it never flags a file the job is deliberately holding. A count that
+stays up with clean-up on schedule means the deletes themselves fail — usually the worker cannot write to
+the volume (`chown 1654:1654` the root); the worker's log names each failing object by id, never by name.
 
 Each pass also: sweeps abandoned writes (an upload whose request failed) after an hour; re-hashes up to 200
 files (512 MiB, 20 s) against their recorded SHA-256 and flags a file whose mismatch reproduces — a flagged

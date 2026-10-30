@@ -1,4 +1,5 @@
 using System.Globalization;
+using Odyssey.Client.Pages.Finance.ExchangeRateSync;
 using Odyssey.Dtos.Application;
 
 namespace Odyssey.Client.Pages.Storage;
@@ -35,7 +36,8 @@ public static class StorageHealth
     public static string? FeatureLabel(string featureKey) => FeatureLabels.GetValueOrDefault(featureKey);
 
     /// <summary>The conditions needing attention, most severe first.</summary>
-    public static IReadOnlyList<StorageIssue> Issues(IReadOnlyList<FileStorageVolumeStatus>? volumes)
+    /// <param name="now">For the relative distance in the stopped clean-up note.</param>
+    public static IReadOnlyList<StorageIssue> Issues(IReadOnlyList<FileStorageVolumeStatus>? volumes, DateTimeOffset now)
     {
         var issues = new List<StorageIssue>();
         if (volumes is null)
@@ -74,6 +76,15 @@ public static class StorageHealth
                     + "Deploy the version that knows the feature, or remove it on purpose."));
             }
 
+            if (v.OverdueDeleteCount > 0)
+            {
+                var one = v.OverdueDeleteCount == 1;
+                issues.Add(new($"od-{v.Name}", StorageIssueSeverity.Error,
+                    $"{Count(v.OverdueDeleteCount)} deleted file{(one ? " is" : "s are")} past {(one ? "its" : "their")} erase time on {v.Name}.",
+                    "They should have been erased over 2 hours ago and are still on disk, so personal data is kept longer than the deletion grace allows. "
+                    + "Clean-up retries them every hour. If the number doesn’t fall, check the worker’s log and that it can write to the volume."));
+            }
+
             if (v.State == FileStorageVolumeState.NotConfigured)
             {
                 issues.Add(new($"nc-{v.Name}", StorageIssueSeverity.Info, $"Volume {v.Name} is recorded but no longer configured.",
@@ -81,8 +92,19 @@ public static class StorageHealth
             }
         }
 
-        // The maintenance fields are instance-wide and repeated on every entry; any entry carries them.
-        if (volumes.FirstOrDefault() is { MaintenanceStale: true } maintenance)
+        // The maintenance fields are instance-wide and repeated on every entry; any entry carries them. A stopped
+        // job explains a stale one, so the stale note gives way to it.
+        if (volumes.FirstOrDefault() is { MaintenanceHaltedCheck: { } check } halted)
+        {
+            var when = halted.MaintenanceHaltedAtUtc is { } at
+                ? $" {ExchangeRateSyncTime.Absolute(at)} ({ExchangeRateSyncTime.Relative(at, now)})"
+                : string.Empty;
+            issues.Add(new("maint-halt", StorageIssueSeverity.Error, "File clean-up is stopped: the worker’s storage check failed.",
+                $"Check {check} failed{when}. Deleted files, including personal data, stay on disk until it passes. "
+                + "The worker’s other jobs, weather and exchange-rate sync, keep running. "
+                + "Its log names the volume and the fix; it re-checks every 10 minutes and resumes on its own."));
+        }
+        else if (volumes.FirstOrDefault() is { MaintenanceStale: true } maintenance)
         {
             issues.Add(new("stale", StorageIssueSeverity.Warning,
                 maintenance.MaintenanceLastCompletedAtUtc is null

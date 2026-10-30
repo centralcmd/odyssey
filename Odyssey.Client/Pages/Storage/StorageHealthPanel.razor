@@ -78,7 +78,7 @@
                 <div class="sth-note-body"><strong>Couldn’t refresh storage health.</strong> Showing what was read at @ExchangeRateSyncTime.Absolute(shownAt).</div>
             </div>
         }
-        var issues = StorageHealth.Issues(Volumes);
+        var issues = StorageHealth.Issues(Volumes, Time.GetUtcNow());
         if (issues.Count > 0)
         {
             <ul class="sth-notes" aria-label="Needs attention">
@@ -108,9 +108,9 @@
                 <Heading>Background work</Heading>
                 <ChildContent>
                     <StorageHealthRow Icon="cleaning_services" Label="File clean-up"
-                                      Tone="@(Volumes[0].MaintenanceStale ? "warning" : "ok")"
+                                      Tone="@CleanupTone(Volumes[0])"
                                       Sub="@CleanupLine(Volumes[0])">
-                        @(Volumes[0].MaintenanceStale ? Volumes[0].MaintenanceLastCompletedAtUtc is null ? "Never completed" : "Stalled" : "On schedule")
+                        @CleanupWord(Volumes[0])
                     </StorageHealthRow>
                 </ChildContent>
             </StorageHealthTile>
@@ -137,11 +137,24 @@
 
     [Parameter] public string Id { get; set; } = StorageHealth.PanelId;
 
-    /// <summary>"last completed 29 Oct, 18:20 (40 minutes ago)".</summary>
-    private RenderFragment? CleanupLine(FileStorageVolumeStatus maintenance) => maintenance.MaintenanceLastCompletedAtUtc is { } completed
-        ? builder => builder.AddContent(0,
-            $"last completed {ExchangeRateSyncTime.Absolute(completed)} ({ExchangeRateSyncTime.Relative(completed, Time.GetUtcNow())})")
-        : null;
+    // A stopped job explains a stale one, so the stop is what the row says.
+    private static string CleanupTone(FileStorageVolumeStatus maintenance) =>
+        maintenance.MaintenanceHaltedCheck is not null ? "error" : maintenance.MaintenanceStale ? "warning" : "ok";
+
+    private static string CleanupWord(FileStorageVolumeStatus maintenance) =>
+        maintenance.MaintenanceHaltedCheck is not null ? "Stopped"
+        : !maintenance.MaintenanceStale ? "On schedule"
+        : maintenance.MaintenanceLastCompletedAtUtc is null ? "Never completed"
+        : "Stalled";
+
+    /// <summary>"check VolumeLost failed", else "last completed 29 Oct, 18:20 (40 minutes ago)".</summary>
+    private RenderFragment? CleanupLine(FileStorageVolumeStatus maintenance) =>
+        maintenance.MaintenanceHaltedCheck is { } check
+            ? @<span>check <span class="mono">@check</span> failed</span>
+            : maintenance.MaintenanceLastCompletedAtUtc is { } completed
+                ? builder => builder.AddContent(0,
+                    $"last completed {ExchangeRateSyncTime.Absolute(completed)} ({ExchangeRateSyncTime.Relative(completed, Time.GetUtcNow())})")
+                : null;
 
     private static string SeverityClass(StorageIssueSeverity severity) => severity switch
     {

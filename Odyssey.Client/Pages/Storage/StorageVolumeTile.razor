@@ -43,7 +43,9 @@
         </StorageHealthRow>
         @if (Configured)
         {
-            <StorageHealthRow Icon="delete_sweep" Label="Waiting to be erased">@StorageHealth.Count(Volume.PendingDeleteCount)</StorageHealthRow>
+            <StorageHealthRow Icon="delete_sweep" Label="Waiting to be erased" Sub="@OverdueLine">
+                @StorageHealth.Count(Volume.PendingDeleteCount)
+            </StorageHealthRow>
             <StorageHealthRow Icon="verified" Label="Integrity" Tone="@(Volume.IntegrityFaultCount > 0 ? "error" : null)">
                 <ChildContent>@(Volume.IntegrityFaultCount > 0 ? $"{StorageHealth.Count(Volume.IntegrityFaultCount)} failed" : "No faults")</ChildContent>
                 <Sub>@(Volume.LastScrubAtUtc is { } scrub ? $"checked {When(scrub)}" : "not checked yet")</Sub>
@@ -68,6 +70,11 @@
 
     private RenderFragment? QuarantineLine => Volume.QuarantinedCount > 0
         ? builder => builder.AddContent(0, $"{StorageHealth.Count(Volume.QuarantinedCount)} stray file{StorageHealth.Plural(Volume.QuarantinedCount)} set aside for 7 days")
+        : null;
+
+    /// <summary>"7 overdue": pending deletes more than two hours past their erase time.</summary>
+    private RenderFragment? OverdueLine => Volume.OverdueDeleteCount > 0
+        ? @<span class="sth-tone error">@StorageHealth.Count(Volume.OverdueDeleteCount) overdue</span>
         : null;
 
     private bool Configured => Volume.State != FileStorageVolumeState.NotConfigured;

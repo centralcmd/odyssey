@@ -115,4 +115,4 @@ above is the fast path. Never run it against a stack a teammate is using — see
 | `could not authenticate to MariaDB at 127.0.0.1:3307` | The stack isn't running, or it's on a different port. Start Compose/Aspire, or set `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`. |
 | `Access denied for user 'root'@'172.x.x.x'` | You overrode to root — don't. Use the app user (the default). |
 | Reset succeeds but the app still shows old data | Hard-refresh the browser; the Blazor client caches in-memory view state, not the data itself. |
-| API or worker exits with `File storage check UnknownMarker / UnrecognisedContent failed` | A file volume still holds files from before the reset. Re-run the driver (it empties every volume), or empty `.aspire/files/<name>/` by hand, keeping the folder. |
+| The API exits, or the worker logs (and Storage health shows) `File storage startup check UnknownMarker / UnrecognisedContent failed` | A file volume still holds files from before the reset. Re-run the driver (it empties every volume), or empty `.aspire/files/<name>/` by hand, keeping the folder. |

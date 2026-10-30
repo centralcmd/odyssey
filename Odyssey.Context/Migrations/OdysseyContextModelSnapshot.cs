@@ -2534,6 +2534,13 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("LeaseUntilUtc")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<DateTime?>("VerificationFailedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("VerificationFailedCheck")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<Guid>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("char(36)");

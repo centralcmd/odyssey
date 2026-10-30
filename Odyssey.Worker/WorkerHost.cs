@@ -36,8 +36,8 @@ public static class WorkerHost
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
         // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
-        // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. Program.cs verifies the
-        // volumes before any job starts.
+        // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes
+        // before its first pass, so a failing verdict holds it alone.
         services.AddFileStorage();
         services.AddPeriodicJob<FileStorageMaintenanceJob>();
 

@@ -52,15 +52,8 @@ public sealed class FileStorageSweeper(
     public const int ReconcileMaxFolders = 256;
     public const int BreakerFloor = 100;
 
-    /// <summary>What every grace outcome but a healthy one resolves to (§3.7, A3/F6/R2-S4/R3-2).</summary>
-    public const int GraceFallbackHours = SystemSettingsBounds.FileStorageDeletionGraceHoursMax;
-
-    private static readonly IntSettingSpec GraceSpec = new(
-        SystemSettingsKeys.FileStorageDeletionGraceHours,
-        SystemSettingsDefaults.FileStorageDeletionGraceHours,
-        SystemSettingsBounds.FileStorageDeletionGraceHoursMin,
-        SystemSettingsBounds.FileStorageDeletionGraceHoursMax,
-        ConservativeDirection.Larger);
+    /// <inheritdoc cref="FileStorageDeletionGrace.FallbackHours"/>
+    public const int GraceFallbackHours = FileStorageDeletionGrace.FallbackHours;
 
     private Func<CancellationToken, Task> keepAlive = _ => Task.CompletedTask;
 
@@ -90,18 +83,15 @@ public sealed class FileStorageSweeper(
     /// </summary>
     public async Task<int> ResolveGraceHoursAsync(CancellationToken cancellationToken)
     {
-        var resolver = new IntSettingResolver(cache, logger, "file-storage-grace");
-        var (values, readFailed) = await resolver.ReadAsync(context, [GraceSpec.Key], "file-storage deletion grace", cancellationToken);
-        var resolved = resolver.Resolve(GraceSpec, values, readFailed);
-        if (resolved.Outcome == IntSettingOutcome.Healthy)
+        var (hours, outcome) = await FileStorageDeletionGrace.ResolveAsync(context, cache, logger, cancellationToken);
+        if (outcome != IntSettingOutcome.Healthy)
         {
-            return resolved.Value;
+            logger.LogWarning(
+                "The file-storage deletion grace resolved {Outcome}; deferred deletes use {Fallback} hours until it is repaired at /settings.",
+                outcome, GraceFallbackHours);
         }
 
-        logger.LogWarning(
-            "The file-storage deletion grace resolved {Outcome}; deferred deletes use {Fallback} hours until it is repaired at /settings.",
-            resolved.Outcome, GraceFallbackHours);
-        return GraceFallbackHours;
+        return hours;
     }
 
     // ── Abandoned writes ─────────────────────────────────────────────────────────────────────────────────

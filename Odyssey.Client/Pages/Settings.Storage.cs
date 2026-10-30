@@ -94,7 +94,7 @@ public partial class Settings
                 return null;
             }
 
-            var issues = StorageHealth.Issues(_storageVolumes).Where(i => i.Severity != StorageIssueSeverity.Info).ToList();
+            var issues = StorageHealth.Issues(_storageVolumes, Time.GetUtcNow()).Where(i => i.Severity != StorageIssueSeverity.Info).ToList();
             if (issues.Count == 0)
             {
                 return null;

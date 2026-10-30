@@ -48,11 +48,13 @@ public class StorageHealthSurfaceTests : IDisposable
 
     // ── The issue list (sthIssues) ──────────────────────────────────────────────────────────────
 
+    private static readonly DateTimeOffset Now = new(2026, 10, 29, 18, 0, 0, TimeSpan.Zero);
+
     [Fact]
     public void A_healthy_volume_has_no_issues()
     {
-        Assert.Empty(StorageHealth.Issues([Volume()]));
-        Assert.Empty(StorageHealth.Issues(null));
+        Assert.Empty(StorageHealth.Issues([Volume()], Now));
+        Assert.Empty(StorageHealth.Issues(null, Now));
     }
 
     [Fact]
@@ -79,7 +81,7 @@ public class StorageHealthSurfaceTests : IDisposable
                 v.State = FileStorageVolumeState.Degraded;
                 v.IntegrityFaultCount = 1;
             }),
-        ]);
+        ], Now);
 
         Assert.Equal(
             ["deg-fast", "int-fast", "halt-primary", "orph-primary", "stale", "nc-archive"],
@@ -94,7 +96,38 @@ public class StorageHealthSurfaceTests : IDisposable
     [Fact]
     public void Clean_up_that_never_completed_says_so() =>
         Assert.Equal("File clean-up has never completed.",
-            Assert.Single(StorageHealth.Issues([Volume(v => { v.MaintenanceStale = true; v.MaintenanceLastCompletedAtUtc = null; })])).Title);
+            Assert.Single(StorageHealth.Issues([Volume(v => { v.MaintenanceStale = true; v.MaintenanceLastCompletedAtUtc = null; })], Now)).Title);
+
+    [Fact]
+    public void Overdue_deletes_are_an_error_naming_the_count_and_the_volume()
+    {
+        var one = Assert.Single(StorageHealth.Issues([Volume(v => v.OverdueDeleteCount = 1)], Now));
+        Assert.Equal("od-primary", one.Id);
+        Assert.Equal(StorageIssueSeverity.Error, one.Severity);
+        Assert.Equal("1 deleted file is past its erase time on primary.", one.Title);
+
+        Assert.Equal("1,840 deleted files are past their erase time on primary.",
+            Assert.Single(StorageHealth.Issues([Volume(v => v.OverdueDeleteCount = 1840)], Now)).Title);
+    }
+
+    [Fact]
+    public void A_stopped_clean_up_replaces_the_stale_note_and_names_the_check()
+    {
+        var issue = Assert.Single(StorageHealth.Issues(
+        [
+            Volume(v =>
+            {
+                v.MaintenanceStale = true;
+                v.MaintenanceHaltedCheck = "VolumeLost";
+                v.MaintenanceHaltedAtUtc = new DateTime(2026, 10, 29, 10, 2, 0, DateTimeKind.Utc);
+            }),
+        ], Now));
+
+        Assert.Equal("maint-halt", issue.Id);
+        Assert.Equal(StorageIssueSeverity.Error, issue.Severity);
+        Assert.StartsWith("Check VolumeLost failed 29 Oct, 10:02 (8 hours ago).", issue.Text, StringComparison.Ordinal);
+        Assert.Contains("weather and exchange-rate sync, keep running", issue.Text, StringComparison.Ordinal);
+    }
 
     [Theory]
     [InlineData(0, "0 bytes")]
@@ -147,6 +180,48 @@ public class StorageHealthSurfaceTests : IDisposable
         Assert.Contains("3 failed", panel.Markup, StringComparison.Ordinal);
         Assert.Contains("Stalled", panel.Markup, StringComparison.Ordinal);
         Assert.Equal("Needs attention", panel.Find(".sth-notes").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public async Task Overdue_deletes_and_a_stopped_clean_up_show_on_their_rows()
+    {
+        await using var ctx = NewComponentContext();
+
+        var panel = ctx.Render<StorageHealthPanel>(p => p.Add(x => x.Volumes,
+        [
+            Volume(v =>
+            {
+                v.PendingDeleteCount = 310;
+                v.OverdueDeleteCount = 41;
+                v.MaintenanceStale = true;
+                v.MaintenanceHaltedCheck = "VolumeLost";
+                v.MaintenanceHaltedAtUtc = DateTime.UtcNow;
+            }),
+        ]));
+
+        var erased = panel.FindAll(".sth-row").Single(r => r.TextContent.Contains("Waiting to be erased", StringComparison.Ordinal));
+        Assert.Contains("310", erased.TextContent, StringComparison.Ordinal);
+        Assert.Equal("41 overdue", erased.QuerySelector(".sth-row-sub .sth-tone.error")!.TextContent);
+
+        var cleanup = panel.FindAll(".sth-row").Single(r => r.TextContent.Contains("File clean-up", StringComparison.Ordinal));
+        Assert.Equal("Stopped", cleanup.QuerySelector(".sth-tone.error")!.TextContent.Trim());
+        Assert.Equal("VolumeLost", cleanup.QuerySelector(".sth-row-sub .mono")!.TextContent);
+        Assert.DoesNotContain("Stalled", panel.Markup, StringComparison.Ordinal);
+        var notes = panel.FindAll(".sth-notes > li");
+        Assert.Equal(2, notes.Count);
+        Assert.Contains(notes, n => n.TextContent.Contains("41 deleted files are past their erase time", StringComparison.Ordinal));
+        Assert.Contains(notes, n => n.TextContent.Contains("File clean-up is stopped", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_healthy_volume_shows_no_overdue_line()
+    {
+        await using var ctx = NewComponentContext();
+
+        var panel = ctx.Render<StorageHealthPanel>(p => p.Add(x => x.Volumes, [Volume()]));
+
+        var erased = panel.FindAll(".sth-row").Single(r => r.TextContent.Contains("Waiting to be erased", StringComparison.Ordinal));
+        Assert.Null(erased.QuerySelector(".sth-row-sub"));
     }
 
     [Fact]

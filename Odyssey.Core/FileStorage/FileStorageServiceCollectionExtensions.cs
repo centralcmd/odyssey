@@ -31,6 +31,7 @@ public static class FileStorageServiceCollectionExtensions
         services.TryAddSingleton<IFileStorageSpaceProbe, DriveInfoSpaceProbe>();
         services.TryAddSingleton<FileStorageSweepMemory>();
         services.TryAddSingleton(DefaultForbiddenRoots);
+        services.TryAddSingleton<FileStorageWorkerVerification>();
 
         services.TryAddScoped<IObjectStore, ObjectStore>();
         services.TryAddScoped<FileStorageVerifier>();
@@ -51,9 +52,9 @@ public static class FileStorageServiceCollectionExtensions
     }
 
     /// <summary>
-    /// The worker's startup (A3.2): verify-only, and a volume the API has yet to initialise or adopt is waited for —
-    /// re-checked every <paramref name="pollInterval"/> for up to <paramref name="timeout"/> — before the worker gives up
-    /// naming it. Every other failing verdict stops the worker at once.
+    /// The worker's checks (A3.2): verify-only, and a volume the API has yet to initialise or adopt is waited for —
+    /// re-checked every <paramref name="pollInterval"/> for up to <paramref name="timeout"/> — before giving up naming
+    /// it. Every other failing verdict throws at once. <see cref="FileStorageWorkerVerification"/> is the caller.
     /// </summary>
     public static async Task VerifyFileStorageForWorkerAsync(
         this IServiceProvider services, TimeSpan pollInterval, TimeSpan timeout, CancellationToken cancellationToken = default)

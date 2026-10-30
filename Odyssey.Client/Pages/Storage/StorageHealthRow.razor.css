@@ -25,7 +25,8 @@
 
 /* A state as coloured text on the plain tile surface, so amber is --pending-text (--warning-text is for text
    on an amber tint). */
-.sth-tone { font-weight: var(--fw-medium); }
-.sth-tone.ok { color: var(--finance-income); }
-.sth-tone.warning { color: var(--pending-text); }
-.sth-tone.error { color: var(--finance-expense); }
+/* A tone inside a Sub fragment carries the caller's scope, hence the ::deep twin. */
+.sth-tone, .sth-row-sub ::deep .sth-tone { font-weight: var(--fw-medium); }
+.sth-tone.ok, .sth-row-sub ::deep .sth-tone.ok { color: var(--finance-income); }
+.sth-tone.warning, .sth-row-sub ::deep .sth-tone.warning { color: var(--pending-text); }
+.sth-tone.error, .sth-row-sub ::deep .sth-tone.error { color: var(--finance-expense); }

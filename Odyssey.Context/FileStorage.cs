@@ -168,4 +168,14 @@ public class FileStorageMaintenanceLease
 
     /// <summary>When a full maintenance pass last finished; the status endpoint's staleness signal.</summary>
     public DateTime? LastCompletedAtUtc { get; set; }
+
+    /// <summary>
+    /// The startup check that stopped the maintenance job in a worker — a check name such as <c>VolumeLost</c>,
+    /// never a path. Null once a worker's verification passes. Only that job stops; the worker's others keep running.
+    /// </summary>
+    [MaxLength(64)]
+    public string? VerificationFailedCheck { get; set; }
+
+    /// <summary>When <see cref="VerificationFailedCheck"/> was last recorded.</summary>
+    public DateTime? VerificationFailedAtUtc { get; set; }
 }

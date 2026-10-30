@@ -13,11 +13,19 @@ namespace Odyssey.Core.FileStorage;
 /// <c>GET /api/file-storage/volumes</c>.
 /// </summary>
 /// <remarks>
+/// <para>
+/// The job runs the worker's file-storage startup checks itself, before its first pass
+/// (<see cref="FileStorageWorkerVerification"/>): a failing verdict holds this job alone, so the worker's other
+/// jobs keep running.
+/// </para>
+/// <para>
 /// Nothing registers it in the API or in any API test host; tests drive <see cref="RunOnceAsync"/> or the
 /// sweeper's per-sweep methods directly.
+/// </para>
 /// </remarks>
 public sealed class FileStorageMaintenanceJob(
     IServiceScopeFactory scopes,
+    FileStorageWorkerVerification verification,
     FileStorageVolumeRegistry volumes,
     TimeProvider time,
     ILogger<FileStorageMaintenanceJob> logger) : IPeriodicJob
@@ -36,6 +44,8 @@ public sealed class FileStorageMaintenanceJob(
 
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
+        await verification.EnsureVerifiedAsync(cancellationToken);
+
         // The no-op rule: no volumes, nothing to maintain.
         if (!volumes.IsActive)
         {

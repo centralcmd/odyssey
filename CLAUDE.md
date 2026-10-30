@@ -617,9 +617,12 @@ next one going ahead, runs never overlapping. Four rules:
   `docs/deployment.md` → *Two containers hold the key ring*. The migrations job still holds none.
 - **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (hourly)
   erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
-  by the single-row `FileStorageMaintenanceLeases` lease. Before any job starts, `Program.cs` runs the same
-  startup checks as the API in verify-only mode — waiting up to 2 minutes for the API to initialise a new
-  volume — so **a failing volume verdict stops the whole worker, weather and exchange-rate sync included**.
+  by the single-row `FileStorageMaintenanceLeases` lease. **The job runs the worker's storage checks itself**
+  (`FileStorageWorkerVerification`, the API's checks in verify-only mode, waiting up to 2 minutes for the API to
+  initialise a new volume), so **a failing volume verdict holds that job alone** — weather and exchange-rate
+  sync keep running, and `Program.cs` verifies nothing. Because the container no longer exits, the verdict is
+  the signal: it is written to the lease row (`VerificationFailedCheck`, a check name, never a path), shown on
+  the Storage health panel, and re-checked every 10 minutes until it passes.
   `api` and `worker` must get identical `FileStorage__Volumes__*`/`__Bindings__*` and mounts in both
   compose files and the AppHost; `FileStorageDeploymentParityTests` enforces it.
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's

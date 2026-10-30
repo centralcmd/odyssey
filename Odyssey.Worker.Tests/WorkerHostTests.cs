@@ -72,15 +72,18 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
     }
 
-    /// <summary>The worker verifies the volumes before any job runs, waiting for the API to initialise a new one (A3.2).</summary>
+    /// <summary>
+    /// The maintenance job verifies the volumes itself, so a failing verdict holds that job alone; the host verifies
+    /// nothing before it runs, which used to stop weather and exchange-rate sync along with it (A3.2 as amended).
+    /// </summary>
     [Fact]
-    public void Program_verifies_file_storage_before_the_host_runs()
+    public void File_storage_is_verified_by_its_job_not_by_the_host()
     {
         var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Worker", "Program.cs"));
+        Assert.DoesNotContain("VerifyFileStorage", program, StringComparison.Ordinal);
 
-        var verify = program.IndexOf("VerifyFileStorageForWorkerAsync(TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(2))", StringComparison.Ordinal);
-        Assert.True(verify > 0);
-        Assert.True(verify < program.IndexOf("host.Run();", StringComparison.Ordinal));
+        using var provider = Build();
+        Assert.NotNull(provider.GetRequiredService<FileStorageWorkerVerification>());
     }
 
     [Fact]

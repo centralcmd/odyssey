@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
 
@@ -14,10 +16,18 @@ public sealed class FileStorageStatusService(
     StorageFeatureCatalogue catalogue,
     FileStorageVolumeRegistry volumes,
     IFileStorageSpaceProbe space,
-    TimeProvider time)
+    IMemoryCache cache,
+    TimeProvider time,
+    ILogger<FileStorageStatusService> logger)
 {
     /// <summary>No completed maintenance pass for longer than this — three intervals — is stale.</summary>
     public static readonly TimeSpan MaintenanceStaleAfter = TimeSpan.FromHours(3);
+
+    /// <summary>
+    /// A pending delete still present this long after its erase time is overdue: two maintenance intervals, so a
+    /// file that fell due just after a pass began is never counted.
+    /// </summary>
+    public static readonly TimeSpan OverdueAfter = 2 * FileStorageMaintenanceJob.Tick;
 
     public async Task<IReadOnlyList<FileStorageVolumeStatus>> GetVolumesAsync(CancellationToken cancellationToken)
     {
@@ -43,6 +53,7 @@ public sealed class FileStorageStatusService(
             .GroupBy(o => o.VolumeId)
             .Select(g => new { VolumeId = g.Key, Last = g.Max(o => o.LastVerifiedAtUtc) })
             .ToDictionaryAsync(g => g.VolumeId, g => g.Last, cancellationToken);
+        var overdue = await CountOverdueDeletesAsync(cancellationToken);
         var lease = await context.FileStorageMaintenanceLeases.AsNoTracking()
             .SingleOrDefaultAsync(l => l.Id == FileStorageMaintenanceLease.SingletonId, cancellationToken);
 
@@ -73,6 +84,7 @@ public sealed class FileStorageStatusService(
                     })
                     .OrderBy(f => f.FeatureKey, StringComparer.Ordinal)],
                 PendingDeleteCount = volumeUsage.Where(u => u.State == StoredObjectState.PendingDelete).Sum(u => u.Count),
+                OverdueDeleteCount = overdue.GetValueOrDefault(row.Id),
                 IntegrityFaultCount = faults.GetValueOrDefault(row.Id),
                 FreeBytes = measured?.Free,
                 TotalBytes = measured?.Total,
@@ -83,10 +95,29 @@ public sealed class FileStorageStatusService(
                 OrphanedFeatures = [.. volumeUsage.Select(u => u.FeatureKey).Distinct().Where(k => catalogue.Find(k) is null).Order(StringComparer.Ordinal)],
                 MaintenanceLastCompletedAtUtc = lease?.LastCompletedAtUtc,
                 MaintenanceStale = stale,
+                MaintenanceHaltedCheck = lease?.VerificationFailedCheck,
+                MaintenanceHaltedAtUtc = lease?.VerificationFailedCheck is null ? null : lease.VerificationFailedAtUtc,
             });
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Pending deletes per volume more than <see cref="OverdueAfter"/> past their erase time, by the same grace the
+    /// sweeper erases by — an immediate release is due at once.
+    /// </summary>
+    private async Task<Dictionary<Guid, int>> CountOverdueDeletesAsync(CancellationToken cancellationToken)
+    {
+        var (graceHours, _) = await FileStorageDeletionGrace.ResolveAsync(context, cache, logger, cancellationToken);
+        var immediateCutoff = time.GetUtcNow().UtcDateTime - OverdueAfter;
+        var graceCutoff = immediateCutoff - TimeSpan.FromHours(graceHours);
+        return await context.StoredObjects.AsNoTracking()
+            .Where(o => o.State == StoredObjectState.PendingDelete
+                && (o.DeleteRequestedAtUtc <= graceCutoff || (o.DeleteImmediately && o.DeleteRequestedAtUtc <= immediateCutoff)))
+            .GroupBy(o => o.VolumeId)
+            .Select(g => new { VolumeId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.VolumeId, g => g.Count, cancellationToken);
     }
 
     /// <summary>
