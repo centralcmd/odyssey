@@ -105,6 +105,7 @@ public class DataExportTableCoverageTests
         ["StoredObjects"] = "Application: file-storage objects, infrastructure beneath features; personal data, never exported",
         ["FileStorageOrphanSightings"] = "Application: file-storage reconciliation sightings; personal data, never exported",
         ["FileStorageMaintenanceLeases"] = "Application: file-storage maintenance lease, operational",
+        ["FileStorageWorkerVerdicts"] = "Application: file-storage worker check verdicts, operational",
         ["LicenseAcceptances"] = "Application/Legal: out of scope",
         ["TermsOfServiceVersions"] = "Application/Legal: out of scope",
         ["TermsOfServiceAcceptances"] = "Application/Legal: out of scope",

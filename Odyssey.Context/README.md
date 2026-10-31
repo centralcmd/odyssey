@@ -204,9 +204,10 @@ skips a row whose `UpdatedBy` is non-null — ownership, never a value compariso
 
 `StoredObjects.State` is a concurrency token and is guarded by four CHECKs; `(VolumeId, RelativePath)` is
 unique under the database's case- and accent-insensitive collation, on purpose. `FileStorageMaintenanceLeases`
-holds exactly one row (`CK_FileStorageMaintenanceLeases_Singleton`), seeded by `HasData`; besides the lease it
-carries the worker's last failed storage check (`VerificationFailedCheck`, a check name only), written without
-touching the `Version` token so it never disturbs a claim. Volume rows are never
+holds exactly one row (`CK_FileStorageMaintenanceLeases_Singleton`), seeded by `HasData`.
+`FileStorageWorkerVerdicts` holds one row per worker process whose storage check is failing (a check name only,
+never a path), keyed by an id the process draws at start, so replicas never overwrite each other's verdict; a
+row not refreshed within 30 minutes is ignored and swept. Volume rows are never
 seeded: the API's startup verifier writes them. `StoredObjects.RelativePath` and the sightings carry users' file
 names, so neither is logged or exported.
 

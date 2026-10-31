@@ -475,6 +475,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// <inheritdoc cref="FileStorageVolumes" />
     public DbSet<FileStorageMaintenanceLease> FileStorageMaintenanceLeases => Set<FileStorageMaintenanceLease>();
 
+    /// <inheritdoc cref="FileStorageVolumes" />
+    public DbSet<FileStorageWorkerVerdict> FileStorageWorkerVerdicts => Set<FileStorageWorkerVerdict>();
+
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from
     /// <see cref="SystemSettings"/>: every enumeration of that one projects onto the read DTO, so

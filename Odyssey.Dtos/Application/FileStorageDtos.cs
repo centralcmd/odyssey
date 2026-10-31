@@ -75,13 +75,29 @@ public sealed record FileStorageVolumeStatus
     public bool MaintenanceStale { get; set; }
 
     /// <summary>
-    /// The startup check that has stopped the maintenance job in a worker (a check name, e.g. <c>VolumeLost</c>), or
-    /// null. Only that job stops; the worker's other jobs keep running. Instance-wide.
+    /// The failing startup check of the longest-failing worker whose maintenance job it holds (a check name, e.g.
+    /// <c>VolumeLost</c>), or null when no worker reports one. Only that job stops; the worker's other jobs keep
+    /// running. Instance-wide.
     /// </summary>
     public string? MaintenanceHaltedCheck { get; set; }
 
-    /// <summary>When <see cref="MaintenanceHaltedCheck"/> was recorded. Instance-wide.</summary>
+    /// <summary>When that worker first failed <see cref="MaintenanceHaltedCheck"/>. Instance-wide.</summary>
     public DateTime? MaintenanceHaltedAtUtc { get; set; }
+
+    /// <summary>
+    /// How many worker processes report a failing check. A pass completed after <see cref="MaintenanceHaltedAtUtc"/>
+    /// means another worker is still doing the clean-up. Instance-wide.
+    /// </summary>
+    public int MaintenanceHaltedWorkerCount { get; set; }
+
+    /// <summary>The server's overdue threshold, past a file's erase time, in hours — for the panel's copy.</summary>
+    public int OverdueAfterHours { get; set; }
+
+    /// <summary>The server's staleness threshold for <see cref="MaintenanceStale"/>, in hours.</summary>
+    public int MaintenanceStaleAfterHours { get; set; }
+
+    /// <summary>How often a held worker re-runs its storage checks, in minutes.</summary>
+    public int VerificationRetryMinutes { get; set; }
 }
 
 /// <summary>One feature's committed objects on one volume.</summary>

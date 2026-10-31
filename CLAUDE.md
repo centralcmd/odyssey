@@ -621,8 +621,12 @@ next one going ahead, runs never overlapping. Four rules:
   (`FileStorageWorkerVerification`, the API's checks in verify-only mode, waiting up to 2 minutes for the API to
   initialise a new volume), so **a failing volume verdict holds that job alone** — weather and exchange-rate
   sync keep running, and `Program.cs` verifies nothing. Because the container no longer exits, the verdict is
-  the signal: it is written to the lease row (`VerificationFailedCheck`, a check name, never a path), shown on
-  the Storage health panel, and re-checked every 10 minutes until it passes.
+  the signal: each worker process writes its **own** row in `FileStorageWorkerVerdicts` (a check name, never
+  a path) — never a shared slot, which one healthy replica would clear for another — refreshed on every
+  10-minute re-check, deleted when its checks pass, and ignored after 30 minutes unrefreshed. The panel calls
+  clean-up *stopped* only when no pass has completed since the failure; otherwise another worker is doing it.
+  The panel's thresholds (2 h overdue, 3 h stale, 10 min re-check) travel on the status DTO — never restate
+  them in the client.
   `api` and `worker` must get identical `FileStorage__Volumes__*`/`__Bindings__*` and mounts in both
   compose files and the AppHost; `FileStorageDeploymentParityTests` enforces it.
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's

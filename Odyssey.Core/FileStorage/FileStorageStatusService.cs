@@ -54,6 +54,11 @@ public sealed class FileStorageStatusService(
             .Select(g => new { VolumeId = g.Key, Last = g.Max(o => o.LastVerifiedAtUtc) })
             .ToDictionaryAsync(g => g.VolumeId, g => g.Last, cancellationToken);
         var overdue = await CountOverdueDeletesAsync(cancellationToken);
+        var verdictCutoff = time.GetUtcNow().UtcDateTime - FileStorageWorkerVerification.VerdictTtl;
+        var verdicts = await context.FileStorageWorkerVerdicts.AsNoTracking()
+            .Where(v => v.LastReportedAtUtc > verdictCutoff)
+            .OrderBy(v => v.FailedAtUtc)
+            .ToListAsync(cancellationToken);
         var lease = await context.FileStorageMaintenanceLeases.AsNoTracking()
             .SingleOrDefaultAsync(l => l.Id == FileStorageMaintenanceLease.SingletonId, cancellationToken);
 
@@ -95,8 +100,12 @@ public sealed class FileStorageStatusService(
                 OrphanedFeatures = [.. volumeUsage.Select(u => u.FeatureKey).Distinct().Where(k => catalogue.Find(k) is null).Order(StringComparer.Ordinal)],
                 MaintenanceLastCompletedAtUtc = lease?.LastCompletedAtUtc,
                 MaintenanceStale = stale,
-                MaintenanceHaltedCheck = lease?.VerificationFailedCheck,
-                MaintenanceHaltedAtUtc = lease?.VerificationFailedCheck is null ? null : lease.VerificationFailedAtUtc,
+                MaintenanceHaltedCheck = verdicts.FirstOrDefault()?.FailedCheck,
+                MaintenanceHaltedAtUtc = verdicts.FirstOrDefault()?.FailedAtUtc,
+                MaintenanceHaltedWorkerCount = verdicts.Count,
+                OverdueAfterHours = (int)OverdueAfter.TotalHours,
+                MaintenanceStaleAfterHours = (int)MaintenanceStaleAfter.TotalHours,
+                VerificationRetryMinutes = (int)FileStorageWorkerVerification.RetryInterval.TotalMinutes,
             });
         }
 

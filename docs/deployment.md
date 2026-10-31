@@ -1175,8 +1175,8 @@ third named volume, verify it at startup, and refuse to start on a misconfigurat
   failed*, naming the check. The worker re-runs the checks every 10 minutes and resumes on its own once
   they pass. Once a release adds a storage feature (photo thumbnails), a worker with no `FileStorage__*`
   configuration at all reports the same way.
-- **A second migration**, `RecordFileStorageVerificationFailure`: two nullable columns on
-  `FileStorageMaintenanceLeases`. Schema only, additive.
+- **A second migration**, `RecordFileStorageWorkerVerdicts`: one new table, `FileStorageWorkerVerdicts`
+  (a row per worker whose storage check is failing). Schema only, additive; `Down()` drops it.
 
 ### The image owns the mount point
 
@@ -1287,10 +1287,16 @@ stopped: the worker's storage check failed*, the check's name and when; the log 
 docker compose logs worker | grep "File storage startup check"
 ```
 
-The verdict is recorded on the `FileStorageMaintenanceLeases` row (`VerificationFailedCheck`,
-`VerificationFailedAtUtc`) and cleared by the next worker whose checks pass. With several worker replicas
-the latest verdict wins: a replica with a wrong mount and one with a right one would take turns, so give
-them identical mounts.
+Each worker process records **its own** verdict in `FileStorageWorkerVerdicts` (a row per process: the
+check's name, when it first failed, when it last re-checked) and deletes it once its checks pass, so with
+several replicas one healthy worker never hides another's failure. A row not re-checked for **30 minutes**
+(three re-checks) belongs to a worker that stopped and is ignored, then swept. If a pass has completed
+since the failure, another worker is still doing the clean-up and the panel shows a **warning** — *N
+workers can't use file storage* — rather than *stopped*. Give every replica identical mounts either way.
+
+If the checks **cannot run at all** — the database is unreachable when the worker starts — the job waits
+and re-runs them every 10 minutes; nothing is recorded (the database is what failed), and the panel's
+*clean-up hasn't completed* warning covers it after 3 hours.
 
 **After a database reset** (a fresh database beside surviving volumes), an **empty** marked volume is
 adopted with a Warning: its marker's id is recorded again. A marked volume that still holds files is

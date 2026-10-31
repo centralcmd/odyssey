@@ -76,7 +76,8 @@ public static class FileStorageServiceCollectionExtensions
                 logger.LogCritical("File volumes {Volumes} were not initialised by the API in time.", names);
                 throw new FileStorageMisconfiguredException("NotInitialised",
                     $"Volumes {names} have not been initialised. Only the API writes a volume's marker: start the api service "
-                    + "(it initialises an empty volume, or adopts one after a database reset), then restart the worker.");
+                    + "(it initialises an empty volume, or adopts one after a database reset). The worker's file-storage maintenance re-checks "
+                    + "on its own and resumes once the volume is initialised; restart the worker to resume at once.");
             }
 
             logger.LogInformation("Waiting for the API to initialise file volumes {Volumes}.", string.Join(", ", result.PendingVolumes));

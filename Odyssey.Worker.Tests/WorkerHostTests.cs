@@ -86,6 +86,70 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(provider.GetRequiredService<FileStorageWorkerVerification>());
     }
 
+    /// <summary>
+    /// The isolation the file store's held job relies on, through the registration production uses: each
+    /// <c>AddPeriodicJob</c> is its own hosted service, so a job held inside its run neither delays the host's start
+    /// nor stops another job's runs.
+    /// </summary>
+    [Fact]
+    public async Task A_job_held_in_its_run_holds_no_other_job_in_the_host()
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddPeriodicJob<HeldJob>();
+        builder.Services.AddPeriodicJob<CountingJob>();
+        using var host = builder.Build();
+
+        await host.StartAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        var held = host.Services.GetRequiredService<HeldJob>();
+        var counting = host.Services.GetRequiredService<CountingJob>();
+        await held.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await counting.Ran.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(held.Cancelled);
+    }
+
+    private sealed class HeldJob : Core.Jobs.IPeriodicJob
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool Cancelled { get; private set; }
+
+        public string Name => "held";
+
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+
+        public async Task RunOnceAsync(CancellationToken cancellationToken)
+        {
+            Entered.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Cancelled = true;
+                throw;
+            }
+        }
+    }
+
+    private sealed class CountingJob : Core.Jobs.IPeriodicJob
+    {
+        public TaskCompletionSource Ran { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public string Name => "counting";
+
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+
+        public Task RunOnceAsync(CancellationToken cancellationToken)
+        {
+            Ran.TrySetResult();
+            return Task.CompletedTask;
+        }
+    }
+
     [Fact]
     public void A_missing_connection_string_fails_at_startup()
     {

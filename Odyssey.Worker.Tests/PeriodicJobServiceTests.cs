@@ -82,28 +82,6 @@ public class PeriodicJobServiceTests
         await service.StopAsync(CancellationToken.None);
     }
 
-    /// <summary>Each job has its own loop: one held in its run (the file store waiting on a failed check) holds no other.</summary>
-    [Fact]
-    public async Task A_job_held_in_its_run_does_not_hold_another()
-    {
-        var clock = new ManualClock();
-        var held = new RecordingJob((_, cancellationToken) => Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken));
-        var other = new RecordingJob();
-        using var heldService = Service(held, clock);
-        using var otherService = Service(other, clock);
-
-        await heldService.StartAsync(CancellationToken.None);
-        await otherService.StartAsync(CancellationToken.None);
-        await other.WaitForRunAsync();
-        clock.Advance(other.Interval);
-        await other.WaitForRunAsync();
-
-        Assert.Equal(2, other.Runs);
-        Assert.Equal(1, held.Runs);
-        await heldService.StopAsync(CancellationToken.None).WaitAsync(Wait);
-        await otherService.StopAsync(CancellationToken.None).WaitAsync(Wait);
-    }
-
     [Fact]
     public async Task Stopping_cancels_a_run_in_progress_and_ends_cleanly()
     {

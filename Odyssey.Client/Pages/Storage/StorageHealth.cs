@@ -81,7 +81,7 @@ public static class StorageHealth
                 var one = v.OverdueDeleteCount == 1;
                 issues.Add(new($"od-{v.Name}", StorageIssueSeverity.Error,
                     $"{Count(v.OverdueDeleteCount)} deleted file{(one ? " is" : "s are")} past {(one ? "its" : "their")} erase time on {v.Name}.",
-                    "They should have been erased over 2 hours ago and are still on disk, so personal data is kept longer than the deletion grace allows. "
+                    $"They should have been erased over {Hours(v.OverdueAfterHours)} ago and are still on disk, so personal data is kept longer than the deletion grace allows. "
                     + "Clean-up retries them every hour. If the number doesn’t fall, check the worker’s log and that it can write to the volume."));
             }
 
@@ -94,27 +94,50 @@ public static class StorageHealth
 
         // The maintenance fields are instance-wide and repeated on every entry; any entry carries them. A stopped
         // job explains a stale one, so the stale note gives way to it.
-        if (volumes.FirstOrDefault() is { MaintenanceHaltedCheck: { } check } halted)
+        var maintenance = volumes.FirstOrDefault();
+        if (maintenance is { MaintenanceHaltedCheck: { } check })
         {
-            var when = halted.MaintenanceHaltedAtUtc is { } at
-                ? $" {ExchangeRateSyncTime.Absolute(at)} ({ExchangeRateSyncTime.Relative(at, now)})"
+            var at = maintenance.MaintenanceHaltedAtUtc is { } failed
+                ? $" {ExchangeRateSyncTime.Absolute(failed)} ({ExchangeRateSyncTime.Relative(failed, now)})"
                 : string.Empty;
-            issues.Add(new("maint-halt", StorageIssueSeverity.Error, "File clean-up is stopped: the worker’s storage check failed.",
-                $"Check {check} failed{when}. Deleted files, including personal data, stay on disk until it passes. "
-                + "The worker’s other jobs, weather and exchange-rate sync, keep running. "
-                + "Its log names the volume and the fix; it re-checks every 10 minutes and resumes on its own."));
+            var workers = maintenance.MaintenanceHaltedWorkerCount;
+            var recheck = $"it re-checks every {Count(maintenance.VerificationRetryMinutes)} minutes and resumes on its own.";
+            issues.Add(CleanupStopped(maintenance)
+                ? new("maint-halt", StorageIssueSeverity.Error, "File clean-up is stopped: the worker’s storage check failed.",
+                    $"Check {check} failed{at}. Deleted files, including personal data, stay on disk until it passes. "
+                    + "The worker’s other jobs, weather and exchange-rate sync, keep running. "
+                    + $"Its log names the volume and the fix; {recheck}")
+                : new("maint-halt", StorageIssueSeverity.Warning,
+                    $"{Count(workers)} worker{Plural(workers)} can’t use file storage: check {check} failed.",
+                    $"First failed{at}. Clean-up is still running on another worker. Give every worker the same volume mounts; "
+                    + $"the worker’s log names the volume and the fix, and {recheck}"));
         }
-        else if (volumes.FirstOrDefault() is { MaintenanceStale: true } maintenance)
+
+        if (maintenance is { MaintenanceStale: true } && !CleanupStopped(maintenance))
         {
             issues.Add(new("stale", StorageIssueSeverity.Warning,
                 maintenance.MaintenanceLastCompletedAtUtc is null
                     ? "File clean-up has never completed."
-                    : "File clean-up hasn’t completed in over 3 hours.",
+                    : $"File clean-up hasn’t completed in over {Hours(maintenance.MaintenanceStaleAfterHours)}.",
                 "Deleted files, including personal data, stay on disk until it runs. Check that the worker container is running."));
         }
 
         return [.. issues.OrderBy(i => i.Severity)];
     }
+
+    /// <summary>
+    /// A worker's failed storage check holds its clean-up, and no pass has completed since — so no other worker is doing
+    /// it either. A pass completed after the failure means another worker still is.
+    /// </summary>
+    public static bool CleanupStopped(FileStorageVolumeStatus maintenance) =>
+        maintenance.MaintenanceHaltedCheck is not null
+        && !(maintenance.MaintenanceLastCompletedAtUtc > maintenance.MaintenanceHaltedAtUtc);
+
+    /// <summary>A worker's failed check holds its clean-up, while another worker still does it.</summary>
+    public static bool CleanupPartlyStopped(FileStorageVolumeStatus maintenance) =>
+        maintenance.MaintenanceHaltedCheck is not null && !CleanupStopped(maintenance);
+
+    public static string Hours(int hours) => $"{Count(hours)} hour{Plural(hours)}";
 
     /// <summary>Bytes in 1024-steps: <c>412 GB</c>, <c>870.1 MB</c>, <c>12 bytes</c>.</summary>
     public static string Bytes(long bytes)

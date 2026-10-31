@@ -12,8 +12,8 @@ using Odyssey.Context;
 namespace Odyssey.Context.Migrations
 {
     [DbContext(typeof(OdysseyContext))]
-    [Migration("20261030075414_RecordFileStorageVerificationFailure")]
-    partial class RecordFileStorageVerificationFailure
+    [Migration("20261031131421_RecordFileStorageWorkerVerdicts")]
+    partial class RecordFileStorageWorkerVerdicts
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -2537,13 +2537,6 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("LeaseUntilUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<DateTime?>("VerificationFailedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("VerificationFailedCheck")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
                     b.Property<Guid>("Version")
                         .IsConcurrencyToken()
                         .HasColumnType("char(36)");
@@ -2630,6 +2623,30 @@ namespace Odyssey.Context.Migrations
                         .IsUnique();
 
                     b.ToTable("FileStorageVolumes");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageWorkerVerdict", b =>
+                {
+                    b.Property<Guid>("WorkerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FailedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FailedCheck")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("LastReportedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("WorkerId");
+
+                    b.HasIndex("LastReportedAtUtc");
+
+                    b.ToTable("FileStorageWorkerVerdicts");
                 });
 
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>

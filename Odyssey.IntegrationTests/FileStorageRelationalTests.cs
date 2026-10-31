@@ -263,24 +263,34 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             "SELECT COUNT(*) FROM `FileStorageMaintenanceLeases` WHERE `HolderId` IS NULL AND `LastCompletedAtUtc` IS NOT NULL"));
     }
 
-    /// <summary>The overdue count's SQL, and the worker's verdict written beside a lease claim on the real engine.</summary>
+    /// <summary>
+    /// The overdue count's SQL on the real engine — both branches (immediate and graced) and the per-volume grouping —
+    /// and a worker's verdict written beside a lease claim.
+    /// </summary>
     [SkippableFact]
-    public async Task Overdue_deletes_are_counted_and_a_failed_worker_check_is_recorded_and_reported()
+    public async Task Overdue_deletes_are_counted_per_volume_and_a_failed_worker_check_is_recorded_and_reported()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await RecreateAsync();
         var api = await HostAsync();
         await PutCommittedAsync(api, Guid.NewGuid(), "kept.jpg");
+        var archiveId = Guid.NewGuid();
         await using (var context = NewContext())
         {
-            var volumeId = (await context.FileStorageVolumes.SingleAsync()).Id;
-            await InsertObjectAsync(context, volumeId, "test-files/a/immediate.jpg", state: 2, hash: "'h'", deleteRequested: true);
+            var primaryId = (await context.FileStorageVolumes.SingleAsync()).Id;
+            await context.Database.ExecuteSqlRawAsync(
+                $"INSERT INTO `FileStorageVolumes` (`Id`, `Name`, `LastSeenAtUtc`, `ReconciliationPass`, `QuarantinedFileCount`) VALUES ('{archiveId}', 'archive', NOW(), 0, 0)");
+            await InsertObjectAsync(context, primaryId, "test-files/a/immediate.jpg", state: 2, hash: "'h'", deleteRequested: true);
+            await InsertObjectAsync(context, primaryId, "test-files/a/graced.jpg", state: 2, hash: "'h'", deleteRequested: true, deleteImmediately: false);
+            await InsertObjectAsync(context, archiveId, "test-files/a/graced.jpg", state: 2, hash: "'h'", deleteRequested: true, deleteImmediately: false);
         }
 
-        clock.Advance(FileStorageStatusService.OverdueAfter - TimeSpan.FromMinutes(1));
-        Assert.Equal(0, (await StatusAsync(api)).OverdueDeleteCount);
-        clock.Advance(TimeSpan.FromMinutes(2));
-        Assert.Equal(1, (await StatusAsync(api)).OverdueDeleteCount);
+        clock.Advance(FileStorageStatusService.OverdueAfter - TimeSpan.FromSeconds(1));
+        Assert.Equal((0, 0), await OverdueAsync(api, archiveId));
+        clock.Advance(TimeSpan.FromSeconds(1));
+        Assert.Equal((1, 0), await OverdueAsync(api, archiveId));
+        clock.Advance(TimeSpan.FromHours(Dtos.SystemSettingsDefaults.FileStorageDeletionGraceHours));
+        Assert.Equal((2, 1), await OverdueAsync(api, archiveId));
 
         // The worker's mount is wrong: an empty directory where the volume should be.
         var root = Path.Combine(volumes.FullName, "primary");
@@ -293,33 +303,42 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             clock);
         hosts.Add(worker);
         var job = worker.Services.GetRequiredService<FileStorageMaintenanceJob>();
-        Assert.True(await job.TryClaimAsync(Guid.NewGuid(), default)); // a claim moves the version the record must not disturb
+        Assert.True(await job.TryClaimAsync(Guid.NewGuid(), default)); // a lease claim alongside the verdict write
 
         using var stopping = new CancellationTokenSource();
         var run = job.RunOnceAsync(stopping.Token);
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
-        while ((await StatusAsync(api)).MaintenanceHaltedCheck is null)
+        while ((await StatusAsync(api, "primary")).MaintenanceHaltedCheck is null)
         {
             Assert.True(DateTime.UtcNow < deadline, "The worker's verdict was never recorded.");
             await Task.Delay(50);
         }
 
-        var status = await StatusAsync(api);
-        Assert.Equal(("VolumeLost", clock.GetUtcNow().UtcDateTime), (status.MaintenanceHaltedCheck, status.MaintenanceHaltedAtUtc));
+        var status = await StatusAsync(api, "primary");
+        Assert.Equal(("VolumeLost", clock.GetUtcNow().UtcDateTime, 1),
+            (status.MaintenanceHaltedCheck, status.MaintenanceHaltedAtUtc, status.MaintenanceHaltedWorkerCount));
+        var workerId = worker.Services.GetRequiredService<FileStorageWorkerVerification>().WorkerId;
         await using (var context = NewContext())
         {
             Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-                "SELECT COUNT(*) FROM `FileStorageMaintenanceLeases` WHERE `HolderId` IS NOT NULL AND `VerificationFailedCheck` = 'VolumeLost'"));
+                $"SELECT COUNT(*) FROM `FileStorageWorkerVerdicts` WHERE `WorkerId` = '{workerId}' AND `FailedCheck` = 'VolumeLost'"));
         }
 
         await stopping.CancelAsync();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => run);
     }
 
-    private static async Task<Dtos.Application.FileStorageVolumeStatus> StatusAsync(FileStorageTestHost host)
+    private static async Task<(int Primary, int Archive)> OverdueAsync(FileStorageTestHost host, Guid archiveId)
     {
         await using var scope = host.Scope();
-        return (await scope.ServiceProvider.GetRequiredService<FileStorageStatusService>().GetVolumesAsync(default)).Single();
+        var all = await scope.ServiceProvider.GetRequiredService<FileStorageStatusService>().GetVolumesAsync(default);
+        return (all.Single(v => v.Name == "primary").OverdueDeleteCount, all.Single(v => v.Name == "archive").OverdueDeleteCount);
+    }
+
+    private static async Task<Dtos.Application.FileStorageVolumeStatus> StatusAsync(FileStorageTestHost host, string volume)
+    {
+        await using var scope = host.Scope();
+        return (await scope.ServiceProvider.GetRequiredService<FileStorageStatusService>().GetVolumesAsync(default)).Single(v => v.Name == volume);
     }
 
     [SkippableFact]
@@ -375,12 +394,12 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
 
     private static Task InsertObjectAsync(
         OdysseyContext context, Guid volumeId, string path, int state, string hash, long size = 1, string feature = "TestFiles",
-        bool deleteRequested = false, int createdHoursAgo = 0) =>
+        bool deleteRequested = false, int createdHoursAgo = 0, bool? deleteImmediately = null) =>
         context.Database.ExecuteSqlRawAsync(
             "INSERT INTO `StoredObjects` (`Id`, `VolumeId`, `FeatureKey`, `RelativePath`, `SizeBytes`, `Sha256Hash`, `State`, `CreatedAtUtc`, "
             + "`DeleteRequestedAtUtc`, `DeleteImmediately`) VALUES "
             + $"('{Guid.NewGuid()}', '{volumeId}', '{feature}', {{0}}, {size}, {hash}, {state}, DATE_SUB('2026-10-25 09:00:00', INTERVAL {createdHoursAgo} HOUR), "
-            + $"{(deleteRequested ? "'2026-10-25 09:00:00'" : "NULL")}, {(deleteRequested ? 1 : 0)})",
+            + $"{(deleteRequested ? "'2026-10-25 09:00:00'" : "NULL")}, {((deleteImmediately ?? deleteRequested) ? 1 : 0)})",
             [path]);
 
     private void UseDatabase(DbContextOptionsBuilder<OdysseyContext> options) =>

@@ -168,14 +168,29 @@ public class FileStorageMaintenanceLease
 
     /// <summary>When a full maintenance pass last finished; the status endpoint's staleness signal.</summary>
     public DateTime? LastCompletedAtUtc { get; set; }
+}
 
-    /// <summary>
-    /// The startup check that stopped the maintenance job in a worker — a check name such as <c>VolumeLost</c>,
-    /// never a path. Null once a worker's verification passes. Only that job stops; the worker's others keep running.
-    /// </summary>
+/// <summary>
+/// A worker process whose file-storage startup check is failing, so its maintenance job is held (issue #346 A3.2 as
+/// amended). One row per process, keyed by an id the process draws at start: replicas never overwrite each other's
+/// verdict. A failing process refreshes its row on every re-check; a process whose check passes deletes its own row,
+/// and rows nobody has refreshed within the reporting window are ignored and swept, so a stopped worker's verdict
+/// does not linger.
+/// </summary>
+[Index(nameof(LastReportedAtUtc))]
+public class FileStorageWorkerVerdict
+{
+    [Key]
+    public Guid WorkerId { get; set; }
+
+    /// <summary>The failing check's name, such as <c>VolumeLost</c>. Never a path or a message.</summary>
+    [Required]
     [MaxLength(64)]
-    public string? VerificationFailedCheck { get; set; }
+    public string FailedCheck { get; set; } = string.Empty;
 
-    /// <summary>When <see cref="VerificationFailedCheck"/> was last recorded.</summary>
-    public DateTime? VerificationFailedAtUtc { get; set; }
+    /// <summary>When this process first failed with <see cref="FailedCheck"/>.</summary>
+    public DateTime FailedAtUtc { get; set; }
+
+    /// <summary>When this process last re-ran the checks and they still failed.</summary>
+    public DateTime LastReportedAtUtc { get; set; }
 }

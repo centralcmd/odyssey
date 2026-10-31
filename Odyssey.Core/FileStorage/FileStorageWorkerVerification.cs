@@ -7,13 +7,14 @@ namespace Odyssey.Core.FileStorage;
 
 /// <summary>
 /// The worker's file-storage startup checks (issue #346 A3.2), owned by the maintenance job rather than the host: a
-/// failing verdict stops that job and nothing else, so weather and exchange-rate sync keep running. The verdict is
-/// recorded on the maintenance lease row, which is how <c>GET /api/file-storage/volumes</c> reports it — the worker
-/// container stays up, so its exit can no longer be the signal.
+/// failing verdict stops that job and nothing else, so weather and exchange-rate sync keep running. Each process
+/// records its own verdict in <see cref="FileStorageWorkerVerdict"/>, which is how <c>GET /api/file-storage/volumes</c>
+/// reports it — the worker container stays up, so its exit can no longer be the signal.
 /// </summary>
 /// <remarks>
-/// The first attempt waits up to <see cref="InitialWait"/> for the API to initialise a new volume. After a failure
-/// the checks re-run every <see cref="RetryInterval"/> until they pass; the job then runs as usual.
+/// The first attempt waits up to <see cref="InitialWait"/> for the API to initialise a new volume. After a failure —
+/// a failed check, or the checks unable to run at all (the database unreachable) — they re-run every
+/// <see cref="RetryInterval"/> until they pass; the job then runs as usual.
 /// </remarks>
 public sealed class FileStorageWorkerVerification(
     IServiceProvider services,
@@ -27,18 +28,42 @@ public sealed class FileStorageWorkerVerification(
 
     public static readonly TimeSpan RetryInterval = TimeSpan.FromMinutes(10);
 
+    /// <summary>
+    /// A verdict not refreshed for three re-checks belongs to a worker that has stopped or recovered: it is ignored and
+    /// swept. That is also what bounds a clear that failed to be written.
+    /// </summary>
+    public static readonly TimeSpan VerdictTtl = 3 * RetryInterval;
+
+    public const int RecordAttempts = 3;
+
     private volatile bool settled;
+    private volatile bool verdictCleared;
+
+    /// <summary>This process's key in <see cref="FileStorageWorkerVerdict"/>.</summary>
+    public Guid WorkerId { get; } = Guid.NewGuid();
 
     /// <summary>
     /// Returns once the checks have passed in this process — at once if they already have, or if this process's
     /// registry was activated by another caller (an API host verifies at its own startup). Until they pass it does
-    /// not return, re-checking every <see cref="RetryInterval"/>; only cancellation ends the wait.
+    /// not return, re-checking every <see cref="RetryInterval"/>; only cancellation ends the wait. Once they pass, a
+    /// verdict this process could not clear is retried on every later call.
     /// </summary>
     public async Task EnsureVerifiedAsync(CancellationToken cancellationToken)
     {
-        if (settled || volumes.IsActive)
+        if (!settled && volumes.IsActive)
         {
+            // Verified by this process's own host; it never recorded a verdict.
             settled = true;
+            verdictCleared = true;
+        }
+
+        if (settled)
+        {
+            if (!verdictCleared)
+            {
+                verdictCleared = await TryClearAsync(cancellationToken);
+            }
+
             return;
         }
 
@@ -49,7 +74,7 @@ public sealed class FileStorageWorkerVerification(
             {
                 await services.VerifyFileStorageForWorkerAsync(PollInterval, wait, cancellationToken);
                 settled = true;
-                await RecordAsync(null, cancellationToken);
+                verdictCleared = await TryClearAsync(cancellationToken);
                 return;
             }
             catch (FileStorageMisconfiguredException ex)
@@ -59,7 +84,15 @@ public sealed class FileStorageWorkerVerification(
                     "File-storage maintenance is stopped in this worker: startup check {Check} failed. The worker's other jobs keep running; "
                     + "the checks are re-run every {RetryInterval}.",
                     ex.Check, RetryInterval);
-                await RecordAsync(ex.Check, cancellationToken);
+                await TryReportAsync(ex.Check, cancellationToken);
+            }
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The checks could not run at all — the database is unreachable, say. There is no verdict to record (the
+                // store that would hold it is what failed); the job stays held and the checks are re-run.
+                logger.LogError(
+                    "The file-storage startup checks could not run in this worker ({Failure}); maintenance waits and they are re-run every {RetryInterval}.",
+                    FileStorageLog.Describe(ex), RetryInterval);
             }
 
             wait = TimeSpan.Zero;
@@ -67,46 +100,65 @@ public sealed class FileStorageWorkerVerification(
         }
     }
 
+    /// <summary>Writes or refreshes this process's failing verdict. False when every attempt failed.</summary>
+    internal Task<bool> TryReportAsync(string check, CancellationToken cancellationToken) =>
+        WithAttemptsAsync("Recording", async context =>
+        {
+            var now = time.GetUtcNow().UtcDateTime;
+            var verdict = await context.FileStorageWorkerVerdicts.SingleOrDefaultAsync(v => v.WorkerId == WorkerId, cancellationToken);
+            if (verdict is null)
+            {
+                verdict = new FileStorageWorkerVerdict { WorkerId = WorkerId, FailedCheck = check, FailedAtUtc = now };
+                context.FileStorageWorkerVerdicts.Add(verdict);
+            }
+            else if (verdict.FailedCheck != check)
+            {
+                verdict.FailedCheck = check;
+                verdict.FailedAtUtc = now;
+            }
+
+            verdict.LastReportedAtUtc = now;
+            await context.SaveChangesAsync(cancellationToken);
+        }, cancellationToken);
+
     /// <summary>
-    /// Writes the failed check (or clears it) on the lease row. Only those two columns change, never
-    /// <see cref="FileStorageMaintenanceLease.Version"/>, so a runner's claim is not disturbed; a concurrent claim
-    /// changing the version makes this retry.
+    /// Deletes this process's verdict, and any other past <see cref="VerdictTtl"/> (a stopped worker's). False when every
+    /// attempt failed; the row then expires on its own within <see cref="VerdictTtl"/>.
     /// </summary>
-    private async Task RecordAsync(string? check, CancellationToken cancellationToken)
+    internal Task<bool> TryClearAsync(CancellationToken cancellationToken) =>
+        WithAttemptsAsync("Clearing", async context =>
+        {
+            var expired = time.GetUtcNow().UtcDateTime - VerdictTtl;
+            var rows = await context.FileStorageWorkerVerdicts
+                .Where(v => v.WorkerId == WorkerId || v.LastReportedAtUtc < expired)
+                .ToListAsync(cancellationToken);
+            if (rows.Count == 0)
+            {
+                return;
+            }
+
+            context.FileStorageWorkerVerdicts.RemoveRange(rows);
+            await context.SaveChangesAsync(cancellationToken);
+        }, cancellationToken);
+
+    private async Task<bool> WithAttemptsAsync(string what, Func<OdysseyContext, Task> write, CancellationToken cancellationToken)
     {
-        for (var attempt = 0; attempt < 3; attempt++)
+        for (var attempt = 1; attempt <= RecordAttempts; attempt++)
         {
             try
             {
                 await using var scope = services.CreateAsyncScope();
-                var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-                var lease = await context.FileStorageMaintenanceLeases
-                    .SingleOrDefaultAsync(l => l.Id == FileStorageMaintenanceLease.SingletonId, cancellationToken);
-                if (lease is null)
-                {
-                    if (check is null)
-                    {
-                        return;
-                    }
-
-                    // The migration seeds the row; a database created without HasData (EF InMemory) gets it here.
-                    lease = new FileStorageMaintenanceLease { Id = FileStorageMaintenanceLease.SingletonId, Version = Guid.NewGuid() };
-                    context.FileStorageMaintenanceLeases.Add(lease);
-                }
-                else if (check is null && lease.VerificationFailedCheck is null)
-                {
-                    return;
-                }
-
-                lease.VerificationFailedCheck = check;
-                lease.VerificationFailedAtUtc = check is null ? null : time.GetUtcNow().UtcDateTime;
-                await context.SaveChangesAsync(cancellationToken);
-                return;
+                await write(scope.ServiceProvider.GetRequiredService<OdysseyContext>());
+                return true;
             }
-            catch (DbUpdateException ex)
+            catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                logger.LogWarning("Recording the worker's file-storage verdict failed ({Failure}).", FileStorageLog.Describe(ex));
+                // A concurrent sweep of the same expired row, or the database briefly away.
+                logger.LogWarning("{What} the worker's file-storage verdict failed, attempt {Attempt} of {Attempts} ({Failure}).",
+                    what, attempt, RecordAttempts, FileStorageLog.Describe(ex));
             }
         }
+
+        return false;
     }
 }

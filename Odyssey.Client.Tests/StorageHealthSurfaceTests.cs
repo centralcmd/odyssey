@@ -41,6 +41,9 @@ public class StorageHealthSurfaceTests : IDisposable
             TotalBytes = 499963174912,
             LastScrubAtUtc = new DateTime(2026, 10, 29, 17, 0, 0, DateTimeKind.Utc),
             MaintenanceLastCompletedAtUtc = new DateTime(2026, 10, 29, 17, 20, 0, DateTimeKind.Utc),
+            OverdueAfterHours = 2,
+            MaintenanceStaleAfterHours = 3,
+            VerificationRetryMinutes = 10,
         };
         change?.Invoke(volume);
         return volume;
@@ -120,6 +123,8 @@ public class StorageHealthSurfaceTests : IDisposable
                 v.MaintenanceStale = true;
                 v.MaintenanceHaltedCheck = "VolumeLost";
                 v.MaintenanceHaltedAtUtc = new DateTime(2026, 10, 29, 10, 2, 0, DateTimeKind.Utc);
+                v.MaintenanceLastCompletedAtUtc = new DateTime(2026, 10, 29, 9, 20, 0, DateTimeKind.Utc);
+                v.MaintenanceHaltedWorkerCount = 1;
             }),
         ], Now));
 
@@ -128,6 +133,51 @@ public class StorageHealthSurfaceTests : IDisposable
         Assert.StartsWith("Check VolumeLost failed 29 Oct, 10:02 (8 hours ago).", issue.Text, StringComparison.Ordinal);
         Assert.Contains("weather and exchange-rate sync, keep running", issue.Text, StringComparison.Ordinal);
     }
+
+    /// <summary>A pass completed after the failure: another worker is doing the clean-up, so it is a warning, not a stop.</summary>
+    [Fact]
+    public void A_held_worker_while_another_still_cleans_up_is_a_warning_and_keeps_the_stale_note()
+    {
+        var issues = StorageHealth.Issues(
+        [
+            Volume(v =>
+            {
+                v.MaintenanceHaltedCheck = "RootNotFound";
+                v.MaintenanceHaltedAtUtc = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+                v.MaintenanceHaltedWorkerCount = 2;
+                v.MaintenanceLastCompletedAtUtc = new DateTime(2026, 10, 29, 13, 0, 0, DateTimeKind.Utc);
+                v.MaintenanceStale = true;
+            }),
+        ], Now);
+
+        Assert.Equal(["maint-halt", "stale"], issues.Select(i => i.Id));
+        Assert.Equal(StorageIssueSeverity.Warning, issues[0].Severity);
+        Assert.Equal("2 workers can’t use file storage: check RootNotFound failed.", issues[0].Title);
+        Assert.Contains("still running on another worker", issues[0].Text, StringComparison.Ordinal);
+    }
+
+    /// <summary>Every threshold in the copy is the server's, never a client constant.</summary>
+    [Fact]
+    public void The_copy_uses_the_thresholds_the_server_sends()
+    {
+        var issues = StorageHealth.Issues(
+        [
+            Volume(v =>
+            {
+                v.OverdueDeleteCount = 1;
+                v.OverdueAfterHours = 5;
+                v.MaintenanceStale = true;
+                v.MaintenanceStaleAfterHours = 7;
+            }),
+        ], Now);
+        Assert.Contains(issues, i => i.Text.Contains("over 5 hours ago", StringComparison.Ordinal));
+        Assert.Contains(issues, i => i.Title == "File clean-up hasn’t completed in over 7 hours.");
+
+        var halted = Assert.Single(StorageHealth.Issues(
+            [Volume(v => { v.MaintenanceHaltedCheck = "VolumeLost"; v.MaintenanceHaltedAtUtc = Now.UtcDateTime; v.VerificationRetryMinutes = 15; })], Now));
+        Assert.Contains("re-checks every 15 minutes", halted.Text, StringComparison.Ordinal);
+    }
+
 
     [Theory]
     [InlineData(0, "0 bytes")]
@@ -195,7 +245,8 @@ public class StorageHealthSurfaceTests : IDisposable
                 v.OverdueDeleteCount = 41;
                 v.MaintenanceStale = true;
                 v.MaintenanceHaltedCheck = "VolumeLost";
-                v.MaintenanceHaltedAtUtc = DateTime.UtcNow;
+                v.MaintenanceHaltedAtUtc = new DateTime(2026, 10, 29, 18, 0, 0, DateTimeKind.Utc);
+                v.MaintenanceHaltedWorkerCount = 1;
             }),
         ]));
 
@@ -211,6 +262,25 @@ public class StorageHealthSurfaceTests : IDisposable
         Assert.Equal(2, notes.Count);
         Assert.Contains(notes, n => n.TextContent.Contains("41 deleted files are past their erase time", StringComparison.Ordinal));
         Assert.Contains(notes, n => n.TextContent.Contains("File clean-up is stopped", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_worker_held_while_another_cleans_up_reads_as_a_warning_on_the_clean_up_row()
+    {
+        await using var ctx = NewComponentContext();
+
+        var panel = ctx.Render<StorageHealthPanel>(p => p.Add(x => x.Volumes,
+        [
+            Volume(v =>
+            {
+                v.MaintenanceHaltedCheck = "RootNotFound";
+                v.MaintenanceHaltedAtUtc = new DateTime(2026, 10, 29, 12, 0, 0, DateTimeKind.Utc);
+                v.MaintenanceHaltedWorkerCount = 2;
+            }),
+        ]));
+
+        var cleanup = panel.FindAll(".sth-row").Single(r => r.TextContent.Contains("File clean-up", StringComparison.Ordinal));
+        Assert.Equal("Stopped on 2 workers", cleanup.QuerySelector(".sth-tone.warning")!.TextContent.Trim());
     }
 
     [Fact]

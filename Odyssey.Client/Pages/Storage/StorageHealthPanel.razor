@@ -139,10 +139,14 @@
 
     // A stopped job explains a stale one, so the stop is what the row says.
     private static string CleanupTone(FileStorageVolumeStatus maintenance) =>
-        maintenance.MaintenanceHaltedCheck is not null ? "error" : maintenance.MaintenanceStale ? "warning" : "ok";
+        StorageHealth.CleanupStopped(maintenance) ? "error"
+        : maintenance.MaintenanceStale || StorageHealth.CleanupPartlyStopped(maintenance) ? "warning"
+        : "ok";
 
     private static string CleanupWord(FileStorageVolumeStatus maintenance) =>
-        maintenance.MaintenanceHaltedCheck is not null ? "Stopped"
+        StorageHealth.CleanupStopped(maintenance) ? "Stopped"
+        : StorageHealth.CleanupPartlyStopped(maintenance)
+            ? $"Stopped on {StorageHealth.Count(maintenance.MaintenanceHaltedWorkerCount)} worker{StorageHealth.Plural(maintenance.MaintenanceHaltedWorkerCount)}"
         : !maintenance.MaintenanceStale ? "On schedule"
         : maintenance.MaintenanceLastCompletedAtUtc is null ? "Never completed"
         : "Stalled";
