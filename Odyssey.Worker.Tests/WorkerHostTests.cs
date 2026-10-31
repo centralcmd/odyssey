@@ -72,6 +72,20 @@ public sealed class WorkerHostTests : IDisposable
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
     }
 
+    /// <summary>Issue #362: the thumbnail job, the real renderer and self-test, and the rename observer resolve here.</summary>
+    [Fact]
+    public void The_graph_resolves_and_hosts_the_photo_thumbnail_job()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<Odyssey.Core.Journal.Thumbnails.PhotoThumbnailJob>);
+        Assert.IsType<Odyssey.Worker.Thumbnails.MagickThumbnailRenderer>(provider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.IPhotoThumbnailRenderer>());
+        Assert.IsType<Odyssey.Worker.Thumbnails.MagickDecoderSelfTest>(provider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.IThumbnailDecoderSelfTest>());
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService>());
+        Assert.Contains(scope.ServiceProvider.GetServices<Odyssey.Core.Finance.IFileRenameObserver>(), o => o is Odyssey.Core.Journal.Thumbnails.PhotoThumbnailRenameObserver);
+    }
+
     /// <summary>
     /// The maintenance job verifies the volumes itself, so a failing verdict holds that job alone; the host verifies
     /// nothing before it runs, which used to stop weather and exchange-rate sync along with it (A3.2 as amended).

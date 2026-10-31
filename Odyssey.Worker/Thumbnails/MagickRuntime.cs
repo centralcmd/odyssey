@@ -15,14 +15,17 @@ namespace Odyssey.Worker.Thumbnails;
 /// silently ignored — so this is the only entry point the renderer and the self-test use.
 /// </para>
 /// <para>
-/// Two values differ from the spec, both measured in the spike (ImageMagick 7.1.2, Alpine musl): the list-length
-/// limit is 2, because 1 refuses every image; and a memory breach surfaces as <see cref="MagickCacheErrorException"/>,
+/// Two values differ from the spec, both measured (ImageMagick 7.1.2, Alpine musl): the list-length limit is 64, not
+/// 1. One refuses every image (the spike), and the WebP coder decodes every frame of an animation whatever
+/// <c>FrameCount</c> says, so an n-frame WebP needs n + 1 — 2 refused a three-frame one. The bound on what those
+/// frames cost is the process-wide memory limit, not this count: an animation whose frames exceed it fails as
+/// <c>decode</c>, as does one longer than 63 frames. A memory breach surfaces as <see cref="MagickCacheErrorException"/>,
 /// which the renderer's callers classify as <c>decode</c> like any other decoder exception.
 /// </para>
 /// </remarks>
 internal static class MagickRuntime
 {
-    public const ulong ListLength = 2;
+    public const ulong ListLength = 64;
     public const ulong Threads = 2;
     public const ulong TimeSeconds = 60;
 

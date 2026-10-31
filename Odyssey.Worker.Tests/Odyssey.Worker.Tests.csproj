@@ -17,6 +17,12 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="coverlet.collector" />
+    <!-- The independent oracle for metadata removal, as in Odyssey.Core.Tests: never on a runtime path. -->
+    <PackageReference Include="MetadataExtractor" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="Thumbnails\Fixtures\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
