@@ -57,6 +57,7 @@ public sealed class JournalEntriesController : ControllerBase
         {
             item.CreatedByName = names.NameForAuthor(item.CreatedByUserId);
             item.UpdatedByName = names.NameForOptional(item.UpdatedByUserId);
+            ApplyThumbnailRule(item.Photos);
         }
 
         return Ok(result);
@@ -77,6 +78,7 @@ public sealed class JournalEntriesController : ControllerBase
         }
 
         await EnrichAuthorsAsync(entry, cancellationToken);
+        ApplyThumbnailRule(entry.Photos);
         return Ok(entry);
     }
 
@@ -102,6 +104,7 @@ public sealed class JournalEntriesController : ControllerBase
 
         var created = await service.Create(request, userId, cancellationToken);
         await EnrichAuthorsAsync(created, cancellationToken);
+        ApplyThumbnailRule(created.Photos);
         return CreatedAtRoute("GetJournalEntry", new { id = created.JournalEntryId }, created);
     }
 
@@ -134,6 +137,7 @@ public sealed class JournalEntriesController : ControllerBase
         }
 
         await EnrichAuthorsAsync(updated, cancellationToken);
+        ApplyThumbnailRule(updated.Photos);
         return Ok(updated);
     }
 
@@ -245,6 +249,24 @@ public sealed class JournalEntriesController : ControllerBase
     {
         Response.Headers.XContentTypeOptions = "nosniff";
         return File(Encoding.UTF8.GetBytes(export.Content), "text/calendar; charset=utf-8", export.FileName);
+    }
+
+    /// <summary>
+    /// The journal rule (issue #362 §7.3), in one place for every action that returns a photo link: a caller without
+    /// <c>photos.read</c> never sees <c>ThumbnailsReady</c> true, so its client never requests a thumbnail it would be
+    /// refused. Core services carry no <c>ClaimsPrincipal</c>, so the rule lives at the controller.
+    /// </summary>
+    private void ApplyThumbnailRule(IEnumerable<JournalEntryPhotoDto>? photos)
+    {
+        if (photos is null || User.HasPermission(PermissionClaims.PhotosRead))
+        {
+            return;
+        }
+
+        foreach (var photo in photos)
+        {
+            photo.ThumbnailsReady = false;
+        }
     }
 
     private async Task EnrichAuthorsAsync(ExistingJournalEntry entry, CancellationToken cancellationToken)

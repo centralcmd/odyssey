@@ -1,3 +1,4 @@
+using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Api;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
@@ -542,6 +543,9 @@ builder.Services.AddScoped<DataExportService>();
 // registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration
 // (FileStorage:Volumes / FileStorage:Bindings), verified below before the host listens.
 builder.Services.AddFileStorage();
+// Photo thumbnails (issue #362): the storage feature, the service the photo paths use and the rename observer. The
+// job and the decoder are the worker's alone; nothing here decodes an image.
+builder.Services.AddPhotoThumbnails();
 
 builder.Services.AddScoped<AdminFileExportService>();
 

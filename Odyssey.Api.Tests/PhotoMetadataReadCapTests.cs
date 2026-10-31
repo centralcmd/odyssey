@@ -102,12 +102,18 @@ public class PhotoMetadataReadCapTests
             RequestedLength = maxBytes;
             return Task.FromResult<byte[]?>(prefix);
         }
+
+        public Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException("Metadata extraction reads a prefix only.");
     }
 
     /// <summary>Stands in for a server that cannot serve the requested prefix (packet limit, unreadable blob).</summary>
     private sealed class ThrowingReader : IImageContentReader
     {
         public Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("max_allowed_packet exceeded");
+
+        public Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("max_allowed_packet exceeded");
     }
 

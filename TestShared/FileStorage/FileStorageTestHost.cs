@@ -45,7 +45,8 @@ public sealed class FileStorageTestHost : IAsyncDisposable
         IEnumerable<StorageFeature>? features = null,
         TestClock? clock = null,
         FileStorageForbiddenRoots? forbiddenRoots = null,
-        long maxFileSizeBytes = 64L * 1024 * 1024)
+        long maxFileSizeBytes = 64L * 1024 * 1024,
+        Action<IServiceCollection>? configureServices = null)
     {
         clock ??= new TestClock();
         var space = new TestSpaceProbe();
@@ -80,6 +81,7 @@ public sealed class FileStorageTestHost : IAsyncDisposable
         services.Replace(ServiceDescriptor.Singleton(forbiddenRoots ?? new FileStorageForbiddenRoots([])));
         services.Replace(ServiceDescriptor.Singleton<IFileStorageSpaceProbe>(space));
         services.AddSingleton<FileStorageMaintenanceJob>();
+        configureServices?.Invoke(services);
 
         return new FileStorageTestHost(services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true }), clock, space, logs);
     }
@@ -94,14 +96,18 @@ public sealed class FileStorageTestHost : IAsyncDisposable
     public ValueTask DisposeAsync() => provider.DisposeAsync();
 }
 
-/// <summary>A clock that moves only when told to.</summary>
-public sealed class TestClock : TimeProvider
+/// <summary>
+/// A clock that moves only when told to. A <see cref="Microsoft.Extensions.Time.Testing.FakeTimeProvider"/>, so the
+/// timers, delays and watchdogs built on it (the thumbnail job's) fire when it is advanced, never in real time.
+/// </summary>
+public sealed class TestClock() : Microsoft.Extensions.Time.Testing.FakeTimeProvider(new DateTimeOffset(2026, 10, 25, 9, 0, 0, TimeSpan.Zero))
 {
-    public DateTimeOffset Now { get; set; } = new(2026, 10, 25, 9, 0, 0, TimeSpan.Zero);
-
-    public override DateTimeOffset GetUtcNow() => Now;
-
-    public void Advance(TimeSpan by) => Now += by;
+    /// <summary>The current time; setting it may only move it forward.</summary>
+    public DateTimeOffset Now
+    {
+        get => GetUtcNow();
+        set => SetUtcNow(value);
+    }
 }
 
 /// <summary>Free space as the test says; null measures the real disk.</summary>

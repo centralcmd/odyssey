@@ -147,6 +147,7 @@ public class JournalEntryService
         }
 
         var fileIdByPhotoId = await photos.ResolveFileIdsAsync(photoIds, cancellationToken);
+        var ready = await Thumbnails.PhotoThumbnailService.ReadyAsync(context, photoIds, cancellationToken);
         foreach (var item in items)
         {
             if (!linkRows.TryGetValue(item.JournalEntryId, out var rows))
@@ -163,6 +164,7 @@ public class JournalEntryService
                     FileId = fileIdByPhotoId[r.PhotoId],
                     Position = r.Position,
                     CreatedAt = r.CreatedAt,
+                    ThumbnailsReady = ready.Contains(r.PhotoId),
                 })
                 .ToList();
         }
@@ -612,8 +614,9 @@ public class JournalEntryService
         // Enrich each photo link with its library Photo's FileId in one batched lookup (§5 v4). A link
         // whose PhotoId no longer resolves (the library Photo was deleted) is dropped entirely, so FileId
         // is never empty on a returned link (§18d).
-        var fileIdByPhotoId = await photos.ResolveFileIdsAsync(
-            entry.Photos.Select(p => p.PhotoId).ToList(), cancellationToken);
+        var linkedPhotoIds = entry.Photos.Select(p => p.PhotoId).ToList();
+        var fileIdByPhotoId = await photos.ResolveFileIdsAsync(linkedPhotoIds, cancellationToken);
+        var ready = await Thumbnails.PhotoThumbnailService.ReadyAsync(context, linkedPhotoIds, cancellationToken);
         dto.Photos = entry.Photos
             .OrderBy(p => p.Position)
             .Where(p => fileIdByPhotoId.ContainsKey(p.PhotoId))
@@ -624,6 +627,7 @@ public class JournalEntryService
                 FileId = fileIdByPhotoId[p.PhotoId],
                 Position = p.Position,
                 CreatedAt = p.CreatedAt,
+                ThumbnailsReady = ready.Contains(p.PhotoId),
             })
             .ToList();
         dto.Attachments = entry.Attachments

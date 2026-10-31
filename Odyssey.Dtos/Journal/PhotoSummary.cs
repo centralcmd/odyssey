@@ -48,4 +48,7 @@ public sealed record PhotoSummary : ITagIconRecord
     public required int PersonCount { get; set; }
 
     public required int AlbumCount { get; set; }
+
+    /// <summary>Both thumbnails exist, at any recipe version (issue #362 §4.4). False means: show the original.</summary>
+    public bool ThumbnailsReady { get; set; }
 }

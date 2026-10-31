@@ -15,6 +15,9 @@ public sealed record ExistingPhotoAlbum
 
     public Guid? CoverPhotoId { get; set; }
 
+    /// <summary>Both of the cover photo's thumbnails exist (issue #362 §4.4); false without a cover.</summary>
+    public bool CoverThumbnailsReady { get; set; }
+
     public DateTime? Archived { get; set; }
 
     [StringLength(255)]

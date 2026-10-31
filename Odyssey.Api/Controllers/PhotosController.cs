@@ -7,7 +7,10 @@ using Odyssey.Api.Identity;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Journal.Thumbnails;
+using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
@@ -23,17 +26,23 @@ public sealed class PhotosController : ControllerBase
     private readonly PhotoService service;
     private readonly FileService files;
     private readonly IUserDisplayNameResolver displayNames;
+    private readonly PhotoThumbnailService thumbnails;
+    private readonly IObjectStore store;
 
     public PhotosController(
         ILogger<PhotosController> logger,
         PhotoService service,
         FileService files,
-        IUserDisplayNameResolver displayNames)
+        IUserDisplayNameResolver displayNames,
+        PhotoThumbnailService thumbnails,
+        IObjectStore store)
     {
         this.logger = logger;
         this.service = service;
         this.files = files;
         this.displayNames = displayNames;
+        this.thumbnails = thumbnails;
+        this.store = store;
     }
 
     [HttpGet(Name = "GetPhotos")]
@@ -59,8 +68,66 @@ public sealed class PhotosController : ControllerBase
     [Authorize(Policy = PermissionClaims.PhotosRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PhotoLibraryStats))]
     [SwaggerOperation(Summary = "Aggregate library counts (total, favourites, per-tag, per-person) for the Overview panel.")]
-    public async Task<IActionResult> GetStats(CancellationToken cancellationToken = default) =>
-        Ok(await service.GetStatsAsync(cancellationToken));
+    public async Task<IActionResult> GetStats(CancellationToken cancellationToken = default)
+    {
+        var stats = await service.GetStatsAsync(cancellationToken);
+
+        // The worker's state is operational detail for administrators only (issue #362 §3.6).
+        if (!User.HasPermission(PermissionClaims.SystemSettingsRead))
+        {
+            stats.ThumbnailWorkerState = null;
+        }
+
+        return Ok(stats);
+    }
+
+    [HttpGet("{id}/thumbnail", Name = "GetPhotoThumbnail")]
+    [Authorize(Policy = PermissionClaims.PhotosRead)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Stream a photo's WebP thumbnail (Small 200 px or Medium 400 px).",
+        Description = @"404 photo-thumbnail-not-found for an unknown photo, a thumbnail not ready yet and a released one
+alike. Served inline with a strong ETag and private, no-cache, so revalidation costs one 304 with no body.")]
+    public async Task<IActionResult> GetThumbnail(
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery] PhotoThumbnailQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        // Metadata only: a conditional request never opens the file (§5).
+        if (await thumbnails.GetDescriptorAsync(id, query.Size!.Value, cancellationToken) is not { } descriptor)
+        {
+            throw new PhotoThumbnailNotFoundException();
+        }
+
+        Response.Headers.CacheControl = "private, no-cache";
+        Response.Headers.ContentDisposition = "inline";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        // same-site, not same-origin: CORP compares the port too, and the dev stack's client and API differ in it.
+        Response.Headers["Cross-Origin-Resource-Policy"] = "same-site";
+
+        var etag = new EntityTagHeaderValue($"\"{descriptor.Sha256Hash}\"");
+        if (IfNoneMatches(etag))
+        {
+            Response.Headers.ETag = etag.ToString();
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        var content = await store.OpenReadAsync(PhotoThumbnailStorage.FeatureKey, descriptor.StoredObjectId, cancellationToken);
+
+        // The overload that takes an EntityTagHeaderValue, so the framework handles the conditional request too; a
+        // hand-set ETag header would never produce a 304.
+        return File(content.Content, "image/webp", lastModified: null, entityTag: etag);
+    }
+
+    private bool IfNoneMatches(EntityTagHeaderValue etag)
+    {
+        var candidates = Request.GetTypedHeaders().IfNoneMatch;
+        return candidates is { Count: > 0 }
+            && candidates.Any(c => c.Equals(EntityTagHeaderValue.Any) || c.Compare(etag, useStrongComparison: true));
+    }
 
     [HttpGet("{id}", Name = "GetPhoto")]
     [Authorize(Policy = PermissionClaims.PhotosRead)]

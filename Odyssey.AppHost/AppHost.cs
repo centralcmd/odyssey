@@ -69,15 +69,17 @@ Directory.CreateDirectory(dataProtectionKeysPath);
 
 // The `primary` file volume (issue #346), the dataprotection-keys pattern: the AppHost creates the root, because
 // the API's startup verifier never creates one (check C5 — a mistyped mount must not silently become a directory).
-// The API and the worker get the SAME FileStorage__* settings (A3.2): the worker mounts what the API mounts, waits
-// for the API to initialise a new volume, and stops — with every job in it — on any failing verdict. The
-// `reset-environment` skill empties it (keeping the root) along with the database.
+// The API and the worker get the SAME FileStorage__* settings (A3.2): the worker mounts what the API mounts and
+// waits for the API to initialise a new volume; a failing verdict holds the jobs that use the store. Photo
+// thumbnails (issue #362) are bound to it. Under Aspire nothing restarts a worker that stopped itself after a hung
+// decode — restart it by hand. The `reset-environment` skill empties it (keeping the root) along with the database.
 var fileVolumePrimaryPath = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".aspire", "files", "primary"));
 Directory.CreateDirectory(fileVolumePrimaryPath);
 var fileStorageSettings = new Dictionary<string, string>
 {
     ["FileStorage__Volumes__primary__RootPath"] = fileVolumePrimaryPath,
+    ["FileStorage__Bindings__PhotoThumbnails"] = "primary",
 };
 
 var migrations = builder

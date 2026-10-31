@@ -236,7 +236,8 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
     private static PhotoService Photos(OdysseyContext context) =>
         new(context, new ContactLookup(context), new FileLookup(context), new FileReferenceGuard(context), null!,
-            new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance);
+            new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance,
+            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System));
 
     private OdysseyContext NewContext(CommandCounter? counter)
     {

@@ -34,13 +34,19 @@ public enum ImageWalkOutcome
 /// How many input bytes the container itself occupied. A walk of the output must consume all of it:
 /// anything past the terminator is a trailer (a ZIP polyglot, a motion-photo MP4 payload).
 /// </param>
+/// <param name="IsProgressive">
+/// Whether any JPEG frame header is progressive (SOF2, SOF6, SOF10 or SOF14), OR-ed across every one the walk
+/// meets. The thumbnail size gate needs it (issue #362 §3.5 step 4): DCT scaling does not shrink a progressive
+/// decode's coefficient buffer. Always false for PNG and WebP.
+/// </param>
 public sealed record ImageWalkResult(
     ImageWalkOutcome Outcome,
     byte[] Bytes,
     int Width,
     int Height,
     bool HasMetadata,
-    int ConsumedLength)
+    int ConsumedLength,
+    bool IsProgressive = false)
 {
     public static ImageWalkResult Failed(ImageWalkOutcome outcome) =>
         new(outcome, [], 0, 0, HasMetadata: false, ConsumedLength: 0);
@@ -74,13 +80,20 @@ public sealed record ImageWalkResult(
 public static class ImageContainerWalk
 {
     /// <summary>Walks a container of the given (already magic-byte-verified) content type.</summary>
-    public static ImageWalkResult Walk(ReadOnlySpan<byte> source, string contentType) => contentType switch
+    /// <remarks>A walk that succeeds without learning a width and a height is <c>Undecodable</c> (issue #362).</remarks>
+    public static ImageWalkResult Walk(ReadOnlySpan<byte> source, string contentType)
     {
-        "image/jpeg" => WalkJpeg(source),
-        "image/png" => WalkPng(source),
-        "image/webp" => WalkWebp(source),
-        _ => ImageWalkResult.Failed(ImageWalkOutcome.Undecodable),
-    };
+        var result = contentType switch
+        {
+            "image/jpeg" => WalkJpeg(source),
+            "image/png" => WalkPng(source),
+            "image/webp" => WalkWebp(source),
+            _ => ImageWalkResult.Failed(ImageWalkOutcome.Undecodable),
+        };
+        return result is { IsOk: true } and ({ Width: <= 0 } or { Height: <= 0 })
+            ? ImageWalkResult.Failed(ImageWalkOutcome.Undecodable)
+            : result;
+    }
 
     // ── JPEG ──────────────────────────────────────────────────────────────────────────────────────
     //
@@ -129,6 +142,7 @@ public static class ImageContainerWalk
         output.WriteByte(Soi);
 
         var hasMetadata = false;
+        var progressive = false;
         var width = 0;
         var height = 0;
         var position = 2;
@@ -166,7 +180,7 @@ public static class ImageContainerWalk
                 output.WriteByte(Marker);
                 output.WriteByte(Eoi);
                 return new ImageWalkResult(
-                    ImageWalkOutcome.Ok, output.ToArray(), width, height, hasMetadata, position);
+                    ImageWalkOutcome.Ok, output.ToArray(), width, height, hasMetadata, position, progressive);
             }
 
             // Standalone markers carry no length payload. TEM (0x01) and RSTn (0xD0–0xD7) are the only
@@ -204,6 +218,7 @@ public static class ImageContainerWalk
 
                 height = (segment[3] << 8) | segment[4];
                 width = (segment[5] << 8) | segment[6];
+                progressive |= code is 0xC2 or 0xC6 or 0xCA or 0xCE;
             }
 
             if (IsKeptJpegMarker(code))

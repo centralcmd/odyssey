@@ -157,14 +157,17 @@ services:
       # see docs/deployment.md before changing either.
     # Runtime hardening: non-root .NET app (UID 1654) that needs no caps and no port. The root filesystem
     # is read-only and so is the key-ring mount; /tmp is a tmpfs. The file volumes (base file) are its only
-    # writable data paths.
+    # writable data paths. The memory, process and /tmp bounds are the thumbnail decoder's (issue #362 §6), and
+    # restated here because `tmpfs` replaces the base file's list rather than merging with it.
     security_opt:
       - no-new-privileges:true
     cap_drop:
       - ALL
     read_only: true
+    mem_limit: 1g
+    pids_limit: 256
     tmpfs:
-      - /tmp
+      - /tmp:size=64m
 
   client:
     image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}

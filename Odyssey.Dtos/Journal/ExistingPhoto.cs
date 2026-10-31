@@ -68,4 +68,7 @@ public sealed record ExistingPhoto : ITagIconRecord
     public List<Guid> PersonContactIds { get; set; } = [];
 
     public List<Guid> AlbumIds { get; set; } = [];
+
+    /// <summary>Both thumbnails exist, at any recipe version (issue #362 §4.4). False means: show the original.</summary>
+    public bool ThumbnailsReady { get; set; }
 }

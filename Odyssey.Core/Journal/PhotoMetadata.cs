@@ -25,6 +25,9 @@ public sealed record PhotoMetadata
     /// <summary>Orientation-corrected display height.</summary>
     public int? PixelHeight { get; init; }
 
+    /// <summary>The EXIF orientation, 1–8, or null when absent or out of range (issue #362 §3.5 step 2).</summary>
+    public int? Orientation { get; init; }
+
     /// <summary>Embedded keyword/tag names (IPTC Keywords / XMP dc:subject).</summary>
     public IReadOnlyList<string> Keywords { get; init; } = [];
 

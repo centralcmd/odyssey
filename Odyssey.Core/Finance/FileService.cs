@@ -12,11 +12,21 @@ public class FileService
     private readonly FileValidationService validationService;
     private readonly TimeProvider timeProvider;
 
-    public FileService(OdysseyContext context, FileValidationService validationService, TimeProvider? timeProvider = null)
+    /// <summary>A rename that collides with a concurrent write an observer depends on is re-run at most this often.</summary>
+    public const int RenameAttempts = 3;
+
+    private readonly IReadOnlyList<IFileRenameObserver> renameObservers;
+
+    public FileService(
+        OdysseyContext context,
+        FileValidationService validationService,
+        TimeProvider? timeProvider = null,
+        IEnumerable<IFileRenameObserver>? observers = null)
     {
         this.context = context;
         this.validationService = validationService;
         this.timeProvider = timeProvider ?? TimeProvider.System;
+        renameObservers = [.. observers ?? []];
     }
 
     public async Task<FileUploadResponse> UploadFileAsync(FileUpload file, string userId, string? description, CancellationToken cancellationToken = default)
@@ -230,12 +240,23 @@ public class FileService
             : validationService.SanitizeRenamedFileName(request.FileName);
 
         metadata.Description = request.Description?.Length > 256 ? request.Description[..256] : request.Description;
+
+        // Observers run only on a real change of name (issue #362 §3.1 item 5) — saving the same name must not
+        // regenerate anything — and before the save, so what they stage lands in the rename's own save.
+        var renaming = renamedTo is not null && !string.Equals(renamedTo, metadata.FileName, StringComparison.Ordinal);
         if (renamedTo is not null)
         {
             metadata.FileName = renamedTo;
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        if (!renaming || renameObservers.Count == 0)
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        else
+        {
+            await SaveRenameWithObserversAsync(fileId, cancellationToken);
+        }
 
         return new FileMetadataResponse(
             metadata.Id,
@@ -245,6 +266,53 @@ public class FileService
             metadata.Sha256Hash,
             metadata.UploadedAtUtc,
             metadata.Description);
+    }
+
+    /// <summary>
+    /// Runs the observers and saves. A concurrency failure on an entity an observer owns (a worker wrote between our
+    /// load and our save) reloads those entries and re-runs the observers, at most <see cref="RenameAttempts"/> times;
+    /// then <see cref="FileRenameBusyException"/>, with nothing committed. Any other failure propagates as before.
+    /// </summary>
+    private async Task SaveRenameWithObserversAsync(Guid fileId, CancellationToken cancellationToken)
+    {
+        for (var attempt = 1; ; attempt++)
+        {
+            foreach (var observer in renameObservers)
+            {
+                await observer.OnFileRenamingAsync(fileId, cancellationToken);
+            }
+
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException ex)
+                when (ex.Entries.Count > 0 && ex.Entries.All(e => renameObservers.Any(o => o.Owns(e.Metadata.ClrType))))
+            {
+                if (attempt >= RenameAttempts)
+                {
+                    throw new FileRenameBusyException();
+                }
+
+                // Everything the observers staged, not only the conflicting entry: a provider that applied part of the
+                // failed save (EF InMemory) must not leave a stale token behind for the retry to trip on.
+                foreach (var entry in context.ChangeTracker.Entries()
+                             .Where(e => e.State is EntityState.Added or EntityState.Modified or EntityState.Deleted
+                                 && renameObservers.Any(o => o.Owns(e.Metadata.ClrType)))
+                             .ToList())
+                {
+                    if (entry.State == EntityState.Added)
+                    {
+                        entry.State = EntityState.Detached;
+                    }
+                    else
+                    {
+                        await entry.ReloadAsync(cancellationToken);
+                    }
+                }
+            }
+        }
     }
 
     public async Task<bool> DeleteFileAsync(Guid fileId, CancellationToken cancellationToken = default)

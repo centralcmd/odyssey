@@ -43,4 +43,33 @@ public sealed class ImageContentReader(OdysseyContext context) : IImageContentRe
 
         return content.Length <= maxBytes ? content : content[..maxBytes];
     }
+
+    public async Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default)
+    {
+        // The stored size first, from metadata alone, so a blob over the limit is refused without being read.
+        var size = await context.FileMetadata
+            .Where(m => m.Id == fileId)
+            .Select(m => (long?)m.SizeBytes)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (size is null)
+        {
+            return null;
+        }
+
+        if (size > maxBytes)
+        {
+            return ImageContent.OverLimit;
+        }
+
+        var content = await context.FileMetadata
+            .Where(m => m.Id == fileId)
+            .Join(context.FileBlob, m => m.FileBlobId, b => b.Id, (_, b) => b.Content)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (content is null)
+        {
+            return null;
+        }
+
+        return content.Length > maxBytes ? ImageContent.OverLimit : new ImageContent(content, TooLarge: false);
+    }
 }

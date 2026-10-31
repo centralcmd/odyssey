@@ -11,7 +11,9 @@ namespace Odyssey.Core.FileStorage;
 /// </summary>
 public sealed class FileStorageUnavailableException(string message) : DomainException(message)
 {
-    public const int RetryAfterSeconds = 60;
+    public const int RetryAfterDelaySeconds = 60;
+
+    public override int? RetryAfterSeconds => RetryAfterDelaySeconds;
 
     public override int StatusCode => (int)HttpStatusCode.ServiceUnavailable;
 

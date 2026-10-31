@@ -55,11 +55,16 @@ public static class GlobalExceptionHandler
                 // The message only: it names at most the volume, and the request path is caller-supplied.
                 logger.LogWarning("File storage unavailable: {Message}", unavailable.Message);
                 context.Response.Headers.RetryAfter =
-                    FileStorageUnavailableException.RetryAfterSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                    FileStorageUnavailableException.RetryAfterDelaySeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
                 return WriteAsync(context, unavailable.StatusCode, unavailable.Message,
                     extensions: DomainExtensions(unavailable));
 
             case DomainException domain:
+                if (domain.RetryAfterSeconds is { } retryAfter)
+                {
+                    context.Response.Headers.RetryAfter = retryAfter.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                }
+
                 logger.LogInformation(domain,
                     "Domain error on {Method} {Path}: {Message}",
                     context.Request.Method, context.Request.Path, domain.Message);

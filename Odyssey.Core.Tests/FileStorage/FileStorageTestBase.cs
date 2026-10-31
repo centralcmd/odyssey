@@ -48,9 +48,10 @@ public abstract class FileStorageTestBase : IAsyncLifetime
         IReadOnlyDictionary<string, string> bindings,
         IEnumerable<StorageFeature>? features = null,
         FileStorageForbiddenRoots? forbiddenRoots = null,
-        bool verify = true)
+        bool verify = true,
+        Action<IServiceCollection>? configureServices = null)
     {
-        var host = FileStorageTestHost.Create(UseDatabase, volumes, bindings, features, Clock, forbiddenRoots);
+        var host = FileStorageTestHost.Create(UseDatabase, volumes, bindings, features, Clock, forbiddenRoots, configureServices: configureServices);
         hosts.Add(host);
         if (verify)
         {

@@ -17,12 +17,26 @@
     Two things this does NOT cover, worth knowing before trusting it:
       * MSB3277 and friends are MSBuild *task* warnings, which this compiler property does not
         promote. Only `dotnet build -warnaserror` catches a future reference-version conflict.
-      * NuGet warnings ARE promoted, so a newly published advisory (NU1903) against an existing
-        dependency can turn the build red with no change on our side. That is the intent; the
-        escape hatch while the fix lands is <NoWarn> for that specific NU code.
+      * NuGet warnings ARE promoted, so a newly published advisory (NU190x) against an existing
+        dependency can turn the build red with no change on our side. That is the intent. The escape
+        hatch while the fix lands is a <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-…" />
+        item for that one advisory, with a dated comment saying why and until when — never a blanket
+        <NoWarn> for the NU code, which would silence every future advisory along with it.
   -->
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!--
+    NuGet audit, solution-wide and test projects included, over transitive packages too (issue #362 §7.5.8). The
+    thumbnail decoder (Magick.NET, in Odyssey.Worker) parses untrusted uploads, so an ImageMagick or libwebp
+    advisory has to stop the build. `moderate` is deliberately narrower than the default `low`. The daily
+    vulnerability workflow (.github/workflows/vulnerability-audit.yml) covers the days nobody builds.
+  -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>moderate</NuGetAuditLevel>
   </PropertyGroup>
 
   <!--

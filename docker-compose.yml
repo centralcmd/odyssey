@@ -159,12 +159,13 @@ services:
       # RateLimiting__IdentityEmail__PermitLimit is deliberately NOT raised: no E2E test touches the
       # two mail-sending routes, and that limit is the one whose cost is outbound mail, not CPU.
       RateLimiting__Identity__PermitLimit: ${IDENTITY_RATE_LIMIT:-300}
-      # Filesystem object storage (issue #346). One volume, `primary`, and no bindings yet: no feature stores
-      # files on disk in this release. The API verifies every volume before it listens and is the only service
+      # Filesystem object storage (issue #346). One volume, `primary`, and one feature bound to it: photo
+      # thumbnails (issue #362). The API verifies every volume before it listens and is the only service
       # that initialises one; the worker below mounts the SAME volumes at the SAME paths with the SAME
       # FileStorage__* variables — a divergence is a defect, and Odyssey.Worker.Tests compares the two blocks.
       # Adding a volume on another disk, rebinding a feature, backups: docs/deployment.md → File storage.
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
+      FileStorage__Bindings__PhotoThumbnails: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
       - files_primary:/var/odyssey/files/primary
@@ -195,9 +196,11 @@ services:
       # generation is off in WorkerHost, so the API stays the only writer.
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
       # The API's file volumes, read-write (issue #346 A3.2): the maintenance job erases released files and
-      # sweeps the disk. Identical to the api service's FileStorage__* block. The worker only verifies a volume —
-      # it waits for the API to initialise a new one — and a failing verdict stops it, and every job in it.
+      # sweeps the disk, and the thumbnail job writes photo thumbnails. Identical to the api service's FileStorage__*
+      # block. The worker only verifies a volume — it waits for the API to initialise a new one — and a failing
+      # verdict holds the jobs that use the store; weather and exchange-rate sync keep running.
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
+      FileStorage__Bindings__PhotoThumbnails: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
       - files_primary:/var/odyssey/files/primary
@@ -209,8 +212,13 @@ services:
     cap_drop:
       - ALL
     read_only: true
+    # The thumbnail decoder's bounds (issue #362 §6, §11): 1 GiB covers the measured worst case (≈ 350 MB for a
+    # 60 MP PNG, ≈ 964 MiB on paper) plus the other jobs; /tmp is ImageMagick's temporary path and counts against
+    # the same memory. `restart: unless-stopped` above is what brings the worker back after a bounded-pause stop.
+    mem_limit: 1g
+    pids_limit: 256
     tmpfs:
-      - /tmp
+      - /tmp:size=64m
     depends_on:
       migrations:
         condition: service_completed_successfully

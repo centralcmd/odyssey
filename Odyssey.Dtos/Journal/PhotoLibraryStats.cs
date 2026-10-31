@@ -18,6 +18,18 @@ public sealed record PhotoLibraryStats
 
     /// <summary>Active-photo count per Person contact id (people with no active photos are omitted).</summary>
     public IReadOnlyList<PhotoCountByKey> PersonCounts { get; set; } = [];
+
+    /// <summary>Active photos whose thumbnail job is waiting or running (issue #362).</summary>
+    public int ThumbnailsPending { get; set; }
+
+    /// <summary>Active photos whose thumbnail job failed after its retries.</summary>
+    public int ThumbnailsFailed { get; set; }
+
+    /// <summary>Active photos the decoder will not render (type, size, a crash or a hang).</summary>
+    public int ThumbnailsUnsupported { get; set; }
+
+    /// <summary>The thumbnail worker's state; <c>null</c> unless the caller holds <c>system-settings.read</c>.</summary>
+    public ThumbnailWorkerState? ThumbnailWorkerState { get; set; }
 }
 
 /// <summary>A count of active photos associated with a keyed entity (a tag id or a person contact id).</summary>

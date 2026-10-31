@@ -26,6 +26,13 @@ updates:
         # test stack, where a runner change is reviewed against the suites it runs.
         exclude-patterns:
           - "Microsoft.NET.Test.Sdk"
+      # The thumbnail decoder (issue #362 §7.5.8). Security updates for it arrive through repository-level
+      # Dependabot security updates rather than this weekly schedule (GitHub allows one `nuget` entry for `/`),
+      # and are grouped here so a Magick.NET bump and its Core package land together.
+      magick:
+        applies-to: security-updates
+        patterns:
+          - "Magick.NET*"
       swashbuckle:
         patterns:
           - "Swashbuckle.*"

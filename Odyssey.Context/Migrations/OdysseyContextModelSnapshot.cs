@@ -3458,6 +3458,212 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("PhotoTagLinks");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnail", b =>
+                {
+                    b.Property<Guid>("PhotoThumbnailId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("PixelHeight")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PixelWidth")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RecipeVersion")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("Size")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid>("StoredObjectId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("PhotoThumbnailId");
+
+                    b.HasIndex("StoredObjectId")
+                        .IsUnique();
+
+                    b.HasIndex("PhotoId", "Size")
+                        .IsUnique();
+
+                    b.ToTable("PhotoThumbnails", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoThumbnails_PixelsPositive", "`PixelWidth` > 0 AND `PixelHeight` > 0");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnails_SizeRange", "`Size` IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailBucket", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("CurrentBucket")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosWritten")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PhotoThumbnailBuckets", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoThumbnailBuckets_CurrentBucketPositive", "`CurrentBucket` >= 1");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailBuckets_PhotosWrittenRange", "`PhotosWritten` BETWEEN 0 AND 10000");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailBuckets_Singleton", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            CurrentBucket = 1,
+                            PhotosWritten = 0,
+                            UpdatedAtUtc = new DateTime(2026, 10, 31, 0, 0, 0, 0, DateTimeKind.Utc)
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailIncident", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    MySqlPropertyBuilderExtensions.UseMySqlIdentityColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("OccurredAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("WorkerName")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredAtUtc");
+
+                    b.ToTable("PhotoThumbnailIncidents", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoThumbnailIncidents_KindRange", "`Kind` IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailJobEntry", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("AttemptedRecipeVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("FailureCode")
+                        .HasMaxLength(32)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("Generation")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastClaimedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("LeaseExpiries")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Priority")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<long?>("ReclaimIncidentId")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("ReclaimedRunId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<bool>("RerunRequested")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PhotoId");
+
+                    b.HasIndex("State", "AttemptedRecipeVersion");
+
+                    b.HasIndex("State", "Priority", "NextAttemptAtUtc");
+
+                    b.ToTable("PhotoThumbnailJobs", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_AttemptsNonNegative", "`Attempts` >= 0");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseExpiriesNonNegative", "`LeaseExpiries` >= 0");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseWhenRunning", "`State` <> 1 OR `LeaseUntilUtc` IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_PriorityRange", "`Priority` IN (0, 1)");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_RunOnlyWhenRunning", "`State` = 1 OR (`RunId` IS NULL AND `RerunRequested` = 0)");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_StateRange", "`State` IN (0, 1, 2, 3, 4)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailWorkerHeartbeat", b =>
+                {
+                    b.Property<string>("WorkerName")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("WorkerName");
+
+                    b.HasIndex("UpdatedAtUtc");
+
+                    b.ToTable("PhotoThumbnailWorkerHeartbeats", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoThumbnailWorkerHeartbeats_StateRange", "`State` IN (0, 1, 2, 3, 4)");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.Property", b =>
                 {
                     b.Property<Guid>("PropertyId")
@@ -6159,6 +6365,30 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Photo");
 
                     b.Navigation("PhotoTag");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnail", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("StoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailJobEntry", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.PhotoThumbnailJobEntry", "PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.Property", b =>

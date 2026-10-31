@@ -135,16 +135,21 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
     [Fact]
     public void Every_key_to_stored_objects_belongs_to_one_feature_and_is_restrict()
     {
+        // Production: one feature, photo thumbnails (issue #362), and exactly its key.
         using var production = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-prod").Options);
-        Assert.Empty(ReferenceViolations(production.Model, new StorageFeatureCatalogue([])));
-        Assert.Empty(KeysTo(production.Model));
+        var productionCatalogue = new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature]);
+        Assert.Equal(nameof(PhotoThumbnail), Assert.Single(KeysTo(production.Model)).DeclaringEntityType.ClrType.Name);
+        Assert.Empty(ReferenceViolations(production.Model, productionCatalogue));
 
         using var test = new TestStorageContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-test").Options);
-        Assert.Equal(3, KeysTo(test.Model).Count);
-        Assert.Empty(ReferenceViolations(test.Model, new StorageFeatureCatalogue(TestStorageFeatures.All)));
+        var testCatalogue = new StorageFeatureCatalogue([.. TestStorageFeatures.All, Journal.Thumbnails.PhotoThumbnailStorage.Feature]);
+        Assert.Equal(4, KeysTo(test.Model).Count);
+        Assert.Empty(ReferenceViolations(test.Model, testCatalogue));
 
         // And it bites: drop a feature from the catalogue and its key is reported.
-        Assert.Single(ReferenceViolations(test.Model, new StorageFeatureCatalogue([TestStorageFeatures.Files, TestStorageFeatures.Dated])));
+        Assert.Single(ReferenceViolations(test.Model, new StorageFeatureCatalogue(
+            [TestStorageFeatures.Files, TestStorageFeatures.Dated, Journal.Thumbnails.PhotoThumbnailStorage.Feature])));
+        Assert.Single(ReferenceViolations(production.Model, new StorageFeatureCatalogue([])));
     }
 
     internal static IReadOnlyList<IForeignKey> KeysTo(IModel model) =>

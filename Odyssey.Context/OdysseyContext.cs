@@ -479,6 +479,24 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<FileStorageWorkerVerdict> FileStorageWorkerVerdicts => Set<FileStorageWorkerVerdict>();
 
     /// <summary>
+    /// Photo thumbnails (issue #362): the renditions, the durable job queue, the bucket counter, the breaker's
+    /// incidents and the workers' heartbeats. Derived data, out of scope for every export.
+    /// </summary>
+    public DbSet<PhotoThumbnail> PhotoThumbnails => Set<PhotoThumbnail>();
+
+    /// <inheritdoc cref="PhotoThumbnails" />
+    public DbSet<PhotoThumbnailJobEntry> PhotoThumbnailJobs => Set<PhotoThumbnailJobEntry>();
+
+    /// <inheritdoc cref="PhotoThumbnails" />
+    public DbSet<PhotoThumbnailBucket> PhotoThumbnailBuckets => Set<PhotoThumbnailBucket>();
+
+    /// <inheritdoc cref="PhotoThumbnails" />
+    public DbSet<PhotoThumbnailIncident> PhotoThumbnailIncidents => Set<PhotoThumbnailIncident>();
+
+    /// <inheritdoc cref="PhotoThumbnails" />
+    public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
+
+    /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from
     /// <see cref="SystemSettings"/>: every enumeration of that one projects onto the read DTO, so
     /// ciphertext sharing the table would ride along on the wire unless somebody remembered a filter.
