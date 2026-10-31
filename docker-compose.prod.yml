@@ -128,11 +128,15 @@ services:
       #
       # Its durability now rests on the dataprotection_keys volume the base file mounts AS WELL AS
       # the database backup. Back up both together; see docs/deployment.md.
+      #
+      # No FileStorage__* and no file-volume mount here (issue #346): the base file sets both, on api AND worker,
+      # beside each other, so the path and the mount cannot drift apart — and the two services cannot either. A
+      # second volume on another disk goes in your own override, on both services; see docs/deployment.md.
     # Internal only — reached via the client's nginx /api/ proxy, never published to the host.
     ports: !reset []
     # Runtime hardening: non-root .NET app (UID 1654) that needs no caps. Root filesystem is
-    # read-only; /tmp is a tmpfs and DataProtection keys live on the writable named volume the
-    # base file mounts.
+    # read-only; /tmp is a tmpfs, and DataProtection keys and the file volumes live on the writable
+    # named volumes the base file mounts.
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -152,7 +156,8 @@ services:
       # drift apart. That mount makes this the second container able to decrypt the stored credentials;
       # see docs/deployment.md before changing either.
     # Runtime hardening: non-root .NET app (UID 1654) that needs no caps and no port. The root filesystem
-    # is read-only and so is the key-ring mount; /tmp is a tmpfs.
+    # is read-only and so is the key-ring mount; /tmp is a tmpfs. The file volumes (base file) are its only
+    # writable data paths.
     security_opt:
       - no-new-privileges:true
     cap_drop:

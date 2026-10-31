@@ -149,6 +149,7 @@ public static class RolePermissions
         SystemSettingsRead,
         SystemSettingsUpdate,
         SystemSettingsSecurityUpdate,
+        FileStorageRead,
     ];
 
     public static readonly string[] AdminClaims =

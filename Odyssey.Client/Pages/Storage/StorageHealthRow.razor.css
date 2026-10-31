@@ -1,0 +1,32 @@
+/* A Storage health tile row (Odyssey Design System · ui_kits/web/admin.css, `.sth-row`). */
+.sth-row {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+.sth-row .material-icons { font-size: var(--icon-sm); flex: none; margin-top: 1px; }
+.sth-row-label { flex: none; }
+.sth-row-value {
+    margin-left: auto;
+    min-width: 0;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    color: var(--mud-palette-text-primary);
+    font-weight: var(--fw-medium);
+    font-variant-numeric: tabular-nums;
+}
+.sth-row-sub { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-weight: var(--fw-regular); color: var(--mud-palette-text-secondary); }
+.sth-row-value ::deep .sth-feat .mono { font-size: 0.95em; }
+
+/* A state as coloured text on the plain tile surface, so amber is --pending-text (--warning-text is for text
+   on an amber tint). */
+/* A tone inside a Sub fragment carries the caller's scope, hence the ::deep twin. */
+.sth-tone, .sth-row-sub ::deep .sth-tone { font-weight: var(--fw-medium); }
+.sth-tone.ok, .sth-row-sub ::deep .sth-tone.ok { color: var(--finance-income); }
+.sth-tone.warning, .sth-row-sub ::deep .sth-tone.warning { color: var(--pending-text); }
+.sth-tone.error, .sth-row-sub ::deep .sth-tone.error { color: var(--finance-expense); }

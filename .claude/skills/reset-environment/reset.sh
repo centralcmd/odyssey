@@ -78,6 +78,27 @@ echo "    using credentials from: $CRED_SRC (user '$DBUSER', database '$DB_NAME'
 echo "==> Wiping database '$DB_NAME'"
 mariadb_client "$DBUSER" "$DBPASS" -e "DROP DATABASE IF EXISTS \`$DB_NAME\`; CREATE DATABASE \`$DB_NAME\`;"
 
+# File volumes (issue #346). A reset database no longer knows the files on them, and the API refuses to start on
+# a volume whose files belong to a database that no longer exists (UnknownMarker / UnrecognisedContent). Empty
+# every volume — markers included — and KEEP the roots, which the API never creates (check C5): on the next start
+# it initialises each one afresh.
+echo "==> Emptying the file volumes"
+ASPIRE_FILES="$REPO_ROOT/.aspire/files"
+if [ -d "$ASPIRE_FILES" ]; then
+  for root in "$ASPIRE_FILES"/*/; do
+    [ -d "$root" ] || continue
+    find "$root" -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +
+    echo "    emptied Aspire volume $(basename "$root")"
+  done
+fi
+# Only THIS checkout's Compose project: the default project name is the checkout directory's name.
+PROJECT="$(printf '%s' "${COMPOSE_PROJECT_NAME:-$(basename "$REPO_ROOT")}" | tr '[:upper:]' '[:lower:]')"
+for volume in $(docker volume ls -q 2>/dev/null); do
+  case "$volume" in "${PROJECT}_files_"*) ;; *) continue ;; esac
+  docker run --rm -v "$volume:/v" "$MARIADB_IMAGE" sh -c 'find /v -mindepth 1 -maxdepth 1 -exec rm -rf -- {} +' >/dev/null
+  echo "    emptied Compose volume $volume"
+done
+
 echo "==> Re-applying migrations and reseeding demo data"
 CONN="server=$DB_HOST;port=$DB_PORT;database=$DB_NAME;user=$DBUSER;password=$DBPASS;"
 ASPNETCORE_ENVIRONMENT="${ASPNETCORE_ENVIRONMENT:-Development}" \
@@ -92,4 +113,5 @@ SELECT CONCAT('  users          = ', COUNT(*)) FROM \`$DB_NAME\`.AspNetUsers;
 SELECT CONCAT('  exchange_rates = ', COUNT(*)) FROM \`$DB_NAME\`.ExchangeRates;
 SELECT CONCAT('  transactions   = ', COUNT(*)) FROM \`$DB_NAME\`.Transactions;"
 
-echo "==> Reset complete. (Running API/client need no restart — data is read live from the DB.)"
+echo "==> Reset complete. Restart the api and worker so they re-initialise the emptied file volumes;"
+echo "    the client needs no restart — data is read live from the DB."

@@ -159,8 +159,15 @@ services:
       # RateLimiting__IdentityEmail__PermitLimit is deliberately NOT raised: no E2E test touches the
       # two mail-sending routes, and that limit is the one whose cost is outbound mail, not CPU.
       RateLimiting__Identity__PermitLimit: ${IDENTITY_RATE_LIMIT:-300}
+      # Filesystem object storage (issue #346). One volume, `primary`, and no bindings yet: no feature stores
+      # files on disk in this release. The API verifies every volume before it listens and is the only service
+      # that initialises one; the worker below mounts the SAME volumes at the SAME paths with the SAME
+      # FileStorage__* variables — a divergence is a defect, and Odyssey.Worker.Tests compares the two blocks.
+      # Adding a volume on another disk, rebinding a feature, backups: docs/deployment.md → File storage.
+      FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
+      - files_primary:/var/odyssey/files/primary
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5188:8080"
@@ -187,10 +194,15 @@ services:
       # credential, a deliberate trade-off (docs/deployment.md). It never writes a key: automatic key
       # generation is off in WorkerHost, so the API stays the only writer.
       DataProtection__KeysPath: /var/odyssey/dataprotection-keys
+      # The API's file volumes, read-write (issue #346 A3.2): the maintenance job erases released files and
+      # sweeps the disk. Identical to the api service's FileStorage__* block. The worker only verifies a volume —
+      # it waits for the API to initialise a new one — and a failing verdict stops it, and every job in it.
+      FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
+      - files_primary:/var/odyssey/files/primary
     # The same hardening as docker-compose.prod.yml, since the worker needs none of what it removes: a
-    # non-root app with no port, no capabilities and nothing to write outside /tmp. Keeping dev identical
+    # non-root app with no port, no capabilities and nothing to write outside /tmp and its file volumes. Keeping dev identical
     # means a job that starts needing more fails here first, not in production.
     security_opt:
       - no-new-privileges:true
@@ -225,3 +237,8 @@ volumes:
   # issue #348): those two containers, and only those, can decrypt what is stored under it. The
   # migrations job protects nothing and still does not mount it.
   dataprotection_keys:
+  # The `primary` file volume (issue #346), mounted read-write into api and worker ONLY. A file volume holds
+  # users' files under their original names: back it up with the database, dump first and volume second, and
+  # note that `docker compose down -v` destroys it — after which the API refuses to start with VolumeLost if the
+  # database says it held files. Docker names it <project>_files_primary (odyssey_files_primary by default).
+  files_primary:

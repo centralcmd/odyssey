@@ -17,7 +17,7 @@ namespace Odyssey.Context.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.21")
+                .HasAnnotation("ProductVersion", "9.0.22")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -2520,6 +2520,132 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("FileMetadata");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.FileStorageMaintenanceLease", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid?>("HolderId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("LastCompletedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FileStorageMaintenanceLeases", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileStorageMaintenanceLeases_Singleton", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            Version = new Guid("3c8f0d4e-5a8b-4f6e-9a51-2b7d1e0c9f34")
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageOrphanSighting", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FirstSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("LastSeenPass")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<Guid>("VolumeId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VolumeId", "RelativePath")
+                        .IsUnique();
+
+                    b.ToTable("FileStorageOrphanSightings");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageVolume", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("InitializedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("LastPassOrphanCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("LastSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("QuarantinedFileCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReconciliationCursor")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<DateTime?>("ReconciliationHaltedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ReconciliationPass")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("FileStorageVolumes");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageWorkerVerdict", b =>
+                {
+                    b.Property<Guid>("WorkerId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FailedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FailedCheck")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("LastReportedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("WorkerId");
+
+                    b.HasIndex("LastReportedAtUtc");
+
+                    b.ToTable("FileStorageWorkerVerdicts");
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.Property<Guid>("JournalEntryId")
@@ -3651,6 +3777,78 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("SystemSettingSecrets");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.StoredObject", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("DeleteImmediately")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("DeleteRequestedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("FeatureKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("IntegrityFaultAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastVerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("RelativePath")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<string>("Sha256Hash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("State")
+                        .IsConcurrencyToken()
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid>("VolumeId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("State", "CreatedAtUtc");
+
+                    b.HasIndex("State", "DeleteRequestedAtUtc");
+
+                    b.HasIndex("State", "LastVerifiedAtUtc");
+
+                    b.HasIndex("VolumeId", "IntegrityFaultAtUtc");
+
+                    b.HasIndex("VolumeId", "RelativePath")
+                        .IsUnique();
+
+                    b.HasIndex("VolumeId", "FeatureKey", "State", "SizeBytes");
+
+                    b.ToTable("StoredObjects", t =>
+                        {
+                            t.HasCheckConstraint("CK_StoredObjects_DeleteRequestedWhenPendingDelete", "`State` <> 2 OR `DeleteRequestedAtUtc` IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_StoredObjects_HashUnlessPending", "`State` = 0 OR `Sha256Hash` IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_StoredObjects_SizeNonNegative", "`SizeBytes` >= 0");
+
+                            t.HasCheckConstraint("CK_StoredObjects_StateRange", "`State` IN (0, 1, 2)");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.SystemSetting", b =>
                 {
                     b.Property<string>("Key")
@@ -4097,6 +4295,12 @@ namespace Odyssey.Context.Migrations
                         new
                         {
                             Key = "ExchangeRateSyncIntervalHours",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "24"
+                        },
+                        new
+                        {
+                            Key = "FileStorageDeletionGraceHours",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "24"
                         });
@@ -5668,6 +5872,15 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("FileBlob");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.FileStorageOrphanSighting", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileStorageVolume", null)
+                        .WithMany()
+                        .HasForeignKey("VolumeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
@@ -6056,6 +6269,15 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Calendar");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.StoredObject", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileStorageVolume", null)
+                        .WithMany()
+                        .HasForeignKey("VolumeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.TaxStatement", b =>

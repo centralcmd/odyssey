@@ -1,0 +1,36 @@
+@*
+    One icon · label · value row of a Storage health tile (BreakdownTile's anatomy): the value right-aligned
+    and tabular, an optional secondary line under it.
+*@
+<div class="sth-row">
+    <span class="material-icons" aria-hidden="true">@Icon</span>
+    <span class="sth-row-label">@Label</span>
+    <span class="sth-row-value">
+        @if (Tone is null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <span class="@($"sth-tone {Tone}")">@ChildContent</span>
+        }
+        @if (Sub is not null)
+        {
+            <span class="sth-row-sub">@Sub</span>
+        }
+    </span>
+</div>
+
+@code {
+    /// <summary>A Material Icons ligature.</summary>
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Sub { get; set; }
+
+    /// <summary><c>ok</c>, <c>warning</c> or <c>error</c>: colours the value. The word carries the meaning alone.</summary>
+    [Parameter] public string? Tone { get; set; }
+}

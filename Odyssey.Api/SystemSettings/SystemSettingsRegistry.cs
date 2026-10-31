@@ -911,6 +911,24 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.ExchangeRateSyncIntervalHours = v,
             Advise = SettingAdvisories.SyncIntervalBelowPublication,
         },
+
+        // ── Filesystem object storage (issue #346 §3.9) ──────────────────────────────────────────
+        //
+        // The SECURITY claim, so AuditChanges is true and every change writes an audit line: the grace
+        // is the retention period for deleted personal data. No cache key — the worker's maintenance job
+        // reads it uncached once per tick, through IntSettingResolver, and maps the outcome itself.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.FileStorageDeletionGraceHours,
+            Min = SystemSettingsBounds.FileStorageDeletionGraceHoursMin,
+            Max = SystemSettingsBounds.FileStorageDeletionGraceHoursMax,
+            FieldName = nameof(SystemSettingsUpdate.FileStorageDeletionGraceHours),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.FileStorageDeletionGraceHours),
+            Read = r => r.FileStorageDeletionGraceHours,
+            Write = (dto, v) => dto.FileStorageDeletionGraceHours = v,
+            Advise = SettingAdvisories.DeletionGraceOutsideBackupWindow,
+        },
     ];
 
     /// <summary>Descriptors by <see cref="SystemSettingDescriptor.Key"/>.</summary>

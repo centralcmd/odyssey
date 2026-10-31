@@ -194,6 +194,23 @@ it tried. `DemoDataSeeder` sets `EmailClientBaseUrl` for the Development and Tes
 skips a row whose `UpdatedBy` is non-null — ownership, never a value comparison, which cannot tell
 "never touched" from "deliberately set back to the default".
 
+### File storage (issue #346)
+
+| Reference | On delete |
+|---|---|
+| `StoredObject.VolumeId` → `FileStorageVolume` | `RESTRICT` — a volume holding objects cannot be removed |
+| `FileStorageOrphanSighting.VolumeId` → `FileStorageVolume` | `CASCADE` — bookkeeping about the volume |
+| any consumer's `StoredObjectId` → `StoredObject` (none in this release) | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease` |
+
+`StoredObjects.State` is a concurrency token and is guarded by four CHECKs; `(VolumeId, RelativePath)` is
+unique under the database's case- and accent-insensitive collation, on purpose. `FileStorageMaintenanceLeases`
+holds exactly one row (`CK_FileStorageMaintenanceLeases_Singleton`), seeded by `HasData`.
+`FileStorageWorkerVerdicts` holds one row per worker process whose storage check is failing (a check name only,
+never a path), keyed by an id the process draws at start, so replicas never overwrite each other's verdict; a
+row not refreshed within 30 minutes is ignored and swept. Volume rows are never
+seeded: the API's startup verifier writes them. `StoredObjects.RelativePath` and the sightings carry users' file
+names, so neither is logged or exported.
+
 ### One database
 
 Because this is one model with keys throughout, its halves **cannot be pointed at different

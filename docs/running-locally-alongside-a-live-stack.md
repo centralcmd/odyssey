@@ -27,6 +27,11 @@ the same way.
 > **Do not "fix" this by tearing down the other stack.** In particular, never run
 > `docker compose down -v` or delete the `mariadb-data` / `mariadb_data` volume unless the
 > stack's owner explicitly asks — that permanently wipes their database and seeded/test data.
+>
+> The same goes for the file volumes (issue #346): Compose's `<project>_files_primary` volume and
+> Aspire's `.aspire/files/primary/` folder belong to that stack's database. Wiping one without the
+> other makes its API refuse to start (`VolumeLost` or `UnknownMarker`). A Compose stack started under
+> a different project name (`-p`) gets its own `files_primary` volume and needs nothing extra.
 
 ## Recommended: run Compose with a remapped MariaDB port
 

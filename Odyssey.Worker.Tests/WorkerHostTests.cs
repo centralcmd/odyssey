@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
@@ -55,6 +56,98 @@ public sealed class WorkerHostTests : IDisposable
         Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<ExchangeRateSyncJob>);
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>());
+    }
+
+    /// <summary>A3-3: the file store's maintenance job is hosted here, on the shared registration.</summary>
+    [Fact]
+    public void The_graph_resolves_and_hosts_the_file_storage_maintenance_job()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<FileStorageMaintenanceJob>);
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<FileStorageSweeper>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IObjectStore>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<FileStorageVerifier>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Microsoft.EntityFrameworkCore.IDbContextFactory<Odyssey.Context.OdysseyContext>>());
+    }
+
+    /// <summary>
+    /// The maintenance job verifies the volumes itself, so a failing verdict holds that job alone; the host verifies
+    /// nothing before it runs, which used to stop weather and exchange-rate sync along with it (A3.2 as amended).
+    /// </summary>
+    [Fact]
+    public void File_storage_is_verified_by_its_job_not_by_the_host()
+    {
+        var program = File.ReadAllText(Path.Combine(RepositoryRoot(), "Odyssey.Worker", "Program.cs"));
+        Assert.DoesNotContain("VerifyFileStorage", program, StringComparison.Ordinal);
+
+        using var provider = Build();
+        Assert.NotNull(provider.GetRequiredService<FileStorageWorkerVerification>());
+    }
+
+    /// <summary>
+    /// The isolation the file store's held job relies on, through the registration production uses: each
+    /// <c>AddPeriodicJob</c> is its own hosted service, so a job held inside its run neither delays the host's start
+    /// nor stops another job's runs.
+    /// </summary>
+    [Fact]
+    public async Task A_job_held_in_its_run_holds_no_other_job_in_the_host()
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings { EnvironmentName = "Production" });
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddPeriodicJob<HeldJob>();
+        builder.Services.AddPeriodicJob<CountingJob>();
+        using var host = builder.Build();
+
+        await host.StartAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        var held = host.Services.GetRequiredService<HeldJob>();
+        var counting = host.Services.GetRequiredService<CountingJob>();
+        await held.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        await counting.Ran.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+        await host.StopAsync().WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.True(held.Cancelled);
+    }
+
+    private sealed class HeldJob : Core.Jobs.IPeriodicJob
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public bool Cancelled { get; private set; }
+
+        public string Name => "held";
+
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+
+        public async Task RunOnceAsync(CancellationToken cancellationToken)
+        {
+            Entered.TrySetResult();
+            try
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                Cancelled = true;
+                throw;
+            }
+        }
+    }
+
+    private sealed class CountingJob : Core.Jobs.IPeriodicJob
+    {
+        public TaskCompletionSource Ran { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public string Name => "counting";
+
+        public TimeSpan Interval => TimeSpan.FromHours(1);
+
+        public Task RunOnceAsync(CancellationToken cancellationToken)
+        {
+            Ran.TrySetResult();
+            return Task.CompletedTask;
+        }
     }
 
     [Fact]

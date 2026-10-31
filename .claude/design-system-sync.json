@@ -960,7 +960,9 @@
   "project/ui_kits/web/tax-statements.css": "aa8dc07b750e7b30fdaaee9b4a0b487c6a86fa7c18ebb272b2bcfbf0dc456c38",
   "project/ui_kits/web/tweaks-panel.jsx": "6591467622edc7b2425def3fcf6447556fa698a1d10090583ebb9e782da064b5",
   "project/ui_kits/web/weather-data.js": "00f2a825c157be80a2d8360453f86c7f7fc937439ea9520864403755db3600f9",
-  "project/ui_kits/web/weather.css": "6ff06b27ad5fcf04799f57aca45f2e0ab08debc48a40a9e3514930691c3b4106"
+  "project/ui_kits/web/weather.css": "6ff06b27ad5fcf04799f57aca45f2e0ab08debc48a40a9e3514930691c3b4106",
+  "project/ui_kits/web/StorageHealth.jsx": "dcc41a4fa352e99e0b1593eebc87b3b393021484f4604d1aad7d86ec1a72d8dd",
+  "project/components/StorageHealthPanel/preview.html": "e85a2b1defe1b2b3889371946f9c305ed293b9b747a19a014d4a8b5c79aee374"
  },
  "pending": [
   "index.html",

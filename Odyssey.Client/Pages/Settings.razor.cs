@@ -142,12 +142,13 @@ public partial class Settings
         var user = await Auth.GetUserAsync();
         _hasSecurityUpdate = user.HasPermission(PermissionClaims.SystemSettingsSecurityUpdate);
         _hasCountUpdate = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
+        _canReadStorage = user.HasPermission(PermissionClaims.FileStorageRead);
 
         // Gate the Data export control on the data.export permission alone — the feature is always
         // available to holders of that claim.
         _exportAvailable = user.HasPermission(PermissionClaims.DataExport);
 
-        await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync());
+        await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync(), LoadStorageHealthAsync());
     }
 
     private async Task LoadSettingsAsync()
@@ -344,8 +345,9 @@ public partial class Settings
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
+    /// <param name="Panel">A read-only panel the card opens with, above its fields (the Storage card's health panel).</param>
     internal sealed record SettingSection(
-        string Group, string Icon, IReadOnlyList<SettingItem> Items, RoundTripPair? RoundTrip = null);
+        string Group, string Icon, IReadOnlyList<SettingItem> Items, RoundTripPair? RoundTrip = null, string? Panel = null);
 
     internal static readonly IReadOnlyList<SettingSection> Sections =
     [
@@ -920,7 +922,18 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("fileStorageMaxUploadMegabytes", dto.FileStorageMaxUploadMegabytes),
                 Write: (p, req) => req.FileStorageMaxUploadMegabytes = p.IntRequest("fileStorageMaxUploadMegabytes"),
                 MaxFrom: dto => dto.UploadMegabytesCeiling),
-        ]),
+            // The deletion grace (issue #346 §4.3): the retention period for deleted personal data on the file
+            // volumes, so it takes the security claim and every change is audited. The server's two advisories
+            // (below 24 h, above 72 h) render in the row's Advisory slot.
+            new("fileStorageDeletionGraceHours", "delete_sweep", "Deletion grace period",
+                "How long a deleted file stays on disk before it is erased, so a backup taken just before the delete still matches the disk. Files holding personal data, such as photo thumbnails, are erased at once and ignore this.",
+                SettingClaim.Security, SettingControl.Number,
+                Min: SystemSettingsBounds.FileStorageDeletionGraceHoursMin, Max: SystemSettingsBounds.FileStorageDeletionGraceHoursMax,
+                Field: nameof(SystemSettingsUpdate.FileStorageDeletionGraceHours),
+                Load: (p, dto) => p.SetIntLoaded("fileStorageDeletionGraceHours", dto.FileStorageDeletionGraceHours),
+                Write: (p, req) => req.FileStorageDeletionGraceHours = p.IntRequest("fileStorageDeletionGraceHours"),
+                Unit: "hours"),
+        ], Panel: StorageHealthPanelKey),
         new("Journal limits", Icons.Material.Filled.MenuBook,
         [
             new("journalEntryMaxLinksPerKind", "link", "Max links per journal entry",
@@ -2098,12 +2111,24 @@ public partial class Settings
     {
         get
         {
-            if (_phase != Phase.Ready || !_hasSecurityUpdate)
+            if (_phase != Phase.Ready)
             {
                 return null;
             }
 
             var problems = new List<PageHeaderProblem>();
+
+            // Storage health (issue #346) is gated on file-storage.read, not on a settings write claim: its
+            // fix is never a Save, and an administrator reading the page needs to see erasure has stopped.
+            if (StorageProblem is { } storage)
+            {
+                problems.Add(storage);
+            }
+
+            if (!_hasSecurityUpdate)
+            {
+                return problems.Count > 0 ? problems : null;
+            }
 
             // Mail unconfigured (issue #8 G8), at INFORMATION rather than Error: a deployment that has
             // not configured mail yet is incomplete, not broken, and this rollup's other entries are

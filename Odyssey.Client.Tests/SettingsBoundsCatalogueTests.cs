@@ -46,7 +46,8 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 44 of the catalogue's 52 numeric rows (43 of 51 before issue
+    /// Scope, stated rather than implied: 45 of the catalogue's 53 numeric rows (44 of 52 before issue
+    /// #346 added the file-storage deletion grace, 43 of 51 before issue
     /// #349 added the exchange-rate sync interval, 41 of 49 before issue #348 added the weather
     /// refresh interval and tracked cap, 40 of 48 before issue
     /// #167 added the per-property smart-tag cap, 45 of 53 before the
@@ -62,7 +63,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(44, NumericRows.Count);
+        Assert.Equal(45, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
