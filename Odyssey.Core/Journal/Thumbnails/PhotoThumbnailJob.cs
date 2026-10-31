@@ -421,27 +421,17 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// </summary>
     internal async Task<bool> BreakerTrippedAsync(CancellationToken cancellationToken)
     {
-        var now = Now;
-        var since = now - (2 * PhotoThumbnailTiming.BreakerWindow);
         await using var scope = scopes.CreateAsyncScope();
-        var recent = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().PhotoThumbnailIncidents
-            .Where(i => i.OccurredAtUtc > since
-                && (i.Kind == PhotoThumbnailIncidentKind.Crash || i.Kind == PhotoThumbnailIncidentKind.Timeout))
-            .Select(i => i.OccurredAtUtc)
-            .ToListAsync(cancellationToken);
-
-        foreach (var latest in recent.Where(at => now < at + PhotoThumbnailTiming.BreakerWindow))
+        var now = Now;
+        if (await PhotoThumbnailBreaker.ResumesAtAsync(scope.ServiceProvider.GetRequiredService<OdysseyContext>(), now, cancellationToken) is null)
         {
-            if (recent.Count(at => at <= latest && at > latest - PhotoThumbnailTiming.BreakerWindow) >= PhotoThumbnailTiming.BreakerThreshold)
-            {
-                logger.LogCritical(
-                    "Thumbnail creation is paused: {Threshold} or more decoder crashes or hangs within an hour. It resumes an hour after the latest.",
-                    PhotoThumbnailTiming.BreakerThreshold);
-                return true;
-            }
+            return false;
         }
 
-        return false;
+        logger.LogCritical(
+            "Thumbnail creation is paused: {Threshold} or more decoder crashes or hangs within an hour. It resumes an hour after the latest.",
+            PhotoThumbnailTiming.BreakerThreshold);
+        return true;
     }
 
     private bool DecodeStillAbandoned()

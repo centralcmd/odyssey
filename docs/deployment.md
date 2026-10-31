@@ -1148,9 +1148,9 @@ user's id.
 ## File storage (filesystem volumes)
 
 Issue #346 adds a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of
-as `LONGBLOB` rows in MariaDB. It is the foundation photo thumbnails (issue #362) build on. **In this
-release no feature stores files in it yet**: existing uploads stay in the database, and the shipped
-`primary` volume holds only its marker. What changes for an operator is that two containers now mount a
+as `LONGBLOB` rows in MariaDB. It is the foundation photo thumbnails (issue #362) build on, and photo
+thumbnails are its **first and only feature** — see [Photo thumbnails](#photo-thumbnails). Existing uploads
+stay in the database. What changes for an operator is that two containers now mount a
 third named volume, verify it at startup, and refuse to start on a misconfiguration.
 
 ### Release note
@@ -1210,7 +1210,7 @@ defect (`Odyssey.Worker.Tests` compares the two compose blocks).
 | Variable | Meaning |
 |---|---|
 | `FileStorage__Volumes__<name>__RootPath` | An absolute path to an **existing** directory. `<name>` is letters and digits, starting with a letter (`primary`, `fastssd`). |
-| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). No feature exists in this release, so the shipped files bind nothing. |
+| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind `PhotoThumbnails`, the one feature, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
 
 Several features may share one volume: each writes under its own folder. Volume names and feature keys
 are matched case-insensitively. Inside a volume, files sit under their sanitized original names
@@ -1406,6 +1406,115 @@ any state** (the panel's per-feature counts show when).
 The deployment model is **one API container**. Worker replicas are safe: the maintenance lease and the
 features' own row claims coordinate them. Each process keeps its own *Degraded* flag; the panel shows the
 API's view, and a volume degraded only in the worker shows in the worker's log.
+
+## Photo thumbnails
+
+Issue #362 renders two WebP thumbnails per photo — **Small (200 px)** and **Medium (400 px)** on the long
+side — in **`Odyssey.Worker`**, and stores them on the `PhotoThumbnails` file-storage feature. Grids,
+album covers, pickers and the journal gallery show them (issue #365); the viewer, "Open original", the
+lightbox and the edit banner always show the original. Thumbnails are **derived data**: every one can be
+regenerated from its photo, so none is exported, and a volume holding only thumbnails may be left out of
+backups.
+
+### Release note
+
+- **One migration**, `AddPhotoThumbnails`: five tables (`PhotoThumbnails`, `PhotoThumbnailJobs`,
+  `PhotoThumbnailBuckets`, `PhotoThumbnailIncidents`, `PhotoThumbnailWorkerHeartbeats`) and the one bucket
+  row. Schema only, additive; `Down()` drops all of it (the files are then unreferenced and the hourly
+  sweep erases them).
+- **The backfill runs on its own.** The worker queues every existing photo at background priority, 500
+  per pass, behind new uploads. Until a photo's two thumbnails exist the client shows the original, exactly
+  as before.
+- **A new native dependency, ImageMagick (Magick.NET), in the worker image only.** The API never loads it;
+  `Odyssey.Worker.Tests` fails if any other project references it.
+- **Worker container limits**, in both compose files: `mem_limit: 1g`, `pids_limit: 256`, and `/tmp` as a
+  64 MB `tmpfs`. ImageMagick itself is capped at 320 MB of pixel cache with disk spill off.
+- **`FileStorage__Bindings__PhotoThumbnails=primary`** on `api` and `worker`. Keep the two identical.
+- **No new claim and no new setting.** Thumbnails are served by `GET /api/photos/{id}/thumbnail` under
+  `photos.read`. The worker state on `GET /api/photos/stats` is filled only for `system-settings.read`.
+- **Renaming a photo's file re-renders its thumbnails**, because the stored files carry the name. A rename
+  that collides with a running render twice in a row returns `409 rename-busy` with `Retry-After: 1`.
+
+### What the worker does, and what the panel says
+
+The job runs every 15 seconds in each worker replica. Replicas coordinate through the job rows (a claim,
+a lease renewed every 60 s, a 15-minute deadline), never through process state. Each worker writes a
+heartbeat; **System settings → Storage health → Background work → Thumbnail worker** shows the most severe
+state among the workers heard from in the last 3 minutes.
+
+| State | Meaning | What to do |
+|---|---|---|
+| Running | Normal. The row's second line counts photos waiting, failed and unsupported. | Nothing. A few *unsupported* are normal (a format or size the decoder refuses). |
+| Paused | One decode hung past the 30 s watchdog. Native code cannot be cancelled, so claiming stops until that thread ends. After 10 minutes the worker exits (code 70) so the container restarts, at most once an hour per worker. | Nothing, if the worker runs under Compose: `restart: unless-stopped` brings it back. **Outside Compose, the process supervisor must restart an exited worker**, or it stays down. |
+| Stopped after crashes | 3 crashes or hangs within an hour trip the breaker. Claiming resumes an hour after the latest; the panel names the time. Other jobs keep running. | Read the worker log for the incident lines. Repeated trips across days point at one bad file or a decoder regression: patch (below). |
+| Decoder self-test failed | At startup the worker checks the ImageMagick policy refuses MVG, SVG and `text:@file` and still decodes JPEG, PNG, GIF and WebP. Any surprise disables thumbnails in that process. | Redeploy from a correct image. Never edit `policy.xml` in a running container. |
+| Waiting for storage | The `PhotoThumbnails` volume is degraded or missing in the worker. | Same as a degraded volume (above). Claiming resumes within one tick of the volume answering. |
+| Not running | No worker has written a heartbeat in 3 minutes. Thumbnails, file clean-up, weather and exchange-rate sync are all stopped. | Start the worker container. Photos keep showing their originals. |
+
+### Patch policy for ImageMagick
+
+ImageMagick and libwebp parse untrusted bytes in native code, so they are patched on a clock:
+
+- **Critical or actively exploited ImageMagick or libwebp CVEs: within 72 hours.** CVE-2023-4863 (libwebp) is
+  the precedent; WebP is both an input and the output here.
+- **Other Magick.NET security releases: within 14 days.**
+- **The clock starts** at the first public upstream advisory — an ImageMagick or libwebp GHSA or CVE, or a
+  Magick.NET security release note, whichever comes first. NuGet advisory data can lag those, so it is not
+  the start.
+- **The repository owner watches** `dlemstra/Magick.NET` releases and security advisories, and receives the
+  scheduled audit's issues.
+
+What enforces it:
+
+- **`NuGetAudit`** (`NuGetAuditMode=all`, `NuGetAuditLevel=moderate`) in `Directory.Build.props`, solution-wide,
+  test projects included; `TreatWarningsAsErrors` makes an advisory fail the restore. A triaged advisory is
+  silenced with `NuGetAuditSuppress` and a dated comment, never `<NoWarn>`.
+- **`.github/workflows/vulnerability-audit.yml`**, daily: it parses `dotnet list package --vulnerable
+  --include-transitive --format json` (which exits 0 regardless), fails on High or above, and opens or updates
+  an issue labelled `security`.
+- **Dependabot security updates must be switched on for the repository** (GitHub → Settings → Code security →
+  Dependabot security updates). `.github/dependabot.yml` groups `Magick.NET*` under `applies-to:
+  security-updates`, but that grouping does nothing until the switch is on.
+
+There is **no runtime stop switch** (no feature toggles, per CLAUDE.md). For an exploited CVE before a patch
+exists, the emergency step is to roll back to the previous image (below).
+
+**Residual risk, accepted:**
+
+- A memory-safety bug in one of the four allowed coders would run in the **worker**, as `app`. The worker
+  serves no port and is not internet-facing, but it holds the database credentials and reads the API's Data
+  Protection key ring, so it can decrypt every stored credential (see *Two containers hold the key ring*). The
+  API never loads ImageMagick.
+- GIF, animated PNG and animated WebP reach ImageMagick **unstripped**, and an uploader chooses whether a PNG or
+  WebP is animated, so ImageMagick's GIF, PNG and WebP metadata parsing is reachable by any `photos.create`
+  holder. Only still JPEG is fully covered by the pre-strip.
+- A decoder-only container without the key ring is deferred. It is the next mitigation if a coder CVE proves
+  exploitable.
+
+### Platform
+
+The worker image is **linux-musl-x64** (Alpine). Magick.NET ships no `linux-musl-arm64` native library, so
+an **arm64 Alpine worker is unsupported**: the self-test fails and the state reads *Decoder self-test
+failed*. The Phase 0 spike measured two limits that differ from the specification: the list-length limit is
+64 (1 refuses every image, and an animated WebP decodes all its frames), and the pixel-area limit is in
+pixels.
+
+### Emergency rollback
+
+- Roll back only to the **immediately previous release**, and only if every migration between it and this one
+  is additive. `AddPhotoThumbnails` is.
+- **Roll back the `api` and `worker` images together**; they are released as one version.
+- **Case R1 — the previous image ships the file store (#346) but not thumbnails.** Remove
+  `FileStorage__Bindings__PhotoThumbnails` from **both** services' environments **before** starting them;
+  otherwise check B2 (`UnknownFeature`) refuses to start both. The thumbnail rows and files then belong to an
+  unknown feature, which B4 leaves untouched: not served, not deleted.
+- **Case R2 — the previous image predates the file store.** The `FileStorage__*` variables are ignored, the new
+  tables are unused, and the files stay on disk.
+- **Erasure while rolled back.** A photo delete cascades its `PhotoThumbnails` rows, but the files — named after
+  the photo — stay on disk until the patched image returns and the unreferenced sweep erases them. Record the
+  extended window in the incident record.
+- **Returning.** Restore the binding and deploy the patched image. The client falls back to originals
+  throughout.
 
 ## Security checklist
 

@@ -81,7 +81,7 @@
         <div class="pl-grid">
             @foreach (var p in _albumPhotos)
             {
-                <OdsPhotoTile Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                <OdsPhotoTile @key="p.PhotoId" Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
                               OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
                               OnToggleFavourite="_ => Task.CompletedTask" />
             }
@@ -125,7 +125,9 @@ else
                 {
                     <div class="pl-albcard pl-albcard-manage">
                         <div class="pl-albcover n1">
-                            <div class="pl-albcover-cell" style="@CoverStyle(a)"></div>
+                            <div class="pl-albcover-cell">
+                                <OdsPhotoImage Source="Cover(a)" Alt="" Fill="true" />
+                            </div>
                         </div>
                         <div class="pl-albmeta">
                             <span class="pl-albname">@a.Name</span>

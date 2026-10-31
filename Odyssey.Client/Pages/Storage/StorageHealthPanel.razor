@@ -13,8 +13,8 @@
       • nothing here can leak a path — the API returns none (#346 §7.3);
       • times are absolute, with the relative distance in brackets.
 
-    The design's thumbnail-worker row is absent: it reads GET /api/photos/stats, which arrives with
-    photo thumbnails (issue #362). Until then the Background work tile carries file clean-up alone.
+    The Background work tile's thumbnail-worker row reads GET /api/photos/stats (issue #362); without
+    system-settings.read (or photos.read) the host passes no Worker and the row is left out.
 
     Headings sit one level below the section card's h3: h4 for the panel, h5 for each tile.
 *@
@@ -78,7 +78,7 @@
                 <div class="sth-note-body"><strong>Couldn’t refresh storage health.</strong> Showing what was read at @ExchangeRateSyncTime.Absolute(shownAt).</div>
             </div>
         }
-        var issues = StorageHealth.Issues(Volumes, Time.GetUtcNow());
+        var issues = StorageHealth.Issues(Volumes, Time.GetUtcNow(), Worker);
         if (issues.Count > 0)
         {
             <ul class="sth-notes" aria-label="Needs attention">
@@ -112,6 +112,14 @@
                                       Sub="@CleanupLine(Volumes[0])">
                         @CleanupWord(Volumes[0])
                     </StorageHealthRow>
+                    @if (Worker is { ThumbnailWorkerState: { } workerState })
+                    {
+                        var (word, tone) = StorageHealth.WorkerState(workerState);
+                        <StorageHealthRow Icon="photo_size_select_large" Label="Thumbnail worker" Tone="@tone"
+                                          Sub="@(b => b.AddContent(0, StorageHealth.WorkerQueue(Worker)))">
+                            @word
+                        </StorageHealthRow>
+                    }
                 </ChildContent>
             </StorageHealthTile>
         </div>
@@ -120,6 +128,9 @@
 
 @code {
     [Parameter] public IReadOnlyList<FileStorageVolumeStatus>? Volumes { get; set; }
+
+    /// <summary>The photo stats, for the thumbnail worker row and its notes; null leaves both out.</summary>
+    [Parameter] public Odyssey.Dtos.Journal.PhotoLibraryStats? Worker { get; set; }
 
     [Parameter] public StorageHealthPhase Phase { get; set; } = StorageHealthPhase.Ready;
 

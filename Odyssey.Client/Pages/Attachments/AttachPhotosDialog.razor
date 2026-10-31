@@ -65,9 +65,7 @@
                                         disabled="@added" aria-pressed="@(picked ? "true" : "false")"
                                         aria-label="@TileLabel(photo, added)" title="@LabelOf(photo)"
                                         @onclick="@(() => TogglePick(photo))">
-                                    @* An <img>, not a background: there is no thumbnail endpoint, so a
-                                       96-photo page must at least not fetch what is scrolled out of view. *@
-                                    <img class="apd-img" src="@Files.ContentUrl(photo.FileId)" alt="" loading="lazy" />
+                                    <OdsPhotoImage Source="ImageOf(photo)" Alt="" Fill="true" Class="apd-img" />
                                     <span class="apd-check" aria-hidden="true">
                                         <OdsMIcon Name="@(added ? "link" : picked ? "check_box" : "check_box_outline_blank")" Size="18" />
                                     </span>

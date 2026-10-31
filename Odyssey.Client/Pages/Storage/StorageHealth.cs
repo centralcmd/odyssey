@@ -1,6 +1,7 @@
 using System.Globalization;
 using Odyssey.Client.Pages.Finance.ExchangeRateSync;
 using Odyssey.Dtos.Application;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Storage;
 
@@ -35,9 +36,36 @@ public static class StorageHealth
 
     public static string? FeatureLabel(string featureKey) => FeatureLabels.GetValueOrDefault(featureKey);
 
+    /// <summary>A thumbnail worker state as its word and tone (issue #362 §3.6).</summary>
+    public static (string Word, string Tone) WorkerState(ThumbnailWorkerState state) => state switch
+    {
+        ThumbnailWorkerState.Running => ("Running", "ok"),
+        ThumbnailWorkerState.Paused => ("Paused", "warning"),
+        ThumbnailWorkerState.Tripped => ("Stopped after crashes", "error"),
+        ThumbnailWorkerState.PolicyFailed => ("Decoder self-test failed", "error"),
+        ThumbnailWorkerState.StorageUnavailable => ("Waiting for storage", "error"),
+        ThumbnailWorkerState.NotRunning => ("Not running", "error"),
+        _ => (state.ToString(), "warning"),
+    };
+
+    /// <summary>"212 waiting · 3 failed · 14 unsupported", or "nothing waiting".</summary>
+    public static string WorkerQueue(PhotoLibraryStats worker)
+    {
+        string?[] parts =
+        [
+            worker.ThumbnailsPending > 0 ? $"{Count(worker.ThumbnailsPending)} waiting" : null,
+            worker.ThumbnailsFailed > 0 ? $"{Count(worker.ThumbnailsFailed)} failed" : null,
+            worker.ThumbnailsUnsupported > 0 ? $"{Count(worker.ThumbnailsUnsupported)} unsupported" : null,
+        ];
+        var queue = string.Join(" · ", parts.Where(p => p is not null));
+        return queue.Length == 0 ? "nothing waiting" : queue;
+    }
+
     /// <summary>The conditions needing attention, most severe first.</summary>
+    /// <param name="worker">The photo stats, read only for the thumbnail worker's state; null leaves it out.</param>
     /// <param name="now">For the relative distance in the stopped clean-up note.</param>
-    public static IReadOnlyList<StorageIssue> Issues(IReadOnlyList<FileStorageVolumeStatus>? volumes, DateTimeOffset now)
+    public static IReadOnlyList<StorageIssue> Issues(
+        IReadOnlyList<FileStorageVolumeStatus>? volumes, DateTimeOffset now, PhotoLibraryStats? worker = null)
     {
         var issues = new List<StorageIssue>();
         if (volumes is null)
@@ -45,12 +73,14 @@ public static class StorageHealth
             return issues;
         }
 
+        AddWorkerIssue(issues, worker);
+
         foreach (var v in volumes)
         {
             if (v.State == FileStorageVolumeState.Degraded)
             {
                 issues.Add(new($"deg-{v.Name}", StorageIssueSeverity.Error, $"Volume {v.Name} is degraded.",
-                    "Files on it can’t be read or written, so uploads and downloads that use it fail with “try again later”. "
+                    "Files on it can’t be read or written, so uploads, downloads and thumbnails that use it fail with “try again later”. "
                     + "It is re-checked every 15 seconds and clears on its own once the disk answers. Check the disk and its mount."));
             }
 
@@ -123,6 +153,36 @@ public static class StorageHealth
         }
 
         return [.. issues.OrderBy(i => i.Severity)];
+    }
+
+    private static void AddWorkerIssue(List<StorageIssue> issues, PhotoLibraryStats? worker)
+    {
+        switch (worker?.ThumbnailWorkerState)
+        {
+            case ThumbnailWorkerState.NotRunning:
+                issues.Add(new("w-down", StorageIssueSeverity.Error, "The background worker isn’t reporting.",
+                    "Thumbnails, file clean-up, weather and exchange-rate sync are all stopped. Photos still show their originals. Start the worker container."));
+                break;
+            case ThumbnailWorkerState.Tripped:
+                var resumes = worker.ThumbnailWorkerResumesAtUtc is { } at
+                    ? $"It resumes on its own at {ExchangeRateSyncTime.Absolute(at)}."
+                    : "It resumes on its own an hour after the latest crash.";
+                issues.Add(new("w-trip", StorageIssueSeverity.Error, "Thumbnail creation stopped after repeated crashes.",
+                    $"{resumes} Photos still show their originals, and the rest of the worker keeps running."));
+                break;
+            case ThumbnailWorkerState.PolicyFailed:
+                issues.Add(new("w-policy", StorageIssueSeverity.Error, "The image decoder failed its safety self-test.",
+                    "No thumbnails are made until the worker is redeployed from a correct image. Photos still show their originals."));
+                break;
+            case ThumbnailWorkerState.StorageUnavailable:
+                issues.Add(new("w-store", StorageIssueSeverity.Error, "Thumbnails can’t be written.",
+                    "Their volume is unavailable. They resume once the volume is available again."));
+                break;
+            case ThumbnailWorkerState.Paused:
+                issues.Add(new("w-pause", StorageIssueSeverity.Info, "Thumbnail creation is paused.",
+                    "One image took too long to decode. The worker restarts itself to clear it, at most once an hour."));
+                break;
+        }
     }
 
     /// <summary>

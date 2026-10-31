@@ -75,7 +75,8 @@ public class AttachPhotosDialogTests
         bool uploadOnly = false,
         IReadOnlyList<Guid>? attached = null,
         bool createLibraryPhoto = true,
-        Func<string?, Task<ApiResult<PagedResult<PhotoSummary>>>>? list = null)
+        Func<string?, Task<ApiResult<PagedResult<PhotoSummary>>>>? list = null,
+        bool filesRead = false)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -86,6 +87,8 @@ public class AttachPhotosDialogTests
         ctx.Services.AddSingleton(files.Object);
 
         var photos = new Mock<IPhotosApiClient>();
+        photos.Setup(p => p.ThumbnailUrl(It.IsAny<Guid>(), It.IsAny<ThumbnailSize>()))
+            .Returns((Guid id, ThumbnailSize size) => $"http://localhost/api/photos/{id}/thumbnail?size={size}");
         photos.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
                 It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(),
                 It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
@@ -102,6 +105,7 @@ public class AttachPhotosDialogTests
         var claims = new List<string>();
         if (canUpload) claims.AddRange([PermissionClaims.FilesCreate, PermissionClaims.PhotosCreate]);
         if (canBrowse) claims.Add(PermissionClaims.PhotosRead);
+        if (filesRead) claims.Add(PermissionClaims.FilesRead);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(claims));
 
         var submitted = new List<AttachPhotoItem>();
@@ -115,6 +119,55 @@ public class AttachPhotosDialogTests
             cut.WaitForState(() => cut.FindAll("button.apd-tile").Count == 3);
 
         return new Harness(cut, photos, files, submitted, ctx.Services.GetRequiredService<ISnackbar>());
+    }
+
+    // ── Thumbnails (issue #365 §3.2 surface 6) ─────────────────────────────────
+
+    private static PhotoSummary Ready(PhotoSummary p) => p with { ThumbnailsReady = true };
+
+    [Fact]
+    public void A_ready_photo_shows_its_small_thumbnail_and_a_not_ready_one_its_original()
+    {
+        var h = Render(filesRead: true, list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+
+        Assert.Equal($"http://localhost/api/photos/{Fjord.PhotoId}/thumbnail?size=Small", h.Tile(Fjord).QuerySelector("img")!.GetAttribute("src"));
+        Assert.Equal($"http://localhost/api/files/{Cabin.FileId}/content", h.Tile(Cabin).QuerySelector("img")!.GetAttribute("src"));
+    }
+
+    [Fact]
+    public void A_failed_thumbnail_falls_back_to_the_original_silently_and_the_tile_keeps_its_name_and_state()
+    {
+        var h = Render(filesRead: true, list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+        var label = h.Tile(Fjord).GetAttribute("aria-label");
+
+        h.Tile(Fjord).QuerySelector("img")!.TriggerEvent("onerror", EventArgs.Empty);
+
+        Assert.Equal($"http://localhost/api/files/{Fjord.FileId}/content", h.Tile(Fjord).QuerySelector("img")!.GetAttribute("src"));
+        Assert.Equal(label, h.Tile(Fjord).GetAttribute("aria-label"));
+        Assert.Equal("false", h.Tile(Fjord).GetAttribute("aria-pressed"));
+        Assert.Empty(h.Toasts);
+    }
+
+    [Fact]
+    public void Without_files_read_a_not_ready_photo_shows_the_placeholder_and_requests_no_original()
+    {
+        var h = Render(list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+
+        Assert.NotNull(h.Tile(Fjord).QuerySelector("img"));
+        Assert.Null(h.Tile(Cabin).QuerySelector("img"));
+        Assert.NotNull(h.Tile(Cabin).QuerySelector(".odc-photoimg-ph"));
+        Assert.DoesNotContain("/api/files/", h.Host.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_pick_carries_its_thumbnail_readiness_to_the_host()
+    {
+        var h = Render(list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+
+        h.Tile(Fjord).Click();
+        h.SubmitButton.Click();
+
+        Assert.True(Assert.Single(h.Submitted).ThumbnailsReady);
     }
 
     [Fact]

@@ -4,11 +4,13 @@
     <button> (tab-order, Enter/Space, focus ring for free) with an accessible name
     (the photo's filename) that opens the full-res file via the host's OnOpen handler.
 
-    v1 has no EXIF / caption / thumbnail pipeline: a tile renders the image at native
-    fidelity with loading="lazy" and a capped display size, or — when no renderable
-    Src is supplied (no files.read access, dangling reference, or not yet loaded) — a
-    striped placeholder carrying a monospace label. The filename is never shown as a
-    visible caption: it lives in the tile's accessible name and title tooltip only.
+    Thumbnail-aware (issues #362 / #365): each tile is an OdsPhotoImage over the photo's
+    Image — the 200 px Small thumbnail, then the original, then the striped placeholder,
+    once each per Image value, silently. A runtime failure keeps the <img> with img-failed
+    and reveals the .odc-photogrid-ph-fallback sibling. With NEITHER source the tile shows
+    the placeholder directly; when Unavailable it reads "no access" and the tile's accessible
+    name says so (WCAG 1.3.1). The lightbox always opens the original. The filename is never
+    shown as a visible caption: it lives in the tile's accessible name and title tooltip only.
     The count is announced as text in the heading, never colour/icon alone.
 *@
 
@@ -31,25 +33,23 @@
         <ul class="odc-photogrid-list" style="grid-template-columns: repeat(auto-fill, minmax(@(MinTile)px, 1fr));">
             @foreach (var p in Photos)
             {
-                <li class="odc-photogrid-item">
+                var noAccess = p.Image.IsEmpty && p.Unavailable;
+                <li class="odc-photogrid-item" @key="p.Id">
                     <button type="button" class="odc-photogrid-tile"
-                            aria-label="@($"Open photo {p.Name}")"
+                            aria-label="@($"Open photo {p.Name}{(noAccess ? " (no access)" : "")}")"
                             title="@(string.IsNullOrEmpty(p.Name) ? null : p.Name)"
                             @onclick="@(() => OnOpen.InvokeAsync(p))">
-                        @if (!string.IsNullOrEmpty(p.Src))
+                        @if (!p.Image.IsEmpty)
                         {
-                            @* If the streamed image fails (e.g. cross-origin under a split-port dev stack),
-                               fall back to the placeholder instead of a broken-image icon. *@
-                            <img class="odc-photogrid-img" src="@p.Src" alt="@p.Name" loading="lazy"
-                                 onerror="this.classList.add('img-failed')" />
-                            <span class="odc-photogrid-ph odc-photogrid-ph-fallback" aria-hidden="true">
-                                <span class="odc-photogrid-ph-label mono">photo</span>
-                            </span>
+                            <OdsPhotoImage Source="p.Image" Alt="@p.Name" Class="odc-photogrid-img"
+                                           PlaceholderClass="odc-photogrid-ph odc-photogrid-ph-fallback">
+                                <Placeholder><span class="odc-photogrid-ph-label mono">photo</span></Placeholder>
+                            </OdsPhotoImage>
                         }
                         else
                         {
                             <span class="odc-photogrid-ph" aria-hidden="true">
-                                <span class="odc-photogrid-ph-label mono">@(p.Unavailable ? "no access" : "photo")</span>
+                                <span class="odc-photogrid-ph-label mono">@(noAccess ? "no access" : "photo")</span>
                             </span>
                         }
                     </button>
@@ -60,9 +60,11 @@
 </section>
 
 @code {
-    /// <summary>A gallery photo: a stable id, a display filename, and an optional renderable image URL.
-    /// <c>Unavailable</c> marks a photo whose file can't be resolved (no files.read / since-deleted).</summary>
-    public sealed record Photo(string Id, string Name, string? Src, bool Unavailable = false);
+    /// <summary>A gallery photo: a stable id, a display filename and its image sources (thumbnail, original).
+    /// <c>Unavailable</c> marks a photo the caller can see neither source of; it changes the placeholder's
+    /// label and the tile's accessible name only when both sources are absent. The host's lightbox opens the
+    /// original, never the thumbnail.</summary>
+    public sealed record Photo(string Id, string Name, PhotoImageSource Image, bool Unavailable = false);
 
     [Parameter, EditorRequired] public IReadOnlyList<Photo> Photos { get; set; } = [];
 

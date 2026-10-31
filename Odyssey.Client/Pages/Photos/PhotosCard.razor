@@ -93,7 +93,7 @@
         <div class="pl-grid">
             @foreach (var p in _photos)
             {
-                <OdsPhotoTile Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
+                <OdsPhotoTile @key="p.PhotoId" Photo="TileVm(p)" Selectable="_selecting" Selected="_selected.Contains(p.PhotoId)"
                               OnOpen="OpenDetail" OnToggleSelect="ToggleSelect" OnStartSelect="StartSelectWith"
                               OnToggleFavourite="ToggleFavouriteAsync" />
             }

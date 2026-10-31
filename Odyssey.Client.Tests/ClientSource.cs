@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace Odyssey.Client.Tests;
 
 /// <summary>
@@ -51,6 +53,18 @@ internal static class ClientSource
         var relative = Path.GetRelativePath(Root, file);
         return relative.StartsWith("obj" + Path.DirectorySeparatorChar, StringComparison.Ordinal)
             || relative.StartsWith("bin" + Path.DirectorySeparatorChar, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The source with its comments removed. Documentation legitimately DISCUSSES the very things the source-lints
+    /// look for, and a test a doc comment can fail is a test that gets the docs deleted. Shared by the avatar and
+    /// photo-thumbnail surface lints (issue #365 AC 12).
+    /// </summary>
+    public static string WithoutComments(string source)
+    {
+        source = Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
+        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
+        return Regex.Replace(source, @"^\s*///?.*$", string.Empty, RegexOptions.Multiline);
     }
 
     /// <summary>The 1-based line number containing <paramref name="index"/> in <paramref name="text"/>.</summary>

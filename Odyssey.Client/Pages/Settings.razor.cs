@@ -143,6 +143,7 @@ public partial class Settings
         _hasSecurityUpdate = user.HasPermission(PermissionClaims.SystemSettingsSecurityUpdate);
         _hasCountUpdate = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canReadStorage = user.HasPermission(PermissionClaims.FileStorageRead);
+        _canReadPhotoStats = user.HasPermission(PermissionClaims.PhotosRead) && user.HasPermission(PermissionClaims.SystemSettingsRead);
 
         // Gate the Data export control on the data.export permission alone — the feature is always
         // available to holders of that claim.

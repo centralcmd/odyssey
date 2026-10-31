@@ -10,6 +10,7 @@
 @inject Odyssey.ApiClient.Resources.IWeatherApiClient Weather
 @inject Odyssey.ApiClient.Resources.IExchangeRateSyncApiClient ExchangeRateSync
 @inject Odyssey.ApiClient.Resources.IFileStorageApiClient FileStorage
+@inject Odyssey.ApiClient.Resources.IPhotosApiClient PhotosApi
 @inject TimeProvider Time
 @inject Odyssey.ApiClient.Resources.IDataExportApiClient DataExport
 @inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
@@ -244,6 +245,7 @@
                         {
                             @* Read-only, above the two settings it explains (issue #346). No claim, no panel. *@
                             <Odyssey.Client.Pages.Storage.StorageHealthPanel Volumes="_storageVolumes"
+                                                                            Worker="_thumbnailWorker"
                                                                             Phase="_storagePhase"
                                                                             Refreshing="_storageRefreshing"
                                                                             CheckedAt="_storageCheckedAt"

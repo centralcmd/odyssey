@@ -76,6 +76,7 @@ public sealed class PhotosController : ControllerBase
         if (!User.HasPermission(PermissionClaims.SystemSettingsRead))
         {
             stats.ThumbnailWorkerState = null;
+            stats.ThumbnailWorkerResumesAtUtc = null;
         }
 
         return Ok(stats);

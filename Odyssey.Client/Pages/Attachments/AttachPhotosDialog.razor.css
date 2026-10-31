@@ -19,7 +19,7 @@
     background-color: var(--mud-palette-background-gray);
 }
 
-.apd-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.apd-tile ::deep .apd-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 
 .apd-tile:disabled { cursor: not-allowed; opacity: 0.45; }
 .apd-tile.on { outline: var(--focus-ring-width) solid var(--mud-palette-primary); outline-offset: var(--focus-ring-offset); }

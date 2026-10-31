@@ -16,9 +16,10 @@ namespace Odyssey.Client.Pages.Attachments;
 /// <summary>
 /// One photo the dialog hands back — the DS <c>onSubmit</c> item. <see cref="PhotoId"/> is null for an
 /// upload made without <see cref="AttachPhotosDialog.CreateLibraryPhoto"/>: only the stored file exists
-/// until the host's own write links it.
+/// until the host's own write links it. <see cref="ThumbnailsReady"/> travels with the pick so the host's own strip
+/// can show the thumbnail (issue #365 B2); a fresh upload's is always false.
 /// </summary>
-public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid? PhotoId, Guid FileId, string Name);
+public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid? PhotoId, Guid FileId, string Name, bool ThumbnailsReady = false);
 
 public partial class AttachPhotosDialog
 {
@@ -27,6 +28,11 @@ public partial class AttachPhotosDialog
 
     /// <summary>The page the library tab reads: the newest photos, narrowed by the search.</summary>
     internal const int LibraryPageSize = 96;
+
+    private PhotoImageAccess _imageAccess = new(false, false);
+
+    private PhotoImageSource ImageOf(PhotoSummary photo) =>
+        PhotoImageSources.For(photo.PhotoId, photo.FileId, photo.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
 
     private static readonly IReadOnlyList<OdsSegmentedOption> Tabs =
     [
@@ -131,6 +137,7 @@ public partial class AttachPhotosDialog
         _canUpload = user.HasPermission(PermissionClaims.FilesCreate)
                      && (!CreateLibraryPhoto || user.HasPermission(PermissionClaims.PhotosCreate));
         _canBrowse = !UploadOnly && user.HasPermission(PermissionClaims.PhotosRead);
+        _imageAccess = PhotoImageAccess.From(user);
         if (!_canUpload && _canBrowse)
             _tab = LibraryTab;
 
@@ -241,7 +248,7 @@ public partial class AttachPhotosDialog
                 return;
             }
             await FinishAsync([.. _picked.Select(p =>
-                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, p.FileId, LabelOf(p)))]);
+                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, p.FileId, LabelOf(p), p.ThumbnailsReady))]);
             return;
         }
 

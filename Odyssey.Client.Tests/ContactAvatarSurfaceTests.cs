@@ -35,18 +35,7 @@ public class ContactAvatarSurfaceTests
     private static string CropDialog(string name) =>
         File.ReadAllText(Path.Combine(ClientSource.Root, "Components", name));
 
-    /// <summary>
-    /// The source with its comments removed. Documentation legitimately DISCUSSES the very things these
-    /// lints look for — <c>role="dialog"</c>, <c>&lt;input type="range"&gt;</c>, a megabyte figure — and
-    /// a test a doc comment can fail is a test that gets the docs deleted. Same reason
-    /// <see cref="SettingFieldTests"/> strips them.
-    /// </summary>
-    private static string WithoutComments(string source)
-    {
-        source = Regex.Replace(source, @"@\*.*?\*@", string.Empty, RegexOptions.Singleline);
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        return Regex.Replace(source, @"^\s*///?.*$", string.Empty, RegexOptions.Multiline);
-    }
+    private static string WithoutComments(string source) => ClientSource.WithoutComments(source);
 
     // ── OdsAvatar renders an <img>, not MudImage (AC 33) ──────────────────────────────────────────
 

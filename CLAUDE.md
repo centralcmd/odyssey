@@ -380,7 +380,8 @@ Five rules around it are easy to get backwards:
   never deleted**.
 - **Metadata removal is an allow-list walk, and the guarantee is a property of the OUTPUT.** The walk
   (`ImageContainerWalk`) produces the stripped bytes, the dimensions and the animation determination in
-  one pass, so no raster library and no full EXIF parser sit on the untrusted-input path —
+  one pass, so no raster library and no full EXIF parser sit on the avatar and profile-image path (photo
+  thumbnails are the one deliberate exception, and only in the worker — see **Photo thumbnails** below) —
   `MetadataExtractor` appears only in **tests**, where it is the independent oracle that makes
   strip-then-verify meaningful. The runtime re-validation is a second pass of the same walk and on its
   own is only a self-check; **keep both**. Every `APPn` is dropped, `APP0` included: JFIF carries a
@@ -636,9 +637,10 @@ next one going ahead, runs never overlapping. Four rules:
 **Files on disk go through the filesystem object store, `Odyssey.Core/FileStorage/`** (issue #346).
 Deploy-time volumes (`FileStorage:Volumes:<name>:RootPath`) hold the bytes; `StoredObjects` rows say what is
 where; code-declared *storage features* (`StorageFeature`, registered in DI, assembled into
-`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **The
-production catalogue is empty in this release** — the three `TestShared/FileStorage` features exercise it —
-and photo thumbnails (#362) are the first real one. Existing uploads stay in `FileBlob`. Rules a consumer
+`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **Photo
+thumbnails (#362) are the production catalogue's one feature**, so every host with volumes must bind
+`PhotoThumbnails` (check B1); the three `TestShared/FileStorage` features exercise the store's own tests.
+Existing uploads stay in `FileBlob`. Rules a consumer
 inherits, and that are easy to get backwards:
 
 - **A `Committed` row always has its file.** `IObjectStore.PutAsync` reserves a `Pending` row through its own
@@ -676,6 +678,36 @@ inherits, and that are easy to get backwards:
 
 Operator documentation — volumes, bindings, every startup check's remedy, backup order, quarantine and the
 breaker — is `docs/deployment.md` → *File storage*.
+
+**Photo thumbnails are rendered in `Odyssey.Worker` with ImageMagick, and nowhere else** (issues #362, #365).
+`PhotoThumbnailJob` (`Odyssey.Core/Journal/Thumbnails/`) drives a durable queue (`PhotoThumbnailJobs`, one row
+per photo) and stores a Small (200 px) and a Medium (400 px) WebP per photo through the `PhotoThumbnails`
+storage feature; `GET /api/photos/{id}/thumbnail?size=` serves them under `photos.read`. Rules that are easy
+to get backwards:
+
+- **Magick.NET is referenced by `Odyssey.Worker` alone, and only `Odyssey.Worker/Thumbnails/` may use it.**
+  The renderer sits behind `IPhotoThumbnailRenderer` in Core; `ThumbnailSourceLintTests` fails on any other
+  reference. Never move decoding into the API. Its patch clock (72 h / 14 days) is in `docs/deployment.md`.
+- **`MagickRuntime.EnsureConfigured()` runs before anything else touches ImageMagick.** Reading even
+  `MagickNET.Version` first initialises the default policy and the coder allow-list is then silently
+  ignored. The startup self-test (`MagickDecoderSelfTest`) is what proves the policy is live.
+- **The format is pinned from the stored content type, never sniffed**, and the pre-strip walk runs before
+  native code: a still JPEG/PNG/WebP reaches ImageMagick already stripped and size-gated. GIF and animated
+  input go in unstripped — an accepted residual, documented.
+- **`Generation` is the job row's only concurrency token, and every write bumps it — a rename included.** A
+  worker acts only on a `Running` row carrying its own `RunId`. A file rename re-renders through
+  `IFileRenameObserver`, staged in the rename's own save; three consecutive token conflicts are a
+  `409 rename-busy` with `Retry-After`, and nothing is committed.
+- **Every replica runs the job; state is per process.** The breaker (`PhotoThumbnailBreaker`, 3 crashes or
+  hangs an hour) counts `PhotoThumbnailIncidents` rows, which carry no photo id so a delete cannot reset it.
+  A hung decode cannot be cancelled: the worker pauses, then exits (code 70) for its container to restart —
+  which only a supervisor such as Compose does.
+- **`ThumbnailsReady` is "both renditions exist", and on the journal DTO it is also "the caller holds
+  `photos.read"`** (`JournalEntriesController.ApplyThumbnailRule`). The client decides sources through one rule,
+  `PhotoImageSources.For`, and draws every photo below viewer size through `OdsPhotoImage` (thumbnail → original
+  → placeholder). The viewer, lightbox and edit banner always show the original; `PhotoThumbnailSurfaceTests`
+  keeps a surface from building a `ContentUrl` or a CSS `background-image`.
+- **The five thumbnail tables are derived data**, out of scope on `DataExportTableCoverageTests`.
 
 ## Key Details
 

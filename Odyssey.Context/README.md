@@ -8,7 +8,9 @@
   `ModelConfiguration/CurrencyConfiguration.cs`, so the initial migration carries them and nothing needs
   to seed them at runtime).
 - **Journal** — entries, tasks, their tags and attachments.
-- **Photos** — the photo library, its tags, people and albums.
+- **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
+  job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
+  derived data and are left out of the data export.
 - **Calendars** — calendars, events and recurrence patterns.
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
@@ -200,7 +202,8 @@ skips a row whose `UpdatedBy` is non-null — ownership, never a value compariso
 |---|---|
 | `StoredObject.VolumeId` → `FileStorageVolume` | `RESTRICT` — a volume holding objects cannot be removed |
 | `FileStorageOrphanSighting.VolumeId` → `FileStorageVolume` | `CASCADE` — bookkeeping about the volume |
-| any consumer's `StoredObjectId` → `StoredObject` (none in this release) | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease` |
+| any consumer's `StoredObjectId` → `StoredObject` — today `PhotoThumbnail.StoredObjectId` (issue #362), unique | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease` |
+| `PhotoThumbnail.PhotoId`, `PhotoThumbnailJobEntry.PhotoId` → `Photo` | `CASCADE` — derived data dies with its photo; the files are released by the service, or swept as unreferenced |
 
 `StoredObjects.State` is a concurrency token and is guarded by four CHECKs; `(VolumeId, RelativePath)` is
 unique under the database's case- and accent-insensitive collation, on purpose. `FileStorageMaintenanceLeases`

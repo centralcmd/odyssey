@@ -2,6 +2,8 @@
 @using Odyssey.Dtos.Finance
 @implements IAsyncDisposable
 @inject IFilesApiClient Files
+@inject IPhotosApiClient Photos
+@inject AuthenticationStateProvider Auth
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @*
@@ -56,8 +58,8 @@
             <ul class="jef-photos">
                 @foreach (var p in Draft.Photos)
                 {
-                    <li class="jef-photo" title="@p.Name" @key="p.FileId"
-                        style="background-image: url('@Files.ContentUrl(p.FileId)');">
+                    <li class="jef-photo" title="@p.Name" @key="p.FileId">
+                        <OdsPhotoImage Source="ImageOf(p)" Alt="" Fill="true" />
                         <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.FileId)"
                                 aria-label="@($"Remove {p.Name}")"
                                 @onclick="@(() => RemovePhoto(p))">
@@ -131,6 +133,13 @@
 
     private bool _pickingFiles;
     private bool _pickingPhotos;
+    private PhotoImageAccess _imageAccess = new(false, false);
+
+    protected override async Task OnInitializedAsync() =>
+        _imageAccess = PhotoImageAccess.From(await Auth.GetUserAsync());
+
+    private PhotoImageSource ImageOf(JournalDraftPhoto p) =>
+        PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
 
     // Per-instance, so two forms on one page never share a DOM id.
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
@@ -167,7 +176,7 @@
         var added = 0;
         foreach (var item in items.Where(i => Draft.Photos.All(p => p.FileId != i.FileId)))
         {
-            Draft.Photos.Add(new JournalDraftPhoto(item.FileId, item.Name));
+            Draft.Photos.Add(new JournalDraftPhoto(item.FileId, item.Name, item.PhotoId, item.ThumbnailsReady));
             added++;
         }
         if (added > 0)

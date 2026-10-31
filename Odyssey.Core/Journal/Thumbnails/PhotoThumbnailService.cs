@@ -9,7 +9,41 @@ namespace Odyssey.Core.Journal.Thumbnails;
 public sealed record PhotoThumbnailDescriptor(Guid StoredObjectId, string Sha256Hash);
 
 /// <summary>The thumbnail counts and worker state for <c>GET /api/photos/stats</c> (§4.4).</summary>
-public sealed record PhotoThumbnailStats(int Pending, int Failed, int Unsupported, ThumbnailWorkerState WorkerState);
+public sealed record PhotoThumbnailStats(int Pending, int Failed, int Unsupported, ThumbnailWorkerState WorkerState, DateTime? ResumesAtUtc = null);
+
+/// <summary>
+/// The breaker rule (§3.6), in one place for the job that obeys it and the stats that report it: 3 or more crashes
+/// or hangs within an hour stop claiming until an hour after the latest of them.
+/// </summary>
+public static class PhotoThumbnailBreaker
+{
+    /// <summary>When claiming resumes, or null when the breaker is not tripped at <paramref name="now"/>.</summary>
+    public static async Task<DateTime?> ResumesAtAsync(OdysseyContext context, DateTime now, CancellationToken cancellationToken)
+    {
+        var since = now - (2 * PhotoThumbnailTiming.BreakerWindow);
+        var recent = await context.PhotoThumbnailIncidents
+            .Where(i => i.OccurredAtUtc > since
+                && (i.Kind == PhotoThumbnailIncidentKind.Crash || i.Kind == PhotoThumbnailIncidentKind.Timeout))
+            .Select(i => i.OccurredAtUtc)
+            .ToListAsync(cancellationToken);
+        return ResumesAt(recent, now);
+    }
+
+    public static DateTime? ResumesAt(IReadOnlyCollection<DateTime> incidents, DateTime now)
+    {
+        DateTime? resumes = null;
+        foreach (var latest in incidents.Where(at => now < at + PhotoThumbnailTiming.BreakerWindow))
+        {
+            var cluster = incidents.Count(at => at <= latest && at > latest - PhotoThumbnailTiming.BreakerWindow);
+            if (cluster >= PhotoThumbnailTiming.BreakerThreshold && (resumes is null || latest + PhotoThumbnailTiming.BreakerWindow > resumes))
+            {
+                resumes = latest + PhotoThumbnailTiming.BreakerWindow;
+            }
+        }
+
+        return resumes;
+    }
+}
 
 /// <summary>
 /// The thumbnail side of the photo paths that run in the API (issue #362 §3.3, §3.4, §4.1, §5): enqueue on create,
@@ -164,11 +198,15 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
             .ToListAsync(cancellationToken);
         int Count(params PhotoThumbnailJobState[] states) => counts.Where(c => states.Contains(c.State)).Sum(c => c.Count);
 
+        var state = await GetWorkerStateAsync(cancellationToken);
         return new PhotoThumbnailStats(
             Count(PhotoThumbnailJobState.Pending, PhotoThumbnailJobState.Running),
             Count(PhotoThumbnailJobState.Failed),
             Count(PhotoThumbnailJobState.Unsupported),
-            await GetWorkerStateAsync(cancellationToken));
+            state,
+            state == ThumbnailWorkerState.Tripped
+                ? await PhotoThumbnailBreaker.ResumesAtAsync(context, time.GetUtcNow().UtcDateTime, cancellationToken)
+                : null);
     }
 
     /// <summary>The most severe state among workers heard from in the last 3 minutes, or <c>NotRunning</c> (§3.6).</summary>

@@ -14,6 +14,7 @@ using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Dtos.Journal;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -187,6 +188,74 @@ public class StorageHealthSurfaceTests : IDisposable
     [InlineData(4404019, "4.2 MB")]
     [InlineData(412316860416, "384 GB")]
     public void Bytes_read_in_1024_steps(long bytes, string expected) => Assert.Equal(expected, StorageHealth.Bytes(bytes));
+
+    // ── The thumbnail worker (issue #362) ─────────────────────────────────────────────────────
+
+    private static PhotoLibraryStats Worker(ThumbnailWorkerState state, int pending = 0, int failed = 0, int unsupported = 0) => new()
+    {
+        ThumbnailWorkerState = state,
+        ThumbnailsPending = pending,
+        ThumbnailsFailed = failed,
+        ThumbnailsUnsupported = unsupported,
+    };
+
+    [Theory]
+    [InlineData(ThumbnailWorkerState.NotRunning, "w-down", StorageIssueSeverity.Error)]
+    [InlineData(ThumbnailWorkerState.Tripped, "w-trip", StorageIssueSeverity.Error)]
+    [InlineData(ThumbnailWorkerState.PolicyFailed, "w-policy", StorageIssueSeverity.Error)]
+    [InlineData(ThumbnailWorkerState.StorageUnavailable, "w-store", StorageIssueSeverity.Error)]
+    [InlineData(ThumbnailWorkerState.Paused, "w-pause", StorageIssueSeverity.Info)]
+    public void Each_unhealthy_worker_state_is_one_note(ThumbnailWorkerState state, string id, StorageIssueSeverity severity)
+    {
+        var issue = Assert.Single(StorageHealth.Issues([Volume()], Now, Worker(state)));
+
+        Assert.Equal((id, severity), (issue.Id, issue.Severity));
+    }
+
+    [Fact]
+    public void A_running_worker_or_no_worker_adds_nothing()
+    {
+        Assert.Empty(StorageHealth.Issues([Volume()], Now, Worker(ThumbnailWorkerState.Running, failed: 3)));
+        Assert.Empty(StorageHealth.Issues([Volume()], Now, new PhotoLibraryStats { ThumbnailWorkerState = null }));
+    }
+
+    [Fact]
+    public void A_tripped_worker_says_when_it_resumes_from_the_server()
+    {
+        var stats = Worker(ThumbnailWorkerState.Tripped);
+        stats.ThumbnailWorkerResumesAtUtc = new DateTime(2026, 10, 29, 19, 12, 0, DateTimeKind.Utc);
+
+        var issue = Assert.Single(StorageHealth.Issues([Volume()], Now, stats));
+
+        Assert.StartsWith("It resumes on its own at ", issue.Text, StringComparison.Ordinal);
+        Assert.Contains(Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncTime.Absolute(stats.ThumbnailWorkerResumesAtUtc.Value), issue.Text, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(0, 0, 0, "nothing waiting")]
+    [InlineData(212, 3, 14, "212 waiting · 3 failed · 14 unsupported")]
+    [InlineData(0, 3, 0, "3 failed")]
+    public void The_worker_queue_line_lists_only_non_zero_counts(int pending, int failed, int unsupported, string expected) =>
+        Assert.Equal(expected, StorageHealth.WorkerQueue(Worker(ThumbnailWorkerState.Running, pending, failed, unsupported)));
+
+    [Fact]
+    public async Task The_background_work_tile_shows_the_thumbnail_worker_only_when_given_one()
+    {
+        await using var ctx = NewComponentContext();
+
+        var without = ctx.Render<StorageHealthPanel>(p => p.Add(x => x.Volumes, [Volume()]).Add(x => x.CheckedAt, DateTime.UtcNow));
+        Assert.DoesNotContain("Thumbnail worker", without.Markup, StringComparison.Ordinal);
+
+        var with = ctx.Render<StorageHealthPanel>(p => p
+            .Add(x => x.Volumes, [Volume()])
+            .Add(x => x.Worker, Worker(ThumbnailWorkerState.StorageUnavailable, pending: 48))
+            .Add(x => x.CheckedAt, DateTime.UtcNow));
+        Assert.Contains("Thumbnail worker", with.Markup, StringComparison.Ordinal);
+        Assert.Contains("Waiting for storage", with.Markup, StringComparison.Ordinal);
+        Assert.Contains("48 waiting", with.Markup, StringComparison.Ordinal);
+        Assert.DoesNotContain("Everything is working", with.Markup, StringComparison.Ordinal);
+        Assert.Contains("Thumbnails can’t be written.", with.Markup, StringComparison.Ordinal);
+    }
 
     // ── The panel ───────────────────────────────────────────────────────────────────────────────
 
@@ -544,6 +613,7 @@ public class StorageHealthSurfaceTests : IDisposable
         ctx.Services.AddSingleton(secrets.Object);
         ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
         ctx.Services.AddSingleton(storage.Object);
+        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IPhotosApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);

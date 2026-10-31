@@ -30,6 +30,9 @@ public sealed record PhotoLibraryStats
 
     /// <summary>The thumbnail worker's state; <c>null</c> unless the caller holds <c>system-settings.read</c>.</summary>
     public ThumbnailWorkerState? ThumbnailWorkerState { get; set; }
+
+    /// <summary>When a <c>Tripped</c> worker resumes claiming, UTC; <c>null</c> otherwise, and under the same claim rule.</summary>
+    public DateTime? ThumbnailWorkerResumesAtUtc { get; set; }
 }
 
 /// <summary>A count of active photos associated with a keyed entity (a tag id or a person contact id).</summary>

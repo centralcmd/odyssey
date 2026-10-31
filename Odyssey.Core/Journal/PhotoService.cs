@@ -182,6 +182,7 @@ public class PhotoService
             ThumbnailsUnsupported = thumbnailStats.Unsupported,
             // The controller nulls it for a caller without system-settings.read (§3.6).
             ThumbnailWorkerState = thumbnailStats.WorkerState,
+            ThumbnailWorkerResumesAtUtc = thumbnailStats.ResumesAtUtc,
         };
     }
 

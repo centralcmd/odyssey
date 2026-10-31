@@ -21,6 +21,11 @@ public partial class Settings
     private DateTime? _storageCheckedAt;
     private bool _storageRefreshFailed;
 
+    // The thumbnail worker row (issue #362): photo stats carry the state only for system-settings.read, and the
+    // endpoint itself needs photos.read.
+    private bool _canReadPhotoStats;
+    private Odyssey.Dtos.Journal.PhotoLibraryStats? _thumbnailWorker;
+
     private async Task LoadStorageHealthAsync()
     {
         if (!_canReadStorage)
@@ -28,7 +33,15 @@ public partial class Settings
             return;
         }
 
+        var statsTask = _canReadPhotoStats ? PhotosApi.GetStatsAsync() : null;
         var result = await FileStorage.GetVolumesAsync();
+        if (statsTask is not null)
+        {
+            // A failed stats read drops the row rather than failing the panel.
+            var stats = await statsTask;
+            _thumbnailWorker = stats.IsSuccess ? stats.Value : null;
+        }
+
         if (result.IsSuccess && result.Value is { } volumes)
         {
             _storageVolumes = volumes;
@@ -94,7 +107,7 @@ public partial class Settings
                 return null;
             }
 
-            var issues = StorageHealth.Issues(_storageVolumes, Time.GetUtcNow()).Where(i => i.Severity != StorageIssueSeverity.Info).ToList();
+            var issues = StorageHealth.Issues(_storageVolumes, Time.GetUtcNow(), _thumbnailWorker).Where(i => i.Severity != StorageIssueSeverity.Info).ToList();
             if (issues.Count == 0)
             {
                 return null;

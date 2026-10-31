@@ -65,6 +65,7 @@ public partial class JournalCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadFiles;
+    private PhotoImageAccess _imageAccess = new(false, false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
     private bool _canReadJournalTags;
@@ -160,6 +161,8 @@ public partial class JournalCard
         _canUpdate = user.HasPermission(PermissionClaims.JournalUpdate);
         _canDelete = user.HasPermission(PermissionClaims.JournalDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
+        _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
         // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
         // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
@@ -451,8 +454,11 @@ public partial class JournalCard
         {
             var meta = _canReadFiles ? _fileMeta.GetValueOrDefault(p.FileId) : null;
             var name = meta?.FileName ?? "Photo";
-            var src = meta is not null ? Files.ContentUrl(p.FileId) : null;
-            return new JournalPhotoGallery.Photo(p.FileId.ToString(), name, src, meta is null);
+            // The original still needs resolved metadata, as before; the Small thumbnail does not, so a
+            // photos.read-only caller with a ready thumbnail sees it rather than "no access" (issue #365 B5).
+            var image = PhotoImageSources.For(
+                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+            return new JournalPhotoGallery.Photo(p.FileId.ToString(), name, image, Unavailable: image.IsEmpty);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>

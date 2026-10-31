@@ -48,6 +48,7 @@ public partial class AlbumsPage
 
     private bool _canCreate;
     private bool _canUpdate;
+    private PhotoImageAccess _imageAccess = new(false, false);
 
     private const string PageStateKey = "albums-page";
 
@@ -56,6 +57,7 @@ public partial class AlbumsPage
         var user = await Auth.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.PhotoAlbumsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
+        _imageAccess = PhotoImageAccess.From(user);
         await LoadAsync();
         await PageState.RestoreOrSeedAsync<AlbumsPageState>(PageStateKey, ApplyPageState, BuildPageState);
     }
@@ -221,13 +223,12 @@ public partial class AlbumsPage
     }
 
     private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, Files.ContentUrl(p.FileId), string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
+        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files),
+            string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
             p.Archived is not null, p.Favourited is not null);
 
-    private string CoverStyle(PhotoAlbumSummary a) =>
-        a.CoverFileId is { } f
-            ? $"background: center/cover url('{Files.ContentUrl(f)}');"
-            : "background: var(--mud-palette-surface); display:flex; align-items:center; justify-content:center;";
+    private PhotoImageSource Cover(PhotoAlbumSummary a) =>
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
     private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
