@@ -61,7 +61,7 @@ public sealed class SavedRecordTagRefreshTests
         await cut.InvokeAsync(cut.Instance.OnEntryCreated);
 
         cut.WaitForAssertion(() => Assert.Contains(
-            cut.FindComponents<JournalTagChips>(), c => c.Instance.Names.Contains("Hiking")));
+            cut.FindComponents<JournalTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
     }
 
     [Fact]
@@ -96,6 +96,6 @@ public sealed class SavedRecordTagRefreshTests
         await cut.InvokeAsync(cut.Instance.OnTaskSaved);
 
         cut.WaitForAssertion(() => Assert.Contains(
-            cut.FindComponents<JournalTagChips>(), c => c.Instance.Names.Contains("Hiking")));
+            cut.FindComponents<JournalTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
     }
 }

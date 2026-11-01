@@ -79,7 +79,7 @@ public sealed class PhotoEditTagRefreshTests
         await cut.InvokeAsync(() => tile.OnOpen.InvokeAsync(PhotoId));
 
         dialogs.WaitForAssertion(() => Assert.Contains(
-            dialogs.FindAll(".pl-vchips > *"), e => e.TextContent.Trim() == "Hiking"));
+            dialogs.FindAll(".pl-vchips .odc-chip.tag"), e => e.TextContent.Trim().EndsWith("Hiking")));
     }
 
     [Fact]

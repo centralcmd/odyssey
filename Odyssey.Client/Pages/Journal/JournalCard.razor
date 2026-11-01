@@ -107,7 +107,7 @@
                 <JournalEntryCard Id="@($"je-{e.JournalEntryId}")"
                                   Entry="e"
                                   Contacts="EntryContacts(e)"
-                                  Tags="TagNames(e.TagIds)"
+                                  Tags="TagChips(e.TagIds)"
                                   Photos="GalleryPhotos(e)"
                                   Attachments="@(_attachments.GetValueOrDefault(e.JournalEntryId))"
                                   Actions="BuildActions(e)"
@@ -171,7 +171,7 @@
                        OnToggleFavourite="ToggleFavouritePhotoAsync"
                        OnEdit="OpenEditPhoto" OnToggleArchive="ArchivePhotoAsync" OnDelete="DeletePhotoAsync"
                        CanUpdate="_canUpdatePhotos" CanDelete="_canDeletePhotos"
-                       TagName="PhotoTagName" PersonName="PhotoPersonName" AlbumName="PhotoAlbumName" />
+                       TagName="PhotoTagName" TagIcon="PhotoTagIcon" PersonName="PhotoPersonName" AlbumName="PhotoAlbumName" />
 }
 
 @* Edit dialog stays mounted and toggles via Open (@key resets its state when the target changes). *@

@@ -55,6 +55,7 @@ public partial class JournalCard
     private bool _canRenameFile;
     private bool _photoRefsLoaded;
     private Dictionary<Guid, string> _photoTagNames = [];
+    private Dictionary<Guid, string?> _photoTagIcons = [];
     private Dictionary<Guid, string> _photoAlbumNames = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
@@ -130,8 +131,8 @@ public partial class JournalCard
             })
             .Where(r => (int)r.Count > 0)];
 
-    private IReadOnlyList<string> TagNames(IReadOnlyList<Guid> ids) =>
-        [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Select(t => t!.Name)];
+    private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
+        [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Select(t => new JournalTagChips.Tag(t!.Name, t.Icon))];
 
     // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
     // renders as "Unavailable" rather than leaking the id into the chip row.
@@ -619,6 +620,7 @@ public partial class JournalCard
     }
 
     internal string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
+    internal string? PhotoTagIcon(Guid id) => _photoTagIcons.GetValueOrDefault(id);
     private string PhotoAlbumName(Guid id) => _photoAlbumNames.GetValueOrDefault(id, "—");
     private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
 
@@ -637,6 +639,7 @@ public partial class JournalCard
         if (tagsResult.IsSuccess)
         {
             _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+            _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
         }
 

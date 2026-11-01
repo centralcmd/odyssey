@@ -7,6 +7,7 @@
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
 *@
 @using Odyssey.Dtos
+@using Odyssey.Client.Pages.Journal
 @inject IFilesApiClient Files
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js
@@ -68,11 +69,9 @@
                 {
                     <div class="pl-vgroup">
                         <span class="pl-vgroup-lab">Tags</span>
+                        @* The journal / task footer chip: tag tone, led by the tag's own icon (issue #345). *@
                         <span class="pl-vchips">
-                            @foreach (var t in d.TagIds)
-                            {
-                                <OdsChip Tone="OdsChipTone.Outline">@TagName(t)</OdsChip>
-                            }
+                            <JournalTagChips Tags="@(d.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t))).ToList())" />
                         </span>
                     </div>
                 }
@@ -120,6 +119,8 @@
     [Parameter] public bool CanUpdate { get; set; }
     [Parameter] public bool CanDelete { get; set; }
     [Parameter] public Func<Guid, string> TagName { get; set; } = id => id.ToString();
+    /// <summary>A tag's stored icon key, or <c>null</c> for none — its chip then shows the generic glyph.</summary>
+    [Parameter] public Func<Guid, string?> TagIcon { get; set; } = _ => null;
     [Parameter] public Func<Guid, string> PersonName { get; set; } = id => id.ToString();
     [Parameter] public Func<Guid, string> AlbumName { get; set; } = id => id.ToString();
 
