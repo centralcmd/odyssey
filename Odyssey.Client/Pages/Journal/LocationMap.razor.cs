@@ -63,6 +63,10 @@ public partial class LocationMap
     private bool _announceReady;
     private FocusTarget _focusAfterRender;
 
+    // Set by Try again or by a re-create that took focus from the map; it holds until the outcome, so
+    // the ready surface or the failure's state box receives focus rather than <body> (§6.12).
+    private bool _focusOutcome;
+
     private enum FocusTarget { None, Frame, StateBox, Surface }
 
     internal LocationMapState State => _state;
@@ -205,6 +209,7 @@ public partial class LocationMap
 
             _selfRef ??= DotNetObjectReference.Create(this);
             var styleUrl = StyleUrlFor(_dark);
+            var created = (Latitude, Longitude, Name);
             _createPending = true;
             int handle;
             try
@@ -213,12 +218,12 @@ public partial class LocationMap
                 // by the stale check below instead.
                 handle = await _module.InvokeAsync<int>("create", _host, new
                 {
-                    lat = (double)Latitude,
-                    lng = (double)Longitude,
+                    lat = (double)created.Latitude,
+                    lng = (double)created.Longitude,
                     zoom = StartZoom,
                     maxZoom = MaxZoom,
                     styleUrl,
-                    name = Name,
+                    name = created.Name,
                     describedBy = $"{DescriptionId} {KeysId}",
                 }, _selfRef, generation);
             }
@@ -236,8 +241,27 @@ public partial class LocationMap
                 return;
             }
 
+            // 0: MapLibre could not create a GPU context — the browser can't draw maps.
+            if (handle == 0)
+            {
+                await FailAsync(generation, LocationMapState.WebGlUnavailable);
+                return;
+            }
+
             _handle = handle;
             _appliedStyleUrl = styleUrl;
+
+            // A move or rename that landed while create was in flight was skipped (no handle yet); the map
+            // was built with the values it was handed, so bring it up to date now.
+            if ((Latitude, Longitude, Name) != created)
+            {
+                await SafeInvokeAsync(() => _module.InvokeVoidAsync("update", handle, new
+                {
+                    lat = (double)Latitude,
+                    lng = (double)Longitude,
+                    name = Name,
+                }));
+            }
         }
         catch (Exception ex) when (ex is OperationCanceledException or JSDisconnectedException or ObjectDisposedException)
         {
@@ -261,8 +285,12 @@ public partial class LocationMap
 
         await DisposeMapAsync();
         _state = state;
-        if (_focusAfterRender != FocusTarget.None)
+        if (_focusOutcome)
+        {
+            _focusOutcome = false;
             _focusAfterRender = FocusTarget.StateBox;
+        }
+
         StateHasChanged();
         await AnnounceAsync(state switch
         {
@@ -277,6 +305,7 @@ public partial class LocationMap
     {
         await DisposeMapAsync();
         _announceReady = true;
+        _focusOutcome = true;
         _state = LocationMapState.Loading;
         _focusAfterRender = FocusTarget.Frame;
         StateHasChanged();
@@ -295,8 +324,12 @@ public partial class LocationMap
         _state = LocationMapState.Ready;
         var announce = _announceReady;
         _announceReady = false;
-        if (announce)
+        if (_focusOutcome)
+        {
+            _focusOutcome = false;
             _focusAfterRender = FocusTarget.Surface;
+        }
+
         StateHasChanged();
         if (announce)
             await AnnounceAsync($"Map of {Name} loaded.");
@@ -340,8 +373,28 @@ public partial class LocationMap
         if (IsStale(generation))
             return;
 
+        // The canvas is about to be replaced: if it (or the pin, a control) held focus, keep it in the
+        // map — the frame while loading, then the new surface — rather than letting it fall to <body>.
+        var hadFocus = false;
+        if (_handle is { } handle && _module is not null)
+        {
+            try
+            {
+                hadFocus = await _module.InvokeAsync<bool>("hasFocus", handle);
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or OperationCanceledException)
+            {
+            }
+        }
+
         await DisposeMapAsync();
         _state = LocationMapState.Loading;
+        if (hadFocus)
+        {
+            _focusOutcome = true;
+            _focusAfterRender = FocusTarget.Frame;
+        }
+
         StateHasChanged();
         await Task.Yield();
         await CreateAsync();

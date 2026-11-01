@@ -220,6 +220,12 @@
     .loc-map-btn:focus-visible,
     .loc-map-pin:focus-visible,
     .loc-map-popup-close:focus-visible { outline-color: Highlight; }
+    /* Forced colours drop box-shadow, so the surface's inset ring becomes a real outline. */
+    .loc-map-host .maplibregl-canvas-container:has(> .maplibregl-canvas:focus-visible)::after {
+        box-shadow: none;
+        outline: var(--focus-ring-width) solid Highlight;
+        outline-offset: calc(var(--focus-ring-width) * -1);
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

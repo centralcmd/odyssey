@@ -296,6 +296,216 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         await page.CloseAsync();
     }
 
+    // ── AC 4 (S2): a hostile location name is text everywhere the map shows it ─────────────────────
+
+    [SkippableFact]
+    public async Task A_markup_location_name_is_shown_literally_and_runs_nothing()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        const string hostile = "<img src=x onerror=\"window.__pwned=1\">Cabin";
+        var dialogs = 0;
+        var page = await NewPageAsync(renameCabinTo: hostile);
+        page.Dialog += (_, d) => { dialogs++; _ = d.DismissAsync(); };
+
+        await GoToLocationsAsync(page);
+        await ExpandAsync(page);
+        await WaitReadyAsync(page);
+
+        await Expect(page.Locator(".loc-map canvas")).ToHaveAttributeAsync("aria-label", hostile);
+        await Expect(page.Locator(".loc-map-pin")).ToHaveAttributeAsync("aria-label", $"{hostile} pin");
+        await page.Locator(".loc-map-pin").ClickAsync();
+        Assert.Equal(hostile, await page.Locator(".loc-map-popup h3").TextContentAsync());
+
+        Assert.Equal(0, await page.Locator(".loc-map img").CountAsync());
+        Assert.Null(await page.EvaluateAsync<int?>("() => window.__pwned"));
+        Assert.Equal(0, dialogs);
+        await page.CloseAsync();
+    }
+
+    // ── AC 1: every input moves or zooms, from zoom 14, never past 16 ───────────────────────────
+
+    [SkippableFact]
+    public async Task Every_pan_and_zoom_input_moves_the_map()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await OpenMapAsync();
+        var host = page.Locator(".loc-map-host");
+        var pin = page.Locator(".loc-map-pin");
+        await page.Locator(".loc-map-frame").ScrollIntoViewIfNeededAsync();
+        await Expect(host).ToHaveAttributeAsync("data-zoom", "14.00");
+
+        async Task<(float X, float Y)> PinAsync()
+        {
+            var b = (await pin.BoundingBoxAsync())!;
+            return (b.X, b.Y);
+        }
+
+        async Task AssertMovesAsync(Func<Task> act, string what, int dx, int dy)
+        {
+            await Control(page, "Re-centre on pin").ClickAsync();
+            var before = await PinAsync();
+            await act();
+            await page.WaitForTimeoutAsync(400);
+            var after = await PinAsync();
+            Assert.True(
+                Math.Sign(Math.Round(after.X - before.X)) == dx && Math.Sign(Math.Round(after.Y - before.Y)) == dy,
+                $"{what}: the pin moved from {before} to {after}.");
+        }
+
+        await AssertMovesAsync(() => Control(page, "Pan north").ClickAsync(), "Pan north", 0, 1);
+        await AssertMovesAsync(() => Control(page, "Pan south").ClickAsync(), "Pan south", 0, -1);
+        await AssertMovesAsync(() => Control(page, "Pan west").ClickAsync(), "Pan west", 1, 0);
+        await AssertMovesAsync(() => Control(page, "Pan east").ClickAsync(), "Pan east", -1, 0);
+
+        var canvas = page.Locator(".loc-map canvas");
+        await AssertMovesAsync(async () => { await canvas.FocusAsync(); await page.Keyboard.PressAsync("ArrowUp"); }, "ArrowUp", 0, 1);
+        await AssertMovesAsync(async () => { await canvas.FocusAsync(); await page.Keyboard.PressAsync("ArrowLeft"); }, "ArrowLeft", 1, 0);
+
+        var frame = (await page.Locator(".loc-map-frame").BoundingBoxAsync())!;
+        await AssertMovesAsync(async () =>
+        {
+            await page.Mouse.MoveAsync(frame.X + frame.Width * 0.7f, frame.Y + frame.Height * 0.7f);
+            await page.Mouse.DownAsync();
+            await page.Mouse.MoveAsync(frame.X + frame.Width * 0.7f - 80, frame.Y + frame.Height * 0.7f - 40, new() { Steps = 8 });
+            await page.Mouse.UpAsync();
+        }, "Drag", -1, -1);
+
+        await Control(page, "Re-centre on pin").ClickAsync();
+        await canvas.FocusAsync();
+        await page.Keyboard.PressAsync("Equal");
+        await Expect(host).ToHaveAttributeAsync("data-zoom", "15.00");
+        await page.Keyboard.PressAsync("Minus");
+        await Expect(host).ToHaveAttributeAsync("data-zoom", "14.00");
+
+        await Control(page, "Zoom out").ClickAsync();
+        await Expect(host).ToHaveAttributeAsync("data-zoom", "13.00");
+
+        await page.Mouse.MoveAsync(frame.X + frame.Width * 0.7f, frame.Y + frame.Height * 0.7f);
+        await page.Keyboard.DownAsync("Control");
+        for (var i = 0; i < 12; i++)
+            await page.Mouse.WheelAsync(0, -300);
+        await page.Keyboard.UpAsync("Control");
+        await page.WaitForTimeoutAsync(800);
+        var zoomed = double.Parse((await host.GetAttributeAsync("data-zoom"))!, System.Globalization.CultureInfo.InvariantCulture);
+        Assert.True(zoomed > 13.0, $"Ctrl + wheel should zoom in, zoom is {zoomed}.");
+        Assert.True(zoomed <= 16.0, $"Zoom passed the cap: {zoomed}.");
+        await page.CloseAsync();
+    }
+
+    // ── AC 12, 13 and the context window: the thresholds in location-map.js, in a real browser ────
+
+    [SkippableFact]
+    public async Task Tile_errors_before_ready_fail_the_map_in_place()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await NewPageAsync(tilesFail: () => true);
+
+        await GoToLocationsAsync(page);
+        await ExpandAsync(page);
+
+        await Expect(page.Locator(".loc-map-state")).ToContainTextAsync($"The map for {LocationName} couldn't load.", new() { Timeout = 30_000 });
+        await Expect(page.Locator(".maplibregl-map")).ToHaveCountAsync(0);
+        await page.CloseAsync();
+    }
+
+    [SkippableFact]
+    public async Task Tile_errors_after_ready_degrade_once_and_clear_after_30_seconds()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var failing = false;
+        var page = await NewPageAsync(tilesFail: () => failing);
+        await GoToLocationsAsync(page);
+        await ExpandAsync(page);
+        await WaitReadyAsync(page);
+
+        failing = true;
+        var alert = page.Locator(".loc-map-alert");
+        for (var i = 0; i < 6 && await alert.CountAsync() == 0; i++)
+        {
+            await Control(page, i % 2 == 0 ? "Zoom out" : "Pan east").ClickAsync();
+            await page.WaitForTimeoutAsync(500);
+        }
+
+        await Expect(alert).ToContainTextAsync("Some map tiles didn't load.", new() { Timeout = 10_000 });
+        Assert.Null(await alert.GetAttributeAsync("role"));
+        await Expect(page.Locator(".loc-map canvas")).ToHaveCountAsync(1);
+        await Expect(page.Locator("[role=status][aria-live=polite]").Filter(new() { HasText = $"Map of {LocationName}: some tiles didn't load." }))
+            .ToHaveCountAsync(1);
+
+        failing = false;
+        await Expect(alert).ToHaveCountAsync(0, new() { Timeout = 40_000 });
+        await Expect(page.Locator(".loc-map-caption")).ToBeVisibleAsync();
+        await page.CloseAsync();
+    }
+
+    [SkippableFact]
+    public async Task No_load_within_15_seconds_is_a_timeout_failure()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await NewPageAsync(styleDelay: TimeSpan.FromSeconds(20));
+
+        await GoToLocationsAsync(page);
+        await ExpandAsync(page);
+
+        await Expect(page.Locator(".loc-map-state")).ToContainTextAsync($"The map for {LocationName} couldn't load.", new() { Timeout = 19_000 });
+        await page.CloseAsync();
+    }
+
+    [SkippableFact]
+    public async Task A_lost_context_not_restored_within_3_seconds_shows_webgl_unavailable()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await OpenMapAsync();
+
+        await LoseContextAsync(page);
+
+        await Expect(page.Locator(".loc-map-state")).ToContainTextAsync("This browser can't draw maps", new() { Timeout = 10_000 });
+        await Expect(page.Locator(".maplibregl-map")).ToHaveCountAsync(0);
+        await page.CloseAsync();
+    }
+
+    [SkippableFact]
+    public async Task A_context_restored_in_time_recreates_the_map_and_keeps_focus_on_it()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await OpenMapAsync();
+        await page.Locator(".loc-map canvas").FocusAsync();
+
+        await LoseContextAsync(page);
+        await page.WaitForTimeoutAsync(500);
+        await page.EvaluateAsync("() => window.__locMapLoseContext.restoreContext()");
+
+        await WaitReadyAsync(page);
+        await Expect(page.Locator(".loc-map canvas")).ToHaveCountAsync(1);
+        await Expect(page.Locator(".loc-map-state")).ToHaveCountAsync(0);
+        await page.WaitForFunctionAsync("() => document.activeElement?.tagName === 'CANVAS'", null, new() { Timeout = 15_000 });
+        await page.CloseAsync();
+    }
+
+    [SkippableFact]
+    public async Task Try_again_that_fails_again_moves_focus_to_the_state_box()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var page = await NewPageAsync(isBlocked: () => true);
+        await GoToLocationsAsync(page);
+        await ExpandAsync(page);
+        var state = page.Locator(".loc-map-state");
+        await Expect(state).ToContainTextAsync($"The map for {LocationName} couldn't load.", new() { Timeout = 30_000 });
+
+        await state.GetByRole(AriaRole.Button, new() { Name = "Try again" }).ClickAsync();
+
+        await Expect(state).ToContainTextAsync($"The map for {LocationName} couldn't load.", new() { Timeout = 30_000 });
+        await page.WaitForFunctionAsync("() => document.activeElement?.classList.contains('loc-map-state')", null, new() { Timeout = 10_000 });
+        await page.CloseAsync();
+    }
+
+    private static Task LoseContextAsync(IPage page) => page.EvaluateAsync(@"() => {
+        const canvas = document.querySelector('.loc-map canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        window.__locMapLoseContext = gl.getExtension('WEBGL_lose_context');
+        window.__locMapLoseContext.loseContext();
+    }");
+
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
     private async Task<IPage> OpenMapAsync(int width = 1280)
@@ -308,7 +518,12 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         return page;
     }
 
-    private static async Task<IPage> NewPageAsync(Func<bool>? isBlocked = null, string? styleAttribution = null)
+    private static async Task<IPage> NewPageAsync(
+        Func<bool>? isBlocked = null,
+        string? styleAttribution = null,
+        Func<bool>? tilesFail = null,
+        TimeSpan? styleDelay = null,
+        string? renameCabinTo = null)
     {
         var page = await browserContext!.NewPageAsync();
         var style = styleAttribution is null
@@ -329,13 +544,34 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             var cors = new Dictionary<string, string> { ["access-control-allow-origin"] = "*" };
             if (route.Request.Url.Contains("/styles/", StringComparison.Ordinal))
             {
+                if (styleDelay is { } delay)
+                    await Task.Delay(delay);
                 await route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = style, Headers = cors });
+                return;
+            }
+
+            if (tilesFail?.Invoke() == true)
+            {
+                await route.FulfillAsync(new() { Status = 500, Body = "tile error", Headers = cors });
                 return;
             }
 
             // An empty vector tile: valid, with no features.
             await route.FulfillAsync(new() { Status = 200, ContentType = "application/x-protobuf", BodyBytes = [], Headers = cors });
         });
+
+        if (renameCabinTo is not null)
+        {
+            // The list the page renders, with the seeded Cabin renamed in flight — no stored row is touched.
+            await page.RouteAsync(new System.Text.RegularExpressions.Regex(@"/api/locations(\?|$)"), async route =>
+            {
+                var response = await route.FetchAsync();
+                var body = (await response.TextAsync()).Replace(
+                    $"\"name\":\"{LocationName}\"", $"\"name\":{JsonSerializer.Serialize(renameCabinTo)}", StringComparison.Ordinal);
+                await route.FulfillAsync(new() { Response = response, Body = body });
+            });
+        }
+
         return page;
     }
 

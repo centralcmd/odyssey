@@ -14,8 +14,7 @@
         <span id="@DescriptionId" class="sr-only">Pin at @LocationVisuals.FormatHemispheres(Latitude, Longitude).</span>
         <span id="@KeysId" class="sr-only">Arrow keys pan, plus and minus zoom.</span>
         <div class="loc-map-frame" tabindex="-1" @ref="_frame"
-             aria-busy="@(_state == LocationMapState.Loading ? "true" : null)"
-             aria-label="@(_state == LocationMapState.Loading ? "Loading the map" : null)">
+             aria-busy="@(_state == LocationMapState.Loading ? "true" : null)">
             <div class="loc-map-host" @ref="_host"></div>
             @if (_state == LocationMapState.Loading)
             {

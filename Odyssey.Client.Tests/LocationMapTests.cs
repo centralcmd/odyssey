@@ -330,6 +330,82 @@ public class LocationMapTests : IAsyncLifetime
         Assert.Empty(announced);
     }
 
+    // ── Review round 2 ───────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void A_gpu_context_that_cannot_be_created_is_webgl_unavailable_not_a_tile_failure()
+    {
+        cache.Next = Styles;
+        SetupCreate(0);
+
+        var cut = Render();
+
+        cut.WaitForAssertion(() => Assert.Equal(LocationMapState.WebGlUnavailable, cut.Instance.State));
+        Assert.Equal(["Map of Cabin can't be shown in this browser."], announced);
+        Assert.Empty(module.Invocations["dispose"]);
+    }
+
+    [Fact]
+    public void A_move_while_create_is_pending_reaches_the_map_once_it_exists()
+    {
+        cache.Next = Styles;
+        var create = SetupCreate(handle: null);
+        var cut = Render();
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["create"]));
+
+        cut.Render(p => p.Add(c => c.Latitude, 59.91273m).Add(c => c.Name, "Old cabin"));
+        Assert.Empty(module.Invocations["update"]);
+        create.SetResult(3);
+
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["update"]));
+        var update = module.Invocations["update"][0];
+        Assert.Equal(3, update.Arguments[0]);
+        Assert.Equal(59.91273, Read<double>(update.Arguments[1]!, "lat"));
+        Assert.Equal("Old cabin", Read<string>(update.Arguments[1]!, "name"));
+    }
+
+    [Fact]
+    public async Task Try_again_that_fails_again_moves_focus_to_the_new_state_box()
+    {
+        cache.Next = Styles;
+        SetupCreate();
+        var cut = Render();
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["create"]));
+        await cut.InvokeAsync(() => cut.Instance.OnFailed(cut.Instance.Generation, "tiles"));
+        var focusBefore = FocusCalls();
+
+        cut.Find("button").Click();
+        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["create"].Count));
+        cut.WaitForAssertion(() => Assert.Equal(focusBefore + 1, FocusCalls()));
+        await cut.InvokeAsync(() => cut.Instance.OnFailed(cut.Instance.Generation, "tiles"));
+
+        Assert.Equal(LocationMapState.TilesFailed, cut.Instance.State);
+        cut.WaitForAssertion(() => Assert.Equal(focusBefore + 2, FocusCalls()));
+        Assert.Empty(module.Invocations["focusSurface"]);
+    }
+
+    [Fact]
+    public async Task A_restored_context_recreates_the_map_and_keeps_focus_in_it()
+    {
+        cache.Next = Styles;
+        SetupCreate();
+        module.Setup<bool>("hasFocus", _ => true).SetResult(true);
+        var cut = Render();
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["create"]));
+        await cut.InvokeAsync(() => cut.Instance.OnReady(cut.Instance.Generation));
+
+        await cut.InvokeAsync(() => cut.Instance.OnContextRestored(cut.Instance.Generation));
+        cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["create"].Count));
+        await cut.InvokeAsync(() => cut.Instance.OnReady(cut.Instance.Generation));
+
+        Assert.Equal(LocationMapState.Ready, cut.Instance.State);
+        Assert.Single(module.Invocations["dispose"]);
+        cut.WaitForAssertion(() => Assert.Single(module.Invocations["focusSurface"]));
+        Assert.Empty(announced);
+    }
+
+    private int FocusCalls() => ctx.JSInterop.Invocations["Blazor._internal.domWrapper.focus"].Count;
+
     private static T Read<T>(object anonymous, string property) =>
         (T)anonymous.GetType().GetProperty(property)!.GetValue(anonymous)!;
 

@@ -103,12 +103,28 @@ function glyph(name) {
 export async function create(element, options, dotnet, generation) {
     const lib = await loadLibrary();
     const handle = ++nextId;
-    const id = `loc-map-${handle}`;
-    const h = {
-        handle, id, generation, dotnet, disposed: false, ready: false, failed: false,
+    const h = { handle, disposed: false, timers: {}, listeners: [] };
+    // Registered first, so a build that throws part-way is torn down by dispose like any other map.
+    live.set(handle, h);
+    try {
+        build(lib, h, element, options, dotnet, generation);
+    } catch (e) {
+        dispose(handle);
+        // The Map constructor throws only when the GPU context cannot be created: the browser can't draw
+        // maps, the webgl-unavailable state, not a tile failure. 0 tells .NET exactly that.
+        if (!h.map) return 0;
+        throw e;
+    }
+    return handle;
+}
+
+function build(lib, h, element, options, dotnet, generation) {
+    const id = `loc-map-${h.handle}`;
+    Object.assign(h, {
+        id, generation, dotnet, ready: false, failed: false,
         lngLat: [options.lng, options.lat], name: options.name,
-        tileErrors: [], degraded: false, timers: {}, listeners: [],
-    };
+        tileErrors: [], degraded: false,
+    });
 
     const call = (method, ...args) => {
         if (h.disposed) return;
@@ -257,9 +273,6 @@ export async function create(element, options, dotnet, generation) {
         h.resizeObserver = new ResizeObserver(() => { if (!h.disposed) map.resize(); });
         h.resizeObserver.observe(element);
     }
-
-    live.set(handle, h);
-    return handle;
 }
 
 function buildControls(h, map, motion) {
@@ -292,7 +305,12 @@ function buildControls(h, map, motion) {
     const atMax = () => current() >= map.getMaxZoom() - 1e-6;
     const atMin = () => current() <= map.getMinZoom() + 1e-6;
     const mark = (button, limit) => (limit ? button.setAttribute('aria-disabled', 'true') : button.removeAttribute('aria-disabled'));
-    const sync = () => { mark(zoomIn, atMax()); mark(zoomOut, atMin()); };
+    const sync = () => {
+        mark(zoomIn, atMax());
+        mark(zoomOut, atMin());
+        // The settled zoom, readable from outside: the E2E tier asserts the start zoom and the cap with it.
+        container.dataset.zoom = map.getZoom().toFixed(2);
+    };
     const step = delta => {
         target = Math.max(map.getMinZoom(), Math.min(map.getMaxZoom(), Math.round(current()) + delta));
         map.easeTo({ zoom: target, duration: motion ? 0 : 200 });
@@ -337,6 +355,12 @@ export function focusSurface(handle) {
     const h = live.get(handle);
     if (!h) return;
     h.map.getCanvas().focus();
+}
+
+/** Whether keyboard focus is anywhere inside this map — so a silent re-create can put it back. */
+export function hasFocus(handle) {
+    const h = live.get(handle);
+    return !!h && h.map.getContainer().contains(document.activeElement);
 }
 
 /** The theme swap. The marker and popup are DOM and survive it. */
