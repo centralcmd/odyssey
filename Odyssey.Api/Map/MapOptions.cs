@@ -21,6 +21,19 @@ public sealed class MapOptions
 {
     public const string SectionName = "Map";
 
+    /// <summary>
+    /// The same-origin styles the client ships that still load tiles, glyphs and a sprite from a remote
+    /// origin, keyed by their root-relative URL. A root-relative style passes the origin cross-check on its
+    /// own, so without this list the off-switch (an empty <see cref="AllowedOrigins"/>) would start with
+    /// such a style selected and the CSP would silently blank the map. <c>MapStylesApiTests</c> reads every
+    /// style under the client's <c>wwwroot/maps/</c> and fails if this list disagrees with its URLs.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, IReadOnlyList<Uri>> ShippedStyleRemoteOrigins =
+        new Dictionary<string, IReadOnlyList<Uri>>(StringComparer.Ordinal)
+        {
+            ["/maps/odyssey-dark.json"] = [new Uri("https://tiles.openfreemap.org")],
+        };
+
     /// <summary>An absolute https URL whose origin is in <see cref="AllowedOrigins"/>, or a root-relative path.</summary>
     [Required]
     [StringLength(2048)]
@@ -44,7 +57,7 @@ public sealed class MapOptions
     /// <summary>
     /// The origins the style is served from, separated by single spaces. Must equal the client container's
     /// <c>MAP_ALLOWED_ORIGINS</c>. Empty is the off-switch, and is valid only while both style URLs are
-    /// root-relative. Never returned to the client.
+    /// root-relative and neither is one of the <see cref="ShippedStyleRemoteOrigins"/>. Never returned to the client.
     /// </summary>
     [StringLength(2048)]
     public string AllowedOrigins { get; set; } = string.Empty;

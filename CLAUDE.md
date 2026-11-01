@@ -725,9 +725,13 @@ first map. Rules that are easy to get backwards:
 - **A client-held default style URL is forbidden.** `MapStylesCache` has no fallback: a failure is the
   map's `config-unavailable` state, never a URL restated in the client.
 - **The shipped dark basemap is Odyssey's own file, `wwwroot/maps/odyssey-dark.json`** — OpenFreeMap `fiord`
-  with its buildings lifted from ~16 % opacity (1.1:1, houses invisible) to 90 % (~1.6:1). It is served
-  same-origin, so the CSP is unchanged, and tiles, glyphs and sprites still come from OpenFreeMap.
-  `OdysseyDarkBasemapTests` pins the contrast, the single tile host and the licence; the E2E suite routes it.
+  with its buildings lifted from ~16 % opacity (1.1:1, houses invisible) to 90 % (~1.6:1) and every label to
+  ≥ 4.5:1. It is served same-origin, so the CSP is unchanged, but its tiles, glyphs and sprites still come from
+  OpenFreeMap: `MapOptions.ShippedStyleRemoteOrigins` declares that, so the off-switch (empty origins) refuses
+  to start with it selected. A root-relative style otherwise passes the origin check on its own. A new style
+  under `wwwroot/maps/` that loads from a remote host must be listed there; `MapStylesApiTests` fails if not.
+  `OdysseyDarkBasemapTests` pins the contrast, the tile host and the licence (full text beside the file).
+  Nothing under `maps/` is precached.
 - **The service worker must not precache the map's files** (`offlineAssetsExclude`), or the first visit
   downloads MapLibre for a page the user may never open.
 

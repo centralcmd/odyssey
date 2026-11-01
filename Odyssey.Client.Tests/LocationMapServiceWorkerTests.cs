@@ -28,6 +28,8 @@ public class LocationMapServiceWorkerTests
     [InlineData("js/location-map.abc123xyz.js")]
     [InlineData("css/location-map.css")]
     [InlineData("css/location-map.abc123xyz.css")]
+    [InlineData("maps/odyssey-dark.json")]
+    [InlineData("maps/blank-light.json")]
     [InlineData("service-worker.js")]
     public void The_map_files_are_kept_out_of_the_precache(string url)
     {
@@ -38,6 +40,7 @@ public class LocationMapServiceWorkerTests
     [InlineData("js/plot-width.js")]
     [InlineData("css/app.css")]
     [InlineData("js/location-mapper.js")]
+    [InlineData("appsettings.json")]
     [InlineData("_framework/blazor.webassembly.js")]
     public void Other_assets_are_still_precached(string url)
     {

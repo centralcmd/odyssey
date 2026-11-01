@@ -2,9 +2,9 @@
  "version": 8,
  "name": "Odyssey Dark",
  "metadata": {
-  "odyssey:about": "The location map's default dark basemap (issues #370, #371). OpenFreeMap's \"fiord\" style with one change: the building layer is drawn visibly (#64729A at 0.9, outlined #7A88AD) instead of at about 16% opacity, so houses can be told apart from the ground. Tiles, glyphs and sprites still come from tiles.openfreemap.org.",
+  "odyssey:about": "The location map's default dark basemap (issues #370, #371). OpenFreeMap's \"fiord\" style with two changes: the building layer is drawn visibly (#64729A at 0.9, outlined #7A88AD) instead of at about 16% effective opacity (fill-opacity 0.25 on a colour with alpha 0.65), so houses can be told apart from the ground; and every label colour is lifted to at least 4.5:1 against the ground (#45516E) and the water (#38435C), with the faded labels made opaque. Tiles, glyphs and sprites still come from tiles.openfreemap.org.",
   "odyssey:source": "https://tiles.openfreemap.org/styles/fiord (fetched 2026-11-01)",
-  "odyssey:license": "Fiord Color GL style: Copyright (c) 2024, MapTiler.com & OpenMapTiles contributors; Copyright (c) 2015, CartoDB Inc. Code BSD 3-Clause, design CC-BY 4.0 (https://github.com/openmaptiles/fiord-color-gl-style/blob/master/LICENSE.md). Derived from CartoDB Basemaps, designed by Stamen and Paul Norman for CartoDB Inc., CC-BY 3.0. Modified by Odyssey as described in odyssey:about."
+  "odyssey:license": "Fiord Color GL style: Copyright (c) 2024, MapTiler.com & OpenMapTiles contributors; Copyright (c) 2015, CartoDB Inc. Code BSD 3-Clause, design CC-BY 4.0 (https://github.com/openmaptiles/fiord-color-gl-style/blob/master/LICENSE.md). Derived from CartoDB Basemaps, designed by Stamen and Paul Norman for CartoDB Inc., CC-BY 3.0. Full text: odyssey-dark.LICENSE.txt beside this file. Modified by Odyssey as described in odyssey:about."
  },
  "sources": {
   "ne2_shaded": {
@@ -1532,7 +1532,7 @@
     "text-size": 12
    },
    "paint": {
-    "text-color": "hsl(223,21%,52%)",
+    "text-color": "hsl(223,21%,79%)",
     "text-halo-blur": 0,
     "text-halo-color": "hsl(232,5%,19%)",
     "text-halo-width": 1
@@ -1609,7 +1609,7 @@
     "text-transform": "uppercase"
    },
    "paint": {
-    "text-color": "hsl(223,31%,61%)",
+    "text-color": "hsl(223,31%,80%)",
     "text-halo-blur": 0,
     "text-halo-color": "hsl(232,9%,23%)",
     "text-halo-width": 2,
@@ -1667,7 +1667,7 @@
     "visibility": "none"
    },
    "paint": {
-    "text-color": "hsl(215,57%,77%)",
+    "text-color": "hsl(215,57%,80%)",
     "text-halo-blur": 1,
     "text-halo-color": "hsl(209,64%,19%)",
     "text-halo-width": 1,
@@ -1908,11 +1908,11 @@
     "text-transform": "uppercase"
    },
    "paint": {
-    "text-color": "hsl(195,37%,73%)",
+    "text-color": "hsl(195,37%,75%)",
     "text-halo-blur": 1,
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1,
-    "text-opacity": 0.6
+    "text-opacity": 1
    }
   },
   {
@@ -1988,7 +1988,7 @@
     "text-transform": "uppercase"
    },
    "paint": {
-    "text-color": "hsl(195,41%,49%)",
+    "text-color": "hsl(195,41%,74%)",
     "text-halo-blur": 1,
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1
@@ -2069,7 +2069,7 @@
    },
    "paint": {
     "icon-opacity": 0.7,
-    "text-color": "hsl(195,41%,49%)",
+    "text-color": "hsl(195,41%,74%)",
     "text-halo-blur": 1,
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1
@@ -2440,7 +2440,7 @@
     "text-transform": "uppercase"
    },
    "paint": {
-    "text-color": "rgb(113, 129, 144)",
+    "text-color": "hsl(209,12%,77%)",
     "text-halo-blur": 1,
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1
@@ -2541,9 +2541,9 @@
       "zoom"
      ],
      3,
-     "rgb(157,169,177)",
+     "hsl(204,11%,77%)",
      4,
-     "rgb(153, 153, 153)"
+     "hsl(0,0%,77%)"
     ],
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1.4,
@@ -2650,9 +2650,9 @@
       "zoom"
      ],
      3,
-     "rgb(157,169,177)",
+     "hsl(204,11%,77%)",
      4,
-     "rgb(153, 153, 153)"
+     "hsl(0,0%,77%)"
     ],
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1.4,
@@ -2763,9 +2763,9 @@
       "zoom"
      ],
      3,
-     "rgb(157,169,177)",
+     "hsl(204,11%,77%)",
      4,
-     "rgb(153, 153, 153)"
+     "hsl(0,0%,77%)"
     ],
     "text-halo-color": "hsla(228,60%,21%,0.7)",
     "text-halo-width": 1.4,

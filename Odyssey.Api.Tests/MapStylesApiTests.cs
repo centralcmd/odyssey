@@ -193,10 +193,53 @@ public class MapStylesApiTests
     {
         var message = StartupFailure(new() { ["Map:AllowedOrigins"] = "" });
 
-        // The shipped light style is absolute and needs its origin listed; the shipped dark one is the
-        // same-origin /maps/odyssey-dark.json, which needs none.
+        // The shipped light style is absolute; the shipped dark one is same-origin but loads its tiles from
+        // OpenFreeMap, so emptying the origins without repointing it must fail too.
         Assert.Contains("StyleUrlLight", message, StringComparison.Ordinal);
-        Assert.DoesNotContain("StyleUrlDark", message, StringComparison.Ordinal);
+        Assert.Contains("StyleUrlDark", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_shipped_dark_style_needs_its_tile_origin_listed()
+    {
+        var options = Defaults();
+        options.StyleUrlLight = "/maps/blank-light.json";
+        options.StyleUrlDark = "/maps/odyssey-dark.json";
+        options.AllowedOrigins = "";
+
+        var refused = Validate(options);
+
+        Assert.False(refused.Succeeded);
+        Assert.Contains("Map:StyleUrlDark", refused.FailureMessage, StringComparison.Ordinal);
+        Assert.Contains("https://tiles.openfreemap.org", refused.FailureMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain("StyleUrlLight", refused.FailureMessage, StringComparison.Ordinal);
+
+        options.AllowedOrigins = "https://tiles.openfreemap.org";
+        Assert.True(Validate(options).Succeeded);
+    }
+
+    [Fact]
+    public void Every_shipped_style_declares_the_remote_origins_it_loads_from()
+    {
+        var directory = System.IO.Path.Combine(RepositoryRoot.Path, "Odyssey.Client", "wwwroot", "maps");
+        var files = Directory.GetFiles(directory, "*.json");
+        Assert.NotEmpty(files);
+
+        foreach (var file in files)
+        {
+            var url = "/maps/" + System.IO.Path.GetFileName(file);
+            var found = System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(file), @"""(?<u>https?://[^""]+)""")
+                .Select(m => new Uri(m.Groups["u"].Value).GetLeftPart(UriPartial.Authority))
+                .Distinct()
+                .Order(StringComparer.Ordinal)
+                .ToList();
+            var declared = MapOptions.ShippedStyleRemoteOrigins.TryGetValue(url, out var origins)
+                ? origins.Select(o => o.GetLeftPart(UriPartial.Authority)).Order(StringComparer.Ordinal).ToList()
+                : [];
+
+            Assert.True(found.SequenceEqual(declared),
+                $"{url} loads from [{string.Join(", ", found)}] but MapOptions.ShippedStyleRemoteOrigins declares [{string.Join(", ", declared)}].");
+        }
     }
 
     [Fact]

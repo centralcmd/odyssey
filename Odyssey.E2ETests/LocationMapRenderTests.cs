@@ -196,6 +196,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         await Expect(zoomIn).ToHaveAttributeAsync("aria-disabled", "true");
         await Expect(Control(page, "Zoom out")).Not.ToHaveAttributeAsync("aria-disabled", "true");
 
+        await AssertFrameShapeAsync(page);
         await AssertTargetsAsync(page);
         await page.CloseAsync();
     }
@@ -206,6 +207,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         var page = await OpenMapAsync(width: 320);
 
+        await AssertFrameShapeAsync(page);
         await AssertTargetsAsync(page);
         await Expect(page.Locator(".loc-map-caption a")).ToBeVisibleAsync();
         await page.CloseAsync();
@@ -562,8 +564,19 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
 
         // The shipped dark basemap is a same-origin style file (/maps/odyssey-dark.json) whose sources still
         // point at the tile host; answer it with the same local style so a dark-mode run never reaches out.
-        await page.RouteAsync("**/maps/odyssey-dark.json", route => route.FulfillAsync(
-            new() { Status = 200, ContentType = "application/json", Body = style }));
+        // It is blocked and delayed exactly like the remote style, so a test of either holds in both themes.
+        await page.RouteAsync("**/maps/odyssey-dark.json", async route =>
+        {
+            if (isBlocked?.Invoke() == true)
+            {
+                await route.AbortAsync();
+                return;
+            }
+
+            if (styleDelay is { } delay)
+                await Task.Delay(delay);
+            await route.FulfillAsync(new() { Status = 200, ContentType = "application/json", Body = style });
+        });
 
         if (renameCabinTo is not null)
         {
@@ -619,15 +632,21 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         || url.Contains("/js/location-map", StringComparison.Ordinal)
         || url.Contains("/css/location-map", StringComparison.Ordinal);
 
-    /// <summary>The pin, the seven controls and Close are each at least 24 × 24 CSS px, inside the frame (AC 22).</summary>
-    private static async Task AssertTargetsAsync(IPage page)
+    /// <summary>
+    /// The frame is full width at 4:3, capped at 70vh, never below 256 px (design system · LocationMap →
+    /// Frame). <c>LocationMapFrameCssTests</c> pins the declarations; this pins what the browser lays out.
+    /// </summary>
+    private static async Task AssertFrameShapeAsync(IPage page)
     {
-        // The frame is full width at 4:3, capped at 70vh, never below 256 px (design system · LocationMap → Frame).
         var shape = await page.EvaluateAsync<double[]>(
             "() => { const r = document.querySelector('.loc-map-frame').getBoundingClientRect(); return [r.width, r.height, window.innerHeight]; }");
         var expected = Math.Max(256, Math.Min(shape[0] * 3 / 4, shape[2] * 0.7));
         Assert.True(Math.Abs(shape[1] - expected) <= 2, $"The frame is {shape[0]}×{shape[1]}; expected a height of {expected} (4:3, at most 70vh, at least 256 px).");
+    }
 
+    /// <summary>The pin, the seven controls and Close are each at least 24 × 24 CSS px, inside the frame (AC 22).</summary>
+    private static async Task AssertTargetsAsync(IPage page)
+    {
         await page.Locator(".loc-map-pin").ClickAsync();
         await Expect(page.Locator(".loc-map-popup-close")).ToBeVisibleAsync();
 

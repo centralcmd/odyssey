@@ -16,6 +16,7 @@ const offlineAssetsExclude = [
     /^lib\/maplibre-gl\//,
     /^js\/location-map(\.[^/]+)?\.js$/,
     /^css\/location-map(\.[^/]+)?\.css$/,
+    /^maps\//,
 ];
 
 // Replace with your base path if you are hosting on a subfolder. Ensure there is a trailing '/'.

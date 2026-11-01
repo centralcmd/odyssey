@@ -30,8 +30,29 @@ public sealed class MapOptionsValidator : IValidateOptions<MapOptions>
         if (originFailure is not null)
             failures.Add($"{MapOptions.SectionName}:{nameof(MapOptions.AllowedOrigins)} {originFailure}.");
 
+        // A shipped same-origin style whose remote resources the CSP would not admit (the off-switch with
+        // the shipped dark default left in place) fails here rather than as a silently blank map.
+        void CheckShippedStyle(string property, string? value)
+        {
+            // An unparseable origin list is already reported; naming the shipped origin then could echo the
+            // configured value back, which this validator never does.
+            if (originFailure is not null || value is null
+                || !MapOptions.ShippedStyleRemoteOrigins.TryGetValue(value, out var needed))
+                return;
+
+            var missing = needed.Where(n => !origins.Any(o => MapOriginRule.SameOrigin(o, n))).ToList();
+            if (missing.Count > 0)
+            {
+                failures.Add($"{MapOptions.SectionName}:{property} names a style the client ships that loads its tiles, "
+                    + $"glyphs and sprite from {string.Join(" ", missing.Select(m => m.GetLeftPart(UriPartial.Authority)))}; "
+                    + $"list that origin in {MapOptions.SectionName}:{nameof(MapOptions.AllowedOrigins)} or point the style elsewhere.");
+            }
+        }
+
         Check(nameof(MapOptions.StyleUrlLight), options.StyleUrlLight, v => MapOriginRule.CheckStyleUrl(v, origins));
         Check(nameof(MapOptions.StyleUrlDark), options.StyleUrlDark, v => MapOriginRule.CheckStyleUrl(v, origins));
+        CheckShippedStyle(nameof(MapOptions.StyleUrlLight), options.StyleUrlLight);
+        CheckShippedStyle(nameof(MapOptions.StyleUrlDark), options.StyleUrlDark);
         Check(nameof(MapOptions.AttributionUrl), options.AttributionUrl, MapOriginRule.CheckAttributionUrl);
 
         // Attribution is the one [Required] value whose blank form ("   ") the attribute lets through.

@@ -1082,10 +1082,13 @@ Rules that are easy to get wrong:
   **whole app**, not just the map. Never list a multi-tenant host — a general CDN, an object-storage
   bucket, `*.github.io` — where someone else could receive data an injected script sent there.
 - **The shipped basemaps are OpenFreeMap `liberty` (light) and Odyssey Dark (dark).** Odyssey Dark,
-  `/maps/odyssey-dark.json` in the client image, is OpenFreeMap's `fiord` with one change: its
-  buildings are drawn visibly. Upstream `fiord` paints them at about 16% opacity, navy on navy, so
-  houses could not be told from the ground. The style file is served by the deployment itself, but its
-  tiles, glyphs and sprites still come from `tiles.openfreemap.org`. Earlier releases shipped
+  `/maps/odyssey-dark.json` in the client image, is OpenFreeMap's `fiord` with two changes: its
+  buildings are drawn visibly, and its labels are lifted to at least 4.5:1. Upstream `fiord` paints
+  buildings at about 16% opacity, navy on navy, so houses could not be told from the ground. The style
+  file is served by the deployment itself, so its own URL needs no `MAP_ALLOWED_ORIGINS` entry, but its
+  tiles, glyphs and sprites still come from `tiles.openfreemap.org`, so that origin does. The API
+  refuses to start if `MAP_STYLE_URL_DARK` (or `_LIGHT`) names it while `tiles.openfreemap.org` is
+  not listed. Earlier releases shipped
   `positron` and `dark`, and `dark` was nearly black. All five OpenFreeMap styles (`liberty`,
   `bright`, `positron`, `dark`, `fiord`) live on `tiles.openfreemap.org`, so switching between them
   needs no change to `MAP_ALLOWED_ORIGINS` — set `MAP_STYLE_URL_LIGHT` / `MAP_STYLE_URL_DARK` and
@@ -1123,7 +1126,9 @@ The default recipient, as stated on openfreemap.org when this was written (Novem
 
 ### Switching it off
 
-Point both styles at the blank styles the client ships and admit no third-party origin:
+Point **both** styles at the blank styles the client ships and admit no third-party origin. Leaving
+either style at its default fails the API at start-up, naming the key, the dark one included: it is
+served by the deployment but its tiles are not.
 
 ```bash
 MAP_STYLE_URL_LIGHT=/maps/blank-light.json
