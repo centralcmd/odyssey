@@ -5,6 +5,18 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.42.0](https://github.com/centralcmd/odyssey/compare/v0.41.0...v0.42.0) (2026-11-01)
+
+
+### Features
+
+* file system object storage and photo thumbnails ([3327465](https://github.com/centralcmd/odyssey/commit/33274657630e3156e8432dd74ab29ab27a1c2c46))
+
+
+### CI/CD
+
+* Bump the actions group with 2 updates ([d51c6fa](https://github.com/centralcmd/odyssey/commit/d51c6fa3ce04cdd797eed89a7880259198965a9f))
+
 ## [0.41.0](https://github.com/centralcmd/odyssey/compare/v0.40.0...v0.41.0) (2026-10-29)
 
 
