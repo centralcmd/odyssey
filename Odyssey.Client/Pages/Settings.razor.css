@@ -170,28 +170,43 @@
     flex-wrap: nowrap;
 }
 
-/* ── Last-changed-by summary line under the header (admin.css .ss-lastchanged).
-   The store is genuinely key-value server-side, but the DTO surfaces only the
-   single most recent change across all five rows — a deliberate v1
-   simplification, so this renders once for the page, not per row. ── */
-.ss-lastchanged {
+/* ── A save refused with 403 (admin.css .ss-authalert). Persistent, because its remedy is a sign-out
+   and a toast would fade before the reader found the button. Each row carries its own "last changed"
+   stamp now, so there is no page-level summary line. ── */
+.ss-authalert {
     display: flex;
-    align-items: center;
-    gap: 7px;
-    margin: -8px 2px 0;
-    font-size: 0.78rem;
-    line-height: 1.4;
+    gap: var(--space-3);
+    align-items: flex-start;
+    padding: var(--space-4);
+    border: 1px solid var(--mud-palette-error);
+    border-radius: var(--radius-lg);
+    background: var(--finance-expense-soft);
+}
+
+.ss-authalert:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--space-1);
+}
+
+.ss-authalert .material-icons {
+    flex: none;
+    font-size: var(--icon-lg);
+    color: var(--mud-palette-error);
+}
+
+.ss-authalert-ttl {
+    font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+
+.ss-authalert-desc {
+    margin-top: var(--space-1);
+    font: var(--fw-regular) var(--fs-label)/1.5 var(--font-sans);
     color: var(--mud-palette-text-secondary);
 }
 
-.ss-lastchanged ::deep .mud-icon-root {
-    font-size: 15px;
-    opacity: 0.8;
-}
-
-.ss-lastchanged b {
-    font-weight: 600;
-    color: var(--mud-palette-text-primary);
+.ss-authalert-act {
+    margin-top: var(--space-3);
 }
 
 /* Read-only note when the caller holds neither write claim (Save hidden). */

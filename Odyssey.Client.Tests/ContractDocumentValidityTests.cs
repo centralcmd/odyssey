@@ -167,7 +167,7 @@ public class ContractDocumentValidityTests
         var harness = RenderDialog(ctx, file: Document with { Name = "   " });
 
         Assert.Null(harness.Submit());
-        Assert.Contains("A file needs a name.", harness.Markup, StringComparison.Ordinal);
+        Assert.Contains("File name is required.", harness.Markup, StringComparison.Ordinal);
     }
 
     // ── Required type (§8.1.1 — Signed is the enum's zero member) ─────────────

@@ -3,6 +3,12 @@
     (Odyssey Design System · components/Select). A MudSelect sharing the input
     look + focus ring with OdsField. Pass Options as OdsOption records.
     Two-way bindable via @bind-Value.
+
+    Prefix renders an inline label inside the trigger ahead of the value ("Location  Home ▾" —
+    the design's .odc-select-prefix), for a compact control with no floating label. It is drawn as
+    MudSelect's start-adornment text, which wins over an option icon, so a prefixed select shows no
+    leading option glyph. Without a Label it also becomes the accessible name unless AriaLabel says
+    otherwise.
 *@
 @inject IJSRuntime Js
 
@@ -13,15 +19,16 @@
            Placeholder="@Placeholder"
            Variant="Variant.Outlined"
            Margin="Margin.Dense"
-           AdornmentIcon="@(SelectedOption?.Icon)"
-           Adornment="@(string.IsNullOrEmpty(SelectedOption?.Icon) ? Adornment.None : Adornment.Start)"
+           AdornmentIcon="@(HasPrefix ? null : SelectedOption?.Icon)"
+           AdornmentText="@(HasPrefix ? Prefix : null)"
+           Adornment="@(HasPrefix || !string.IsNullOrEmpty(SelectedOption?.Icon) ? Adornment.Start : Adornment.None)"
            HelperText="@(string.IsNullOrEmpty(Error) ? Help : null)"
            Error="@(!string.IsNullOrEmpty(Error))"
            ErrorText="@Error"
            Required="@Required"
            Disabled="@Disabled"
            MaxHeight="360"
-           Class="@Class"
+           Class="@RootClass"
            InputId="@_inputId"
            @attributes="UserAttributes">
     @foreach (var option in Options)
@@ -66,6 +73,19 @@
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// Inline label shown inside the trigger, before the value (design <c>prefix</c>). Used in place of
+    /// <see cref="Label"/> on a compact control; when no Label is set it is also the accessible name.
+    /// </summary>
+    [Parameter] public string? Prefix { get; set; }
+
+    private bool HasPrefix => !string.IsNullOrEmpty(Prefix);
+
+    private string? RootClass => HasPrefix ? string.Join(' ', new[] { "odc-select-prefixed", Class }.Where(c => !string.IsNullOrEmpty(c))) : Class;
+
+    // The name actually applied: an explicit AriaLabel, else a label-less prefix.
+    private string? EffectiveAriaLabel => AriaLabel ?? (string.IsNullOrEmpty(Label) && HasPrefix ? Prefix : null);
+
     /// <summary>Accessible name for a label-less select (a settings row). Applied to the inner input,
     /// as on <see cref="OdsCurrencySelect"/>, because MudSelect splats attributes onto its wrapper.</summary>
     [Parameter] public string? AriaLabel { get; set; }
@@ -81,11 +101,12 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (string.Equals(AriaLabel, _appliedAriaLabel, StringComparison.Ordinal)) return;
+        var label = EffectiveAriaLabel;
+        if (string.Equals(label, _appliedAriaLabel, StringComparison.Ordinal)) return;
         try
         {
-            await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", AriaLabel);
-            _appliedAriaLabel = AriaLabel;
+            await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-label", label);
+            _appliedAriaLabel = label;
         }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }

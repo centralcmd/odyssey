@@ -44,8 +44,25 @@ else
                     @* What the values are, behind an info button. A tap opens it too, and the same text describes the
                        button for a screen reader, since the tooltip's popover is not linked to its trigger. *@
                     <OdsTooltip Label="@About" Class="wx-hist-about" ShowOnClick="true">
-                        <OdsIconButton Icon="@Icons.Material.Outlined.Info" AriaLabel="About these values" Size="OdsSize.Sm"
-                                       aria-describedby="@AboutId" />
+                        <LabelContent>
+                            <span class="wx-hist-about-body">
+                                <span class="wx-hist-about-lead">@AboutLead(AboutStations)</span>
+                                @if (AboutStations.Count > 0)
+                                {
+                                    <span class="wx-hist-about-list">
+                                        @foreach (var station in AboutStations)
+                                        {
+                                            <span class="wx-hist-about-row">@WeatherMeasures.StationLine(station)</span>
+                                        }
+                                    </span>
+                                }
+                                <span>@DayNote</span>
+                            </span>
+                        </LabelContent>
+                        <ChildContent>
+                            <OdsIconButton Icon="@Icons.Material.Outlined.Info" AriaLabel="About these values" Size="OdsSize.Sm"
+                                           aria-describedby="@AboutId" />
+                        </ChildContent>
                     </OdsTooltip>
                     <span class="odc-sr-only" id="@AboutId">@About</span>
                 </div>

@@ -15,7 +15,7 @@
                SubmitLabel="Save changes" SubmitIcon="check"
                OnSubmit="SubmitAsync">
     <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
-              Error="@(_touched && !_valid ? "A file needs a name." : null)" />
+              Error="@(_touched && !_valid ? "File name is required." : null)" />
     <OdsField Label="Description" @bind-Value="_description"
               Placeholder="What this file is" />
 </OdsFormDialog>

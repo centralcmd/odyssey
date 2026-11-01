@@ -22,6 +22,7 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider Auth
+@inject Odyssey.ApiClient.Auth.AuthApiClient AuthApiClient
 @* The browser's own origin, for the client-side origin-mismatch hint on the client base URL row
    (issue #8 §3.3) — the server cannot see it. *@
 @inject NavigationManager Nav
@@ -66,14 +67,13 @@
        deliberately NOT into BlockingProblems, which exists to explain a disabled Save button. Merging
        them would make Save look blocked by something Save cannot fix.
 
-       Issue #8 put a second KIND of entry in the same rollup: mail that has never been configured, at
-       Information rather than Error. That is why the label is "Attention" and no longer "Credentials"
-       — a rollup headed by the wrong noun is worse than a generic one, and this now covers both a
-       credential that cannot be decrypted and a deployment that has not finished being set up. It is
-       the label TaxStatementsCard already uses for the same mixed-severity shape. *@
+       Issue #8 and #346 put two more KINDS of entry in the same rollup: storage health and mail that
+       has never been configured. The label names the most serious kind present — Credentials, then
+       Storage, then Email, the rollup's own order — as the design system does, so the button always
+       names the first row of the panel it opens (SetupProblemsLabel). *@
     <PageHeader Title="System settings" Icon="@Icons.Material.Filled.Settings"
                 Problems="@SetupProblems"
-                ProblemsLabel="Attention"
+                ProblemsLabel="@SetupProblemsLabel"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled">
         <SubLine>Instance-wide configuration for this Odyssey deployment</SubLine>
         <PrimaryAction>
@@ -109,14 +109,26 @@
         </SearchContent>
     </PageHeader>
 
-    @* Single most-recent-change summary — the store is genuinely key-value server-side, but the DTO
-       surfaces only the max UpdatedAt/UpdatedBy across every row (a deliberate v1 simplification),
-       so this renders once for the page rather than per row. *@
-    @if (_phase == Phase.Ready && _dto is { UpdatedBy: not null })
+    @* A save refused with 403: the caller's write claim was withdrawn after they signed in. Persistent,
+       not a toast — the page still shows the controls the stale cookie granted, and the only remedy is
+       a fresh sign-in, so the reader needs the button rather than a message that fades
+       (Odyssey Design System · SystemSettings, the "Save 403" state). *@
+    @if (_authDenied && _phase == Phase.Ready)
     {
-        <div class="ss-lastchanged">
-            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Small" />
-            Last changed by <b>@(_dto.UpdatedByDisplayName ?? "Unknown user")</b> on @_dto.UpdatedAt.ToLocalTime().ToString("d MMM yyyy, HH:mm")
+        <div class="ss-authalert" id="@AuthAlertId" tabindex="-1" role="group"
+             aria-labelledby="ss-authalert-ttl" aria-describedby="ss-authalert-desc">
+            <span class="material-icons" aria-hidden="true">gpp_bad</span>
+            <div>
+                <div class="ss-authalert-ttl" id="ss-authalert-ttl">Your permission to change these settings has been withdrawn</div>
+                <div class="ss-authalert-desc" id="ss-authalert-desc">
+                    Nothing was saved. Permissions are read when you sign in, so this page still shows the
+                    controls you had then. Sign out and back in to see what you can change now — your edits
+                    on this page will be lost.
+                </div>
+                <div class="ss-authalert-act">
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="logout" OnClick="SignOutAsync">Sign out</OdsButton>
+                </div>
+            </div>
         </div>
     }
 
@@ -138,8 +150,8 @@
        caller holding only system-settings.read no record at all — the users least able to repair the
        rows and most likely to be auditing them — and would also make a fault and an unsaved edit
        mutually exclusive, since that is an if/else-if chain. ss-note is the opposite gate (!CanSave),
-       so reusing its condition produces the same hole with the sign flipped. The claim-blind neighbour
-       is ss-lastchanged, whose shape this follows.
+       so reusing its condition produces the same hole with the sign flipped. Its condition is
+       claim-blind on purpose: Ready and a fault, nothing else.
 
        It is also outside the VisibleSections branch: the sections container is replaced by the empty
        state exactly when the search matches nothing, which is the case this block most needs to survive.
@@ -214,7 +226,7 @@
                 <section class="ss-sect" aria-labelledby="@($"ss-grp-{sec.Group}")">
                     <header class="ss-sect-h">
                         <span class="ss-sect-ic"><MudIcon Icon="@sec.Icon" Size="Size.Small" /></span>
-                        <MudText Typo="Typo.h3" Class="ss-sect-t" id="@($"ss-grp-{sec.Group}")">@sec.Group</MudText>
+                        <h2 class="ss-sect-t" id="@($"ss-grp-{sec.Group}")">@sec.Group</h2>
                         @if (dirtyHere > 0)
                         {
                             <span class="ss-sect-badge">@dirtyHere unsaved</span>
@@ -320,7 +332,7 @@
                                 FromHost="@SavedSmtpEndpoint"
                                 ToHost="@DraftSmtpEndpoint"
                                 Secrets="@RelayCredentialTitles"
-                                ReEnterAt="Credentials"
+                                ReEnterAt="@RelayCredentialGroup"
                                 PendingCount="DirtyCount"
                                 OnConfirm="ConfirmClearAsync" />
 
@@ -333,9 +345,7 @@
     //
     // A switch or an export action has no text value to notch a label into, so it takes the sibling
     // tile shape and spans the grid; a text value is content-width and takes `Wide`; everything else
-    // is a half-width notched frame.
-    //
-    // Inside the frame the control is just its value: the frame owns the label, and the helper line
+    // is a half-width notched frame. Inside the frame the control is just its value: the frame owns the label, and the helper line
     // owns the description, the range and the provenance — so nothing is passed for Label or Help on
     // the control itself. The MESSAGE likewise renders once, on the field; the control is handed a
     // non-empty placeholder error purely to flip `aria-invalid` and the error tint, since the sheet
@@ -355,6 +365,7 @@
         HtmlFor="@(HasFocusableControl(item) ? ControlId(item.Key) : null)"
         HelpId="@DescId(item.Key)"
         Help="@HelpLine(item)"
+        Meta="@MetaFor(item)"
         ErrorId="@ErrorId(item.Key)"
         Error="@ErrorFor(item)"
         AdvisoryId="@AdvisoryId(item.Key)"
@@ -374,6 +385,7 @@
         LabelId="@TitleId(item.Key)"
         HelpId="@DescId(item.Key)"
         Help="@HelpLine(item)"
+        Meta="@MetaFor(item)"
         AdvisoryId="@AdvisoryId(item.Key)"
         Advisory="@AdvisoryFor(item)"
         Dirty="@IsDirty(item)"

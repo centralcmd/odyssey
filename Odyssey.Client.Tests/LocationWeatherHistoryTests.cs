@@ -84,6 +84,29 @@ public class LocationWeatherHistoryTests : IDisposable
     }
 
     [Fact]
+    public async Task The_info_bubble_draws_the_lead_one_row_per_station_and_the_UTC_note()
+    {
+        Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
+        await using var ctx = Context();
+        var popover = ctx.Render<MudBlazor.MudPopoverProvider>();
+
+        var section = Render(ctx);
+        section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
+        section.Find(".wx-hist-lead .mud-tooltip-root").FocusIn();
+
+        popover.WaitForAssertion(() => Assert.NotNull(popover.Find(".wx-hist-about-body")));
+        var body = popover.Find(".wx-hist-about-body");
+        Assert.Equal(LocationWeatherHistorySection.AboutLead(Stations), body.QuerySelector(".wx-hist-about-lead")!.TextContent);
+        Assert.Equal(
+            Stations.Select(WeatherMeasures.StationLine),
+            body.QuerySelectorAll(".wx-hist-about-list > .wx-hist-about-row").Select(r => r.TextContent));
+        Assert.Equal(LocationWeatherHistorySection.DayNote, body.Children[^1].TextContent);
+        // The structured bubble does not replace the plain description the trigger is linked to.
+        var button = section.Find("button[aria-label='About these values']");
+        Assert.Equal(LocationWeatherHistorySection.AboutText(Stations), section.Find($"#{button.GetAttribute("aria-describedby")}").TextContent);
+    }
+
+    [Fact]
     public async Task A_measure_whose_group_has_no_station_is_not_offered_and_the_info_says_why()
     {
         stations = [Stations[0], Stations[1], new() { Group = WeatherMeasureGroup.Wind, MaxDistanceKm = 30 }];

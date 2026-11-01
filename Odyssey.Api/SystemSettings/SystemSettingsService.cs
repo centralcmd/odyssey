@@ -748,6 +748,41 @@ public sealed class SystemSettingsService(
         dto.UpdatedBy = mostRecent?.UpdatedBy;
         dto.UpdatedByDisplayName = await displayNames.ResolveAsync(caller, mostRecent?.UpdatedBy, cancellationToken);
 
+        dto.Provenance = await BuildProvenanceAsync(caller, byKey, cancellationToken);
+
         return dto;
+    }
+
+    /// <summary>
+    /// The per-row "last changed" stamps, keyed by <c>SystemSettingsUpdate</c> property name. Only a
+    /// row a person wrote gets an entry: a migration-seeded row carries no <c>UpdatedBy</c>, and the
+    /// page reads its absence as "never changed". Names resolve in ONE batched lookup through the same
+    /// claim-aware resolver as the page-level line, so nothing here is more disclosing than that.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<string, SettingProvenance>> BuildProvenanceAsync(
+        ClaimsPrincipal caller, IReadOnlyDictionary<string, SystemSetting> byKey, CancellationToken cancellationToken)
+    {
+        var written = SystemSettingsRegistry.All
+            .Select(descriptor => (descriptor.FieldName, Row: byKey.GetValueOrDefault(descriptor.Key)))
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.Row?.UpdatedBy))
+            .ToList();
+
+        var provenance = new Dictionary<string, SettingProvenance>(StringComparer.OrdinalIgnoreCase);
+        if (written.Count == 0)
+        {
+            return provenance;
+        }
+
+        var names = await displayNames.ResolveAsync(caller, written.Select(entry => entry.Row!.UpdatedBy), cancellationToken);
+        foreach (var (field, row) in written)
+        {
+            provenance[field] = new SettingProvenance
+            {
+                UpdatedAt = row!.UpdatedAt,
+                UpdatedByDisplayName = names.GetValueOrDefault(row.UpdatedBy!, UserDisplayNameResolver.UnknownUser),
+            };
+        }
+
+        return provenance;
     }
 }

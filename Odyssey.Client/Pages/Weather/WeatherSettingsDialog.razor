@@ -33,18 +33,18 @@
                have either, both or neither (design system · Weather.jsx WeatherSettingsModal). *@
             <div class="wx-toggle">
                 <div class="wx-toggle-text">
-                    <div class="wx-toggle-label">Forecast</div>
+                    <div class="wx-toggle-label" id="wx-fc-l">Forecast</div>
                     <div class="wx-toggle-help" id="wx-fc-h">@ForecastHelp</div>
                 </div>
                 <OdsSwitch Checked="_forecast" CheckedChanged="@(v => _forecast = v)" Disabled="ForecastLocked"
-                           AriaLabel="Forecast" AriaDescribedBy="wx-fc-h" />
+                           AriaLabelledBy="wx-fc-l" AriaDescribedBy="wx-fc-h" />
             </div>
 
             @if (_forecast)
             {
                 <div class="wx-toggle wx-toggle-sub @(_trackedError is not null ? "error" : null)">
                     <div class="wx-toggle-text">
-                        <div class="wx-toggle-label">Refresh on a schedule</div>
+                        <div class="wx-toggle-label" id="wx-tr-l">Refresh on a schedule</div>
                         <div class="wx-toggle-help" id="wx-tr-h">
                             @(_tracked
                                 ? "The forecast is refreshed in the background, so the dashboard is current when someone opens it."
@@ -59,7 +59,7 @@
                             <div class="wx-toggle-error" id="wx-tr-e" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_trackedError</div>
                         }
                     </div>
-                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabel="Refresh on a schedule" AriaDescribedBy="@(_trackedError is null ? "wx-tr-h" : "wx-tr-h wx-tr-e")" />
+                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabelledBy="wx-tr-l" AriaDescribedBy="@(_trackedError is null ? "wx-tr-h" : "wx-tr-h wx-tr-e")" />
                 </div>
                 @if (_tracked && AtCap && _trackedError is null)
                 {
@@ -69,11 +69,11 @@
 
             <div class="wx-toggle">
                 <div class="wx-toggle-text">
-                    <div class="wx-toggle-label">Historical data</div>
+                    <div class="wx-toggle-label" id="wx-hs-l">Historical data</div>
                     <div class="wx-toggle-help" id="wx-hs-h">@HistoryToggleHelp</div>
                 </div>
                 <OdsSwitch Checked="_history" CheckedChanged="@(v => _history = v)" Disabled="HistoryLocked"
-                           AriaLabel="Historical data" AriaDescribedBy="wx-hs-h" />
+                           AriaLabelledBy="wx-hs-l" AriaDescribedBy="wx-hs-h" />
             </div>
 
             @if (_history)

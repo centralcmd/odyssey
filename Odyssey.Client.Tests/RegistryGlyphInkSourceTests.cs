@@ -57,7 +57,7 @@ public sealed class RegistryGlyphInkSourceTests
     /// </summary>
     private static readonly (string File, string Pattern)[] TextSites =
     [
-        (P("Components", "OdsFilesTable.razor"), @"class=""odc-ft-type"" style=""[^""]*OdsGlyphInk\.(?<m>\w+)\("),
+        (P("Components", "OdsFilesTable.razor"), @"class=""odc-chip odc-ft-type"" style=""[^""]*OdsGlyphInk\.(?<m>\w+)\("),
         (P("Pages", "Journal", "JournalFileRows.razor"), @"<OdsChip[^>]*\bFg=""@\(OdsGlyphInk\.(?<m>\w+)\("),
         (P("Pages", "Finance", "ContactDetailPanel.razor"), @"class=""cp-tile-value"" style=""[^""]*OdsGlyphInk\.(?<m>\w+)\("),
         (P("Pages", "Finance", "CreateTransactionDialog.razor"), @"OdsGlyphInk\.(?<m>\w+)\(sv\.Color\)"),

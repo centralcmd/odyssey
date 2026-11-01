@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Components;
 
 namespace Odyssey.Client.Components;
@@ -301,7 +302,7 @@ public partial class OdsFilesTable
         FormatSize?.Invoke(file.SizeBytes) ?? DefaultFormatSize(file.SizeBytes);
 
     private string DateText(DateTime uploadedUtc) =>
-        FormatDate?.Invoke(uploadedUtc) ?? uploadedUtc.ToLocalTime().ToString("MMM dd, yyyy");
+        FormatDate?.Invoke(uploadedUtc) ?? uploadedUtc.ToLocalTime().ToString("MMM d, yyyy", CultureInfo.InvariantCulture);
 
     /// <summary>Compact form for the validity columns — four extra date columns can't each carry a
     /// long-form date without overflowing the row.</summary>

@@ -179,7 +179,7 @@ public class PropertyService
     }
 
     /// <summary>
-    /// Fills the row counts (smart tags and events) and, for a caller holding <c>properties.estimates.read</c>, the estimate in
+    /// Fills the row counts (smart tags, events and documents) and, for a caller holding <c>properties.estimates.read</c>, the estimate in
     /// force now — one batched query each over the page's ids, never one per row. "In force" is picked
     /// by <see cref="EffectiveDatedExtensions.MostEffective{T}"/>, the in-memory counterpart of
     /// <see cref="EstimateEffectiveDating"/> that the account list uses the same way.
@@ -207,10 +207,18 @@ public class PropertyService
             .Select(g => new { PropertyId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
 
+        var fileCounts = await context.PropertyFiles
+            .AsNoTracking()
+            .Where(f => ids.Contains(f.PropertyId))
+            .GroupBy(f => f.PropertyId)
+            .Select(g => new { PropertyId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.PropertyId, x => x.Count, cancellationToken);
+
         foreach (var dto in dtos)
         {
             dto.SmartTagCount = smartTagCounts.GetValueOrDefault(dto.PropertyId);
             dto.EventCount = eventCounts.GetValueOrDefault(dto.PropertyId);
+            dto.FileCount = fileCounts.GetValueOrDefault(dto.PropertyId);
         }
 
         await ResolveHomeownerAssociationsAsync(dtos, cancellationToken);

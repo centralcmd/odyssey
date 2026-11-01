@@ -636,17 +636,12 @@ public class SecretSettingsSurfaceTests : IDisposable
         IReadOnlyList<string>? claims = null,
         ISecretSettingsApiClient? secretClient = null)
     {
-        var ctx = NewComponentContext();
-
-        var settings = new Mock<ISystemSettingsApiClient>();
-        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            // A configured SMTP host, so the header rollup carries only what THIS suite is about.
-            // An empty one is a legitimate state with its own Information-severity entry (issue #8
-            // G8), and leaving it empty here would put a second, unrelated problem in every
-            // assertion below — the credential tests would then be measuring the mail signal too.
-            // MailUnconfiguredSurfacesInTheHeaderTests covers the other side.
-            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(
-                new SystemSettingsDto { EmailSmtpHost = "smtp.example.test" }, HttpStatusCode.OK));
+        // A configured SMTP host, so the header rollup carries only what THIS suite is about.
+        // An empty one is a legitimate state with its own Information-severity entry (issue #8
+        // G8), and leaving it empty here would put a second, unrelated problem in every
+        // assertion below — the credential tests would then be measuring the mail signal too.
+        // MailUnconfiguredSurfacesInTheHeaderTests covers the other side.
+        var settings = SettingsPageHarness.SettingsClient(new SystemSettingsDto { EmailSmtpHost = "smtp.example.test" });
 
         if (secretClient is null)
         {
@@ -657,42 +652,6 @@ public class SecretSettingsSurfaceTests : IDisposable
             secretClient = mock.Object;
         }
 
-        ctx.Services.AddSingleton(settings.Object);
-        ctx.Services.AddSingleton(secretClient);
-        ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IFileStorageApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IPhotosApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
-        ctx.Services.AddSingleton(new Mock<IImportLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IAccountLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(
-            new StubAuthenticationStateProvider(claims ??
-            [
-                PermissionClaims.SystemSettingsRead,
-                PermissionClaims.SystemSettingsUpdate,
-                PermissionClaims.SystemSettingsSecurityUpdate,
-            ]));
-
-        Settings.InteractiveCheck = static () => true;
-        return ctx;
-    }
-
-    private sealed class StubAuthenticationStateProvider(IReadOnlyList<string> permissions)
-        : AuthenticationStateProvider
-    {
-        public override Task<AuthenticationState> GetAuthenticationStateAsync()
-        {
-            var identity = new ClaimsIdentity(
-                permissions.Select(permission => new Claim(PermissionClaims.Type, permission)),
-                "Test");
-
-            return Task.FromResult(new AuthenticationState(new ClaimsPrincipal(identity)));
-        }
+        return SettingsPageHarness.NewPageContext(settings.Object, secretClient, claims: claims);
     }
 }

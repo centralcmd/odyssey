@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Api.Identity;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Context;
@@ -382,6 +383,158 @@ public class SystemSettingsApiTests
         var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
         Assert.NotEqual(new DateTime(1999, 1, 1), dto!.UpdatedAt);
         Assert.Equal(ActorUserId, dto.UpdatedBy);
+    }
+
+    // ── Per-row provenance (the "Last changed by" stamp) ──────────────────────────
+
+    [Fact]
+    public async Task Get_SeededRows_CarryNoProvenance()
+    {
+        // A migration-seeded row has no UpdatedBy, so the page reads it as "Never changed".
+        await using var factory = new ApiFactory(ReadOnly);
+        using (var scope = factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Database.EnsureCreatedAsync();
+        }
+
+        using var client = factory.CreateClient();
+        var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
+
+        Assert.NotNull(dto);
+        Assert.Empty(dto!.Provenance);
+    }
+
+    [Fact]
+    public async Task Put_StampsOnlyTheRowsItWrote_KeyedByUpdateFieldName()
+    {
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+
+        response.EnsureSuccessStatusCode();
+        var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
+        var stamp = Assert.Single(dto!.Provenance);
+        Assert.Equal(nameof(SystemSettingsUpdate.ContractEndingWindowDays), stamp.Key);
+        Assert.Equal(dto.UpdatedAt, stamp.Value.UpdatedAt);
+        Assert.Equal(dto.UpdatedByDisplayName, stamp.Value.UpdatedByDisplayName);
+        Assert.False(string.IsNullOrWhiteSpace(stamp.Value.UpdatedByDisplayName));
+    }
+
+    [Fact]
+    public async Task Provenance_IsPerRow_NotTheMostRecentWriteEverywhere()
+    {
+        await using var factory = new ApiFactory(permissions: []);
+        await SeedUserAsync(factory, FirstWriterId, "first@example.com", displayName: "Ada Lovelace");
+        await SeedUserAsync(factory, SecondWriterId, "second@example.com", displayName: "Grace Hopper");
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
+        var admin = PrincipalWith(FullAccess);
+
+        await service.UpdateAsync(admin, FirstWriterId, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+        var dto = await service.UpdateAsync(admin, SecondWriterId, new SystemSettingsUpdate { ContractChargeWindowDays = 30 });
+
+        var rows = await ReadRowsAsync(factory, SystemSettingsKeys.ContractEndingWindowDays, SystemSettingsKeys.ContractChargeWindowDays);
+        Assert.Equal(2, dto.Provenance.Count);
+
+        var ending = dto.Provenance[nameof(SystemSettingsUpdate.ContractEndingWindowDays)];
+        Assert.Equal("Ada Lovelace", ending.UpdatedByDisplayName);
+        Assert.Equal(rows[SystemSettingsKeys.ContractEndingWindowDays].UpdatedAt, ending.UpdatedAt);
+
+        var charge = dto.Provenance[nameof(SystemSettingsUpdate.ContractChargeWindowDays)];
+        Assert.Equal("Grace Hopper", charge.UpdatedByDisplayName);
+        Assert.Equal(rows[SystemSettingsKeys.ContractChargeWindowDays].UpdatedAt, charge.UpdatedAt);
+
+        Assert.False(dto.Provenance.ContainsKey(nameof(SystemSettingsUpdate.ContractMaxSummaryContracts)));
+    }
+
+    [Fact]
+    public async Task Provenance_UnresolvableWriter_IsUnknownUser()
+    {
+        await using var factory = new ApiFactory(permissions: []);
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
+
+        var dto = await service.UpdateAsync(
+            PrincipalWith([.. FullAccess, PermissionClaims.UsersRead]),
+            "no-such-user-id",
+            new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+
+        var stamp = dto.Provenance[nameof(SystemSettingsUpdate.ContractEndingWindowDays)];
+        Assert.Equal(UserDisplayNameResolver.UnknownUser, stamp.UpdatedByDisplayName);
+    }
+
+    [Theory]
+    [InlineData(false, UserDisplayNameResolver.UnknownUser)]
+    [InlineData(true, "nameless@example.com")]
+    public async Task Provenance_WriterWithoutDisplayName_RevealsEmailOnlyWithUsersRead(bool callerHoldsUsersRead, string expected)
+    {
+        // Mirrors the page-level UpdatedByDisplayName rule: with no profile name the resolver's only
+        // remaining candidate is the email, which only a users.read holder may see.
+        await using var factory = new ApiFactory(permissions: []);
+        await SeedUserAsync(factory, FirstWriterId, "nameless@example.com", displayName: null);
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
+        await service.UpdateAsync(PrincipalWith(FullAccess), FirstWriterId, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+
+        string[] readerClaims = callerHoldsUsersRead
+            ? [PermissionClaims.SystemSettingsRead, PermissionClaims.UsersRead]
+            : [PermissionClaims.SystemSettingsRead];
+        var dto = await service.GetAsync(PrincipalWith(readerClaims));
+
+        var stamp = dto.Provenance[nameof(SystemSettingsUpdate.ContractEndingWindowDays)];
+        Assert.Equal(expected, stamp.UpdatedByDisplayName);
+        Assert.Equal(dto.UpdatedByDisplayName, stamp.UpdatedByDisplayName);
+    }
+
+    private const string FirstWriterId = "system-settings-first-writer";
+    private const string SecondWriterId = "system-settings-second-writer";
+
+    private static async Task SeedUserAsync(OdysseyApiFactory factory, string id, string email, string? displayName)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        context.Users.Add(new ApplicationUser
+        {
+            Id = id,
+            UserName = email,
+            NormalizedUserName = email.ToUpperInvariant(),
+            Email = email,
+            NormalizedEmail = email.ToUpperInvariant(),
+        });
+        if (displayName is not null)
+        {
+            context.UserProfiles.Add(new UserProfile { UserId = id, DisplayName = displayName });
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task<Dictionary<string, SystemSetting>> ReadRowsAsync(OdysseyApiFactory factory, params string[] keys)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await context.SystemSettings.AsNoTracking()
+            .Where(row => keys.Contains(row.Key))
+            .ToDictionaryAsync(row => row.Key);
+    }
+
+    [Fact]
+    public async Task Provenance_CarriesNoRawUserId()
+    {
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 61 });
+
+        response.EnsureSuccessStatusCode();
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var entry = json.RootElement.GetProperty("provenance")
+            .GetProperty(nameof(SystemSettingsUpdate.ContractEndingWindowDays));
+        Assert.Equal(
+            ["updatedAt", "updatedByDisplayName"],
+            entry.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
+        Assert.DoesNotContain(ActorUserId, entry.GetRawText(), StringComparison.Ordinal);
     }
 
     private static ClaimsPrincipal PrincipalWith(params string[] permissions)

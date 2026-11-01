@@ -260,6 +260,9 @@
     color: var(--mud-palette-text-secondary);
 }
 .odc-recordsection-notice .material-icons { font-size: var(--icon-md); flex: none; color: var(--mud-palette-text-secondary); }
+/* The message takes the remaining width and may shrink, so a long notice wraps beside its glyph instead of
+   pushing the band wider than the section. */
+.odc-recordsection-notice-body { flex: 1; min-width: 0; }
 /* Mirrors the design system's own literal (components/bundle.css) for the warning tint, the same
    deliberate oklch exception the pickers carry — these are not tokenized upstream either.
    --ods-amber is that one authored amber, named once here because three rules paint it as a
@@ -682,6 +685,18 @@
    .material-icons so the 18px size beats the Google Material Icons base (24px) rule. */
 .odc-select-opt { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
 .material-icons.odc-opt-icon { font-size: var(--icon-md); line-height: 1; flex: none; }
+
+/* Inline label prefix (OdsSelect Prefix — DS .odc-select-prefix, "Location  Home ▾"). MudSelect draws
+   it as its start-adornment text, so the rule targets that element inside a prefixed select: muted, in
+   the value's own type rather than MudBlazor's body1 adornment, and never wrapping. */
+.odc-select-prefix,
+.odc-select-prefixed .mud-input-adornment-start .mud-input-adornment-text {
+    color: var(--mud-palette-text-secondary);
+    font: inherit;
+    white-space: nowrap;
+    flex: none;
+}
+.odc-select-prefixed .mud-input-adornment-start { margin-inline-end: var(--space-2); }
 
 /* ---------- Modal (OdsModal — DS components/Modal) ----------
    The head and footer are tinted bands (a 2% ink wash) divided from the body by a

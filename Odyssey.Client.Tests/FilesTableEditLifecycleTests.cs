@@ -265,4 +265,48 @@ public class FilesTableEditLifecycleTests
         Assert.Empty(cut.FindAll("div.odc-ft-scroll"));
         Assert.Empty(cut.FindAll("[role='region']"));
     }
+    // ── Row cells (design system · FilesTable) ──────────────────────────────
+
+    /// <summary>
+    /// The Uploaded column's default format is the design's "Apr 2, 2026", in the invariant culture
+    /// so a browser locale never changes the month abbreviation. A local-kind instant keeps the
+    /// expectation independent of the machine's time zone.
+    /// </summary>
+    [Fact]
+    public async Task UploadedColumn_DefaultsToTheInvariantShortMonthDate()
+    {
+        await using var ctx = NewContext();
+        OdsFilesRow[] files =
+        [
+            Files[0] with { UploadedAtUtc = new DateTime(2026, 4, 2, 9, 30, 0, DateTimeKind.Local) },
+        ];
+        var previous = System.Globalization.CultureInfo.CurrentCulture;
+        System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("nb-NO");
+        try
+        {
+            var cut = ctx.Render<OdsFilesTable>(p => p.Add(t => t.Files, files).Add(t => t.Kinds, Kinds));
+
+            var cells = cut.FindAll("tbody td").Select(td => td.TextContent.Trim()).ToList();
+            Assert.Contains("Apr 2, 2026", cells);
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    /// <summary>The leading cell is the kind's decorative OdsAvatar — the kind is already named in Type.</summary>
+    [Fact]
+    public async Task LeadingCell_IsADecorativeKindAvatar()
+    {
+        await using var ctx = NewContext();
+        var cut = RenderTable(ctx, validityColumns: false);
+
+        var leading = cut.Find("tbody tr td:first-child");
+        var avatar = leading.QuerySelector(".odc-avatar");
+        Assert.NotNull(avatar);
+        Assert.Equal("true", avatar!.GetAttribute("aria-hidden"));
+        Assert.Null(avatar.GetAttribute("role"));
+        Assert.Single(cut.FindComponents<OdsAvatar>());
+    }
 }

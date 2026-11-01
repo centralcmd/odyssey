@@ -362,6 +362,22 @@ public sealed record SystemSettingsDto
     public IReadOnlyDictionary<string, SettingFaultKind> ProjectionFaults { get; set; } =
         new Dictionary<string, SettingFaultKind>(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Who last changed each setting, and when — the per-row "Last changed by" stamp. Keyed by the
+    /// <c>SystemSettingsUpdate</c> property name, the same join key <see cref="Warnings"/> and
+    /// <see cref="ProjectionFaults"/> use.
+    ///
+    /// <para>
+    /// <strong>A key is present only when a person wrote its row.</strong> An absent key means the row
+    /// still holds what the migration seeded (or no row exists yet), which the page renders as "Never
+    /// changed — default value." Same wire rules as <see cref="Warnings"/>: PascalCase keys and an
+    /// explicit <see cref="JsonPropertyNameAttribute"/>.
+    /// </para>
+    /// </summary>
+    [JsonPropertyName("provenance")]
+    public IReadOnlyDictionary<string, SettingProvenance> Provenance { get; set; } =
+        new Dictionary<string, SettingProvenance>(StringComparer.OrdinalIgnoreCase);
+
     /// <summary>The most recent write across all key-value rows.</summary>
     public DateTime UpdatedAt { get; set; }
 

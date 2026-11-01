@@ -5,7 +5,9 @@
    needs them. Tokens only; the design's odd sizes snap to the nearest step of each scale. */
 
 .wx-muted { color: var(--mud-palette-text-secondary); }
-.wx-attr { color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+/* An attribution is one unbroken line (design system · weather.css); the history card's ledger and footer,
+   where it shares a narrow row, relax it below. */
+.wx-attr { color: var(--mud-palette-text-secondary); white-space: nowrap; }
 /* A link inside a sentence (an empty line's way out): it takes the sentence's own size and weight, so it
    reads as part of the text rather than a button (design system · weather.css). */
 .wx-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
@@ -117,6 +119,9 @@
 .wx-section .odc-recordsection-notice { margin: 0; }
 
 @media (max-width: 640px) {
+    /* The attribution is server-supplied and unbounded: on a phone it wraps rather than pushing the card
+       past the viewport (WCAG 1.4.10). Wider cards keep the design's single line. */
+    .wx-attr { white-space: normal; overflow-wrap: anywhere; }
     .wx-picker { min-width: 0; width: 100%; }
     .wx-now { gap: var(--space-4); }
     .wx-compare { flex-direction: column; }
@@ -164,9 +169,18 @@
 .wx-hist-attr { margin-left: auto; text-align: right; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .wx-hist-foot { display: flex; justify-content: flex-end; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .wx-hist-chart .odc-sc-legend { padding-right: 0; }
-.wx-hist-attr .wx-attr, .wx-hist-foot .wx-attr { white-space: normal; }
-/* The about tooltip is a paragraph, not a label: it wraps at about 34ch and reads left-aligned. */
-.mud-tooltip.wx-hist-about { max-width: 36ch; text-align: left; white-space: pre-line; font-weight: var(--fw-regular); }
+.wx-hist-attr .wx-attr, .wx-hist-foot .wx-attr { white-space: normal; overflow-wrap: anywhere; }
+/* The about tooltip is a note, not a label: a lead, one row per measure group and the UTC footnote, reading
+   left-aligned and wrapping at about 34ch. A station row never wraps — "Wind: Oslo - Blindern, 3 km" split
+   across two lines reads as two facts (design system · weather.css .wx-hist-about). */
+.mud-tooltip.wx-hist-about { max-width: calc(100vw - 2 * var(--space-4)); text-align: left; font-weight: var(--fw-regular); }
+.wx-hist-about-body { display: flex; flex-direction: column; gap: var(--space-2); width: max-content; max-width: min(36ch, 100%); white-space: normal; }
+.wx-hist-about-list { display: flex; flex-direction: column; gap: calc(var(--space-1) / 4); }
+.wx-hist-about-row { white-space: nowrap; }
+@media (max-width: 640px) {
+    /* A station line keeps one line where it fits; on a phone it wraps inside the viewport-capped tooltip. */
+    .wx-hist-about-row { white-space: normal; overflow-wrap: anywhere; }
+}
 .wx-hist-facts { flex: none; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
 .wx-hist-facts dd b { font-weight: var(--fw-medium); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .wx-hist-band { fill: var(--chart-1); fill-opacity: 0.22; stroke: var(--brand-text); stroke-width: 1; stroke-linejoin: round; vector-effect: non-scaling-stroke; }

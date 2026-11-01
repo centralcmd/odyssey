@@ -579,15 +579,19 @@ public partial class PropertiesCard
     private IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p) => CountsFor(p, _canReadEstimates);
 
     /// <summary>
-    /// The collapsed card's counts. Estimates follow <c>properties.estimates.read</c>; the contract
+    /// The collapsed card's counts. Documents, smart tags and events are always shown. Estimates follow <c>properties.estimates.read</c>; the contract
     /// count needs no claim of its own, because the server already withholds it (null) without
     /// <c>contracts.read</c> — and, as on an account, a property party to nothing states no count.
     /// </summary>
     internal static IReadOnlyList<OdsRecordCount> CountsFor(ExistingProperty p, bool canReadEstimates)
     {
-        var counts = new List<OdsRecordCount>(4);
+        var counts = new List<OdsRecordCount>(5);
         if (canReadEstimates)
             counts.Add(new OdsRecordCount("monitor", (p.EstimateCount ?? 0).ToString(CultureInfo.CurrentCulture), "Estimates"));
+
+        // Between Estimates and Smart tags, as the design orders it (Properties.jsx): properties.read data,
+        // always shown — the attachment list itself is readable under the same claim.
+        counts.Add(new OdsRecordCount("description", p.FileCount.ToString(CultureInfo.CurrentCulture), "Documents"));
 
         counts.Add(new OdsRecordCount("sell", p.SmartTagCount.ToString(CultureInfo.CurrentCulture), "Smart tags"));
         counts.Add(new OdsRecordCount("history", p.EventCount.ToString(CultureInfo.CurrentCulture), "Events"));

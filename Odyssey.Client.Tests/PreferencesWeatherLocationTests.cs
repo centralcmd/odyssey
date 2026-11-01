@@ -116,6 +116,42 @@ public class PreferencesWeatherLocationTests : IDisposable
         Assert.False(SaveButton(page).HasAttribute("disabled"));
     }
 
+    // ── Row chrome (design system · Preferences.jsx, SettingRow) ─────────────────────────────────────
+
+    [Fact]
+    public async Task A_changed_row_carries_the_dirty_dot_and_its_spoken_unsaved_change()
+    {
+        await using var ctx = Context();
+        var page = ctx.Render<Preferences>();
+        page.WaitForAssertion(() => WeatherSelect(page));
+        Assert.Empty(page.FindAll(".odc-setting-dot"));
+
+        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.LocationId.ToString("D")));
+
+        var row = page.FindComponents<OdsSettingRow>().Single(r => r.Instance.Title == "Weather location");
+        var title = row.Find(".odc-setting-ttl");
+        Assert.Equal("true", title.QuerySelector(".odc-setting-dot")!.GetAttribute("aria-hidden"));
+        Assert.Equal("(unsaved change)", title.QuerySelector(".sr-only")!.TextContent.Trim());
+        // Only the changed row is marked.
+        Assert.Single(page.FindAll(".odc-setting-dot"));
+    }
+
+    [Fact]
+    public async Task A_search_matching_no_row_shows_the_empty_state_naming_the_query()
+    {
+        await using var ctx = Context();
+        var page = ctx.Render<Preferences>();
+        page.WaitForAssertion(() => WeatherSelect(page));
+
+        await page.InvokeAsync(() => page.FindComponent<PageHeader>().Instance.SearchOpenChanged.InvokeAsync(true));
+        await page.InvokeAsync(() => page.FindComponent<OdsSearchField>().Instance.ValueChanged.InvokeAsync("  zebra  "));
+
+        page.WaitForAssertion(() => Assert.Empty(page.FindComponents<OdsSettingRow>()));
+        var empty = page.FindComponent<OdsEmptyState>();
+        Assert.Contains("No preferences match", empty.Markup);
+        Assert.Contains("Nothing here matches \"zebra\".", string.Concat(empty.Nodes.Select(n => n.TextContent)));
+    }
+
     // ── Harness ──────────────────────────────────────────────────────────────────────────────────────
 
     private static IRenderedComponent<OdsSelect> WeatherSelect(IRenderedComponent<Preferences> page) =>

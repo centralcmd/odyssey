@@ -241,16 +241,22 @@ public partial class LocationWeatherHistorySection
     internal const string NoStationText =
         "No MET Norway station measures this place — none for temperature within 25 km, precipitation within 15 km or wind within 30 km — so there is no weather history. Forecasts are not affected.";
 
-    /// <summary>
-    /// What the info button says: where each measure group is measured (or how far was searched), then the UTC day.
-    /// Lines are newline-separated; the tooltip keeps them (pre-line).
-    /// </summary>
-    internal static string AboutText(IReadOnlyList<WeatherStationRef> stations) => stations.Count == 0
-        ? $"Daily values from the MET Norway stations nearest the weather position.\n{DayNote}"
-        : "Daily values from MET Norway stations, each measure from the nearest station that reports it:\n"
-          + string.Join("\n", stations.Select(WeatherMeasures.StationLine)) + $"\n{DayNote}";
+    /// <summary>The tooltip's lead sentence: where the values come from, ending on a colon when station rows follow.</summary>
+    internal static string AboutLead(IReadOnlyList<WeatherStationRef> stations) => stations.Count == 0
+        ? "Daily values from the MET Norway stations nearest the weather position."
+        : "Daily values from MET Norway stations, each measure from the nearest station that reports it:";
 
-    private string About => AboutText(_bounds?.Stations ?? []);
+    /// <summary>
+    /// What the info button says, as one plain string for the button's <c>aria-describedby</c>: the lead, one line per
+    /// measure group (where it is measured, or how far was searched), then the UTC day. The tooltip draws the same
+    /// three parts as structured rows (design system · Weather.jsx WxHistoryAbout).
+    /// </summary>
+    internal static string AboutText(IReadOnlyList<WeatherStationRef> stations) => string.Join("\n",
+        new[] { AboutLead(stations) }.Concat(stations.Select(WeatherMeasures.StationLine)).Append(DayNote));
+
+    private IReadOnlyList<WeatherStationRef> AboutStations => _bounds?.Stations ?? [];
+
+    private string About => AboutText(AboutStations);
 
     /// <summary>Remembered measures, kept only while they still name one unit; otherwise temperature.</summary>
     internal static IReadOnlyList<string> RestoreMeasures(IEnumerable<string>? saved)

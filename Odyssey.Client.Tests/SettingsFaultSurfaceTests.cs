@@ -364,7 +364,7 @@ public class SettingsFaultSurfaceTests
     /// one.</strong> <c>BlockingSummary</c> sits inside <c>@if (CanSave)</c> — placing this beside it
     /// leaves a read-only caller with no record at all — while <c>ss-note</c> is <c>!CanSave</c>, so
     /// reusing THAT condition produces the same hole with the sign flipped, visible only to viewers who
-    /// cannot repair anything. The claim-blind neighbour is <c>ss-lastchanged</c>.
+    /// cannot repair anything.
     /// </para>
     /// </summary>
     [Fact]

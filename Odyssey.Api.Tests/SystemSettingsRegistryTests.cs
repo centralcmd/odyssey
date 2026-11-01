@@ -60,6 +60,9 @@ public class SystemSettingsRegistryTests
         // no inbound counterpart — so this is an EXCLUSION of a non-setting property, not a relaxation
         // of the property this test asserts.
         nameof(SystemSettingsDto.ProjectionFaults),
+        // The per-row audit stamps — the per-key counterpart of UpdatedAt/UpdatedBy below, assembled
+        // from the rows' own columns rather than projected from any value.
+        nameof(SystemSettingsDto.Provenance),
         nameof(SystemSettingsDto.UpdatedAt),
         nameof(SystemSettingsDto.UpdatedBy),
         nameof(SystemSettingsDto.UpdatedByDisplayName),
