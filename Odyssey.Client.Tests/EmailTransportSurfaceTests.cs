@@ -691,6 +691,7 @@ public class EmailTransportSurfaceTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
         ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
+        ctx.Services.AddSingleton(sp => new Odyssey.ApiClient.Auth.AuthApiClient(new HttpClient(), new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp)));
         ctx.Services.AddSingleton<AuthenticationStateProvider>(
             new StubAuthenticationStateProvider(claims ??
             [

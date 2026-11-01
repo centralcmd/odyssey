@@ -109,6 +109,48 @@ public partial class Settings
     private bool _isSaving;
     private bool _justSaved;
 
+    // A save refused with 403 — the write claim was withdrawn after sign-in. Cleared by the next edit,
+    // as the design system's page does: the reader has seen it and chosen to carry on.
+    private bool _authDenied;
+
+    private const string AuthAlertId = "ss-authalert";
+
+    /// <summary>What every edit does to the page's transient save outcomes.</summary>
+    private void Touch()
+    {
+        _justSaved = false;
+        _authDenied = false;
+    }
+
+    /// <summary>
+    /// The 403 alert's remedy. Permissions live in the auth cookie and are read at sign-in, so a fresh
+    /// sign-in is the only way the page can learn what the caller may change now. The full reload is
+    /// what drops the cached auth state and every app-lifetime cache with it, as on Account.
+    /// </summary>
+    private async Task SignOutAsync()
+    {
+        await AuthApiClient.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
+    }
+
+    /// <summary>
+    /// The row's "last changed" stamp (Odyssey Design System · SystemSettings): who last wrote it and
+    /// when, or that it still holds the shipped default. Read from the DTO's per-key provenance, joined
+    /// on the row's <see cref="SettingItem.Field"/> the same way Warnings are. A tile with nothing to
+    /// change (an export or a link) has no stamp.
+    /// </summary>
+    private string? MetaFor(SettingItem item)
+    {
+        if (IsTileOnly(item.Control) || item.Field is not { } field || _dto is null)
+        {
+            return null;
+        }
+
+        return _dto.Provenance.TryGetValue(field, out var stamp)
+            ? $"Last changed by {stamp.UpdatedByDisplayName}, {stamp.UpdatedAt.ToLocalTime():d MMM yyyy, HH:mm}."
+            : "Never changed — default value.";
+    }
+
     // ── Encrypted credentials (issue #444) ────────────────────────────────────────────────────
     // The server's statuses, keyed by registry key. The page renders the INTERSECTION of the static
     // client catalogue with these, so the server stays the single authority on which secrets exist.
@@ -342,7 +384,13 @@ public partial class Settings
         // #348's household weather default). Still a Text row for dirty-tracking, validation and save —
         // only the control differs. The options are the server's; the server re-checks the choice on
         // save, so a list gone stale while the page was open is refused there, not trusted here.
-        Func<Settings, IReadOnlyList<OdsOption>>? OptionsFrom = null);
+        Func<Settings, IReadOnlyList<OdsOption>>? OptionsFrom = null,
+        // A TIGHTEN-ONLY row (the design system's `ceiling`): its value can be lowered but never raised,
+        // because a request-DTO annotation or a transport limit enforces the same number earlier in the
+        // pipeline. Drives the "lower only" marker and the range sentence. Stated rather than inferred
+        // from MaxFrom: a published bound is not by itself a one-way door — the aggregate calendar caps
+        // and the metadata read size publish theirs only so the control can bound itself.
+        bool LowerOnly = false);
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
@@ -370,204 +418,6 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.EmailRequireConfirmation),
                 Load: (p, dto) => p.SetBoolLoaded("email-confirmation", dto.EmailRequireConfirmation), Write: (p, req) => req.EmailRequireConfirmation = p.BoolRequest("email-confirmation")),
         ]),
-        new("Data", Icons.Material.Filled.Storage,
-        [
-            new("data-export", "download_for_offline", "Export database JSON",
-                "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
-                SettingClaim.None, SettingControl.Export),
-        ]),
-        // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
-        // every client for one, and it travels in the User-Agent of every request. The Frost client id
-        // joins this card from SecretCatalogue.
-        new("Weather", Icons.Material.Filled.WbSunny,
-        [
-            new("weatherUserAgentContact", "contact_mail", "Contact for MET Norway",
-                "An email address or an https:// URL MET Norway can reach the operator of this instance at. It is sent with every weather request. Empty means nothing is fetched. Prefer a role address over a person's.",
-                SettingClaim.Count, SettingControl.Text, Max: WeatherRules.ContactMaxLength,
-                Field: nameof(SystemSettingsUpdate.WeatherUserAgentContact),
-                Load: (p, dto) => p.SetTextLoaded("weatherUserAgentContact", dto.WeatherUserAgentContact),
-                Write: (p, req) => req.WeatherUserAgentContact = p.TextRequest("weatherUserAgentContact"),
-                InputMode: "email",
-                Placeholder: "weather@example.net",
-                AllowEmpty: true,
-                Rule: WeatherRules.ValidateContact),
-            new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
-                "How often the background job refreshes a scheduled place's forecast. 1440 minutes is once a day. MET's own expiry is honoured on top of it, so a shorter interval never fetches more often than MET allows.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
-                Field: nameof(SystemSettingsUpdate.WeatherRefreshIntervalMinutes),
-                Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
-                Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
-                Unit: "min"),
-            new("weatherMaxTrackedLocations", "event_repeat", "Places on a schedule",
-                "How many places refresh in the background. Others are fetched only when someone opens their weather. Lowering it pauses the most recently enabled places first.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.WeatherMaxTrackedLocationsMin, Max: SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
-                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
-                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedLocations", dto.WeatherMaxTrackedLocations),
-                Write: (p, req) => req.WeatherMaxTrackedLocations = p.IntRequest("weatherMaxTrackedLocations")),
-            new("weatherDefaultLocationId", "home", "Household default location",
-                "The place the dashboard shows to anyone who hasn't picked one. Only places with weather on can be chosen.",
-                SettingClaim.Count, SettingControl.Text,
-                Field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
-                Load: (p, dto) => p.SetTextLoaded("weatherDefaultLocationId", dto.WeatherDefaultLocationId),
-                Write: (p, req) => req.WeatherDefaultLocationId = p.TextRequest("weatherDefaultLocationId"),
-                AllowEmpty: true,
-                Rule: WeatherRules.ValidateDefaultLocationId,
-                OptionsFrom: p => p.WeatherDefaultOptions()),
-        ]),
-        new("Contacts import & export", Icons.Material.Filled.Contacts,
-        [
-            new("contactVCardMaxExportRows", "file_download", "Maximum contacts per export",
-                "Upper limit on the rows a vCard (.vcf) export may produce. \"No limit\" keeps exports unbounded.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.ContactVCardMaxExportRows),
-                Load: (p, dto) => p.SetCapacityLoaded("contactVCardMaxExportRows", dto.ContactVCardMaxExportRows), Write: (p, req) => req.ContactVCardMaxExportRows = p.CapacityRequest("contactVCardMaxExportRows")),
-            new("contactVCardMaxImportEntries", "file_upload", "Maximum contacts per import",
-                "Upper limit on the entries accepted from an imported vCard file.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.ContactVCardMaxImportEntries),
-                Load: (p, dto) => p.SetCapacityLoaded("contactVCardMaxImportEntries", dto.ContactVCardMaxImportEntries), Write: (p, req) => req.ContactVCardMaxImportEntries = p.CapacityRequest("contactVCardMaxImportEntries")),
-            new("contactVCardMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest vCard (.vcf) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.ContactVCardMaxImportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("contactVCardMaxImportMegabytes", dto.ContactVCardMaxImportMegabytes), Write: (p, req) => req.ContactVCardMaxImportMegabytes = p.IntRequest("contactVCardMaxImportMegabytes")),
-            new("contactVCardMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest vCard (.vcf) file an export may produce. A too-large export is truncated rather "
-                + "than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.ContactVCardMaxExportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("contactVCardMaxExportMegabytes", dto.ContactVCardMaxExportMegabytes), Write: (p, req) => req.ContactVCardMaxExportMegabytes = p.IntRequest("contactVCardMaxExportMegabytes")),
-            // ── issue #434 key 12. TIGHTEN-ONLY: each repeatable property costs a sibling query AND its
-            // own save, multiplied by an import entry cap that ships unlimited, so any number above the
-            // shipped 200 would be a guess about a product of three unbounded terms. The static Max
-            // names the same shared constant the server's [Range] maximum does.
-            new("contactVCardMaxRepeatablePropertiesPerEntry", "list_alt", "Max repeated fields per contact",
-                "How many addresses, email addresses or phone numbers are imported from one vCard entry. "
-                + "Each one costs a separate write.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: 1, Max: SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry,
-                Field: nameof(SystemSettingsUpdate.ContactVCardMaxRepeatablePropertiesPerEntry),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "contactVCardMaxRepeatablePropertiesPerEntry",
-                    dto.ContactVCardMaxRepeatablePropertiesPerEntry),
-                Write: (p, req) => req.ContactVCardMaxRepeatablePropertiesPerEntry =
-                    p.IntRequest("contactVCardMaxRepeatablePropertiesPerEntry"),
-                MaxFrom: dto => dto.ContactVCardMaxRepeatablePropertiesPerEntryCeiling),
-        ],
-        RoundTrip: new RoundTripPair("contactVCardMaxExportRows", "contactVCardMaxImportEntries")),
-        new("Calendars import & export", Icons.Material.Filled.CalendarMonth,
-        [
-            new("calendarIcsMaxExportEvents", "file_download", "Maximum events per export",
-                "Upper limit on the VEVENTs an iCalendar (.ics) export may produce. \"No limit\" keeps "
-                + "exports unbounded — the separate whole-calendar download keeps its own fixed ceiling "
-                + "regardless of this setting.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportEvents),
-                Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxExportEvents", dto.CalendarIcsMaxExportEvents), Write: (p, req) => req.CalendarIcsMaxExportEvents = p.CapacityRequest("calendarIcsMaxExportEvents")),
-            new("calendarIcsMaxImportEvents", "file_upload", "Maximum events per import",
-                "Upper limit on the VEVENTs accepted from an imported .ics file.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportEvents),
-                Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxImportEvents", dto.CalendarIcsMaxImportEvents), Write: (p, req) => req.CalendarIcsMaxImportEvents = p.CapacityRequest("calendarIcsMaxImportEvents")),
-            new("calendarIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxImportMegabytes", dto.CalendarIcsMaxImportMegabytes), Write: (p, req) => req.CalendarIcsMaxImportMegabytes = p.IntRequest("calendarIcsMaxImportMegabytes")),
-            new("calendarIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxExportMegabytes", dto.CalendarIcsMaxExportMegabytes), Write: (p, req) => req.CalendarIcsMaxExportMegabytes = p.IntRequest("calendarIcsMaxExportMegabytes")),
-            // ── issue #434 keys 8-10. These three bound the ALL-CALENDARS export/import path, not a
-            // single calendar's, which is why they belong here rather than in "Calendar limits". Their
-            // ceilings are twice the shipped default, derived from the concurrency actually permitted on
-            // this surface (two import permits globally, two exports per user, four exports globally),
-            // so worst-case concurrent materialisation stays within the same order as today's.
-            new("calendarIcsMaxAggregateExportRows", "file_download", "Aggregate export fetch guard",
-                "How many events an unfiltered all-calendars export may fetch before it refuses. Bounds "
-                + "the intermediate work, not the output size — the export row cap above is that.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 40000,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportRows),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "calendarIcsMaxAggregateExportRows", dto.CalendarIcsMaxAggregateExportRows),
-                Write: (p, req) => req.CalendarIcsMaxAggregateExportRows =
-                    p.IntRequest("calendarIcsMaxAggregateExportRows"),
-                MaxFrom: dto => dto.CalendarIcsMaxAggregateExportRowsCeiling),
-            new("calendarIcsMaxAggregateOccurrences", "autorenew", "Max generated occurrences per import",
-                "How many events one import may create or regenerate in total, including every occurrence "
-                + "of a recurring series. All of them are held in memory while the import runs.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 20000,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateOccurrences),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "calendarIcsMaxAggregateOccurrences", dto.CalendarIcsMaxAggregateOccurrences),
-                Write: (p, req) => req.CalendarIcsMaxAggregateOccurrences =
-                    p.IntRequest("calendarIcsMaxAggregateOccurrences"),
-                MaxFrom: dto => dto.CalendarIcsMaxAggregateOccurrencesCeiling),
-            new("calendarIcsMaxAggregateExportWindowDays", "event_available", "Aggregate export window",
-                "The widest date range an all-calendars export may span in one request.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
-                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportWindowDays),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "calendarIcsMaxAggregateExportWindowDays", dto.CalendarIcsMaxAggregateExportWindowDays),
-                Write: (p, req) => req.CalendarIcsMaxAggregateExportWindowDays =
-                    p.IntRequest("calendarIcsMaxAggregateExportWindowDays"),
-                Unit: "days"),
-        ],
-        RoundTrip: new RoundTripPair("calendarIcsMaxExportEvents", "calendarIcsMaxImportEvents")),
-        new("Tasks import & export", Icons.Material.Filled.Checklist,
-        [
-            new("taskIcsMaxExportTasks", "file_download", "Maximum tasks per export",
-                "Upper limit on the VTODOs an iCalendar (.ics) export may produce. \"No limit\" keeps exports unbounded.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportTasks),
-                Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxExportTasks", dto.TaskIcsMaxExportTasks), Write: (p, req) => req.TaskIcsMaxExportTasks = p.CapacityRequest("taskIcsMaxExportTasks")),
-            new("taskIcsMaxImportTasks", "file_upload", "Maximum tasks per import",
-                "Upper limit on the VTODOs accepted from an imported .ics file.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
-                Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxImportTasks", dto.TaskIcsMaxImportTasks), Write: (p, req) => req.TaskIcsMaxImportTasks = p.CapacityRequest("taskIcsMaxImportTasks")),
-            new("taskIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("taskIcsMaxImportMegabytes", dto.TaskIcsMaxImportMegabytes), Write: (p, req) => req.TaskIcsMaxImportMegabytes = p.IntRequest("taskIcsMaxImportMegabytes")),
-            new("taskIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
-        ],
-        RoundTrip: new RoundTripPair("taskIcsMaxExportTasks", "taskIcsMaxImportTasks")),
-        new("Journal import & export", Icons.Material.Filled.ImportContacts,
-        [
-            new("journalIcsMaxExportRows", "file_download", "Maximum entries per export",
-                "Upper limit on the VJOURNALs an iCalendar (.ics) export may produce.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportRows),
-                Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxExportRows", dto.JournalIcsMaxExportRows), Write: (p, req) => req.JournalIcsMaxExportRows = p.CapacityRequest("journalIcsMaxExportRows")),
-            new("journalIcsMaxImportEntries", "file_upload", "Maximum entries per import",
-                "Upper limit on the VJOURNALs accepted from an imported .ics file.",
-                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
-                Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
-                Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxImportEntries", dto.JournalIcsMaxImportEntries), Write: (p, req) => req.JournalIcsMaxImportEntries = p.CapacityRequest("journalIcsMaxImportEntries")),
-            new("journalIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("journalIcsMaxImportMegabytes", dto.JournalIcsMaxImportMegabytes), Write: (p, req) => req.JournalIcsMaxImportMegabytes = p.IntRequest("journalIcsMaxImportMegabytes")),
-            new("journalIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
-                Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
-                Load: (p, dto) => p.SetIntLoaded("journalIcsMaxExportMegabytes", dto.JournalIcsMaxExportMegabytes), Write: (p, req) => req.JournalIcsMaxExportMegabytes = p.IntRequest("journalIcsMaxExportMegabytes")),
-        ],
-        RoundTrip: new RoundTripPair("journalIcsMaxExportRows", "journalIcsMaxImportEntries")),
         // ── AI file analysis (issue #421 Wave 1) ─────────────────────────────────────────────────
         // Row icons are ligatures resolved against the SELF-HOSTED, frozen classic Material Icons
         // font in wwwroot/fonts — not Material Symbols and not the live Google Fonts set. A name the
@@ -589,61 +439,76 @@ public partial class Settings
             new("fileAnalysisEnabled", "verified_user", "AI document analysis",
                 "When off, no document is sent for analysis and every analysis endpoint answers 503. "
                 + "Turning it on does not by itself transfer anything: each analysis still requires the "
-                + "user's per-document consent.",
+                + "user's per-document consent. Read live on every request rather than from the settings "
+                + "cache, so turning it off stops the next transfer instead of the next one after a "
+                + "30-second window. Every change is written to the audit log.",
                 SettingClaim.Security,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisEnabled),
                 Load: (p, dto) => p.SetBoolLoaded("fileAnalysisEnabled", dto.FileAnalysisEnabled),
                 Write: (p, req) => req.FileAnalysisEnabled = p.BoolRequest("fileAnalysisEnabled")),
             new("fileAnalysisModel", "badge", "Model",
                 "The model each analysis is sent to, and the model recorded against it. Analyses already "
-                + "completed keep the model they ran under.",
+                + "completed keep the model they ran under. A stored value that cannot be used makes "
+                + "analysis refuse rather than fall back to the shipped default — a job stamp must never "
+                + "name a model that did not run.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisModel),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisModel", dto.FileAnalysisModel),
                 Write: (p, req) => req.FileAnalysisModel = p.TextRequest("fileAnalysisModel")),
             new("fileAnalysisBaseUrl", "send", "Provider base URL",
                 "Where analysis requests are sent. Must be an absolute https:// address with no path — "
-                + "the provider appends /v1/messages itself. The configured API key is sent to this "
-                + "host, so change it only to a host you control or trust.",
+                + "the provider appends /v1/messages itself — and the stored API key is sent to this "
+                + "host, so change it only to a host you control or trust. Redirects are not followed, so "
+                + "the API key and the document reach only this host. The host is recorded on each job — "
+                + "GDPR Art. 30(1)(e). Every change is written to the audit log.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisBaseUrl),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisBaseUrl", dto.FileAnalysisBaseUrl),
                 Write: (p, req) => req.FileAnalysisBaseUrl = p.TextRequest("fileAnalysisBaseUrl"),
                 InputMode: "url", Placeholder: "https://…"),
             new("fileAnalysisProcessor", "corporate_fare", "Data processor",
-                "The third party uploaded documents are sent to for analysis. Shown in the consent gate before every transfer.",
+                "The organisation that receives uploaded documents. Named at the consent gate and in the sentence "
+                + "each user affirms. Recorded on each analysis job — GDPR Art. 13(1)(e). Odyssey can only "
+                + "advise on the name, not verify it. Every change is written to the audit log.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisProcessor),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisProcessor", dto.FileAnalysisProcessor),
                 Write: (p, req) => req.FileAnalysisProcessor = p.TextRequest("fileAnalysisProcessor")),
             new("fileAnalysisProcessorRegion", "public", "Processor region",
-                "Where that processing happens. This is the disclosure that decides adequacy versus standard contractual clauses under GDPR Chapter V — and it cannot be verified automatically, so check it against your processor's terms.",
+                "Where processing happens. Nothing the server can see reveals the real region, so this value is "
+                + "trusted as entered — a wrong one is not detectable. Shown at the consent gate and recorded "
+                + "on each job — GDPR Chapter V. Every change is written to the audit log.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisProcessorRegion),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisProcessorRegion", dto.FileAnalysisProcessorRegion),
                 Write: (p, req) => req.FileAnalysisProcessorRegion = p.TextRequest("fileAnalysisProcessorRegion")),
             new("fileAnalysisLawfulBasis", "gavel", "Lawful basis",
-                "Recorded verbatim against every analysis, so each record keeps the basis asserted at the time of that transfer.",
+                "Recorded on every job and shown under the affirmation. Change it when the legal analysis "
+                + "changes, not to relabel past jobs. Shown at the consent gate under the sentence each user "
+                + "affirms. Every change is written to the audit log.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisLawfulBasis),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisLawfulBasis", dto.FileAnalysisLawfulBasis),
                 Write: (p, req) => req.FileAnalysisLawfulBasis = p.TextRequest("fileAnalysisLawfulBasis")),
             new("fileAnalysisPrivacyNoticeUrl", "link", "Privacy notice URL",
-                "Linked from the consent gate. Must be an absolute https:// address — it is rendered as a link, so other schemes are rejected.",
+                "Linked from the consent gate. Absolute https:// only — the value is rendered as a live link. "
+                + "Linked at the consent gate — GDPR Art. 13(1)(e). Odyssey checks the URL. Every change is "
+                + "written to the audit log.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisPrivacyNoticeUrl),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisPrivacyNoticeUrl", dto.FileAnalysisPrivacyNoticeUrl),
                 Write: (p, req) => req.FileAnalysisPrivacyNoticeUrl = p.TextRequest("fileAnalysisPrivacyNoticeUrl"),
                 InputMode: "url", Placeholder: "https://…"),
             new("fileAnalysisMaxFutureTransactionDays", "update", "Future-dated transaction window",
-                "How many days ahead of today an extracted transaction date may fall before it is discarded as a misread.",
+                "How far ahead of today an extracted transaction date may fall before it is rejected as a misread.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMaxFutureTransactionDays),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMaxFutureTransactionDays", dto.FileAnalysisMaxFutureTransactionDays),
                 Write: (p, req) => req.FileAnalysisMaxFutureTransactionDays = p.IntRequest("fileAnalysisMaxFutureTransactionDays"),
                 Unit: "days"),
             new("fileAnalysisMatchAutoLinkThreshold", "join_inner", "Auto-link confidence threshold",
-                "Matches at or above this confidence are linked automatically; below it they are suggestions only. Raising it links less and asks more. Analyses already completed keep the threshold they ran under.",
+                "At or above this, an extracted match is linked automatically; below it, suggested for review. "
+                + "Higher links less. Each job records the threshold it ran under.",
                 // Percent, not Decimal: the value is STORED as a 0.0-1.0 fraction but entered as a
                 // whole percent (Odyssey Design System · NumberField). "0.62" gives the reader no clue
                 // it is a proportion, and a two-decimal stepper is a fiddly target; the page scales at
@@ -658,22 +523,23 @@ public partial class Settings
             // to it gets an audit entry. The Photos group below mixes claims for the same reason,
             // which correctly fires the existing partial-permissions note.
             new("fileAnalysisMaxTokens", "format_list_numbered", "Maximum response tokens",
-                "Caps the model's output on each analysis. Raising it allows more complete extraction from "
-                + "long statements and costs proportionally more per document.",
+                "The output ceiling on each extraction call. A lower value truncates long statements; a "
+                + "higher one costs more per document. Each job records the value it ran under, so a "
+                + "truncated extraction stays distinguishable from a model failure.",
                 SettingClaim.Security, SettingControl.Number, Min: 1024, Max: 64000,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMaxTokens),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMaxTokens", dto.FileAnalysisMaxTokens),
                 Write: (p, req) => req.FileAnalysisMaxTokens = p.IntRequest("fileAnalysisMaxTokens")),
-            new("fileAnalysisMatchMaxVocabulary", "list_alt", "Match vocabulary limit",
-                "How many contact and tag names may be sent for matching. Over the limit the matching step "
-                + "is skipped entirely rather than run on a subset.",
+            new("fileAnalysisMatchMaxVocabulary", "list_alt", "Match vocabulary size",
+                "How many known contacts and tags are offered to the match call. Over the cap the match is "
+                + "skipped, not truncated.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 5000,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchMaxVocabulary", dto.FileAnalysisMatchMaxVocabulary),
                 Write: (p, req) => req.FileAnalysisMatchMaxVocabulary = p.IntRequest("fileAnalysisMatchMaxVocabulary")),
             new("fileAnalysisMatchTimeoutSeconds", "history_toggle_off", "Match timeout",
-                "How long one matching call may take before it is abandoned. On timeout the extracted "
-                + "transactions stay importable by hand.",
+                "How long the match call may run before the job is marked failed and falls back to manual "
+                + "review.",
                 SettingClaim.Count, SettingControl.Number, Min: 5, Max: 600,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMatchTimeoutSeconds),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchTimeoutSeconds", dto.FileAnalysisMatchTimeoutSeconds),
@@ -694,7 +560,10 @@ public partial class Settings
         new("Email", Icons.Material.Filled.MarkEmailRead,
         [
             new("emailSmtpHost", "send", "SMTP host",
-                "The relay every transactional mail is sent through. A hostname or IP literal only — no scheme, port, path or credentials. Empty means mail is not configured: every send is logged and skipped.",
+                "The relay every transactional mail is sent through. A hostname or IP literal only — no scheme, port, path or credentials. Empty means mail is not configured: every send is logged and skipped. "
+                + "The client connects before it authenticates, so whatever host is set here receives the "
+                + "stored SMTP credential. Changing it clears that credential in the same save, and the "
+                + "change binds on the next send with no restart.",
                 SettingClaim.Security, SettingControl.Text, Max: EmailSmtpHostRule.MaxLength,
                 Field: nameof(SystemSettingsUpdate.EmailSmtpHost),
                 Load: (p, dto) => p.SetTextLoaded("emailSmtpHost", dto.EmailSmtpHost),
@@ -714,13 +583,19 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("emailSmtpPort", dto.EmailSmtpPort),
                 Write: (p, req) => req.EmailSmtpPort = p.IntRequest("emailSmtpPort")),
             new("emailUseStartTls", "lock", "Use STARTTLS",
-                "Upgrade the connection to TLS after connecting — the right setting for port 587. Turn it off only for implicit TLS on 465, where the connection is encrypted from the start. Turning it off clears the stored SMTP credential, which must then be re-entered.",
+                "Upgrade the connection to TLS after connecting — the right setting for port 587. Turn it off only for implicit TLS on 465, where the connection is encrypted from the start. "
+                + "Turning it off clears the stored SMTP credential in the same save: a credential entered "
+                + "for an encrypted transport must not be replayed over a cleartext one, where passive "
+                + "network position alone is enough to read it.",
                 SettingClaim.Security,
                 Field: nameof(SystemSettingsUpdate.EmailUseStartTls),
                 Load: (p, dto) => p.SetBoolLoaded("emailUseStartTls", dto.EmailUseStartTls),
                 Write: (p, req) => req.EmailUseStartTls = p.BoolRequest("emailUseStartTls")),
             new("emailClientBaseUrl", "link", "Client base URL",
-                "The public origin every confirmation and password-reset link is composed against. Absolute https:// with no query, fragment or credentials; http:// is accepted for loopback addresses so the dev stack keeps working. Empty means links cannot be composed and the reset mail carries a code to paste instead.",
+                "The public origin every confirmation and password-reset link is composed against. Absolute https:// with no query, fragment or credentials; http:// is accepted for loopback addresses so the dev stack keeps working. "
+                + "Anyone who can change this receives password-reset tokens for any address they know, so "
+                + "the value is audited by host and checked against the origin you are browsing from. Empty "
+                + "means links cannot be composed and the reset mail carries a code to paste instead.",
                 SettingClaim.Security, SettingControl.Text, Max: EmailClientBaseUrlRule.MaxLength,
                 Field: nameof(SystemSettingsUpdate.EmailClientBaseUrl),
                 Load: (p, dto) => p.SetTextLoaded("emailClientBaseUrl", dto.EmailClientBaseUrl),
@@ -730,26 +605,27 @@ public partial class Settings
                 AllowEmpty: true,
                 Rule: EmailClientBaseUrlRule.Validate),
             new("emailFromAddress", "alternate_email", "From address",
-                "The envelope sender on every confirmation and password-reset email. Must remain an address your mail relay is authorised to send as, or delivery fails silently.",
+                "The sender on every transactional mail. Must stay an address the relay is authorised to send "
+                + "as, or SPF/DKIM will fail and mail will be dropped silently.",
                 SettingClaim.Security, SettingControl.Text, Max: 256,
                 Field: nameof(SystemSettingsUpdate.EmailFromAddress),
                 Load: (p, dto) => p.SetTextLoaded("emailFromAddress", dto.EmailFromAddress),
                 Write: (p, req) => req.EmailFromAddress = p.TextRequest("emailFromAddress"),
                 InputMode: "email"),
             new("emailFromName", "badge", "From name",
-                "The display name shown beside the sender address in a recipient's inbox.",
+                "The display name beside the sender address.",
                 SettingClaim.Security, SettingControl.Text, Max: 128,
                 Field: nameof(SystemSettingsUpdate.EmailFromName),
                 Load: (p, dto) => p.SetTextLoaded("emailFromName", dto.EmailFromName),
                 Write: (p, req) => req.EmailFromName = p.TextRequest("emailFromName")),
             new("emailPerRecipientLimit", "filter_list", "Messages per recipient",
-                "How many transactional emails one address may receive per window. This is what stops a rotating-IP source mailbombing a single mailbox, so lowering it takes effect on the very next send.",
+                "How many mails one address may receive per window. Bounds password-reset flooding.",
                 SettingClaim.Security, SettingControl.Number, Min: 1, Max: 1000,
                 Field: nameof(SystemSettingsUpdate.EmailPerRecipientLimit),
                 Load: (p, dto) => p.SetIntLoaded("emailPerRecipientLimit", dto.EmailPerRecipientLimit),
                 Write: (p, req) => req.EmailPerRecipientLimit = p.IntRequest("emailPerRecipientLimit")),
             new("emailPerRecipientWindowMinutes", "timelapse", "Recipient window",
-                "The length of that window, in minutes. A longer window is a tighter limit.",
+                "The window the per-recipient limit is counted over. A longer window is a tighter throttle.",
                 SettingClaim.Security, SettingControl.Number, Min: 1, Max: 1440,
                 Field: nameof(SystemSettingsUpdate.EmailPerRecipientWindowMinutes),
                 Load: (p, dto) => p.SetIntLoaded("emailPerRecipientWindowMinutes", dto.EmailPerRecipientWindowMinutes),
@@ -759,10 +635,10 @@ public partial class Settings
             // FLOOR — the reason SettingItem needed MinFrom to mirror MaxFrom. The static Min names the
             // same shared constant the server's [Range] minimum does, so the load-phase fallback and
             // the published floor are the same number rather than two literals that could drift.
-            new("emailMaxTrackedRecipients", "send", "Tracked recipient addresses",
-                "How many distinct addresses the per-recipient limit tracks at once. Once full, mail to an "
-                + "untracked address is allowed through. A change is not instant in either direction: "
-                + "existing entries age out over up to a full window.",
+            new("emailMaxTrackedRecipients", "send", "Tracked recipients",
+                "How many addresses the throttle holds at once. At capacity it stops throttling, so a "
+                + "smaller table weakens the limit above rather than tightening it. Existing entries age out "
+                + "over up to a full window, so a change is not instant in either direction.",
                 SettingClaim.Security, SettingControl.Number,
                 Min: SystemSettingsDefaults.EmailMaxTrackedRecipients, Max: 200000,
                 Field: nameof(SystemSettingsUpdate.EmailMaxTrackedRecipients),
@@ -770,19 +646,71 @@ public partial class Settings
                 Write: (p, req) => req.EmailMaxTrackedRecipients = p.IntRequest("emailMaxTrackedRecipients"),
                 MinFrom: dto => dto.EmailMaxTrackedRecipientsFloor),
         ]),
+        new("Data", Icons.Material.Filled.Storage,
+        [
+            new("data-export", "download_for_offline", "Export database JSON",
+                "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
+                SettingClaim.None, SettingControl.Export),
+        ]),
+        // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
+        // every client for one, and it travels in the User-Agent of every request. The Frost client id
+        // joins this card from SecretCatalogue.
+        new("Weather", Icons.Material.Filled.WbSunny,
+        [
+            new("weatherUserAgentContact", "contact_mail", "Contact for MET Norway",
+                "How MET Norway can reach whoever runs this instance — an email address or an https:// URL. It "
+                + "is sent in the User-Agent of every weather request, as MET's terms require. Empty means no "
+                + "weather is fetched at all. Use a role address (weather@…, ops@…) rather than a person's: "
+                + "it leaves the deployment with every request.",
+                SettingClaim.Count, SettingControl.Text, Max: WeatherRules.ContactMaxLength,
+                Field: nameof(SystemSettingsUpdate.WeatherUserAgentContact),
+                Load: (p, dto) => p.SetTextLoaded("weatherUserAgentContact", dto.WeatherUserAgentContact),
+                Write: (p, req) => req.WeatherUserAgentContact = p.TextRequest("weatherUserAgentContact"),
+                InputMode: "email",
+                Placeholder: "weather@example.net",
+                AllowEmpty: true,
+                Rule: WeatherRules.ValidateContact),
+            new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
+                "How often a place set to refresh on a schedule asks MET Norway for a newer forecast. MET's own "
+                + "Expires header can stretch it; nothing shortens it.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
+                Field: nameof(SystemSettingsUpdate.WeatherRefreshIntervalMinutes),
+                Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
+                Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
+                Unit: "min"),
+            new("weatherMaxTrackedLocations", "format_list_numbered", "Places on a schedule",
+                "How many locations may refresh their forecast in the background. Others are fetched only "
+                + "when someone looks. Lowering it pauses the most recently enabled ones first.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.WeatherMaxTrackedLocationsMin, Max: SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
+                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
+                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedLocations", dto.WeatherMaxTrackedLocations),
+                Write: (p, req) => req.WeatherMaxTrackedLocations = p.IntRequest("weatherMaxTrackedLocations")),
+            new("weatherDefaultLocationId", "home", "Household default location",
+                "The weather everyone sees until they pick their own on the dashboard. Only locations with "
+                + "weather turned on can be chosen.",
+                SettingClaim.Count, SettingControl.Text,
+                Field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
+                Load: (p, dto) => p.SetTextLoaded("weatherDefaultLocationId", dto.WeatherDefaultLocationId),
+                Write: (p, req) => req.WeatherDefaultLocationId = p.TextRequest("weatherDefaultLocationId"),
+                AllowEmpty: true,
+                Rule: WeatherRules.ValidateDefaultLocationId,
+                OptionsFrom: p => p.WeatherDefaultOptions()),
+        ]),
         // ── Per-request caps (issue #421 Wave 3) ──────────────────────────────────────────────────
         // These were invisible before: the Contracts and PhotoLibrary config sections had no
         // appsettings entry at all, and the two journal caps were `private const` in their services.
         new("Contracts", Icons.Material.Filled.Description,
         [
             new("contractMaxPartiesPerContract", "groups", "Max parties per contract",
-                "Upper limit on parties linked to one contract. A request over the cap is rejected.",
+                "Upper limit on the counterparties one contract may name.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxPartiesPerContractMin, Max: SystemSettingsBounds.ContractMaxPartiesPerContractMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxPartiesPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxPartiesPerContract", dto.ContractMaxPartiesPerContract),
                 Write: (p, req) => req.ContractMaxPartiesPerContract = p.IntRequest("contractMaxPartiesPerContract")),
             new("contractMaxFilesPerContract", "attach_file", "Max files per contract",
-                "Upper limit on files attached to one contract.",
+                "Upper limit on the documents attached to a single contract.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxFilesPerContractMin, Max: SystemSettingsBounds.ContractMaxFilesPerContractMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxFilesPerContract),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxFilesPerContract", dto.ContractMaxFilesPerContract),
@@ -808,7 +736,7 @@ public partial class Settings
                 Write: (p, req) => req.ContractMaxSmartTagsPerContract =
                     p.IntRequest("contractMaxSmartTagsPerContract")),
             new("contractMaxSummaryContracts", "format_list_numbered", "Max contracts in summary",
-                "Safety ceiling on how many contracts the dashboard summary aggregates over.",
+                "Upper limit on the contracts the summary roll-up aggregates over.",
                 SettingClaim.Count, SettingControl.Number, Min: SystemSettingsBounds.ContractMaxSummaryContractsMin, Max: SystemSettingsBounds.ContractMaxSummaryContractsMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryContracts),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryContracts", dto.ContractMaxSummaryContracts),
@@ -838,33 +766,14 @@ public partial class Settings
                 Unit: "days"),
             new("contractMaxSummaryCharges", "receipt_long", "Max upcoming transactions shown per direction",
                 "Upper limit on the next-movement rows listed in the page-header panel. It applies to "
-                + "outgoing charges and incoming receipts SEPARATELY, so a file with many charges "
-                + "cannot starve the receipts — the panel can therefore list up to twice this number "
-                + "in total. Each row is a separate rendered block, so this is deliberately bounded "
-                + "well below the other summary caps.",
+                + "outgoing charges and incoming receipts separately, so the panel can list up to twice "
+                + "this number in total.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.ContractMaxSummaryChargesMin,
                 Max: SystemSettingsBounds.ContractMaxSummaryChargesMax,
                 Field: nameof(SystemSettingsUpdate.ContractMaxSummaryCharges),
                 Load: (p, dto) => p.SetIntLoaded("contractMaxSummaryCharges", dto.ContractMaxSummaryCharges),
                 Write: (p, req) => req.ContractMaxSummaryCharges = p.IntRequest("contractMaxSummaryCharges")),
-        ]),
-        // Its own group, as the design system lays it out (system-settings-data.js): a property is not a
-        // kind of contract, and an administrator looking for the property cap looks under Properties.
-        new("Properties", Icons.Material.Filled.HomeWork,
-        [
-            new("propertyMaxSmartTagsPerProperty", "sell", "Smart tags per property",
-                $"How many smart tags one property may carry. Capped at {SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax}, the most tags one transactions "
-                + "query can filter on. The Properties page reads this value, so the limit it shows always "
-                + "matches what the server enforces.",
-                SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin,
-                Max: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax,
-                Field: nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
-                Load: (p, dto) => p.SetIntLoaded(
-                    "propertyMaxSmartTagsPerProperty", dto.PropertyMaxSmartTagsPerProperty),
-                Write: (p, req) => req.PropertyMaxSmartTagsPerProperty =
-                    p.IntRequest("propertyMaxSmartTagsPerProperty")),
         ]),
         // The two photo caps are TIGHTEN-ONLY, and this is the first use of MaxFrom: their ceiling is
         // a compile-time constant that also drives [MaxLength] on the photo request DTOs, so model
@@ -874,35 +783,28 @@ public partial class Settings
         new("Photos", Icons.Material.Filled.PhotoLibrary,
         [
             new("photoMaxLinksPerKind", "sell", "Max links per photo",
-                "Upper limit on tags, people or albums linked to one photo. The same limit is enforced by request validation.",
+                $"Upper limit on the tags, people or albums one photo may link to. Cannot be raised above "
+                + $"{PhotoLimits.MaxLinksPerKind:N0} — the request format rejects a longer list before this "
+                + "setting is consulted.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 50,
                 Field: nameof(SystemSettingsUpdate.PhotoMaxLinksPerKind),
                 Load: (p, dto) => p.SetIntLoaded("photoMaxLinksPerKind", dto.PhotoMaxLinksPerKind),
                 Write: (p, req) => req.PhotoMaxLinksPerKind = p.IntRequest("photoMaxLinksPerKind"),
-                MaxFrom: dto => dto.PhotoMaxLinksPerKindCeiling),
-            new("photoMaxAlbumMembers", "collections", "Max photos per album",
-                "Upper limit on photos in one album. The same limit is enforced by request validation.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 1000,
-                Field: nameof(SystemSettingsUpdate.PhotoMaxAlbumMembers),
-                Load: (p, dto) => p.SetIntLoaded("photoMaxAlbumMembers", dto.PhotoMaxAlbumMembers),
-                Write: (p, req) => req.PhotoMaxAlbumMembers = p.IntRequest("photoMaxAlbumMembers"),
-                MaxFrom: dto => dto.PhotoMaxAlbumMembersCeiling),
+                MaxFrom: dto => dto.PhotoMaxLinksPerKindCeiling, LowerOnly: true),
             // ── issue #434 keys 4-5. The read size takes the SECURITY claim: all nine existing
             // megabyte rows do, every one of them is also a resource bound, and on the ordinary claim
             // this would be the only unaudited megabyte cap in a ten-row set — governing a per-upload
             // byte-array multiplier reachable by every uploader.
             new("photoMetadataReadMegabytes", "sd_storage", "Metadata read size",
-                "How much of an uploaded image is read to extract its metadata. A whole block of this size "
-                + "is held in memory per photo, and 16 MB is the practical ceiling because that is MariaDB's "
-                + "default maximum packet size.",
+                "How much of an accepted image is read to pull EXIF. Beyond this, extraction is skipped and "
+                + "the photo is still stored.",
                 SettingClaim.Security, SettingControl.Size, Min: 1, Max: 16,
                 Field: nameof(SystemSettingsUpdate.PhotoMetadataReadMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("photoMetadataReadMegabytes", dto.PhotoMetadataReadMegabytes),
                 Write: (p, req) => req.PhotoMetadataReadMegabytes = p.IntRequest("photoMetadataReadMegabytes"),
                 MaxFrom: dto => dto.PhotoMetadataReadMegabytesCeiling),
             new("photoMetadataExtractionTimeoutSeconds", "schedule", "Metadata extraction timeout",
-                "How long one extraction may take. On timeout the photo is still stored — only its "
-                + "extracted metadata is missing.",
+                "How long EXIF extraction may run per photo. On timeout the photo is stored without metadata.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 120,
                 Field: nameof(SystemSettingsUpdate.PhotoMetadataExtractionTimeoutSeconds),
                 Load: (p, dto) => p.SetIntLoaded(
@@ -910,19 +812,29 @@ public partial class Settings
                 Write: (p, req) => req.PhotoMetadataExtractionTimeoutSeconds =
                     p.IntRequest("photoMetadataExtractionTimeoutSeconds"),
                 Unit: "sec"),
+            new("photoMaxAlbumMembers", "collections", "Max photos per album",
+                $"Upper limit on the photos one album may hold. Cannot be raised above "
+                + $"{PhotoLimits.MaxAlbumMembers:N0} — the request format rejects a longer list before this "
+                + "setting is consulted.",
+                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 1000,
+                Field: nameof(SystemSettingsUpdate.PhotoMaxAlbumMembers),
+                Load: (p, dto) => p.SetIntLoaded("photoMaxAlbumMembers", dto.PhotoMaxAlbumMembers),
+                Write: (p, req) => req.PhotoMaxAlbumMembers = p.IntRequest("photoMaxAlbumMembers"),
+                MaxFrom: dto => dto.PhotoMaxAlbumMembersCeiling, LowerOnly: true),
         ]),
         // The upload cap is ceiling-bounded like the two photo caps, but its ceiling is startup
         // configuration rather than a compile-time constant: raising it past the transport limit would
         // be refused by Kestrel before the setting was ever read.
         new("Storage", Icons.Material.Filled.Storage,
         [
-            new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload size",
-                "Largest file accepted by any upload surface. Can be lowered freely; raising it needs the server's transport limit raised first.",
+            new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload file size",
+                "Largest single file accepted by any upload surface. Cannot be raised above the request-size "
+                + "ceiling the server starts with.",
                 SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
                 Field: nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("fileStorageMaxUploadMegabytes", dto.FileStorageMaxUploadMegabytes),
                 Write: (p, req) => req.FileStorageMaxUploadMegabytes = p.IntRequest("fileStorageMaxUploadMegabytes"),
-                MaxFrom: dto => dto.UploadMegabytesCeiling),
+                MaxFrom: dto => dto.UploadMegabytesCeiling, LowerOnly: true),
             // The deletion grace (issue #346 §4.3): the retention period for deleted personal data on the file
             // volumes, so it takes the security claim and every change is audited. The server's two advisories
             // (below 24 h, above 72 h) render in the row's Advisory slot.
@@ -938,34 +850,183 @@ public partial class Settings
         new("Journal limits", Icons.Material.Filled.MenuBook,
         [
             new("journalEntryMaxLinksPerKind", "link", "Max links per journal entry",
-                "Upper limit on tags, contacts, photos or attachments linked to one entry.",
+                "Upper limit on the records one journal entry may link to, per kind.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 100000,
                 Field: nameof(SystemSettingsUpdate.JournalEntryMaxLinksPerKind),
                 Load: (p, dto) => p.SetIntLoaded("journalEntryMaxLinksPerKind", dto.JournalEntryMaxLinksPerKind),
                 Write: (p, req) => req.JournalEntryMaxLinksPerKind = p.IntRequest("journalEntryMaxLinksPerKind")),
             new("journalTaskMaxLinksPerKind", "link", "Max links per task",
-                "Upper limit on tags or attachments linked to one task.",
+                "Upper limit on the records one task may link to, per kind.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 100000,
                 Field: nameof(SystemSettingsUpdate.JournalTaskMaxLinksPerKind),
                 Load: (p, dto) => p.SetIntLoaded("journalTaskMaxLinksPerKind", dto.JournalTaskMaxLinksPerKind),
                 Write: (p, req) => req.JournalTaskMaxLinksPerKind = p.IntRequest("journalTaskMaxLinksPerKind")),
         ]),
+        new("Contacts import & export", Icons.Material.Filled.Contacts,
+        [
+            new("contactVCardMaxExportRows", "file_download", "Maximum contacts per export",
+                "Upper limit on the rows a vCard (.vcf) export may produce. \"No limit\" keeps exports unbounded.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.ContactVCardMaxExportRows),
+                Load: (p, dto) => p.SetCapacityLoaded("contactVCardMaxExportRows", dto.ContactVCardMaxExportRows), Write: (p, req) => req.ContactVCardMaxExportRows = p.CapacityRequest("contactVCardMaxExportRows")),
+            new("contactVCardMaxImportEntries", "file_upload", "Maximum contacts per import",
+                "Upper limit on the entries accepted from an imported vCard file.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.ContactVCardMaxImportEntries),
+                Load: (p, dto) => p.SetCapacityLoaded("contactVCardMaxImportEntries", dto.ContactVCardMaxImportEntries), Write: (p, req) => req.ContactVCardMaxImportEntries = p.CapacityRequest("contactVCardMaxImportEntries")),
+            // ── issue #434 key 12. TIGHTEN-ONLY: each repeatable property costs a sibling query AND its
+            // own save, multiplied by an import entry cap that ships unlimited, so any number above the
+            // shipped 200 would be a guess about a product of three unbounded terms. The static Max
+            // names the same shared constant the server's [Range] maximum does.
+            new("contactVCardMaxRepeatablePropertiesPerEntry", "list_alt", "Repeatable properties per contact",
+                "How many emails, phones or addresses one imported contact may carry. Each one is saved "
+                + "individually, and that cost multiplies by the import cap above — which ships unbounded.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: 1, Max: SystemSettingsDefaults.ContactVCardMaxRepeatablePropertiesPerEntry,
+                Field: nameof(SystemSettingsUpdate.ContactVCardMaxRepeatablePropertiesPerEntry),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "contactVCardMaxRepeatablePropertiesPerEntry",
+                    dto.ContactVCardMaxRepeatablePropertiesPerEntry),
+                Write: (p, req) => req.ContactVCardMaxRepeatablePropertiesPerEntry =
+                    p.IntRequest("contactVCardMaxRepeatablePropertiesPerEntry"),
+                MaxFrom: dto => dto.ContactVCardMaxRepeatablePropertiesPerEntryCeiling, LowerOnly: true),
+            new("contactVCardMaxExportMegabytes", "sd_storage", "Maximum export file size",
+                "Largest vCard (.vcf) file an export may produce. A too-large export is truncated rather "
+                + "than exceeding this, so the download fails cleanly instead of silently.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.ContactVCardMaxExportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("contactVCardMaxExportMegabytes", dto.ContactVCardMaxExportMegabytes), Write: (p, req) => req.ContactVCardMaxExportMegabytes = p.IntRequest("contactVCardMaxExportMegabytes")),
+            new("contactVCardMaxImportMegabytes", "sd_storage", "Maximum import file size",
+                "Largest vCard (.vcf) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.ContactVCardMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("contactVCardMaxImportMegabytes", dto.ContactVCardMaxImportMegabytes), Write: (p, req) => req.ContactVCardMaxImportMegabytes = p.IntRequest("contactVCardMaxImportMegabytes")),
+        ],
+        RoundTrip: new RoundTripPair("contactVCardMaxExportRows", "contactVCardMaxImportEntries")),
+        new("Calendars import & export", Icons.Material.Filled.CalendarMonth,
+        [
+            new("calendarIcsMaxExportEvents", "file_download", "Maximum events per export",
+                "Upper limit on the VEVENTs an iCalendar (.ics) export may produce.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportEvents),
+                Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxExportEvents", dto.CalendarIcsMaxExportEvents), Write: (p, req) => req.CalendarIcsMaxExportEvents = p.CapacityRequest("calendarIcsMaxExportEvents")),
+            new("calendarIcsMaxImportEvents", "file_upload", "Maximum events per import",
+                "Upper limit on the VEVENTs accepted from an imported .ics file.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportEvents),
+                Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxImportEvents", dto.CalendarIcsMaxImportEvents), Write: (p, req) => req.CalendarIcsMaxImportEvents = p.CapacityRequest("calendarIcsMaxImportEvents")),
+            new("calendarIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
+                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
+                + "rather than exceeding this, so the download fails cleanly instead of silently.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxExportMegabytes", dto.CalendarIcsMaxExportMegabytes), Write: (p, req) => req.CalendarIcsMaxExportMegabytes = p.IntRequest("calendarIcsMaxExportMegabytes")),
+            new("calendarIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
+                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxImportMegabytes", dto.CalendarIcsMaxImportMegabytes), Write: (p, req) => req.CalendarIcsMaxImportMegabytes = p.IntRequest("calendarIcsMaxImportMegabytes")),
+            // ── issue #434 keys 8-10. These three bound the ALL-CALENDARS export/import path, not a
+            // single calendar's, which is why they belong here rather than in "Calendar limits". Their
+            // ceilings are twice the shipped default, derived from the concurrency actually permitted on
+            // this surface (two import permits globally, two exports per user, four exports globally),
+            // so worst-case concurrent materialisation stays within the same order as today's.
+            new("calendarIcsMaxAggregateExportRows", "file_download", "Maximum rows per whole-calendar export",
+                "Upper limit on the rows one export of every calendar at once may fetch before it refuses. "
+                + "Bounds the intermediate work, not the output size — the export cap above is that.",
+                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 40000,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportRows),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "calendarIcsMaxAggregateExportRows", dto.CalendarIcsMaxAggregateExportRows),
+                Write: (p, req) => req.CalendarIcsMaxAggregateExportRows =
+                    p.IntRequest("calendarIcsMaxAggregateExportRows"),
+                MaxFrom: dto => dto.CalendarIcsMaxAggregateExportRowsCeiling),
+            new("calendarIcsMaxAggregateOccurrences", "autorenew", "Max generated occurrences per import",
+                "How many events one import may create or regenerate in total, including every occurrence "
+                + "of a recurring series. All of them are held in memory while the import runs.",
+                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 20000,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateOccurrences),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "calendarIcsMaxAggregateOccurrences", dto.CalendarIcsMaxAggregateOccurrences),
+                Write: (p, req) => req.CalendarIcsMaxAggregateOccurrences =
+                    p.IntRequest("calendarIcsMaxAggregateOccurrences"),
+                MaxFrom: dto => dto.CalendarIcsMaxAggregateOccurrencesCeiling),
+            new("calendarIcsMaxAggregateExportWindowDays", "event_available", "Whole-calendar export window",
+                "How wide a date range one export of every calendar at once may cover.",
+                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
+                Field: nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportWindowDays),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "calendarIcsMaxAggregateExportWindowDays", dto.CalendarIcsMaxAggregateExportWindowDays),
+                Write: (p, req) => req.CalendarIcsMaxAggregateExportWindowDays =
+                    p.IntRequest("calendarIcsMaxAggregateExportWindowDays"),
+                Unit: "days"),
+        ],
+        RoundTrip: new RoundTripPair("calendarIcsMaxExportEvents", "calendarIcsMaxImportEvents")),
+        new("Tasks import & export", Icons.Material.Filled.Checklist,
+        [
+            new("taskIcsMaxExportTasks", "file_download", "Maximum tasks per export",
+                "Upper limit on the VTODOs an iCalendar (.ics) export may produce.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportTasks),
+                Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxExportTasks", dto.TaskIcsMaxExportTasks), Write: (p, req) => req.TaskIcsMaxExportTasks = p.CapacityRequest("taskIcsMaxExportTasks")),
+            new("taskIcsMaxImportTasks", "file_upload", "Maximum tasks per import",
+                "Upper limit on the VTODOs accepted from an imported .ics file.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
+                Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxImportTasks", dto.TaskIcsMaxImportTasks), Write: (p, req) => req.TaskIcsMaxImportTasks = p.CapacityRequest("taskIcsMaxImportTasks")),
+            new("taskIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
+                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
+                + "rather than exceeding this, so the download fails cleanly instead of silently.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
+            new("taskIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
+                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("taskIcsMaxImportMegabytes", dto.TaskIcsMaxImportMegabytes), Write: (p, req) => req.TaskIcsMaxImportMegabytes = p.IntRequest("taskIcsMaxImportMegabytes")),
+        ],
+        RoundTrip: new RoundTripPair("taskIcsMaxExportTasks", "taskIcsMaxImportTasks")),
+        new("Journal import & export", Icons.Material.Filled.ImportContacts,
+        [
+            new("journalIcsMaxExportRows", "file_download", "Maximum entries per export",
+                "Upper limit on the VJOURNALs an iCalendar (.ics) export may produce.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportRows),
+                Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxExportRows", dto.JournalIcsMaxExportRows), Write: (p, req) => req.JournalIcsMaxExportRows = p.CapacityRequest("journalIcsMaxExportRows")),
+            new("journalIcsMaxImportEntries", "file_upload", "Maximum entries per import",
+                "Upper limit on the VJOURNALs accepted from an imported .ics file.",
+                SettingClaim.Count, SettingControl.Capacity, Min: 1, Max: 1_000_000,
+                Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
+                Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxImportEntries", dto.JournalIcsMaxImportEntries), Write: (p, req) => req.JournalIcsMaxImportEntries = p.CapacityRequest("journalIcsMaxImportEntries")),
+            new("journalIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
+                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
+                + "rather than exceeding this, so the download fails cleanly instead of silently.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("journalIcsMaxExportMegabytes", dto.JournalIcsMaxExportMegabytes), Write: (p, req) => req.JournalIcsMaxExportMegabytes = p.IntRequest("journalIcsMaxExportMegabytes")),
+            new("journalIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
+                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("journalIcsMaxImportMegabytes", dto.JournalIcsMaxImportMegabytes), Write: (p, req) => req.JournalIcsMaxImportMegabytes = p.IntRequest("journalIcsMaxImportMegabytes")),
+        ],
+        RoundTrip: new RoundTripPair("journalIcsMaxExportRows", "journalIcsMaxImportEntries")),
         // ── Calendar limits (issue #434 keys 6-10) ────────────────────────────────────────────────
         // A group of its own rather than rows on "Calendars import & export": three of the five govern
         // ordinary calendar reads and writes, not import or export, so filing them there would state
         // something untrue about their scope.
         new("Calendar limits", Icons.Material.Filled.EventNote,
         [
-            new("calendarMaxWindowDays", "event_available", "Maximum calendar window",
-                "The widest date range one calendar view may request at a time.",
+            new("calendarMaxWindowDays", "event_available", "Calendar view window",
+                "How wide a date range one calendar request may ask for.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
                 Field: nameof(SystemSettingsUpdate.CalendarMaxWindowDays),
                 Load: (p, dto) => p.SetIntLoaded("calendarMaxWindowDays", dto.CalendarMaxWindowDays),
                 Write: (p, req) => req.CalendarMaxWindowDays = p.IntRequest("calendarMaxWindowDays"),
                 Unit: "days"),
             new("calendarMaxEventDurationDays", "schedule", "Maximum event duration",
-                "How long a single event may span. Applies to events created in the app and to events "
-                + "brought in by an import.",
+                "How long a single event may run before it is rejected as a mistake.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 3650,
                 Field: nameof(SystemSettingsUpdate.CalendarMaxEventDurationDays),
                 Load: (p, dto) => p.SetIntLoaded("calendarMaxEventDurationDays", dto.CalendarMaxEventDurationDays),
@@ -976,8 +1037,9 @@ public partial class Settings
             // survives lowering the setting back. The ceiling published by the server IS the shipped
             // default, and the static Max names the same shared constant so the two cannot drift.
             new("recurrenceMaxGeneratedOccurrences", "autorenew", "Maximum generated occurrences",
-                "How many events one recurrence rule may create. Each occurrence is stored as its own "
-                + "calendar entry.",
+                "How many occurrences one recurrence rule may generate. Each one is saved as its own event, "
+                + "so raising this multiplies what a single request writes — and lowering it back does not "
+                + "undo rows already written.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: 1, Max: SystemSettingsDefaults.RecurrenceMaxGeneratedOccurrences,
                 Field: nameof(SystemSettingsUpdate.RecurrenceMaxGeneratedOccurrences),
@@ -985,7 +1047,7 @@ public partial class Settings
                     "recurrenceMaxGeneratedOccurrences", dto.RecurrenceMaxGeneratedOccurrences),
                 Write: (p, req) => req.RecurrenceMaxGeneratedOccurrences =
                     p.IntRequest("recurrenceMaxGeneratedOccurrences"),
-                MaxFrom: dto => dto.RecurrenceMaxGeneratedOccurrencesCeiling),
+                MaxFrom: dto => dto.RecurrenceMaxGeneratedOccurrencesCeiling, LowerOnly: true),
         ]),
         // ── Import & export defaults (issue #434 key 13) ──────────────────────────────────────────
         // A one-row group on purpose: this bound applies to ALL FOUR importers at once, so filing it
@@ -993,9 +1055,9 @@ public partial class Settings
         // group is not a new precedent — Data and Storage are both one-row groups already.
         new("Import & export defaults", Icons.Material.Filled.ImportExport,
         [
-            new("importMaxSamplesPerSkipReason", "file_upload", "Samples per skip reason",
-                "How many example titles an import summary keeps for each reason something was skipped. "
-                + "The counts are always exact; only the examples are capped.",
+            new("importMaxSamplesPerSkipReason", "file_upload", "Skipped-row samples per reason",
+                "How many example rows an import summary keeps for each reason something was skipped. "
+                + "Applies to every importer — contacts, calendars, tasks and journal.",
                 SettingClaim.Count, SettingControl.Number, Min: 1, Max: 10000,
                 Field: nameof(SystemSettingsUpdate.ImportMaxSamplesPerSkipReason),
                 Load: (p, dto) => p.SetIntLoaded("importMaxSamplesPerSkipReason", dto.ImportMaxSamplesPerSkipReason),
@@ -1008,10 +1070,9 @@ public partial class Settings
             // Min/Max name the SystemSettingsBounds pair rather than restating literals (issue #168):
             // the ceiling IS ListDefaults.MaxFilterArrayLength, the cap on the tagIds filter the
             // section resolves its tags through, so a literal here could drift from the constraint.
-            new("accountMaxSmartTagsPerAccount", "sell", "Max smart tags per account",
-                "Upper limit on the saved tag filters one account may carry. The Accounts page reads this "
-                + "value directly, so a change takes effect there without a reload. The ceiling is the "
-                + "number of tag ids the section's own transactions query can carry in one request.",
+            new("accountMaxSmartTagsPerAccount", "sell", "Smart tags per account",
+                "How many smart tags one account may carry. The Accounts page reads this value, so the limit "
+                + "it shows a user always matches what the server enforces.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.AccountMaxSmartTagsPerAccountMin,
                 Max: SystemSettingsBounds.AccountMaxSmartTagsPerAccountMax,
@@ -1049,6 +1110,23 @@ public partial class Settings
             new(ExchangeRateCurrenciesKey, "payments", "Currencies",
                 "Choose which currencies are synced and from which date.",
                 SettingClaim.None, SettingControl.Action),
+        ]),
+        // Its own group, as the design system lays it out (system-settings-data.js): a property is not a
+        // kind of contract, and an administrator looking for the property cap looks under Properties.
+        new("Properties", Icons.Material.Filled.HomeWork,
+        [
+            new("propertyMaxSmartTagsPerProperty", "sell", "Smart tags per property",
+                $"How many smart tags one property may carry. Capped at {SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax}, the most tags one transactions "
+                + "query can filter on. The Properties page reads this value, so the limit it shows always "
+                + "matches what the server enforces.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMin,
+                Max: SystemSettingsBounds.PropertyMaxSmartTagsPerPropertyMax,
+                Field: nameof(SystemSettingsUpdate.PropertyMaxSmartTagsPerProperty),
+                Load: (p, dto) => p.SetIntLoaded(
+                    "propertyMaxSmartTagsPerProperty", dto.PropertyMaxSmartTagsPerProperty),
+                Write: (p, req) => req.PropertyMaxSmartTagsPerProperty =
+                    p.IntRequest("propertyMaxSmartTagsPerProperty")),
         ]),
     ];
 
@@ -1178,7 +1256,7 @@ public partial class Settings
         }
 
         ClearServerError(key);
-        _justSaved = false;
+        Touch();
     }
 
     internal void SetTextLoaded(string key, string value) =>
@@ -1197,7 +1275,7 @@ public partial class Settings
         }
 
         ClearServerError(key);
-        _justSaved = false;
+        Touch();
     }
 
     private decimal? GetDecimal(string key) => _decimals.TryGetValue(key, out var state) ? state.Draft : null;
@@ -1210,7 +1288,7 @@ public partial class Settings
         }
 
         ClearServerError(key);
-        _justSaved = false;
+        Touch();
     }
 
     private int? GetInt(string key) => _ints.TryGetValue(key, out var state) ? state.Draft : null;
@@ -1238,7 +1316,7 @@ public partial class Settings
         }
 
         ClearServerError(key);
-        _justSaved = false;
+        Touch();
     }
 
     // TryGetValue, never an indexer. ErrorFor -> Capacity(key) runs on the RENDER path, and there is
@@ -1256,7 +1334,7 @@ public partial class Settings
         }
 
         ClearServerError(key);
-        _justSaved = false;
+        Touch();
     }
 
     private void SetCapacityUnlimited(string key, bool unlimited, string title)
@@ -1267,7 +1345,7 @@ public partial class Settings
             state.Unlimited = unlimited;
         }
 
-        _justSaved = false;
+        Touch();
         Announce($"{title} — {(unlimited ? "no limit" : "limited")}");
     }
 
@@ -1520,7 +1598,7 @@ public partial class Settings
 
         // The marker in the outline says WHICH WAY; the range belongs here, where there is room for
         // it. Resolved through MinFor/MaxFor so a server-published bound is the one quoted.
-        if (item.MaxFrom is not null)
+        if (item.LowerOnly)
         {
             parts.Add($"Can be lowered but not raised: {MinFor(item):N0}–{MaxFor(item):N0}.");
         }
@@ -1538,12 +1616,12 @@ public partial class Settings
     }
 
     /// <summary>
-    /// The direction marker in the field's outline. A server-published ceiling means the value may
-    /// only be lowered; a published floor means it may only be raised. Both are refusals, not
-    /// discouragements, which is what earns the marker rather than a sentence.
+    /// The direction marker in the field's outline. A tighten-only row may only be lowered; a published
+    /// floor means it may only be raised. Both are refusals, not discouragements, which is what earns
+    /// the marker rather than a sentence.
     /// </summary>
     private static OdsSettingBound BoundFor(SettingItem item) =>
-        item.MaxFrom is not null ? OdsSettingBound.LowerOnly
+        item.LowerOnly ? OdsSettingBound.LowerOnly
         : item.MinFrom is not null ? OdsSettingBound.RaiseOnly
         : OdsSettingBound.None;
 
@@ -1865,10 +1943,18 @@ public partial class Settings
         // and formed an expectation. This is the cost stated where the decision is being made.
         return ClearingRowKeys.Contains(item.Key) && WillClearRelayCredential
             ? "Saving this clears the stored SMTP username and password, in the same transaction as "
-              + "the change. Re-enter them under Credentials afterwards; until you do, mail is sent "
-              + "unauthenticated and any relay that requires a login will reject it."
+              + $"the change. Re-enter them in {RelayCredentialGroup} afterwards; until you do, mail is "
+              + "sent unauthenticated and any relay that requires a login will reject it."
             : null;
     }
+
+    /// <summary>
+    /// The card the relay credentials render in, read off <see cref="SecretCatalogue"/> rather than
+    /// written as a literal: there is no "Credentials" group any more — secrets sit in their subject
+    /// cards — and a hardcoded name is how the copy came to point at one that does not exist.
+    /// </summary>
+    internal static string RelayCredentialGroup =>
+        SecretCatalogue.First(item => item.Key == SecretSettingKeys.EmailUsername).Group;
 
     /// <summary>The three rows whose change takes the stored relay credential with it.</summary>
     private static readonly string[] ClearingRowKeys = [SmtpHostKey, SmtpPortKey, StartTlsKey];
@@ -1994,8 +2080,8 @@ public partial class Settings
 
         new(SecretSettingKeys.EmailPassword, "Email", "password", "SMTP password",
             "Authenticates the relay connection. A human-chosen password at a third-party provider. "
-            + "Only printable ASCII can be stored — a relay password outside that range is rejected "
-            + "before it is sent, with the constraint named.",
+            + "Only printable ASCII can be stored. A relay password outside that range is rejected "
+            + "before it is sent, with the constraint named — not returned as a bare 400.",
             IsDerivationKey: false,
             Consequence:
             "Password resets, email confirmations and every other transactional mail are attempted "
@@ -2014,17 +2100,17 @@ public partial class Settings
             "Throttle digests have fallen back to a per-process key, so log correlation is broken "
             + "across restarts."),
 
-        new(SecretSettingKeys.WeatherFrostClientId, "Weather", "key", "Frost client ID",
-            "The client id for MET Norway's Frost service, which supplies the measured history of each "
-            + "place with weather. Free from frost.met.no. It is sent with every Frost request, never with "
-            + "forecasts.",
+        new(SecretSettingKeys.WeatherFrostClientId, "Weather", "vpn_key", "Frost client ID",
+            "Identifies this instance to MET Norway's Frost service, which serves measured weather "
+            + "history. Sent to frost.met.no only. Register one for free at frost.met.no. Forecasts do "
+            + "not need it.",
             IsDerivationKey: false,
             Consequence:
-            "Unset is a supported configuration: forecasts work, and past days show the forecast only — "
-            + "no measured history is collected.",
+            "Measured history is not collected. That is a supported configuration: forecasts are "
+            + "unaffected, and history starts the next time a client ID is set.",
             Affects:
-            "Measured history has stopped for every place: the stored id cannot be decrypted, so no "
-            + "Frost request is made. Re-enter it."),
+            "Measured history is not being collected — every Frost fetch is skipped and an error is "
+            + "logged hourly."),
 
         new(SecretSettingKeys.LegalPseudonymizationSecret, "Data", "gavel", "Pseudonymisation secret",
             "HMACs the subject of a consent record when an account is deleted, so acceptance stays "
@@ -2037,9 +2123,8 @@ public partial class Settings
             // Leads with the environment-independent fact, because the Production and non-Production
             // outcomes differ and stating one of them first reads as a flat claim the next sentence
             // then contradicts.
-            "No stored key backs consent pseudonymisation. In Production account deletion fails "
-            + "rather than writing a pseudonym nobody can re-derive; elsewhere a fixed development "
-            + "value is substituted so the delete flow still works.",
+            "Account deletion cannot pseudonymise consent records. Outside Production a fixed "
+            + "development value is substituted; in Production the value is required.",
             Affects: "Account deletion cannot pseudonymise consent records."),
     ];
 
@@ -2087,25 +2172,24 @@ public partial class Settings
     internal static string SecretAnchorId(string key) => $"ss-cred-{key}";
 
     /// <summary>
-    /// The header's severity rollup: mail this deployment has never configured (issue #8, at
-    /// <c>Information</c>) and credentials this server cannot decrypt (issue #445, at <c>Error</c>).
+    /// The header's severity rollup, in the design system's order: credentials this server cannot
+    /// decrypt (issue #445, at <c>Error</c>), then storage health (issue #346), then mail this
+    /// deployment has never configured (issue #8, at <c>Information</c>) — outages first, an
+    /// unfinished setup last.
     ///
     /// <para>
     /// The credential half is built from the INTERSECTION, like the rows themselves: a key the server
-    /// reports but the catalogue does not describe has no title to name and no row to jump to. Both
-    /// halves are gated on the write claim for the same reason the group is — there is nothing a
-    /// read-only caller could do about either.
+    /// reports but the catalogue does not describe has no title to name and no row to jump to. The
+    /// credential and mail halves are gated on the write claim for the same reason the group is — there
+    /// is nothing a read-only caller could do about either. Storage is gated on file-storage.read
+    /// instead: its fix is never a Save, and an administrator reading the page needs to see that
+    /// erasure has stopped.
     /// </para>
     ///
     /// <para>
     /// Deliberately separate from <see cref="BlockingProblems"/>. That list explains a disabled
     /// <b>Save changes</b>; this one reports conditions a Save cannot fix, and folding the two together
     /// would misattribute both.
-    /// </para>
-    ///
-    /// <para>
-    /// Named for what it collects rather than for the credential half it started as: it now carries two
-    /// kinds at two severities, and the header label says "Attention" to match.
     /// </para>
     /// </summary>
     private IReadOnlyCollection<PageHeaderProblem>? SetupProblems
@@ -2119,29 +2203,39 @@ public partial class Settings
 
             var problems = new List<PageHeaderProblem>();
 
-            // Storage health (issue #346) is gated on file-storage.read, not on a settings write claim: its
-            // fix is never a Save, and an administrator reading the page needs to see erasure has stopped.
+            problems.AddRange(UnreadableSecrets.Select(item => new PageHeaderProblem
+            {
+                Severity = PageHeaderSeverity.Error,
+                Lead = $"{item.Title} cannot be decrypted",
+                // The rollup NAMES THE CARD (issue #445, design update 2f61476b). The rows are
+                // scattered across the page by subject now, so "SMTP password" alone does not tell
+                // a reader where to look, and the jump target may be far below the fold. The Fix
+                // action still goes there directly; this is for everyone reading rather than
+                // clicking.
+                Message =
+                    $"{item.Affects} The value is stored but this instance's encryption key ring "
+                    + "cannot open it, and nothing falls back to a configured value. Clear the row "
+                    + "and enter the credential again.",
+                Where = $"In {item.Group}.",
+                ViewLabel = "Fix",
+                OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(SecretAnchorId(item.Key))),
+            }));
+
             if (StorageProblem is { } storage)
             {
                 problems.Add(storage);
             }
 
-            if (!_hasSecurityUpdate)
-            {
-                return problems.Count > 0 ? problems : null;
-            }
-
             // Mail unconfigured (issue #8 G8), at INFORMATION rather than Error: a deployment that has
             // not configured mail yet is incomplete, not broken, and this rollup's other entries are
-            // real outages. It rides on the existing mechanism rather than adding a surface — already
-            // gated on the write claim, so only an administrator who can actually fix the state sees
-            // it, and Information already has precedent elsewhere in the client.
+            // real outages. Gated on the write claim, so only an administrator who can actually fix the
+            // state sees it.
             //
             // It reports what an administrator LOOKING AT THIS PAGE cannot otherwise see. It does not
             // cover the case that actually strands a deployment — an operator who deploys, never
             // visits /settings, and later loses the bootstrap password — which is documentation's job
             // (docs/deployment.md) and was the reason a startup warning was considered and declined.
-            if (MailUnconfigured)
+            if (_hasSecurityUpdate && MailUnconfigured)
             {
                 problems.Add(new PageHeaderProblem
                 {
@@ -2150,39 +2244,40 @@ public partial class Settings
                     Message =
                         "Confirmation and password-reset messages are logged and skipped, so no account "
                         + "can be confirmed or recovered until an SMTP host is set.",
-                    // Computed from the catalogue like the credential entries below, rather than a
-                    // literal: the group a row sits in is a presentation choice that has moved once
-                    // already, and a hardcoded "In Email." would keep pointing at the old card.
+                    // Computed from the catalogue rather than a literal: the group a row sits in is a
+                    // presentation choice that has moved once already.
                     Where = $"In {GroupOf(SmtpHostKey)}.",
                     ViewLabel = "Fix",
                     OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(TitleId(SmtpHostKey))),
                 });
             }
 
-            problems.AddRange(SecretCatalogue
-                .Where(item => _secretStatuses.TryGetValue(item.Key, out var status)
-                    && status.State == SecretSettingState.Unreadable)
-                .Select(item => new PageHeaderProblem
-                {
-                    Severity = PageHeaderSeverity.Error,
-                    Lead = $"{item.Title} cannot be decrypted",
-                    // The rollup NAMES THE CARD (issue #445, design update 2f61476b). The rows are
-                    // scattered across the page by subject now, so "SMTP password" alone does not tell
-                    // a reader where to look, and the jump target may be far below the fold. The Fix
-                    // action still goes there directly; this is for everyone reading rather than
-                    // clicking.
-                    Message =
-                        $"{item.Affects} The value is stored but this instance's encryption key ring "
-                        + "cannot open it, and nothing falls back to a configured value. Clear the row "
-                        + "and enter the credential again.",
-                    Where = $"In {item.Group}.",
-                    ViewLabel = "Fix",
-                    OnView = EventCallback.Factory.Create(this, () => JumpToElementAsync(SecretAnchorId(item.Key))),
-                }));
-
             return problems.Count > 0 ? problems : null;
         }
     }
+
+    /// <summary>
+    /// The credentials the rollup reports as undecryptable — the intersection with the catalogue, and
+    /// only for a caller holding the write claim.
+    /// </summary>
+    private IEnumerable<SecretItem> UnreadableSecrets =>
+        !_hasSecurityUpdate
+            ? []
+            : SecretCatalogue.Where(item => _secretStatuses.TryGetValue(item.Key, out var status)
+                && status.State == SecretSettingState.Unreadable);
+
+    /// <summary>
+    /// The rollup's button label, named for its most serious kind of entry rather than a generic
+    /// "Attention" (Odyssey Design System · SystemSettings): Credentials when a credential cannot be
+    /// decrypted, Storage when storage health has a condition, otherwise Email — the only entry left
+    /// is unconfigured mail. Its order is the rollup's own order, so the label always names the first
+    /// row of the panel it opens.
+    /// </summary>
+    internal static string SetupProblemsLabelFor(bool unreadableSecret, bool storageProblem) =>
+        unreadableSecret ? "Credentials" : storageProblem ? "Storage" : GroupOf(SmtpHostKey);
+
+    private string SetupProblemsLabel =>
+        SetupProblemsLabelFor(UnreadableSecrets.Any(), StorageProblem is not null);
 
     // ── The destructive save gate (issue #8 §3, G4/G7) ───────────────────────────────────────────
     //
@@ -2624,6 +2719,23 @@ public partial class Settings
             await Task.Delay(OdsTiming.ConfirmFlashMs);
             _justSaved = false;
             StateHasChanged();
+        }
+        else if (result.Status == System.Net.HttpStatusCode.Forbidden)
+        {
+            // The write claim was withdrawn after sign-in: the cookie still names the claims this page
+            // was rendered for, so nothing on it can be saved until the reader signs in again. A
+            // persistent alert with the remedy on it, never a toast that fades before it is acted on.
+            _authDenied = true;
+            Announce("Your permission to change these settings has been withdrawn. Nothing was saved.");
+            StateHasChanged();
+            try
+            {
+                await JS.InvokeVoidAsync("odsFocusById", AuthAlertId);
+            }
+            catch
+            {
+                // Not rendered (a concurrent re-render) — non-fatal; the alert and the announcement stand.
+            }
         }
         else
         {

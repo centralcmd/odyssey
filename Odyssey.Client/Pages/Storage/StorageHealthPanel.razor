@@ -16,7 +16,8 @@
     The Background work tile's thumbnail-worker row reads GET /api/photos/stats (issue #362); without
     system-settings.read (or photos.read) the host passes no Worker and the row is left out.
 
-    Headings sit one level below the section card's h3: h4 for the panel, h5 for each tile.
+    Headings sit one level below the section card's h2: h3 for the panel and for each tile, as the
+    design system has them (the tiles are siblings of the panel heading, not children of it).
 *@
 @using Odyssey.Client.Pages.Finance.ExchangeRateSync
 @using Odyssey.Dtos.Application
@@ -25,7 +26,7 @@
 <section class="sth" id="@Id" tabindex="-1" aria-labelledby="@($"{Id}-h")"
          aria-busy="@(Phase == StorageHealthPhase.Loading || Refreshing ? "true" : null)">
     <div class="sth-head">
-        <h4 class="sth-h" id="@($"{Id}-h")">Storage health</h4>
+        <h3 class="sth-h" id="@($"{Id}-h")">Storage health</h3>
         @if (Phase == StorageHealthPhase.Ready)
         {
             <span class="sth-checked">

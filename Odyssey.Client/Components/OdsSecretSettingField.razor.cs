@@ -214,9 +214,9 @@ public partial class OdsSecretSettingField : IDisposable
         ? null
         : string.Join(" ", new[]
         {
-            "Stored, but this server cannot decrypt it — the Data Protection key ring was replaced or lost.",
+            "Stored, but this instance cannot decrypt it — the encryption key ring has changed or been lost.",
             Affects,
-            "Clearing the row and entering the value again is the only fix.",
+            "Clearing and re-entering the value is the only fix.",
         }.Where(part => !string.IsNullOrWhiteSpace(part)));
 
     /// <summary>
