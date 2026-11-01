@@ -1474,9 +1474,10 @@ What enforces it:
   answers or the build runs with `-p:NuGetAudit=false` on purpose.
   It runs only when something restores, so on a day nothing is built it reports nothing; there is no scheduled
   audit (removed at the owner's request).
-- **Dependabot security updates must be switched on for the repository** (GitHub → Settings → Code security →
-  Dependabot security updates). `.github/dependabot.yml` groups `Magick.NET*` under `applies-to:
-  security-updates`, but that grouping does nothing until the switch is on.
+- **Dependabot security updates should be switched on for the repository** (GitHub → Settings → Code security →
+  Dependabot alerts and Dependabot security updates). It is a repository setting, not part of
+  `.github/dependabot.yml`, and it covers every dependency: a Magick.NET advisory then gets a fix PR within hours,
+  where the weekly version updates in `dependabot.yml` would take up to 7 days.
 
 There is **no runtime stop switch** (no feature toggles, per CLAUDE.md). For an exploited CVE before a patch
 exists, the emergency step is to roll back to the previous image (below).
