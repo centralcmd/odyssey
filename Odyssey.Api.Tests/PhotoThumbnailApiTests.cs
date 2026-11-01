@@ -199,6 +199,9 @@ public sealed class PhotoThumbnailApiTests
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            // A photo the journal path creates is queued in the same save, in the uploader's interactive lane.
+            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId);
+            Assert.Equal((PhotoThumbnailJobState.Pending, PhotoThumbnailJobPriority.Interactive), (job.State, job.Priority));
             context.PhotoThumbnails.AddRange(Thumbnail(photoId, ThumbnailSize.Small, Guid.NewGuid()), Thumbnail(photoId, ThumbnailSize.Medium, Guid.NewGuid()));
             await context.SaveChangesAsync();
         }
@@ -235,8 +238,8 @@ public sealed class PhotoThumbnailApiTests
         return (await post.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
     }
 
-    private sealed class JournalFactory(IReadOnlyCollection<string> permissions)
-        : OdysseyApiFactory(permissions, Actor, configureServices: Isolate)
+    private sealed class JournalFactory(IReadOnlyCollection<string> permissions, Action<IServiceCollection>? extra = null)
+        : OdysseyApiFactory(permissions, Actor, configureServices: services => { Isolate(services); extra?.Invoke(services); })
     {
         public const string Actor = "thumbnail-journal-actor";
 
@@ -246,6 +249,54 @@ public sealed class PhotoThumbnailApiTests
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(databaseName));
         }
+    }
+
+    // ── Rename busy over HTTP (AC 17) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_rename_that_keeps_losing_to_a_worker_write_is_a_409_with_retry_after()
+    {
+        await using var factory = new JournalFactory(
+            [PermissionClaims.FilesRead, PermissionClaims.FilesUpdate],
+            services => services.AddScoped<IFileRenameObserver, AlwaysInterfering>());
+        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, JournalFactory.Actor, "Before.jpg");
+        var photoId = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.Photos.Add(new Photo { PhotoId = photoId, FileId = fileId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow });
+            context.PhotoThumbnailJobs.Add(new PhotoThumbnailJobEntry
+            {
+                PhotoId = photoId, State = PhotoThumbnailJobState.Done, NextAttemptAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        var response = await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new Odyssey.Dtos.Finance.UpdateFileMetadataRequest { FileName = "After.jpg" });
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(TimeSpan.FromSeconds(1), response.Headers.RetryAfter?.Delta);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Contains("rename-busy", problem.RootElement.ToString(), StringComparison.Ordinal);
+        // That the name is kept is a property of one atomic save, which EF InMemory does not have; it is asserted on
+        // MariaDB (PhotoThumbnailRelationalTests and the rename scenarios rerun in Odyssey.IntegrationTests).
+    }
+
+    /// <summary>A worker write that lands between every load and save of the rename (a separate context, so a real token conflict).</summary>
+    private sealed class AlwaysInterfering(IServiceScopeFactory scopes) : IFileRenameObserver
+    {
+        public async Task OnFileRenamingAsync(Guid fileId, CancellationToken cancellationToken)
+        {
+            using var scope = scopes.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var photoId = await context.Photos.Where(p => p.FileId == fileId).Select(p => p.PhotoId).SingleAsync(cancellationToken);
+            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId, cancellationToken);
+            job.Generation++;
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        public bool Owns(Type entityType) => false;
     }
 
     // ── Wiring ────────────────────────────────────────────────────────────────

@@ -13,12 +13,12 @@ using Xunit;
 namespace Odyssey.Core.Tests.Thumbnails;
 
 /// <summary>
-/// What a rename and a delete do to a photo's thumbnails (issue #362 §3.4, §4.1; AC 17, 18), and the two additive
-/// changes to shared code: <c>ImageWalkResult.IsProgressive</c> and <c>PhotoMetadata.Orientation</c> (AC 6).
+/// What a rename and a delete do to a photo's thumbnails (issue #362 §3.4, §4.1; AC 17, 18). Inherited by
+/// <c>Odyssey.IntegrationTests</c>, which reruns every case on real MariaDB.
 /// </summary>
-public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
+public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
 {
-    [Fact]
+    [SkippableFact]
     public async Task A_rename_releases_both_thumbnails_at_once_and_requeues_a_done_job_behind_the_cooldown()
     {
         var host = await NewThumbnailHostAsync();
@@ -43,7 +43,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.Equal("Holiday.gif", await FileNameAsync(host, photoId));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Renaming_ten_times_in_a_minute_never_brings_the_rerun_forward()
     {
         var host = await NewThumbnailHostAsync();
@@ -65,7 +65,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.NotNull(await Job(host).ClaimAsync(default));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Saving_the_same_name_changes_nothing()
     {
         var host = await NewThumbnailHostAsync();
@@ -78,7 +78,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobState.Done, (await JobRowAsync(host, photoId)).State);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Renaming_a_file_that_backs_no_photo_does_nothing()
     {
         var host = await NewThumbnailHostAsync();
@@ -98,7 +98,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.Equal(0, await context.PhotoThumbnailJobs.CountAsync());
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(PhotoThumbnailJobState.Unsupported)]
     [InlineData(PhotoThumbnailJobState.Failed)]
     public async Task A_finished_unsupported_or_failed_job_is_left_alone_and_never_rendered_again(PhotoThumbnailJobState state)
@@ -123,7 +123,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.Empty(Renderer.Calls);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task The_rename_survives_one_concurrent_worker_write_and_gives_up_with_rename_busy_after_three()
     {
         var host = await NewThumbnailHostAsync();
@@ -153,11 +153,15 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
             Assert.Equal(FileService.RenameAttempts, interfering.Calls);
         }
 
-        // That nothing was committed is a property of one atomic save, which EF InMemory does not have; it is asserted
-        // on MariaDB in Odyssey.IntegrationTests (PhotoThumbnailRelationalTests).
+        // That nothing was committed is a property of one atomic save, which EF InMemory does not have: asserted where
+        // the database is real (the MariaDB rerun in Odyssey.IntegrationTests).
+        if (RelationalDatabase)
+        {
+            Assert.Equal("Once.gif", await FileNameAsync(host, photoId));
+        }
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task When_the_regeneration_ends_unsupported_no_file_with_the_old_stem_remains_after_the_sweep()
     {
         var host = await NewThumbnailHostAsync();
@@ -175,7 +179,7 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         Assert.Empty(Directory.GetFiles(Path.Combine(PrimaryRoot, "photo-thumbnails"), "Secret Name*", SearchOption.AllDirectories));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Deleting_a_photo_releases_both_thumbnails_immediately_in_the_same_save()
     {
         var host = await NewThumbnailHostAsync();
@@ -197,37 +201,6 @@ public class PhotoThumbnailRenameTests : PhotoThumbnailTestBase
         }
 
         Assert.Equal(0, await WithContextAsync(host, c => c.PhotoThumbnailJobs.CountAsync()));
-    }
-
-    // ── The two additive changes ──────────────────────────────────────────────────────────────────────
-
-    [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, true)]
-    public void The_walk_reports_a_progressive_jpeg(bool progressive, bool expected)
-    {
-        var result = ImageContainerWalk.Walk(ThumbnailFixtures.Jpeg(640, 480, progressive), "image/jpeg");
-
-        Assert.True(result.IsOk);
-        Assert.Equal((640, 480, expected), (result.Width, result.Height, result.IsProgressive));
-    }
-
-    [Fact]
-    public void A_walk_that_learns_no_dimensions_is_undecodable()
-    {
-        Assert.Equal(ImageWalkOutcome.Undecodable, ImageContainerWalk.Walk(ThumbnailFixtures.Png(0, 10), "image/png").Outcome);
-    }
-
-    [Theory]
-    [InlineData(1, 1)]
-    [InlineData(6, 6)]
-    [InlineData(8, 8)]
-    [InlineData(null, null)]
-    public void The_extractor_reads_the_exif_orientation(int? stored, int? expected)
-    {
-        var metadata = new PhotoMetadataExtractor().Extract(ThumbnailFixtures.Jpeg(64, 48, orientation: stored));
-
-        Assert.Equal(expected, metadata.Orientation);
     }
 
     private static FileService Service(IServiceProvider services, OdysseyContext context, params IFileRenameObserver[] extra) =>

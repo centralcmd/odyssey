@@ -16,9 +16,33 @@ public sealed class PhotoLookup(
     OdysseyContext context,
     IFileLookup files,
     PhotoMetadataService metadata,
-    TimeProvider? timeProvider = null) : IPhotoLookup
+    TimeProvider? timeProvider = null,
+    Thumbnails.PhotoThumbnailService? thumbnails = null) : IPhotoLookup
 {
     private readonly TimeProvider timeProvider = timeProvider ?? TimeProvider.System;
+
+    /// <summary>
+    /// A photo created on the journal path is queued for thumbnails in the same save, in its uploader's interactive
+    /// lane, like one created through <c>POST /api/photos</c> (issue #362). Null only in tests that build the lookup
+    /// by hand; such photos are still found later by the worker's discovery sweep.
+    /// </summary>
+    private async Task EnqueueAsync(Photo photo, CancellationToken cancellationToken)
+    {
+        if (thumbnails is not null)
+        {
+            await thumbnails.StageEnqueueAsync(photo, cancellationToken);
+        }
+    }
+
+    /// <summary>Detaches a lost create and the thumbnail job staged with it.</summary>
+    private void Detach(Photo photo)
+    {
+        context.Entry(photo).State = EntityState.Detached;
+        foreach (var job in context.ChangeTracker.Entries<PhotoThumbnailJobEntry>().Where(e => e.Entity.PhotoId == photo.PhotoId).ToList())
+        {
+            job.State = EntityState.Detached;
+        }
+    }
 
     public async Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
     {
@@ -74,6 +98,7 @@ public sealed class PhotoLookup(
         var photo = BuildPhoto(fileId, extracted, userId, now);
 
         context.Photos.Add(photo);
+        await EnqueueAsync(photo, cancellationToken);
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -83,7 +108,7 @@ public sealed class PhotoLookup(
         {
             // Concurrent create raced us on the Photo.FileId unique index — re-fetch the winner so a
             // routine journal save never turns into a 409 (§5 cross-module write atomicity).
-            context.Entry(photo).State = EntityState.Detached;
+            Detach(photo);
             return await context.Photos
                 .Where(p => p.FileId == fileId)
                 .Select(p => p.PhotoId)
@@ -127,6 +152,7 @@ public sealed class PhotoLookup(
             var extracted = await metadata.ExtractAsync(fileId, cancellationToken);
             var photo = BuildPhoto(fileId, extracted, userId, now);
             context.Photos.Add(photo);
+            await EnqueueAsync(photo, cancellationToken);
             added.Add((fileId, photo));
         }
 
@@ -146,7 +172,7 @@ public sealed class PhotoLookup(
             // re-fetch the winners, and resolve any residual individually — a routine import never 409s.
             foreach (var (_, photo) in added)
             {
-                context.Entry(photo).State = EntityState.Detached;
+                Detach(photo);
             }
 
             var winners = await context.Photos

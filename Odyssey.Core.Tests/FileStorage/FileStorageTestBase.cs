@@ -34,7 +34,8 @@ public abstract class FileStorageTestBase : IAsyncLifetime
         return path;
     }
 
-    protected void UseDatabase(DbContextOptionsBuilder<OdysseyContext> options) =>
+    /// <summary>InMemory here; <c>Odyssey.IntegrationTests</c> overrides it to rerun inherited cases on MariaDB.</summary>
+    protected virtual void UseDatabase(DbContextOptionsBuilder<OdysseyContext> options) =>
         options.UseInMemoryDatabase(DatabaseName, DatabaseRoot)
             .ConfigureWarnings(w => w.Ignore(InMemoryEventId.TransactionIgnoredWarning));
 

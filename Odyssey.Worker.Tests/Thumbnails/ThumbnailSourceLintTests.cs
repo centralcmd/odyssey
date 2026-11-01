@@ -51,7 +51,8 @@ public sealed partial class ThumbnailSourceLintTests
             .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
 
-    [GeneratedRegex(@"\b(ex|exception|e)\.Message\b|\.InnerException\b")]
+    // Any identifier: an exception may be bound under any name (`ex`, `failure`, `inner`, ...).
+    [GeneratedRegex(@"\b\w+\.Message\b|\.InnerException\b")]
     private static partial Regex MessageRead();
 
     private static string RepositoryRoot()

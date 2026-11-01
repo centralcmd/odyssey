@@ -35,6 +35,12 @@
     <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
+    <!-- The thumbnail scenarios (issue #362), rerun on MariaDB by PhotoThumbnailRelationalScenarioTests. -->
+    <Compile Include="..\Odyssey.Core.Tests\FileStorage\FileStorageTestBase.cs" Link="CoreScenarios\FileStorageTestBase.cs" />
+    <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailTestBase.cs" Link="CoreScenarios\PhotoThumbnailTestBase.cs" />
+    <Compile Include="..\Odyssey.Core.Tests\Thumbnails\ThumbnailFixtures.cs" Link="CoreScenarios\ThumbnailFixtures.cs" />
+    <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailJobScenarios.cs" Link="CoreScenarios\PhotoThumbnailJobScenarios.cs" />
+    <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailRenameScenarios.cs" Link="CoreScenarios\PhotoThumbnailRenameScenarios.cs" />
   </ItemGroup>
 
 </Project>

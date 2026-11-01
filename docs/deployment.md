@@ -1462,13 +1462,16 @@ ImageMagick and libwebp parse untrusted bytes in native code, so they are patche
   Magick.NET security release note, whichever comes first. NuGet advisory data can lag those, so it is not
   the start.
 - **The repository owner watches** `dlemstra/Magick.NET` releases and security advisories, and receives the
-  scheduled audit's issues.
+  scheduled audit's issues. That watch is what starts the clock for a native ImageMagick or libwebp CVE: NuGet
+  advisory data, and so `NuGetAudit` and the daily audit, can lag the upstream advisory.
 
 What enforces it:
 
 - **`NuGetAudit`** (`NuGetAuditMode=all`, `NuGetAuditLevel=moderate`) in `Directory.Build.props`, solution-wide,
   test projects included; `TreatWarningsAsErrors` makes an advisory fail the restore. A triaged advisory is
-  silenced with `NuGetAuditSuppress` and a dated comment, never `<NoWarn>`.
+  silenced with `NuGetAuditSuppress` and a dated comment, never `<NoWarn>`. This is **fail-closed**: an
+  unreachable advisory source (`NU1900`) also fails the restore, so image builds and publishing stop until it
+  answers or the build runs with `-p:NuGetAudit=false` on purpose.
 - **`.github/workflows/vulnerability-audit.yml`**, daily: it parses `dotnet list package --vulnerable
   --include-transitive --format json` (which exits 0 regardless), fails on High or above, and opens or updates
   an issue labelled `security`.

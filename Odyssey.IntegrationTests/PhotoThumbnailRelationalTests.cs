@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using MySqlConnector;
+using Odyssey.Core.FileStorage;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
@@ -48,7 +51,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlRawAsync(sql, photoId));
+        await AssertRefusedAsync(CheckViolation, () => context.Database.ExecuteSqlRawAsync(sql, photoId));
     }
 
     [SkippableTheory]
@@ -64,7 +67,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
-        await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlRawAsync(sql));
+        await AssertRefusedAsync(CheckViolation, () => context.Database.ExecuteSqlRawAsync(sql));
     }
 
     [SkippableFact]
@@ -80,7 +83,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             Assert.True(await context.PhotoThumbnailJobs.AnyAsync(j => j.PhotoId == photoId));
             // RESTRICT (#346 consumer rule): the object leaves only once nothing references it.
-            await Assert.ThrowsAnyAsync<Exception>(() => context.Database.ExecuteSqlRawAsync("DELETE FROM StoredObjects WHERE Id = {0}", objectId));
+            await AssertRefusedAsync(RowIsReferenced, () => context.Database.ExecuteSqlRawAsync("DELETE FROM StoredObjects WHERE Id = {0}", objectId));
 
             await context.Database.ExecuteSqlRawAsync("DELETE FROM Photos WHERE PhotoId = {0}", photoId);
 
@@ -129,6 +132,61 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
     private sealed class EmptyMetadataExtractor : IPhotoMetadataExtractor
     {
         public PhotoMetadata Extract(byte[] content) => PhotoMetadata.Empty;
+    }
+
+    // MariaDB error numbers: a failed CHECK, a RESTRICT key refusing a parent delete, a unique-index duplicate.
+    private const int CheckViolation = 4025;
+    private const int RowIsReferenced = 1451;
+    private const int DuplicateKey = 1062;
+
+    /// <summary>The statement fails with exactly this server error, not merely with some SQL error.</summary>
+    private static async Task AssertRefusedAsync(int errorNumber, Func<Task> statement)
+    {
+        var refused = await Assert.ThrowsAsync<MySqlException>(statement);
+        Assert.Equal(errorNumber, refused.Number);
+    }
+
+    [SkippableFact]
+    public async Task A_photo_holds_at_most_one_thumbnail_per_size()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await using var provider = await BuildProviderAsync();
+        var photoId = await CreatePhotoAsync(provider);
+        var objectId = await AddThumbnailRowAsync(provider, photoId);
+        var secondObject = await AddThumbnailRowAsync(provider, await CreatePhotoAsync(provider));
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+
+        // A second Small for the same photo, on an object of its own (StoredObjectId is unique too).
+        var otherPhoto = await context.PhotoThumbnails.Where(t => t.StoredObjectId == secondObject).Select(t => t.PhotoThumbnailId).SingleAsync();
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM PhotoThumbnails WHERE PhotoThumbnailId = {0}", otherPhoto);
+        await AssertRefusedAsync(DuplicateKey, () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO PhotoThumbnails (PhotoThumbnailId, PhotoId, Size, StoredObjectId, PixelWidth, PixelHeight, RecipeVersion, CreatedAtUtc) "
+            + "VALUES (UUID(), {0}, 1, {1}, 200, 150, 1, NOW())", photoId, secondObject));
+        // Two rows naming one object are refused as well.
+        await AssertRefusedAsync(DuplicateKey, () => context.Database.ExecuteSqlRawAsync(
+            "INSERT INTO PhotoThumbnails (PhotoThumbnailId, PhotoId, Size, StoredObjectId, PixelWidth, PixelHeight, RecipeVersion, CreatedAtUtc) "
+            + "VALUES (UUID(), {0}, 2, {1}, 200, 150, 1, NOW())", photoId, objectId));
+    }
+
+    /// <summary>
+    /// AC 21: the production catalogue is no longer empty, so a relational host with no volume configured fails B1 —
+    /// the no-op rule no longer covers it. The verifier reads no environment, so Development and Production fail alike.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_relational_host_with_the_thumbnail_feature_and_no_volumes_fails_B1()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await (await BuildProviderAsync()).DisposeAsync();
+        await using var host = FileStorageTestHost.Create(
+            options => options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)),
+            new Dictionary<string, string>(),
+            features: [],
+            configureServices: services => services.AddPhotoThumbnails());
+
+        var error = await Assert.ThrowsAsync<FileStorageMisconfiguredException>(() => host.VerifyAsync());
+
+        Assert.Equal("UnboundFeature", error.Check);
     }
 
     private static FileService Files(IServiceScope scope, IFileRenameObserver interfering) => new(

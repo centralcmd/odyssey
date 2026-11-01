@@ -1,3 +1,4 @@
+using Odyssey.ApiClient.Resources;
 using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
@@ -450,15 +451,22 @@ public partial class JournalCard
     }
 
     private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        [.. e.Photos.OrderBy(p => p.Position).Select(p =>
+        GalleryPhotos(e.Photos, id => _canReadFiles ? _fileMeta.GetValueOrDefault(id) : null, _imageAccess, Photos, Files);
+
+    /// <summary>
+    /// The gallery's sources (issue #365 B5): the original still needs resolved metadata, as before; the Small
+    /// thumbnail does not, so a <c>photos.read</c>-only caller with a ready thumbnail sees it rather than "no access".
+    /// "No access" is only the case with neither source. Static so the rule is tested without rendering the page.
+    /// </summary>
+    internal static IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(
+        IEnumerable<JournalEntryPhotoDto> photos, Func<Guid, FileMetadataResponse?> metadata, PhotoImageAccess access,
+        IPhotosApiClient photoClient, IFilesApiClient fileClient) =>
+        [.. photos.OrderBy(p => p.Position).Select(p =>
         {
-            var meta = _canReadFiles ? _fileMeta.GetValueOrDefault(p.FileId) : null;
-            var name = meta?.FileName ?? "Photo";
-            // The original still needs resolved metadata, as before; the Small thumbnail does not, so a
-            // photos.read-only caller with a ready thumbnail sees it rather than "no access" (issue #365 B5).
+            var meta = metadata(p.FileId);
             var image = PhotoImageSources.For(
-                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
-            return new JournalPhotoGallery.Photo(p.FileId.ToString(), name, image, Unavailable: image.IsEmpty);
+                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient, fileClient);
+            return new JournalPhotoGallery.Photo(p.FileId.ToString(), meta?.FileName ?? "Photo", image, Unavailable: image.IsEmpty);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>

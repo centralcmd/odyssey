@@ -16,11 +16,11 @@ namespace Odyssey.Core.Tests.Thumbnails;
 /// The thumbnail job on EF InMemory with a fake renderer (issue #362 test tiers, "Job logic"): the pipeline, the
 /// failure codes, the lanes, the watchdog, the crash rule, the breaker, the outage and the heartbeat.
 /// </summary>
-public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
+public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
 {
     // ── Pipeline (AC 1, 2, 3, 6) ───────────────────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task One_run_writes_both_sizes_into_bucket_one_with_the_photos_stem_and_marks_the_job_done()
     {
         var host = await NewThumbnailHostAsync();
@@ -42,7 +42,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Contains(photoId, await WithContextAsync(host, c => PhotoThumbnailService.ReadyAsync(c, [photoId], default)));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task The_renderer_sees_stripped_bytes_and_the_orientation_read_from_the_full_original()
     {
         var host = await NewThumbnailHostAsync();
@@ -57,7 +57,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.False(ImageContainerWalk.Walk(call.Bytes, "image/jpeg").HasMetadata);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task An_image_jpg_content_type_is_walked_and_stripped_like_image_jpeg()
     {
         var host = await NewThumbnailHostAsync();
@@ -68,7 +68,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.False(ContainsMarker(Assert.Single(Renderer.Calls).Bytes, 0xE1));
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(0)]
     [InlineData(9)]
     public async Task An_orientation_outside_one_to_eight_renders_unrotated(int stored)
@@ -82,7 +82,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobState.Done, (await JobRowAsync(host, photoId)).State);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Buckets_fill_by_photos_written_never_reopen_and_a_duplicate_name_takes_a_numbered_name()
     {
         var host = await NewThumbnailHostAsync(bucketCapacity: 3);
@@ -114,7 +114,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Failure codes (AC 11) ──────────────────────────────────────────────────────────────────────────
 
-    [Theory]
+    [SkippableTheory]
     [InlineData("application/pdf", "type")]
     [InlineData("image/png", "too-large")]
     public async Task A_file_outside_the_limits_is_unsupported_without_a_decode(string contentType, string code)
@@ -129,7 +129,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Empty(Renderer.Calls);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_large_progressive_jpeg_is_too_large_before_any_native_call_while_baseline_passes()
     {
         var host = await NewThumbnailHostAsync();
@@ -143,7 +143,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Single(Renderer.Calls);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task An_undecodable_container_is_terminal_and_never_reaches_the_renderer()
     {
         var host = await NewThumbnailHostAsync();
@@ -156,7 +156,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Empty(Renderer.Calls);
     }
 
-    [Theory]
+    [SkippableTheory]
     [InlineData("format")]
     [InlineData("decode")]
     public async Task A_renderer_failure_code_or_exception_ends_unsupported(string code)
@@ -176,7 +176,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Watchdog, bounded pause, restart limit (AC 11, 14, 30) ─────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task A_hung_decode_times_out_pauses_claiming_while_it_lives_then_resumes()
     {
         var host = await NewThumbnailHostAsync();
@@ -203,7 +203,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(ThumbnailWorkerState.Running, Job(host).State);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_decode_hung_past_the_bounded_pause_restarts_the_worker_once_an_hour()
     {
         var host = await NewThumbnailHostAsync();
@@ -237,7 +237,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Renderer.Hang.Set();
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Another_worker_still_restarts_once_within_that_hour()
     {
         var host = await NewThumbnailHostAsync(workerName: "w2");
@@ -262,7 +262,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Crash rule, give-back, breaker (AC 14) ─────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task A_second_expired_lease_ends_unsupported_crash_with_attempts_counted_at_claim()
     {
         var host = await NewThumbnailHostAsync();
@@ -291,7 +291,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobState.Unsupported, (await JobRowAsync(host, photoId)).State);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_live_worker_whose_run_was_reclaimed_gives_the_expiry_back_once_and_removes_its_incident()
     {
         var host = await NewThumbnailHostAsync();
@@ -319,7 +319,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(0, (await JobRowAsync(host, photoId)).LeaseExpiries);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Three_incidents_within_an_hour_trip_the_breaker_until_an_hour_after_the_latest()
     {
         var host = await NewThumbnailHostAsync();
@@ -353,7 +353,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Shutdown and deadline (AC 14) ──────────────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task A_graceful_shutdown_mid_job_releases_it_with_attempts_and_expiries_unchanged()
     {
         HangingStore.Entered.Reset();
@@ -370,7 +370,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal((PhotoThumbnailJobState.Pending, 0, 0), (job.State, job.Attempts, job.LeaseExpiries));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_write_wedged_past_the_deadline_releases_the_job_with_no_attempt_expiry_or_incident()
     {
         HangingStore.Entered.Reset();
@@ -392,7 +392,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Outage (AC 15) ────────────────────────────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task With_the_volume_degraded_nothing_is_claimed_and_claiming_resumes_within_a_tick_of_its_return()
     {
         var host = await NewThumbnailHostAsync();
@@ -416,7 +416,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobState.Done, (await JobRowAsync(host, photoId)).State);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_write_refused_with_a_503_goes_back_pending_without_counting_an_attempt()
     {
         var host = await NewThumbnailHostAsync(configure: WithStore<UnavailableStore>);
@@ -434,7 +434,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Lanes and discovery (AC 10, 16, 17, 31) ───────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task A_new_upload_beats_the_backfill_and_every_fourth_claim_is_from_the_backfill()
     {
         var host = await NewThumbnailHostAsync();
@@ -461,7 +461,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.DoesNotContain(claimed[3], uploads);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task One_uploaders_burst_delays_another_upload_by_at_most_one_claim()
     {
         var host = await NewThumbnailHostAsync();
@@ -479,7 +479,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Contains(b, new[] { first, second });
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task An_uploaders_twenty_first_due_upload_is_background()
     {
         var host = await NewThumbnailHostAsync();
@@ -493,7 +493,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(PhotoThumbnailJobPriority.Background, (await JobRowAsync(host, ids[20])).Priority);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Discovery_creates_a_job_for_every_photo_without_one_and_two_sweeps_make_no_duplicates()
     {
         var host = await NewThumbnailHostAsync();
@@ -509,7 +509,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Equal(30, await WithContextAsync(host, c => c.PhotoThumbnailJobs.CountAsync(j => j.Priority == PhotoThumbnailJobPriority.Background)));
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task A_recipe_reset_requeues_finished_jobs_but_never_a_crash_or_timeout_and_keeps_old_thumbnails_serving()
     {
         var host = await NewThumbnailHostAsync();
@@ -545,7 +545,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
 
     // ── Rename during a run (AC 17) ───────────────────────────────────────────────────────────────────
 
-    [Fact]
+    [SkippableFact]
     public async Task A_rename_during_a_successful_run_supersedes_it_gives_the_attempt_back_and_releases_its_files()
     {
         var host = await NewThumbnailHostAsync();
@@ -574,9 +574,140 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
             o => Assert.Equal((StoredObjectState.PendingDelete, true), (o.State, o.DeleteImmediately)));
     }
 
+    // ── Concurrency and rename races (AC 17, AC 24; rerun on MariaDB) ───────────────────────────────
+
+    [SkippableFact]
+    public async Task Two_workers_on_one_queue_never_process_the_same_job()
+    {
+        var other = new FakeRenderer();
+        var first = await NewThumbnailHostAsync(workerName: "w1");
+        var second = await NewThumbnailHostAsync(workerName: "w2", configure: s => s.AddSingleton<IPhotoThumbnailRenderer>(other));
+        var photos = new List<Guid>();
+        for (var i = 0; i < 8; i++)
+        {
+            photos.Add(await AddPhotoAsync(first, ThumbnailFixtures.Gif(), "image/gif", fileName: $"p{i}.gif"));
+        }
+
+        await Task.WhenAll(Task.Run(() => Job(first).RunOnceAsync(default)), Task.Run(() => Job(second).RunOnceAsync(default)));
+
+        Assert.Equal(photos.Count, Renderer.Calls.Count + other.Calls.Count);
+        foreach (var photoId in photos)
+        {
+            Assert.Equal((PhotoThumbnailJobState.Done, 1), ((await JobRowAsync(first, photoId)).State, (await JobRowAsync(first, photoId)).Attempts));
+            Assert.Equal(2, (await ThumbnailsAsync(first, photoId)).Count);
+        }
+    }
+
+    [SkippableFact]
+    public async Task A_stale_worker_changes_nothing_on_the_run_that_replaced_it_and_gives_back_only_its_own_incident()
+    {
+        var hostA = await NewThumbnailHostAsync(workerName: "a");
+        var photoId = await AddPhotoAsync(hostA, ThumbnailFixtures.Gif(), "image/gif");
+        var workerA = Job(hostA);
+        var claimedA = (await workerA.ClaimAsync(default))!;
+
+        Clock.Advance(PhotoThumbnailTiming.Lease + TimeSpan.FromSeconds(1));
+        var hostB = await NewThumbnailHostAsync(workerName: "b");
+        var workerB = Job(hostB);
+        await workerB.ReclaimExpiredAsync(default);
+        var incident = await WithContextAsync(hostA, c => c.PhotoThumbnailIncidents.SingleAsync());
+        Clock.Advance(TimeSpan.FromHours(2));
+        var claimedB = (await workerB.ClaimAsync(default))!;
+        var beforeA = await JobRowAsync(hostA, photoId);
+        Assert.Equal(PhotoThumbnailJobState.Running, beforeA.State);
+
+        // A comes back and finishes: B's run is untouched, and A takes back only the incident written for its own run.
+        await workerA.RunJobAsync(claimedA, default);
+
+        var afterA = await JobRowAsync(hostA, photoId);
+        Assert.Equal((PhotoThumbnailJobState.Running, beforeA.RunId, beforeA.LeaseUntilUtc), (afterA.State, afterA.RunId, afterA.LeaseUntilUtc));
+        Assert.Empty(await ThumbnailsAsync(hostA, photoId));
+        Assert.DoesNotContain(incident.Id, await WithContextAsync(hostA, c => c.PhotoThumbnailIncidents.Select(i => i.Id).ToListAsync()));
+
+        await workerB.RunJobAsync(claimedB, default);
+        Assert.Equal(PhotoThumbnailJobState.Done, (await JobRowAsync(hostA, photoId)).State);
+        Assert.Equal(2, (await ThumbnailsAsync(hostA, photoId)).Count);
+    }
+
+    [SkippableFact]
+    public async Task Renames_during_a_hung_decode_still_end_unsupported_timeout_with_one_incident()
+    {
+        var host = await NewThumbnailHostAsync();
+        var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
+        Renderer.Hang = new ManualResetEventSlim();
+        var run = Job(host).RunOnceAsync(default);
+        await UntilAsync(() => Renderer.Entered.IsSet, "the decode to start");
+
+        for (var i = 0; i < 5; i++)
+        {
+            await StageRenameAsync(host, photoId);
+        }
+
+        Clock.Advance(PhotoThumbnailTiming.Watchdog + TimeSpan.FromSeconds(1));
+        await run;
+        Renderer.Hang.Set();
+
+        var job = await JobRowAsync(host, photoId);
+        Assert.Equal((PhotoThumbnailJobState.Unsupported, PhotoThumbnailFailure.Timeout), (job.State, job.FailureCode));
+        Assert.Equal(1, await WithContextAsync(host, c => c.PhotoThumbnailIncidents.CountAsync(i => i.Kind == PhotoThumbnailIncidentKind.Timeout)));
+    }
+
+    [SkippableFact]
+    public async Task Renames_during_a_succeeding_decode_end_in_one_superseded_run_with_no_expiry_incident_or_trip()
+    {
+        var host = await NewThumbnailHostAsync();
+        var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
+        Renderer.Hang = new ManualResetEventSlim();
+        var run = Job(host).RunOnceAsync(default);
+        await UntilAsync(() => Renderer.Entered.IsSet, "the decode to start");
+
+        for (var i = 0; i < 5; i++)
+        {
+            await StageRenameAsync(host, photoId);
+        }
+
+        Renderer.Hang.Set();
+        await run;
+
+        var job = await JobRowAsync(host, photoId);
+        Assert.Equal((PhotoThumbnailJobState.Pending, 0, 0), (job.State, job.Attempts, job.LeaseExpiries));
+        Assert.Equal(0, await WithContextAsync(host, c => c.PhotoThumbnailIncidents.CountAsync()));
+        Assert.False(await Job(host).BreakerTrippedAsync(default));
+        Assert.Single(Renderer.Calls);
+    }
+
+    [SkippableFact]
+    public async Task A_rename_while_the_worker_is_dead_still_counts_the_expiry_and_a_second_cycle_ends_crash()
+    {
+        var host = await NewThumbnailHostAsync();
+        var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
+        var job = Job(host);
+
+        for (var cycle = 1; cycle <= 2; cycle++)
+        {
+            Clock.Advance(TimeSpan.FromHours(2));
+            Assert.NotNull(await job.ClaimAsync(default)); // the process "dies" holding the claim
+            await StageRenameAsync(host, photoId);
+            Clock.Advance(PhotoThumbnailTiming.Lease + TimeSpan.FromSeconds(1));
+            await job.ReclaimExpiredAsync(default);
+        }
+
+        var row = await JobRowAsync(host, photoId);
+        Assert.Equal((PhotoThumbnailJobState.Unsupported, PhotoThumbnailFailure.Crash, 2), (row.State, row.FailureCode, row.LeaseExpiries));
+    }
+
+    private static async Task StageRenameAsync(FileStorageTestHost host, Guid photoId)
+    {
+        await using var scope = host.Scope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var fileId = await context.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync();
+        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId, default);
+        await context.SaveChangesAsync();
+    }
+
     // ── Self-test, heartbeat (AC 13, 19, 26, 29) ──────────────────────────────────────────────────────
 
-    [Theory]
+    [SkippableTheory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task A_failed_or_throwing_self_test_reports_policy_failed_and_claims_nothing(bool throws)
@@ -592,7 +723,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.Empty(Renderer.Calls);
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task The_reported_state_is_the_worst_fresh_heartbeat_or_not_running_and_stale_rows_of_others_are_removed()
     {
         var host = await NewThumbnailHostAsync();
@@ -620,7 +751,7 @@ public class PhotoThumbnailJobTests : PhotoThumbnailTestBase
         Assert.DoesNotContain(await WithContextAsync(host, c => c.PhotoThumbnailWorkerHeartbeats.AsNoTracking().ToListAsync()), r => r.WorkerName == "w1");
     }
 
-    [Fact]
+    [SkippableFact]
     public async Task Stats_count_jobs_of_non_archived_photos_only()
     {
         var host = await NewThumbnailHostAsync();

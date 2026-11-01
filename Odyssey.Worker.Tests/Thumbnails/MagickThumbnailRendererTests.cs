@@ -213,6 +213,107 @@ public sealed class MagickThumbnailRendererTests
         }
     }
 
+    /// <summary>AC 4: frame 0 only, so a 5 000-frame GIF neither decodes every frame nor trips the list-length limit.</summary>
+    [Fact]
+    public void A_five_thousand_frame_gif_renders_its_first_frame_in_under_a_second()
+    {
+        var gif = AnimatedGif(frames: 5_000);
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+
+        var result = Renderer.Render(new ThumbnailRenderRequest(gif, ThumbnailSourceFormat.Gif, 1));
+
+        watch.Stop();
+        Assert.Null(result.FailureCode);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(1), $"Took {watch.Elapsed}.");
+    }
+
+    public static TheoryData<string, string> Pairs()
+    {
+        string[] fixtures = ["progressive-640x480.jpg", "small-150x100.png", "still-320x240.gif", "still-320x240.webp"];
+        var data = new TheoryData<string, string>();
+        foreach (var declared in fixtures)
+        {
+            foreach (var other in fixtures.Where(f => f != declared))
+            {
+                data.Add(declared, other);
+            }
+        }
+
+        return data;
+    }
+
+    /// <summary>
+    /// AC 12: a file that is one format followed by another, pinned as the first, decodes as the first or is refused —
+    /// and pinned as the second (whose signature is not at the start), it is refused. Never the other coder's output.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(Pairs))]
+    public void A_pairwise_polyglot_is_decoded_as_its_declared_type_or_refused(string declared, string other)
+    {
+        byte[] polyglot = [.. Fixture(declared), .. Fixture(other)];
+        var declaredFormat = FormatOf(declared);
+        var expected = SizeOf(declared);
+
+        try
+        {
+            var result = Renderer.Render(new ThumbnailRenderRequest(polyglot, declaredFormat, 1));
+            if (result.FailureCode is null)
+            {
+                Assert.Equal(Fit(expected, PhotoThumbnailRecipe.MediumLongSide), (result.Medium!.Width, result.Medium.Height));
+            }
+        }
+        catch (MagickException refused)
+        {
+            Assert.IsNotType<MagickPolicyErrorException>(refused);
+        }
+
+        var thrown = Record.Exception(() => Renderer.Render(new ThumbnailRenderRequest(polyglot, FormatOf(other), 1)));
+        Assert.True(thrown is MagickException and not MagickPolicyErrorException, $"{other} trailing {declared} was not refused: {thrown?.GetType().Name ?? "rendered"}.");
+    }
+
+    private static ThumbnailSourceFormat FormatOf(string fixture) => Path.GetExtension(fixture) switch
+    {
+        ".jpg" => ThumbnailSourceFormat.Jpeg,
+        ".png" => ThumbnailSourceFormat.Png,
+        ".gif" => ThumbnailSourceFormat.Gif,
+        _ => ThumbnailSourceFormat.WebP,
+    };
+
+    private static (int Width, int Height) SizeOf(string fixture)
+    {
+        var size = System.Text.RegularExpressions.Regex.Match(fixture, @"(\d+)x(\d+)");
+        return (int.Parse(size.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture), int.Parse(size.Groups[2].Value, System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    private static (int, int) Fit((int Width, int Height) size, int longSide)
+    {
+        if (Math.Max(size.Width, size.Height) <= longSide)
+        {
+            return size;
+        }
+
+        var scale = (double)longSide / Math.Max(size.Width, size.Height);
+        return ((int)Math.Round(size.Width * scale), (int)Math.Round(size.Height * scale));
+    }
+
+    /// <summary>A GIF of 1×1 frames, built by hand: the policy lets ImageMagick write WebP only.</summary>
+    private static byte[] AnimatedGif(int frames)
+    {
+        using var ms = new MemoryStream();
+        ms.Write("GIF89a"u8);
+        ms.Write([0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF]);
+        ms.Write([0x21, 0xFF, 0x0B, .. "NETSCAPE2.0"u8, 0x03, 0x01, 0x00, 0x00, 0x00]);
+        for (var i = 0; i < frames; i++)
+        {
+            ms.Write([0x21, 0xF9, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00]);
+            ms.Write([0x2C, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00]);
+            ms.Write([0x02, 0x02, 0x44, 0x01, 0x00]);
+        }
+
+        ms.WriteByte(0x3B);
+        return ms.ToArray();
+    }
+
     [Fact]
     public void A_gif_beyond_the_pixel_limit_is_too_large_at_the_ping()
     {

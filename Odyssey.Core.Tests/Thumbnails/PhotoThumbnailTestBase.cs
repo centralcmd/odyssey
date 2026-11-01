@@ -21,6 +21,12 @@ namespace Odyssey.Core.Tests.Thumbnails;
 /// </summary>
 public abstract class PhotoThumbnailTestBase : FileStorageTestBase
 {
+    /// <summary>True where the scenarios rerun on real MariaDB, so a scenario can assert what only a real save shows.</summary>
+    protected virtual bool RelationalDatabase => false;
+
+    /// <summary>Creates the uploader where the database enforces the user key; a no-op on EF InMemory.</summary>
+    protected virtual Task EnsureUserAsync(OdysseyContext context, string userId) => Task.CompletedTask;
+
     protected FakeRenderer Renderer { get; } = new();
 
     protected FakeSelfTest SelfTest { get; } = new();
@@ -59,6 +65,7 @@ public abstract class PhotoThumbnailTestBase : FileStorageTestBase
     {
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await EnsureUserAsync(context, uploader);
         var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
         var file = new FileMetadata
         {
