@@ -36,8 +36,8 @@ public class MapStylesApiTests
         Assert.Equal(TimeSpan.FromSeconds(300), response.Headers.CacheControl.MaxAge);
 
         var styles = (await response.Content.ReadFromJsonAsync<MapStyles>())!;
-        Assert.Equal("https://tiles.openfreemap.org/styles/positron", styles.LightStyleUrl);
-        Assert.Equal("https://tiles.openfreemap.org/styles/dark", styles.DarkStyleUrl);
+        Assert.Equal("https://tiles.openfreemap.org/styles/liberty", styles.LightStyleUrl);
+        Assert.Equal("https://tiles.openfreemap.org/styles/fiord", styles.DarkStyleUrl);
         Assert.Equal("OpenFreeMap © OpenMapTiles Data from OpenStreetMap", styles.Attribution);
         Assert.Equal("https://www.openstreetmap.org/copyright", styles.AttributionUrl);
     }

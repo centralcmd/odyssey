@@ -142,7 +142,7 @@
 .loc-map-popup-host .maplibregl-popup-content { padding: 0; background: none; box-shadow: none; border-radius: 0; }
 
 .loc-map-popup {
-    max-height: calc(var(--loc-map-height) / 2 - 2 * var(--loc-map-inset));
+    max-height: var(--loc-map-popup-max);
     overflow: auto;
     background: var(--mud-palette-surface);
     color: var(--mud-palette-text-primary);

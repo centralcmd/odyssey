@@ -170,8 +170,8 @@ services:
       # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
       # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
       # survives; `:-` would silently restore the third-party host. docs/deployment.md → Location map.
-      Map__StyleUrlLight: ${MAP_STYLE_URL_LIGHT-https://tiles.openfreemap.org/styles/positron}
-      Map__StyleUrlDark: ${MAP_STYLE_URL_DARK-https://tiles.openfreemap.org/styles/dark}
+      Map__StyleUrlLight: ${MAP_STYLE_URL_LIGHT-https://tiles.openfreemap.org/styles/liberty}
+      Map__StyleUrlDark: ${MAP_STYLE_URL_DARK-https://tiles.openfreemap.org/styles/fiord}
       Map__Attribution: ${MAP_ATTRIBUTION-OpenFreeMap © OpenMapTiles Data from OpenStreetMap}
       Map__AttributionUrl: ${MAP_ATTRIBUTION_URL-https://www.openstreetmap.org/copyright}
       Map__AllowedOrigins: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}

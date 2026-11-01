@@ -617,6 +617,12 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     /// <summary>The pin, the seven controls and Close are each at least 24 × 24 CSS px, inside the frame (AC 22).</summary>
     private static async Task AssertTargetsAsync(IPage page)
     {
+        // The frame is full width at 4:3, capped at 70vh, never below 256 px (design system · LocationMap → Frame).
+        var shape = await page.EvaluateAsync<double[]>(
+            "() => { const r = document.querySelector('.loc-map-frame').getBoundingClientRect(); return [r.width, r.height, window.innerHeight]; }");
+        var expected = Math.Max(256, Math.Min(shape[0] * 3 / 4, shape[2] * 0.7));
+        Assert.True(Math.Abs(shape[1] - expected) <= 2, $"The frame is {shape[0]}×{shape[1]}; expected a height of {expected} (4:3, at most 70vh, at least 256 px).");
+
         await page.Locator(".loc-map-pin").ClickAsync();
         await Expect(page.Locator(".loc-map-popup-close")).ToBeVisibleAsync();
 

@@ -1053,8 +1053,8 @@ blocked or force a CSP wide enough to defeat it.
 
 | Variable | Read by | Default | Rule |
 |---|---|---|---|
-| `MAP_STYLE_URL_LIGHT` | api (`Map__StyleUrlLight`) | `https://tiles.openfreemap.org/styles/positron` | absolute `https` with no query, fragment or userinfo, whose origin is listed in `MAP_ALLOWED_ORIGINS`; or a root-relative path such as `/maps/blank-light.json` |
-| `MAP_STYLE_URL_DARK` | api (`Map__StyleUrlDark`) | `https://tiles.openfreemap.org/styles/dark` | as above |
+| `MAP_STYLE_URL_LIGHT` | api (`Map__StyleUrlLight`) | `https://tiles.openfreemap.org/styles/liberty` | absolute `https` with no query, fragment or userinfo, whose origin is listed in `MAP_ALLOWED_ORIGINS`; or a root-relative path such as `/maps/blank-light.json` |
+| `MAP_STYLE_URL_DARK` | api (`Map__StyleUrlDark`) | `https://tiles.openfreemap.org/styles/fiord` | as above |
 | `MAP_ATTRIBUTION` | api (`Map__Attribution`) | `OpenFreeMap © OpenMapTiles Data from OpenStreetMap` | plain text, no `<`, `>` or `&`, ≤ 300 characters |
 | `MAP_ATTRIBUTION_URL` | api (`Map__AttributionUrl`) | `https://www.openstreetmap.org/copyright` | absolute `https`, no fragment or userinfo |
 | `MAP_ALLOWED_ORIGINS` | api (`Map__AllowedOrigins`) **and** client | `https://tiles.openfreemap.org` | lowercase `https://host[:port]` origins separated by single spaces, at most 8, no path or trailing `/`; empty is the off-switch |
@@ -1081,6 +1081,11 @@ Rules that are easy to get wrong:
 - **Dedicated tile hosts only.** The listed origins are admitted to `connect-src` and `img-src` for the
   **whole app**, not just the map. Never list a multi-tenant host — a general CDN, an object-storage
   bucket, `*.github.io` — where someone else could receive data an injected script sent there.
+- **The shipped basemaps are OpenFreeMap `liberty` (light) and `fiord` (dark).** Earlier releases
+  shipped `positron` and `dark`; `dark` was nearly black and hard to read, so it was replaced. All
+  five OpenFreeMap styles (`liberty`, `bright`, `positron`, `dark`, `fiord`) live on
+  `tiles.openfreemap.org`, so switching between them needs no change to `MAP_ALLOWED_ORIGINS` — set
+  `MAP_STYLE_URL_LIGHT` / `MAP_STYLE_URL_DARK` and restart the `api` container.
 - **Change the attribution when you change the tile source.** It *replaces* the style's own credits: the
   client turns MapLibre's attribution control off and renders this text, so no string a remote style
   serves reaches the page. The licence obligations of the new source are yours to meet with it.
