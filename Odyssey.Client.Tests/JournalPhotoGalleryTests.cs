@@ -92,6 +92,22 @@ public class JournalPhotoGalleryTests
     }
 
     [Fact]
+    public void Reordering_keyed_tiles_keeps_each_tiles_own_image_stage()
+    {
+        using var ctx = NewContext();
+        var a = new JournalPhotoGallery.Photo("a", "a.jpg", new PhotoImageSource("/thumb/a", "/files/a"));
+        var b = new JournalPhotoGallery.Photo("b", "b.jpg", new PhotoImageSource("/thumb/b", "/files/b"));
+        var cut = Render(ctx, a, b);
+        cut.FindAll("img")[0].TriggerEvent("onerror", EventArgs.Empty);
+        Assert.Equal(["/files/a", "/thumb/b"], cut.FindAll("img").Select(i => i.GetAttribute("src")));
+
+        cut.Render(p => p.Add(c => c.Photos, new[] { b, a }));
+
+        // Keyed by id, so "a" keeps the fallback it reached and "b" its thumbnail; nothing is re-requested.
+        Assert.Equal(["/thumb/b", "/files/a"], cut.FindAll("img").Select(i => i.GetAttribute("src")));
+    }
+
+    [Fact]
     public void A_tile_carries_no_visible_filename_caption()
     {
         using var ctx = NewContext();

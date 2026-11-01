@@ -114,6 +114,33 @@ public class ControlContrastTests
         Assert.Equal(Hex(client), design, StringComparer.OrdinalIgnoreCase);
     }
 
+    // ── Journal gallery placeholder label (issue #365 A2) ───────────────────────────────────────
+
+    /// <summary>
+    /// The "photo" / "no access" label sits on the placeholder's background fill. It was text-secondary at 0.75 opacity,
+    /// about 3.9:1 in the light theme; with the opacity gone it is text-secondary as-is and clears 4.5:1 in both themes.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_gallery_placeholder_label_clears_text_contrast_with_no_opacity(Theme theme)
+    {
+        var rule = Rule(ComponentsCss, ".odc-photogrid-ph-label");
+        Assert.Matches(@"(?<![-\w])color:\s*var\(--mud-palette-text-secondary\)", rule);
+        Assert.DoesNotContain("opacity", rule, StringComparison.Ordinal);
+
+        var palette = Palette(theme);
+        AssertRatio(Hex(palette.TextSecondary), Hex(palette.Background), TextContrastMinimum, $"gallery placeholder label ({theme})");
+    }
+
+    [SkippableFact]
+    public void The_design_system_gallery_placeholder_label_has_no_opacity_either()
+    {
+        var rule = Rule(DesignSystemSource.File("components/bundle.css"), ".odc-photogrid-ph-label");
+
+        Assert.DoesNotContain("opacity", rule, StringComparison.Ordinal);
+    }
+
     // ── 2. Control boundaries ───────────────────────────────────────────────────────────────────
 
     [Theory]

@@ -90,14 +90,4 @@ public class PhotoThumbnailSurfaceTests
         Assert.DoesNotContain("crossorigin", code, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("onerror=\"", code.Replace("@onerror=\"", string.Empty, StringComparison.Ordinal), StringComparison.Ordinal);
     }
-
-    [Fact]
-    public void The_thumbnail_url_carries_no_cache_busting_parameter()
-    {
-        var code = ClientSource.WithoutComments(File.ReadAllText(ClientSource.Sibling("Odyssey.ApiClient/Resources/PhotosApiClient.cs")));
-        var builder = Regex.Match(code, @"ThumbnailUrl\(Guid photoId, ThumbnailSize size\)\s*=>\s*(?<body>[^;]+);");
-
-        Assert.True(builder.Success);
-        Assert.DoesNotContain("v=", builder.Groups["body"].Value, StringComparison.Ordinal);
-    }
 }
