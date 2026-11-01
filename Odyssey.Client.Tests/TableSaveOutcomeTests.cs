@@ -57,8 +57,13 @@ public class TableSaveOutcomeTests
             .Add(t => t.Actions, _ => HostActions)
             .Add(t => t.OnSave, EventCallback.Factory.Create(new object(), onSave)));
 
-    /// <summary>Opens the row's Edit dialog, types a new name, and returns the dialog's Save button.</summary>
-    private static AngleSharp.Dom.IElement OpenEditAndRename(
+    /// <summary>
+    /// Opens the row's Edit dialog and types a new name. It deliberately returns no element: the
+    /// field's blur can finish re-rendering the dialog after this returns, which re-issues the Save
+    /// button's handler id, so a button found here and clicked later dispatches to a dead id
+    /// (bUnit <c>UnknownEventHandlerIdException</c>). Click through <see cref="ClickSaveAsync"/>.
+    /// </summary>
+    private static void OpenEditAndRename(
         BunitContext ctx,
         IRenderedComponent<OdsFilesTable> cut,
         IRenderedComponent<MudDialogProvider> dialogs,
@@ -74,11 +79,14 @@ public class TableSaveOutcomeTests
         var input = dialogs.WaitForElement("input");
         input.Input(newName);
         dialogs.Find("input").Blur();
-        return SaveButton(dialogs);
     }
 
     private static AngleSharp.Dom.IElement SaveButton(IRenderedComponent<MudDialogProvider> dialogs) =>
         dialogs.FindAll("button").Single(b => b.TextContent.Contains("Save changes", StringComparison.Ordinal));
+
+    /// <summary>Finds and clicks Save on the renderer's dispatcher, so no render can land between the two.</summary>
+    private static Task ClickSaveAsync(IRenderedComponent<MudDialogProvider> dialogs) =>
+        dialogs.InvokeAsync(() => SaveButton(dialogs).Click());
 
     private static bool FilesRowShowsSaved(IRenderedComponent<OdsFilesTable> cut) =>
         cut.Find("tbody").TextContent.Contains("Saved", StringComparison.Ordinal);
@@ -90,7 +98,8 @@ public class TableSaveOutcomeTests
         OdsRecordSaveEventArgs? raised = null;
         var cut = RenderFilesTable(ctx, args => raised = args);
 
-        OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf").Click();
+        OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf");
+        await ClickSaveAsync(dialogs);
 
         cut.WaitForAssertion(() => Assert.False(cut.FindComponent<OdsFilesEditDialog>().Instance.Open));
         cut.WaitForAssertion(() => Assert.True(FilesRowShowsSaved(cut)));
@@ -110,7 +119,8 @@ public class TableSaveOutcomeTests
             args.Fail();
         });
 
-        OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf").Click();
+        OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf");
+        await ClickSaveAsync(dialogs);
 
         cut.WaitForAssertion(() => Assert.Equal(1, calls));
         var dialog = cut.FindComponent<OdsFilesEditDialog>();
@@ -119,7 +129,7 @@ public class TableSaveOutcomeTests
 
         // The user's edit is still in the field, so a retry sends it again rather than the old name.
         Assert.Equal("renamed.pdf", dialogs.Find("input").GetAttribute("value"));
-        SaveButton(dialogs).Click();
+        await ClickSaveAsync(dialogs);
         cut.WaitForAssertion(() => Assert.Equal(2, calls));
         Assert.True(cut.FindComponent<OdsFilesEditDialog>().Instance.Open);
     }
@@ -130,9 +140,9 @@ public class TableSaveOutcomeTests
         await using var ctx = NewContext(out var dialogs);
         var cut = RenderFilesTable(ctx, _ => throw new InvalidOperationException("boom"));
 
-        var save = OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf");
+        OpenEditAndRename(ctx, cut, dialogs, "renamed.pdf");
 
-        var thrown = Assert.ThrowsAny<Exception>(() => save.Click());
+        var thrown = await Assert.ThrowsAnyAsync<Exception>(() => ClickSaveAsync(dialogs));
         Assert.Contains("boom", thrown.ToString(), StringComparison.Ordinal);
         Assert.True(cut.FindComponent<OdsFilesEditDialog>().Instance.Open);
         Assert.False(FilesRowShowsSaved(cut));
