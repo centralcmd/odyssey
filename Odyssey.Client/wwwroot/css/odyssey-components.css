@@ -3134,6 +3134,22 @@ tr:focus-within > .odc-rowactions.reveal,
    text label ("Archived") is what distinguishes it, per a11y. */
 .odc-chip.outline.odc-todo-archived { opacity: 0.7; border-style: dashed; }
 
+/* ---------- PhotoImage (thumbnail → original → placeholder; issue #365) ----------
+   The host sizes the box; the image never does, so a fallback swap shifts nothing.
+   `fill` is for aspect-ratio hosts. Never a crossorigin attribute. Declared BEFORE the gallery
+   rules on purpose: the gallery's fallback placeholder carries both .odc-photoimg-ph and
+   .odc-photogrid-ph, and the gallery's striped background must win the tie by source order. */
+.odc-photoimg {
+  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0;
+  object-fit: cover;
+}
+.odc-photoimg.img-failed { display: none; }
+.odc-photoimg-ph {
+  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0;
+  background: var(--mud-palette-surface);
+}
+.odc-photoimg.fill, .odc-photoimg-ph.fill { position: absolute; inset: 0; }
+
 /* ---------- JournalPhotoGallery ---------- */
 .odc-photogrid { display: flex; flex-direction: column; gap: var(--space-2); }
 .odc-photogrid-head { display: flex; align-items: center; gap: 8px; color: var(--mud-palette-text-secondary); }
@@ -3168,20 +3184,6 @@ tr:focus-within > .odc-rowactions.reveal,
   text-transform: uppercase; letter-spacing: var(--tracking-caps);
   color: var(--mud-palette-text-secondary);
 }
-
-/* ---------- PhotoImage (thumbnail → original → placeholder; issue #365) ----------
-   The host sizes the box; the image never does, so a fallback swap shifts nothing.
-   `fill` is for aspect-ratio hosts. Never a crossorigin attribute. */
-.odc-photoimg {
-  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0;
-  object-fit: cover;
-}
-.odc-photoimg.img-failed { display: none; }
-.odc-photoimg-ph {
-  display: block; width: 100%; height: 100%; min-width: 0; min-height: 0;
-  background: var(--mud-palette-surface);
-}
-.odc-photoimg.fill, .odc-photoimg-ph.fill { position: absolute; inset: 0; }
 
 /* ---------- OdsTaskBoard (kanban) ---------- */
 .odc-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); align-items: start; }
