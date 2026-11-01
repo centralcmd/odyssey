@@ -30,8 +30,9 @@
   <!--
     NuGet audit, solution-wide and test projects included, over transitive packages too (issue #362 §7.5.8). The
     thumbnail decoder (Magick.NET, in Odyssey.Worker) parses untrusted uploads, so an ImageMagick or libwebp
-    advisory has to stop the build. `moderate` is deliberately narrower than the default `low`. The daily
-    vulnerability workflow (.github/workflows/vulnerability-audit.yml) covers the days nobody builds.
+    advisory has to stop the build. `moderate` is deliberately narrower than the default `low`. It runs only when
+    something restores; between builds, Dependabot security updates and the owner's upstream watch are what
+    surface an advisory (docs/deployment.md, Photo thumbnails).
   -->
   <PropertyGroup>
     <NuGetAudit>true</NuGetAudit>

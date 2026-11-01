@@ -1461,9 +1461,9 @@ ImageMagick and libwebp parse untrusted bytes in native code, so they are patche
 - **The clock starts** at the first public upstream advisory — an ImageMagick or libwebp GHSA or CVE, or a
   Magick.NET security release note, whichever comes first. NuGet advisory data can lag those, so it is not
   the start.
-- **The repository owner watches** `dlemstra/Magick.NET` releases and security advisories, and receives the
-  scheduled audit's issues. That watch is what starts the clock for a native ImageMagick or libwebp CVE: NuGet
-  advisory data, and so `NuGetAudit` and the daily audit, can lag the upstream advisory.
+- **The repository owner watches** `dlemstra/Magick.NET` releases and security advisories. That watch is what
+  starts the clock for a native ImageMagick or libwebp CVE: NuGet advisory data, and so `NuGetAudit`, can lag the
+  upstream advisory.
 
 What enforces it:
 
@@ -1472,9 +1472,8 @@ What enforces it:
   silenced with `NuGetAuditSuppress` and a dated comment, never `<NoWarn>`. This is **fail-closed**: an
   unreachable advisory source (`NU1900`) also fails the restore, so image builds and publishing stop until it
   answers or the build runs with `-p:NuGetAudit=false` on purpose.
-- **`.github/workflows/vulnerability-audit.yml`**, daily: it parses `dotnet list package --vulnerable
-  --include-transitive --format json` (which exits 0 regardless), fails on High or above, and opens or updates
-  an issue labelled `security`.
+  It runs only when something restores, so on a day nothing is built it reports nothing; there is no scheduled
+  audit (removed at the owner's request).
 - **Dependabot security updates must be switched on for the repository** (GitHub → Settings → Code security →
   Dependabot security updates). `.github/dependabot.yml` groups `Magick.NET*` under `applies-to:
   security-updates`, but that grouping does nothing until the switch is on.
