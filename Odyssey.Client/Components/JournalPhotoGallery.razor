@@ -31,12 +31,13 @@
     else
     {
         <ul class="odc-photogrid-list" style="grid-template-columns: repeat(auto-fill, minmax(@(MinTile)px, 1fr));">
-            @foreach (var p in Photos)
+            @foreach (var (p, index) in Photos.Select((photo, i) => (photo, i)))
             {
                 var noAccess = p.Image.IsEmpty && p.Unavailable;
-                // An unnamed photo still needs a distinct accessible name: fall back to its id (design system ·
-                // JournalPhotoGallery.jsx), so a grid of untitled tiles is not a row of identical "Open photo" buttons.
-                var name = string.IsNullOrEmpty(p.Name) ? p.Id : p.Name;
+                // An unnamed photo still needs a distinct accessible name, so a grid of untitled tiles is not a
+                // row of identical "Open photo" buttons. Its position, not its id: a GUID read out character by
+                // character distinguishes the tiles but describes none of them (WCAG 2.4.6).
+                var name = string.IsNullOrEmpty(p.Name) ? $"{index + 1} of {Photos.Count}" : p.Name;
                 <li class="odc-photogrid-item" @key="p.Id">
                     <button type="button" class="odc-photogrid-tile"
                             aria-label="@($"Open photo {name}{(noAccess ? " (no access)" : "")}")"

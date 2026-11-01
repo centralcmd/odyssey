@@ -115,11 +115,12 @@
        (Odyssey Design System · SystemSettings, the "Save 403" state). *@
     @if (_authDenied && _phase == Phase.Ready)
     {
-        <div class="ss-authalert" id="@AuthAlertId" role="alert" tabindex="-1">
+        <div class="ss-authalert" id="@AuthAlertId" tabindex="-1" role="group"
+             aria-labelledby="ss-authalert-ttl" aria-describedby="ss-authalert-desc">
             <span class="material-icons" aria-hidden="true">gpp_bad</span>
             <div>
-                <div class="ss-authalert-ttl">Your permission to change these settings has been withdrawn</div>
-                <div class="ss-authalert-desc">
+                <div class="ss-authalert-ttl" id="ss-authalert-ttl">Your permission to change these settings has been withdrawn</div>
+                <div class="ss-authalert-desc" id="ss-authalert-desc">
                     Nothing was saved. Permissions are read when you sign in, so this page still shows the
                     controls you had then. Sign out and back in to see what you can change now — your edits
                     on this page will be lost.

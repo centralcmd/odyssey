@@ -53,13 +53,13 @@ public class JournalPhotoGalleryTests
     }
 
     [Fact]
-    public void An_unnamed_photo_is_named_by_its_id()
+    public void An_unnamed_photo_is_named_by_its_position()
     {
         using var ctx = NewContext();
         var cut = Render(ctx, new JournalPhotoGallery.Photo("7f3a", "", new PhotoImageSource("/thumb/1", "/files/1/content")));
 
         var tile = cut.Find(".odc-photogrid-tile");
-        Assert.Equal("Open photo 7f3a", tile.GetAttribute("aria-label"));
+        Assert.Equal("Open photo 1 of 1", tile.GetAttribute("aria-label"));
         Assert.Null(tile.GetAttribute("title"));
     }
 

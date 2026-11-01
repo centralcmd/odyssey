@@ -113,7 +113,11 @@ public class SystemSettingsDesignSyncTests : IDisposable
             button.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
 
         var alert = page.WaitForElement(".ss-authalert");
-        Assert.Equal("alert", alert.GetAttribute("role"));
+        // Announced once, by the focus move onto a named group, not again by role="alert" (WCAG 4.1.3).
+        Assert.NotEqual("alert", alert.GetAttribute("role"));
+        Assert.Equal("-1", alert.GetAttribute("tabindex"));
+        Assert.Equal("ss-authalert-ttl", alert.GetAttribute("aria-labelledby"));
+        Assert.Equal("ss-authalert-desc", alert.GetAttribute("aria-describedby"));
         Assert.Contains("withdrawn", alert.TextContent, StringComparison.Ordinal);
         Assert.Contains(alert.QuerySelectorAll("button"), button => button.TextContent.Contains("Sign out", StringComparison.Ordinal));
 

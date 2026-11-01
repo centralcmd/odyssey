@@ -2725,8 +2725,9 @@ public partial class Settings
             // The write claim was withdrawn after sign-in: the cookie still names the claims this page
             // was rendered for, so nothing on it can be saved until the reader signs in again. A
             // persistent alert with the remedy on it, never a toast that fades before it is acted on.
+            // One announcement, not three: focus moves to the alert, which is named by its title and
+            // described by its body, so no live region or role="alert" repeats it (WCAG 4.1.3).
             _authDenied = true;
-            Announce("Your permission to change these settings has been withdrawn. Nothing was saved.");
             StateHasChanged();
             try
             {
@@ -2734,7 +2735,7 @@ public partial class Settings
             }
             catch
             {
-                // Not rendered (a concurrent re-render) — non-fatal; the alert and the announcement stand.
+                // Not rendered (a concurrent re-render) — non-fatal; the alert stands, and the next render shows it.
             }
         }
         else
