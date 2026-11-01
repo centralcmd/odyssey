@@ -156,6 +156,11 @@ public class MapStylesApiTests
         { "fragment attribution url", "Map:AttributionUrl", "https://www.openstreetmap.org/copyright#SECRETKEY123" },
         { "uppercase origin", "Map:AllowedOrigins", "https://TILES.openfreemap.org" },
         { "newline origin", "Map:AllowedOrigins", "https://tiles.openfreemap.org\n" },
+        { "missing attribution", "Map:Attribution", "" },
+        { "too-long attribution", "Map:Attribution", new string('a', 301) },
+        { "missing attribution url", "Map:AttributionUrl", "" },
+        { "too-long attribution url", "Map:AttributionUrl", "https://www.openstreetmap.org/" + new string('a', 2048) },
+        { "too-long origins", "Map:AllowedOrigins", "https://" + new string('a', 2045) },
     };
 
     [Theory]
@@ -166,6 +171,21 @@ public class MapStylesApiTests
 
         Assert.Contains(key.Split(':')[1], message, StringComparison.Ordinal);
         AssertNoEcho(value, message, because);
+    }
+
+    [Fact]
+    public void The_bounds_are_inclusive_at_their_maximum()
+    {
+        var options = Defaults();
+        options.Attribution = new string('a', 300);
+        options.StyleUrlLight = "https://tiles.openfreemap.org/" + new string('a', 2048 - "https://tiles.openfreemap.org/".Length);
+
+        var context = new System.ComponentModel.DataAnnotations.ValidationContext(options);
+        var errors = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        Assert.True(System.ComponentModel.DataAnnotations.Validator.TryValidateObject(options, context, errors, validateAllProperties: true),
+            string.Join("; ", errors.Select(e => e.ErrorMessage)));
+        Assert.True(Validate(options).Succeeded);
     }
 
     [Fact]
@@ -270,7 +290,7 @@ public class MapStylesApiTests
     {
         Assert.False(
             message.Contains("SECRETKEY123", StringComparison.Ordinal)
-            || (value.Trim().Length > 12 && message.Contains(value.Trim(), StringComparison.Ordinal)),
+            || (value.Trim().Length >= 4 && message.Contains(value.Trim(), StringComparison.Ordinal)),
             $"{because}: the failure message echoes the configured value: {message}");
     }
 

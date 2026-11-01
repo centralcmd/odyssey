@@ -1059,8 +1059,9 @@ blocked or force a CSP wide enough to defeat it.
 | `MAP_ATTRIBUTION_URL` | api (`Map__AttributionUrl`) | `https://www.openstreetmap.org/copyright` | absolute `https`, no fragment or userinfo |
 | `MAP_ALLOWED_ORIGINS` | api (`Map__AllowedOrigins`) **and** client | `https://tiles.openfreemap.org` | lowercase `https://host[:port]` origins separated by single spaces, at most 8, no path or trailing `/`; empty is the off-switch |
 
-Leave them unset to use the defaults; the production overlay sets none of them, so an unset variable
-falls through to the client image's `ENV` and the API's `appsettings.json`. A malformed value stops the
+Leave them unset to use the defaults. The production overlay sets none of them, so an unset variable
+takes the base compose file's single-dash default — the same value the client image's `ENV` and the
+API's `appsettings.json` carry, which a test keeps equal. A malformed value stops the
 container rather than degrading: the API refuses to start (`map-config-invalid`, an
 `OptionsValidationException`), and the client exits before nginx starts (`map-csp-invalid`). Both
 messages name the key and the rule, never the value.

@@ -24,15 +24,19 @@ public sealed class MapCspHeaderTests(StackFixture fixture)
         using var response = await client.GetAsync(fixture.BaseUrl + path);
         response.EnsureSuccessStatusCode();
 
-        // Aspire serves the client without nginx and so without any of its security headers; that stack is
-        // a different deployment shape, not a broken one. A response carrying nginx's other headers but no
-        // CSP is the regression this test exists for, and fails below.
+        // Aspire serves the client from Kestrel, without nginx and so without its CSP: a different deployment
+        // shape, not a broken one, so it is identified POSITIVELY by Kestrel's Server header. Anything else
+        // (nginx directly, or Caddy in front of it) must carry the CSP — a location block declaring its own
+        // add_header drops every inherited header, and that is the regression this test exists to fail on.
+        var server = string.Join(' ', response.Headers.Server.Select(s => s.ToString()));
         Skip.If(
-            !response.Headers.Contains("Content-Security-Policy") && !response.Headers.Contains("X-Frame-Options"),
-            $"{fixture.BaseUrl} is not served by the client container's nginx (an Aspire stack?); the CSP is a Compose concern.");
+            server.Contains("Kestrel", StringComparison.OrdinalIgnoreCase),
+            $"{fixture.BaseUrl} is served by '{server}', not the client container's nginx (an Aspire stack?); the CSP is a Compose concern.");
 
         Assert.True(response.Headers.TryGetValues("Content-Security-Policy", out var values), $"No CSP on {path}.");
-        var directives = Directives(Assert.Single(values));
+        var policy = Assert.Single(values);
+        Assert.DoesNotContain("${", policy, StringComparison.Ordinal);
+        var directives = Directives(policy);
 
         // The stack under test runs the shipped default unless its operator changed MAP_ALLOWED_ORIGINS.
         var expected = Environment.GetEnvironmentVariable("MAP_ALLOWED_ORIGINS") ?? DefaultTileOrigin;
@@ -43,7 +47,6 @@ public sealed class MapCspHeaderTests(StackFixture fixture)
         }
 
         Assert.Equal(["'self'"], directives["worker-src"]);
-        Assert.DoesNotContain(directives["connect-src"], token => token.Contains("${", StringComparison.Ordinal));
     }
 
     private static Dictionary<string, string[]> Directives(string policy) =>

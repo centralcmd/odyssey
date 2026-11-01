@@ -182,7 +182,8 @@ services:
     # /etc/nginx/conf.d is a tmpfs too (issue #370): the site config is rendered there from a template at
     # every start, so the CSP can carry MAP_ALLOWED_ORIGINS. Without it the render fails and the container
     # exits naming map-config-unrendered rather than starting nginx with no CSP. No MAP_* variable here:
-    # an unset one falls through to the client image's ENV and the API's appsettings.json.
+    # the base file's single-dash defaults apply when one is unset — the same values as the client image's
+    # ENV and the API's appsettings.json, which MapDefaultsAgreementTests keeps equal.
     security_opt:
       - no-new-privileges:true
     cap_drop:
