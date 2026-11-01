@@ -659,50 +659,12 @@ public class EmailTransportSurfaceTests : IDisposable
         return ctx;
     }
 
-    private static BunitContext NewPageContext(SystemSettingsDto dto, IReadOnlyList<string>? claims = null)
-    {
-        var settings = new Mock<ISystemSettingsApiClient>();
-        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(dto, HttpStatusCode.OK));
-
-        return NewPageContext(settings, claims);
-    }
+    private static BunitContext NewPageContext(SystemSettingsDto dto, IReadOnlyList<string>? claims = null) =>
+        NewPageContext(SettingsPageHarness.SettingsClient(dto), claims);
 
     private static BunitContext NewPageContext(
-        Mock<ISystemSettingsApiClient> settings, IReadOnlyList<string>? claims = null)
-    {
-        var ctx = NewComponentContext();
-
-        var secrets = new Mock<ISecretSettingsApiClient>();
-        secrets.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<SecretSettingStatusDto>>.Success([], HttpStatusCode.OK));
-
-        ctx.Services.AddSingleton(settings.Object);
-        ctx.Services.AddSingleton(secrets.Object);
-        ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IFileStorageApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IPhotosApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
-        ctx.Services.AddSingleton(new Mock<IImportLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IAccountLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
-        ctx.Services.AddSingleton(sp => new Odyssey.ApiClient.Auth.AuthApiClient(new HttpClient(), new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp)));
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(
-            new StubAuthenticationStateProvider(claims ??
-            [
-                PermissionClaims.SystemSettingsRead,
-                PermissionClaims.SystemSettingsUpdate,
-                SecurityClaim,
-            ]));
-
-        Settings.InteractiveCheck = static () => true;
-        return ctx;
-    }
+        Mock<ISystemSettingsApiClient> settings, IReadOnlyList<string>? claims = null) =>
+        SettingsPageHarness.NewPageContext(settings.Object, claims: claims);
 
     /// <summary>
     /// The provider and the dialog in one render tree — see the note at the call site for why they
@@ -725,14 +687,5 @@ public class EmailTransportSurfaceTests : IDisposable
             builder.AddComponentParameter(5, nameof(OdsSecretClearOnSaveDialog.ToHost), "smtp.new.test");
             builder.CloseComponent();
         }
-    }
-
-    private sealed class StubAuthenticationStateProvider(IReadOnlyList<string> permissions)
-        : AuthenticationStateProvider
-    {
-        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
-                [.. permissions.Select(permission => new Claim(PermissionClaims.Type, permission))],
-                "test"))));
     }
 }

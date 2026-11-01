@@ -26,16 +26,15 @@ public class SystemSettingsDesignSyncTests : IDisposable
     /// <summary>Restores the page's browser-check seam, which is <c>internal static</c>.</summary>
     public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
 
-    [Fact]
+    private const string DesignData = "ui_kits/web/system-settings-data.js";
+
+    [SkippableFact]
     public void Sections_follow_the_design_systems_order()
     {
+        var design = DesignRows(File.ReadAllText(DesignSystemSource.File(DesignData)));
+
         Assert.Equal(
-            [
-                "Security", "File analysis", "Email", "Data", "Weather", "Contracts", "Photos", "Storage",
-                "Journal limits", "Contacts import & export", "Calendars import & export",
-                "Tasks import & export", "Journal import & export", "Calendar limits",
-                "Import & export defaults", "Accounts", "Exchange rates", "Properties",
-            ],
+            design.Select(section => section.Group).ToArray(),
             Settings.Sections.Select(section => section.Group).ToArray());
     }
 
@@ -44,19 +43,60 @@ public class SystemSettingsDesignSyncTests : IDisposable
     /// aggregate calendar caps and the metadata read size publish theirs only so the control can bound
     /// itself, and marking them one-way would tell an administrator they cannot raise a value they can.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     public void Only_the_design_systems_ceiling_rows_are_lower_only()
     {
-        Assert.Equal(
-            new[]
-            {
-                "contactVCardMaxRepeatablePropertiesPerEntry", "fileStorageMaxUploadMegabytes",
-                "photoMaxAlbumMembers", "photoMaxLinksPerKind", "recurrenceMaxGeneratedOccurrences",
-            },
-            Settings.AllItems.Where(item => item.LowerOnly).Select(item => item.Key).Order(StringComparer.Ordinal));
+        var design = DesignRows(File.ReadAllText(DesignSystemSource.File(DesignData)));
+        var ceilingKeys = design.SelectMany(section => section.Rows).Where(row => row.Ceiling).Select(row => row.Key);
 
-        // Every lower-only row has a published ceiling to quote in its range sentence.
+        Assert.NotEmpty(ceilingKeys);
+        Assert.Equal(
+            ceilingKeys.Order(StringComparer.Ordinal),
+            Settings.AllItems.Where(item => item.LowerOnly).Select(item => item.Key).Order(StringComparer.Ordinal));
+    }
+
+    /// <summary>Client-side invariant: a lower-only row quotes a published ceiling in its range sentence.</summary>
+    [Fact]
+    public void Every_lower_only_row_has_a_published_ceiling()
+    {
+        Assert.Contains(Settings.AllItems, item => item.LowerOnly);
         Assert.All(Settings.AllItems.Where(item => item.LowerOnly), item => Assert.NotNull(item.MaxFrom));
+    }
+
+    /// <summary>
+    /// The sections of the design's <c>SS_GROUPS</c>, in order, each with its rows' keys and whether
+    /// the row carries a <c>ceiling</c>. A row runs from its <c>key:</c> to the next row or section;
+    /// comments are stripped first, so prose mentioning a ceiling is not read as one.
+    /// </summary>
+    private static List<(string Group, List<(string Key, bool Ceiling)> Rows)> DesignRows(string source)
+    {
+        var start = source.IndexOf("const SS_GROUPS", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{DesignData} no longer declares SS_GROUPS.");
+        var end = source.IndexOf("\nconst ", start + 1, StringComparison.Ordinal);
+        var groups = source[start..(end < 0 ? source.Length : end)];
+        groups = System.Text.RegularExpressions.Regex.Replace(groups, @"/\*.*?\*/", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
+        groups = System.Text.RegularExpressions.Regex.Replace(groups, @"^\s*//.*$", string.Empty, System.Text.RegularExpressions.RegexOptions.Multiline);
+
+        var marks = System.Text.RegularExpressions.Regex.Matches(groups, @"\b(?<kind>group|key):\s*'(?<name>[^']+)'");
+        var sections = new List<(string Group, List<(string Key, bool Ceiling)> Rows)>();
+        for (var index = 0; index < marks.Count; index++)
+        {
+            var mark = marks[index];
+            var spanEnd = index + 1 < marks.Count ? marks[index + 1].Index : groups.Length;
+            if (mark.Groups["kind"].Value == "group")
+            {
+                sections.Add((mark.Groups["name"].Value, []));
+                continue;
+            }
+
+            Assert.NotEmpty(sections);
+            var span = groups[mark.Index..spanEnd];
+            sections[^1].Rows.Add((mark.Groups["name"].Value,
+                System.Text.RegularExpressions.Regex.IsMatch(span, @"\bceiling:\s*\d")));
+        }
+
+        Assert.NotEmpty(sections);
+        return sections;
     }
 
     [Theory]
@@ -84,7 +124,7 @@ public class SystemSettingsDesignSyncTests : IDisposable
             },
         };
 
-        await using var ctx = NewPageContext(SettingsClient(dto));
+        await using var ctx = SettingsPageHarness.NewPageContext(SettingsPageHarness.SettingsClient(dto).Object);
         var page = ctx.Render<Settings>();
 
         var changed = page.Find("[data-ss-row=emailFromName] .odc-sfield-stamp").TextContent;
@@ -100,12 +140,12 @@ public class SystemSettingsDesignSyncTests : IDisposable
     [Fact]
     public async Task A_save_refused_with_403_raises_the_persistent_sign_out_alert()
     {
-        var settings = SettingsClient(Valid());
+        var settings = SettingsPageHarness.SettingsClient(Valid());
         settings.Setup(client => client.UpdateAsync(It.IsAny<SystemSettingsUpdate>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<SystemSettingsDto>.Failure(
                 HttpStatusCode.Forbidden, new ApiProblem { Title = "Forbidden" }));
 
-        await using var ctx = NewPageContext(settings);
+        await using var ctx = SettingsPageHarness.NewPageContext(settings.Object);
         var page = ctx.Render<Settings>();
 
         page.Find("#ss-in-emailFromName").Input("Odyssey Mail");
@@ -134,14 +174,6 @@ public class SystemSettingsDesignSyncTests : IDisposable
     }
 
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────
-
-    private static Mock<ISystemSettingsApiClient> SettingsClient(SystemSettingsDto dto)
-    {
-        var settings = new Mock<ISystemSettingsApiClient>();
-        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(dto, HttpStatusCode.OK));
-        return settings;
-    }
 
     /// <summary>A DTO every row is valid against, with mail configured so the rollup stays empty.</summary>
     private static SystemSettingsDto Valid()
@@ -187,50 +219,5 @@ public class SystemSettingsDesignSyncTests : IDisposable
         dto.EmailSmtpPort = 587;
         dto.EmailUseStartTls = true;
         return dto;
-    }
-
-    private static BunitContext NewPageContext(Mock<ISystemSettingsApiClient> settings)
-    {
-        var ctx = new BunitContext();
-        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
-        ctx.Services.AddMudServices();
-
-        var secrets = new Mock<ISecretSettingsApiClient>();
-        secrets.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<SecretSettingStatusDto>>.Success([], HttpStatusCode.OK));
-
-        ctx.Services.AddSingleton(settings.Object);
-        ctx.Services.AddSingleton(secrets.Object);
-        ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
-        ctx.Services.AddSingleton(new Mock<IFileStorageApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IPhotosApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
-        ctx.Services.AddSingleton(new Mock<IImportLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IAccountLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
-        ctx.Services.AddSingleton(sp => new Odyssey.ApiClient.Auth.AuthApiClient(
-            new HttpClient(), new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp)));
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new StubAuthenticationStateProvider(
-        [
-            PermissionClaims.SystemSettingsRead,
-            PermissionClaims.SystemSettingsUpdate,
-            PermissionClaims.SystemSettingsSecurityUpdate,
-        ]));
-
-        Settings.InteractiveCheck = static () => true;
-        return ctx;
-    }
-
-    private sealed class StubAuthenticationStateProvider(IReadOnlyList<string> permissions)
-        : AuthenticationStateProvider
-    {
-        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
-                permissions.Select(permission => new Claim(PermissionClaims.Type, permission)), "Test"))));
     }
 }

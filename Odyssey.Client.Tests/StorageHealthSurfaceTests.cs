@@ -595,51 +595,18 @@ public class StorageHealthSurfaceTests : IDisposable
     private static BunitContext NewPageContext(
         IReadOnlyList<FileStorageVolumeStatus>? volumes, out Mock<IFileStorageApiClient> storage, IReadOnlyList<string>? claims = null)
     {
-        var ctx = NewComponentContext();
-        var settings = new Mock<ISystemSettingsApiClient>();
-        settings.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<SystemSettingsDto>.Success(
-                new SystemSettingsDto { EmailSmtpHost = "smtp.example.test", FileStorageDeletionGraceHours = 24 }, HttpStatusCode.OK));
-        var secrets = new Mock<ISecretSettingsApiClient>();
-        secrets.Setup(client => client.GetAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<SecretSettingStatusDto>>.Success([], HttpStatusCode.OK));
+        var settings = SettingsPageHarness.SettingsClient(
+            new SystemSettingsDto { EmailSmtpHost = "smtp.example.test", FileStorageDeletionGraceHours = 24 });
         storage = new Mock<IFileStorageApiClient>();
         storage.Setup(client => client.GetVolumesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(volumes is null
                 ? ApiResult<IReadOnlyList<FileStorageVolumeStatus>>.Failure(new HttpRequestException("down"))
                 : ApiResult<IReadOnlyList<FileStorageVolumeStatus>>.Success(volumes, HttpStatusCode.OK));
 
-        ctx.Services.AddSingleton(settings.Object);
-        ctx.Services.AddSingleton(secrets.Object);
-        ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
-        ctx.Services.AddSingleton(storage.Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.ApiClient.Resources.IPhotosApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
-        ctx.Services.AddSingleton(new Mock<IImportLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IUploadLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IAccountLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IContractLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IPropertyLimitsCache>().Object);
-        ctx.Services.AddSingleton(new Mock<IFileAnalysisDisclosureCache>().Object);
-        ctx.Services.AddSingleton(sp => new Odyssey.ApiClient.Auth.AuthApiClient(new HttpClient(), new Odyssey.ApiClient.Auth.AntiforgeryTokenStore(sp)));
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new StubAuthenticationStateProvider(claims ??
+        return SettingsPageHarness.NewPageContext(settings.Object, storage: storage.Object, claims: claims ??
         [
-            PermissionClaims.SystemSettingsRead,
-            PermissionClaims.SystemSettingsUpdate,
-            PermissionClaims.SystemSettingsSecurityUpdate,
+            .. SettingsPageHarness.AdminClaims,
             PermissionClaims.FileStorageRead,
-        ]));
-
-        Settings.InteractiveCheck = static () => true;
-        return ctx;
-    }
-
-    private sealed class StubAuthenticationStateProvider(IReadOnlyList<string> permissions) : AuthenticationStateProvider
-    {
-        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
-            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
-                permissions.Select(permission => new Claim(PermissionClaims.Type, permission)), "Test"))));
+        ]);
     }
 }
