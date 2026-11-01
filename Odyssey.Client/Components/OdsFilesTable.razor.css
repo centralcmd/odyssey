@@ -1,6 +1,6 @@
-/* OdsFilesTable — the kind avatar / name / Type chip rendered inside the table cells.
-   Mirrors the Files page's .fls-* set; all tints come through the row's resolved kind
-   meta (TypeFor), so the page reads correctly in both light and dark themes. */
+/* OdsFilesTable — the name cell rendered inside the table. The kind avatar is the shared
+   OdsAvatar (.odc-avatar) and the Type chip the shared .odc-chip; both are tinted inline from
+   the row's resolved kind meta (TypeFor), so the page reads correctly in both themes. */
 
 /* ── Horizontal-scroll region (the validity-column variant only) ──
    The four validity columns push the table past its card, so this wrapper scrolls and carries a
@@ -13,21 +13,6 @@
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
     outline-offset: 2px;
     border-radius: var(--radius-sm);
-}
-
-/* ── Leading kind-avatar cell ── */
-.odc-ft-kind {
-    flex: none;
-    width: 38px;
-    height: 38px;
-    border-radius: 8px;
-    display: inline-grid;
-    place-items: center;
-}
-
-.odc-ft-kind .material-icons {
-    font-size: 20px;
-    line-height: 1;
 }
 
 /* ── Name cell: name/description block beside the transient "Saved" flash ── */
@@ -65,16 +50,4 @@
     white-space: nowrap;
     max-width: 360px;
     margin-top: 2px;
-}
-
-/* ── Type chip — shares the file kind's hue ── */
-.odc-ft-type {
-    display: inline-flex;
-    align-items: center;
-    padding: 3px 10px;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    line-height: 1;
-    white-space: nowrap;
 }

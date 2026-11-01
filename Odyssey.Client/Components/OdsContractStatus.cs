@@ -35,7 +35,7 @@ public static class OdsContractStatus
             [ContractStatus.Active]   = new("Active",   "income",  true,  "task_alt",     "var(--finance-income)"),
             [ContractStatus.Paused]   = new("Paused",   "pending", true,  "pause_circle", "var(--finance-pending)"),
             [ContractStatus.Upcoming] = new("Upcoming", "info",    true,  "schedule",     "var(--sea-400)"),
-            [ContractStatus.Expired]  = new("Expired",  "expense", false, "event_busy",   "var(--finance-expense)"),
+            [ContractStatus.Expired]  = new("Expired",  "expense", true,  "event_busy",   "var(--finance-expense)"),
             [ContractStatus.Archived] = new("Archived", "outline", true,  "inventory_2",  "var(--mud-palette-text-secondary)"),
             // The two signature states (issue #145). Draft is neutral — it is on file and nothing has
             // been agreed; Ready takes the pending amber a pause gets, because it is waiting on

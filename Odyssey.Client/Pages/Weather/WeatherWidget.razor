@@ -21,7 +21,7 @@
             <div class="wx-picker">
                 @* Never disabled during a save: disabling the focused control drops focus to <body> (WCAG 2.4.3).
                    ChooseAsync ignores a change while one is saving; aria-busy and the announcement carry the state. *@
-                <OdsSelect Label="Location" Value="@PickerValue" ValueChanged="ChooseAsync" Options="PickerOptions" />
+                <OdsSelect Prefix="Location" Value="@PickerValue" ValueChanged="ChooseAsync" Options="PickerOptions" />
             </div>
         }
     </OdsCardHeader>

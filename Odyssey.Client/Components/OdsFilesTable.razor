@@ -60,9 +60,9 @@
                 Empty="@Empty">
     <Leading Context="file">
         @{ var kind = ResolveKind(file); }
-        <span class="odc-ft-kind" style="background:@kind.Soft;color:@(OdsGlyphInk.Glyph(kind.Color));">
-            <span class="material-icons" aria-hidden="true">@kind.Icon</span>
-        </span>
+        @* The design's 40px circle avatar (FilesTable.jsx leading → .odc-avatar). Decorative: the kind is
+           already in the Type column, so the avatar carries no accessible name and no img role. *@
+        <OdsAvatar Icon="@kind.Icon" Bg="@kind.Soft" Fg="@(OdsGlyphInk.Glyph(kind.Color))" />
     </Leading>
 </OdsRecordTable>
 </div>
@@ -79,7 +79,8 @@
         var kind = ResolveKind(file);
         // The registry label when the host supplied Kinds ("Purchase agreement"), else the raw key.
         var label = Kinds?.FirstOrDefault(k => k.Value == file.Kind)?.Label ?? file.Kind;
-        return @<span class="odc-ft-type" style="background:@kind.Soft;color:@(OdsGlyphInk.Text(kind.Color));">@label</span>;
+        // The design's .odc-chip line box, tinted with the kind's hue (FilesTable.jsx ftKindChip).
+        return @<span class="odc-chip odc-ft-type" style="background:@kind.Soft;color:@(OdsGlyphInk.Text(kind.Color));">@label</span>;
     }
 
     private List<OdsRecordColumn<OdsFilesRow>> BuildColumns()

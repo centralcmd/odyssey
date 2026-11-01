@@ -33,6 +33,7 @@
            id="@_inputId"
            aria-disabled="@(Busy || AriaDisabled ? "true" : null)"
            aria-busy="@(Busy ? "true" : null)"
+           aria-labelledby="@AriaLabelledBy"
            aria-describedby="@AriaDescribedBy" />
 
 @code {
@@ -51,6 +52,15 @@
     /// splatting a bare <c>aria-label</c> onto a MudBlazor component and hoping it lands on the input.
     /// </summary>
     [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>
+    /// Id(s) of the visible text that names this switch — a dialog toggle's own title line — so the
+    /// accessible name IS the text a sighted user reads, rather than a second copy of it in
+    /// <see cref="AriaLabel"/> that can drift (WCAG 2.5.3). Written after the <c>UserAttributes</c>
+    /// splat, like <see cref="AriaDescribedBy"/>, so it reaches the input. Use it INSTEAD of
+    /// <see cref="AriaLabel"/>: MudSwitch derives its own <c>aria-labelledby</c> from that one.
+    /// </summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
 
     /// <summary>
     /// Ids of the elements describing this switch — the row's helper line and any advisory.

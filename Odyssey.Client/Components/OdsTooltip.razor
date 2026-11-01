@@ -6,9 +6,14 @@
     focus. A MudTooltip — keep Label terse (one line). Touch is not a tooltip
     surface; put essential info in a visible label instead. ShowOnClick opens it
     on a tap as well, for an info button whose note is not essential.
+
+    LabelContent replaces the text with structured markup (the design's `label` node) — for an info
+    note with a lead, rows and a footnote. Label stays required: a structured bubble is not linked
+    to its trigger, so the caller still needs the plain text for the trigger's aria-describedby.
 *@
 
 <MudTooltip Text="@Label"
+            TooltipContent="LabelContent"
             Arrow="true"
             ShowOnClick="ShowOnClick"
             Class="@Class"
@@ -19,6 +24,9 @@
 @code {
     /// <summary>The tooltip text. Keep it short — one line.</summary>
     [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    /// <summary>Structured bubble content, drawn instead of <see cref="Label"/>'s text when set.</summary>
+    [Parameter] public RenderFragment? LabelContent { get; set; }
 
     /// <summary>The trigger element the tooltip describes.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }

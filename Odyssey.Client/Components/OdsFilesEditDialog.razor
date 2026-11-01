@@ -38,7 +38,7 @@
                SubmitLabel="Save changes" SubmitIcon="check"
                OnSubmit="SubmitAsync">
     <OdsField Label="File name" @bind-Value="_name" Required="true" AutoFocus="true"
-              Error="@(_touched && !_valid ? "A file needs a name." : null)" />
+              Error="@(_touched && !_valid ? "File name is required." : null)" />
     <OdsSelect Label="Document type" @bind-Value="_kind" Options="Kinds" Placeholder="Select type…"
                Required="RequireType"
                Error="@(_touched && _typeMissing ? "Pick the document type." : null)" />

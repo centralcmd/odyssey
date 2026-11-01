@@ -156,6 +156,16 @@ public class WeatherForecastHistorySplitTests : IAsyncLifetime
         Assert.Equal(["Weather location", "Your weather location"], calls.Select(c => (string?)c.Arguments[2]));
     }
 
+    [Fact]
+    public void A_prefixed_select_shows_its_prefix_inline_and_takes_it_as_its_name()
+    {
+        var select = ctx.Render<OdsSelect>(p => p.Add(s => s.Prefix, "Location").Add(s => s.Options, [new OdsOption("", "Home")]));
+
+        Assert.Equal("Location", select.Find(".odc-select-prefixed .mud-input-adornment-start .mud-input-adornment-text").TextContent.Trim());
+        Assert.Empty(select.FindAll("label"));
+        Assert.Equal(["Location"], ctx.JSInterop.Invocations["odsSetAttr"].Select(c => (string?)c.Arguments[2]));
+    }
+
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────────
 
     private static readonly ExistingLocation HomeLocation = new()
@@ -200,6 +210,23 @@ public class WeatherForecastHistorySplitTests : IAsyncLifetime
         return provider;
     }
 
+    /// <summary>The switch named by the visible title its <c>aria-labelledby</c> points at.</summary>
     private static IRenderedComponent<OdsSwitch> Switch(IRenderedComponent<MudDialogProvider> dialog, string label) =>
-        dialog.FindComponents<OdsSwitch>().Single(s => s.Instance.AriaLabel == label);
+        dialog.FindComponents<OdsSwitch>().Single(s =>
+            s.Instance.AriaLabelledBy is { } id && dialog.Find($"#{id}").TextContent.Trim() == label);
+
+    [Fact]
+    public void Each_settings_switch_is_named_by_its_visible_title()
+    {
+        var dialog = RenderSettings(Row());
+
+        foreach (var label in new[] { "Forecast", "Refresh on a schedule", "Historical data" })
+        {
+            var input = Switch(dialog, label).Find("input");
+            var id = input.GetAttribute("aria-labelledby");
+            Assert.False(string.IsNullOrEmpty(id));
+            Assert.Equal(label, dialog.Find($"#{id}").TextContent.Trim());
+            Assert.Null(input.GetAttribute("aria-label"));
+        }
+    }
 }

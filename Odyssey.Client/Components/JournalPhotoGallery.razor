@@ -34,9 +34,12 @@
             @foreach (var p in Photos)
             {
                 var noAccess = p.Image.IsEmpty && p.Unavailable;
+                // An unnamed photo still needs a distinct accessible name: fall back to its id (design system ·
+                // JournalPhotoGallery.jsx), so a grid of untitled tiles is not a row of identical "Open photo" buttons.
+                var name = string.IsNullOrEmpty(p.Name) ? p.Id : p.Name;
                 <li class="odc-photogrid-item" @key="p.Id">
                     <button type="button" class="odc-photogrid-tile"
-                            aria-label="@($"Open photo {p.Name}{(noAccess ? " (no access)" : "")}")"
+                            aria-label="@($"Open photo {name}{(noAccess ? " (no access)" : "")}")"
                             title="@(string.IsNullOrEmpty(p.Name) ? null : p.Name)"
                             @onclick="@(() => OnOpen.InvokeAsync(p))">
                         @if (!p.Image.IsEmpty)
