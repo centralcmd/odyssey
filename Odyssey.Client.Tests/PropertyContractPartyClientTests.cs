@@ -174,7 +174,7 @@ public class PropertyContractPartyClientTests
         {
             Assert.Equal("handshake", contracts!.Icon);
             Assert.Equal("2", contracts.Value);
-            Assert.Equal(["Estimates", "Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
+            Assert.Equal(["Estimates", "Documents", "Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
         }
     }
 
@@ -183,7 +183,18 @@ public class PropertyContractPartyClientTests
     {
         var counts = PropertiesCard.CountsFor(Property(1), canReadEstimates: false);
 
-        Assert.Equal(["Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
+        Assert.Equal(["Documents", "Smart tags", "Events", "Contracts"], counts.Select(c => c.Label));
+    }
+
+    [Fact]
+    public void The_card_counts_carry_the_document_count_after_estimates()
+    {
+        var counts = PropertiesCard.CountsFor(Property(null) with { FileCount = 3 }, canReadEstimates: true);
+
+        var documents = counts.Single(c => c.Label == "Documents");
+        Assert.Equal("description", documents.Icon);
+        Assert.Equal("3", documents.Value);
+        Assert.Equal(["Estimates", "Documents", "Smart tags", "Events"], counts.Select(c => c.Label));
     }
 
     /// <summary>The dialog beside MudBlazor's providers, which host its modal.</summary>

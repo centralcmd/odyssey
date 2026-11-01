@@ -59,6 +59,13 @@ public sealed record ExistingProperty
     public int SmartTagCount { get; set; }
 
     /// <summary>
+    /// How many documents are attached to the property (computed server-side), as
+    /// <c>ExistingAccount.FileCount</c> is. <c>properties.read</c> data and always filled: the attachment list
+    /// itself (<c>GET /api/properties/{id}/files</c>) is readable under the same claim.
+    /// </summary>
+    public int FileCount { get; set; }
+
+    /// <summary>
     /// Number of distinct contracts naming this property as a party (issue #208), or <c>null</c> when the
     /// caller does not hold <c>contracts.read</c> — withheld rather than zeroed, as
     /// <c>ExistingAccount.ContractCount</c> is: a zero would state "no contracts" to a caller who may

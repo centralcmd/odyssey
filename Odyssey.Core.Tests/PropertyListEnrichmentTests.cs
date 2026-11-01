@@ -87,6 +87,29 @@ public class PropertyListEnrichmentTests
         Assert.Equal(1, without.SmartTagCount);
     }
 
+    /// <summary>
+    /// The Documents count the collapsed card shows: per property, on the list and the single read, and filled
+    /// regardless of the estimates gate — the attachment list is <c>properties.read</c> data.
+    /// </summary>
+    [Fact]
+    public async Task ListAndGet_CarryTheDocumentCount_PerProperty_WhateverTheEstimatesGate()
+    {
+        await using var context = TestContextFactory.Create();
+        var (service, propertyId) = await SeedAsync(context);
+        var bareId = (await service.Create(PropertyTestData.Car(), userId: null)).PropertyId;
+        context.PropertyFiles.AddRange(
+            new PropertyFile { PropertyId = propertyId, FileMetadataId = Guid.NewGuid(), AttachedAtUtc = Utc(2026, 3, 1) },
+            new PropertyFile { PropertyId = propertyId, FileMetadataId = Guid.NewGuid(), AttachedAtUtc = Utc(2026, 3, 2) });
+        await context.SaveChangesAsync();
+
+        var listed = (await service.ListAsync(new PropertiesQueryParams(), includeEstimates: false)).Items;
+
+        Assert.Equal(2, listed.Single(p => p.PropertyId == propertyId).FileCount);
+        Assert.Equal(0, listed.Single(p => p.PropertyId == bareId).FileCount);
+        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: false))!.FileCount);
+        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: true))!.FileCount);
+    }
+
     [Fact]
     public async Task A_PropertyWithOnlyAScheduledEstimate_HasACountButNoValue()
     {
