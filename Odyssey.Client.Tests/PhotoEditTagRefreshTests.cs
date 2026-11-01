@@ -34,7 +34,7 @@ public sealed class PhotoEditTagRefreshTests
         tags.SetupSequence(t => t.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Success([], HttpStatusCode.OK))
             .ReturnsAsync(ApiResult<List<ExistingPhotoTag>>.Success(
-                [new ExistingPhotoTag { PhotoTagId = HikingId, Name = "Hiking" }], HttpStatusCode.OK));
+                [new ExistingPhotoTag { PhotoTagId = HikingId, Name = "Hiking", Icon = "hiking" }], HttpStatusCode.OK));
         return tags;
     }
 
@@ -78,8 +78,11 @@ public sealed class PhotoEditTagRefreshTests
         var tile = cut.FindComponent<OdsPhotoTile>().Instance;
         await cut.InvokeAsync(() => tile.OnOpen.InvokeAsync(PhotoId));
 
+        // The chip carries the tag's own icon too: a page that forgot to pass it would fall back to the
+        // generic glyph silently.
         dialogs.WaitForAssertion(() => Assert.Contains(
-            dialogs.FindAll(".pl-vchips .odc-chip.tag"), e => e.TextContent.Trim().EndsWith("Hiking")));
+            dialogs.FindAll(".pl-vchips .odc-chip.tag"),
+            e => e.TextContent.Trim().EndsWith("Hiking") && e.QuerySelector(".material-icons")?.TextContent.Trim() == "hiking"));
     }
 
     [Fact]
@@ -97,6 +100,24 @@ public sealed class PhotoEditTagRefreshTests
         await cut.InvokeAsync(cut.Instance.OnPhotoSaved);
 
         Assert.Equal("Hiking", cut.Instance.PhotoTagName(HikingId));
+        Assert.Equal("hiking", cut.Instance.PhotoTagIcon(HikingId));
+    }
+
+    /// <summary>
+    /// Every host of the photo detail dialog hands it the tag icons as well as the names. AlbumsPage has no
+    /// render harness, so this source check is what covers it; the render tests above cover the other two.
+    /// </summary>
+    [Theory]
+    [InlineData("Pages/Photos/PhotosCard.razor")]
+    [InlineData("Pages/Photos/AlbumsPage.razor")]
+    [InlineData("Pages/Journal/JournalCard.razor")]
+    public void Every_photo_dialog_host_passes_the_tag_icons(string page)
+    {
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, page));
+        var start = source.IndexOf("<PhotoDetailDialog", StringComparison.Ordinal);
+        Assert.True(start >= 0, $"{page} no longer hosts PhotoDetailDialog; update this list.");
+        var tag = source[start..source.IndexOf("/>", start, StringComparison.Ordinal)];
+        Assert.Contains("TagIcon=", tag);
     }
 
     [Fact]

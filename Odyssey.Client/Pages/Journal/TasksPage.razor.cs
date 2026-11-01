@@ -112,7 +112,7 @@ public partial class TasksPage
     }
 
     private IReadOnlyList<JournalTagChips.Tag> TagChips(JournalTaskSummary t) =>
-        [.. t.TagIds.Select(id => _tagById.GetValueOrDefault(id)).Where(tag => tag is not null).Select(tag => new JournalTagChips.Tag(tag!.Name, tag.Icon))];
+        JournalTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon);
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()

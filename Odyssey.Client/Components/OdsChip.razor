@@ -9,7 +9,7 @@
     use the income/expense tones.
 *@
 
-<span class="@ChipClass" style="@ColorStyle">
+<span class="@ChipClass" style="@ColorStyle" title="@Title">
     @if (Dot)
     {
         <span class="odc-chip-dot" aria-hidden="true"></span>
@@ -44,6 +44,13 @@
 
     /// <inheritdoc cref="Fg" />
     [Parameter] public string? Bg { get; set; }
+
+    /// <summary>
+    /// Native tooltip text. Mouse-only, so a chip that uses it to reveal content must also carry that
+    /// content as text for assistive technology (an <c>sr-only</c> span in <see cref="ChildContent"/>).
+    /// Null renders no attribute.
+    /// </summary>
+    [Parameter] public string? Title { get; set; }
 
     [Parameter] public RenderFragment? ChildContent { get; set; }
 

@@ -1,4 +1,3 @@
-@using Odyssey.Client.Components
 @using Odyssey.Dtos
 @*
     JournalTagChips — a compact row of tag-tone chips for the journal, task and photo tag families (the
@@ -17,20 +16,34 @@
         }
         @if (_hidden.Count > 0)
         {
-            <span class="odc-chip tag" title="@HiddenTitle">
+            <OdsChip Tone="OdsChipTone.Tag" Class="je-tagchips-more" Title="@HiddenTitle">
                 +@_hidden.Count
-                @* title= is mouse-only — give AT the hidden names as text. *@
+                @* Title is mouse-only — give AT the hidden names as text. *@
                 <span class="sr-only"> more tags: @HiddenTitle</span>
-            </span>
+            </OdsChip>
         }
     </span>
 }
 
 @code {
     /// <summary>A tag as the chip draws it: its name and its stored <see cref="TagIcons"/> key (null = none).</summary>
-    public sealed record Tag(string Name, string? Icon);
+    public sealed record Tag(string Name, string? Icon)
+    {
+        /// <summary>
+        /// Resolves a record's tag ids through the host's loaded tag map, in the ids' order, skipping an id
+        /// the map does not hold (deleted, or not yet loaded). One projection for every tag family.
+        /// </summary>
+        public static IReadOnlyList<Tag> For<TTag>(
+            IEnumerable<Guid> ids, IReadOnlyDictionary<Guid, TTag> byId, Func<TTag, string> name, Func<TTag, string?> icon) =>
+            [.. ids.Select(id => byId.TryGetValue(id, out var tag) ? new Tag(name(tag), icon(tag)) : null).OfType<Tag>()];
+    }
 
-    /// <summary>The glyph a tag chip leads with when its tag has no (known) icon.</summary>
+    /// <summary>
+    /// The glyph a tag chip leads with when its tag has no (known) icon. Deliberately <c>label</c>, not
+    /// <see cref="TagIcons.Default"/> (<c>local_offer</c>): <c>label</c> is the chip glyph the design system
+    /// draws for these footers, and the two keys answer different questions — this one is a chip's
+    /// fallback, <c>TagIcons.Default</c> is a record's resolved display icon.
+    /// </summary>
     public const string FallbackGlyph = "label";
 
     [Parameter] public IEnumerable<Tag> Tags { get; set; } = [];
@@ -48,7 +61,7 @@
     protected override void OnParametersSet()
     {
         _tags = [.. Tags];
-        if (Max is { } max && _tags.Count > max)
+        if (Max is { } max && max >= 0 && _tags.Count > max)
         {
             _shown = _tags[..max];
             _hidden = _tags[max..];

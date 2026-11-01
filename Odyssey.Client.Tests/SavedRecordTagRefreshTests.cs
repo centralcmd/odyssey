@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
@@ -97,5 +98,59 @@ public sealed class SavedRecordTagRefreshTests
 
         cut.WaitForAssertion(() => Assert.Contains(
             cut.FindComponents<JournalTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
+    }
+
+    /// <summary>
+    /// The board card (design system · Tasks board): no glyph beside the title, the tag chips lead with
+    /// their own icons, and more than four tags fold into a "+N" chip.
+    /// </summary>
+    [Fact]
+    public async Task Tasks_the_board_card_shows_tag_icons_on_capped_chips_not_beside_the_title()
+    {
+        await using var ctx = PageTestContext.Create(PermissionClaims.TasksRead);
+
+        var ids = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToList();
+        var tags = new Mock<ITagsApiClient<ExistingJournalTaskTag>>();
+        tags.Setup(t => t.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<ExistingJournalTaskTag>>.Success(
+                [.. ids.Select((id, i) => new ExistingJournalTaskTag { JournalTaskTagId = id, Name = $"Tag {i}", Icon = i == 0 ? "hiking" : null })],
+                HttpStatusCode.OK));
+        ctx.Services.AddSingleton(tags.Object);
+
+        var tasks = new Mock<ITaskApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
+        tasks.Setup(t => t.ListAsync(It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<JournalTaskSummary>>.Success(
+            [
+                new JournalTaskSummary
+                {
+                    JournalTaskId = Guid.NewGuid(),
+                    Title = "Pack the tent",
+                    Status = JournalTaskStatus.Doing,
+                    Position = 0,
+                    AttachmentCount = 0,
+                    TagIds = ids,
+                    DisplayIcon = "hiking",
+                },
+            ], HttpStatusCode.OK));
+        ctx.Services.AddSingleton(tasks.Object);
+
+        var cut = ctx.Render<TasksPage>();
+        await cut.InvokeAsync(cut.Instance.OnTaskSaved);
+        var view = cut.FindComponents<OdsInlineSelect>().Single(c => c.Instance.Prefix == "View");
+        await cut.InvokeAsync(() => view.Instance.ValueChanged.InvokeAsync("board"));
+
+        cut.WaitForAssertion(() =>
+        {
+            var head = cut.Find(".tk-card-head");
+            Assert.Empty(head.QuerySelectorAll(".tk-card-glyph"));
+            Assert.DoesNotContain("hiking", head.TextContent);
+
+            var chips = cut.FindAll(".tk-card-tags .odc-chip.tag");
+            Assert.Equal(5, chips.Count);
+            Assert.Equal("hiking", chips[0].QuerySelector(".material-icons")!.TextContent.Trim());
+            Assert.Equal(JournalTagChips.FallbackGlyph, chips[1].QuerySelector(".material-icons")!.TextContent.Trim());
+            Assert.StartsWith("+1", chips[4].TextContent.Trim());
+        });
     }
 }

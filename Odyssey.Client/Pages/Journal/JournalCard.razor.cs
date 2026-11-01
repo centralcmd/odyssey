@@ -132,7 +132,7 @@ public partial class JournalCard
             .Where(r => (int)r.Count > 0)];
 
     private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
-        [.. ids.Select(id => _tagById.GetValueOrDefault(id)).Where(t => t is not null).Select(t => new JournalTagChips.Tag(t!.Name, t.Icon))];
+        JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon);
 
     // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
     // renders as "Unavailable" rather than leaking the id into the chip row.

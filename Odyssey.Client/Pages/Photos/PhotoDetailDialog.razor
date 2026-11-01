@@ -7,7 +7,6 @@
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
 *@
 @using Odyssey.Dtos
-@using Odyssey.Client.Pages.Journal
 @inject IFilesApiClient Files
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js
@@ -71,7 +70,7 @@
                         <span class="pl-vgroup-lab">Tags</span>
                         @* The journal / task footer chip: tag tone, led by the tag's own icon (issue #345). *@
                         <span class="pl-vchips">
-                            <JournalTagChips Tags="@(d.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t))).ToList())" />
+                            <JournalTagChips Tags="_tagChips" />
                         </span>
                     </div>
                 }
@@ -125,6 +124,7 @@
     [Parameter] public Func<Guid, string> AlbumName { get; set; } = id => id.ToString();
 
     private ExistingPhoto? _detail;
+    private IReadOnlyList<JournalTagChips.Tag> _tagChips = [];
     private Guid _loadedFor;
     private ElementReference _body;
     private bool _focused;
@@ -190,6 +190,10 @@
             _loadedFor = id;
             _detail = await Api.GetAsync(id);
         }
+
+        // Built once per parameter set rather than per render: a host refreshes its tag names by
+        // re-rendering us, which is exactly when this runs again.
+        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t)))];
     }
 
     // Focus the stage once the teleported dialog body is in the DOM so ←/→ navigation works without a

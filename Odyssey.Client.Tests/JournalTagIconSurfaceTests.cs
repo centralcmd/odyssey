@@ -4,6 +4,7 @@ using Moq;
 using MudBlazor;
 using MudBlazor.Services;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Pages.Photos;
 using Odyssey.Client.Services;
