@@ -1015,7 +1015,10 @@ Some things deliberately stay in deploy-time config, and the reasons are recorde
 Non-Goals so they are not re-litigated: connection strings and secrets; `RateLimiting:*` (the
 partitioner is synchronous and caches its limiter per partition key, so a changed limit never reaches a
 live partition); and `FileAnalysis:PromptVersion`/`PromptTemplatePath` (the prompt template is a deployed file, and a version
-string that can drift from the file it names is worse than one that cannot). `FileAnalysis:Model` was
+string that can drift from the file it names is worse than one that cannot). `Map:*` (issue #370) stays too: the
+browser can only reach a tile host the client container's CSP allows, and nginx renders that CSP from
+`MAP_ALLOWED_ORIGINS` at container start, so an admin-editable style URL would either be silently blocked
+or force a CSP wide enough to defeat it. `FileAnalysis:Model` was
 listed there too and **moved in issue #439**: the premise was that an editable model makes the audit trail
 editable, and it does not — `FileAnalysisJob.AnalyzerModel` is written once at job creation from the value
 resolved for that run and never rewritten, so a change affects which model *future* analyses use and stamp.

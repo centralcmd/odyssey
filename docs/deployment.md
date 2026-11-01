@@ -185,7 +185,7 @@ described elsewhere in this document.
 the **only** host-facing surface in the overlay (every other service resets `ports` to `[]`), so
 that one line is enough to take the deployment off the network. The converse also holds: publishing
 `client` or `api` "just to check something" undoes it, and does so unsafely — the client's nginx
-honours an inbound `X-Forwarded-Proto` (`Odyssey.Client/nginx.conf`), which is only sound because
+honours an inbound `X-Forwarded-Proto` (`Odyssey.Client/nginx/templates/default.conf.template`), which is only sound because
 Caddy is the sole path in and overwrites it.
 
 ### Why keep Caddy at all, if nothing is exposed?
@@ -315,7 +315,7 @@ setting; raising only the outer ones changes nothing.
 
 | Layer | Where | Must be |
 |---|---|---|
-| Reverse proxy | `Caddyfile` (`request_body max_size`) and `Odyssey.Client/nginx.conf` (`client_max_body_size`) | ≥ transport ceiling + multipart envelope headroom |
+| Reverse proxy | `Caddyfile` (`request_body max_size`) and `Odyssey.Client/nginx/templates/default.conf.template` (`client_max_body_size`) | ≥ transport ceiling + multipart envelope headroom |
 | Transport ceiling | `FILE_UPLOAD_MAX_BYTES` → `FileStorage:MaxFileSizeBytes` (Kestrel + multipart limits, fixed at **startup**) | ≥ the admin-set cap |
 | The cap users hit | **System Settings → Storage**, in the database | whatever policy wants, up to the ceiling |
 
@@ -1013,6 +1013,8 @@ text; if yours is configured to log request bodies, exclude `/api/api/locations`
 **Privacy notice.** Odyssey ships no privacy notice of its own. If you publish one for your household,
 it should say: locations (addresses, coordinates and descriptions) are visible to every household
 member including guests; address searches are sent to Kartverket or Open-Meteo as described above;
+viewing a location's map sends the viewer's IP address and the map tiles around that location to the
+tile host (see [Location map](#location-map-what-leaves-the-deployment-and-how-to-switch-it-off));
 and locations are kept until someone overwrites them (next section).
 
 ### Erasing a location (data-subject requests)
@@ -1034,6 +1036,113 @@ overwrites in place and keeps no previous value anywhere in the application, so 
 5. Record the request, the date and the backup retention that still applies.
 
 Deleting a user leaves every location they created; only the attribution is cleared.
+
+## Location map: what leaves the deployment, and how to switch it off
+
+Issue #370 adds an interactive map with a pin to each location's expanded record. The **browser**
+draws it with MapLibre from a third-party basemap, by default the hosted styles of
+[OpenFreeMap](https://openfreemap.org/). The API only hands the browser the style URLs and the
+attribution (`GET /api/map-styles`, gated on `locations.read`); it never fetches a tile itself.
+
+### Configuration
+
+Five deploy-time variables. They are **not** System settings, deliberately: the browser can only reach a
+host the client container's Content Security Policy allows, and nginx renders that CSP from
+`MAP_ALLOWED_ORIGINS` when the container starts. An admin-editable style URL would either be silently
+blocked or force a CSP wide enough to defeat it.
+
+| Variable | Read by | Default | Rule |
+|---|---|---|---|
+| `MAP_STYLE_URL_LIGHT` | api (`Map__StyleUrlLight`) | `https://tiles.openfreemap.org/styles/positron` | absolute `https` with no query, fragment or userinfo, whose origin is listed in `MAP_ALLOWED_ORIGINS`; or a root-relative path such as `/maps/blank-light.json` |
+| `MAP_STYLE_URL_DARK` | api (`Map__StyleUrlDark`) | `https://tiles.openfreemap.org/styles/dark` | as above |
+| `MAP_ATTRIBUTION` | api (`Map__Attribution`) | `OpenFreeMap © OpenMapTiles Data from OpenStreetMap` | plain text, no `<`, `>` or `&`, ≤ 300 characters |
+| `MAP_ATTRIBUTION_URL` | api (`Map__AttributionUrl`) | `https://www.openstreetmap.org/copyright` | absolute `https`, no fragment or userinfo |
+| `MAP_ALLOWED_ORIGINS` | api (`Map__AllowedOrigins`) **and** client | `https://tiles.openfreemap.org` | lowercase `https://host[:port]` origins separated by single spaces, at most 8, no path or trailing `/`; empty is the off-switch |
+
+Leave them unset to use the defaults; the production overlay sets none of them, so an unset variable
+falls through to the client image's `ENV` and the API's `appsettings.json`. A malformed value stops the
+container rather than degrading: the API refuses to start (`map-config-invalid`, an
+`OptionsValidationException`), and the client exits before nginx starts (`map-csp-invalid`). Both
+messages name the key and the rule, never the value.
+
+Rules that are easy to get wrong:
+
+- **Set `MAP_ALLOWED_ORIGINS` for both containers.** The base compose file feeds one variable to both, so
+  this only bites a hand-written deployment. If they differ, the browser blocks the map and it shows as
+  unavailable.
+- **The compose default is single-dash (`${MAP_ALLOWED_ORIGINS-…}`).** It applies only when the variable
+  is *unset*, so an explicit `MAP_ALLOWED_ORIGINS=` (the off-switch) survives. Do not "fix" it to `:-`,
+  which would silently restore the third-party host.
+- **List every host the style references.** A style JSON names its tiles, glyphs and sprite, possibly on
+  other hosts. The API checks only the style URLs' own origins — it never fetches the style — and the
+  browser's CSP blocks any unlisted host, so a missing one is a blank map, never a silent leak. The
+  OpenFreeMap defaults keep everything on `tiles.openfreemap.org`.
+- **Dedicated tile hosts only.** The listed origins are admitted to `connect-src` and `img-src` for the
+  **whole app**, not just the map. Never list a multi-tenant host — a general CDN, an object-storage
+  bucket, `*.github.io` — where someone else could receive data an injected script sent there.
+- **Change the attribution when you change the tile source.** It *replaces* the style's own credits: the
+  client turns MapLibre's attribution control off and renders this text, so no string a remote style
+  serves reaches the page. The licence obligations of the new source are yours to meet with it.
+
+### The data flow
+
+When someone expands a location with its map visible, their **browser** requests the style, tiles,
+glyphs and sprite directly from the tile host. That host learns:
+
+- the viewer's IP address and user agent;
+- the deployment's hostname, from the CORS `Origin` header (`Referrer-Policy: no-referrer` hides the
+  page path only, not the hostname);
+- the tile coordinates around the location — at street zoom enough to identify a home. The client caps
+  the zoom to bound that precision, but it is still much finer than the ~100 m position weather sends to
+  MET Norway, and it comes from the browser, not the server.
+
+It does **not** learn the location's name, address, description or id, the Odyssey path, or any cookie
+(tile requests are sent with `credentials: 'omit'`). The map loads without an in-app notice — a product
+decision recorded in issue #370 §7.5 — so the disclosure belongs in your privacy notice (see
+[Household locations](#household-locations-what-leaves-the-deployment-and-how-to-erase-one)).
+
+The default recipient, as stated on openfreemap.org when this was written (November 2026 — re-check it):
+
+| | |
+|---|---|
+| Operator | OpenFreeMap — Hyperknot Software Kft., Hungary (volunteer-run project by Zsolt Ero) |
+| Jurisdiction | Hungarian law (its terms of service); server location not stated |
+| Retention | access logs without IP addresses; error logs that may hold the IP and requested URL, deleted after 7 days; IP logging during a security incident, deleted after at most 30 days. It states no cookies or tracking, and that it may use Cloudflare as a CDN |
+| DPA | **none offered** |
+| Service guarantee | **none**: no SLA, and the service may be discontinued without notice |
+
+### Switching it off
+
+Point both styles at the blank styles the client ships and admit no third-party origin:
+
+```bash
+MAP_STYLE_URL_LIGHT=/maps/blank-light.json
+MAP_STYLE_URL_DARK=/maps/blank-dark.json
+MAP_ALLOWED_ORIGINS=
+```
+
+The CSP then admits nothing but the deployment itself, nothing leaves it, and the map shows a plain
+background with the pin. This is configuration, not a feature flag: access is still governed by
+`locations.read`. A self-hosted basemap (a same-origin PMTiles style, say) later replaces the blank
+styles the same way, with `MAP_ALLOWED_ORIGINS` left empty.
+
+### The client's site config is rendered at start
+
+The client image's nginx site config is now a **template**
+(`Odyssey.Client/nginx/templates/default.conf.template`). The image's stock envsubst step renders it into
+`/etc/nginx/conf.d/default.conf` at every start, substituting only `MAP_ALLOWED_ORIGINS`. Two start
+checks bracket it: `15-validate-map-origins.sh` rejects a bad value before the render, and
+`25-assert-rendered-config.sh` refuses to let nginx start unless the rendered file exists, sets the
+`Content-Security-Policy` header, has the `/api/` proxy, and holds no unsubstituted placeholder. The
+base image's welcome config is deleted at build time, so there is no fallback to serve.
+
+**Read-only containers need a tmpfs on `/etc/nginx/conf.d`.** The production overlay runs the client
+with `read_only: true`, so it mounts `/etc/nginx/conf.d:uid=101,gid=101` as a tmpfs for the render.
+Without it the container exits instead of serving: on a read-only root filesystem the stock envsubst
+step itself fails, and on a directory the nginx user merely cannot write it logs an error and carries
+on, which `25-assert-rendered-config.sh` catches as `map-config-unrendered: the rendered site config is
+missing`. Either way nginx never starts without its CSP. If you run your own orchestration with a
+read-only root, give it the same mount.
 
 ## Weather: what leaves the deployment, and how to erase it
 
@@ -1549,6 +1658,9 @@ pixels.
       btrfs), with `noexec,nosuid,nodev` for a bind mount, and the host disk is encrypted (LUKS) — a copied
       volume is directly browsable.
 - [ ] Each file volume is backed up after the database dump, within the deletion grace period.
+- [ ] The location map's `MAP_ALLOWED_ORIGINS` lists only dedicated tile hosts, the same value reaches
+      the `api` and the `client`, and your privacy notice names the tile host — or the map is switched
+      off — see [Location map](#location-map-what-leaves-the-deployment-and-how-to-switch-it-off).
 - [ ] Roles are assigned on the understanding that **any** of them can read every contact's aliases
       (maiden and former names included), middle names and dates of death, and export the lot — see
       [the section above](#who-can-read-contact-personal-data).

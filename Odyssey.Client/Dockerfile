@@ -29,9 +29,26 @@ RUN --mount=type=secret,id=proxy_ca \
 RUN dotnet publish Odyssey.Client/Odyssey.Client.csproj -c Release -o /app/publish
 
 # Unprivileged nginx: runs as the non-root "nginx" user (UID 101) and listens on 8080 instead of
-# 80, so no part of the web tier runs as root. The site config (nginx.conf) listens on 8080 to
-# match; Caddy and the compose port mappings target 8080.
+# 80, so no part of the web tier runs as root. The site config listens on 8080 to match; Caddy and
+# the compose port mappings target 8080.
 FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c6852377c52e4b05834a47647e955dd91cb8f1e AS final
-COPY Odyssey.Client/nginx.conf /etc/nginx/conf.d/default.conf
+
+# The site config is a TEMPLATE (issue #370): the image's stock 20-envsubst-on-templates.sh renders
+# nginx/templates/default.conf.template into /etc/nginx/conf.d/default.conf at start, so the CSP can
+# carry the deploy-time map tile origins. The filter limits substitution to that ONE variable, so
+# nginx's own $host, $scheme and $forwarded_proto pass through untouched.
+#
+# The base image's welcome default.conf is deleted here so no fallback config can ever be served: if
+# the render fails (a read-only conf.d), 25-assert-rendered-config.sh stops the container instead.
+# conf.d is owned by the nginx user in this image, so the rm needs no USER root.
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY Odyssey.Client/nginx/templates/ /etc/nginx/templates/
+# 15- runs before the stock 20-envsubst step and validates the value; 25- runs after it and asserts the
+# rendered result. --chmod makes the executable bit independent of the checkout.
+COPY --chmod=755 Odyssey.Client/nginx/docker-entrypoint.d/ /docker-entrypoint.d/
+ENV NGINX_ENVSUBST_FILTER=^MAP_ALLOWED_ORIGINS\$
+# The shipped default. Pinned equal to Odyssey.Api/appsettings.json, docker-compose.yml and the three
+# .env*.example files by MapDefaultsAgreementTests. Empty is the off-switch; see docs/deployment.md.
+ENV MAP_ALLOWED_ORIGINS=https://tiles.openfreemap.org
 COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
 EXPOSE 8080
