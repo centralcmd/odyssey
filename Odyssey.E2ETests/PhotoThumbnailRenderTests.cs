@@ -69,6 +69,8 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
         while (true)
         {
             await page.GotoAsync("/photos", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+            // Network idle comes before the WASM app has rendered the grid, so wait for a tile itself.
+            await page.Locator(".pl-tile").First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
             if (await page.Locator(ThumbnailTile).CountAsync() > 0)
             {
                 return;
@@ -158,6 +160,7 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
             foreach (var (route, box) in new[] { ("/photos", ".pl-tile"), ("/albums", ".pl-albcover-cell") })
             {
                 await page.GotoAsync(route, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+                await page.Locator(box).First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
                 if (dark)
                 {
                     // Theme is styling only; set it locally rather than saving the shared user's preference.
@@ -170,11 +173,15 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
                     continue;
                 }
 
-                var first = await boxes.First.BoundingBoxAsync();
-                Assert.NotNull(first);
-                Assert.True(first!.Width > 0 && first.Height > 0, $"{route} {box} collapsed at {width}px.");
-                var scroll = await page.EvaluateAsync<int>("() => document.documentElement.scrollWidth");
-                Assert.True(scroll <= width, $"{route} overflows a {width}px viewport ({scroll}px).");
+                // Every converted box keeps a size and stays inside the viewport. The page's own width is not this test's
+                // subject: the /photos filter bar's date-range picker is wider than 320 px, which predates thumbnails.
+                foreach (var handle in await boxes.ElementHandlesAsync())
+                {
+                    var rect = await handle.BoundingBoxAsync();
+                    Assert.NotNull(rect);
+                    Assert.True(rect!.Width > 0 && rect.Height > 0, $"{route} {box} collapsed at {width}px.");
+                    Assert.True(rect.X >= 0 && rect.X + rect.Width <= width + 0.5, $"{route} {box} leaves a {width}px viewport ({rect.X + rect.Width:0}px).");
+                }
             }
         }
         finally
@@ -191,15 +198,19 @@ public sealed class PhotoThumbnailRenderTests(StackFixture fixture) : IAsyncLife
         var page = signedInPage!;
         await WaitForThumbnailsAsync(page);
         await page.GotoAsync("/photos", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+        await page.Locator(ThumbnailTile).First.WaitForAsync(new LocatorWaitForOptions { Timeout = 30_000 });
 
-        var tile = page.Locator(".pl-tile", new PageLocatorOptions { Has = page.Locator(ThumbnailTile) }).First;
-        var hit = tile.Locator("button.pl-tile-hit");
+        // Element handles, not locators: a locator filtered on the thumbnail would re-resolve to the NEXT tile once this
+        // one falls back to its original.
+        var tile = await page.Locator(".pl-tile", new PageLocatorOptions { Has = page.Locator(ThumbnailTile) }).First.ElementHandleAsync();
+        var hit = (await tile.QuerySelectorAsync("button.pl-tile-hit"))!;
+        var image = (await tile.QuerySelectorAsync("img"))!;
         await hit.FocusAsync();
         var label = await hit.GetAttributeAsync("aria-label");
 
         // Force the image to error, as a 404 or a dropped connection would; Blazor's @onerror moves the stage on.
-        await tile.Locator("img").EvaluateAsync("img => img.dispatchEvent(new Event('error'))");
-        await page.WaitForTimeoutAsync(300);
+        await image.EvaluateAsync("img => img.dispatchEvent(new Event('error'))");
+        await page.WaitForFunctionAsync("img => !img.src.includes('/thumbnail?')", image, new PageWaitForFunctionOptions { Timeout = 5_000 });
 
         Assert.True(await hit.EvaluateAsync<bool>("button => document.activeElement === button"), "Focus left the tile's button.");
         Assert.Equal(label, await hit.GetAttributeAsync("aria-label"));
