@@ -560,6 +560,11 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             await route.FulfillAsync(new() { Status = 200, ContentType = "application/x-protobuf", BodyBytes = [], Headers = cors });
         });
 
+        // The shipped dark basemap is a same-origin style file (/maps/odyssey-dark.json) whose sources still
+        // point at the tile host; answer it with the same local style so a dark-mode run never reaches out.
+        await page.RouteAsync("**/maps/odyssey-dark.json", route => route.FulfillAsync(
+            new() { Status = 200, ContentType = "application/json", Body = style }));
+
         if (renameCabinTo is not null)
         {
             // The list the page renders, with the seeded Cabin renamed in flight — no stored row is touched.

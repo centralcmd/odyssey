@@ -51,6 +51,14 @@ from a CDN. Version, source, hashes and the re-check procedure are in that folde
 |---|---|---|
 | MapLibre GL JS 6.14.0 | Copyright (c) 2023, MapLibre contributors; portions Copyright (c) 2020, Mapbox | BSD 3-Clause License. `Odyssey.Client/wwwroot/lib/maplibre-gl/LICENSE.txt` carries the full text and the notices of the code MapLibre itself bundles |
 
+The default dark basemap, `Odyssey.Client/wwwroot/maps/odyssey-dark.json`, is a **modified copy of
+the Fiord Color GL style** as served by OpenFreeMap (only its building layer is changed; the file's
+`metadata` records what and why). Copyright (c) 2024, MapTiler.com & OpenMapTiles contributors;
+Copyright (c) 2015, CartoDB Inc. Its code is under the BSD 3-Clause License and its design under
+CC-BY 4.0 (https://github.com/openmaptiles/fiord-color-gl-style/blob/master/LICENSE.md); it derives
+from "CartoDB Basemaps", designed by Stamen and Paul Norman for CartoDB Inc., CC-BY 3.0. The map's
+caption credits OpenMapTiles as the licence requires.
+
 The map's tiles, glyphs and sprites are **not** bundled: the browser fetches them from the configured
 tile host (OpenFreeMap by default). Their data licences (OpenStreetMap's ODbL, OpenMapTiles) are credited
 by the configured attribution caption under the map — see `docs/deployment.md` → *Location map*.

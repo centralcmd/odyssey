@@ -37,7 +37,7 @@ public class MapStylesApiTests
 
         var styles = (await response.Content.ReadFromJsonAsync<MapStyles>())!;
         Assert.Equal("https://tiles.openfreemap.org/styles/liberty", styles.LightStyleUrl);
-        Assert.Equal("https://tiles.openfreemap.org/styles/fiord", styles.DarkStyleUrl);
+        Assert.Equal("/maps/odyssey-dark.json", styles.DarkStyleUrl);
         Assert.Equal("OpenFreeMap © OpenMapTiles Data from OpenStreetMap", styles.Attribution);
         Assert.Equal("https://www.openstreetmap.org/copyright", styles.AttributionUrl);
     }
@@ -193,8 +193,10 @@ public class MapStylesApiTests
     {
         var message = StartupFailure(new() { ["Map:AllowedOrigins"] = "" });
 
+        // The shipped light style is absolute and needs its origin listed; the shipped dark one is the
+        // same-origin /maps/odyssey-dark.json, which needs none.
         Assert.Contains("StyleUrlLight", message, StringComparison.Ordinal);
-        Assert.Contains("StyleUrlDark", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("StyleUrlDark", message, StringComparison.Ordinal);
     }
 
     [Fact]

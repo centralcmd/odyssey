@@ -724,6 +724,10 @@ first map. Rules that are easy to get backwards:
   under the frame is Blazor's, from `GET /api/map-styles`.
 - **A client-held default style URL is forbidden.** `MapStylesCache` has no fallback: a failure is the
   map's `config-unavailable` state, never a URL restated in the client.
+- **The shipped dark basemap is Odyssey's own file, `wwwroot/maps/odyssey-dark.json`** — OpenFreeMap `fiord`
+  with its buildings lifted from ~16 % opacity (1.1:1, houses invisible) to 90 % (~1.6:1). It is served
+  same-origin, so the CSP is unchanged, and tiles, glyphs and sprites still come from OpenFreeMap.
+  `OdysseyDarkBasemapTests` pins the contrast, the single tile host and the licence; the E2E suite routes it.
 - **The service worker must not precache the map's files** (`offlineAssetsExclude`), or the first visit
   downloads MapLibre for a page the user may never open.
 
