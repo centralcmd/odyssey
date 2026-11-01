@@ -40,6 +40,7 @@ public partial class PhotosCard
     private IReadOnlyList<OdsOption> _peopleOptions = [];
     private bool _canCreateContacts;
     private Dictionary<Guid, string> _tagNames = [];
+    private Dictionary<Guid, string?> _tagIcons = [];
     private Dictionary<Guid, string> _albumNames = [];
     private Dictionary<Guid, string> _personNames = [];
     private IReadOnlyList<PhotoAlbumSummary> _albumSummaries = [];
@@ -119,6 +120,7 @@ public partial class PhotosCard
         {
             _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+            _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
         }
 
         var albumsResult = await Albums.ListAllAsync();
@@ -300,6 +302,7 @@ public partial class PhotosCard
             p.Archived is not null, p.Favourited is not null);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
+    private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
     private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 

@@ -20,7 +20,8 @@ public partial class JournalEntryCard
 
     [Parameter] public IReadOnlyList<ContactLink> Contacts { get; set; } = [];
 
-    [Parameter] public IReadOnlyList<string> Tags { get; set; } = [];
+    /// <summary>The entry's tags, name-ordered, each with its own icon for its chip.</summary>
+    [Parameter] public IReadOnlyList<JournalTagChips.Tag> Tags { get; set; } = [];
 
     [Parameter] public IReadOnlyList<JournalPhotoGallery.Photo> Photos { get; set; } = [];
 
@@ -49,7 +50,6 @@ public partial class JournalEntryCard
     private bool _pendingFocus;
     private IJSObjectReference? _focusReturnJs;
 
-    private List<string> _tagNames = [];
     private string _leafDow = string.Empty;
     private string _leafDay = "—";
     private string _leafMon = string.Empty;
@@ -74,8 +74,6 @@ public partial class JournalEntryCard
 
     protected override void OnParametersSet()
     {
-        _tagNames = [.. Tags];
-
         var d = Entry.EntryDate.ToLocalTime();
         _leafDow = d.ToString("ddd", CultureInfo.CurrentCulture);
         // The day ALONE. "d" on its own is .NET's standard short-date pattern ("5/25/2026"), which

@@ -111,8 +111,8 @@ public partial class TasksPage
         }
     }
 
-    private IEnumerable<string> TagNames(JournalTaskSummary t) =>
-        t.TagIds.Select(id => _tagById.GetValueOrDefault(id)?.Name).Where(n => n is not null).Cast<string>();
+    private IReadOnlyList<JournalTagChips.Tag> TagChips(JournalTaskSummary t) =>
+        JournalTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon);
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()

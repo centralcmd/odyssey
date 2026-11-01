@@ -26,6 +26,7 @@ public partial class AlbumsPage
     private Guid[]? _addToAlbumIds;
 
     private Dictionary<Guid, string> _tagNames = [];
+    private Dictionary<Guid, string?> _tagIcons = [];
     private Dictionary<Guid, string> _albumNames = [];
     private Dictionary<Guid, string> _personNames = [];
 
@@ -103,6 +104,7 @@ public partial class AlbumsPage
 
         var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
         _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
+        _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
 
         // People come from Person contacts (requires contacts.read; degrades to empty) so
         // the album lightbox's People chips show names, not raw ids (spec §10.5).
@@ -231,6 +233,7 @@ public partial class AlbumsPage
         PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
+    private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
     private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 

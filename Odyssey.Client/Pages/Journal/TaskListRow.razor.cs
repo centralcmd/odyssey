@@ -12,7 +12,8 @@ public partial class TaskListRow : IAsyncDisposable
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     [Parameter, EditorRequired] public JournalTaskSummary Task { get; set; } = default!;
-    [Parameter] public IEnumerable<string> TagNames { get; set; } = [];
+    /// <summary>The task's tags, name-ordered, each with its own icon for its chip.</summary>
+    [Parameter] public IEnumerable<JournalTagChips.Tag> Tags { get; set; } = [];
     [Parameter] public bool CanUpdate { get; set; }
     [Parameter] public bool CanDelete { get; set; }
 
@@ -113,12 +114,12 @@ public partial class TaskListRow : IAsyncDisposable
         _files = LoadFiles is null ? [] : await LoadFiles(Task.JournalTaskId);
     }
 
-    private List<string> _tagNames = [];
+    private List<JournalTagChips.Tag> _tags = [];
     private TaskRail _rail = TaskRail.Undated;
 
     protected override async System.Threading.Tasks.Task OnParametersSetAsync()
     {
-        _tagNames = [.. TagNames];
+        _tags = [.. Tags];
         _rail = TaskRail.For(Task);
 
         // An attach or a removal reloads the row with a new count; re-read an open list so it follows.
