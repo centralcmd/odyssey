@@ -17,7 +17,7 @@ namespace Odyssey.Client.Tests;
 /// The client half of issue #345 (design system · <c>docs/components-calendar-journal-and-tasks.md</c>,
 /// "Tag icons on journal entries, tasks and photos"): each tag chip on the entry card, the task row and
 /// the photo dialog leads with its own tag's icon, no glyph sits beside a card's title, the photo dialog
-/// keeps its display-icon lead, and the icon field on the tag pages.
+/// always leads with the library glyph, and the icon field on the tag pages.
 /// </summary>
 public class JournalTagIconSurfaceTests : IAsyncLifetime
 {
@@ -105,9 +105,9 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("landscape", "landscape")]
+    [InlineData("landscape", "photo_library")]
     [InlineData(TagIcons.Default, "photo_library")]
-    public void The_photo_dialog_leads_with_the_display_icon_else_the_library_glyph(string icon, string lead)
+    public void The_photo_dialog_always_leads_with_the_library_glyph(string icon, string lead)
     {
         var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0, DisplayIcon = icon };
 
