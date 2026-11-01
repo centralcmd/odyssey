@@ -40,6 +40,23 @@ and <https://fonts.google.com/icons>.
 
 ---
 
+## Bundled JavaScript: MapLibre GL JS
+
+The location map (issue #371) draws with **MapLibre GL JS 6.14.0**, redistributed unmodified in
+[`Odyssey.Client/wwwroot/lib/maplibre-gl/`](Odyssey.Client/wwwroot/lib/maplibre-gl/) (two module files
+renamed from `.mjs` to `.js`; their bytes are unchanged). It is served from the deployment itself, never
+from a CDN. Version, source, hashes and the re-check procedure are in that folder's `README.md`.
+
+| Component | Copyright | License |
+|---|---|---|
+| MapLibre GL JS 6.14.0 | Copyright (c) 2023, MapLibre contributors; portions Copyright (c) 2020, Mapbox | BSD 3-Clause License. `Odyssey.Client/wwwroot/lib/maplibre-gl/LICENSE.txt` carries the full text and the notices of the code MapLibre itself bundles |
+
+The map's tiles, glyphs and sprites are **not** bundled: the browser fetches them from the configured
+tile host (OpenFreeMap by default). Their data licences (OpenStreetMap's ODbL, OpenMapTiles) are credited
+by the configured attribution caption under the map — see `docs/deployment.md` → *Location map*.
+
+---
+
 ## NuGet dependencies
 
 All package versions are pinned centrally in

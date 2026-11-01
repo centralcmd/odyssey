@@ -709,6 +709,24 @@ to get backwards:
   keeps a surface from building a `ContentUrl` or a CSS `background-image`.
 - **The five thumbnail tables are derived data**, out of scope on `DataExportTableCoverageTests`.
 
+**The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
+`Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
+version, source and re-check procedure); `wwwroot/js/location-map.js` is the only importer, and only on the
+first map. Rules that are easy to get backwards:
+
+- **No CDN and no Blazor wrapper.** `MapLibreBundleIntegrityTests` pins every vendored hash, so a bump is a
+  reviewed change to the files, the README and the test together. Dependabot cannot see these files.
+- **The module files are `.js`, not `.mjs`.** nginx's stock `mime.types` has no `.mjs`, and a module script
+  served as `application/octet-stream` is refused; `location-map.js` sets the worker URL to match.
+- **Nothing is built from an HTML string, and MapLibre's attribution control stays off.** A location name
+  and a remote style's attribution are untrusted; `LocationMapSourceLintTests` fails on `innerHTML`,
+  `setHTML`, `MarkupString` and friends, and on any `attributionControl` other than `false`. The caption
+  under the frame is Blazor's, from `GET /api/map-styles`.
+- **A client-held default style URL is forbidden.** `MapStylesCache` has no fallback: a failure is the
+  map's `config-unavailable` state, never a URL restated in the client.
+- **The service worker must not precache the map's files** (`offlineAssetsExclude`), or the first visit
+  downloads MapLibre for a page the user may never open.
+
 ## Key Details
 
 **`ExecuteDeleteAsync`/`ExecuteUpdateAsync` throw on the EF InMemory provider.** They live in

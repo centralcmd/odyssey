@@ -9,7 +9,14 @@ self.addEventListener('fetch', event => event.respondWith(onFetch(event)));
 const cacheNamePrefix = 'offline-cache-';
 const cacheName = `${cacheNamePrefix}${self.assetsManifest.version}`;
 const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, /\.json$/, /\.css$/, /\.woff$/, /\.png$/, /\.jpe?g$/, /\.gif$/, /\.ico$/, /\.blat$/, /\.dat$/, /\.webmanifest$/ ];
-const offlineAssetsExclude = [ /^service-worker\.js$/ ];
+// The location map (issue #371 §10.2) loads MapLibre on the first map, never at app start, so its files are
+// kept out of the install-time precache. The optional middle segment also matches a fingerprinted URL.
+const offlineAssetsExclude = [
+    /^service-worker\.js$/,
+    /^lib\/maplibre-gl\//,
+    /^js\/location-map(\.[^/]+)?\.js$/,
+    /^css\/location-map(\.[^/]+)?\.css$/,
+];
 
 // Replace with your base path if you are hosting on a subfolder. Ensure there is a trailing '/'.
 const base = "/";

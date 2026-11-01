@@ -46,7 +46,11 @@
                 ? new Dictionary<string, object>(StringComparer.Ordinal)
                 : new Dictionary<string, object>(UserAttributes, StringComparer.Ordinal);
 
-            if (!attrs.ContainsKey("role"))
+            if (Live == OdsAlertLive.None)
+            {
+                attrs.Remove("role");
+            }
+            else if (!attrs.ContainsKey("role"))
             {
                 attrs["role"] = Live switch
                 {

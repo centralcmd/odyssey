@@ -1,0 +1,228 @@
+/*
+    The location map's MapLibre-built parts (issue #371; design system · components/LocationMap, the
+    `loc-map-*` rules). Loaded by js/location-map.js with the map, never at app start. The frame, the state
+    box and the caption are Blazor markup and live in Pages/Journal/LocationMap.razor.css instead — these
+    nodes are created in JS, where scoped CSS cannot reach.
+
+    Every panel is OPAQUE (--mud-palette-surface), never translucent, so the token pair is the real
+    contrast. --loc-accent and the sizing custom properties are published by LocationMap.razor's root.
+*/
+
+.loc-map-host.maplibregl-map {
+    position: absolute;
+    inset: 0;
+    font: inherit;
+    background: var(--mud-palette-background-gray);
+}
+
+/* The surface: MapLibre's focusable canvas, the map's single tab stop. Its ring is INSET, so the frame's
+   overflow: hidden cannot clip it, and two-tone, so one tone reaches 3:1 on any basemap colour. */
+.loc-map-host .maplibregl-canvas:focus {
+    outline: none;
+}
+
+.loc-map-host .maplibregl-canvas-container:has(> .maplibregl-canvas:focus-visible)::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    box-shadow: inset 0 0 0 var(--focus-ring-width) var(--focus-ring),
+                inset 0 0 0 calc(var(--focus-ring-width) * 2) var(--mud-palette-surface);
+}
+
+/* ── The pin ───────────────────────────────────────────────────────────────────────────────────────
+   Accent fill inside a 2 px surface ring and a 1 px text-primary ring: the accent alone fails on a light
+   basemap, the rings mean one edge reaches 3:1 on any tile. MapLibre positions the element itself. */
+.loc-map-pin {
+    z-index: 1;
+    width: var(--loc-map-ctrl);
+    height: 2.125rem;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    display: grid;
+    justify-items: center;
+    align-items: start;
+    border-radius: var(--radius-sm);
+    color: inherit;
+}
+
+.loc-map-pin-shape {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-top: 0.25rem;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    background: var(--loc-accent);
+    box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 0 0 3px var(--mud-palette-text-primary), var(--mud-elevation-2);
+    display: grid;
+    place-items: center;
+}
+
+.loc-map-pin-shape::after {
+    content: '';
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--mud-palette-surface);
+}
+
+/* ── Controls: a 3×3 pan pad top-left (corners empty), a joined zoom column top-right ─────────────── */
+.loc-map-dpad {
+    position: absolute;
+    z-index: 3;
+    top: var(--loc-map-inset);
+    left: var(--loc-map-inset);
+    display: grid;
+    gap: 2px;
+    grid-template-columns: repeat(3, var(--loc-map-ctrl));
+    grid-template-rows: repeat(3, var(--loc-map-ctrl));
+    grid-template-areas: ". n ." "w c e" ". s .";
+}
+
+.loc-map-zoom {
+    position: absolute;
+    z-index: 3;
+    top: var(--loc-map-inset);
+    right: var(--loc-map-inset);
+    display: flex;
+    flex-direction: column;
+    border: var(--border-thin) solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-sm);
+    background: var(--mud-palette-surface);
+    box-shadow: var(--mud-elevation-2);
+}
+
+.loc-map-btn {
+    width: var(--loc-map-ctrl);
+    height: var(--loc-map-ctrl);
+    padding: 0;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: var(--border-thin) solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--mud-elevation-2);
+}
+
+.loc-map-btn .material-icons { font-size: var(--icon-md); }
+.loc-map-btn:hover { box-shadow: inset 0 0 0 999px var(--mud-palette-action-default-hover), var(--mud-elevation-2); }
+.loc-map-btn[aria-disabled="true"] { color: var(--mud-palette-text-disabled); cursor: default; box-shadow: var(--mud-elevation-2); }
+.loc-map-btn.n { grid-area: n; }
+.loc-map-btn.w { grid-area: w; }
+.loc-map-btn.c { grid-area: c; color: oklch(from var(--loc-accent) var(--glyph-l, l) c h); }
+.loc-map-btn.e { grid-area: e; }
+.loc-map-btn.s { grid-area: s; }
+
+.loc-map-zoom .loc-map-btn { border: 0; border-radius: 0; box-shadow: none; }
+.loc-map-zoom .loc-map-btn:first-child { border-bottom: var(--border-thin) solid var(--mud-palette-lines-default); border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+.loc-map-zoom .loc-map-btn:last-child { border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.loc-map-zoom .loc-map-btn:hover { box-shadow: inset 0 0 0 999px var(--mud-palette-action-default-hover); }
+.loc-map-zoom .loc-map-btn[aria-disabled="true"] { box-shadow: none; }
+
+/* Two-tone focus ring: a surface halo inside a focus-ring outline. */
+.loc-map-btn:focus-visible,
+.loc-map-pin:focus-visible,
+.loc-map-popup-close:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring);
+    outline-offset: var(--focus-ring-width);
+    box-shadow: 0 0 0 var(--focus-ring-width) var(--mud-palette-surface);
+}
+
+.loc-map-btn:focus-visible { position: relative; z-index: 5; }
+
+/* ── The popup: a non-modal dialog on an opaque panel. MapLibre's chrome around it is stripped. ───── */
+.loc-map-popup-host.maplibregl-popup { z-index: 4; max-width: calc(100% - 2 * var(--loc-map-inset)) !important; }
+.loc-map-popup-host .maplibregl-popup-tip { display: none; }
+.loc-map-popup-host .maplibregl-popup-content { padding: 0; background: none; box-shadow: none; border-radius: 0; }
+
+.loc-map-popup {
+    max-height: calc(var(--loc-map-height) / 2 - 2 * var(--loc-map-inset));
+    overflow: auto;
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: var(--border-thin) solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--mud-elevation-4);
+    padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-family: var(--font-sans);
+}
+
+.loc-map-popup h3 {
+    margin: 0;
+    padding: 0.375rem 0;
+    font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans);
+    overflow-wrap: anywhere;
+    min-width: 0;
+    max-width: 18rem;
+}
+
+.loc-map-popup-close {
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    color: var(--mud-palette-text-secondary);
+}
+
+.loc-map-popup-close:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.loc-map-popup-close .material-icons { font-size: var(--icon-md); }
+
+/* ── The cooperative-gesture hint: the app's own string, on an opaque panel at the bottom edge ──────── */
+.loc-map-host .maplibregl-cooperative-gesture-screen {
+    inset: auto;
+    left: 50%;
+    bottom: var(--space-3);
+    transform: translateX(-50%);
+    z-index: 3;
+    width: max-content;
+    max-width: calc(100% - 2 * var(--loc-map-inset));
+    padding: var(--space-2) var(--space-3);
+    background: var(--mud-palette-surface);
+    color: var(--mud-palette-text-primary);
+    border: var(--border-thin) solid var(--mud-palette-lines-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--mud-elevation-4);
+    font: var(--fw-regular) var(--fs-body2)/var(--lh-snug) var(--font-sans);
+    text-align: center;
+    /* MapLibre adds .maplibregl-show for 100 ms only; the hold before the fade is what keeps the hint
+       readable, so the delay is kept and only the fade itself is tokenised. */
+    transition: opacity var(--duration-slow) var(--ease-standard) 1s;
+}
+
+.loc-map-host .maplibregl-cooperative-gesture-screen.maplibregl-show {
+    transition: none;
+}
+
+.loc-map-host .maplibregl-cooperative-gesture-screen .maplibregl-desktop-message,
+.loc-map-host .maplibregl-cooperative-gesture-screen .maplibregl-mobile-message { font: inherit; }
+
+@media (forced-colors: active) {
+    .loc-map-btn,
+    .loc-map-zoom,
+    .loc-map-popup,
+    .loc-map-host .maplibregl-cooperative-gesture-screen { border-color: CanvasText; background: ButtonFace; color: ButtonText; }
+    .loc-map-pin-shape { background: Highlight; box-shadow: 0 0 0 2px ButtonFace, 0 0 0 3px ButtonText; forced-color-adjust: none; }
+    .loc-map-btn:focus-visible,
+    .loc-map-pin:focus-visible,
+    .loc-map-popup-close:focus-visible { outline-color: Highlight; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    /* No fade, but the hint still holds for its second before it goes. */
+    .loc-map-host .maplibregl-cooperative-gesture-screen { transition: opacity 0s linear 1s; }
+}

@@ -129,6 +129,12 @@
                                 </OdsInfoTile>
                             </OdsInfoTileGrid>
                         }
+                        @* The Map band (issue #371): after the tiles and description, before weather. Only one card
+                           is open at a time, so the page holds at most one map; collapsing disposes it. *@
+                        <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
+                            <LocationMap @key="l.LocationId" Latitude="l.Latitude" Longitude="l.Longitude" Name="@l.Name"
+                                         OnStatus="Announce" />
+                        </OdsRecordSection>
                         @if (ShowWeather)
                         {
                             <LocationWeatherSection Location="l" Row="WeatherRow(l)" CanUpdate="_canUpdateWeather"
