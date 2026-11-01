@@ -33,6 +33,7 @@ public sealed class JournalEntryInlineCreateTests : IAsyncLifetime
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(Mock.Of<IFilesApiClient>());
+        ctx.Services.AddSingleton(Mock.Of<IPhotosApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IJournalApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         var contacts = new Mock<IContactQuickCreate>();

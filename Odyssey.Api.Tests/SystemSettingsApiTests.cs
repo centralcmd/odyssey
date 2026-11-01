@@ -160,8 +160,8 @@ public class SystemSettingsApiTests
         // smart-tag cap (issue #166), then -3 when the standalone subscriptions feature was removed
         // and -5 when the standalone insurance-policy feature was, then +1 for the per-property
         // smart-tag cap (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync
-        // start date and interval (issue #349).
-        Assert.Equal(71, rows.Count);
+        // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346).
+        Assert.Equal(72, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

@@ -119,4 +119,15 @@ public class PhotoMappersTests
         Assert.Null(s.Archived);
         Assert.Null(s.Favourited);
     }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void ToSummary_copies_ThumbnailsReady(bool ready)
+    {
+        var photo = SamplePhoto();
+        photo.ThumbnailsReady = ready;
+
+        Assert.Equal(ready, PhotoMappers.ToSummary(photo).ThumbnailsReady);
+    }
 }

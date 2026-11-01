@@ -292,7 +292,10 @@ public class SystemSettingsRegistryTests
         //   * EmailSmtpPort — audited by construction rather than on its own merits, and correctly so:
         //     splitting the port off onto the ordinary claim would let a caller move the transport to
         //     a port the relay serves in the clear without the change being recorded.
-        Assert.Equal(30, audited.Count);
+        //
+        // +1 in issue #346: FileStorageDeletionGraceHours, the retention period for deleted personal data
+        // on the file volumes. Shortening it can outrun a backup; lengthening it keeps erased data on disk.
+        Assert.Equal(31, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

@@ -380,7 +380,8 @@ Five rules around it are easy to get backwards:
   never deleted**.
 - **Metadata removal is an allow-list walk, and the guarantee is a property of the OUTPUT.** The walk
   (`ImageContainerWalk`) produces the stripped bytes, the dimensions and the animation determination in
-  one pass, so no raster library and no full EXIF parser sit on the untrusted-input path —
+  one pass, so no raster library and no full EXIF parser sit on the avatar and profile-image path (photo
+  thumbnails are the one deliberate exception, and only in the worker — see **Photo thumbnails** below) —
   `MetadataExtractor` appears only in **tests**, where it is the independent oracle that makes
   strip-then-verify meaningful. The runtime re-validation is a second pass of the same walk and on its
   own is only a self-check; **keep both**. Every `APPn` is dropped, `APP0` included: JFIF carries a
@@ -615,9 +616,98 @@ next one going ahead, runs never overlapping. Four rules:
   the keys volume is mounted `:ro` and automatic key generation is off, so the API stays the only key
   writer. Holding the ring means the worker can decrypt every stored credential — see
   `docs/deployment.md` → *Two containers hold the key ring*. The migrations job still holds none.
+- **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (hourly)
+  erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
+  by the single-row `FileStorageMaintenanceLeases` lease. **The job runs the worker's storage checks itself**
+  (`FileStorageWorkerVerification`, the API's checks in verify-only mode, waiting up to 2 minutes for the API to
+  initialise a new volume), so **a failing volume verdict holds that job alone** — weather and exchange-rate
+  sync keep running, and `Program.cs` verifies nothing. Because the container no longer exits, the verdict is
+  the signal: each worker process writes its **own** row in `FileStorageWorkerVerdicts` (a check name, never
+  a path) — never a shared slot, which one healthy replica would clear for another — refreshed on every
+  10-minute re-check, deleted when its checks pass, and ignored after 30 minutes unrefreshed. The panel calls
+  clean-up *stopped* only when no pass has completed since the failure; otherwise another worker is doing it.
+  The panel's thresholds (2 h overdue, 3 h stale, 10 min re-check) travel on the status DTO — never restate
+  them in the client.
+  `api` and `worker` must get identical `FileStorage__Volumes__*`/`__Bindings__*` and mounts in both
+  compose files and the AppHost; `FileStorageDeploymentParityTests` enforces it.
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's
   `IMemoryCache`, not the worker's, so a changed value applies to jobs on the next read after the 30 s TTL.
   A setting that must bind on the very next job run is read uncached, as `FileAnalysisEnabled` is.
+
+**Files on disk go through the filesystem object store, `Odyssey.Core/FileStorage/`** (issue #346).
+Deploy-time volumes (`FileStorage:Volumes:<name>:RootPath`) hold the bytes; `StoredObjects` rows say what is
+where; code-declared *storage features* (`StorageFeature`, registered in DI, assembled into
+`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **Photo
+thumbnails (#362) are the production catalogue's one feature**, so every host with volumes must bind
+`PhotoThumbnails` (check B1); the three `TestShared/FileStorage` features exercise the store's own tests.
+Existing uploads stay in `FileBlob`. Rules a consumer
+inherits, and that are easy to get backwards:
+
+- **A `Committed` row always has its file.** `IObjectStore.PutAsync` reserves a `Pending` row through its own
+  `IDbContextFactory<OdysseyContext>` context (it commits whatever the caller's transaction does), writes the
+  file, then attaches the row to the CALLER's context as `Committed`, unsaved: the caller saves it with its
+  referencing row in one `SaveChangesAsync`. `State` is the concurrency token, so a reservation the abandoned
+  -write sweep already removed fails the caller's save instead of committing a reference to a deleted file.
+  That sweep removes the row **before** the files for the same reason.
+- **A referencing table declares a `RESTRICT` key, belongs to exactly one feature (its
+  `StorageFeatureReference`), and releases through `StageRelease` in the same save that removes or nulls the
+  reference** — never by removing the `StoredObject` row or deleting a file. A cascade-deleted consumer row is
+  caught by the hourly unreferenced sweep. `FileStorageMaintenanceTests` reflects over the model and fails on
+  a key to `StoredObjects` that breaks this.
+- **No caller ever supplies a path, and no endpoint takes a stored-object id.** Bytes are served only by the
+  consuming feature's own endpoint, under its own claim (`nosniff`, the database-held content type, range
+  processing, the hash as a strong ETag). `OpenReadAsync` 404s another feature's object. A generic
+  `GET /api/stored-objects/{id}` would be a cross-claim read primitive.
+- **Every filesystem operation re-runs the structural check** (`StorageNames.IsConformingPath`, or the
+  catalogue-free variant for a feature this build no longer has), **the containment check and the symlink
+  check** — a row may have been edited by hand. A prefix test alone would let a path reach the marker,
+  `.tmp`, `.quarantine` or `lost+found`.
+- **File names are personal data.** The default naming keeps the sanitized original stem
+  (`StoredFileNames.SanitizeStem`, the third and strictest sanitizer); the extension always comes from the
+  validated content type. Never log a `RelativePath` or a file name — name an object by its id.
+- **`Degraded` is per process.** The API's view is what `GET /api/file-storage/volumes` reports; a request
+  re-probes a degraded volume at most every 15 seconds (`FileStorageVolumeRegistry.RecheckInterval`).
+- **Startup verification stops the host** on any misconfiguration (`FileStorageVerifier`, checks
+  C1–C5/B1–B3/V1–V8; B4, a live row of an unknown feature, only logs a Critical). Only the API writes a
+  marker, adopts or initialises. The no-op rule: an EF InMemory host with no volumes, or a relational host
+  with no volumes, no features and nothing stored, verifies nothing — which is what keeps every ordinary
+  `WebApplicationFactory` in `Odyssey.Api.Tests` unaffected. `FileStorageApiFactory` is the store's own.
+- **The deletion grace is mapped by the sweeper, not the resolver.** Anything but a healthy read of
+  `FileStorageDeletionGraceHours` resolves to 168 h; `Immediate` features and `immediate: true` releases
+  ignore it.
+
+Operator documentation — volumes, bindings, every startup check's remedy, backup order, quarantine and the
+breaker — is `docs/deployment.md` → *File storage*.
+
+**Photo thumbnails are rendered in `Odyssey.Worker` with ImageMagick, and nowhere else** (issues #362, #365).
+`PhotoThumbnailJob` (`Odyssey.Core/Journal/Thumbnails/`) drives a durable queue (`PhotoThumbnailJobs`, one row
+per photo) and stores a Small (200 px) and a Medium (400 px) WebP per photo through the `PhotoThumbnails`
+storage feature; `GET /api/photos/{id}/thumbnail?size=` serves them under `photos.read`. Rules that are easy
+to get backwards:
+
+- **Magick.NET is referenced by `Odyssey.Worker` alone, and only `Odyssey.Worker/Thumbnails/` may use it.**
+  The renderer sits behind `IPhotoThumbnailRenderer` in Core; `ThumbnailSourceLintTests` fails on any other
+  reference. Never move decoding into the API. Its patch clock (72 h / 14 days) is in `docs/deployment.md`.
+- **`MagickRuntime.EnsureConfigured()` runs before anything else touches ImageMagick.** Reading even
+  `MagickNET.Version` first initialises the default policy and the coder allow-list is then silently
+  ignored. The startup self-test (`MagickDecoderSelfTest`) is what proves the policy is live.
+- **The format is pinned from the stored content type, never sniffed**, and the pre-strip walk runs before
+  native code: a still JPEG/PNG/WebP reaches ImageMagick already stripped and size-gated. GIF and animated
+  input go in unstripped — an accepted residual, documented.
+- **`Generation` is the job row's only concurrency token, and every write bumps it — a rename included.** A
+  worker acts only on a `Running` row carrying its own `RunId`. A file rename re-renders through
+  `IFileRenameObserver`, staged in the rename's own save; three consecutive token conflicts are a
+  `409 rename-busy` with `Retry-After`, and nothing is committed.
+- **Every replica runs the job; state is per process.** The breaker (`PhotoThumbnailBreaker`, 3 crashes or
+  hangs an hour) counts `PhotoThumbnailIncidents` rows, which carry no photo id so a delete cannot reset it.
+  A hung decode cannot be cancelled: the worker pauses, then exits (code 70) for its container to restart —
+  which only a supervisor such as Compose does.
+- **`ThumbnailsReady` is "both renditions exist", and on the journal DTO it is also "the caller holds
+  `photos.read"`** (`JournalEntriesController.ApplyThumbnailRule`). The client decides sources through one rule,
+  `PhotoImageSources.For`, and draws every photo below viewer size through `OdsPhotoImage` (thumbnail → original
+  → placeholder). The viewer, lightbox and edit banner always show the original; `PhotoThumbnailSurfaceTests`
+  keeps a surface from building a `ContentUrl` or a CSS `background-image`.
+- **The five thumbnail tables are derived data**, out of scope on `DataExportTableCoverageTests`.
 
 ## Key Details
 
@@ -999,7 +1089,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 106 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 107 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
@@ -1220,6 +1310,7 @@ reviewer had to guess whether a `_field` in a new component was a defect or the 
 | New API endpoint | `Odyssey.Api/Controllers/` |
 | Business logic | `Odyssey.Core/Finance/` or `Odyssey.Core/Journal/` |
 | Background job | an `IPeriodicJob` in `Odyssey.Core/`, then one line in `Odyssey.Worker/WorkerHost.cs` |
+| Files on disk | a `StorageFeature` + `IObjectStore` (`Odyssey.Core/FileStorage/`); never a new `FileBlob` reader |
 | DB schema / entity | `Odyssey.Context/` then add a migration |
 | Frontend page/component | `Odyssey.Client/Pages/` or `Odyssey.Client/Components/` |
 | Shared DTOs | `Odyssey.Dtos/<Module>/` |

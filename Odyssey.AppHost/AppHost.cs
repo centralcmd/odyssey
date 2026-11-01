@@ -67,6 +67,21 @@ var dataProtectionKeysPath = Path.GetFullPath(
     Path.Combine(builder.AppHostDirectory, "..", ".aspire", "dataprotection-keys"));
 Directory.CreateDirectory(dataProtectionKeysPath);
 
+// The `primary` file volume (issue #346), the dataprotection-keys pattern: the AppHost creates the root, because
+// the API's startup verifier never creates one (check C5 — a mistyped mount must not silently become a directory).
+// The API and the worker get the SAME FileStorage__* settings (A3.2): the worker mounts what the API mounts and
+// waits for the API to initialise a new volume; a failing verdict holds the jobs that use the store. Photo
+// thumbnails (issue #362) are bound to it. Under Aspire nothing restarts a worker that stopped itself after a hung
+// decode — restart it by hand. The `reset-environment` skill empties it (keeping the root) along with the database.
+var fileVolumePrimaryPath = Path.GetFullPath(
+    Path.Combine(builder.AppHostDirectory, "..", ".aspire", "files", "primary"));
+Directory.CreateDirectory(fileVolumePrimaryPath);
+var fileStorageSettings = new Dictionary<string, string>
+{
+    ["FileStorage__Volumes__primary__RootPath"] = fileVolumePrimaryPath,
+    ["FileStorage__Bindings__PhotoThumbnails"] = "primary",
+};
+
 var migrations = builder
     .AddProject<Projects.Odyssey_MigrationService>("migrations")
     .WithEnvironment("ConnectionStrings__OdysseyConnection", BuildConnectionString(odysseyDatabase))
@@ -110,6 +125,7 @@ var api = builder
     // test touches the two mail routes, and that limit's cost is outbound mail rather than CPU.
     .WithEnvironment("RateLimiting__Identity__PermitLimit", "300")
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
+    .WithFileStorage(fileStorageSettings)
     .WaitFor(mariadb)
     .WithReference(migrations)
     .WaitForCompletion(migrations);
@@ -124,6 +140,7 @@ builder
     .WithEnvironment("DOTNET_ENVIRONMENT", apiEnvironment)
     // The same trust bundle as the API: the worker makes the scheduled outbound HTTPS calls (MET, Frost).
     .WithEnvironment("SSL_CERT_FILE", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem")
+    .WithFileStorage(fileStorageSettings)
     .WaitFor(mariadb)
     .WaitForCompletion(migrations)
     .WaitFor(api);

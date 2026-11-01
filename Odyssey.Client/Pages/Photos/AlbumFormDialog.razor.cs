@@ -4,6 +4,7 @@ using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Application;
+using Odyssey.Client.Authorization;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Journal;
 
@@ -38,6 +39,7 @@ public partial class AlbumFormDialog
 
     // Thumbnail + label for a photo picked in this session, whose summary the member load never saw.
     private readonly Dictionary<Guid, AttachPhotoItem> _pickedInfo = [];
+    private PhotoImageAccess _imageAccess = new(false, false);
     private bool _pickerOpen;
 
     private int PhotoCount => IsEdit ? _members.Count : _newIds.Count;
@@ -106,6 +108,7 @@ public partial class AlbumFormDialog
         {
             _loaded = true;
             _loadedFor = key;
+            _imageAccess = PhotoImageAccess.From(await Auth.GetUserAsync());
             _name = string.Empty;
             _desc = string.Empty;
             _members = [];
@@ -157,17 +160,19 @@ public partial class AlbumFormDialog
 
     private PhotoSummary? Summary(Guid id) => _summaries.GetValueOrDefault(id);
     private static string Label(PhotoSummary? s) => s is null ? "Photo" : (string.IsNullOrWhiteSpace(s.Title) ? "Photo" : s.Title!);
-    private string ThumbStyle(PhotoSummary? s) =>
-        s is null ? string.Empty : $"background: center/cover url('{Files.ContentUrl(s.FileId)}');";
+    private PhotoImageSource Thumb(PhotoSummary? s) => s is null
+        ? PhotoImageSource.None
+        : PhotoImageSources.For(s.PhotoId, s.FileId, s.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
 
     // A member picked in this session has no summary yet; its pick carries the file id and a label.
     private string LabelFor(Guid id) =>
         Summary(id) is { } s ? Label(s) : _pickedInfo.GetValueOrDefault(id)?.Name ?? "Photo";
 
-    private string ThumbStyleFor(Guid id) =>
-        Summary(id) is { } s ? ThumbStyle(s)
-        : _pickedInfo.TryGetValue(id, out var p) ? $"background: center/cover url('{Files.ContentUrl(p.FileId)}');"
-        : string.Empty;
+    private PhotoImageSource ThumbFor(Guid id) =>
+        Summary(id) is { } s ? Thumb(s)
+        : _pickedInfo.TryGetValue(id, out var p)
+            ? PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files)
+        : PhotoImageSource.None;
 
     private void OpenPicker() => _pickerOpen = true;
 

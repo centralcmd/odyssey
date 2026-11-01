@@ -217,6 +217,14 @@ public static class SystemSettingsKeys
     public const string ExchangeRateHistoryStartDate = "ExchangeRateHistoryStartDate";
     public const string ExchangeRateSyncIntervalHours = "ExchangeRateSyncIntervalHours";
 
+    // ---------------------------------------------------------------------------------------------
+    // Filesystem object storage (issue #346). How long a released file stays on disk before the
+    // worker's maintenance job removes it — the window a backup has to copy the file volumes after the
+    // database dump. It is the retention period for deleted personal data, so it takes the security claim.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string FileStorageDeletionGraceHours = "FileStorageDeletionGraceHours";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -290,6 +298,7 @@ public static class SystemSettingsKeys
         WeatherDefaultLocationId,
         ExchangeRateHistoryStartDate,
         ExchangeRateSyncIntervalHours,
+        FileStorageDeletionGraceHours,
     ];
 
     /// <summary>

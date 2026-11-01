@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 
@@ -199,22 +200,6 @@ public sealed class AdminFileExportService
         return $"{stem} ({counter}){extension}";
     }
 
-    private static string ExtensionForContentType(string? contentType) => contentType?.ToLowerInvariant() switch
-    {
-        "application/pdf" => ".pdf",
-        "text/csv" => ".csv",
-        "text/plain" => ".txt",
-        "application/json" => ".json",
-        "application/xml" or "text/xml" => ".xml",
-        "image/png" => ".png",
-        "image/jpeg" => ".jpg",
-        "image/gif" => ".gif",
-        "image/webp" => ".webp",
-        "application/zip" => ".zip",
-        "application/msword" => ".doc",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => ".docx",
-        "application/vnd.ms-excel" => ".xls",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" => ".xlsx",
-        _ => string.Empty,
-    };
+    private static string ExtensionForContentType(string? contentType) =>
+        ContentTypeExtensions.For(contentType) ?? string.Empty;
 }

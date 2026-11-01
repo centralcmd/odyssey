@@ -35,6 +35,7 @@ public sealed class PhotoMetadataExtractor : IPhotoMetadataExtractor
                 PixelWidth = width,
                 PixelHeight = height,
                 Keywords = ReadKeywords(directories),
+                Orientation = ReadOrientation(directories),
             };
         }
         catch
@@ -77,6 +78,13 @@ public sealed class PhotoMetadataExtractor : IPhotoMetadataExtractor
         // A 0,0 fix is the "no location" sentinel many cameras emit; treat it as absent.
         return location.Latitude == 0d && location.Longitude == 0d ? null : location;
     }
+
+    private static int? ReadOrientation(IReadOnlyList<MetadataExtractor.Directory> directories) =>
+        directories.OfType<ExifIfd0Directory>().FirstOrDefault() is { } ifd0
+        && ifd0.TryGetInt32(ExifDirectoryBase.TagOrientation, out var value)
+        && value is >= 1 and <= 8
+            ? value
+            : null;
 
     // Raw stored dimensions from whichever format directory reports them, then transpose for an
     // orientation tag that rotates the image 90°/270° so the reported size is display-correct (§16.4).

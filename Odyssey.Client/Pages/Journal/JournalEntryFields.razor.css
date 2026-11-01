@@ -5,10 +5,10 @@
     gap: calc(var(--space-2) - var(--space-1) / 2);
 }
 .jef-photo {
-    position: relative; aspect-ratio: 1; border-radius: var(--radius-md);
+    position: relative; aspect-ratio: 1; border-radius: var(--radius-md); overflow: hidden;
     background-color: var(--mud-palette-background-gray);
-    background-position: center; background-size: cover;
 }
+.jef-photo ::deep .odc-photoimg-ph { background-color: var(--mud-palette-background-gray); }
 .jef-photo-remove {
     position: absolute; top: var(--space-1); right: var(--space-1);
     display: grid; place-items: center; width: var(--icon-xl); height: var(--icon-xl);

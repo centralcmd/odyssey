@@ -5,7 +5,8 @@ namespace Odyssey.Core.Finance;
 
 public sealed class FileLookup(OdysseyContext context) : IFileLookup
 {
-    private static readonly HashSet<string> ImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    /// <summary>The image content types a photo may wrap, and the only ones a thumbnail is rendered from (issue #362 §6).</summary>
+    public static readonly IReadOnlySet<string> ImageContentTypes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
     {
         "image/jpeg",
         "image/jpg",

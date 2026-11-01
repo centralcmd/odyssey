@@ -14,6 +14,8 @@
     <ItemGroup>
       <!-- RecurrenceOccurrenceGenerator is internal; its date rules are unit-tested directly (issue #243). -->
       <InternalsVisibleTo Include="Odyssey.Core.Tests" />
+      <!-- The thumbnail job scenarios rerun on MariaDB (issue #362 AC 24) and drive the same internal seams. -->
+      <InternalsVisibleTo Include="Odyssey.IntegrationTests" />
     </ItemGroup>
 
     <ItemGroup>

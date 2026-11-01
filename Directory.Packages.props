@@ -13,8 +13,15 @@
     <PackageVersion Include="Ical.Net" Version="5.2.3" />
     <PackageVersion Include="Mapster" Version="10.0.13" />
     <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
-         dependency — deliberately chosen over ImageSharp (Split license) / Magick.NET / SkiaSharp. -->
+         dependency — chosen over ImageSharp (Split license) / Magick.NET / SkiaSharp for METADATA, which is all
+         the API reads. It stays the only image library the API loads. -->
     <PackageVersion Include="MetadataExtractor" Version="2.9.3" />
+    <!-- Photo thumbnails (issue #362, user decision): Magick.NET Q8 (Apache-2.0), a native ImageMagick, referenced by
+         Odyssey.Worker ONLY — it decodes untrusted uploads, so it never loads in the API, Odyssey.Core or the
+         migrations image (a source lint enforces it). Patch policy (§7.5.8): a critical or actively exploited
+         ImageMagick or libwebp CVE within 72 h, other Magick.NET security releases within 14 days. 15.x ships the
+         linux-musl-x64 native the Alpine worker image needs, but no linux-musl-arm64 one. -->
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.14" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.14" />

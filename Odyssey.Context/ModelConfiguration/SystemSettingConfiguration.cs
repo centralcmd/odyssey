@@ -136,7 +136,9 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // Exchange-rate sync (issue #349). The start date seeds EMPTY — "1 January of the current
             // UTC year" — because a compile-time seed cannot name this year.
             new SystemSetting { Key = SystemSettingsKeys.ExchangeRateHistoryStartDate, Value = SystemSettingsDefaults.ExchangeRateHistoryStartDate, UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.ExchangeRateSyncIntervalHours, Value = "24", UpdatedAt = seededAt }
+            new SystemSetting { Key = SystemSettingsKeys.ExchangeRateSyncIntervalHours, Value = "24", UpdatedAt = seededAt },
+            // Filesystem object storage (issue #346): a day's grace before a released file leaves the disk.
+            new SystemSetting { Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = "24", UpdatedAt = seededAt }
         );
     }
 }

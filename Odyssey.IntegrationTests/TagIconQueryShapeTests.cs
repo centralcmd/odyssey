@@ -66,7 +66,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var photo = await CountAsync(context => Photos(context).Get(seeded.PhotoId));
             Assert.Equal("beach_access", photo.Result!.DisplayIcon);
-            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1);
+            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands);
         }
         finally
         {
@@ -152,6 +152,9 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     private const int GetTaskCommandsBefore = 1;
     private const int GetPhotoCommandsBefore = 1;
 
+    // Issue #362: a photo detail read counts its thumbnails in one query — one per read, never one per tag.
+    private const int ThumbnailReadinessCommands = 1;
+
     private sealed record Seeded(Guid EntryId, Guid TaskId, Guid PhotoId, Guid Art, Guid Trip, Guid Zoo);
 
     private async Task<Seeded> SeedAsync()
@@ -236,7 +239,8 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
     private static PhotoService Photos(OdysseyContext context) =>
         new(context, new ContactLookup(context), new FileLookup(context), new FileReferenceGuard(context), null!,
-            new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance);
+            new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance,
+            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System));
 
     private OdysseyContext NewContext(CommandCounter? counter)
     {

@@ -2,6 +2,7 @@
 @inject IAlbumsApiClient Albums
 @inject IPhotosApiClient Photos
 @inject IFilesApiClient Files
+@inject AuthenticationStateProvider Auth
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -45,7 +46,7 @@
                                 var label = Label(s);
                                 var isCover = _cover == id;
                                 <li class="pl-memrow" @key="id">
-                                    <span class="pl-memthumb" style="@ThumbStyle(s)"></span>
+                                    <span class="pl-memthumb"><OdsPhotoImage Source="Thumb(s)" Alt="" Fill="true" /></span>
                                     <span class="pl-memname">@label</span>
                                     <span class="pl-mempos mono" aria-hidden="true">#@(idx + 1)</span>
                                     <button type="button" class="pl-memcover @(isCover ? "on" : null)"
@@ -81,7 +82,8 @@
                         @foreach (var id in _newIds)
                         {
                             var label = LabelFor(id);
-                            <li class="pl-newthumb" style="@ThumbStyleFor(id)" title="@label" @key="id">
+                            <li class="pl-newthumb" title="@label" @key="id">
+                                <OdsPhotoImage Source="ThumbFor(id)" Alt="" Fill="true" />
                                 <button type="button" class="pl-newremove" id="@NewRemoveId(id)" aria-label="@($"Remove {label}")"
                                         @onclick="() => RemoveNew(id)">
                                     <OdsMIcon Name="close" Size="14" />

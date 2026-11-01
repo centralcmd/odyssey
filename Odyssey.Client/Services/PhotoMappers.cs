@@ -51,6 +51,8 @@ public static class PhotoMappers
         PersonContactIds = [.. p.PersonContactIds],
         PersonCount = p.PersonContactIds.Count,
         AlbumCount = p.AlbumIds.Count,
+        // Copied, not rebuilt: a tile refreshed after an edit keeps its thumbnail (issue #365 B2).
+        ThumbnailsReady = p.ThumbnailsReady,
     };
 
     /// <summary>

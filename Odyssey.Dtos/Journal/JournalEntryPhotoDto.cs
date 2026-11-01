@@ -18,4 +18,10 @@ public sealed record JournalEntryPhotoDto
     public required int Position { get; set; }
 
     public required DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Both thumbnails exist (issue #362 §4.4). Forced to false for a caller without <c>photos.read</c>, by one
+    /// helper in <c>JournalEntriesController</c> on every action that returns this DTO (§7.3).
+    /// </summary>
+    public bool ThumbnailsReady { get; set; }
 }

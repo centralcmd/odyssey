@@ -65,7 +65,7 @@ public partial class CreateJournalEntryDialog
             foreach (var p in entry.Photos.OrderBy(p => p.Position))
             {
                 var meta = await Files.GetMetadataAsync(p.FileId);
-                photos.Add(new JournalDraftPhoto(p.FileId, meta?.FileName ?? "Photo"));
+                photos.Add(new JournalDraftPhoto(p.FileId, meta?.FileName ?? "Photo", p.PhotoId, p.ThumbnailsReady));
             }
 
             // A dangling or unreadable attachment id is carried as a placeholder row rather than

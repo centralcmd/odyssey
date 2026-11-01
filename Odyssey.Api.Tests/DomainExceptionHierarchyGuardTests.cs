@@ -29,6 +29,9 @@ public class DomainExceptionHierarchyGuardTests
         // shaped for a client. The one path that surfaces it — enabling a currency while the provider
         // list is down — raises ExchangeRateSupportedListUnavailableException (a 503) instead.
         "Odyssey.Core.Finance.ExchangeRateSync.Providers.ExchangeRateProviderException",
+        // A failed file-storage startup check (issue #346 §3.6): it stops the host before it listens, so it
+        // never reaches a request and has no status to map to.
+        "Odyssey.Core.FileStorage.FileStorageMisconfiguredException",
     ];
 
     [Fact]

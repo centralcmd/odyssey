@@ -8,7 +8,9 @@
   `ModelConfiguration/CurrencyConfiguration.cs`, so the initial migration carries them and nothing needs
   to seed them at runtime).
 - **Journal** — entries, tasks, their tags and attachments.
-- **Photos** — the photo library, its tags, people and albums.
+- **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
+  job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
+  derived data and are left out of the data export.
 - **Calendars** — calendars, events and recurrence patterns.
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
@@ -193,6 +195,24 @@ environment variable in any case, and would silently overwrite their value with 
 it tried. `DemoDataSeeder` sets `EmailClientBaseUrl` for the Development and Testing stacks only, and
 skips a row whose `UpdatedBy` is non-null — ownership, never a value comparison, which cannot tell
 "never touched" from "deliberately set back to the default".
+
+### File storage (issue #346)
+
+| Reference | On delete |
+|---|---|
+| `StoredObject.VolumeId` → `FileStorageVolume` | `RESTRICT` — a volume holding objects cannot be removed |
+| `FileStorageOrphanSighting.VolumeId` → `FileStorageVolume` | `CASCADE` — bookkeeping about the volume |
+| any consumer's `StoredObjectId` → `StoredObject` — today `PhotoThumbnail.StoredObjectId` (issue #362), unique | `RESTRICT`, always — a consumer releases through `IObjectStore.StageRelease` |
+| `PhotoThumbnail.PhotoId`, `PhotoThumbnailJobEntry.PhotoId` → `Photo` | `CASCADE` — derived data dies with its photo; the files are released by the service, or swept as unreferenced |
+
+`StoredObjects.State` is a concurrency token and is guarded by four CHECKs; `(VolumeId, RelativePath)` is
+unique under the database's case- and accent-insensitive collation, on purpose. `FileStorageMaintenanceLeases`
+holds exactly one row (`CK_FileStorageMaintenanceLeases_Singleton`), seeded by `HasData`.
+`FileStorageWorkerVerdicts` holds one row per worker process whose storage check is failing (a check name only,
+never a path), keyed by an id the process draws at start, so replicas never overwrite each other's verdict; a
+row not refreshed within 30 minutes is ignored and swept. Volume rows are never
+seeded: the API's startup verifier writes them. `StoredObjects.RelativePath` and the sightings carry users' file
+names, so neither is logged or exported.
 
 ### One database
 

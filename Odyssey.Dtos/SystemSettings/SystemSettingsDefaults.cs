@@ -327,4 +327,12 @@ public static class SystemSettingsDefaults
 
     /// <summary>Hours between scheduled runs once nothing is left to catch up on.</summary>
     public const int ExchangeRateSyncIntervalHours = 24;
+
+    // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
+
+    /// <summary>
+    /// A day: enough for a nightly backup to copy the file volumes after the database dump, so a restored
+    /// backup never references a file it does not contain.
+    /// </summary>
+    public const int FileStorageDeletionGraceHours = 24;
 }

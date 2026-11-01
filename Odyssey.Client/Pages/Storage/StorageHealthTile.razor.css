@@ -1,0 +1,22 @@
+/* A Storage health tile (Odyssey Design System · ui_kits/web/admin.css, `.sth-tile`). The background is the
+   page's, one step below the Storage card's surface. */
+.sth-tile {
+    border: 1px solid var(--mud-palette-divider);
+    border-radius: var(--radius-lg);
+    background: var(--mud-palette-background);
+    padding: var(--space-3) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    min-width: 0;
+}
+.sth-tile-ov {
+    margin: 0;
+    font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans);
+    letter-spacing: var(--tracking-caps);
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+.sth-tile-ov ::deep .mono { text-transform: none; letter-spacing: 0; color: var(--mud-palette-text-primary); }
+.sth-rows { display: flex; flex-direction: column; gap: var(--space-2); }
+.sth-rows ::deep .sth-space { display: flex; flex-direction: column; gap: var(--space-2); }

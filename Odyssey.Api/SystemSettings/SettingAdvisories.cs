@@ -22,6 +22,26 @@ namespace Odyssey.Api.SystemSettings;
 internal static class SettingAdvisories
 {
     /// <summary>
+    /// The file-storage deletion grace (issue #346 §4.3), outside the 24–72 h band either way. Lowered, a
+    /// backup can outrun it; raised, deleted personal data stays on disk for longer.
+    /// </summary>
+    public static string? DeletionGraceOutsideBackupWindow(SystemSettingsDto dto, AdvisoryContext context)
+    {
+        var hours = dto.FileStorageDeletionGraceHours;
+        if (hours < SystemSettingsDefaults.FileStorageDeletionGraceHours)
+        {
+            return "A file deleted in Odyssey is removed from disk after this many hours. Backups must finish copying "
+                + "file volumes within this window after the database dump, or a restored backup may reference files "
+                + "it does not contain.";
+        }
+
+        return hours > 72
+            ? $"Deleted files, including personal data, stay on disk for up to {hours.ToString(CultureInfo.InvariantCulture)} "
+              + "hours before removal. Features declared Immediate (personal data) are not delayed by this setting."
+            : null;
+    }
+
+    /// <summary>
     /// The exchange-rate interval below six hours (issue #349 §8): Norges Bank publishes once per
     /// business day, so a shorter interval only adds requests that find nothing new.
     /// </summary>

@@ -1,0 +1,79 @@
+@*
+    OdsPhotoImage — the one way a library photo is drawn below viewer size (Odyssey Design System ·
+    components/PhotoImage; issues #362 / #365). A non-interactive <img> with a three-stage chain:
+    the thumbnail, then the original, then the placeholder — each tried once per Source value,
+    silently. A new Source resets the chain. When the placeholder follows a shown <img>, the <img>
+    stays with `img-failed` (hidden) and the placeholder is its next sibling, so host rules keyed on
+    that pair (the journal gallery's fallback) keep working.
+
+    Never a `crossorigin` attribute: on the split-port dev stack it drops the auth cookie and every
+    thumbnail would fail, hidden behind the fallback. Never for the viewer, "Open original", the
+    lightbox or the edit banner — those always show the original.
+*@
+
+@if (CurrentSrc is { } src)
+{
+    <img class="@ImgClass" src="@src" alt="@Alt" loading="lazy" decoding="async" @onerror="OnError" />
+}
+@if (_stage == Stage.Placeholder)
+{
+    <span class="@PlaceholderCss" aria-hidden="true">@Placeholder</span>
+}
+
+@code {
+    private enum Stage { Thumb, Original, Placeholder }
+
+    private PhotoImageSource? _source;
+    private Stage _stage;
+
+    /// <summary>The candidate URLs, from <see cref="PhotoImageSources.For"/>. A new value resets the chain.</summary>
+    [Parameter, EditorRequired] public PhotoImageSource Source { get; set; } = PhotoImageSource.None;
+
+    /// <summary>Required: <c>""</c> when the enclosing control or caption already names the photo.</summary>
+    [Parameter, EditorRequired] public string Alt { get; set; } = default!;
+
+    /// <summary>Absolutely fill an aspect-ratio host box.</summary>
+    [Parameter] public bool Fill { get; set; }
+
+    /// <summary>Extra class on the <c>&lt;img&gt;</c> (a host's own image class).</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>The placeholder's content; omit for a plain surface box. Always <c>aria-hidden</c>.</summary>
+    [Parameter] public RenderFragment? Placeholder { get; set; }
+
+    /// <summary>Extra class on the placeholder wrapper.</summary>
+    [Parameter] public string? PlaceholderClass { get; set; }
+
+    protected override void OnParametersSet()
+    {
+        // Records compare by value, so a re-render with the same URLs keeps the stage it reached.
+        if (Source != _source)
+        {
+            _source = Source;
+            _stage = Source.Thumb is not null ? Stage.Thumb
+                : Source.Original is not null ? Stage.Original
+                : Stage.Placeholder;
+        }
+    }
+
+    // At the placeholder stage the last source tried stays on the hidden <img>, so nothing new is requested:
+    // [thumb, original], then the placeholder, never a third request.
+    private string? CurrentSrc => _stage switch
+    {
+        Stage.Thumb => Source.Thumb,
+        Stage.Original => Source.Original,
+        _ => Source.Original ?? Source.Thumb,
+    };
+
+    private string ImgClass =>
+        "odc-photoimg" + (Fill ? " fill" : "") + (string.IsNullOrEmpty(Class) ? "" : " " + Class)
+        + (_stage == Stage.Placeholder ? " img-failed" : "");
+
+    private string PlaceholderCss =>
+        "odc-photoimg-ph" + (Fill ? " fill" : "") + (string.IsNullOrEmpty(PlaceholderClass) ? "" : " " + PlaceholderClass);
+
+    private void OnError()
+    {
+        _stage = _stage == Stage.Thumb && Source.Original is not null ? Stage.Original : Stage.Placeholder;
+    }
+}

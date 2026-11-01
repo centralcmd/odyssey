@@ -43,8 +43,11 @@ That's it. The script:
    user-secrets `Aspire:MariaDb:*` (Aspire) — using the first that authenticates. So it works
    against whichever stack is up without being told which.
 2. Drops and recreates the database (as the app user; no root needed).
-3. Runs `Odyssey.MigrationService` (migrate + seed).
-4. Prints a verification summary.
+3. Empties every file volume (issue #346), keeping the roots: each Aspire root under `.aspire/files/`, and
+   each of this checkout's Compose volumes named `<project>_files_*` (through a throwaway container). Markers go too, so the API
+   initialises each volume afresh on its next start.
+4. Runs `Odyssey.MigrationService` (migrate + seed).
+5. Prints a verification summary.
 
 Verified output (against the Compose stack):
 
@@ -62,8 +65,10 @@ Verified output (against the Compose stack):
 ==> Reset complete. (Running API/client need no restart — data is read live from the DB.)
 ```
 
-The running API and client need **no restart** — finance data is read live from the DB, so a
-reset takes effect immediately. Re-running the script is safe and produces identical counts.
+Restart the **api and worker** afterwards (`docker compose restart api worker`, or restart the Aspire
+stack). Data is read live from the DB, but the file volumes were emptied under them: their startup
+verifier is what re-initialises an empty volume, and a running API keeps writing to a volume whose
+marker is gone. The client needs no restart. Re-running the script is safe and produces identical counts.
 
 ### Overrides
 
@@ -81,7 +86,11 @@ Set any of these before invoking for a non-standard setup:
 If you want to throw away the database **volume** entirely (not just the schema) — e.g. to also
 reset DataProtection state — use Compose's own teardown instead of this driver:
 `docker compose down -v` then `docker compose up -d` (the migration service reseeds on the fresh
-volume). This is heavier (rebuilds/restarts containers); the driver above is the fast path.
+volume). `-v` also removes the `odyssey_files_*` file volumes along with `mariadb_data`, which is
+what you want here: removing the database alone and keeping a file volume that held files makes the
+API refuse to start (`UnknownMarker`). This is heavier (rebuilds/restarts containers); the driver
+above is the fast path. Never run it against a stack a teammate is using — see
+`docs/running-locally-alongside-a-live-stack.md`.
 
 ## Gotchas
 
@@ -106,3 +115,4 @@ volume). This is heavier (rebuilds/restarts containers); the driver above is the
 | `could not authenticate to MariaDB at 127.0.0.1:3307` | The stack isn't running, or it's on a different port. Start Compose/Aspire, or set `DB_HOST`/`DB_PORT`/`DB_USER`/`DB_PASSWORD`. |
 | `Access denied for user 'root'@'172.x.x.x'` | You overrode to root — don't. Use the app user (the default). |
 | Reset succeeds but the app still shows old data | Hard-refresh the browser; the Blazor client caches in-memory view state, not the data itself. |
+| The API exits, or the worker logs (and Storage health shows) `File storage startup check UnknownMarker / UnrecognisedContent failed` | A file volume still holds files from before the reset. Re-run the driver (it empties every volume), or empty `.aspire/files/<name>/` by hand, keeping the folder. |

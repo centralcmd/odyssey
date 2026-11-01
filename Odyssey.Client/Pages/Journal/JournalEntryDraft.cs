@@ -49,8 +49,12 @@ public sealed class JournalEntryDraft
     };
 }
 
-/// <summary>A photo on a draft entry: its stored file (the server finds or creates the library photo) and a label.</summary>
-public sealed record JournalDraftPhoto(Guid FileId, string Name);
+/// <summary>
+/// A photo on a draft entry: its stored file (the server finds or creates the library photo), a label, and — when the
+/// library photo is known — its id and thumbnail readiness, so the form strip can show the Small thumbnail (issue
+/// #365 B2). A stale true costs one 404 and falls back to the original.
+/// </summary>
+public sealed record JournalDraftPhoto(Guid FileId, string Name, Guid? PhotoId = null, bool ThumbnailsReady = false);
 
 /// <summary>Builds the journal write DTOs from a draft.</summary>
 public static class JournalWrite

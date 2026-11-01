@@ -29,6 +29,9 @@ public abstract class DomainException : Exception
     /// </summary>
     public IReadOnlyDictionary<string, string[]>? Errors { get; protected init; }
 
+    /// <summary>When set, the response carries <c>Retry-After</c> with this many seconds.</summary>
+    public virtual int? RetryAfterSeconds => null;
+
     protected DomainException(string message) : base(message)
     {
     }

@@ -35,6 +35,12 @@ public interface IPhotosApiClient
     Task<ApiResult<PhotoLibraryStats>> GetStatsAsync(CancellationToken ct = default);
 
     /// <summary>
+    /// The absolute URL of a photo's WebP thumbnail (issue #362), for an <c>&lt;img src&gt;</c> only — never fetched
+    /// through <see cref="HttpClient"/>. No cache-busting parameter: the endpoint's strong ETag revalidates it.
+    /// </summary>
+    string ThumbnailUrl(Guid photoId, ThumbnailSize size);
+
+    /// <summary>
     /// Promotes an already-uploaded file into a library photo. A <c>409</c> means the file is already
     /// a photo — callers treat that as a benign no-op, so the status is left on the result rather than
     /// being folded into a generic failure. Returns the created photo (the endpoint answers
@@ -84,6 +90,9 @@ public sealed class PhotosApiClient(IOdysseyApi api) : IPhotosApiClient
 
     public async Task<ExistingPhoto?> GetAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingPhoto>($"{Base}/{id}", ct)).Value;
+
+    public string ThumbnailUrl(Guid photoId, ThumbnailSize size) =>
+        new Uri(api.BaseAddress!, $"{Base}/{photoId}/thumbnail?size={size}").ToString();
 
     public Task<ApiResult<PhotoLibraryStats>> GetStatsAsync(CancellationToken ct = default) =>
         api.GetAsync<PhotoLibraryStats>($"{Base}/stats", ct);

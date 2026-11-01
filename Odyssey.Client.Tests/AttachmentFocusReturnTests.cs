@@ -34,6 +34,8 @@ public class AttachmentFocusReturnTests
         var files = new Mock<IFilesApiClient>();
         files.Setup(f => f.ContentUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/files/{id}/content");
         ctx.Services.AddSingleton(files.Object);
+        ctx.Services.AddSingleton(Mock.Of<IPhotosApiClient>());
+        ctx.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(new AnonymousState());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         ctx.Render<MudPopoverProvider>();
         return ctx;
@@ -140,5 +142,11 @@ public class AttachmentFocusReturnTests
             Assert.Equal($"#tk-row-{task.JournalTaskId} .jec-filecount", chain[1]);
             Assert.Equal($"#tk-row-{task.JournalTaskId} .tk-list-top .je-cardmenu button", chain[2]);
         });
+    }
+
+    private sealed class AnonymousState : Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider
+    {
+        public override Task<Microsoft.AspNetCore.Components.Authorization.AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new Microsoft.AspNetCore.Components.Authorization.AuthenticationState(new System.Security.Claims.ClaimsPrincipal()));
     }
 }

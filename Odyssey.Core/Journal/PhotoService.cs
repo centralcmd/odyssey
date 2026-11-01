@@ -2,6 +2,7 @@ using Odyssey.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
@@ -24,6 +25,7 @@ public class PhotoService
     private readonly PhotoMetadataService metadataService;
     private readonly IJournalLimitsLookup journalLimits;
     private readonly ILogger<PhotoService> logger;
+    private readonly PhotoThumbnailService thumbnails;
     private readonly TimeProvider timeProvider;
 
     public PhotoService(
@@ -34,6 +36,7 @@ public class PhotoService
         PhotoMetadataService metadataService,
         IJournalLimitsLookup journalLimits,
         ILogger<PhotoService> logger,
+        PhotoThumbnailService thumbnails,
         TimeProvider? timeProvider = null)
     {
         this.context = context;
@@ -43,6 +46,7 @@ public class PhotoService
         this.metadataService = metadataService;
         this.journalLimits = journalLimits;
         this.logger = logger;
+        this.thumbnails = thumbnails;
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -131,6 +135,7 @@ public class PhotoService
                     PersonContactIds = p.People.Select(pp => pp.ContactId).ToList(),
                     PersonCount = p.People.Count,
                     AlbumCount = p.Albums.Count,
+                    ThumbnailsReady = context.PhotoThumbnails.Count(t => t.PhotoId == p.PhotoId) == 2,
                 },
                 Tags = p.Tags
                     .Select(t => new TagIconCandidate(
@@ -160,6 +165,7 @@ public class PhotoService
         // single-photo read path so the Overview can't show a phantom person bucket.
         var existingPersons = await contacts.ExistingPersonIdsAsync(
             [.. personCounts.Select(c => c.Key)], cancellationToken);
+        var thumbnailStats = await thumbnails.GetStatsAsync(cancellationToken);
 
         return new PhotoLibraryStats
         {
@@ -171,6 +177,12 @@ public class PhotoService
                 .Select(g => new PhotoCountByKey { Key = g.Key, Count = g.Count() })
                 .ToListAsync(cancellationToken),
             PersonCounts = [.. personCounts.Where(c => existingPersons.Contains(c.Key))],
+            ThumbnailsPending = thumbnailStats.Pending,
+            ThumbnailsFailed = thumbnailStats.Failed,
+            ThumbnailsUnsupported = thumbnailStats.Unsupported,
+            // The controller nulls it for a caller without system-settings.read (§3.6).
+            ThumbnailWorkerState = thumbnailStats.WorkerState,
+            ThumbnailWorkerResumesAtUtc = thumbnailStats.ResumesAtUtc,
         };
     }
 
@@ -228,6 +240,8 @@ public class PhotoService
         }
 
         context.Photos.Add(photo);
+        // The thumbnail job, in the same save as the photo (issue #362 §3.3 step 1). The worker sees it on its next tick.
+        await thumbnails.StageEnqueueAsync(photo, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
         await AddToAlbumsAsync(photo.PhotoId, links.AlbumIds, now, cancellationToken);
@@ -309,7 +323,8 @@ public class PhotoService
         }
 
         // Owned tag/person/album-item rows cascade; an album whose cover was this photo nulls its
-        // CoverPhotoId (FK SET NULL).
+        // CoverPhotoId (FK SET NULL). Both thumbnails are released immediately in the same save (issue #362 §4.1).
+        await thumbnails.StageDeleteAsync(photo.PhotoId, cancellationToken);
         context.Photos.Remove(photo);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -726,6 +741,7 @@ public class PhotoService
             UpdatedAt = photo.UpdatedAt,
             PersonContactIds = photo.People.Select(p => p.ContactId).ToList(),
             AlbumIds = photo.Albums.Select(a => a.PhotoAlbumId).ToList(),
+            ThumbnailsReady = (await thumbnails.ReadyAsync([photo.PhotoId], cancellationToken)).Count == 1,
         };
 
         var tagIds = photo.Tags.Select(t => t.PhotoTagId).ToList();

@@ -291,6 +291,10 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
         services.AddSingleton<IJournalLimitsLookup>(new StubJournalLimitsLookup());
         services.AddSingleton<IPhotoMetadataExtractor>(new FixedMetadataExtractor(stubMetadata));
         services.AddScoped<PhotoMetadataService>();
+        // No photo here gets a thumbnail (issue #362), so the object store is never reached: a release is staged
+        // only for an existing thumbnail row.
+        services.AddScoped(sp => new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(
+            sp.GetRequiredService<OdysseyContext>(), null!, TimeProvider.System));
         services.AddScoped<PhotoService>();
         services.AddScoped<PhotoAlbumService>();
 

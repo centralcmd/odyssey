@@ -1,0 +1,14 @@
+<!--
+  The thumbnail decoder's ImageMagick policy (issue #362 §6). Coders are an allow-list: read for the four formats a
+  photo may be, write for WebP alone, everything else denied. Delegates (external programs) and indirect "@file"
+  reads are denied. Verified at startup by MagickDecoderSelfTest, which the job fails closed on.
+  Resource limits are set in code (MagickRuntime), not here, so tests and the spike share one source.
+-->
+<policymap>
+  <policy domain="delegate" rights="none" pattern="*" />
+  <policy domain="coder" rights="none" pattern="*" />
+  <policy domain="coder" rights="read" pattern="{JPEG,PNG,GIF,WEBP}" />
+  <policy domain="coder" rights="read|write" pattern="WEBP" />
+  <policy domain="path" rights="none" pattern="@*" />
+  <policy domain="system" name="memory-map" value="anonymous" />
+</policymap>

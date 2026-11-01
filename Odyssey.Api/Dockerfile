@@ -67,6 +67,11 @@ ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 # writability at startup rather than continuing silently.
 RUN mkdir -p /var/odyssey/dataprotection-keys && chown -R app:app /var/odyssey/dataprotection-keys
 
+# The file volumes' mount point (issue #346 §7.7), created here for the same reason: a fresh named volume is
+# initialised from this path's ownership, and the API refuses to start (NotWritable) on a root it cannot write.
+# 0750 — the store creates its own folders 0750 and files 0640, so nothing on a volume is readable by others.
+RUN mkdir -p /var/odyssey/files/primary && chown -R app:app /var/odyssey/files && chmod -R 0750 /var/odyssey/files
+
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 

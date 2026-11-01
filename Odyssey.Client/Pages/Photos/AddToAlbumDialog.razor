@@ -1,5 +1,7 @@
 @inject IAlbumsApiClient Albums
 @inject IFilesApiClient Files
+@inject IPhotosApiClient Photos
+@inject AuthenticationStateProvider Auth
 @inject ISnackbar Snackbar
 
 @*
@@ -19,7 +21,7 @@
                     var on = _checked.Contains(a.PhotoAlbumId);
                     <button type="button" class="pl-albrow @(on ? "on" : null)"
                             aria-pressed="@(on ? "true" : "false")" @onclick="() => Toggle(a.PhotoAlbumId)">
-                        <span class="pl-albrow-cover" style="@CoverStyle(a)"></span>
+                        <span class="pl-albrow-cover"><OdsPhotoImage Source="Cover(a)" Alt="" Fill="true" /></span>
                         <span class="pl-albrow-name">@a.Name</span>
                         <span class="pl-albrow-check @(on ? "on" : null)">
                             @if (on)
@@ -72,6 +74,7 @@
     private string _newName = string.Empty;
     private bool _busy;
     private bool _loaded;
+    private PhotoImageAccess _imageAccess = new(false, false);
 
     private RenderFragment TitleFragment => builder => builder.AddContent(0, "Add to album");
     private RenderFragment SubtitleFragment => builder =>
@@ -82,6 +85,7 @@
         if (Open && !_loaded)
         {
             _loaded = true;
+            _imageAccess = PhotoImageAccess.From(await Auth.GetUserAsync());
             _checked.Clear();
             _creating = false;
             _albums = (await Albums.ListAllAsync()).ItemsOrToast(Snackbar, "albums");
@@ -92,10 +96,8 @@
         }
     }
 
-    private string CoverStyle(PhotoAlbumSummary a) =>
-        a.CoverFileId is { } f
-            ? $"background: center/cover url('{Files.ContentUrl(f)}');"
-            : "background: var(--mud-palette-surface);";
+    private PhotoImageSource Cover(PhotoAlbumSummary a) =>
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
 
     private void Toggle(Guid id)
     {

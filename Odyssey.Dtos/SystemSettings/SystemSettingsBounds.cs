@@ -281,4 +281,12 @@ public static class SystemSettingsBounds
     public const int ExchangeRateSyncIntervalHoursMin = 1;
 
     public const int ExchangeRateSyncIntervalHoursMax = 168;
+
+    /// <summary>
+    /// One hour to one week (issue #346 §4.3). Below 24 h the advisory warns that a backup may outrun it;
+    /// above 72 h, that deleted personal data stays on disk that long.
+    /// </summary>
+    public const int FileStorageDeletionGraceHoursMin = 1;
+
+    public const int FileStorageDeletionGraceHoursMax = 168;
 }

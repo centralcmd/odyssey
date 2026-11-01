@@ -211,4 +211,9 @@ public static class PermissionClaims
     public const string SystemSettingsRead = "system-settings.read";
     public const string SystemSettingsUpdate = "system-settings.update";
     public const string SystemSettingsSecurityUpdate = "system-settings.security.update";
+
+    // Filesystem object storage (issue #346). Admin-only: volume state, usage and bindings — operational
+    // telemetry, not a setting, so it is its own claim rather than system-settings.read, which keeps a
+    // revocation lever. It reads counts and byte totals only; no path, file name or object id.
+    public const string FileStorageRead = "file-storage.read";
 }

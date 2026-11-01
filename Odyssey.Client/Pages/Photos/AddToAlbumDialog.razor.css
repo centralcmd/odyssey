@@ -8,7 +8,7 @@
 
 .pl-albrow:hover { background: rgba(199,208,224,0.06); }
 
-.pl-albrow-cover { width: 40px; height: 40px; border-radius: 6px; flex: none; }
+.pl-albrow-cover { position: relative; width: 40px; height: 40px; border-radius: 6px; flex: none; overflow: hidden; background: var(--mud-palette-surface); }
 
 .pl-albrow-name { flex: 1; text-align: left; font: 500 14px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 

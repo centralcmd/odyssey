@@ -2,10 +2,13 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Configuration;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
 using Odyssey.Worker.Hosting;
+using Odyssey.Worker.Thumbnails;
 
 namespace Odyssey.Worker;
 
@@ -34,6 +37,17 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
+        // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
+        // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes
+        // before its first pass, so a failing verdict holds it alone.
+        services.AddFileStorage();
+        services.AddPeriodicJob<FileStorageMaintenanceJob>();
+        // Photo thumbnails (issue #362): the job and the Magick.NET decoder run here and nowhere else. A failing
+        // self-test or volume holds this job alone (it reports PolicyFailed or StorageUnavailable); the others run on.
+        services.AddPhotoThumbnails();
+        services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
+        services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
+        services.AddPeriodicJob<PhotoThumbnailJob>();
 
         return builder;
     }

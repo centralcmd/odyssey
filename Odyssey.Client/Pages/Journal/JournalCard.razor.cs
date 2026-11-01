@@ -1,3 +1,4 @@
+using Odyssey.ApiClient.Resources;
 using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
@@ -65,6 +66,7 @@ public partial class JournalCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadFiles;
+    private PhotoImageAccess _imageAccess = new(false, false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
     private bool _canReadJournalTags;
@@ -160,6 +162,8 @@ public partial class JournalCard
         _canUpdate = user.HasPermission(PermissionClaims.JournalUpdate);
         _canDelete = user.HasPermission(PermissionClaims.JournalDelete);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
+        _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
         // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
         // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
@@ -447,12 +451,22 @@ public partial class JournalCard
     }
 
     private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        [.. e.Photos.OrderBy(p => p.Position).Select(p =>
+        GalleryPhotos(e.Photos, id => _canReadFiles ? _fileMeta.GetValueOrDefault(id) : null, _imageAccess, Photos, Files);
+
+    /// <summary>
+    /// The gallery's sources (issue #365 B5): the original still needs resolved metadata, as before; the Small
+    /// thumbnail does not, so a <c>photos.read</c>-only caller with a ready thumbnail sees it rather than "no access".
+    /// "No access" is only the case with neither source. Static so the rule is tested without rendering the page.
+    /// </summary>
+    internal static IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(
+        IEnumerable<JournalEntryPhotoDto> photos, Func<Guid, FileMetadataResponse?> metadata, PhotoImageAccess access,
+        IPhotosApiClient photoClient, IFilesApiClient fileClient) =>
+        [.. photos.OrderBy(p => p.Position).Select(p =>
         {
-            var meta = _canReadFiles ? _fileMeta.GetValueOrDefault(p.FileId) : null;
-            var name = meta?.FileName ?? "Photo";
-            var src = meta is not null ? Files.ContentUrl(p.FileId) : null;
-            return new JournalPhotoGallery.Photo(p.FileId.ToString(), name, src, meta is null);
+            var meta = metadata(p.FileId);
+            var image = PhotoImageSources.For(
+                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient, fileClient);
+            return new JournalPhotoGallery.Photo(p.FileId.ToString(), meta?.FileName ?? "Photo", image, Unavailable: image.IsEmpty);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>

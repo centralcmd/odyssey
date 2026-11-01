@@ -54,6 +54,11 @@ RUN --mount=type=secret,id=proxy_ca \
 # initialises the volume from this path, and a root-owned one would leave the API unable to write keys.
 RUN mkdir -p /var/odyssey/dataprotection-keys && chown -R app:app /var/odyssey/dataprotection-keys
 
+# The file volumes' mount point (issue #346 A3.2, #362 Amendment v7.1 §7). The worker mounts every file volume
+# read-write, and if it is the first container to mount a fresh one, Docker initialises the volume from this path —
+# so it is owned by `app` here too, or the API could not write the volume it is the one to initialise.
+RUN mkdir -p /var/odyssey/files/primary && chown -R app:app /var/odyssey/files && chmod -R 0750 /var/odyssey/files
+
 # Run unprivileged: the aspnet base image ships a non-root "app" user (UID 1654). Set it
 # explicitly so the worker doesn't run as root inside the container. The API's keys are written by the
 # same UID, so the read-only mount is readable without any permission change.

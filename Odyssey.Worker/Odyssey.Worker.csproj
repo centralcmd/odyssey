@@ -9,10 +9,18 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <!-- The thumbnail decoder (issue #362): this project is the only one that may reference it. -->
+    <PackageReference Include="Magick.NET-Q8-AnyCPU" />
   </ItemGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="Odyssey.Worker.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The coder allow-list and the self-test's positive controls (issue #362 §6). -->
+    <EmbeddedResource Include="Thumbnails\policy.xml" LogicalName="Odyssey.Worker.Thumbnails.policy.xml" />
+    <EmbeddedResource Include="Thumbnails\SelfTest\*" LogicalName="Odyssey.Worker.Thumbnails.SelfTest.%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

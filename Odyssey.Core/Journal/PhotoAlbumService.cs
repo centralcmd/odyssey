@@ -72,6 +72,8 @@ public class PhotoAlbumService
                     .Where(p => p.PhotoId == a.CoverPhotoId)
                     .Select(p => (Guid?)p.FileId)
                     .FirstOrDefault(),
+                CoverThumbnailsReady = a.CoverPhotoId != null
+                    && context.PhotoThumbnails.Count(t => t.PhotoId == a.CoverPhotoId) == 2,
                 Archived = a.Archived,
                 CreatedByUserId = a.CreatedByUserId,
                 PhotoCount = a.Items.Count,
@@ -83,7 +85,7 @@ public class PhotoAlbumService
     public async Task<ExistingPhotoAlbum?> Get(Guid id, CancellationToken cancellationToken = default)
     {
         var album = await LoadWithItems(id, cancellationToken);
-        return album is null ? null : ToDto(album);
+        return album is null ? null : await ToDtoAsync(album, cancellationToken);
     }
 
     public async Task<ExistingPhotoAlbum> Create(NewPhotoAlbum request, string userId, CancellationToken cancellationToken = default)
@@ -124,7 +126,7 @@ public class PhotoAlbumService
         await context.SaveChangesAsync(cancellationToken);
 
         var created = await LoadWithItems(album.PhotoAlbumId, cancellationToken);
-        return ToDto(created!);
+        return await ToDtoAsync(created!, cancellationToken);
     }
 
     public async Task<ExistingPhotoAlbum?> Update(Guid id, UpdatePhotoAlbum request, string userId, CancellationToken cancellationToken = default)
@@ -164,7 +166,7 @@ public class PhotoAlbumService
         await context.SaveChangesAsync(cancellationToken);
 
         var reloaded = await LoadWithItems(id, cancellationToken);
-        return ToDto(reloaded!);
+        return await ToDtoAsync(reloaded!, cancellationToken);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -287,6 +289,15 @@ public class PhotoAlbumService
 
     private static IQueryable<PhotoAlbum> WithItems(IQueryable<PhotoAlbum> albums) =>
         albums.Include(a => a.Items);
+
+    /// <summary>The DTO, with the cover's thumbnail readiness (issue #362 §4.4).</summary>
+    private async Task<ExistingPhotoAlbum> ToDtoAsync(PhotoAlbum album, CancellationToken cancellationToken)
+    {
+        var dto = ToDto(album);
+        dto.CoverThumbnailsReady = album.CoverPhotoId is { } cover
+            && await context.PhotoThumbnails.CountAsync(t => t.PhotoId == cover, cancellationToken) == 2;
+        return dto;
+    }
 
     private static ExistingPhotoAlbum ToDto(PhotoAlbum album) => new()
     {

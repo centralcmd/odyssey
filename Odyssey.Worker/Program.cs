@@ -21,4 +21,7 @@ if (string.IsNullOrWhiteSpace(builder.Configuration["DataProtection:KeysPath"]))
         + "secret can be decrypted. Mount the API's keys volume read-only and set the same path.");
 }
 
+// File storage (issue #346 A3.2) is verified by its maintenance job, not here: a failing verdict stops that job
+// alone and is reported on the Storage health panel, while weather and exchange-rate sync keep running.
+
 host.Run();
