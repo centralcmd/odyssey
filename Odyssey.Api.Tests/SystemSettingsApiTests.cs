@@ -384,6 +384,77 @@ public class SystemSettingsApiTests
         Assert.Equal(ActorUserId, dto.UpdatedBy);
     }
 
+    // ── Per-row provenance (the "Last changed by" stamp) ──────────────────────────
+
+    [Fact]
+    public async Task Get_SeededRows_CarryNoProvenance()
+    {
+        // A migration-seeded row has no UpdatedBy, so the page reads it as "Never changed".
+        await using var factory = new ApiFactory(ReadOnly);
+        using (var scope = factory.Services.CreateScope())
+        {
+            await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Database.EnsureCreatedAsync();
+        }
+
+        using var client = factory.CreateClient();
+        var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
+
+        Assert.NotNull(dto);
+        Assert.Empty(dto!.Provenance);
+    }
+
+    [Fact]
+    public async Task Put_StampsOnlyTheRowsItWrote_KeyedByUpdateFieldName()
+    {
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+
+        response.EnsureSuccessStatusCode();
+        var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();
+        var stamp = Assert.Single(dto!.Provenance);
+        Assert.Equal(nameof(SystemSettingsUpdate.ContractEndingWindowDays), stamp.Key);
+        Assert.Equal(dto.UpdatedAt, stamp.Value.UpdatedAt);
+        Assert.Equal(dto.UpdatedByDisplayName, stamp.Value.UpdatedByDisplayName);
+        Assert.False(string.IsNullOrWhiteSpace(stamp.Value.UpdatedByDisplayName));
+    }
+
+    [Fact]
+    public async Task Provenance_IsPerRow_NotTheMostRecentWriteEverywhere()
+    {
+        await using var factory = new ApiFactory(permissions: []);
+        using var scope = factory.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<SystemSettingsService>();
+        var admin = PrincipalWith(FullAccess);
+
+        await service.UpdateAsync(admin, "first-admin", new SystemSettingsUpdate { ContractEndingWindowDays = 60 });
+        var dto = await service.UpdateAsync(admin, "second-admin", new SystemSettingsUpdate { ContractChargeWindowDays = 30 });
+
+        Assert.Equal(2, dto.Provenance.Count);
+        Assert.True(dto.Provenance[nameof(SystemSettingsUpdate.ContractEndingWindowDays)].UpdatedAt
+            <= dto.Provenance[nameof(SystemSettingsUpdate.ContractChargeWindowDays)].UpdatedAt);
+        Assert.False(dto.Provenance.ContainsKey(nameof(SystemSettingsUpdate.ContractMaxSummaryContracts)));
+    }
+
+    [Fact]
+    public async Task Provenance_CarriesNoRawUserId()
+    {
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { ContractEndingWindowDays = 61 });
+
+        response.EnsureSuccessStatusCode();
+        using var json = System.Text.Json.JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var entry = json.RootElement.GetProperty("provenance")
+            .GetProperty(nameof(SystemSettingsUpdate.ContractEndingWindowDays));
+        Assert.Equal(
+            ["updatedAt", "updatedByDisplayName"],
+            entry.EnumerateObject().Select(property => property.Name).Order(StringComparer.Ordinal).ToArray());
+        Assert.DoesNotContain(ActorUserId, entry.GetRawText(), StringComparison.Ordinal);
+    }
+
     private static ClaimsPrincipal PrincipalWith(params string[] permissions)
     {
         var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, ActorUserId) };
