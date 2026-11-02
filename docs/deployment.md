@@ -1105,9 +1105,12 @@ glyphs and sprite directly from the tile host. That host learns:
 - the viewer's IP address and user agent;
 - the deployment's hostname, from the CORS `Origin` header (`Referrer-Policy: no-referrer` hides the
   page path only, not the hostname);
-- the tile coordinates around the location — at street zoom enough to identify a home. The client caps
-  the zoom to bound that precision, but it is still much finer than the ~100 m position weather sends to
-  MET Norway, and it comes from the browser, not the server.
+- the tile coordinates around the location — at street zoom enough to identify a home. That precision is
+  bounded by the tile **source's** own maximum zoom, not by how far the user zooms: the browser requests
+  nothing finer than that maximum and enlarges the last level locally. OpenFreeMap's is 14, so its
+  host learns the same whether the map shows zoom 14 or 24 (the client's ceiling, MapLibre's own). A
+  self-configured source with finer tiles discloses correspondingly more. Either way it is much finer
+  than the ~100 m position weather sends to MET Norway, and it comes from the browser, not the server.
 
 It does **not** learn the location's name, address, description or id, the Odyssey path, or any cookie
 (tile requests are sent with `credentials: 'omit'`). The map loads without an in-app notice — a product

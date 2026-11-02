@@ -162,6 +162,8 @@ public class LocationMapTests : IAsyncLifetime
         Assert.Equal(Dark, Read<string>(options, "styleUrl"));
         Assert.Equal(LocationMap.StartZoom, Read<int>(options, "zoom"));
         Assert.Equal(LocationMap.MaxZoom, Read<int>(options, "maxZoom"));
+        // MapLibre documents maxZoom as 0–24; a value past its range is not a supported configuration.
+        Assert.Equal(24, LocationMap.MaxZoom);
         Assert.Equal("Cabin", Read<string>(options, "name"));
 
         var describedBy = Read<string>(options, "describedBy").Split(' ');

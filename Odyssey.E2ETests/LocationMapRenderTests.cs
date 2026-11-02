@@ -168,7 +168,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     // ── AC 1, 22 ─────────────────────────────────────────────────────────────────────────────────
 
     [SkippableFact]
-    public async Task The_controls_move_the_map_and_zoom_in_stops_at_16()
+    public async Task The_controls_move_the_map_and_zoom_in_stops_at_24()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         var page = await OpenMapAsync();
@@ -184,9 +184,16 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         var centred = await pin.BoundingBoxAsync();
         Assert.InRange(centred!.Y, before.Y - 2, before.Y + 2);
 
+        // From the start zoom of 14 to MapLibre's ceiling of 24: ten steps, and only the tenth disables it.
+        // Each step is awaited: a step is rounded from the CURRENT zoom, so a click mid-animation lands short.
         var zoomIn = Control(page, "Zoom in");
-        await zoomIn.ClickAsync();
-        await zoomIn.ClickAsync();
+        var host = page.Locator(".loc-map-host");
+        for (var z = 15; z <= 24; z++)
+        {
+            await Expect(zoomIn).Not.ToHaveAttributeAsync("aria-disabled", "true");
+            await zoomIn.ClickAsync();
+            await Expect(host).ToHaveAttributeAsync("data-zoom", $"{z}.00");
+        }
         await Expect(zoomIn).ToHaveAttributeAsync("aria-disabled", "true");
         // aria-disabled, not disabled: it keeps focus, and activating it does nothing. (Playwright will not
         // click an aria-disabled control, which is why this presses Enter on it instead.)
@@ -324,7 +331,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         await page.CloseAsync();
     }
 
-    // ── AC 1: every input moves or zooms, from zoom 14, never past 16 ───────────────────────────
+    // ── AC 1: every input moves or zooms, from zoom 14, never past 24 ───────────────────────────
 
     [SkippableFact]
     public async Task Every_pan_and_zoom_input_moves_the_map()
@@ -390,7 +397,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
         await page.WaitForTimeoutAsync(800);
         var zoomed = double.Parse((await host.GetAttributeAsync("data-zoom"))!, System.Globalization.CultureInfo.InvariantCulture);
         Assert.True(zoomed > 13.0, $"Ctrl + wheel should zoom in, zoom is {zoomed}.");
-        Assert.True(zoomed <= 16.0, $"Zoom passed the cap: {zoomed}.");
+        Assert.True(zoomed <= 24.0, $"Zoom passed the cap: {zoomed}.");
         await page.CloseAsync();
     }
 

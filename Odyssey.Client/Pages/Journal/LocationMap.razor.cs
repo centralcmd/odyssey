@@ -24,8 +24,13 @@ public partial class LocationMap
     /// <summary>Centre zoom on create (§3). The camera keeps the user's zoom on a later move.</summary>
     public const int StartZoom = 14;
 
-    /// <summary>Privacy hardening (§3, #370 §7.5): bounds how precise the requested tiles get.</summary>
-    public const int MaxZoom = 16;
+    /// <summary>
+    /// The top of MapLibre's documented zoom range (0–24), so a user can zoom as far as it supports. It no longer doubles as the
+    /// privacy bound #370 §7.5 asked of it: the browser never requests a tile finer than the SOURCE's
+    /// maxzoom and over-zooms past it locally, so with OpenFreeMap (maxzoom 14) the tile host learns the
+    /// same at 24 as it did at 16. Only an operator-configured source with finer tiles would change that.
+    /// </summary>
+    public const int MaxZoom = 24;
 
     internal const string ModulePath = "./js/location-map.js";
 
