@@ -118,8 +118,42 @@ public sealed class LocationConversion : ILocationConversion
         logger.LogInformation(
             "Location conversion finished: {Created} locations created, {Linked} rows linked, {LeftAsText} places left as detail text.",
             created, linked, leftAsText);
+
+        await RequireEveryAddressLinkedAsync(cancellationToken);
         return new LocationConversionResult(true, created, linked, leftAsText);
     }
+
+    /// <summary>
+    /// The contract migration makes <c>Addresses.LocationId</c> <c>NOT NULL</c>, so an address row the
+    /// conversion could not link — every field empty once cleaned, which only a hand edit, an old import or a
+    /// value of control characters alone produces — would fail it with a bare engine error on every start.
+    /// Report it here instead, before any contract DDL, with the count and the repair (architect review 2).
+    /// The row is never deleted: it is a contact's data, and the conversion has no business destroying it.
+    /// The message names a count and a query, never a value.
+    /// </summary>
+    private async Task RequireEveryAddressLinkedAsync(CancellationToken cancellationToken)
+    {
+        var unlinked = await context.Database
+            .SqlQuery<int>($"SELECT COUNT(*) AS `Value` FROM `Addresses` WHERE `LocationId` IS NULL")
+            .SingleAsync(cancellationToken);
+        if (unlinked == 0)
+        {
+            return;
+        }
+
+        logger.LogError(
+            "Location conversion stopped: {Count} contact address rows have no usable address text and cannot be linked to a location.",
+            unlinked);
+        throw new LocationConversionException(UnlinkedAddressesMessage(unlinked));
+    }
+
+    internal static string UnlinkedAddressesMessage(int count) =>
+        $"{count} contact address row(s) have no usable address text once cleaned, so they cannot be linked to a "
+        + "location and the UnifyLocationsContract migration (which makes Addresses.LocationId NOT NULL) was not run. "
+        + "Nothing was deleted. Repair: find them with "
+        + "SELECT `Id`, `ContactId` FROM `Addresses` WHERE `LocationId` IS NULL; then either fill in their address "
+        + "columns (Line1, City, CountryCode) or delete the rows, and restart the migrations job — the conversion "
+        + "resumes where it stopped. See docs/deployment.md, \"Release note: unified locations\".";
 
     // ── Batching ─────────────────────────────────────────────────────────────
 
@@ -467,3 +501,6 @@ public sealed class LocationConversion : ILocationConversion
         public long JournalEntries { get; set; }
     }
 }
+
+/// <summary>The location conversion found data it must not guess about; the message names the repair.</summary>
+public sealed class LocationConversionException(string message) : InvalidOperationException(message);

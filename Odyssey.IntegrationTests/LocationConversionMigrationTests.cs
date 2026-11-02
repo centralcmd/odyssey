@@ -196,16 +196,28 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// AC 4 — interrupting the conversion mid-batch and restarting yields the same final state as an
-    /// uninterrupted run. Batches of two, so every source table spans several; the interruption lands
-    /// inside a string batch, after the address batches committed.
+    /// AC 4 — interrupting the conversion mid-batch at ANY batch and restarting yields the same final state as
+    /// an uninterrupted run (senior-tester M3). Batches of two, so every source table spans at least two; each
+    /// table has its own batching and resume key, so each is interrupted at two positions, including the very
+    /// first batch of the run (a failure before anything committed).
     /// </summary>
-    [SkippableFact]
-    public async Task An_interrupted_conversion_resumes_to_the_uninterrupted_result()
+    [SkippableTheory]
+    [InlineData("Addresses", 1)]
+    [InlineData("Addresses", 3)]
+    [InlineData("RealEstateDetails", 1)]
+    [InlineData("RealEstateDetails", 2)]
+    [InlineData("CalendarEvents", 3)]
+    [InlineData("CalendarEvents", 9)]
+    [InlineData("RecurrencePatterns", 1)]
+    [InlineData("RecurrencePatterns", 2)]
+    [InlineData("JournalEntries", 1)]
+    [InlineData("JournalEntries", 2)]
+    public async Task An_interrupted_conversion_resumes_to_the_uninterrupted_result(string table, int batch)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        const string straight = "odyssey_location_conversion_straight";
-        const string interrupted = "odyssey_location_conversion_interrupted";
+        var suffix = $"{table.ToLowerInvariant()}_{batch}";
+        var straight = $"odyssey_lc_straight_{suffix}";
+        var interrupted = $"odyssey_lc_interrupted_{suffix}";
         await RecreateAsync(straight);
         await RecreateAsync(interrupted);
 
@@ -225,15 +237,17 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
                     CancellationToken.None);
             }
 
+            var reached = false;
             await using (var context = NewContext(interrupted))
             {
                 var failing = new LocationConversion(context, options: new LocationConversionOptions
                 {
                     BatchSize = 2,
-                    BeforeCommit = (table, batch) =>
+                    BeforeCommit = (current, ordinal) =>
                     {
-                        if (table == "CalendarEvents" && batch == 3)
+                        if (current == table && ordinal == batch)
                         {
+                            reached = true;
                             throw new InvalidOperationException("Simulated interruption.");
                         }
                     },
@@ -243,6 +257,9 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
                 Assert.False(await MigrationSeam.HasRunAsync(context, Contract));
                 Assert.True(await MigrationSeam.HasRunAsync(context, Expand));
             }
+
+            // The case is only meaningful if the seed really spans that batch.
+            Assert.True(reached, $"The seed never reached {table} batch {batch}.");
 
             await using (var context = NewContext(interrupted))
             {
@@ -257,6 +274,65 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         {
             await DropAsync(straight);
             await DropAsync(interrupted);
+        }
+    }
+
+    /// <summary>
+    /// Architect review 2 — a contact address whose six fields are all empty once cleaned (control characters
+    /// and whitespace only — a shape the demo seed never produces) cannot be linked, and the contract migration
+    /// would fail on <c>NOT NULL</c> on every start. The conversion reports it before any contract DDL, naming
+    /// the count and the repair and never a value; the row is not deleted; and once repaired by hand the
+    /// upgrade resumes and links it.
+    /// </summary>
+    [SkippableFact]
+    public async Task An_address_with_no_usable_text_stops_before_the_contract_and_names_the_repair()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        const string database = "odyssey_location_conversion_empty_address";
+        await RecreateAsync(database);
+
+        try
+        {
+            await using (var context = NewContext(database))
+            {
+                await MigrationSeam.MigrateToAsync(context, Expand);
+                await SeedAsync(context);
+                await AddressAsync(context, "address-empty", "contact-2", primary: false, "\u0007", null, " \t ", "\u202E", null, "\u0001");
+            }
+
+            await using (var context = NewContext(database))
+            {
+                var refused = await Assert.ThrowsAsync<LocationConversionException>(
+                    () => MigrationRunner.MigrateAsync(context, new LocationConversion(context), CancellationToken.None));
+                Assert.StartsWith("1 contact address row(s)", refused.Message, StringComparison.Ordinal);
+                Assert.Contains("WHERE `LocationId` IS NULL", refused.Message, StringComparison.Ordinal);
+                Assert.Contains("Nothing was deleted", refused.Message, StringComparison.Ordinal);
+                Assert.DoesNotContain("\u0007", refused.Message, StringComparison.Ordinal);
+
+                Assert.False(await MigrationSeam.HasRunAsync(context, Contract));
+                Assert.Equal(1, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `Addresses` WHERE `LocationId` IS NULL"));
+                Assert.Equal(1, await MigrationSeam.CountAsync(context,
+                    $"SELECT COUNT(*) FROM `Addresses` WHERE `Id` = '{Id("address-empty")}'"));
+            }
+
+            // The repair the message names: fill the row in by hand, then restart.
+            await using (var context = NewContext(database))
+            {
+                await context.Database.ExecuteSqlAsync(
+                    $"UPDATE `Addresses` SET `Line1` = {"Torggata 9"}, `City` = {"Oslo"}, `CountryCode` = {"NO"} WHERE `Id` = {Id("address-empty")}");
+                await MigrationRunner.MigrateAsync(context, new LocationConversion(context), CancellationToken.None);
+                Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+            }
+
+            await using (var context = NewContext(database))
+            {
+                var repaired = await context.Addresses.AsNoTracking().Include(a => a.Location).SingleAsync(a => a.Id == Id("address-empty"));
+                Assert.Equal(("Torggata 9", "Oslo"), (repaired.Location.Line1, repaired.Location.City));
+            }
+        }
+        finally
+        {
+            await DropAsync(database);
         }
     }
 
@@ -412,16 +488,25 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
             });
         }
 
-        context.RecurrencePatterns.Add(new RecurrencePattern
+        // Three of each, so both tables span two batches of two (the interruption theory, M3). The extra
+        // values reuse places the events already created, so they add no location of their own.
+        foreach (var (key, text) in new[] { ("pattern-asen", "Asen"), ("pattern-spinneriet", "Spinneriet"), ("pattern-camping", "Camping") })
         {
-            RecurrencePatternId = Id("pattern-asen"), CalendarId = calendar.CalendarId, Title = "Series", Location = "Asen",
-            StartDateTime = Now, EndDateTime = Now.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, CreatedAt = Now, UpdatedAt = Now,
-        });
-        context.JournalEntries.Add(new JournalEntry
+            context.RecurrencePatterns.Add(new RecurrencePattern
+            {
+                RecurrencePatternId = Id(key), CalendarId = calendar.CalendarId, Title = "Series", Location = text,
+                StartDateTime = Now, EndDateTime = Now.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, CreatedAt = Now, UpdatedAt = Now,
+            });
+        }
+
+        foreach (var (key, text) in new[] { ("entry-asen", "asen"), ("entry-koden", "Koden"), ("entry-pipe", "A | B") })
         {
-            JournalEntryId = Id("entry-asen"), ExternalUid = "urn:uuid:" + Id("entry-asen"), Title = "Entry", Content = "Body",
-            Location = "asen", EntryDate = Now, CreatedAt = Now, UpdatedAt = Now,
-        });
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = Id(key), ExternalUid = "urn:uuid:" + Id(key), Title = "Entry", Content = "Body",
+                Location = text, EntryDate = Now, CreatedAt = Now, UpdatedAt = Now,
+            });
+        }
 
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
