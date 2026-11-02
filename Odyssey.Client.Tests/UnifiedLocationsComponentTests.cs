@@ -358,6 +358,38 @@ public class UnifiedLocationsComponentTests
         Assert.All(radios, r => Assert.False(r.HasAttribute("checked")));
     }
 
+    /// <summary>
+    /// Accessibility review 4: the fieldset IS the radiogroup, so the group is exposed once. No inner element
+    /// carries a role or a name of its own.
+    /// </summary>
+    [Fact]
+    public async Task A_labelled_group_is_announced_once_as_the_fieldset()
+    {
+        await using var ctx = Context();
+        var cut = ctx.Render<OdsRadioGroup>(p => p
+            .Add(r => r.Label, "Apply this change to")
+            .Add(r => r.Required, true)
+            .Add(r => r.Error, "Choose who this change applies to")
+            .Add(r => r.Options, ApplyOptions));
+
+        var group = Assert.Single(cut.FindAll("[role=radiogroup], [role=group]"));
+        Assert.Equal("FIELDSET", group.TagName);
+        Assert.Equal(cut.Find("legend").Id, group.GetAttribute("aria-labelledby"));
+        Assert.Equal(("true", "true"), (group.GetAttribute("aria-required"), group.GetAttribute("aria-invalid")));
+        Assert.Empty(group.QuerySelectorAll("[aria-labelledby], [aria-label], [aria-required], [aria-invalid]"));
+    }
+
+    [Fact]
+    public async Task An_unlabelled_group_keeps_its_radiogroup_role_on_the_options_box()
+    {
+        await using var ctx = Context();
+        var cut = ctx.Render<OdsRadioGroup>(p => p.Add(r => r.AriaLabel, "Range").Add(r => r.Options, ApplyOptions));
+
+        var group = Assert.Single(cut.FindAll("[role=radiogroup]"));
+        Assert.Equal(("DIV", "Range"), (group.TagName, group.GetAttribute("aria-label")));
+        Assert.Empty(cut.FindAll("fieldset"));
+    }
+
     [Fact]
     public async Task Each_option_is_named_by_its_label_and_described_by_its_consequence()
     {

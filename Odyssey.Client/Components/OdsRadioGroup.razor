@@ -9,9 +9,9 @@
     and form semantics come from the browser. Two-way bindable via @bind-Value. Pass Row for a
     horizontal layout. Options are OdsRadioOption records.
 
-    With a visible Label the group is a <fieldset> whose <legend> is that label (issue #383 §6.2), so
-    the group's name, its required state and its error reach assistive technology without an ARIA
-    stand-in. Required adds the `*` marker, a visible "Required" word and aria-required. Error and Help
+    With a visible Label the group is a <fieldset role="radiogroup"> whose <legend> is that label (issue
+    #383 §6.2): the one element carries the name, the required and invalid states and the description, so
+    the group is announced once, not as a group and then again as a radiogroup. Required adds the `*` marker, a visible "Required" word and aria-required. Error and Help
     are lines under the options, both in the group's aria-describedby; an error also sets aria-invalid.
     A per-option Description is a visible second line and that radio's aria-describedby — the radio's
     accessible NAME stays its short label. Nothing is preselected unless the caller passes a Value.
@@ -20,15 +20,11 @@
 @inject IJSRuntime Js
 
 @{
-    RenderFragment group =
-        @<div class="@GroupClass"
-              role="radiogroup"
-              aria-labelledby="@(HasLabel ? _legendId : null)"
-              aria-label="@(HasLabel ? null : AriaLabel)"
-              aria-required="@(Required ? "true" : null)"
-              aria-invalid="@(HasError ? "true" : null)"
-              aria-describedby="@DescribedBy"
-              @attributes="UserAttributes">
+    // The options themselves. With a visible Label they sit in a plain layout box inside the fieldset, and the
+    // fieldset IS the radiogroup (role, name, required, invalid, description), so the group is announced once
+    // (accessibility review 4). Without a Label this box is the radiogroup and carries that ARIA itself.
+    RenderFragment options =
+        @<text>
             @foreach (var option in Options)
             {
                 var descId = string.IsNullOrEmpty(option.Description) ? null : $"{_uid}-{option.Value}-desc";
@@ -54,6 +50,17 @@
                     }
                 </label>
             }
+        </text>;
+
+    RenderFragment group =
+        @<div class="@GroupClass"
+              role="radiogroup"
+              aria-label="@AriaLabel"
+              aria-required="@(Required ? "true" : null)"
+              aria-invalid="@(HasError ? "true" : null)"
+              aria-describedby="@DescribedBy"
+              @attributes="UserAttributes">
+            @options
         </div>;
 
     RenderFragment lines =
@@ -71,7 +78,13 @@
 
 @if (HasLabel)
 {
-    <fieldset class="@FieldClass" id="@GroupId">
+    <fieldset class="@FieldClass" id="@GroupId"
+              role="radiogroup"
+              aria-labelledby="@_legendId"
+              aria-required="@(Required ? "true" : null)"
+              aria-invalid="@(HasError ? "true" : null)"
+              aria-describedby="@DescribedBy"
+              @attributes="UserAttributes">
         <legend class="odc-field-label" id="@_legendId">
             @Label
             @if (Required)
@@ -80,7 +93,7 @@
                 <span class="odc-radio-reqword">Required</span>
             }
         </legend>
-        @group
+        <div class="@GroupClass">@options</div>
         @lines
     </fieldset>
 }
