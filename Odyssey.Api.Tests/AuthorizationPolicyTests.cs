@@ -73,11 +73,12 @@ public class AuthorizationPolicyTests
     /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
     /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
     /// <c>weather.locations.update</c> and <c>weather.history.delete</c>. 107 once issue #346 added
-    /// <c>file-storage.read</c>.
+    /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
+    /// deliberately left out.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(107, DeclaredClaims().Count());
+        Assert.Equal(108, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -274,7 +275,7 @@ public class AuthorizationPolicyTests
 
     /// <summary>
     /// Issue #350 §7.2/§7.3: Guest reads the household's locations — a product decision — and writes none
-    /// of them, and no location delete claim exists for anyone to hold.
+    /// of them. Issue #380 decision 4 added <c>locations.delete</c>, and Guest does not hold it either.
     /// </summary>
     [Fact]
     public void Guest_holds_exactly_locations_read_among_the_location_claims()
@@ -285,7 +286,22 @@ public class AuthorizationPolicyTests
             .ToArray();
 
         Assert.Equal([PermissionClaims.LocationsRead], guestLocationClaims);
-        Assert.DoesNotContain(DeclaredClaims(), claim => claim == "locations.delete");
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 4 (AC 12): <c>locations.delete</c> is the erasure path and reaches Admin, Owner
+    /// and User through <c>JournalModuleClaims</c> — never Guest.
+    /// </summary>
+    [Fact]
+    public void LocationsDelete_is_held_by_exactly_Admin_Owner_and_User()
+    {
+        Assert.Equal("locations.delete", PermissionClaims.LocationsDelete);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.JournalModuleClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.AdminClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.OwnerClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.UserClaims);
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
     }
 
     /// <summary>
