@@ -23,7 +23,7 @@
             @if (Creating)
             {
                 <WeatherSiteCard Title="Weather position"
-                                 Latitude="_preview.Latitude" Longitude="_preview.Longitude"
+                                 Latitude="_preview.Latitude.GetValueOrDefault()" Longitude="_preview.Longitude.GetValueOrDefault()"
                                  AltitudeMeters="_preview.AltitudeMeters" TimeZoneId="@_preview.TimeZoneId"
                                  Foot="Copied from the location now. If the location moves later, weather keeps this position until you apply the move." />
                 <WeatherDisclosure />

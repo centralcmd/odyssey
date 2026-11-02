@@ -25,7 +25,7 @@
                                  AltitudeMeters="Row.Site.AltitudeMeters" TimeZoneId="@Row.Site.TimeZoneId"
                                  Foot="@($"Copied {WeatherVisuals.Date(Row.Site.AppliedAt)}.")" />
                 <OdsMIcon Name="arrow_forward" Size="20" Class="wx-compare-arrow" />
-                <WeatherSiteCard Title="The location is now" Latitude="_live.Latitude" Longitude="_live.Longitude"
+                <WeatherSiteCard Title="The location is now" Latitude="_live.Latitude.GetValueOrDefault()" Longitude="_live.Longitude.GetValueOrDefault()"
                                  AltitudeMeters="_live.AltitudeMeters" TimeZoneId="@_live.TimeZoneId"
                                  ChangedCoordinates="ChangedCoordinates" ChangedAltitude="ChangedAltitude" ChangedTimeZone="ChangedTimeZone" />
             </div>
@@ -59,7 +59,8 @@
     private string? _conflict;
 
     private bool ChangedCoordinates =>
-        WeatherRules.RoundCoordinate(_live.Latitude) != Row.Site.Latitude || WeatherRules.RoundCoordinate(_live.Longitude) != Row.Site.Longitude;
+        _live.Latitude is not { } latitude || _live.Longitude is not { } longitude
+        || WeatherRules.RoundCoordinate(latitude) != Row.Site.Latitude || WeatherRules.RoundCoordinate(longitude) != Row.Site.Longitude;
 
     private bool ChangedAltitude => _live.AltitudeMeters != Row.Site.AltitudeMeters;
 

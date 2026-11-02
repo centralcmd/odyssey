@@ -190,9 +190,9 @@ public class WeatherForecastHistorySplitTests : IAsyncLifetime
         Site = new WeatherLocationSiteDto
         {
             Version = 1,
-            Latitude = WeatherRules.RoundCoordinate(HomeLocation.Latitude),
-            Longitude = WeatherRules.RoundCoordinate(HomeLocation.Longitude),
-            TimeZoneId = HomeLocation.TimeZoneId,
+            Latitude = WeatherRules.RoundCoordinate(HomeLocation.Latitude!.Value),
+            Longitude = WeatherRules.RoundCoordinate(HomeLocation.Longitude!.Value),
+            TimeZoneId = HomeLocation.TimeZoneId!,
         },
     };
 

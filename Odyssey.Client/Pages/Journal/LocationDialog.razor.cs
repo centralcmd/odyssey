@@ -165,9 +165,9 @@ public partial class LocationDialog
         _lng = l.Longitude;
         _altitude = l.AltitudeMeters;
         _timeZone = l.TimeZoneId;
-        _pick = l.Source == LocationSource.Manual
+        _pick = l.Source == LocationSource.Manual || l.Latitude is not { } latitude || l.Longitude is not { } longitude
             ? null
-            : new Anchor(l.Source, l.SourceReference, l.Latitude, l.Longitude, null, l.Name, null, l.Attribution);
+            : new Anchor(l.Source, l.SourceReference, latitude, longitude, null, l.Name, null, l.Attribution);
     }
 
     private void Set(ref string? field, string? value, string key)

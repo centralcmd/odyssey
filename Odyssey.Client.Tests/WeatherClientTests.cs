@@ -336,10 +336,10 @@ public class WeatherClientTests : IDisposable
         Site = new WeatherLocationSiteDto
         {
             Version = 1,
-            Latitude = WeatherRules.RoundCoordinate(l.Latitude),
-            Longitude = WeatherRules.RoundCoordinate(l.Longitude),
+            Latitude = WeatherRules.RoundCoordinate(l.Latitude!.Value),
+            Longitude = WeatherRules.RoundCoordinate(l.Longitude!.Value),
             AltitudeMeters = l.AltitudeMeters,
-            TimeZoneId = l.TimeZoneId,
+            TimeZoneId = l.TimeZoneId!,
         },
     };
 

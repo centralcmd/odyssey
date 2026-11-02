@@ -34,6 +34,20 @@ public enum WeatherStatus
     WeatherDisabled = 6,
 }
 
+/// <summary>
+/// Which step of the resolution order picked the place a weather read used (issue #380 §5.8): an explicit
+/// <c>?locationId</c>, the event's or entry's linked place (only when it has coordinates), the caller's
+/// preference, or the household default. Absent for <c>NoPlace</c>. Serialized by name.
+/// </summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WeatherResolvedFrom>))]
+public enum WeatherResolvedFrom
+{
+    Explicit = 1,
+    Linked = 2,
+    Preferred = 3,
+    Household = 4,
+}
+
 [JsonConverter(typeof(JsonStringEnumConverter<WeatherTrackingSuspendedReason>))]
 public enum WeatherTrackingSuspendedReason
 {
@@ -106,6 +120,12 @@ public static class WeatherRules
     /// rounded position, the altitude and the time zone — so a rename never conflicts, while a coordinate or
     /// time-zone change always does.
     /// </summary>
+    /// <summary>
+    /// The fingerprint of a place with no coordinates (issue #380). It never matches a reviewed position, so
+    /// the server refuses rather than turning weather on for a place it cannot locate.
+    /// </summary>
+    public const string NoCoordinatesFingerprint = "v1:none";
+
     public static string Fingerprint(decimal latitude, decimal longitude, int? altitudeMeters, string timeZoneId) =>
         string.Create(System.Globalization.CultureInfo.InvariantCulture,
             $"v1:{RoundCoordinate(latitude):0.000}:{RoundCoordinate(longitude):0.000}:{altitudeMeters?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "-"}:{timeZoneId}");
@@ -251,6 +271,10 @@ public sealed record WeatherCurrentResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
+
+    /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
     public WeatherStep? Step { get; init; }
     public WeatherDaySummary? Today { get; init; }
@@ -261,6 +285,10 @@ public sealed record WeatherHourlyResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
+
+    /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
     public IReadOnlyList<WeatherStep> Steps { get; init; } = [];
     public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
@@ -333,6 +361,10 @@ public sealed record WeatherDailyResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
+
+    /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
     public IReadOnlyList<WeatherDaySummary> Days { get; init; } = [];
 
@@ -345,6 +377,10 @@ public sealed record CalendarEventWeatherResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
+
+    /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
     public bool IsAllDay { get; init; }
     public IReadOnlyList<WeatherStep> Steps { get; init; } = [];
@@ -356,6 +392,10 @@ public sealed record JournalEntryWeatherResponse
 {
     public WeatherLocationRef? Location { get; init; }
     public WeatherStatus Status { get; init; }
+
+    /// <summary>Where the place came from (issue #380 §5.8); omitted when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
     public DateOnly? Date { get; init; }
     public WeatherDaySummary? Day { get; init; }

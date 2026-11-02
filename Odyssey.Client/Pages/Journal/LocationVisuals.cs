@@ -91,6 +91,15 @@ public static partial class LocationVisuals
         $"{FormatCoordinate(Math.Abs(latitude))}° {(latitude >= 0 ? "N" : "S")} · "
         + $"{FormatCoordinate(Math.Abs(longitude))}° {(longitude >= 0 ? "E" : "W")}";
 
+    /// <summary>A place may have no coordinates since issue #380 (they are all-or-none).</summary>
+    public const string NoCoordinates = "No coordinates";
+
+    public static string FormatPair(decimal? latitude, decimal? longitude) =>
+        latitude is { } lat && longitude is { } lng ? FormatPair(lat, lng) : NoCoordinates;
+
+    public static string FormatHemispheres(decimal? latitude, decimal? longitude) =>
+        latitude is { } lat && longitude is { } lng ? FormatHemispheres(lat, lng) : NoCoordinates;
+
     // ── Time zones ───────────────────────────────────────────────────────────
 
     [GeneratedRegex(@"^[A-Za-z0-9_+\-]+(/[A-Za-z0-9_+\-]+){0,2}$", RegexOptions.CultureInvariant)]
