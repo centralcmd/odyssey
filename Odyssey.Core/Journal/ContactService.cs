@@ -10,6 +10,7 @@ using DetachedContactLinks = Odyssey.Dtos.Finance.DetachedContactLinks;
 using ContactDeleteBlockerClass = Odyssey.Dtos.Finance.ContactDeleteBlockerClass;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Journal.Interop;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
@@ -57,7 +58,7 @@ public class ContactService
         .Include(c => c.PersonDetails)
         .Include(c => c.OrganizationDetails)
         .Include(c => c.Aliases)
-        .Include(c => c.Addresses)
+        .Include(c => c.Addresses).ThenInclude(a => a.Location)
         .Include(c => c.EmailAddresses)
         .Include(c => c.PhoneNumbers)
         .AsSplitQuery();
@@ -1121,39 +1122,114 @@ public class ContactService
     // One code path per verb, shared by all three collections (issue #287 M7). Each collection supplies
     // only what differs: its DbSet, its label-scope check, and how a request becomes column values.
 
-    public Task<IReadOnlyList<ExistingAddress>?> GetAddresses(Guid contactId, CancellationToken cancellationToken = default) =>
-        GetMethodsAsync<Address, ExistingAddress>(context.Addresses, contactId, cancellationToken);
+    /// <summary>Null when the contact does not exist; primary first, then by id. The address fields are
+    /// projected from each row's linked location (issue #380).</summary>
+    public async Task<IReadOnlyList<ExistingAddress>?> GetAddresses(Guid contactId, CancellationToken cancellationToken = default)
+    {
+        if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+            return null;
 
-    public Task<ExistingAddress?> CreateAddress(Guid contactId, NewAddress request, CancellationToken cancellationToken = default) =>
-        CreateMethodAsync<Address, ExistingAddress>(context.Addresses, contactId, request.IsPrimary,
-            contact => RequireLabelValidFor(request.Label, contact.Type),
-            () => new Address
-            {
-                ContactId = contactId,
-                Label = request.Label,
-                Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1"),
-                Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2"),
-                City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City"),
-                PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code"),
-                Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region"),
-                CountryCode = NormalizeCountryCode(request.CountryCode),
-            },
+        var rows = await context.Addresses.AsNoTracking()
+            .Include(a => a.Location)
+            .Where(a => a.ContactId == contactId)
+            .OrderByDescending(a => a.IsPrimary).ThenBy(a => a.Id)
+            .ToListAsync(cancellationToken);
+        return rows.Adapt<List<ExistingAddress>>();
+    }
+
+    /// <summary>
+    /// Null when the contact does not exist. The address is a link to the location holding it (issue #380):
+    /// found by its address key, or created.
+    /// </summary>
+    /// <remarks>
+    /// B2: the location resolver replaces <see cref="LocationAddressLinker"/> here, adding the
+    /// <c>locationId</c> path, the claim checks and the <c>applyTo</c> edit modes.
+    /// </remarks>
+    public async Task<ExistingAddress?> CreateAddress(Guid contactId, NewAddress request, CancellationToken cancellationToken = default)
+    {
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return null;
+
+        RequireLabelValidFor(request.Label, contact.Type);
+        var location = await LinkAddressAsync(contactId, CleanAddress(request), excludeAddressId: null, cancellationToken);
+
+        var siblings = await context.Addresses.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+        var created = new Address
+        {
+            ContactId = contactId,
+            Label = request.Label,
+            LocationId = location.LocationId,
+            Location = location,
+        };
+        context.Addresses.Add(created);
+
+        ArbitratePrimaryOnCreate(siblings, created, request.IsPrimary);
+        Touch(contact);
+        await context.SaveChangesAsync(cancellationToken);
+        return created.Adapt<ExistingAddress>();
+    }
+
+    /// <summary>
+    /// False when the contact does not exist or the row is not one of its rows. Changed fields move only this
+    /// row's link (copy-on-write); the previously linked location is left unchanged and is never deleted.
+    /// </summary>
+    /// <remarks>B2: the <c>applyTo</c> edit modes (§5.3) replace the unconditional copy-on-write.</remarks>
+    public async Task<bool> UpdateAddress(Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default)
+    {
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return false;
+
+        var address = await FindChildAsync(context.Addresses, contactId, addressId, cancellationToken);
+        if (address is null)
+            return false;
+
+        RequireLabelValidFor(request.Label, contact.Type);
+        var location = await LinkAddressAsync(contactId, CleanAddress(request), excludeAddressId: addressId, cancellationToken);
+
+        address.Label = request.Label;
+        address.LocationId = location.LocationId;
+        address.Location = location;
+
+        var siblings = await context.Addresses.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+        ArbitratePrimaryOnUpdate(siblings, address, request.IsPrimary);
+        Touch(contact);
+        await context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    // The request's fields cleaned and validated exactly as before issue #380 (the 400s keyed on each field),
+    // then put in the stored form a location holds them in.
+    private static LocationAddress CleanAddress(NewAddress request) => LocationAddress.Of(
+        CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1"),
+        CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2"),
+        CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code"),
+        CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City"),
+        CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region"),
+        NormalizeCountryCode(request.CountryCode));
+
+    /// <summary>
+    /// The location for <paramref name="address"/>, refusing one this contact already lists on another row
+    /// (unique <c>(ContactId, LocationId)</c>, issue #380 §5.3) with a <c>409</c> keyed <c>locationId</c>.
+    /// </summary>
+    private async Task<Odyssey.Context.Location> LinkAddressAsync(
+        Guid contactId, LocationAddress address, Guid? excludeAddressId, CancellationToken cancellationToken)
+    {
+        var location = await LocationAddressLinker.FindOrCreateAsync(
+            context, address, LocationSource.ContactAddress, userId: null, timeProvider.GetUtcNow().UtcDateTime,
             cancellationToken);
 
-    public Task<bool> UpdateAddress(Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default) =>
-        UpdateMethodAsync<Address>(context.Addresses, contactId, addressId, request.IsPrimary,
-            contact => RequireLabelValidFor(request.Label, contact.Type),
-            address =>
-            {
-                address.Label = request.Label;
-                address.Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1");
-                address.Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2");
-                address.City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City");
-                address.PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code");
-                address.Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region");
-                address.CountryCode = NormalizeCountryCode(request.CountryCode);
-            },
+        var listed = await context.Addresses.AnyAsync(
+            a => a.ContactId == contactId && a.LocationId == location.LocationId && a.Id != excludeAddressId,
             cancellationToken);
+        if (listed)
+        {
+            throw new DomainConflictException("This contact already lists that address.", "locationId");
+        }
+
+        return location;
+    }
 
     public Task<bool> DeleteAddress(Guid contactId, Guid addressId, CancellationToken cancellationToken = default) =>
         DeleteMethodAsync(context.Addresses, contactId, addressId, cancellationToken);

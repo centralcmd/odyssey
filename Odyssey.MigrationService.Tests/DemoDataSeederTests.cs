@@ -810,15 +810,28 @@ public class DemoDataSeederTests
 
         Assert.Equal(expected.Locations.Count, rows.Count);
         Assert.Equal(
-            [LocationSource.Manual, LocationSource.Kartverket, LocationSource.OpenMeteo],
+            [LocationSource.Manual, LocationSource.Kartverket, LocationSource.OpenMeteo,
+                LocationSource.ContactAddress, LocationSource.PropertyAddress],
             rows.Select(l => l.Source).Distinct().OrderBy(s => s));
         Assert.Single(rows, l => l.Archived is not null);
-        Assert.All(rows, l =>
+
+        // The geocoded places (issue #350); the issue #380 address places carry no coordinates.
+        var geocoded = rows.Where(l => l.Latitude is not null).ToList();
+        Assert.Equal(5, geocoded.Count);
+        Assert.All(geocoded, l =>
         {
             Assert.True(Odyssey.Dtos.IanaTimeZones.IsValid(l.TimeZoneId));
             Assert.True(LocationRules.IsValidReference(l.Source, l.SourceReference));
-            Assert.Equal(Math.Round(l.Latitude, 5), l.Latitude);
-            Assert.Equal(Math.Round(l.Longitude, 5), l.Longitude);
+            Assert.Equal(Math.Round(l.Latitude!.Value, 5), l.Latitude);
+            Assert.Equal(Math.Round(l.Longitude!.Value, 5), l.Longitude);
+        });
+        Assert.All(rows.Except(geocoded), l =>
+        {
+            Assert.Null(l.Longitude);
+            Assert.Null(l.TimeZoneId);
+            Assert.Null(l.SourceReference);
+            Assert.Equal(
+                LocationAddressKey.Compute(l.CountryCode, l.PostalCode, l.City, l.Line1, l.Line2, l.Region), l.AddressKey);
         });
         Assert.Equal(rows.Count, rows.Select(l => l.Name.ToUpperInvariant()).Distinct().Count());
         Assert.Equal(expected.Locations.Select(l => l.LocationId), DemoDataSet.Build().Locations.Select(l => l.LocationId));

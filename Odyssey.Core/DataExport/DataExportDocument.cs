@@ -193,10 +193,23 @@ public sealed class LocationExport
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string? AddressText { get; init; }
-    public decimal Latitude { get; init; }
-    public decimal Longitude { get; init; }
+
+    // The structured address (issue #380): a location is the one address record, so contact addresses and
+    // property addresses are exported here and referenced by LocationId.
+    public string? Line1 { get; init; }
+    public string? Line2 { get; init; }
+    public string? PostalCode { get; init; }
+    public string? City { get; init; }
+    public string? Region { get; init; }
+    public string? CountryCode { get; init; }
+    public string? AddressKey { get; init; }
+    public Guid? MergedIntoLocationId { get; init; }
+
+    // Null together when the place has no coordinates (issue #380).
+    public decimal? Latitude { get; init; }
+    public decimal? Longitude { get; init; }
     public int? AltitudeMeters { get; init; }
-    public string TimeZoneId { get; init; } = string.Empty;
+    public string? TimeZoneId { get; init; }
     public LocationSource Source { get; init; }
     public string? SourceReference { get; init; }
     public DateTime? Archived { get; init; }
@@ -425,10 +438,9 @@ public sealed class RealEstateDetailsExport
 {
     public Guid PropertyId { get; init; }
     public RealEstateKind Kind { get; init; }
-    public string? AddressLine { get; init; }
-    public string? PostalCode { get; init; }
-    public string? City { get; init; }
-    public string? CountryCode { get; init; }
+
+    /// <summary>The property's address, exported in <c>Locations</c> (issue #380).</summary>
+    public Guid? LocationId { get; init; }
     public string? CadastralNumber { get; init; }
     public decimal? LivingAreaSqm { get; init; }
     public decimal? PlotAreaSqm { get; init; }

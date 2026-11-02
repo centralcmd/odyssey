@@ -42,6 +42,9 @@ public class ContactMethodLabelRemapMigrationTests(MariaDbFixture fixture)
     /// <summary>The migration immediately before the one under test.</summary>
     private const string Baseline = "_DropDeprecatedColumnsAndTuneIndexes";
 
+    /// <summary>The migration under test.</summary>
+    private const string Subject = "_RemapContactMethodLabelsForOrganizations";
+
     private const int OutOfRange = 99;
 
     [SkippableFact]
@@ -65,7 +68,9 @@ public class ContactMethodLabelRemapMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                // To the subject only: a later migration (issue #380) folds same-address rows into one link,
+                // which would erase the label matrix this test exists to read.
+                await MigrationSeam.MigrateToAsync(context, Subject);
 
                 // Clause 1 — zero invalid rows. Catches a migration that missed rows it should fix.
                 await AssertNoInvalidRowsAsync(context);
@@ -108,7 +113,9 @@ public class ContactMethodLabelRemapMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                // To the subject only: a later migration (issue #380) folds same-address rows into one link,
+                // which would erase the label matrix this test exists to read.
+                await MigrationSeam.MigrateToAsync(context, Subject);
                 var before = await SnapshotAsync(context);
 
                 await ReplayTheRemapAsync(context);
@@ -147,7 +154,7 @@ public class ContactMethodLabelRemapMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
+                await MigrationSeam.MigrateToAsync(context, Subject);
 
                 var labels = await LabelsAsync(context, "PhoneNumbers", alien);
                 Assert.Equal([(int)PhoneLabel.Home], labels);

@@ -99,7 +99,12 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Snapshot first;
         await using (var context = NewContext())
         {
-            await new PropertyService(context, new ContactLookup(context)).Create(House("Storgata 14"), userId: null);
+            // No address: since issue #380 one would be a coordinate-less location, which no schema below
+            // UnifyLocationsExpand can hold — that Down() restores the schema, not such rows (rollback is a
+            // backup restore).
+            var house = House("Storgata 14");
+            house.RealEstateDetails = house.RealEstateDetails! with { City = null, CountryCode = null };
+            await new PropertyService(context, new ContactLookup(context)).Create(house, userId: null);
             first = await SnapshotAsync(context);
 
             await MigrationSeam.MigrateToAsync(context, PreviousMigration);
@@ -158,6 +163,8 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
             new ForeignKeyRule("PropertySmartTags", "TransactionTagId", "TransactionTags", "RESTRICT"),
             // Issue #217: optional link to shared data, so it nulls out with the contact.
             new ForeignKeyRule("RealEstateDetails", "HomeownerAssociationId", "Contacts", "SET NULL"),
+            // Issue #380: the address is a linked location, RESTRICT like every location reference.
+            new ForeignKeyRule("RealEstateDetails", "LocationId", "Locations", "RESTRICT"),
             new ForeignKeyRule("RealEstateDetails", "PropertyId", "Properties", "CASCADE"),
             new ForeignKeyRule("VehicleDetails", "PropertyId", "Properties", "CASCADE"),
         ], rules);

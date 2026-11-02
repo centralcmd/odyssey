@@ -29,6 +29,12 @@ public class CalendarEvent
     [StringLength(300)]
     public string? Location { get; set; }
 
+    /// <summary>
+    /// The place this event happened at (issue #380). <c>RESTRICT</c>, indexed; the text column beside it is
+    /// now an optional detail. Declared in <c>OdysseyContext.ConfigureLocationReferences</c>.
+    /// </summary>
+    public Guid? LocationId { get; set; }
+
     // The ICS UID of an imported event (issue #330). Null for app-native events. Non-unique — dedup
     // within an import file is handled in-memory; a DB unique index would 500 on legitimate duplicate
     // UIDs (e.g. RECURRENCE-ID exception rows) rather than letting the import skip them.

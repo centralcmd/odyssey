@@ -12,10 +12,30 @@ public static class WeatherCoordinates
 {
     public static decimal Round(decimal value) => WeatherRules.RoundCoordinate(value);
 
+    /// <summary>
+    /// The position fingerprint, or <see cref="NoCoordinatesFingerprint"/> for a place with no coordinates
+    /// (issue #380 made them optional, all-or-none). That value never matches a reviewed position, so the
+    /// fingerprint check refuses rather than turning weather on for a place it cannot locate.
+    /// </summary>
     public static string Fingerprint(LocationEntity location) =>
-        WeatherRules.Fingerprint(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId);
+        Position(location) is { } position
+            ? WeatherRules.Fingerprint(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId)
+            : NoCoordinatesFingerprint;
 
+    /// <summary>A place whose coordinates were removed has moved away from any site weather is using.</summary>
     public static bool Moved(LocationEntity location, Odyssey.Context.WeatherLocationSite site) =>
-        WeatherRules.Moved(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId,
+        Position(location) is not { } position
+        || WeatherRules.Moved(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId,
             site.Latitude, site.Longitude, site.AltitudeMeters, site.TimeZoneId);
+
+    public const string NoCoordinatesFingerprint = "v1:none";
+
+    /// <summary>
+    /// The location's position, or <see langword="null"/> when it has none. The three columns are
+    /// all-or-none (<c>CK_Locations_CoordinatesAllOrNone</c>), so a partial set is treated as none.
+    /// </summary>
+    public static (decimal Latitude, decimal Longitude, string TimeZoneId)? Position(LocationEntity location) =>
+        location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } timeZoneId }
+            ? (latitude, longitude, timeZoneId)
+            : null;
 }

@@ -877,7 +877,14 @@ public class DataExportApiTests
 
         var realEstate = Assert.Single(finance.GetProperty("realEstateDetails").EnumerateArray());
         Assert.Equal(houseId, realEstate.GetProperty("propertyId").GetGuid());
-        Assert.Equal("Oslo", realEstate.GetProperty("city").GetString());
+        // Issue #380: the address is the linked location, exported in Locations with its structured fields.
+        var addressId = realEstate.GetProperty("locationId").GetGuid();
+        var address = Assert.Single(
+            finance.GetProperty("locations").EnumerateArray(),
+            location => location.GetProperty("locationId").GetGuid() == addressId);
+        Assert.Equal("Oslo", address.GetProperty("city").GetString());
+        Assert.Equal(JsonValueKind.Null, address.GetProperty("latitude").ValueKind);
+        Assert.Equal(64, address.GetProperty("addressKey").GetString()!.Length);
         var associationId = realEstate.GetProperty("homeownerAssociationId").GetGuid();
         Assert.Contains(
             finance.GetProperty("contacts").EnumerateArray(),
@@ -1469,7 +1476,8 @@ public class DataExportApiTests
                 Type = Odyssey.Dtos.Finance.PropertyType.RealEstate, CurrencyCode = "NOK",
                 RealEstateDetails = new RealEstateDetails
                 {
-                    Kind = Odyssey.Dtos.Finance.RealEstateKind.House, City = "Oslo",
+                    Kind = Odyssey.Dtos.Finance.RealEstateKind.House,
+                    Location = PropertyApiTestSupport.AddressLocation("Oslo"),
                     // Issue #217: a populated link, so a dropped export column cannot pass as null.
                     HomeownerAssociationId = contactId,
                 },

@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
+using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
@@ -80,8 +82,9 @@ public class PropertyService
                 EF.Functions.Like(p.Description, pattern) ||
                 (p.Notes != null && EF.Functions.Like(p.Notes, pattern)) ||
                 (p.RealEstateDetails != null && (
-                    (p.RealEstateDetails.AddressLine != null && EF.Functions.Like(p.RealEstateDetails.AddressLine, pattern)) ||
-                    (p.RealEstateDetails.City != null && EF.Functions.Like(p.RealEstateDetails.City, pattern)) ||
+                    (p.RealEstateDetails.Location != null && (
+                        (p.RealEstateDetails.Location.Line1 != null && EF.Functions.Like(p.RealEstateDetails.Location.Line1, pattern)) ||
+                        (p.RealEstateDetails.Location.City != null && EF.Functions.Like(p.RealEstateDetails.Location.City, pattern)))) ||
                     (p.RealEstateDetails.CadastralNumber != null && EF.Functions.Like(p.RealEstateDetails.CadastralNumber, pattern)))) ||
                 (p.VehicleDetails != null && (
                     (p.VehicleDetails.RegistrationNumber != null && EF.Functions.Like(p.VehicleDetails.RegistrationNumber, pattern)) ||
@@ -139,7 +142,7 @@ public class PropertyService
         var (safeOffset, safeLimit) = ListQuery.ResolveWindow(query.Offset, query.Limit);
 
         var properties = await ordered
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .Skip(safeOffset)
             .Take(safeLimit)
@@ -165,7 +168,7 @@ public class PropertyService
     {
         var property = await context.Properties
             .AsNoTracking()
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
 
@@ -374,6 +377,7 @@ public class PropertyService
         };
 
         ApplyBaseAndDetails(property, newProperty, now);
+        await ApplyAddressAsync(property, newProperty, userId, now, cancellationToken);
 
         context.Properties.Add(property);
 
@@ -403,7 +407,7 @@ public class PropertyService
         Guid id, NewProperty putProperty, string? userId, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
         if (property is null)
@@ -451,6 +455,7 @@ public class PropertyService
         property.UpdatedAt = now;
         ApplyArchiveTransition(property, putProperty.Archived, now);
         ApplyBaseAndDetails(property, putProperty, now);
+        await ApplyAddressAsync(property, putProperty, userId, now, cancellationToken);
 
         // After ApplyBaseAndDetails, whose date and year rules can still throw: a refused write stages
         // nothing, and an accepted one commits the change and its events in the same save.
@@ -489,7 +494,7 @@ public class PropertyService
     public async Task<bool> Delete(Guid id, string? userId, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .Include(p => p.Estimates)
             .Include(p => p.SmartTags)
@@ -606,10 +611,6 @@ public class PropertyService
 
             property.RealEstateDetails ??= new RealEstateDetails();
             property.RealEstateDetails.Kind = details.Kind;
-            property.RealEstateDetails.AddressLine = details.AddressLine;
-            property.RealEstateDetails.PostalCode = details.PostalCode;
-            property.RealEstateDetails.City = details.City;
-            property.RealEstateDetails.CountryCode = details.CountryCode?.Trim().ToUpperInvariant();
             property.RealEstateDetails.CadastralNumber = details.CadastralNumber;
             property.RealEstateDetails.LivingAreaSqm = details.LivingAreaSqm;
             property.RealEstateDetails.PlotAreaSqm = details.PlotAreaSqm;
@@ -635,6 +636,44 @@ public class PropertyService
             property.VehicleDetails.ModelYear = details.ModelYear;
             property.VehicleDetails.FirstRegisteredDate = DateTimeNormalization.NormalizeToUtc(details.FirstRegisteredDate);
         }
+    }
+
+    /// <summary>
+    /// Links a real-estate property to the location holding its address (issue #380 §5.4). All four fields
+    /// empty unlinks (the place stays); fields equal to the linked location's four keep the link, which
+    /// covers a partial, keyless address; anything else is found by its address key or created.
+    /// </summary>
+    /// <remarks>
+    /// B2: the location resolver replaces <see cref="LocationAddressLinker"/> here, adding the
+    /// <c>locationId</c> path, the claim checks and the <c>applyTo</c> edit modes. A changed address moves
+    /// only this property's link (copy-on-write) until then.
+    /// </remarks>
+    private async Task ApplyAddressAsync(
+        Property property, NewProperty source, string? userId, DateTime now, CancellationToken cancellationToken)
+    {
+        if (property.Type != PropertyType.RealEstate || source.RealEstateDetails is not { } details)
+            return;
+
+        var address = LocationAddress.Of(
+            details.AddressLine, line2: null, details.PostalCode, details.City, region: null, details.CountryCode);
+        var target = property.RealEstateDetails!;
+        if (address.IsEmpty)
+        {
+            target.LocationId = null;
+            target.Location = null;
+            return;
+        }
+
+        if (target.Location is { } current
+            && LocationAddress.Of(current.Line1, null, current.PostalCode, current.City, null, current.CountryCode) == address)
+        {
+            return;
+        }
+
+        var location = await LocationAddressLinker.FindOrCreateAsync(
+            context, address, LocationSource.PropertyAddress, userId, now, cancellationToken);
+        target.LocationId = location.LocationId;
+        target.Location = location;
     }
 
     private static void ApplyArchiveTransition(Property property, bool requestedArchived, DateTime now)

@@ -134,6 +134,16 @@ public static class MapsterConfig
             // ExistingAccount.Custodian explicitly via IContactLookup. Contact read-projection Mapster
             // config moved to Odyssey.Core.Journal/ContactMapsterConfig.cs with the aggregate (issue #325).)
 
+            // A property's address is its linked location since issue #380; the four DTO fields are projected
+            // from it (AddressLine is Line1), and every read loads it (ThenInclude). B2: adds LocationId,
+            // otherUses and placeHasCoordinates.
+            TypeAdapterConfig<Odyssey.Context.RealEstateDetails, Odyssey.Dtos.Finance.RealEstateDetailsDto>
+                .NewConfig()
+                .Map(dest => dest.AddressLine, src => src.Location != null ? src.Location.Line1 : null)
+                .Map(dest => dest.PostalCode, src => src.Location != null ? src.Location.PostalCode : null)
+                .Map(dest => dest.City, src => src.Location != null ? src.Location.City : null)
+                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode : null);
+
             configured = true;
         }
     }

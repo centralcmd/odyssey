@@ -41,6 +41,10 @@ public sealed class DemoDataSeeder(
         // After the users exist: the ToS version records its publishing admin, and every demo user needs
         // acceptance rows or each seeded login lands on the /accept-terms interstitial instead of the app.
         await SeedLegalAcceptanceAsync(context, data, cancellationToken);
+        // Locations before anything that links one (issue #380): contact addresses, properties, journal
+        // entries and events reference a location by a RESTRICT key. After the users: a location records
+        // who created it.
+        await SeedLocationsAsync(context, data, cancellationToken);
         // Contacts first: they are FK principals for the finance references (transaction counterparty,
         // account custodian, policy insurer, contract party) as well as for PhotoPerson and
         // JournalEntryContact. Each step below is its own SaveChanges, so the order between them is the
@@ -54,7 +58,6 @@ public sealed class DemoDataSeeder(
         await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
-        await SeedLocationsAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
         // without and cannot be seeded with a fixed value. See its own remarks.
         await SeedClientBaseUrlAsync(context, cancellationToken);
@@ -638,17 +641,20 @@ public sealed class DemoDataSeeder(
             return;
         }
 
-        var sentinelId = data.Locations[0].LocationId;
-        if (await context.Locations.AnyAsync(location => location.LocationId == sentinelId, cancellationToken))
+        // Record-level rather than one sentinel: a dev database seeded before issue #380 holds the five
+        // household places but none of the address-backed ones the contacts and properties now link.
+        var present = (await context.Locations.Select(location => location.LocationId).ToListAsync(cancellationToken)).ToHashSet();
+        var missing = data.Locations.Where(location => !present.Contains(location.LocationId)).ToList();
+        if (missing.Count == 0)
         {
             logger.LogInformation("Demo locations already present; skipping location seed.");
             return;
         }
 
-        await context.Locations.AddRangeAsync(data.Locations, cancellationToken);
+        await context.Locations.AddRangeAsync(missing, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Seeded {Locations} locations.", data.Locations.Count);
+        logger.LogInformation("Seeded {Locations} locations.", missing.Count);
     }
 
     private async Task SeedCalendarAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

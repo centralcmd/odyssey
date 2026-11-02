@@ -66,6 +66,18 @@ public static class ContactMapsterConfig
                 .Map(dest => dest.DissolvedDate,
                     src => src.DissolvedDate == null ? (DateTime?)null : src.DissolvedDate.Value.ToDateTime(TimeOnly.MinValue));
 
+            // A contact address is a link row since issue #380; today's address shape is projected from the
+            // linked location, which every read loads (ThenInclude). B2: adds LocationId, otherUses and
+            // placeHasCoordinates to ExistingAddress.
+            TypeAdapterConfig<Address, ExistingAddress>
+                .NewConfig()
+                .Map(dest => dest.Line1, src => src.Location != null ? src.Location.Line1 ?? string.Empty : string.Empty)
+                .Map(dest => dest.Line2, src => src.Location != null ? src.Location.Line2 : null)
+                .Map(dest => dest.City, src => src.Location != null ? src.Location.City ?? string.Empty : string.Empty)
+                .Map(dest => dest.PostalCode, src => src.Location != null ? src.Location.PostalCode : null)
+                .Map(dest => dest.Region, src => src.Location != null ? src.Location.Region : null)
+                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode ?? string.Empty : string.Empty);
+
             configured = true;
         }
     }

@@ -374,11 +374,11 @@ public class PropertiesApiTests
 
         await ReadAsync(factory, async context =>
         {
-            var details = await context.RealEstateDetails.AsNoTracking().ToListAsync();
+            var details = await context.RealEstateDetails.AsNoTracking().Include(d => d.Location).ToListAsync();
             Assert.Equal(2, details.Count);
-            Assert.Equal("Tromsø", details.Single(d => d.PropertyId == victimId).City);
+            Assert.Equal("Tromsø", details.Single(d => d.PropertyId == victimId).Location!.City);
             Assert.Equal(RealEstateKind.House, details.Single(d => d.PropertyId == victimId).Kind);
-            Assert.Equal("Injected", details.Single(d => d.PropertyId == created.PropertyId).City);
+            Assert.Equal("Injected", details.Single(d => d.PropertyId == created.PropertyId).Location!.City);
             Assert.Equal("Victim", (await context.Properties.AsNoTracking().SingleAsync(p => p.PropertyId == victimId)).Name);
             return true;
         });

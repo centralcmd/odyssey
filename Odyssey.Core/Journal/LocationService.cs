@@ -151,10 +151,12 @@ public class LocationService
         Name = location.Name,
         Description = location.Description,
         AddressText = location.AddressText,
-        Latitude = location.Latitude,
-        Longitude = location.Longitude,
+        // B2: ExistingLocation's coordinates and time zone become nullable on the wire (§5.5). Until then a
+        // coordinate-less place (converted or address-derived, issue #380) reads as 0/0 with no zone.
+        Latitude = location.Latitude ?? 0m,
+        Longitude = location.Longitude ?? 0m,
         AltitudeMeters = location.AltitudeMeters,
-        TimeZoneId = location.TimeZoneId,
+        TimeZoneId = location.TimeZoneId ?? string.Empty,
         Source = location.Source,
         SourceReference = location.SourceReference,
         Attribution = LocationAttributions.For(location.Source),

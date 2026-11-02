@@ -259,7 +259,7 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
             CurrencyCode = "USD",
             CreatedAt = Anchor,
             UpdatedAt = Anchor,
-            RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House, City = "Oslo" },
+            RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House },
         };
         context.Properties.Add(property);
         await context.SaveChangesAsync();
