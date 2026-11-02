@@ -258,7 +258,7 @@ public class ContactMethodLabelScopeApiTests
         foreach (var property in dto.GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
             var type = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
-            var permitted = type == typeof(string) || type == typeof(bool) || type == typeof(Guid) || type.IsEnum;
+            var permitted = type == typeof(string) || type == typeof(bool) || type == typeof(int) || type == typeof(Guid) || type.IsEnum;
 
             Assert.True(permitted, $"{dto.Name}.{property.Name} is {type.Name}, which is not a permitted scalar type.");
         }

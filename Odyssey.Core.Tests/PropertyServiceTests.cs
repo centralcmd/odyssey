@@ -2,6 +2,7 @@ using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Journal;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -143,6 +144,7 @@ public class PropertyServiceTests
 
         var put = PropertyTestData.House("Storgata 16");
         put.RealEstateDetails!.City = "Bergen";
+        put.RealEstateDetails.ApplyTo = AddressApplyTo.ThisRecord;
         put.Archived = true;
         var updated = await service.Update(created.PropertyId, put, userId: null);
 
