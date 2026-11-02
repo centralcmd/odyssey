@@ -153,6 +153,9 @@ public partial class CalendarEventDialog
     {
         _draft.Place.Pick = pick;
         _draft.Place.Error = null;
+        // A Kartverket address is staged like a new name (issue #383 v6 §3.2a); the create row announces through OnStage.
+        if (pick is { IsStagedAddress: true })
+            Announce($"{_draft.Place.StagedName} will be added when you save");
     }
 
     private void OnPlaceStaged(string name) => Announce($"{name} will be added when you save");
@@ -196,10 +199,10 @@ public partial class CalendarEventDialog
         }
 
         // A staged place is created immediately before the record write; if that fails the save stops and
-        // nothing else is written. A retry after a failed record write reuses the created id (issue #383 §3.2).
+        // nothing else is written. A retry after a failed record write reuses the created id (issue #383 §3.2, §3.2a).
         if (!await _draft.Place.EnsureCreatedAsync(Locations, CanReadLocations))
         {
-            Announce($"Couldn’t add {_draft.Place.Pick?.NewName}");
+            Announce($"Couldn’t add {_draft.Place.StagedName}");
             return false;
         }
 

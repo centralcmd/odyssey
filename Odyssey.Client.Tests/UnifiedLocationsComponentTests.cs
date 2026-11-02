@@ -292,7 +292,7 @@ public class UnifiedLocationsComponentTests
     [Fact]
     public async Task The_search_asks_for_one_page_of_twenty_active_places_and_never_the_unpaged_list()
     {
-        var (ctx, cut, api, _) = RenderSelect(places: [Hytta(), Hytta(archived: true) with { LocationId = Guid.NewGuid() }]);
+        var (ctx, cut, api, _) = RenderSelect(allowCreate: false, places: [Hytta(), Hytta(archived: true) with { LocationId = Guid.NewGuid() }]);
         await using var _ctx = ctx;
 
         var rows = await cut.FindComponent<OdsCombobox>().Instance.SearchAsync!("Hyt", CancellationToken.None);

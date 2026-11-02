@@ -2,16 +2,18 @@ using System.Net;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Components;
 
 /// <summary>
 /// The value of an <c>OdsLocationSelect</c> (issue #383 §4): an existing place by <see cref="Id"/>, a
-/// <b>staged</b> new one by <see cref="NewName"/> that the parent creates when its own dialog saves, or — in
-/// address mode (v5) — a staged Kartverket <see cref="Candidate"/> that the record write sends as fields plus its
-/// geocode. Exactly one of the three is set.
+/// <b>staged</b> new one by <see cref="NewName"/> that the parent creates when its own dialog saves, or a staged
+/// Kartverket <see cref="Candidate"/> — in address mode (v5) the record write sends it as fields plus its geocode; in
+/// place mode (v6 §3.2a) the parent creates it as a place when its dialog saves. Exactly one of the three is set.
 /// </summary>
 public sealed record LocationPick(Guid? Id, string? NewName)
 {
@@ -19,10 +21,10 @@ public sealed record LocationPick(Guid? Id, string? NewName)
 
     public static LocationPick Staged(string name) => new(null, name);
 
-    /// <summary>A Kartverket address picked in the address picker: nothing is created until the record saves.</summary>
+    /// <summary>A Kartverket address picked in the picker: nothing is created until the record saves.</summary>
     public static LocationPick Address(LocationCandidate candidate) => new(null, null) { Candidate = candidate };
 
-    /// <summary>The staged Kartverket address, in address mode.</summary>
+    /// <summary>The staged Kartverket address.</summary>
     public LocationCandidate? Candidate { get; init; }
 
     public bool IsStaged => Id is null && !string.IsNullOrEmpty(NewName);
@@ -105,12 +107,19 @@ public sealed class LocationLink
 public enum LocationLinkKind { Keep, Set, Clear }
 
 /// <summary>
-/// The place half of an event, series or entry draft (issue #383 §3.2): the stored link, the picker's
-/// value, and the id of a staged place once it has been created. A retry after a failed record write
-/// reuses <see cref="CreatedId"/> and does not post again.
+/// The place half of an event, series or entry draft (issue #383 §3.2, v6 §3.2a): the stored link, the picker's
+/// value, and the id of a staged place once it has been created — or, for a staged Kartverket address that turned
+/// out to exist already, the id of that place. A retry after a failed record write reuses <see cref="CreatedId"/>
+/// and does not post again.
 /// </summary>
 public sealed class PlaceDraft
 {
+    /// <summary>The picker error when a Kartverket address could not be added (issue #383 v6 §3.2a).</summary>
+    public const string AddressAddFailed = "Couldn’t add this address — pick a saved place or try again.";
+
+    /// <summary>How many times a Kartverket address's name is retried with <c> (2)</c>, <c> (3)</c>, … (§3.2a).</summary>
+    public const int NameSuffixRetries = 5;
+
     public Guid? StoredId { get; init; }
 
     /// <summary>The stored link's embed — null without <c>locations.read</c>.</summary>
@@ -118,13 +127,24 @@ public sealed class PlaceDraft
 
     public LocationPick? Pick { get; set; }
 
-    /// <summary>The staged place's id once <see cref="EnsureCreatedAsync"/> created it, and for which name.</summary>
-    public Guid? CreatedId => _created is { } c && Pick?.IsStaged == true && c.Name == Pick.NewName ? c.Id : null;
+    /// <summary>
+    /// The place a staged pick resolved to once <see cref="EnsureCreatedAsync"/> ran — the created place, or the
+    /// existing one a staged address already named — for that same pick only.
+    /// </summary>
+    public Guid? CreatedId => _created is { } c && StagedKey(Pick) is { } key && c.Key == key ? c.Id : null;
 
-    private (string Name, Guid Id)? _created;
+    private (string Key, Guid Id)? _created;
 
     /// <summary>The picker's field error — a staged create that failed, or a server <c>422</c>/<c>409</c>.</summary>
     public string? Error { get; set; }
+
+    /// <summary>What a staged pick is called, for the save's announcement — null when nothing is staged.</summary>
+    public string? StagedName => Pick switch
+    {
+        { IsStaged: true } p => p.NewName,
+        { IsStagedAddress: true, Candidate: { } c } => LocationVisuals.CandidateAddress(c),
+        _ => null,
+    };
 
     public static PlaceDraft For(Guid? storedId, LocationRef? storedRef) => new()
     {
@@ -136,27 +156,155 @@ public sealed class PlaceDraft
     /// <summary>The link the record write sends.</summary>
     public LocationLink Link(bool pickerShown) => LocationLink.For(StoredId, Pick, CreatedId, pickerShown);
 
+    // Which staged pick a created id belongs to: a new name, or a Kartverket address by its source reference.
+    private static string? StagedKey(LocationPick? pick) => pick switch
+    {
+        { IsStaged: true } p => "name:" + p.NewName,
+        { IsStagedAddress: true, Candidate: { } c } => "addr:" + (c.SourceReference ?? LocationVisuals.CandidateAddress(c)),
+        _ => null,
+    };
+
     /// <summary>
     /// Creates a staged place, if there is one not yet created — immediately before the record write
-    /// (issue #383 §3.2). Returns false, with <see cref="Error"/> set, when the create failed: the save
+    /// (issue #383 §3.2, §3.2a). Returns false, with <see cref="Error"/> set, when the create failed: the save
     /// then stops and nothing else is written.
     /// </summary>
     public async Task<bool> EnsureCreatedAsync(ILocationsApiClient locations, bool pickerShown)
     {
-        if (!pickerShown || Pick is not { IsStaged: true } pick || CreatedId is not null)
+        if (!pickerShown || CreatedId is not null)
+            return true;
+
+        if (Pick is { IsStagedAddress: true, Candidate: { } candidate } address)
+            return await CreateAddressAsync(locations, address, candidate);
+
+        if (Pick is not { IsStaged: true } pick)
             return true;
 
         var result = await locations.CreateAsync(new NewLocation { Name = pick.NewName!, Source = LocationSource.Manual });
         if (result.IsSuccess && result.Value is { } created)
         {
-            _created = (pick.NewName!, created.LocationId);
-            Error = null;
+            Resolved(pick, created.LocationId);
             return true;
         }
 
-        Error = result.Problem?.ErrorFor("name") ?? result.Problem?.Errors.Values.FirstOrDefault()?.FirstOrDefault()
-            ?? result.Error ?? "Couldn’t add the place.";
+        Error = FirstError(result) ?? "Couldn’t add the place.";
         return false;
+    }
+
+    /// <summary>
+    /// A staged Kartverket address (§3.2a): <c>POST /api/locations</c> named by the composed address, with the
+    /// structured fields and the geocode. A <c>409</c> keyed <c>line1</c> means the address is already a saved
+    /// place, which is found by its address key and linked unchanged — never posted again. A <c>409</c> keyed
+    /// <c>name</c> means a different place has the name, so the name is retried with a suffix.
+    /// </summary>
+    private async Task<bool> CreateAddressAsync(ILocationsApiClient locations, LocationPick pick, LocationCandidate candidate)
+    {
+        var baseName = AddressPlaceName(candidate);
+        for (var ordinal = 1; ordinal <= 1 + NameSuffixRetries; ordinal++)
+        {
+            var result = await locations.CreateAsync(AddressLocation(candidate, SuffixedName(baseName, ordinal)));
+            if (result.IsSuccess && result.Value is { } created)
+            {
+                Resolved(pick, created.LocationId);
+                return true;
+            }
+
+            if (result.Status == HttpStatusCode.Conflict && result.Problem?.ErrorFor("line1") is not null)
+            {
+                if (await FindByAddressAsync(locations, candidate) is not { } existing)
+                    break;
+                Resolved(pick, existing);
+                return true;
+            }
+
+            if (result.Status == HttpStatusCode.Conflict && result.Problem?.ErrorFor("name") is not null)
+                continue;
+
+            Error = FirstError(result) ?? AddressAddFailed;
+            return false;
+        }
+
+        Error = AddressAddFailed;
+        return false;
+    }
+
+    private void Resolved(LocationPick pick, Guid id)
+    {
+        _created = (StagedKey(pick)!, id);
+        Error = null;
+    }
+
+    private static string? FirstError(ApiResult<ExistingLocation> result) =>
+        result.Problem?.ErrorFor("name") ?? result.Problem?.Errors.Values.FirstOrDefault()?.FirstOrDefault() ?? result.Error;
+
+    /// <summary>The fields of a staged Kartverket address as sent: cleaned, country defaulting to <c>NO</c>.</summary>
+    private static (string? Line1, string? PostalCode, string? City, string CountryCode) AddressFieldsOf(LocationCandidate c) => (
+        LocationAddressKey.CleanField(c.Line1),
+        LocationAddressKey.CleanField(c.PostalCode),
+        LocationAddressKey.CleanField(c.City),
+        (LocationAddressKey.CleanField(c.CountryCode) ?? "NO").ToUpperInvariant());
+
+    /// <summary>A staged address's place name: the composed address, from the client's one composer.</summary>
+    internal static string AddressPlaceName(LocationCandidate c)
+    {
+        var (line1, postalCode, city, country) = AddressFieldsOf(c);
+        return LocationVisuals.ComposeAddress(line1, null, postalCode, city, null, country) ?? c.Name;
+    }
+
+    /// <summary>The <paramref name="ordinal"/>-th name: the base, then <c> (2)</c>, <c> (3)</c>, …, cut so it fits.</summary>
+    internal static string SuffixedName(string baseName, int ordinal)
+    {
+        var suffix = ordinal <= 1 ? string.Empty : $" ({ordinal})";
+        var room = LocationRules.NameMaxLength - suffix.Length;
+        var cut = baseName.Length <= room ? baseName
+            : baseName[..(char.IsHighSurrogate(baseName[room - 1]) ? room - 1 : room)].TrimEnd();
+        return cut + suffix;
+    }
+
+    /// <summary>The request for a staged address. The geocode is all-or-none, as the server requires.</summary>
+    internal static NewLocation AddressLocation(LocationCandidate c, string name)
+    {
+        var (line1, postalCode, city, country) = AddressFieldsOf(c);
+        var geocoded = !string.IsNullOrWhiteSpace(c.TimeZoneId);
+        return new NewLocation
+        {
+            Name = name,
+            Line1 = line1,
+            PostalCode = postalCode,
+            City = city,
+            CountryCode = country,
+            Latitude = geocoded ? c.Latitude : null,
+            Longitude = geocoded ? c.Longitude : null,
+            TimeZoneId = geocoded ? c.TimeZoneId : null,
+            Source = LocationSource.Kartverket,
+            SourceReference = c.SourceReference,
+        };
+    }
+
+    /// <summary>The address key of a staged address — the shared <see cref="LocationAddressKey"/> over its fields.</summary>
+    internal static string? AddressKeyOf(LocationCandidate c)
+    {
+        var (line1, postalCode, city, country) = AddressFieldsOf(c);
+        return LocationAddressKey.Compute(country, postalCode, city, line1, null, null);
+    }
+
+    /// <summary>
+    /// The saved place that already has the staged address (§3.2a): <c>GET /api/locations?search=‹line1›</c>, the
+    /// result whose address key equals the candidate's. A place still in use is preferred over an archived or
+    /// merged-away one carrying the same key.
+    /// </summary>
+    private static async Task<Guid?> FindByAddressAsync(ILocationsApiClient locations, LocationCandidate candidate)
+    {
+        if (AddressKeyOf(candidate) is not { } key || AddressFieldsOf(candidate).Line1 is not { } line1)
+            return null;
+        var result = await locations.ListAsync(1, OdsLocationSelect.PageSize, line1);
+        if (!result.IsSuccess || result.Value is null)
+            return null;
+        return result.Value.Items
+            .Where(l => LocationAddressKey.Compute(l.CountryCode, l.PostalCode, l.City, l.Line1, l.Line2, l.Region) == key)
+            .OrderBy(l => l.Archived is not null || l.MergedIntoLocationId is not null)
+            .Select(l => (Guid?)l.LocationId)
+            .FirstOrDefault();
     }
 }
 

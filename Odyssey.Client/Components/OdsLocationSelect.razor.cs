@@ -22,8 +22,11 @@ public partial class OdsLocationSelect
     /// <summary>The address search's disclosure under the field (issue #383 v5 §3.3a) — always visible while it is on.</summary>
     public const string AddressSearchDisclosure = "Address search sends what you type to Kartverket.";
 
-    /// <summary>The Kartverket group's note when the address search failed.</summary>
+    /// <summary>The Kartverket group's note when the address search failed, in address mode.</summary>
     public const string AddressSearchUnavailable = "Address search is unavailable — enter the address by hand";
+
+    /// <summary>The same note in place mode, which has no hand-entry row (issue #383 v6 §3.2a).</summary>
+    public const string PlaceAddressSearchUnavailable = "Address search is unavailable — pick a saved place or create one";
 
     /// <summary>The address picker's final row.</summary>
     public const string EnterByHandLabel = "Enter an address by hand…";
@@ -126,8 +129,14 @@ public partial class OdsLocationSelect
 
     private bool IsAddressMode => Mode == LocationSelectMode.Address;
 
-    /// <summary>The Kartverket group, its hand-entry row and its disclosure: address mode under <c>locations.create</c>.</summary>
-    private bool AddressSearchOn => IsAddressMode && AllowCreate;
+    /// <summary>
+    /// The Kartverket group and its disclosure — and, in address mode, the hand-entry row: under
+    /// <c>locations.create</c>, in either mode (issue #383 v5 §3.3a, v6 §3.2a).
+    /// </summary>
+    private bool AddressSearchOn => AllowCreate;
+
+    /// <summary>The rows go in the labelled groups: always in address mode, and in place mode with the address search.</summary>
+    private bool Grouped => IsAddressMode || AddressSearchOn;
 
     private string EffectiveLabel => Label ?? (IsAddressMode ? "Address" : "Place");
 
@@ -140,7 +149,7 @@ public partial class OdsLocationSelect
     // The candidates behind the Kartverket rows of the latest search, by their row value.
     private readonly Dictionary<string, LocationCandidate> _candidates = new(StringComparer.Ordinal);
 
-    private OdsComboboxFooter? Footer => AddressSearchOn && OnEnterByHand.HasDelegate
+    private OdsComboboxFooter? Footer => IsAddressMode && AddressSearchOn && OnEnterByHand.HasDelegate
         ? new OdsComboboxFooter(EnterByHandLabel, text => OnEnterByHand.InvokeAsync(text)) { Icon = "edit_location_alt" }
         : null;
 
@@ -150,7 +159,7 @@ public partial class OdsLocationSelect
     /// </summary>
     public void Refresh(ExistingLocation place)
     {
-        _current[place.LocationId.ToString()] = IsAddressMode ? LocationVisuals.AddressOptionFor(place) : LocationVisuals.OptionFor(place);
+        _current[place.LocationId.ToString()] = SavedOptionFor(place);
         StateHasChanged();
     }
 
@@ -205,7 +214,7 @@ public partial class OdsLocationSelect
 
     /// <summary>One server page of active places for the query — never the unpaged list (issue #383 AC 13).</summary>
     private Task<IReadOnlyList<OdsOption>> SearchAsync(string query, CancellationToken ct) =>
-        IsAddressMode ? SearchAddressesAsync(query, ct) : SearchPlacesAsync(query, ct);
+        Grouped ? SearchGroupedAsync(query, ct) : SearchPlacesAsync(query, ct);
 
     private async Task<IReadOnlyList<OdsOption>> SearchPlacesAsync(string query, CancellationToken ct) =>
         [.. (await SavedPlacesAsync(query, ct)).Select(LocationVisuals.OptionFor)];
@@ -225,23 +234,24 @@ public partial class OdsLocationSelect
     }
 
     /// <summary>
-    /// Address mode (issue #383 v5 §3.3a): the saved places, and — with the address search on and 3 characters —
-    /// the Kartverket addresses, both for the same query and run side by side. Only address results with a Line 1
-    /// are listed, and one whose address equals a listed saved place is dropped, since Save would link that place
-    /// anyway. The address search failing is a note in its group, never a failed field; saved places still list.
+    /// The grouped picker — address mode (issue #383 v5 §3.3a) and the place picker with the address search (v6
+    /// §3.2a): the saved places, and — with the address search on and 3 characters — the Kartverket addresses, both
+    /// for the same query and run side by side. Only address results with a Line 1 are listed, and one whose address
+    /// equals a listed saved place is dropped, since that place is the one to link. The address search failing is a
+    /// note in its group, never a failed field; saved places still list.
     /// </summary>
-    private async Task<IReadOnlyList<OdsOption>> SearchAddressesAsync(string query, CancellationToken ct)
+    private async Task<IReadOnlyList<OdsOption>> SearchGroupedAsync(string query, CancellationToken ct)
     {
         var addresses = AddressSearchOn && query.Trim().Length >= AddressMinChars ? SearchKartverketAsync(query, ct) : null;
         var places = await SavedPlacesAsync(query, ct);
-        var rows = places.Select(p => LocationVisuals.AddressOptionFor(p) with { Group = SavedGroup }).ToList();
+        var rows = places.Select(p => SavedOptionFor(p) with { Group = SavedGroup }).ToList();
         if (addresses is null)
             return rows;
 
         var candidates = await addresses;
         if (candidates is null)
         {
-            rows.Add(new OdsOption($"note:{KartverketGroup}", AddressSearchUnavailable) { Group = KartverketGroup, IsNote = true });
+            rows.Add(new OdsOption($"note:{KartverketGroup}", IsAddressMode ? AddressSearchUnavailable : PlaceAddressSearchUnavailable) { Group = KartverketGroup, IsNote = true });
             return rows;
         }
 
@@ -278,6 +288,10 @@ public partial class OdsLocationSelect
     private static string SameAddressKey(string? line1, string? postalCode, string? countryCode) =>
         string.Join("|", new[] { line1, postalCode, countryCode }.Select(v => LocationAddressKey.CleanField(v)?.ToUpperInvariant() ?? string.Empty));
 
+    /// <summary>A saved place's row: with its usage in address mode, as a plain place row in place mode.</summary>
+    private OdsOption SavedOptionFor(ExistingLocation place) =>
+        IsAddressMode ? LocationVisuals.AddressOptionFor(place) : LocationVisuals.OptionFor(place);
+
     /// <summary>Renders a stored id outside the loaded options, archived ones included.</summary>
     private async Task<OdsOption?> ResolveAsync(string value)
     {
@@ -286,7 +300,7 @@ public partial class OdsLocationSelect
         var result = await Locations.GetAsync(id);
         if (!result.IsSuccess || result.Value is not { } place)
             return null;
-        var option = IsAddressMode ? LocationVisuals.AddressOptionFor(place) : LocationVisuals.OptionFor(place);
+        var option = SavedOptionFor(place);
         _current[value] = option;
         return option;
     }

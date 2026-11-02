@@ -31,7 +31,7 @@
     @if (CanReadLocations)
     {
         <OdsLocationSelect Label="Place" Value="@Draft.Place.Pick"
-                           ValueChanged="@(p => { Draft.Place.Pick = p; Draft.Place.Error = null; })"
+                           ValueChanged="OnPlaceChanged"
                            AllowCreate="CanCreateLocations" Error="@Draft.Place.Error"
                            OnStage="@(n => OnAnnounce.InvokeAsync($"{n} will be added when you save"))" />
     }
@@ -137,6 +137,16 @@
 
     /// <summary>The host dialog's one polite announcer (a staged place).</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    private Task OnPlaceChanged(LocationPick? pick)
+    {
+        Draft.Place.Pick = pick;
+        Draft.Place.Error = null;
+        // A Kartverket address is staged like a new name (issue #383 v6 §3.2a); the create row announces through OnStage.
+        return pick is { IsStagedAddress: true }
+            ? OnAnnounce.InvokeAsync($"{Draft.Place.StagedName} will be added when you save")
+            : Task.CompletedTask;
+    }
 
     /// <summary>Offers Download on an attachment row (<c>files.read</c>).</summary>
     [Parameter] public bool CanDownload { get; set; }

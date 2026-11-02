@@ -257,8 +257,8 @@ public sealed class AddressBlockModel
     }
 
     /// <summary>
-    /// <i>Enter an address by hand…</i>: the hand-entry group opens with the typed text as Line 1. With nothing typed,
-    /// what was entered before is kept.
+    /// <i>Enter an address by hand…</i>: the hand-entry group opens with the typed text as Line 1. Only Line 1 is
+    /// set — what was entered before in the other fields is kept — and with nothing typed, all of it is kept.
     /// </summary>
     public void EnterByHand(string? typed)
     {
@@ -266,7 +266,7 @@ public sealed class AddressBlockModel
         Staged = null;
         var text = typed?.Trim();
         if (!string.IsNullOrEmpty(text))
-            Fields = new AddressFields { Line1 = text };
+            Fields.Line1 = text;
     }
 
     /// <summary><i>Search instead</i>: back to the picker, keeping the typed fields until Save or Cancel.</summary>

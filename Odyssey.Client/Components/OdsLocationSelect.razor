@@ -15,6 +15,13 @@
     who will see the place. Picking it calls no API: the trigger reads "‹name› (new)" and the PARENT
     creates the place when its own dialog saves (PlaceDraft.EnsureCreatedAsync).
 
+    With AllowCreate the place picker also searches Kartverket (issue #383 v6 §3.2a): the rows are grouped "Saved
+    places" (every active place) and "Addresses from Kartverket", under the same search, debounce, failure note,
+    dedupe and disclosure as address mode below — one implementation, not a copy — and the create row still ends
+    the list. Only the failure note differs, since there is no hand-entry row: "Address search is unavailable —
+    pick a saved place or create one". A Kartverket pick is LocationPick.Address(candidate), staged as "‹address› (new)"; the parent creates
+    it as a geocoded place when its dialog saves (PlaceDraft.EnsureCreatedAsync).
+
     ADDRESS MODE (Mode=Address, issue #383 v5 §3.3a) is the one Address field of a contact or property: label
     "Address", address-complete places only, no create row, and the rows in two labelled groups — "Saved places"
     (each "used by N") and, with AllowCreate (locations.create), "Addresses from Kartverket": from 3 characters
@@ -51,7 +58,7 @@ else
                       Placeholder="@EffectivePlaceholder"
                       Disabled="@Disabled"
                       Clearable="true"
-                      ClearLabel="Clear place"
+                      ClearLabel="@(IsAddressMode ? "Clear address" : "Clear place")"
                       InputId="@_inputId"
                       AriaLabel="@(Bare ? AriaLabel ?? EffectiveLabel : null)"
                       AriaDescribedBy="@DescribedBy"
@@ -69,7 +76,7 @@ else
                       OnCreate="@(AllowCreate && !IsAddressMode ? Stage : null)"
                       CreateLabel="Create place"
                       CreateDescription="@(AllowCreate && !IsAddressMode ? CreateDisclosure : null)"
-                      Groups="@(IsAddressMode ? AddressGroups : null)"
+                      Groups="@(Grouped ? AddressGroups : null)"
                       FooterOption="@Footer" />;
 
     private RenderFragment? Disclosure => !AddressSearchOn ? null :

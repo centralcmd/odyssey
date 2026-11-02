@@ -150,10 +150,10 @@ public partial class CreateJournalEntryDialog
         _draft.ContactIds = [.. _draft.ContactIds.Select(ContactCreator.Resolve).Where(id => id is not null).Select(id => id!)];
 
         // A staged place is created immediately before the record write; a failed create stops the save, and a
-        // retry after a failed record write reuses the created place (issue #383 §3.2).
+        // retry after a failed record write reuses the created place (issue #383 §3.2, §3.2a).
         if (!await _draft.Place.EnsureCreatedAsync(Locations, _canReadLocations))
         {
-            Announce($"Couldn’t add {_draft.Place.Pick?.NewName}");
+            Announce($"Couldn’t add {_draft.Place.StagedName}");
             StateHasChanged();
             return false;
         }
