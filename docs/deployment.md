@@ -1055,8 +1055,11 @@ merge forwarder) refuses with a `409`.
    weather tables hold their own copies of the coordinates (the frozen sites and every forecast run),
    and an edit of the location does not reach them. See
    [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
-2. **If it is unused** (the *Not used* filter, `?referenced=false`), **delete** it. Deleting a contact
-   leaves its address as an unused location, which that filter finds.
+2. **If it is unused** (the *Not used* filter, `?referenced=false`), **delete** it.
+   **Deleting a contact or a property never deletes its address**: the address stays behind as an unused
+   location, readable by every `locations.read` holder (Guest included). When a request follows the
+   deletion of a contact or a property, open the Locations page, choose the **Not used** filter to find
+   the addresses those records left, and delete each one that belonged to the data subject.
 3. **If it is used**, either overwrite it in place — replace the name with something neutral (it must
    stay unique, e.g. `Erased 2026-10-23`), clear the address fields, the address text and the
    description, and clear the coordinates; an update keeps no previous value — or **merge** it into
