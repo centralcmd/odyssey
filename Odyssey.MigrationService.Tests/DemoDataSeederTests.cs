@@ -841,6 +841,50 @@ public class DemoDataSeederTests
         Assert.Equal(expected.Locations.Select(l => l.LocationId), DemoDataSet.Build().Locations.Select(l => l.LocationId));
     }
 
+    /// <summary>
+    /// A dev database seeded before issue #380 reaches the location seed with its property and contact
+    /// addresses already converted into places under fresh ids. The demo place for the same address must
+    /// be skipped rather than inserted beside it — on MariaDB that insert fails the unique
+    /// <c>IX_Locations_Name</c> / <c>IX_Locations_AddressKey</c> and the whole migrations job with it.
+    /// </summary>
+    [Fact]
+    public async Task Skips_a_demo_location_whose_address_the_conversion_already_created()
+    {
+        await using var provider = BuildProvider(out var seeder);
+        var demo = DemoDataSet.Build().Locations
+            .Single(l => l.LocationId == Odyssey.TestData.Generators.LocationGenerator.LocationIdFor(Odyssey.TestData.Generators.LocationGenerator.ApartmentAddress));
+
+        using (var arrange = provider.CreateScope())
+        {
+            var context = arrange.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.Locations.Add(new Location
+            {
+                LocationId = Guid.NewGuid(),
+                Name = demo.Name.ToUpperInvariant(),
+                AddressText = demo.AddressText,
+                Line1 = demo.Line1,
+                PostalCode = demo.PostalCode,
+                City = demo.City,
+                CountryCode = demo.CountryCode,
+                AddressKey = demo.AddressKey,
+                Source = demo.Source,
+                CreatedAt = demo.CreatedAt,
+                UpdatedAt = demo.UpdatedAt,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var rows = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Locations.AsNoTracking().ToListAsync();
+        Assert.Single(rows, l => string.Equals(l.Name, demo.Name, StringComparison.OrdinalIgnoreCase));
+        Assert.Single(rows, l => l.AddressKey == demo.AddressKey);
+        Assert.DoesNotContain(rows, l => l.LocationId == demo.LocationId);
+        // Every other demo place still lands.
+        Assert.Equal(DemoDataSet.Build().Locations.Count, rows.Count);
+    }
+
     [Fact]
     public async Task Is_idempotent_across_repeated_runs()
     {

@@ -643,8 +643,23 @@ public sealed class DemoDataSeeder(
 
         // Record-level rather than one sentinel: a dev database seeded before issue #380 holds the five
         // household places but none of the address-backed ones the contacts and properties now link.
-        var present = (await context.Locations.Select(location => location.LocationId).ToListAsync(cancellationToken)).ToHashSet();
-        var missing = data.Locations.Where(location => !present.Contains(location.LocationId)).ToList();
+        // Matching on id alone is not enough on an upgraded database: the issue #380 conversion turns the
+        // already-seeded contact and property addresses into places under fresh ids, so the demo place for
+        // the same address would collide on the unique Name or AddressKey. Such a converted row stands in
+        // for the demo one — the records that link it were seeded before the conversion and are skipped
+        // below. The folding mirrors the indexes' case-insensitive collation.
+        var existing = await context.Locations
+            .Select(location => new { location.LocationId, location.Name, location.AddressKey })
+            .ToListAsync(cancellationToken);
+        var presentIds = existing.Select(location => location.LocationId).ToHashSet();
+        var takenNames = existing.Select(location => location.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var takenKeys = existing.Where(location => location.AddressKey is not null)
+            .Select(location => location.AddressKey!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missing = data.Locations
+            .Where(location => !presentIds.Contains(location.LocationId)
+                               && !takenNames.Contains(location.Name)
+                               && (location.AddressKey is null || !takenKeys.Contains(location.AddressKey)))
+            .ToList();
         if (missing.Count == 0)
         {
             logger.LogInformation("Demo locations already present; skipping location seed.");
