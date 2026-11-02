@@ -181,7 +181,10 @@ truncated response reports itself rather than returning a silently short documen
         }
 
         await using var stream = file.OpenReadStream();
-        var outcome = await vCardService.ImportWithOutcomeAsync(stream, file.Length, file.ContentType, cancellationToken);
+        // ADR needs locations.create, checked once for the file (issue #380 §8.4); PlacesCreated is withheld
+        // from a caller without locations.read.
+        var outcome = await vCardService.ImportWithOutcomeAsync(
+            stream, file.Length, file.ContentType, cancellationToken, User.LocationClaims(), User.ActingUserId());
 
         // The service holds no principal, so the actor-bearing audit lines for type changes are written
         // here from the ids it returns (issue #335 §7.5). The ids never reach the response body.

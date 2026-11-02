@@ -43,7 +43,7 @@ public sealed class CalendarIcsController : ControllerBase
     public async Task<IActionResult> Export(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var export = await service.ExportAsync(id, cancellationToken);
+        var export = await service.ExportAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
         if (export is null)
         {
             return this.NotFoundProblem($"Calendar ID {id} not found.");
@@ -95,7 +95,9 @@ public sealed class CalendarIcsController : ControllerBase
         }
 
         await using var stream = file.OpenReadStream();
-        var result = await service.ImportAsync(id, stream, file.Length, file.ContentType, userId, cancellationToken);
+        // Places link or are created only with locations.read + locations.create (issue #380 §8.4).
+        var result = await service.ImportAsync(
+            id, stream, file.Length, file.ContentType, userId, cancellationToken, User.LocationClaims());
         return Ok(result);
     }
 }

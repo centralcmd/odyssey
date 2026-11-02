@@ -42,7 +42,7 @@ public sealed class ContactAddressesController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> GetAddresses([FromRoute] Guid contactId, CancellationToken cancellationToken = default)
     {
-        var addresses = await contactService.GetAddresses(contactId, cancellationToken);
+        var addresses = await contactService.GetAddresses(contactId, cancellationToken, User.LocationClaims());
         return addresses is null ? this.NotFoundProblem($"Contact ID {contactId} not found.") : Ok(addresses);
     }
 
@@ -50,10 +50,16 @@ public sealed class ContactAddressesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingAddress))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> PostAddress([FromRoute] Guid contactId, [FromBody] NewAddress request, CancellationToken cancellationToken = default)
     {
-        var created = await contactService.CreateAddress(contactId, request, cancellationToken);
+        // An address is a link to a place (issue #380 §5.3): by id under locations.read, or by fields under
+        // locations.create — decided by the location rules against the caller's claims.
+        var created = await contactService.CreateAddress(
+            contactId, request, cancellationToken, User.LocationClaims(), User.ActingUserId());
         return created is null
             ? this.NotFoundProblem($"Contact ID {contactId} not found.")
             : CreatedAtRoute("GetContactAddresses", new { contactId }, created);
@@ -63,10 +69,16 @@ public sealed class ContactAddressesController : ControllerBase
     [Authorize(Policy = PermissionClaims.ContactsUpdate)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     public async Task<IActionResult> PutAddress([FromRoute] Guid contactId, [FromRoute] Guid addressId, [FromBody] NewAddress request, CancellationToken cancellationToken = default)
     {
-        var updated = await contactService.UpdateAddress(contactId, addressId, request, cancellationToken);
+        // Changed fields need applyTo (issue #380 §5.3): ThisRecord moves this link, AllUses edits the shared
+        // place in place under locations.update. The acting user is attributed and logged.
+        var updated = await contactService.UpdateAddress(
+            contactId, addressId, request, cancellationToken, User.LocationClaims(), User.ActingUserId());
         return updated ? NoContent() : this.NotFoundProblem($"Address ID {addressId} is not attached to contact ID {contactId}.");
     }
 
