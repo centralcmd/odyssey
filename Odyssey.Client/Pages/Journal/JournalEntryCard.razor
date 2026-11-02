@@ -43,10 +43,8 @@
             {
                 <span><span class="material-icons" aria-hidden="true">person</span>@Entry.CreatedByName</span>
             }
-            @if (!string.IsNullOrWhiteSpace(Entry.Location))
-            {
-                <span><span class="material-icons" aria-hidden="true">place</span>@Entry.Location</span>
-            }
+            @* The place line (issue #383 §3.5): the linked place, then its details. *@
+            <LocationPlaceLine Place="Entry.LocationRef" Details="@Entry.Location" />
             @if (Edited)
             {
                 <span>

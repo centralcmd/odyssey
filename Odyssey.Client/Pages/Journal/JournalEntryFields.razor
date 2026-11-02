@@ -26,9 +26,25 @@
 <OdsFormRow>
     <OdsDateField Label="Entry date" Required="true" Value="Draft.EntryDate"
                   ValueChanged="@(v => { Draft.EntryDate = v; Draft.EntryDateError = null; })" Error="@Draft.EntryDateError" />
-    <OdsField Label="Location" Value="@Draft.Location" MaxLength="300"
-              ValueChanged="@(v => Draft.Location = v)" Placeholder="Where this happened" />
+    @* Place + Details (issue #383 §3.2). Without locations.read the picker is not rendered at all — no
+       placeholder, no disabled control — and the save keeps the stored link. *@
+    @if (CanReadLocations)
+    {
+        <OdsLocationSelect Label="Place" Value="@Draft.Place.Pick"
+                           ValueChanged="@(p => { Draft.Place.Pick = p; Draft.Place.Error = null; })"
+                           AllowCreate="CanCreateLocations" Error="@Draft.Place.Error"
+                           OnStage="@(n => OnAnnounce.InvokeAsync($"{n} will be added when you save"))" />
+    }
+    else
+    {
+        @DetailsField
+    }
 </OdsFormRow>
+
+@if (CanReadLocations)
+{
+    @DetailsField
+}
 
 <OdsFormRow>
     <OdsTagMultiSelect Label="Tags" Value="Draft.TagIds"
@@ -106,7 +122,21 @@
 }
 
 @code {
+    private RenderFragment DetailsField =>
+        @<OdsField Label="Details" Value="@Draft.Location" MaxLength="300"
+                   ValueChanged="@(v => Draft.Location = v)" Placeholder="Room 4B, a meeting link…"
+                   Help="Not a place? Put meeting links or room numbers here." />;
+
     [Parameter, EditorRequired] public JournalEntryDraft Draft { get; set; } = default!;
+
+    /// <summary><c>locations.read</c> — the Place picker. Without it the picker is hidden and the stored link kept.</summary>
+    [Parameter] public bool CanReadLocations { get; set; }
+
+    /// <summary><c>locations.create</c> — the picker's staged <c>Create place "…"</c> row.</summary>
+    [Parameter] public bool CanCreateLocations { get; set; }
+
+    /// <summary>The host dialog's one polite announcer (a staged place).</summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
 
     /// <summary>Offers Download on an attachment row (<c>files.read</c>).</summary>
     [Parameter] public bool CanDownload { get; set; }

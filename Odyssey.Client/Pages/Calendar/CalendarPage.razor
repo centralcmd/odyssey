@@ -91,7 +91,7 @@
                                                         {
                                                             <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                                         }
-                                                        @vm.Title — @vm.CalendarName
+                                                        @vm.Title — @vm.CalendarName@(vm.LocationName is { } place ? $" · {place}" : null)
                                                     </span>
                                                 </button>
                                             }
@@ -132,6 +132,8 @@
                       Calendars="_calendars"
                       CanUpdate="_canUpdate"
                       CanDelete="_canDelete"
+                      CanReadLocations="_canReadLocations"
+                      CanCreateLocations="_canCreateLocations"
                       OnSaved="ReloadEventsAsync"
                       OnEditSeries="OpenSeriesDialog"
                       OnExport="ExportEventDialogAsync" />
