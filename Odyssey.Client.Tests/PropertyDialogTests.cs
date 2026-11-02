@@ -64,6 +64,8 @@ public class PropertyDialogTests
             .ReturnsAsync(updateResult ?? ApiResult.Success(HttpStatusCode.NoContent));
         ctx.Services.AddSingleton(properties.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        ctx.Services.AddSingleton(Mock.Of<ILocationsApiClient>());
+        ctx.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(new SignedInWith([]));
         var preferences = new Mock<IUserPreferenceService>();
         preferences.SetupGet(p => p.DefaultCurrency).Returns("NOK");
         ctx.Services.AddSingleton(preferences.Object);

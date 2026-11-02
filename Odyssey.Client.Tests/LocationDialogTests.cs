@@ -332,7 +332,7 @@ public class LocationDialogTests
         PickFirst(cut);
 
         Assert.Equal("Storgata 1", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Name").Instance.Value);
-        Assert.Equal("Storgata 1, 0155 Oslo", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Address").Instance.Value);
+        Assert.Equal("Storgata 1, 0155 Oslo", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Address as written").Instance.Value);
         Assert.Null(cut.FindComponent<OdsNoteField>().Instance.Value);
 
         Click(cut, "Create location");

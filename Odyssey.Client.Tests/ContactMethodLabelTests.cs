@@ -436,6 +436,9 @@ public class ContactMethodLabelTests
                 .ReturnsAsync(ApiResult<List<ExistingPhoneNumber>>.Success([.. phones ?? []], HttpStatusCode.OK));
 
             ctx.Services.AddSingleton(api.Object);
+            ctx.Services.AddSingleton(Mock.Of<ILocationsApiClient>());
+            ctx.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(
+                new SignedInWith([]));
 
             Phones = phones ?? [];
             Emails = emails ?? [];
