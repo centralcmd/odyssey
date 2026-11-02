@@ -141,9 +141,17 @@ public sealed record AddressBlockPermissions(bool CanReadLocations, bool CanUpda
         && user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.JournalRead));
 }
 
-/// <summary>What one address write sends (issue #383 §5.1).</summary>
+/// <summary>
+/// What one address write sends (issue #383 §5.1). Built only by <see cref="AddressBlockModel.ToWrite"/> (and
+/// <see cref="None"/> for "no address at all"), so the link it carries is always the block's own decision;
+/// <c>LocationWriteBuilderLintTests</c> enforces it (frontend review N6).
+/// </summary>
 public sealed record AddressWrite(
-    AddressWriteKind Kind, Guid? LocationId, AddressFields? Fields, AddressApplyTo? ApplyTo, int? ExpectedOtherUses);
+    AddressWriteKind Kind, Guid? LocationId, AddressFields? Fields, AddressApplyTo? ApplyTo, int? ExpectedOtherUses)
+{
+    /// <summary>No address: nothing linked, nothing typed — a vehicle, or a cleared block.</summary>
+    public static AddressWrite None { get; } = new(AddressWriteKind.None, null, null, null, null);
+}
 
 /// <summary>
 /// The address block's state and rules (issue #383 §3.3, design system · AddressBlock) — the editable value
@@ -386,7 +394,7 @@ public sealed class AddressBlockModel
             case AddressBlockState.Unchanged:
                 return new(AddressWriteKind.None, Stored!.LocationId, null, null, null);
             case AddressBlockState.Cleared:
-                return new(AddressWriteKind.None, null, null, null, null);
+                return AddressWrite.None;
             case AddressBlockState.Typed:
                 return new(AddressWriteKind.Typed, null, Cleaned(), null, null);
             default:

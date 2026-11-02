@@ -395,7 +395,7 @@ public partial class PropertyDialog
         },
     };
 
-    private AddressWrite _addressWrite = new(AddressWriteKind.None, null, null, null, null);
+    private AddressWrite _addressWrite = AddressWrite.None;
 
     private async Task<bool> SaveAsync()
     {
@@ -413,7 +413,7 @@ public partial class PropertyDialog
             return false;
         }
 
-        _addressWrite = IsVehicle ? new(AddressWriteKind.None, null, null, null, null) : _address.ToWrite();
+        _addressWrite = IsVehicle ? AddressWrite.None : _address.ToWrite();
         var request = BuildRequest();
 
         if (IsEdit)

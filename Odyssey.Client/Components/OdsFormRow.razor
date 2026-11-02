@@ -34,6 +34,9 @@
     private string WrapperClass =>
         string.IsNullOrEmpty(Class) ? "odc-form-row" : $"odc-form-row {Class}";
 
+    // The column count travels as a custom property and the grid is declared in the stylesheet
+    // (.odc-form-row), so a surface can collapse its rows at a breakpoint with an ordinary, more specific
+    // selector — an inline grid-template-columns could only be overridden with !important.
     private string GridStyle =>
-        $"grid-template-columns:repeat({Cols},minmax(0,1fr));gap:{Gap}px;align-items:{Align};{Style}";
+        $"--odc-form-cols:{Cols};gap:{Gap}px;align-items:{Align};{Style}";
 }

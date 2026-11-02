@@ -1400,7 +1400,7 @@
 .con-ref-tile .odc-infotile-v, .con-ref-tile .odc-refnum { max-width: 100%; }
 
 /* ---------- FormRow (paired-field column grid) ---------- */
-.odc-form-row { display: grid; }
+.odc-form-row { display: grid; grid-template-columns: repeat(var(--odc-form-cols, 2), minmax(0, 1fr)); }
 /* MudBlazor's dense fields carry an 8px top margin that the DS field wrappers
    (.odc-field / .aam-field) don't, so a MudBlazor cell sits 8px below a DS cell
    in the same row (e.g. Policy number vs the Policy type picker). Zero it inside
@@ -4797,7 +4797,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-addrblock-warn .material-icons { color: var(--brand-text); }
 .odc-addrblock-apply { display: flex; flex-direction: column; gap: 10px; padding-top: var(--space-1, 4px); }
 .odc-addrblock-extra .odc-infotile-v { white-space: normal; overflow-wrap: anywhere; }
-@media (max-width: 600px) { .odc-addrblock .odc-form-row { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 600px) { .odc-addrblock .odc-form-row { grid-template-columns: minmax(0, 1fr); } }
 /* Focus not obscured (WCAG 2.4.11, issue #383 §6.6): a field focused at the bottom of a dialog body
    scrolls clear of the sticky footer. */
 .odc-modal-body, .ods-modal-body { scroll-padding-block: var(--space-2, 8px) var(--space-16, 64px); }
@@ -4806,7 +4806,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .loc-search-disclose { display: flex; gap: 6px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .loc-search-disclose .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
 .loc-addr-group { display: flex; flex-direction: column; gap: 12px; }
-@media (max-width: 600px) { .loc-addr-group .odc-form-row { grid-template-columns: minmax(0, 1fr) !important; } }
+@media (max-width: 600px) { .loc-addr-group .odc-form-row { grid-template-columns: minmax(0, 1fr); } }
 .loc-dialog-desc { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .loc-dialog-alert { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-error); background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); }
 .loc-dialog-alert .material-icons { flex: none; color: var(--mud-palette-error); }

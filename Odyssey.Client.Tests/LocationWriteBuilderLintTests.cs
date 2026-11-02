@@ -26,13 +26,7 @@ public class LocationWriteBuilderLintTests
     [InlineData("UpdateJournalEntry", "Pages/Journal/JournalEntryDraft.cs")]
     public void A_write_DTO_is_constructed_only_by_its_builder(string dto, string builder)
     {
-        // `new Dto`, `Dto x = new(`, and a member declared to return Dto from a target-typed `new()`.
-        var patterns = new[]
-        {
-            new Regex($@"\bnew\s+{dto}\b"),
-            new Regex($@"\b{dto}\s+\w+\s*=\s*new\s*\("),
-            new Regex($@"\b{dto}\s+\w+\s*\([^)]*\)\s*=>\s*new\s*\("),
-        };
+        var patterns = ConstructionPatterns(dto);
 
         var offenders = ClientCode()
             .Where(f => Relative(f) != builder)
@@ -41,7 +35,51 @@ public class LocationWriteBuilderLintTests
             .ToList();
 
         Assert.True(offenders.Count == 0, $"{dto} is built outside {builder}: {string.Join(", ", offenders)}");
-        Assert.Matches(patterns[2], File.ReadAllText(Path.Combine(ClientSource.Root, builder)));
+        Assert.Matches(patterns[^1], File.ReadAllText(Path.Combine(ClientSource.Root, builder)));
+    }
+
+    /// <summary>
+    /// Every way C# builds a <paramref name="dto"/>: <c>new Dto</c>, a (nullable) local or field
+    /// <c>Dto x = new(</c>, a property initialiser <c>Dto X { get; set; } = new()</c> (frontend review N6), and a
+    /// member declared to return Dto from a target-typed <c>new()</c> — the builder's own shape, last.
+    /// </summary>
+    private static Regex[] ConstructionPatterns(string dto) =>
+    [
+        new Regex($@"\bnew\s+{dto}\b"),
+        new Regex($@"\b{dto}\??\s+\w+\s*=\s*new\s*\("),
+        new Regex($@"\b{dto}\??\s+\w+\s*\{{[^{{}}]*\}}\s*=\s*new\s*\("),
+        new Regex($@"\b{dto}\s+\w+\s*\([^)]*\)\s*=>\s*new\s*\("),
+    ];
+
+    [Theory]
+    [InlineData("private NewCalendarEvent _body = new();")]
+    [InlineData("private NewCalendarEvent? _body = new() { Title = \"x\" };")]
+    [InlineData("public NewCalendarEvent Body { get; set; } = new();")]
+    [InlineData("internal NewCalendarEvent? Body { get; init; } = new() { Title = \"x\" };")]
+    [InlineData("var body = new NewCalendarEvent { Title = \"x\" };")]
+    public void The_construction_patterns_catch_every_shape(string line)
+    {
+        Assert.Contains(ConstructionPatterns("NewCalendarEvent")[..3], p => p.IsMatch(line));
+    }
+
+    /// <summary>
+    /// N6: an <c>AddressWrite</c> decides which place a contact or property links to, so like the four DTOs it is
+    /// built in one place — <c>AddressBlockModel.ToWrite</c> and <c>AddressWrite.None</c> — and nowhere else.
+    /// </summary>
+    [Fact]
+    public void An_AddressWrite_is_constructed_only_by_the_address_block_model()
+    {
+        const string home = "Components/OdsAddressBlockModel.cs";
+        var patterns = ConstructionPatterns("AddressWrite")[..3].Append(new Regex(@"\bnew\s*\(\s*AddressWriteKind\.")).ToArray();
+
+        var offenders = ClientCode()
+            .Where(f => Relative(f) != home)
+            .Where(f => patterns.Any(p => p.IsMatch(File.ReadAllText(f))))
+            .Select(Relative)
+            .ToList();
+
+        Assert.True(offenders.Count == 0, $"AddressWrite is built outside {home}: {string.Join(", ", offenders)}");
+        Assert.Matches(new Regex(@"\bnew\s*\(\s*AddressWriteKind\."), File.ReadAllText(Path.Combine(ClientSource.Root, home)));
     }
 
     [Theory]
