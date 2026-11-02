@@ -50,6 +50,8 @@ from a CDN. Version, source, hashes and the re-check procedure are in that folde
 | Component | Copyright | License |
 |---|---|---|
 | MapLibre GL JS 6.14.0 | Copyright (c) 2023, MapLibre contributors; portions Copyright (c) 2020, Mapbox | BSD 3-Clause License. `Odyssey.Client/wwwroot/lib/maplibre-gl/LICENSE.txt` carries the full text and the notices of the code MapLibre itself bundles |
+| pmtiles 4.5.0 | Copyright 2021 Protomaps LLC | BSD 3-Clause License. `Odyssey.Client/wwwroot/lib/pmtiles/LICENSE.txt` carries the full text (taken from the source repository: the npm package ships none) |
+| fflate (bundled inside `pmtiles.js`) | Copyright (c) 2023 Arjun Barrett | MIT License. `Odyssey.Client/wwwroot/lib/pmtiles/fflate-LICENSE.txt` |
 
 The default dark basemap, `Odyssey.Client/wwwroot/maps/odyssey-dark.json`, is a **modified copy of
 the Fiord Color GL style** as served by OpenFreeMap (its building layer and its label colours are
@@ -60,7 +62,20 @@ https://github.com/openmaptiles/fiord-color-gl-style/blob/master/LICENSE.md; it 
 from "CartoDB Basemaps", designed by Stamen and Paul Norman for CartoDB Inc., CC-BY 3.0. The map's
 caption credits OpenMapTiles as the licence requires.
 
-The map's tiles, glyphs and sprites are **not** bundled: the browser fetches them from the configured
+The **self-hosted basemap** (issue #384) ships its styles, glyphs and sprite in the client image; only the
+tile file is the operator's:
+
+| Component | Where | License |
+|---|---|---|
+| Self-hosted dark style | `Odyssey.Client/wwwroot/maps/self-hosted-dark.json` | Odyssey Dark above, with only its sources, glyphs and sprite changed: the same Fiord Color GL terms, full text in `self-hosted-dark.LICENSE.txt` |
+| Self-hosted light style | `Odyssey.Client/wwwroot/maps/self-hosted-light.json` | OpenFreeMap `liberty` (OpenFreeMap styles: MIT), a fork of OSM Liberty and OSM Bright: code BSD 3-Clause, design CC-BY 3.0 and CC-BY 4.0. Modified (sources, glyphs, sprite; the Natural Earth raster layer removed). Full texts in `self-hosted-light.LICENSE.txt` |
+| Noto Sans glyphs (Regular, Bold, Italic; ten Latin, Greek and Cyrillic ranges as built by OpenFreeMap) | `Odyssey.Client/wwwroot/maps/self-hosted/fonts/` | SIL Open Font License 1.1, `fonts/OFL.txt` |
+| OpenFreeMap `ofm` sprite (Maki icons and a public-domain arrow) | `Odyssey.Client/wwwroot/maps/self-hosted/sprites/` | Maki: CC0 1.0 Universal; the arrow: public domain. `sprites/LICENSE.txt` |
+
+The test fixture `TestShared/Basemap/basemap.pmtiles` is OpenStreetMap data (ODbL 1.0) in the OpenMapTiles
+schema (CC-BY 4.0); see `TestShared/Basemap/ATTRIBUTION.md`.
+
+With the default basemap, the map's tiles, glyphs and sprites are **not** bundled: the browser fetches them from the configured
 tile host (OpenFreeMap by default). Their data licences (OpenStreetMap's ODbL, OpenMapTiles) are credited
 by the configured attribution caption under the map — see `docs/deployment.md` → *Location map*.
 

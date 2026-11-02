@@ -175,9 +175,13 @@ services:
       Map__Attribution: ${MAP_ATTRIBUTION-OpenFreeMap © OpenMapTiles Data from OpenStreetMap}
       Map__AttributionUrl: ${MAP_ATTRIBUTION_URL-https://www.openstreetmap.org/copyright}
       Map__AllowedOrigins: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}
+      # The self-hosted basemap file (issue #384), checked at start when a self-hosted style is selected.
+      # Plumbing, not an operator setting: it must match the mount below.
+      Map__BasemapFilePath: /var/odyssey/basemap/basemap.pmtiles
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
       - files_primary:/var/odyssey/files/primary
+      - basemap:/var/odyssey/basemap:ro
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5188:8080"
@@ -246,6 +250,10 @@ services:
       # Rendered into the CSP's connect-src and img-src at start (issue #370). Must equal the api's
       # Map__AllowedOrigins above — same variable, same single-dash default.
       MAP_ALLOWED_ORIGINS: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}
+    volumes:
+      # The self-hosted basemap file (issue #384), served at /basemap/basemap.pmtiles. Read-only here and in
+      # the api; the operator fills it with a one-off helper container (docs/deployment.md → Location map).
+      - basemap:/usr/share/nginx/html/basemap:ro
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5199:8080"
@@ -263,3 +271,6 @@ volumes:
   # note that `docker compose down -v` destroys it — after which the API refuses to start with VolumeLost if the
   # database says it held files. Docker names it <project>_files_primary (odyssey_files_primary by default).
   files_primary:
+  # The self-hosted basemap (issue #384): one operator-supplied basemap.pmtiles, mounted READ-ONLY into api
+  # (to validate it) and client (to serve it), and into nothing else. Empty unless the operator self-hosts.
+  basemap:

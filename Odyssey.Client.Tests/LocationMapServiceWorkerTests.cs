@@ -29,6 +29,10 @@ public class LocationMapServiceWorkerTests
     [InlineData("css/location-map.css")]
     [InlineData("css/location-map.abc123xyz.css")]
     [InlineData("maps/odyssey-dark.json")]
+    [InlineData("lib/pmtiles/pmtiles.js")]
+    [InlineData("maps/self-hosted-light.json")]
+    [InlineData("maps/self-hosted/fonts/Noto Sans Regular/0-255.pbf")]
+    [InlineData("maps/self-hosted/sprites/ofm@2x.png")]
     [InlineData("maps/blank-light.json")]
     [InlineData("service-worker.js")]
     public void The_map_files_are_kept_out_of_the_precache(string url)

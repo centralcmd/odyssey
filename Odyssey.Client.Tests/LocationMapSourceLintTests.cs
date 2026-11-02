@@ -64,6 +64,43 @@ public class LocationMapSourceLintTests
         Assert.Matches(@"transformRequest:\s*url\s*=>\s*\(\{\s*url,\s*credentials:\s*'omit'\s*\}\)", module);
     }
 
+    // ── The self-hosted basemap's archive wiring (issue #384 §3.3, AC 8) ─────────────────────────────
+
+    [Fact]
+    public void The_basemap_archive_is_registered_verbatim_under_its_one_url()
+    {
+        var module = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "js", "location-map.js"));
+
+        // Pre-registered under exactly this URL: an unregistered pmtiles:// URL makes the library build a
+        // default source of its own, silently. 'same-origin' is inside FetchSource's declared type and sends
+        // the session cookie to the deployment only, for nginx's auth_request.
+        Assert.Contains("const protocol = new pmtiles.Protocol();", module, StringComparison.Ordinal);
+        Assert.Contains(
+            "protocol.add(new pmtiles.PMTiles(new pmtiles.FetchSource('/basemap/basemap.pmtiles', new Headers(), 'same-origin')));",
+            module, StringComparison.Ordinal);
+        Assert.Contains("lib.addProtocol('pmtiles', protocol.tile);", module, StringComparison.Ordinal);
+        Assert.Single(Regex.Matches(module, @"new\s+pmtiles\.FetchSource\("));
+        Assert.Single(Regex.Matches(module, @"new\s+pmtiles\.PMTiles\("));
+    }
+
+    [Fact]
+    public void Only_the_map_module_references_pmtiles()
+    {
+        var root = ClientSource.Root;
+        var offenders = Directory.EnumerateFiles(root, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".js", StringComparison.Ordinal) || f.EndsWith(".razor", StringComparison.Ordinal)
+                || f.EndsWith(".cs", StringComparison.Ordinal) || f.EndsWith(".html", StringComparison.Ordinal))
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
+                && !f.Contains(Path.Combine("wwwroot", "lib"), StringComparison.Ordinal))
+            .Where(f => Path.GetFileName(f) != "location-map.js" && Path.GetFileName(f) != "service-worker.published.js")
+            .Where(f => File.ReadAllText(f).Contains("pmtiles", StringComparison.OrdinalIgnoreCase))
+            .Select(f => Path.GetRelativePath(root, f))
+            .ToList();
+
+        Assert.True(offenders.Count == 0, "pmtiles referenced outside location-map.js: " + string.Join(", ", offenders));
+    }
+
     private static bool IsComment(string line)
     {
         var trimmed = line.TrimStart();
