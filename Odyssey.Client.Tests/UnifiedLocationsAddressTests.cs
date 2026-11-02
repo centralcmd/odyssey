@@ -563,6 +563,83 @@ public class UnifiedLocationsAddressTests
         Assert.Equal("NO", h.Sent.Single().CountryCode);
     }
 
+    // ── N2: nothing to save, and nothing to type into, before the stored place loads ─────
+
+    private static Mock<ILocationsApiClient> PendingPlace(TaskCompletionSource<ApiResult<ExistingLocation>> pending)
+    {
+        var api = Locations(Storgata());
+        api.Setup(a => a.GetAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).Returns(pending.Task);
+        return api;
+    }
+
+    private static AngleSharp.Dom.IElement Button(IRenderedComponent<ProvidersHost> cut, string text) =>
+        cut.FindAll("button").Single(b => b.TextContent.Contains(text, StringComparison.Ordinal));
+
+    [Fact]
+    public async Task The_contact_address_dialog_disables_Save_until_its_block_has_loaded()
+    {
+        var ctx = Context();
+        await using var _ = ctx;
+        var contacts = new Mock<IContactsApiClient>(MockBehavior.Strict);
+        ctx.Services.AddSingleton(contacts.Object);
+        var pending = new TaskCompletionSource<ApiResult<ExistingLocation>>();
+        ctx.Services.AddSingleton(PendingPlace(pending).Object);
+        ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
+
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<ContactMethodDialog>(d => d
+            .Add(x => x.Open, true)
+            .Add(x => x.Kind, "address")
+            .Add(x => x.Draft, ContactMethodDraft.FromAddress(Address()))
+            .Add(x => x.IsEdit, true)
+            .Add(x => x.ContactType, ContactType.Person)
+            .Add(x => x.ContactId, Guid.NewGuid())
+            .Add(x => x.Permissions, AddressBlockPermissions.Full)));
+
+        Assert.Contains("Loading address…", cut.Markup);
+        Assert.Empty(cut.FindComponents<OdsAddressBlock>());
+        Assert.True(Button(cut, "Save changes").HasAttribute("disabled"));
+        Button(cut, "Save changes").Click();
+        // The strict mock proves nothing was sent.
+
+        await cut.InvokeAsync(() => pending.SetResult(ApiResult<ExistingLocation>.Success(Storgata(), HttpStatusCode.OK)));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsAddressBlock>()));
+        Assert.DoesNotContain("Loading address…", cut.Markup);
+        Assert.False(Button(cut, "Save changes").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task The_property_dialog_offers_no_address_field_to_type_into_before_the_place_loads()
+    {
+        var ctx = Context(Odyssey.Dtos.Authorization.PermissionClaims.LocationsRead, Odyssey.Dtos.Authorization.PermissionClaims.LocationsUpdate);
+        await using var _ = ctx;
+        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>(MockBehavior.Strict).Object);
+        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        var pending = new TaskCompletionSource<ApiResult<ExistingLocation>>();
+        ctx.Services.AddSingleton(PendingPlace(pending).Object);
+        ctx.Services.AddSingleton(new Mock<Odyssey.Client.Theme.IUserPreferenceService>().Object);
+        var property = new ExistingProperty
+        {
+            PropertyId = Guid.NewGuid(), Name = "Flat", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+            RealEstateDetails = new RealEstateDetailsDto
+            {
+                Kind = RealEstateKind.Apartment, LocationId = StorgataId, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo",
+                CountryCode = "NO", OtherUses = 1, PlaceHasCoordinates = false,
+            },
+        };
+
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<PropertyDialog>(d => d.Add(x => x.Open, true).Add(x => x.Property, property)));
+
+        Assert.Contains("Loading address…", cut.Markup);
+        Assert.Empty(cut.FindComponents<OdsAddressBlock>());
+        Assert.True(Button(cut, "Save changes").HasAttribute("disabled"));
+
+        await cut.InvokeAsync(() => pending.SetResult(ApiResult<ExistingLocation>.Success(Storgata(), HttpStatusCode.OK)));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsAddressBlock>()));
+        Assert.False(Button(cut, "Save changes").HasAttribute("disabled"));
+    }
+
     // ── Through the property dialog (AC 4) ─────────────────────────────────────
 
     [Fact]

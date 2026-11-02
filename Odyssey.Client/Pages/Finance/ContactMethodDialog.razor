@@ -16,7 +16,7 @@
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
                Icon="@KindIcon" Title="@DialogTitle"
                SubmitLabel="@SubmitLabel" SubmitIcon="@(IsEdit ? "check" : "add")"
-               OnSubmit="SubmitAsync">
+               SubmitDisabled="@AddressLoading" OnSubmit="SubmitAsync">
     <div style="display:flex;flex-direction:column;gap:12px;">
         <OdsContactMethodLabelSelect Id="@LabelFieldId" Kind="@Kind" ContactType="ContactType"
                                     Value="@Draft.Label" ValueChanged="@(v => Draft.Label = v)"
@@ -31,7 +31,13 @@
             {
                 <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
             }
-            @if (_block is not null)
+            @if (_block is null)
+            {
+                @* The stored place's usage is still loading: say so rather than show an empty block that Save
+                   could not act on (frontend review N2). *@
+                <MudText Typo="Typo.subtitle2" Color="Color.Secondary" role="status">Loading address…</MudText>
+            }
+            else
             {
                 <OdsAddressBlock @ref="_addressBlock" Model="_block" Errors="_errors" ApplyToAlert="@_applyToAlert"
                                  ApplyGroupId="@ApplyGroupId" OnChange="OnBlockChanged" OnAnnounce="@(m => _announce = m)" />

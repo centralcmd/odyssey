@@ -242,10 +242,15 @@ public partial class ContactMethodDialog
             Draft.IsPrimary = true;
     }
 
+    /// <summary>An address dialog whose block is still loading: Save is disabled until it exists.</summary>
+    private bool AddressLoading => Kind == "address" && _block is null;
+
     private async Task<bool> SubmitAsync()
     {
-        if (Kind == "address" && _block is not null)
-            return await SubmitAddressAsync();
+        // An address is only ever written through its block. Before the block exists there is nothing to send,
+        // and falling through to OnCommit (which refuses addresses) used to do nothing, silently (N2).
+        if (Kind == "address")
+            return _block is not null && await SubmitAddressAsync();
 
         _errors = Draft.Validate(Kind, ContactType);
         if (_errors.Count > 0)

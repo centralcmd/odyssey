@@ -26,7 +26,7 @@
                    : "Record a house, cabin, car or boat. Add its estimated value and smart tags once it exists.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create property")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
-               OnSubmit="SaveAsync">
+               SubmitDisabled="@(!_addressReady)" OnSubmit="SaveAsync">
 
     <OdsLiveAnnouncer Message="@_announce" />
     <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId"
@@ -106,8 +106,17 @@
         {
             <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
         }
-        <OdsAddressBlock @ref="_addressBlock" Model="_address" Errors="_errors" ApplyToAlert="@_applyToAlert"
-                         ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@(m => _announce = m)" />
+        @if (_addressReady)
+        {
+            <OdsAddressBlock @ref="_addressBlock" Model="_address" Errors="_errors" ApplyToAlert="@_applyToAlert"
+                             ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@(m => _announce = m)" />
+        }
+        else
+        {
+            @* Until the stored place and its usage load there is no model to type into: an early placeholder
+               block would be replaced, and what was typed in it lost (frontend review N2). *@
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" role="status">Loading address…</MudText>
+        }
         <OdsField Label="Cadastral number" MaxLength="64" @bind-Value="_cadastralNumber"
                   Placeholder="e.g. 208/451 or APN 3612-044" Help="The land-registry identifier, as written. Not checked." />
         <OdsHomeownerAssociationSelect Value="@_homeownerAssociationId" ValueChanged="OnAssociationChanged"

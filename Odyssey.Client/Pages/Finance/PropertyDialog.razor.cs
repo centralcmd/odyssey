@@ -57,6 +57,10 @@ public partial class PropertyDialog
     // The address is the shared address block's (issue #383 §3.3): a saved place or a typed address.
     private AddressBlockModel _address = new(AddressBlockVariant.Property, null, new(false, false, false));
     private OdsAddressBlock? _addressBlock;
+
+    // False until _address is the real model (the stored place and its usage loaded). The block is not
+    // rendered and Save is disabled before then, so nothing is typed into the placeholder above (N2).
+    private bool _addressReady;
     private AddressBlockPermissions _addressPermissions = new(false, false, false);
     private string _announce = string.Empty;
     private string? _formAlert;
@@ -125,6 +129,7 @@ public partial class PropertyDialog
             ? new AddressFields { Line1 = legacy.AddressLine, PostalCode = legacy.PostalCode, City = legacy.City, CountryCode = legacy.CountryCode }
             : null;
         _address = new AddressBlockModel(AddressBlockVariant.Property, stored, _addressPermissions, unlinked);
+        _addressReady = true;
         await LoadContactsAsync();
     }
 
@@ -394,6 +399,9 @@ public partial class PropertyDialog
 
     private async Task<bool> SaveAsync()
     {
+        if (!_addressReady)
+            return false;
+
         _formAlert = null;
         _applyToAlert = null;
         Validate();
