@@ -1,3 +1,10 @@
+# TEMPLATE, not a config file (issue #370). The image's stock 20-envsubst-on-templates.sh renders it to
+# /etc/nginx/conf.d/default.conf at container start, substituting ONLY the map origin variable
+# (NGINX_ENVSUBST_FILTER in the Dockerfile) — so $host, $scheme, $forwarded_proto and every other nginx
+# variable pass through untouched. Never introduce another ${…} placeholder without widening that filter
+# deliberately. 15-validate-map-origins.sh checks the value before the render; 25-assert-rendered-config.sh
+# refuses to let nginx start on a missing or unrendered result.
+#
 # Honor an X-Forwarded-Proto set by an upstream TLS-terminating proxy (Caddy in production)
 # instead of overwriting it with this hop's $scheme (always http on the internal Caddy→nginx
 # leg). Without this the API would see https browser requests as http — breaking Secure
@@ -33,6 +40,12 @@ server {
     #     and nginx serves these files statically with no per-request token to inject. Accepted as a
     #     documented Blazor-WASM bootstrap constraint; the rest of the CSP (object-src 'none',
     #     frame-ancestors 'none', base-uri/form-action 'self', scoped connect-src/img-src) is strict.
+    #   - img-src and connect-src add the location map's tile host(s) (issue #370), from the deploy-time
+    #     MAP_ALLOWED_ORIGINS — the same value the API checks its style URLs against. Empty is the
+    #     off-switch: nothing but 'self'. The allowance is app-wide, which is why only DEDICATED tile hosts
+    #     belong in it (docs/deployment.md, "Location map").
+    #   - worker-src 'self' admits MapLibre's CSP-build worker, served from the app's own static assets.
+    #     No blob: — that would let any inline script start an arbitrary worker.
     #   - style-src 'unsafe-inline' covers MudBlazor's injected inline styles. Roboto + Material
     #     Icons are self-hosted under wwwroot/fonts (see css/fonts.css), so fonts load from 'self'
     #     with no external origin — CSP needs no fonts.googleapis.com / fonts.gstatic.com allowance.
@@ -40,7 +53,7 @@ server {
     add_header X-Frame-Options "DENY" always;
     add_header Referrer-Policy "no-referrer" always;
     add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: ${MAP_ALLOWED_ORIGINS}; connect-src 'self' ${MAP_ALLOWED_ORIGINS}; worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'" always;
 
     # API endpoint proxy (Blazor client calls /api/*)
     location /api/ {

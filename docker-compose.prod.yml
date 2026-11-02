@@ -178,6 +178,12 @@ services:
       - "8080"
     # Runtime hardening: nginx-unprivileged (UID 101) on :8080 needs no caps. Root filesystem is
     # read-only; nginx's pid/temp/cache dirs are backed by tmpfs.
+    #
+    # /etc/nginx/conf.d is a tmpfs too (issue #370): the site config is rendered there from a template at
+    # every start, so the CSP can carry MAP_ALLOWED_ORIGINS. Without it the render fails and the container
+    # exits naming map-config-unrendered rather than starting nginx with no CSP. No MAP_* variable here:
+    # the base file's single-dash defaults apply when one is unset — the same values as the client image's
+    # ENV and the API's appsettings.json, which MapDefaultsAgreementTests keeps equal.
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -187,6 +193,7 @@ services:
       - /tmp
       - /var/cache/nginx
       - /var/run
+      - /etc/nginx/conf.d:uid=101,gid=101
 
   caddy:
     # Pinned to an exact patch, like the four Odyssey images above: `2-alpine` floats, so a
@@ -209,7 +216,7 @@ services:
       # This is the only host-facing surface in the whole overlay — every other service resets its
       # ports to [] — so binding it to loopback is sufficient on its own to take the deployment off
       # the network. Do NOT also publish the client or api "just to check something": the client's
-      # nginx trusts an inbound X-Forwarded-Proto (Odyssey.Client/nginx.conf), which is safe only
+      # nginx trusts an inbound X-Forwarded-Proto (Odyssey.Client/nginx/templates/default.conf.template), which is safe only
       # because Caddy is the sole path in and overwrites it.
       - "${CADDY_BIND:-}80:80"
       - "${CADDY_BIND:-}443:443"

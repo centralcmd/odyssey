@@ -166,6 +166,15 @@ services:
       # Adding a volume on another disk, rebinding a feature, backups: docs/deployment.md → File storage.
       FileStorage__Volumes__primary__RootPath: /var/odyssey/files/primary
       FileStorage__Bindings__PhotoThumbnails: primary
+      # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
+      # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
+      # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
+      # survives; `:-` would silently restore the third-party host. docs/deployment.md → Location map.
+      Map__StyleUrlLight: ${MAP_STYLE_URL_LIGHT-https://tiles.openfreemap.org/styles/liberty}
+      Map__StyleUrlDark: ${MAP_STYLE_URL_DARK-/maps/odyssey-dark.json}
+      Map__Attribution: ${MAP_ATTRIBUTION-OpenFreeMap © OpenMapTiles Data from OpenStreetMap}
+      Map__AttributionUrl: ${MAP_ATTRIBUTION_URL-https://www.openstreetmap.org/copyright}
+      Map__AllowedOrigins: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
       - files_primary:/var/odyssey/files/primary
@@ -233,6 +242,10 @@ services:
       dockerfile: Odyssey.Client/Dockerfile
     container_name: odyssey-client
     restart: unless-stopped
+    environment:
+      # Rendered into the CSP's connect-src and img-src at start (issue #370). Must equal the api's
+      # Map__AllowedOrigins above — same variable, same single-dash default.
+      MAP_ALLOWED_ORIGINS: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5199:8080"

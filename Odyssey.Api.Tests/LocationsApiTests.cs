@@ -119,6 +119,38 @@ public class LocationsApiTests
         Assert.Equal(10.75027m, created.Longitude);
     }
 
+    /// <summary>
+    /// The location map (issue #370 AC 15) pins on these two values, so both read paths must return them —
+    /// a <c>Manual</c> location included, which still has coordinates.
+    /// </summary>
+    [Fact]
+    public async Task Coordinates_are_returned_on_get_and_list_for_every_source()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var geocoded = await CreateAsync(client, Cabin());
+        var manual = await CreateAsync(client, Cabin("Mooring") with
+        {
+            Source = LocationSource.Manual,
+            SourceReference = null,
+            Latitude = 59.90512m,
+            Longitude = 10.72744m,
+        });
+
+        var single = await client.GetFromJsonAsync<ExistingLocation>($"{Path}/{manual.LocationId}");
+        Assert.Equal(59.90512m, single!.Latitude);
+        Assert.Equal(10.72744m, single.Longitude);
+
+        var page = await client.GetFromJsonAsync<PagedResult<ExistingLocation>>(Path);
+        var listedManual = Assert.Single(page!.Items, l => l.LocationId == manual.LocationId);
+        Assert.Equal(LocationSource.Manual, listedManual.Source);
+        Assert.Equal(59.90512m, listedManual.Latitude);
+        Assert.Equal(10.72744m, listedManual.Longitude);
+        var listedGeocoded = Assert.Single(page.Items, l => l.LocationId == geocoded.LocationId);
+        Assert.Equal(61.52914m, listedGeocoded.Latitude);
+        Assert.Equal(10.13802m, listedGeocoded.Longitude);
+    }
+
     [Fact]
     public async Task Responses_never_carry_the_attribution_user_ids_and_attribution_matches_source()
     {

@@ -31,6 +31,7 @@ using Odyssey.Core.Legal;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.UserAdministration;
 using Odyssey.Core.Weather;
+using Odyssey.Api.Map;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -319,6 +320,9 @@ builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
 // The weather read and Admin-action limits (issue #348). Same composition rules.
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
+
+// The location map's basemap (issue #370): deploy-time, validated at start-up, served by MapStylesController.
+builder.Services.AddMapStyles(builder.Configuration);
 
 // The instance-wide half of the export concurrency control (issue #343 §5) — a singleton so every
 // request's ExportConcurrencyFilter instance (one per request, via [TypeFilter]) shares the same
