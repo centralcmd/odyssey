@@ -497,6 +497,18 @@ public sealed record LocationCandidate
 
     public string? SourceReference { get; set; }
 
+    // The structured address of a Kartverket ADDRESS result (issue #380 §5.5a, v9): adressetekst, postnummer
+    // and poststed as returned, and "NO". Null on a place name or an Open-Meteo locality. Cleaned and capped
+    // to the location column limits, so a picked candidate always fits a NewAddress or a NewLocation.
+
+    public string? Line1 { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? City { get; set; }
+
+    public string? CountryCode { get; set; }
+
     /// <summary>Redacted for the same reason as <see cref="LocationSearchRequest"/>: it echoes what was searched.</summary>
     public override string ToString() => nameof(LocationCandidate) + " { (redacted) }";
 }
