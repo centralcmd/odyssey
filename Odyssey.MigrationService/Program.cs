@@ -2,6 +2,7 @@ using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.MigrationService;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Locations.Conversion;
 using Odyssey.Core.Configuration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -63,6 +64,8 @@ builder.Services.AddMigrationServiceIdentity();
 // Registered against their role interfaces: Worker depends on those, so its steps can be substituted
 // without subclassing a production type (see IMigrationStep).
 builder.Services.AddTransient<IOdysseyMigrationService, OdysseyMigrationService>();
+// The one-time location conversion (issue #380 §11), which MigrationRunner calls between two migrations.
+builder.Services.AddScoped<ILocationConversion, LocationConversion>();
 builder.Services.AddTransient<IRoleClaimSeeder, RoleClaimSeeder>();
 builder.Services.AddTransient<IBootstrapAdminSeeder, BootstrapAdminSeeder>();
 builder.Services.AddTransient<IDemoDataSeeder, DemoDataSeeder>();

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using Odyssey.Core.Locations.Conversion;
 
 namespace Odyssey.MigrationService;
 
@@ -31,22 +32,83 @@ public static class MigrationRunner
     /// simply not available on this engine.
     /// </para>
     /// </remarks>
-    public static async Task MigrateAsync(DbContext dbContext, CancellationToken cancellationToken)
+    public static Task MigrateAsync(DbContext dbContext, CancellationToken cancellationToken) =>
+        MigrateAsync(dbContext, conversion: null, cancellationToken);
+
+    /// <summary>
+    /// Migrates in stages around the issue #380 location conversion (§11): up to and including
+    /// <see cref="ILocationConversion.ExpandMigration"/>, then the conversion, then the rest. The conversion
+    /// runs only while <see cref="ILocationConversion.ContractMigration"/> is still pending, so a later
+    /// upgrade never runs it again; without a <paramref name="conversion"/> (the test harnesses that build a
+    /// schema with no data) everything migrates in one stage.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The drift guard runs before EACH stage, over that stage's pending migrations only, so a contract
+    /// migration interrupted on an earlier start is reported before anything else runs. Both stage
+    /// migrations are passed <see cref="CancellationToken.None"/> for the reason above. The conversion runs
+    /// between them, outside any other execution strategy: each of its batches is its own strategy and
+    /// transaction, so it is restart-safe and may be cancelled between batches.
+    /// </para>
+    /// </remarks>
+    public static async Task MigrateAsync(
+        DbContext dbContext, ILocationConversion? conversion, CancellationToken cancellationToken)
+    {
+        // The non-relational short-circuit stays first: MigrateAsync throws EF's own, clear error for a
+        // non-relational provider, which nothing below — a pending-migrations read included — would.
+        if (!dbContext.Database.IsRelational())
+        {
+            await dbContext.Database.MigrateAsync(CancellationToken.None);
+            return;
+        }
+
+        var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+        var contractPending = pending.Any(id => IsNamed(id, ILocationConversion.ContractMigration));
+
+        if (conversion is not null && contractPending)
+        {
+            var expandAt = pending.FindIndex(id => IsNamed(id, ILocationConversion.ExpandMigration));
+            if (expandAt >= 0)
+            {
+                var expandId = pending[expandAt];
+                var expandStage = pending.Take(expandAt + 1).ToList();
+                await RunStageAsync(dbContext, expandStage, cancellationToken,
+                    () => dbContext.Database.MigrateAsync(expandId, CancellationToken.None));
+            }
+
+            await conversion.ConvertAsync(cancellationToken);
+            pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+        }
+
+        await RunStageAsync(dbContext, pending, cancellationToken,
+            () => dbContext.Database.MigrateAsync(CancellationToken.None));
+    }
+
+    /// <summary>One stage: the drift guard over <paramref name="stage"/>, then <paramref name="migrate"/>.</summary>
+    private static async Task RunStageAsync(
+        DbContext dbContext, IReadOnlyCollection<string> stage, CancellationToken cancellationToken, Func<Task> migrate)
     {
         var strategy = dbContext.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            await GuardAgainstDriftAsync(dbContext, cancellationToken);
+            await GuardAgainstDriftAsync(dbContext, cancellationToken, stage);
 
-            await dbContext.Database.MigrateAsync(CancellationToken.None);
+            await migrate();
         });
     }
+
+    private static bool IsNamed(string migrationId, string name) =>
+        migrationId.EndsWith("_" + name, StringComparison.Ordinal);
 
     /// <summary>
     /// Fails fast when a pending migration would recreate an object the database already has, rather
     /// than letting EF replay it and surface the engine's bare "already exists" error.
     /// </summary>
-    internal static async Task GuardAgainstDriftAsync(DbContext dbContext, CancellationToken cancellationToken)
+    /// <param name="stage">
+    /// The pending migrations of the stage about to run; null for every pending migration.
+    /// </param>
+    internal static async Task GuardAgainstDriftAsync(
+        DbContext dbContext, CancellationToken cancellationToken, IReadOnlyCollection<string>? stage = null)
     {
         // The check reads information_schema, so it only means anything against a real engine. This is
         // NOT support for the in-memory provider: MigrateAsync below is relational-only and throws
@@ -57,7 +119,7 @@ public static class MigrationRunner
             return;
         }
 
-        var pending = await ReadPendingMigrationObjectsAsync(dbContext, cancellationToken);
+        var pending = await ReadPendingMigrationObjectsAsync(dbContext, stage, cancellationToken);
         if (pending.Count == 0)
         {
             return;
@@ -77,9 +139,10 @@ public static class MigrationRunner
     /// are what actually runs, so they cannot disagree with it.
     /// </summary>
     private static async Task<IReadOnlyList<PendingMigrationObjects>> ReadPendingMigrationObjectsAsync(
-        DbContext dbContext, CancellationToken cancellationToken)
+        DbContext dbContext, IReadOnlyCollection<string>? stage, CancellationToken cancellationToken)
     {
-        var pendingIds = await dbContext.Database.GetPendingMigrationsAsync(cancellationToken);
+        var pendingIds = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken))
+            .Where(id => stage is null || stage.Contains(id));
 
         var migrationsAssembly = dbContext.GetService<IMigrationsAssembly>();
         var activeProvider = dbContext.Database.ProviderName

@@ -59,10 +59,15 @@ public class MigrationRunnerTests
     {
         var source = File.ReadAllText(RunnerSourcePath());
 
-        var call = Regex.Match(source, @"Database\.MigrateAsync\(([^)]*)\)");
+        // Issue #380 §11 (N3) staged the run around the location conversion: one call migrates to
+        // UnifyLocationsExpand, one migrates the rest, and the non-relational short-circuit keeps its own.
+        // Every one of them must withhold the caller's token — the last argument is the token.
+        var calls = Regex.Matches(source, @"Database\.MigrateAsync\(([^)]*)\)");
 
-        Assert.True(call.Success, "Could not find the Database.MigrateAsync call in MigrationRunner.cs.");
-        Assert.Equal("CancellationToken.None", call.Groups[1].Value.Trim());
+        Assert.True(calls.Count >= 3, $"Expected the staged MigrateAsync calls in MigrationRunner.cs, found {calls.Count}.");
+        Assert.All(calls, call =>
+            Assert.Equal("CancellationToken.None", call.Groups[1].Value.Split(',')[^1].Trim()));
+        Assert.Contains(calls, call => call.Groups[1].Value.Contains(',', StringComparison.Ordinal));
     }
 
     private static OdysseyContext InMemoryContext() =>

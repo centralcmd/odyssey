@@ -114,7 +114,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
                 // every field, the account number lands verbatim in Notes, and nothing was executed.
                 Assert.False(await context.Accounts.AnyAsync(a => a.AccountId == seed.House));
                 var house = await context.Properties.AsNoTracking()
-                    .Include(p => p.RealEstateDetails).Include(p => p.VehicleDetails)
+                    .Include(p => p.VehicleDetails)
                     .SingleAsync(p => p.PropertyId == seed.House);
                 Assert.Equal(
                     (DtoPropertyType.RealEstate, "Primary Residence", "Family home", "USD", (DateTime?)HouseOpened,
@@ -122,11 +122,14 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
                     (house.Type, house.Name, house.Description, house.CurrencyCode, house.AcquiredDate,
                         house.DisposedDate, house.Archived));
                 Assert.Equal($"Migrated from account on {today}. Account number: {HostileNumber}.", house.Notes);
-                Assert.NotNull(house.RealEstateDetails);
+                // Read raw: this schema predates issue #380, so the entity's LocationId has no column yet.
+                var houseDetails = await MigrationSeam.RowAsync(context,
+                    $"SELECT `Kind`, `AddressLine`, `City` FROM `RealEstateDetails` WHERE `PropertyId` = '{seed.House}'");
+                Assert.NotNull(houseDetails);
                 Assert.Null(house.VehicleDetails);
-                Assert.Equal(Odyssey.Dtos.Finance.RealEstateKind.Other, house.RealEstateDetails!.Kind);
-                Assert.Null(house.RealEstateDetails.AddressLine);
-                Assert.Null(house.RealEstateDetails.City);
+                Assert.Equal((int)Odyssey.Dtos.Finance.RealEstateKind.Other, Convert.ToInt32(houseDetails!["Kind"]));
+                Assert.Null(houseDetails["AddressLine"]);
+                Assert.Null(houseDetails["City"]);
 
                 // AC 3, 6, 8 — the car: it has a transaction, so the account stays as an archived Other
                 // asset with its custodian, transaction and smart tag; its reversed Closed goes to Notes.
@@ -291,6 +294,10 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
                 await MigrationSeam.MigrateToAsync(context, Baseline);
                 seed = await SeedAsync(context);
                 await MigrationSeam.MigrateToAsync(context, Subject);
+
+                // The services read today's model, so the schema goes to head first — staged, as the job does.
+                await MigrationRunner.MigrateAsync(
+                    context, new Odyssey.Core.Locations.Conversion.LocationConversion(context), CancellationToken.None);
             }
 
             await using (var context = NewContext())
@@ -382,6 +389,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
         var services = new ServiceCollection();
         services.AddDbContext<OdysseyContext>(options => options.UseMySql(
             fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
+        services.AddScoped<Odyssey.Core.Locations.Conversion.ILocationConversion, Odyssey.Core.Locations.Conversion.LocationConversion>();
         await using var provider = services.BuildServiceProvider();
 
         var logger = new CapturingLogger<OdysseyMigrationService>();
