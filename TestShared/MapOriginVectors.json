@@ -1,0 +1,255 @@
+{
+  "description": "Accept/reject verdicts for MAP_ALLOWED_ORIGINS / Map:AllowedOrigins (issue #370 §8 rule 6). Run by Odyssey.Api.Tests against MapOriginRule and by Odyssey.Client.Tests against 15-validate-map-origins.sh, so the .NET and shell implementations cannot drift.",
+  "vectors": [
+    {
+      "value": "",
+      "valid": true,
+      "note": "empty is the off-switch"
+    },
+    {
+      "value": "https://tiles.openfreemap.org",
+      "valid": true,
+      "note": "shipped default"
+    },
+    {
+      "value": "https://a.example https://b.example",
+      "valid": true,
+      "note": "two origins, one space"
+    },
+    {
+      "value": "https://localhost",
+      "valid": true,
+      "note": "single label"
+    },
+    {
+      "value": "https://a-b.example",
+      "valid": true,
+      "note": "inner hyphen"
+    },
+    {
+      "value": "https://tiles.example:8443",
+      "valid": true,
+      "note": "explicit port"
+    },
+    {
+      "value": "https://tiles.example:65535",
+      "valid": true,
+      "note": "highest port"
+    },
+    {
+      "value": "https://tiles.example:1",
+      "valid": true,
+      "note": "lowest port"
+    },
+    {
+      "value": "https://a.example https://b.example https://c.example https://d.example https://e.example https://f.example https://g.example https://h.example",
+      "valid": true,
+      "note": "8 entries"
+    },
+    {
+      "value": "https://a.example https://b.example https://c.example https://d.example https://e.example https://f.example https://g.example https://h.example https://i.example",
+      "valid": false,
+      "note": "9 entries"
+    },
+    {
+      "value": "https://.",
+      "valid": false,
+      "note": "empty label"
+    },
+    {
+      "value": "https://-",
+      "valid": false,
+      "note": "hyphen-only label"
+    },
+    {
+      "value": "https://a.-b",
+      "valid": false,
+      "note": "label starts with a hyphen"
+    },
+    {
+      "value": "https://a-.example",
+      "valid": false,
+      "note": "label ends with a hyphen"
+    },
+    {
+      "value": "https://a..b",
+      "valid": false,
+      "note": "empty inner label"
+    },
+    {
+      "value": "https://tiles.example:0",
+      "valid": false,
+      "note": "port 0"
+    },
+    {
+      "value": "https://tiles.example:99999",
+      "valid": false,
+      "note": "port above 65535"
+    },
+    {
+      "value": "https://tiles.example:",
+      "valid": false,
+      "note": "empty port"
+    },
+    {
+      "value": "https://tiles.example/",
+      "valid": false,
+      "note": "trailing slash"
+    },
+    {
+      "value": "https://tiles.example/styles",
+      "valid": false,
+      "note": "path"
+    },
+    {
+      "value": "http://tiles.example",
+      "valid": false,
+      "note": "http scheme"
+    },
+    {
+      "value": "HTTPS://tiles.example",
+      "valid": false,
+      "note": "uppercase scheme"
+    },
+    {
+      "value": "https://TILES.example",
+      "valid": false,
+      "note": "uppercase host"
+    },
+    {
+      "value": "https://*.example",
+      "valid": false,
+      "note": "wildcard"
+    },
+    {
+      "value": "*",
+      "valid": false,
+      "note": "bare wildcard"
+    },
+    {
+      "value": "https://tiles.example\"",
+      "valid": false,
+      "note": "double quote"
+    },
+    {
+      "value": "https://tiles.example;",
+      "valid": false,
+      "note": "semicolon"
+    },
+    {
+      "value": "https://tiles.example; script-src *",
+      "valid": false,
+      "note": "directive injection"
+    },
+    {
+      "value": "'self'",
+      "valid": false,
+      "note": "CSP keyword"
+    },
+    {
+      "value": "https://user@tiles.example",
+      "valid": false,
+      "note": "userinfo"
+    },
+    {
+      "value": "https://a.example\nhttps://b.example",
+      "valid": false,
+      "note": "embedded newline"
+    },
+    {
+      "value": "https://a.example\thttps://b.example",
+      "valid": false,
+      "note": "embedded tab"
+    },
+    {
+      "value": "https://a.example  https://b.example",
+      "valid": false,
+      "note": "double space"
+    },
+    {
+      "value": " https://a.example",
+      "valid": false,
+      "note": "leading space"
+    },
+    {
+      "value": "https://a.example ",
+      "valid": false,
+      "note": "trailing space"
+    },
+    {
+      "value": "https://a.example\n",
+      "valid": false,
+      "note": "trailing newline"
+    },
+    {
+      "value": "https://a.example\t",
+      "valid": false,
+      "note": "trailing tab"
+    },
+    {
+      "value": "https://a.example\r",
+      "valid": false,
+      "note": "trailing carriage return"
+    },
+    {
+      "value": "https://a.example",
+      "valid": false,
+      "note": "DEL"
+    },
+    {
+      "value": " ",
+      "valid": false,
+      "note": "a single space"
+    },
+    {
+      "value": "https://bücher.example",
+      "valid": false,
+      "note": "non-ASCII host (punycode it)"
+    },
+    {
+      "value": "https://xn--bcher-kva.example",
+      "valid": true,
+      "note": "punycoded host"
+    },
+    {
+      "value": "https://tiles.example:65536",
+      "valid": false,
+      "note": "port 65536"
+    },
+    {
+      "value": "https://tiles.example:123456",
+      "valid": false,
+      "note": "6-digit port"
+    },
+    {
+      "value": "https://tiles.example:00000",
+      "valid": false,
+      "note": "zero port with leading zeros"
+    },
+    {
+      "value": "https://tiles.example:080",
+      "valid": true,
+      "note": "leading-zero port is read as decimal 80"
+    },
+    {
+      "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example",
+      "valid": true,
+      "note": "63-character label"
+    },
+    {
+      "value": "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.example",
+      "valid": false,
+      "note": "64-character label"
+    },
+    {
+      "value": "https://127.0.0.1",
+      "valid": true,
+      "note": "IPv4 literal matches the label pattern"
+    },
+    {
+      "value": "https://[::1]",
+      "valid": false,
+      "note": "IPv6 literal"
+    }
+  ]
+}

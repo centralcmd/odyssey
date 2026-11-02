@@ -1,0 +1,2 @@
+# Shell scripts run under busybox sh in the client image, which rejects CRLF line endings (issue #370).
+*.sh text eol=lf

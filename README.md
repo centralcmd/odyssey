@@ -363,7 +363,7 @@ Notes specific to Gmail:
 
 ### Networking notes
 
-- The client container proxies `/api/*` requests to the API container (`api:8080`) via `Odyssey.Client/nginx.conf`.
+- The client container proxies `/api/*` requests to the API container (`api:8080`) via `Odyssey.Client/nginx/templates/default.conf.template`.
 - The API container connects to MariaDB using internal Docker DNS (`mariadb:3306`).
 - There is a **single MariaDB database named `odyssey`** (created by `docker/mariadb/init/01-init.sql`), named by `ODYSSEY_DATABASE`. It cannot be split: one EF context owns the whole schema, with foreign keys throughout.
 

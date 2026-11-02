@@ -52,6 +52,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // File-volume telemetry (issue #346) — Admin-only through its own claim, reconciled onto the role by
         // RoleClaimSeeder. A flat 200 whether or not volumes are configured ([] when the store is not set up).
         ("/api/file-storage/volumes", PermissionClaims.FileStorageRead),
+        // The location map's basemap configuration (issue #370) — locations.read, held by every role, so
+        // all four seeded users get 200. An in-memory options read, safe on the shared stack.
+        ("/api/map-styles", PermissionClaims.LocationsRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503

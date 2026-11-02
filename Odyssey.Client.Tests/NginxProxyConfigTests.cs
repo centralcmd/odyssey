@@ -11,7 +11,7 @@ namespace Odyssey.Client.Tests;
 public class NginxProxyConfigTests
 {
     private static readonly Lazy<string> Config = new(() =>
-        File.ReadAllText(Path.Combine(ClientSource.Root, "nginx.conf")));
+        File.ReadAllText(Path.Combine(ClientSource.Root, "nginx", "templates", "default.conf.template")));
 
     /// <summary>
     /// The server-level <c>add_header</c> already sends <c>X-Content-Type-Options</c> on every response,
@@ -47,7 +47,7 @@ public class NginxProxyConfigTests
     {
         var text = Uncommented();
         var start = text.IndexOf("location /api/", StringComparison.Ordinal);
-        Assert.True(start >= 0, "nginx.conf has no location /api/ block.");
+        Assert.True(start >= 0, "The site config template has no location /api/ block.");
         return Block(text, text.IndexOf('{', start));
     }
 
@@ -71,6 +71,6 @@ public class NginxProxyConfigTests
                 return text[(open + 1)..i];
         }
 
-        throw new InvalidOperationException("Unbalanced braces in nginx.conf.");
+        throw new InvalidOperationException("Unbalanced braces in the site config template.");
     }
 }

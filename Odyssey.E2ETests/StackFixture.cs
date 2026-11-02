@@ -166,7 +166,7 @@ public sealed class StackFixture : IAsyncLifetime
     /// <item><c>2xx text/html</c> (the SPA fallback) or <c>404</c>/<c>405</c> of any type (a host that
     /// simply has no such route) — <see cref="SameOriginApi.Absent"/>; the browser preflight decides.</item>
     /// <item>Anything else — retried. In particular NGINX's <c>502</c> while the API migrates, which is
-    /// ALSO <c>text/html</c> (nginx.conf sets no <c>error_page</c> on <c>/api/</c>), so the status is
+    /// ALSO <c>text/html</c> (the site config sets no <c>error_page</c> on <c>/api/</c>), so the status is
     /// checked before the content type.</item>
     /// </list>
     /// </summary>
@@ -258,7 +258,7 @@ public sealed class StackFixture : IAsyncLifetime
                 "to the same-origin /api/ path, which only the Compose stack serves. Run the Aspire stack in Debug (the " +
                 "default — do not pass -c Release). See CLAUDE.md, \"Run the Aspire stack in Debug; only Compose may be Release\". " +
                 "If this IS the Compose stack, its NGINX is letting /api/ fall through to index.html — check that " +
-                "Odyssey.Client/nginx.conf's `location /api/` proxy block is present in the image being served.");
+                "Odyssey.Client/nginx/templates/default.conf.template's `location /api/` proxy block is present in the image being served.");
         }
     }
 

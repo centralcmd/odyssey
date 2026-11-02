@@ -44,4 +44,9 @@
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The map origin accept/reject table (issue #370), also run against the client's shell check. -->
+    <None Include="..\TestShared\MapOriginVectors.json" Link="Fixtures\MapOriginVectors.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

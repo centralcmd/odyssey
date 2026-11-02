@@ -114,7 +114,18 @@ public enum OdsModalInitialFocus { FirstField, Cancel }
 
 /// <summary>Live-region role of an <c>OdsAlert</c> (Odyssey Design System · Alert <c>live</c>):
 /// <c>Alert</c> interrupts, <c>Status</c> is polite — for a persistent banner that renders on load.</summary>
-public enum OdsAlertLive { Alert, Status }
+public enum OdsAlertLive
+{
+    Alert,
+    Status,
+
+    /// <summary>
+    /// No live role (design system · Alert <c>live="none"</c>). For a banner whose message a page
+    /// announcer has already spoken, so the alert itself must not announce it a second time — the
+    /// location map's <c>degraded</c> notice (issue #371).
+    /// </summary>
+    None,
+}
 
 /// <summary>Signal level for an <c>OdsSeverityIcon</c> — the glyph shared by Alert
 /// blocks and the PageHeader problem-rollup toggle. Renders in currentColor so the

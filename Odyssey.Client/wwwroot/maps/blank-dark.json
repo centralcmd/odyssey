@@ -1,0 +1,12 @@
+{
+  "version": 8,
+  "name": "Odyssey blank (dark)",
+  "sources": {},
+  "layers": [
+    {
+      "id": "background",
+      "type": "background",
+      "paint": { "background-color": "#1b1d21" }
+    }
+  ]
+}
