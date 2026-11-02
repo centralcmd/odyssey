@@ -92,16 +92,62 @@ public class LocationWriteBuilderLintTests
         Assert.Matches(new Regex(signature), File.ReadAllText(Path.Combine(ClientSource.Root, file)));
     }
 
+    /// <summary>
+    /// A backstop to <c>UnifiedLocationsWritePathRenderTests</c>, which drive these paths through the components.
+    /// Each pattern is matched inside ONE method's body (brace-matched from its declaration), never across the
+    /// file, so a builder call in a later, unrelated method cannot satisfy it (senior-tester M1).
+    /// </summary>
     [Theory]
-    [InlineData("Pages/Calendar/CalendarPage.razor.cs", @"HandleEventDrop[\s\S]*?DropUpdate\(existing")]
-    [InlineData("Pages/Calendar/CalendarPage.razor.cs", @"HandleEventChange[\s\S]*?ResizeUpdate\(existing")]
-    [InlineData("Pages/Journal/JournalCard.razor.cs", @"RemoveAttachmentAsync[\s\S]*?JournalWrite\.WithoutAttachment\(detail")]
-    [InlineData("Pages/Journal/JournalCard.razor.cs", @"ToggleArchive[\s\S]*?JournalWrite\.FromDetail\(detail")]
-    [InlineData("Pages/Journal/CreateJournalEntryDialog.razor.cs", @"JournalWrite\.ToUpdate\(_draft, [^;]*link\)")]
-    [InlineData("Pages/Calendar/CalendarEventDialog.razor.cs", @"_draft\.ToNewCalendarEvent\(link\)")]
-    public void The_existing_write_paths_use_the_builders(string file, string pattern)
+    [InlineData("Pages/Calendar/CalendarPage.razor.cs", "HandleEventDrop", @"\bDropUpdate\(existing,")]
+    [InlineData("Pages/Calendar/CalendarPage.razor.cs", "HandleEventChange", @"\bResizeUpdate\(existing,")]
+    [InlineData("Pages/Journal/JournalCard.razor.cs", "RemoveAttachmentAsync", @"\bJournalWrite\.WithoutAttachment\(detail,")]
+    [InlineData("Pages/Journal/JournalCard.razor.cs", "ToggleArchive", @"\bJournalWrite\.FromDetail\(detail,")]
+    [InlineData("Pages/Journal/CreateJournalEntryDialog.razor.cs", "SaveAsync", @"\bJournalWrite\.ToUpdate\(_draft,[^;]*?\blink\)")]
+    [InlineData("Pages/Calendar/CalendarEventDialog.razor.cs", "SaveAsync", @"\b_draft\.ToNewCalendarEvent\(link\)")]
+    [InlineData("Pages/Calendar/CalendarEventDialog.razor.cs", "SaveAsync", @"\b_draft\.ToNewRecurrencePattern\(link\)")]
+    public void The_existing_write_paths_use_the_builders(string file, string method, string pattern)
     {
-        Assert.Matches(new Regex(pattern), File.ReadAllText(Path.Combine(ClientSource.Root, file)));
+        var body = MethodBody(File.ReadAllText(Path.Combine(ClientSource.Root, file)), method);
+
+        Assert.Matches(new Regex(pattern), body);
+    }
+
+    [Fact]
+    public void A_method_body_ends_at_its_own_closing_brace()
+    {
+        const string code = "private void A((int X, int Y) args)\n{\n    if (x) { y(); }\n    Use(B);\n}\nprivate void B()\n{\n    DropUpdate(existing, 1);\n}\n";
+
+        Assert.DoesNotContain("DropUpdate", MethodBody(code, "A"), StringComparison.Ordinal);
+        Assert.Contains("DropUpdate", MethodBody(code, "B"), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The body of the method declared as <paramref name="name"/>(…) — found by its access modifier, so a mere
+    /// mention (a method group passed to a callback) is never taken for it — from its first brace to its match.
+    /// The parameter list is paren-balanced, since a tuple parameter nests parentheses.
+    /// </summary>
+    private static string MethodBody(string code, string name)
+    {
+        var declaration = new Regex($@"\b(?:private|public|internal|protected)\b[^;{{}}=]*?\b{Regex.Escape(name)}\s*\(").Match(code);
+        Assert.True(declaration.Success, $"No method {name} declared.");
+        var i = declaration.Index + declaration.Length - 1;
+        for (var parens = 0; ; i++)
+        {
+            parens += code[i] switch { '(' => 1, ')' => -1, _ => 0 };
+            if (parens == 0)
+                break;
+        }
+
+        var open = code.IndexOf('{', i);
+        var depth = 0;
+        for (i = open; i < code.Length; i++)
+        {
+            depth += code[i] switch { '{' => 1, '}' => -1, _ => 0 };
+            if (depth == 0)
+                return code[open..(i + 1)];
+        }
+
+        throw new InvalidOperationException($"Unbalanced braces after {name}.");
     }
 
     [Fact]
