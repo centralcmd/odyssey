@@ -1,0 +1,38 @@
+@using Odyssey.Dtos.Journal
+
+@*
+    LocationPlaceLine — a record's place on a read surface (issue #383 §3.5; design system · AddLocationModal.jsx
+    LocationPlaceLine). The existing `place` glyph and the place name, then the Details text on the next line.
+    An archived place reads "(archived)" in words. With no readable place (LocationRef null — no
+    locations.read, or no link) only the details show, with no placeholder. Plain text throughout: provider-
+    and user-entered text never renders as markup.
+*@
+
+@if (Place is not null || !string.IsNullOrWhiteSpace(Details))
+{
+    <span class="loc-place-line">
+        @if (Place is { } place)
+        {
+            <span class="loc-place-line-name"><span class="material-icons" aria-hidden="true">place</span>@LocationVisuals.PlaceName(place)</span>
+        }
+        @if (!string.IsNullOrWhiteSpace(Details))
+        {
+            @if (Place is null)
+            {
+                <span class="loc-place-line-name"><span class="material-icons" aria-hidden="true">place</span>@Details</span>
+            }
+            else
+            {
+                <span class="loc-place-line-details">@Details</span>
+            }
+        }
+    </span>
+}
+
+@code {
+    /// <summary>The linked place's embed — null without <c>locations.read</c>.</summary>
+    [Parameter] public LocationRef? Place { get; set; }
+
+    /// <summary>The Details text beside the place.</summary>
+    [Parameter] public string? Details { get; set; }
+}

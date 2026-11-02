@@ -1,0 +1,41 @@
+@*
+    LocationErrorSummary — every error at once on a failed save (issue #383 §6.8; design system ·
+    AddLocationModal.jsx LocationErrorSummary). The dialog moves focus to it, so the list is read as one
+    alert. Shared by the location, contact-address and property dialogs. The apply-to entry is a LINK
+    that focuses the apply-to group's first radio. Plain text throughout.
+*@
+
+@if (Errors.Count > 0)
+{
+    <div id="@Id" tabindex="-1" class="loc-err-summary" role="alert">
+        <b>@(Errors.Count == 1 ? "Fix this before saving:" : $"Fix these {Errors.Count} things before saving:")</b>
+        <ul>
+            @foreach (var error in Errors)
+            {
+                <li>
+                    @if (string.Equals(error.Key, "applyTo", StringComparison.OrdinalIgnoreCase) && OnApplyTo.HasDelegate)
+                    {
+                        <a href="@($"#{ApplyGroupId}")" @onclick="OnApplyTo" @onclick:preventDefault="true">@error.Value</a>
+                    }
+                    else
+                    {
+                        @error.Value
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    /// <summary>The errors, in field order.</summary>
+    [Parameter] public IReadOnlyList<KeyValuePair<string, string>> Errors { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+
+    /// <summary>The apply-to fieldset's id — the link's target.</summary>
+    [Parameter] public string? ApplyGroupId { get; set; }
+
+    /// <summary>Focuses the apply-to group's first radio.</summary>
+    [Parameter] public EventCallback OnApplyTo { get; set; }
+}

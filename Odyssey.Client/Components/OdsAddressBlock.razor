@@ -1,0 +1,244 @@
+@*
+    OdsAddressBlock — the shared pick-or-type address editor (Odyssey Design System · components/AddressBlock,
+    issue #383 §3.3). ContactMethodDialog (address mode) and PropertyDialog (real estate) both use it.
+
+    Every address IS a household Location (#380), so the block offers a saved place to pick (address-complete
+    only, never a create row), the address fields to type, a usage line saying who else uses the place, and —
+    when a SHARED address is edited — a required choice of who the change applies to. The state machine, the
+    apply-to rule and the request live in AddressBlockModel; this component renders them and says what
+    changed through the dialog's one polite announcer (OnAnnounce).
+
+    Without locations.read the picker and the usage line are not rendered; the fields stay editable. The
+    property variant shows four inputs; a linked place's Line 2 and Region are read-only text in an
+    "Also on the saved place" tile. Everything renders as plain text, never as raw markup.
+*@
+
+@inject ILocationsApiClient Locations
+@inject IJSRuntime Js
+
+<div class="@($"odc-addrblock {Class}".TrimEnd())">
+    @if (Model.Permissions.CanReadLocations)
+    {
+        <OdsLocationSelect Label="Place" Value="PickerValue" ValueChanged="OnPickedAsync"
+                           Filter="LocationPickFilter.AddressComplete" AllowCreate="false"
+                           Help="@Model.PickerHelp" Error="@Err(AddressBlockModel.LocationIdKey)"
+                           DebounceMs="PickerDebounceMs" Id="@($"{_uid}-place")" />
+    }
+
+    @if (Model.Variant == AddressBlockVariant.Property)
+    {
+        <OdsField Label="Address line" Value="@Model.Fields.Line1" MaxLength="LocationRules.AddressLineMaxLength"
+                  ValueChanged="@(v => EditAsync(AddressBlockModel.Line1Key, v))" Error="@Err(AddressBlockModel.Line1Key)"
+                  Placeholder="Street and number" InputId="@InputId(AddressBlockModel.Line1Key)" />
+        <OdsFormRow Cols="3">
+            <OdsField Label="Postal code" Value="@Model.Fields.PostalCode" MaxLength="LocationRules.PostalCodeMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.PostalCodeKey, v))" Error="@Err(AddressBlockModel.PostalCodeKey)"
+                      InputId="@InputId(AddressBlockModel.PostalCodeKey)" />
+            <OdsField Label="City" Value="@Model.Fields.City" MaxLength="LocationRules.CityMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.CityKey, v))" Error="@Err(AddressBlockModel.CityKey)"
+                      InputId="@InputId(AddressBlockModel.CityKey)" />
+            <OdsField Label="Country" Value="@Model.Fields.CountryCode" MaxLength="LocationRules.CountryCodeLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.CountryCodeKey, v))" Error="@Err(AddressBlockModel.CountryCodeKey)"
+                      Placeholder="NO" Help="Two letters, e.g. NO" InputId="@InputId(AddressBlockModel.CountryCodeKey)" />
+        </OdsFormRow>
+        @if (Model.AlsoOnSavedPlace is { } extras)
+        {
+            <OdsInfoTile Icon="place" Label="Also on the saved place" ValueVariant="OdsInfoTileVariant.Text" Elevated="false"
+                         Class="odc-addrblock-extra" Foot="@OdsInfoTile.Caption("Kept from the saved place — not edited here.")">
+                <Value>@extras</Value>
+            </OdsInfoTile>
+        }
+    }
+    else
+    {
+        <OdsFormRow>
+            <OdsField Label="Line 1" Required="@FieldsRequired" Value="@Model.Fields.Line1" MaxLength="LocationRules.AddressLineMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.Line1Key, v))" Error="@Err(AddressBlockModel.Line1Key)"
+                      Placeholder="Street name and number" InputId="@InputId(AddressBlockModel.Line1Key)" />
+            <OdsField Label="Line 2" Value="@Model.Fields.Line2" MaxLength="LocationRules.AddressLineMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.Line2Key, v))" Error="@Err(AddressBlockModel.Line2Key)"
+                      Placeholder="Apartment, floor, etc." InputId="@InputId(AddressBlockModel.Line2Key)" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsField Label="Postal code" Value="@Model.Fields.PostalCode" MaxLength="LocationRules.PostalCodeMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.PostalCodeKey, v))" Error="@Err(AddressBlockModel.PostalCodeKey)"
+                      InputId="@InputId(AddressBlockModel.PostalCodeKey)" />
+            <OdsField Label="City" Required="@FieldsRequired" Value="@Model.Fields.City" MaxLength="LocationRules.CityMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.CityKey, v))" Error="@Err(AddressBlockModel.CityKey)"
+                      InputId="@InputId(AddressBlockModel.CityKey)" />
+        </OdsFormRow>
+        <OdsFormRow>
+            <OdsField Label="Region" Value="@Model.Fields.Region" MaxLength="LocationRules.RegionMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.RegionKey, v))" Error="@Err(AddressBlockModel.RegionKey)"
+                      InputId="@InputId(AddressBlockModel.RegionKey)" />
+            <OdsField Label="Country" Required="@FieldsRequired" Value="@Model.Fields.CountryCode" MaxLength="LocationRules.CountryCodeLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.CountryCodeKey, v))" Error="@Err(AddressBlockModel.CountryCodeKey)"
+                      Placeholder="NO" Help="Two letters, e.g. NO" InputId="@InputId(AddressBlockModel.CountryCodeKey)" />
+        </OdsFormRow>
+    }
+
+    @if (Model.State == AddressBlockState.Cleared)
+    {
+        <div class="odc-addrblock-usage">
+            <span class="material-icons" aria-hidden="true">info</span>
+            <span>@AddressBlockModel.ClearedHelp</span>
+        </div>
+    }
+
+    @if (Model.ShowsCoordinatesWarning)
+    {
+        <div class="odc-addrblock-warn" id="@WarningId">
+            <span class="material-icons" aria-hidden="true">info</span>
+            <span>@AddressBlockModel.CoordinatesWarning</span>
+        </div>
+    }
+
+    @if (Model.UsageLine is { } usage)
+    {
+        <div class="odc-addrblock-usage">
+            <span class="material-icons" aria-hidden="true">@(Model.UsageIsShared ? "link" : "info")</span>
+            <span>@usage</span>
+        </div>
+    }
+
+    @if (Model.AsksApplyTo)
+    {
+        <div class="odc-addrblock-apply">
+            @if (!string.IsNullOrEmpty(ApplyToAlert))
+            {
+                <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Alert">@ApplyToAlert</OdsAlert>
+            }
+            <OdsRadioGroup @ref="_applyTo" Id="@ApplyGroupId" Label="Apply this change to" Required="true"
+                           Value="@Model.ApplyTo" ValueChanged="OnApplyToChangedAsync"
+                           Options="Model.ApplyToOptions" Error="@Err(AddressBlockModel.ApplyToKey)"
+                           DescribedById="@(Model.ShowsCoordinatesWarning ? WarningId : null)" />
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The block's state and rules — the dialog owns it and reads the request from it on save.</summary>
+    [Parameter, EditorRequired] public AddressBlockModel Model { get; set; } = default!;
+
+    /// <summary>Raised after every change, so the dialog can clear stale errors and re-render.</summary>
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    /// <summary>The dialog's one polite announcer.</summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    /// <summary>Field errors keyed like the server's: <c>line1</c>, <c>city</c>, <c>applyTo</c>, <c>locationId</c>…</summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? Errors { get; set; }
+
+    /// <summary>The alert shown above a re-asked apply-to group (a <c>409 applyTo</c>).</summary>
+    [Parameter] public string? ApplyToAlert { get; set; }
+
+    /// <summary>The apply-to fieldset's id — the error summary's link target.</summary>
+    [Parameter] public string ApplyGroupId { get; set; } = $"ab-apply-{Guid.NewGuid():N}";
+
+    /// <summary>The picker's debounce; a test passes zero.</summary>
+    [Parameter] public int PickerDebounceMs { get; set; } = 250;
+
+    [Parameter] public string? Class { get; set; }
+
+    private readonly string _uid = $"ab-{Guid.NewGuid():N}";
+    private OdsRadioGroup? _applyTo;
+
+    // Announce-once bookkeeping: the group when it first appears, the warning each time it appears.
+    private bool _groupShown;
+    private bool _warningShown;
+    private bool _describeChangedField;
+
+    private string WarningId => $"{_uid}-warn";
+
+    private string InputId(string key) => $"{_uid}-{key}";
+
+    private LocationPick? PickerValue => Model.PickerId is { } id ? LocationPick.Existing(id) : null;
+
+    // Line 1, City and Country are required for a contact address the user types.
+    private bool FieldsRequired => Model.State is AddressBlockState.Typed or AddressBlockState.Changed;
+
+    private string? Err(string key) => Errors is not null && Errors.TryGetValue(key, out var message) ? message : null;
+
+    protected override void OnInitialized()
+    {
+        _groupShown = Model.AsksApplyTo;
+        _warningShown = Model.ShowsCoordinatesWarning;
+    }
+
+    private async Task OnPickedAsync(LocationPick? pick)
+    {
+        if (pick?.Id is not { } id)
+        {
+            Model.ClearPick();
+            await AfterChangeAsync(null);
+            return;
+        }
+
+        var result = await Locations.GetAsync(id);
+        if (!result.IsSuccess || result.Value is not { } place)
+        {
+            await AfterChangeAsync("Couldn’t load that place.");
+            return;
+        }
+
+        await AfterChangeAsync(Model.Pick(place));
+    }
+
+    private Task EditAsync(string key, string? value) => AfterChangeAsync(Model.Edit(key, value));
+
+    private async Task OnApplyToChangedAsync(string value)
+    {
+        Model.ApplyTo = value;
+        await AfterChangeAsync(null);
+    }
+
+    private async Task AfterChangeAsync(string? announcement)
+    {
+        // The group is announced once when it first appears; if the fields go back to unchanged it goes
+        // away silently and its value is reset (§6.2).
+        string? groupAnnouncement = null;
+        if (Model.AsksApplyTo && !_groupShown)
+        {
+            _groupShown = true;
+            groupAnnouncement = AddressBlockModel.GroupAppears;
+        }
+        else if (!Model.AsksApplyTo && _groupShown)
+        {
+            _groupShown = false;
+            Model.ApplyTo = null;
+        }
+
+        // The coordinates warning is announced once each time it appears — when the group is skipped, or
+        // when the user chooses All uses. While the group is skipped it also describes the field changed.
+        string? warning = null;
+        if (Model.ShowsCoordinatesWarning && !_warningShown)
+        {
+            _warningShown = true;
+            warning = AddressBlockModel.CoordinatesWarning;
+            _describeChangedField = !Model.AsksApplyTo;
+        }
+        else if (!Model.ShowsCoordinatesWarning)
+        {
+            _warningShown = false;
+        }
+
+        var message = string.Join(" ", new[] { announcement, groupAnnouncement, warning }.Where(m => !string.IsNullOrEmpty(m)));
+        if (message.Length > 0)
+            await OnAnnounce.InvokeAsync(message);
+        await OnChange.InvokeAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_describeChangedField || Model.LastChangedField is not { } key)
+            return;
+        _describeChangedField = false;
+        try
+        { await Js.InvokeVoidAsync("odsAddDescribedBy", InputId(key), WarningId); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    /// <summary>Focuses the apply-to group's first radio — the error summary's link and a 409 re-show.</summary>
+    public Task FocusApplyToAsync() => _applyTo?.FocusAsync() ?? Task.CompletedTask;
+}

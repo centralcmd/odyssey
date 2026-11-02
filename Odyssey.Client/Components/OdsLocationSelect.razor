@@ -1,0 +1,59 @@
+@*
+    OdsLocationSelect — THE place picker (Odyssey Design System · components/LocationSelect, issue #383 §4).
+
+    Wherever a record links a household Location — the Place of a calendar event, a recurring series or
+    a journal entry, and the place behind a contact or property address. It is the place counterpart of
+    OdsContactSelect: OdsCombobox in its ASYNC mode inside the standard field chrome.
+
+    Search runs server-side (GET /api/locations?search=, 20 per request) after 2 characters and a
+    250 ms pause; never the unpaged list. Active places only — archived and merged-away places are never
+    offered for a new link — while a stored value outside the loaded rows, archived ones included,
+    still renders through ResolveAsync and reads "‹name› (archived)".
+
+    Value is a LocationPick: an existing place by id, or a STAGED new one. With AllowCreate (the caller
+    gates it on locations.create) the list ends with Create place "‹text›", whose second line discloses
+    who will see the place. Picking it calls no API: the trigger reads "‹name› (new)" and the PARENT
+    creates the place when its own dialog saves (PlaceDraft.EnsureCreatedAsync). OdsAddressBlock passes
+    AllowCreate=false: a new address is typed, not created by name.
+
+    A caller without locations.read does not render this component at all (no placeholder, no disabled
+    control) — that is the caller's rule, not this component's.
+*@
+
+@if (Bare)
+{
+    @Control
+}
+else
+{
+    <OdsFieldShell Label="@Label" HtmlFor="@_inputId" Required="@Required" Help="@Help" Error="@Error" Class="odc-locsel">
+        @Control
+    </OdsFieldShell>
+}
+
+@code {
+    private RenderFragment Control =>
+        @<OdsCombobox Value="@ComboValue"
+                      ValueChanged="OnValueChanged"
+                      Options="CurrentOptions"
+                      Placeholder="@Placeholder"
+                      Disabled="@Disabled"
+                      Clearable="true"
+                      InputId="@_inputId"
+                      AriaLabel="@(Bare ? AriaLabel ?? Label : null)"
+                      AriaDescribedBy="@(Bare ? null : DescribedBy)"
+                      Required="@Required"
+                      Error="@(!string.IsNullOrEmpty(Error))"
+                      EmptyText="@EffectiveEmptyText"
+                      SearchAsync="SearchAsync"
+                      ResolveAsync="ResolveAsync"
+                      DebounceMs="@DebounceMs"
+                      MinChars="2"
+                      MinCharsText="Type at least 2 characters"
+                      SearchingText="Searching…"
+                      ResultsText="@(n => $"{n} {(n == 1 ? "place" : "places")} found")"
+                      ErrorText="Couldn’t load places"
+                      OnCreate="@(AllowCreate ? Stage : null)"
+                      CreateLabel="Create place"
+                      CreateDescription="@(AllowCreate ? CreateDisclosure : null)" />;
+}
