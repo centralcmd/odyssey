@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -40,7 +41,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         {
             var seeded = await SeedAsync();
 
-            var entries = await CountAsync(context => Entries(context).ListAsync(new JournalEntriesQueryParams { Limit = RecordCount }));
+            var entries = await CountAsync(context => Entries(context).ListAsync(new JournalEntriesQueryParams { Limit = RecordCount }, claims: LocationClaims.Trusted));
             Assert.Equal(RecordCount, entries.Result.Items.Count);
             Assert.All(entries.Result.Items, entry => Assert.Equal("beach_access", entry.DisplayIcon));
             Assert.Equal(ListEntryCommands, entries.Commands);
@@ -55,7 +56,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             Assert.All(photos.Result.Items, photo => Assert.Equal("beach_access", photo.DisplayIcon));
             Assert.Equal(ListPhotoCommands, photos.Commands);
 
-            var entry = await CountAsync(context => Entries(context).Get(seeded.EntryId));
+            var entry = await CountAsync(context => Entries(context).Get(seeded.EntryId, claims: LocationClaims.Trusted));
             Assert.Equal("beach_access", entry.Result!.DisplayIcon);
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
             Assert.InRange(entry.Commands, GetEntryCommandsBefore, GetEntryCommandsBefore + 1);
@@ -99,7 +100,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             var entry = await CountAsync(context => Entries(context).Create(new NewJournalEntry
             {
                 Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = journalTagIds,
-            }, Author));
+            }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("beach_access", entry.Result.DisplayIcon);
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
             Assert.InRange(entry.Commands, CreateEntryCommandsBefore, CreateEntryCommandsBefore + 1);
@@ -107,7 +108,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             var updatedEntry = await CountAsync(context => Entries(context).Update(entry.Result.JournalEntryId, new UpdateJournalEntry
             {
                 Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = [seeded.Zoo],
-            }, Author));
+            }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("pets", updatedEntry.Result!.DisplayIcon);
             Assert.InRange(updatedEntry.Commands, UpdateEntryCommandsBefore, UpdateEntryCommandsBefore + 1);
 

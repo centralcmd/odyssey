@@ -3,6 +3,7 @@
 // ENGINE resolves the foreign key rather than application code.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -176,7 +177,7 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
                 AddressLine = "Storgata 12",
                 HomeownerAssociationId = associationId,
             },
-        }, userId: null)).PropertyId;
+        }, userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
     private async Task MigrateAsync()
     {

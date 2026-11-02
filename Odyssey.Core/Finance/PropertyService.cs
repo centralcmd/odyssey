@@ -150,7 +150,7 @@ public class PropertyService
 
         var items = properties.Select(p => ToDto(p, now)).ToList();
         await EnrichAsync(items, includeEstimates, includeContractCount, now, cancellationToken);
-        await FillOtherUsesAsync(items, claims ?? LocationClaims.Trusted, cancellationToken);
+        await FillOtherUsesAsync(items, claims ?? LocationClaims.None, cancellationToken);
 
         return new PagedResult<ExistingProperty>
         {
@@ -179,7 +179,7 @@ public class PropertyService
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var dto = ToDto(property, now);
         await EnrichAsync([dto], includeEstimates, includeContractCount, now, cancellationToken);
-        await FillOtherUsesAsync([dto], claims ?? LocationClaims.Trusted, cancellationToken);
+        await FillOtherUsesAsync([dto], claims ?? LocationClaims.None, cancellationToken);
         return dto;
     }
 
@@ -354,12 +354,12 @@ public class PropertyService
     /// from the request body.
     /// </param>
     /// <exception cref="DomainValidationException">A shape, currency, date or year rule fails.</exception>
-    /// <param name="claims">The caller's location claims (issue #380 §5.4); null is a trusted, non-HTTP caller.</param>
+    /// <param name="claims">The caller's location claims (issue #380 §5.4); null is no capability at all (pass <see cref="LocationClaims.Trusted"/> explicitly for a trusted, non-HTTP caller).</param>
     public async Task<ExistingProperty> Create(
         NewProperty newProperty, string? userId, CancellationToken cancellationToken = default,
         LocationClaims? claims = null)
     {
-        claims ??= LocationClaims.Trusted;
+        claims ??= LocationClaims.None;
         var type = ValidateShape(newProperty);
         var currencyCode = CurrencyValidationService.Normalize(newProperty.CurrencyCode);
         await CurrencyValidationService.EnsureSupportedAndActive(
@@ -414,7 +414,7 @@ public class PropertyService
         Guid id, NewProperty putProperty, string? userId, CancellationToken cancellationToken = default,
         LocationClaims? claims = null)
     {
-        claims ??= LocationClaims.Trusted;
+        claims ??= LocationClaims.None;
         ExistingProperty? result = null;
         string? addressChange = null;
 

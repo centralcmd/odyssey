@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Data.Common;
 using System.Text;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -260,7 +261,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                     "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:converted\r\nKIND:org\r\nORG:Hopper Systems\r\nFN:Hopper Systems\r\nEND:VCARD\r\n"
                     + "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:blocked\r\nKIND:org\r\nORG:Ramos AS\r\nFN:Ramos AS\r\nEND:VCARD\r\n";
                 using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
-                var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+                var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
 
                 Assert.Equal([convertedId], outcome.TypeConvertedContactIds);
                 Assert.Equal([blockedId], outcome.TypeChangeBlockedContactIds);
@@ -420,7 +421,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
             new UnlimitedLimits(),
             NullLogger<ContactVCardService>.Instance);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
-        return await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     private static async Task TagAsync(string connectionString, Guid photoId, Guid contactId)

@@ -3,6 +3,7 @@
 // services, so the ENGINE resolves the foreign keys rather than application code.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
@@ -104,7 +105,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
             // backup restore).
             var house = House("Storgata 14");
             house.RealEstateDetails = house.RealEstateDetails! with { City = null, CountryCode = null };
-            await new PropertyService(context, new ContactLookup(context)).Create(house, userId: null);
+            await new PropertyService(context, new ContactLookup(context)).Create(house, userId: null, claims: LocationClaims.Trusted);
             first = await SnapshotAsync(context);
 
             await MigrationSeam.MigrateToAsync(context, PreviousMigration);
@@ -254,7 +255,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Guid propertyId, tagId;
         await using (var seed = NewContext())
         {
-            propertyId = (await new PropertyService(seed, new ContactLookup(seed)).Create(House("Storgata 14"), userId: null)).PropertyId;
+            propertyId = (await new PropertyService(seed, new ContactLookup(seed)).Create(House("Storgata 14"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
             tagId = await SeedTagAsync(seed, "Maintenance");
         }
 
@@ -303,15 +304,15 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         await using var context = NewContext();
         var properties = new PropertyService(context, new ContactLookup(context));
         var estimates = new PropertyEstimateService(context);
-        var cheap = (await properties.Create(House("Cheap"), userId: null)).PropertyId;
-        var dear = (await properties.Create(House("Dear"), userId: null)).PropertyId;
-        await properties.Create(House("Unvalued"), userId: null);
+        var cheap = (await properties.Create(House("Cheap"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
+        var dear = (await properties.Create(House("Dear"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
+        await properties.Create(House("Unvalued"), userId: null, claims: LocationClaims.Trusted);
         await estimates.Create(cheap, Estimate(5000m, Anchor.AddDays(-1)));
         await estimates.Create(cheap, Estimate(100m, Anchor));
         await estimates.Create(cheap, Estimate(99999m, DateTime.UtcNow.AddYears(1)));
         await estimates.Create(dear, Estimate(900m, Anchor));
 
-        var page = await properties.ListAsync(new PropertiesQueryParams { SortBy = PropertySortBy.Value, SortDir = direction });
+        var page = await properties.ListAsync(new PropertiesQueryParams { SortBy = PropertySortBy.Value, SortDir = direction }, claims: LocationClaims.Trusted);
 
         Assert.Equal(
             direction == SortDirection.Asc ? ["Cheap", "Dear", "Unvalued"] : ["Dear", "Cheap", "Unvalued"],
@@ -327,17 +328,17 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
 
         await using var context = NewContext();
         var properties = new PropertyService(context, new ContactLookup(context));
-        await properties.Create(House("Alpha"), userId: null);
+        await properties.Create(House("Alpha"), userId: null, claims: LocationClaims.Trusted);
         var sold = Car("Old car");
         sold.DisposedDate = Anchor;
-        await properties.Create(sold, userId: null);
+        await properties.Create(sold, userId: null, claims: LocationClaims.Trusted);
 
-        var byPlate = await properties.ListAsync(new PropertiesQueryParams { Search = "ab 123" });
+        var byPlate = await properties.ListAsync(new PropertiesQueryParams { Search = "ab 123" }, claims: LocationClaims.Trusted);
         Assert.Empty(byPlate.Items);
-        Assert.Equal("Old car", Assert.Single((await properties.ListAsync(new PropertiesQueryParams { Search = "ab123" })).Items).Name);
-        Assert.Equal("Alpha", Assert.Single((await properties.ListAsync(new PropertiesQueryParams { Search = "OSLO" })).Items).Name);
+        Assert.Equal("Old car", Assert.Single((await properties.ListAsync(new PropertiesQueryParams { Search = "ab123" }, claims: LocationClaims.Trusted)).Items).Name);
+        Assert.Equal("Alpha", Assert.Single((await properties.ListAsync(new PropertiesQueryParams { Search = "OSLO" }, claims: LocationClaims.Trusted)).Items).Name);
 
-        var disposed = await properties.ListAsync(new PropertiesQueryParams { Statuses = [PropertyStatus.Disposed] });
+        var disposed = await properties.ListAsync(new PropertiesQueryParams { Statuses = [PropertyStatus.Disposed] }, claims: LocationClaims.Trusted);
         Assert.Equal("Old car", Assert.Single(disposed.Items).Name);
         Assert.Equal(PropertyStatus.Disposed, disposed.Items[0].Status);
     }
@@ -375,7 +376,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
         Assert.Equal(2m, (await accountEstimates.GetCurrent(account.AccountId, Anchor.AddMonths(2)))!.Value);
         Assert.Equal([2m, 1m], (await accountEstimates.GetHistory(account.AccountId))!.Select(e => e.Value));
 
-        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House("Storgata 14"), userId: null)).PropertyId;
+        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House("Storgata 14"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var propertyEstimates = new PropertyEstimateService(context);
         await propertyEstimates.Create(propertyId, Estimate(1m, Anchor));
         await propertyEstimates.Create(propertyId, Estimate(2m, Anchor.AddMonths(1)));
@@ -418,7 +419,7 @@ public class PropertyRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedWatchedPropertyAsync(OdysseyContext context, string name, Guid tagId)
     {
-        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House(name), userId: null)).PropertyId;
+        var propertyId = (await new PropertyService(context, new ContactLookup(context)).Create(House(name), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         await new PropertyEstimateService(context).Create(propertyId, Estimate(1m, Anchor));
         context.PropertySmartTags.Add(new PropertySmartTag { PropertyId = propertyId, TransactionTagId = tagId, AddedAt = Anchor });
         await context.SaveChangesAsync();

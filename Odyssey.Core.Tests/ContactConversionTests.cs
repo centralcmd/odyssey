@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -184,7 +185,7 @@ public class ContactConversionTests
             () => service.ConvertAsync(created.ContactId, Request(ContactType.Person, created.UpdatedAt.AddSeconds(-1))));
 
         context.ChangeTracker.Clear();
-        Assert.Equal(ContactType.Organization, (await service.Get(created.ContactId))!.Type);
+        Assert.Equal(ContactType.Organization, (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.Type);
     }
 
     [Theory]
@@ -275,7 +276,7 @@ public class ContactConversionTests
         var created = await service.Create(Person("Ada", "Lovelace"));
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Home, Value = "ada@example.com" });
         await service.CreatePhone(created.ContactId, new NewPhoneNumber { Label = PhoneLabel.Mobile, Value = "+47 400 00 000" });
-        var current = (await service.Get(created.ContactId))!;
+        var current = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!;
 
         var preview = await service.PreviewConversionAsync(created.ContactId, ContactType.Organization, true);
         var result = await service.ConvertAsync(created.ContactId, Request(ContactType.Organization, current.UpdatedAt));
@@ -300,7 +301,7 @@ public class ContactConversionTests
 
         var preview = await service.PreviewConversionAsync(created.ContactId, ContactType.Organization, true);
 
-        Assert.Equal(created.UpdatedAt, (await service.Get(created.ContactId))!.UpdatedAt);
+        Assert.Equal(created.UpdatedAt, (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.UpdatedAt);
         Assert.True(preview!.CanConvert);
         Assert.Equal(created.UpdatedAt, preview.UpdatedAt);
         Assert.Equal([Fields.Title], preview.LostFields);
@@ -337,7 +338,7 @@ public class ContactConversionTests
         Assert.Equal(ContactConversionCodes.Blocked, ex.Code);
         Assert.DoesNotContain("1", ex.Message);
         context.ChangeTracker.Clear();
-        Assert.Equal(ContactType.Person, (await service.Get(created.ContactId))!.Type);
+        Assert.Equal(ContactType.Person, (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.Type);
     }
 
     [Fact]
@@ -471,7 +472,7 @@ public class ContactConversionTests
             + Vcard("UID:urn:uuid:three", "N:Hopper;Grace;;;", "FN:Grace Hopper");
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
 
-        var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+        var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
 
         Assert.Equal(1, outcome.Result.CreatedCount);
         var group = Assert.Single(outcome.Result.Skipped);
@@ -491,7 +492,7 @@ public class ContactConversionTests
 
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(
             Vcard("UID:urn:uuid:one", "KIND:org", "ORG:Diego Ramos AS", "FN:Diego Ramos AS")));
-        var outcome = await VCardService(context).ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+        var outcome = await VCardService(context).ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
 
         Assert.Equal(1, outcome.Result.UpdatedCount);
         Assert.Equal([created.ContactId], outcome.TypeConvertedContactIds);

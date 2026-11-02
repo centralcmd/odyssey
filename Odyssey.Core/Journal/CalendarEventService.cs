@@ -36,7 +36,7 @@ public class CalendarEventService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <param name="claims">Decides whether the <c>locationRef</c> embed is filled; null is trusted.</param>
+    /// <param name="claims">Decides whether the <c>locationRef</c> embed is filled; null is no capability at all.</param>
     public async Task<PagedResult<ExistingCalendarEvent>> ListAsync(
         CalendarEventsQueryParams query,
         CancellationToken cancellationToken = default,
@@ -108,7 +108,7 @@ public class CalendarEventService
         OdysseyContext context, IReadOnlyCollection<ExistingCalendarEvent> rows, LocationClaims? claims,
         CancellationToken cancellationToken)
     {
-        var refs = await LocationRefs.LoadAsync(context, rows.Select(r => r.LocationId), claims ?? LocationClaims.Trusted, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, rows.Select(r => r.LocationId), claims ?? LocationClaims.None, cancellationToken);
         foreach (var row in rows)
         {
             row.LocationRef = refs.For(row.LocationId);
@@ -124,7 +124,7 @@ public class CalendarEventService
 
     /// <param name="claims">
     /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
-    /// Null is a trusted, non-HTTP caller.
+    /// Null is no capability at all; a trusted, non-HTTP caller passes <see cref="LocationClaims.Trusted"/> explicitly.
     /// </param>
     public async Task<ExistingCalendarEvent> Create(
         NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
@@ -136,7 +136,7 @@ public class CalendarEventService
             effectiveLimits.CalendarMaxEventDurationDays);
 
         var resolver = new LocationResolver(context, timeProvider);
-        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.Trusted, cancellationToken);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.None, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var calendarEvent = new Context.CalendarEvent
@@ -181,7 +181,7 @@ public class CalendarEventService
 
         var resolver = new LocationResolver(context, timeProvider);
         var locationId = await resolver.ResolveRecordLinkAsync(
-            request.LocationId, calendarEvent.LocationId, claims ?? LocationClaims.Trusted, cancellationToken);
+            request.LocationId, calendarEvent.LocationId, claims ?? LocationClaims.None, cancellationToken);
 
         calendarEvent.CalendarId = request.CalendarId;
         calendarEvent.Title = request.Title;

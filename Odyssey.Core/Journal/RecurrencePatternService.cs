@@ -116,7 +116,7 @@ public class RecurrencePatternService
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateFields(request, effectiveLimits.CalendarMaxEventDurationDays);
         var resolver = new LocationResolver(context, timeProvider);
-        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.Trusted, cancellationToken);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.None, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var pattern = new RecurrencePattern
@@ -189,7 +189,7 @@ public class RecurrencePatternService
         ValidateFields(request, effectiveLimits.CalendarMaxEventDurationDays);
         var resolver = new LocationResolver(context, timeProvider);
         var locationId = await resolver.ResolveRecordLinkAsync(
-            request.LocationId, pattern.LocationId, claims ?? LocationClaims.Trusted, cancellationToken);
+            request.LocationId, pattern.LocationId, claims ?? LocationClaims.None, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -343,7 +343,7 @@ public class RecurrencePatternService
     {
         var dto = pattern.Adapt<ExistingRecurrencePattern>();
         dto.GeneratedEventCount = await context.CalendarEvents.CountAsync(e => e.RecurrencePatternId == pattern.RecurrencePatternId, cancellationToken);
-        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.Trusted, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.None, cancellationToken);
         dto.LocationRef = refs.For(dto.LocationId);
         return dto;
     }

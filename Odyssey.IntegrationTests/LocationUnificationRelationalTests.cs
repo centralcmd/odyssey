@@ -79,7 +79,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         await Task.WhenAll(contacts.Select(async contactId =>
         {
             await using var context = NewContext();
-            await Contacts(context).CreateAddress(contactId, Address("Storgata 1", "Oslo"));
+            await Contacts(context).CreateAddress(contactId, Address("Storgata 1", "Oslo"), claims: LocationClaims.Trusted);
         }));
 
         await using var check = NewContext();
@@ -278,7 +278,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
             created = await Properties(context).Create(PropertyBody(new RealEstateDetailsDto
             {
                 Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
-            }), Actor);
+            }), Actor, claims: LocationClaims.Trusted);
         }
 
         await using (var context = NewContext())
@@ -287,7 +287,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
             {
                 Kind = RealEstateKind.House, AddressLine = "Storgata 3", City = "Oslo", CountryCode = "NO",
                 ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 0,
-            }) with { Name = "Renamed" }, Actor);
+            }) with { Name = "Renamed" }, Actor, claims: LocationClaims.Trusted);
         }
 
         await using var check = NewContext();
@@ -380,7 +380,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
     private async Task<ExistingAddress> AddAsync(Guid contactId, NewAddress address)
     {
         await using var context = NewContext();
-        return (await Contacts(context).CreateAddress(contactId, address))!;
+        return (await Contacts(context).CreateAddress(contactId, address, claims: LocationClaims.Trusted))!;
     }
 
     private async Task<Guid> SeedContactAsync(string legalName)

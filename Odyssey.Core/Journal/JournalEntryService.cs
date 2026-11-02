@@ -131,7 +131,7 @@ public class JournalEntryService
         }, cancellationToken);
 
         await AttachPhotoLinksAsync(page.Items, linkRows, cancellationToken);
-        var refs = await LocationRefs.LoadAsync(context, page.Items.Select(i => i.LocationId), claims ?? LocationClaims.Trusted, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, page.Items.Select(i => i.LocationId), claims ?? LocationClaims.None, cancellationToken);
         foreach (var item in page.Items)
         {
             item.LocationRef = refs.For(item.LocationId);
@@ -189,7 +189,7 @@ public class JournalEntryService
 
     /// <param name="claims">
     /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
-    /// Null is a trusted, non-HTTP caller.
+    /// Null is no capability at all; a trusted, non-HTTP caller passes <see cref="LocationClaims.Trusted"/> explicitly.
     /// </param>
     public async Task<ExistingJournalEntry> Create(
         NewJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
@@ -198,7 +198,7 @@ public class JournalEntryService
         var links = await ValidateLinks(
             request.TagIds, request.ContactIds, request.PhotoFileIds, request.AttachmentFileIds, cancellationToken);
         var resolver = new LocationResolver(context, timeProvider);
-        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.Trusted, cancellationToken);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.None, cancellationToken);
 
         var externalUid = NormalizeExternalUid(request.ExternalUid) ?? NewExternalUid();
         await EnsureExternalUidAvailable(externalUid, excludeId: null, cancellationToken);
@@ -274,7 +274,7 @@ public class JournalEntryService
 
         var resolver = new LocationResolver(context, timeProvider);
         var locationId = await resolver.ResolveRecordLinkAsync(
-            request.LocationId, entry.LocationId, claims ?? LocationClaims.Trusted, cancellationToken);
+            request.LocationId, entry.LocationId, claims ?? LocationClaims.None, cancellationToken);
 
         var photoIds = await ResolvePhotoIdsAsync(links.PhotoFileIds, userId, cancellationToken);
 
@@ -639,7 +639,7 @@ public class JournalEntryService
     private async Task<ExistingJournalEntry> ToDtoAsync(JournalEntry entry, CancellationToken cancellationToken, LocationClaims? claims = null)
     {
         var dto = entry.Adapt<ExistingJournalEntry>();
-        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.Trusted, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.None, cancellationToken);
         dto.LocationRef = refs.For(dto.LocationId);
         var tagIds = entry.EntryTags.Select(t => t.JournalTagId).ToList();
         TagIconProjection.Apply(dto, tagIds, await TagIconProjection.JournalTagsAsync(context, tagIds, cancellationToken));

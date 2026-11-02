@@ -7,9 +7,12 @@ namespace Odyssey.Core.Locations;
 /// usage counts and the merge's per-class claims.
 /// </summary>
 /// <remarks>
-/// <see cref="Trusted"/> is for direct, non-HTTP callers — the seeder, a test that exercises a domain rule
-/// rather than a permission. Every controller passes the caller's own claims; the API tests pin the
-/// <c>403</c>s that this depends on.
+/// Authorization fails closed: every service that takes a <c>LocationClaims?</c> treats null as <see cref="None"/>,
+/// never as <see cref="Trusted"/>, so a caller that forgets the argument loses capabilities rather than gaining
+/// them. <see cref="Trusted"/> is an explicit opt-in for direct, non-HTTP callers — the seeder, a test that
+/// exercises a domain rule rather than a permission — and a source-lint (<c>LocationClaimsFailClosedLintTests</c>)
+/// keeps it out of every production project. Every controller passes the caller's own claims; the API tests pin
+/// the <c>403</c>s that this depends on.
 /// </remarks>
 public sealed record LocationClaims
 {

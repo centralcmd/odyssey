@@ -1154,7 +1154,7 @@ public class ContactService
     /// <see cref="NewAddress.LocationId"/> or found-or-created from the fields; <c>applyTo</c> is ignored, since
     /// a new address has no linked place to edit.
     /// </summary>
-    /// <param name="claims">The caller's location claims; null is a trusted, non-HTTP caller.</param>
+    /// <param name="claims">The caller's location claims; null is no capability at all (pass <see cref="LocationClaims.Trusted"/> explicitly for a trusted, non-HTTP caller).</param>
     /// <param name="userId">The acting user, attributed on a place this creates and in the log.</param>
     public async Task<ExistingAddress?> CreateAddress(
         Guid contactId, NewAddress request, CancellationToken cancellationToken = default,
@@ -1165,7 +1165,7 @@ public class ContactService
     internal async Task<(ExistingAddress? Address, bool PlaceCreated)> CreateAddressCoreAsync(
         Guid contactId, NewAddress request, LocationClaims? claims, string? userId, CancellationToken cancellationToken)
     {
-        claims ??= LocationClaims.Trusted;
+        claims ??= LocationClaims.None;
         var contact = await LoadForChildMutation(contactId, cancellationToken);
         if (contact is null)
             return (null, false);
@@ -1215,7 +1215,7 @@ public class ContactService
         Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default,
         LocationClaims? claims = null, string? userId = null)
     {
-        claims ??= LocationClaims.Trusted;
+        claims ??= LocationClaims.None;
         var found = false;
         var mode = "kept";
         Guid? linked = null;
@@ -1387,7 +1387,7 @@ public class ContactService
         if (dtos.Count == 0)
             return;
 
-        claims ??= LocationClaims.Trusted;
+        claims ??= LocationClaims.None;
         var counts = await new LocationReferenceGuard(context).CountAsync(dtos.Select(d => d.LocationId).ToList(), cancellationToken);
         foreach (var dto in dtos)
         {

@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -29,7 +30,7 @@ public class PropertySummaryServiceTests
     {
         body.DisposedDate = disposed;
         body.Archived = archived;
-        var id = (await new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now)).Create(body, userId: null)).PropertyId;
+        var id = (await new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now)).Create(body, userId: null, claims: LocationClaims.Trusted)).PropertyId;
         if (estimate is { } value)
         {
             context.PropertyEstimates.Add(new PropertyEstimate

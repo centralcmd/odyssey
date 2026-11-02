@@ -2,6 +2,7 @@
 // this test generated itself — there is no external input.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using Odyssey.Context;
@@ -172,7 +173,7 @@ public class LocationRelationalTests(MariaDbFixture fixture)
         var interceptor = new InsertBeforeSave(this, "Cabin");
         await using var context = NewContext(interceptor);
         var service = new LocationService(context);
-        var home = (await service.Get(homeId))!;
+        var home = (await service.Get(homeId, claims: LocationClaims.Trusted))!;
 
         var ex = await Assert.ThrowsAsync<DomainConflictException>(() => service.Update(homeId, new UpdateLocation
         {
@@ -182,7 +183,7 @@ public class LocationRelationalTests(MariaDbFixture fixture)
             TimeZoneId = home.TimeZoneId,
             Source = home.Source,
             SourceReference = home.SourceReference,
-        }, "race-user"));
+        }, "race-user", claims: LocationClaims.Trusted));
 
         Assert.True(interceptor.Fired);
         Assert.Contains("name", ex.Errors!.Keys);

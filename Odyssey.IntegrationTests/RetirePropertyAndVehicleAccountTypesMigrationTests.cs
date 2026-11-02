@@ -2,6 +2,7 @@
 // literal this test wrote itself — there is no external input.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -303,7 +304,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             await using (var context = NewContext())
             {
                 var account = await new AccountService(context, new ContactLookup(context)).Get(seed.Car);
-                var property = await new PropertyService(context, new ContactLookup(context)).Get(seed.Car);
+                var property = await new PropertyService(context, new ContactLookup(context)).Get(seed.Car, claims: LocationClaims.Trusted);
 
                 Assert.NotNull(account);
                 Assert.NotNull(property);
@@ -315,7 +316,7 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
 
                 // The deleted house's id resolves as a property only.
                 Assert.Null(await new AccountService(context, new ContactLookup(context)).Get(seed.House));
-                Assert.NotNull(await new PropertyService(context, new ContactLookup(context)).Get(seed.House));
+                Assert.NotNull(await new PropertyService(context, new ContactLookup(context)).Get(seed.House, claims: LocationClaims.Trusted));
             }
         }
         finally

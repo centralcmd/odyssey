@@ -46,7 +46,7 @@ public class LocationService
         guard = new LocationReferenceGuard(context);
     }
 
-    /// <param name="claims">Decides which <see cref="ExistingLocation.Usage"/> counts are filled; null is trusted.</param>
+    /// <param name="claims">Decides which <see cref="ExistingLocation.Usage"/> counts are filled; null is no capability at all.</param>
     public async Task<PagedResult<ExistingLocation>> ListAsync(
         LocationsQueryParams query,
         CancellationToken cancellationToken = default,
@@ -93,7 +93,7 @@ public class LocationService
         q = sorted.ThenBy(l => l.LocationId);
 
         var page = await q.ToPagedResultAsync(query.Offset, query.Limit, ToDto, cancellationToken);
-        await FillUsageAsync(page.Items, claims ?? LocationClaims.Trusted, cancellationToken);
+        await FillUsageAsync(page.Items, claims ?? LocationClaims.None, cancellationToken);
         return page;
     }
 
@@ -107,7 +107,7 @@ public class LocationService
         }
 
         var dto = ToDto(location);
-        await FillUsageAsync([dto], claims ?? LocationClaims.Trusted, cancellationToken);
+        await FillUsageAsync([dto], claims ?? LocationClaims.None, cancellationToken);
         return dto;
     }
 
@@ -220,7 +220,7 @@ public class LocationService
             "Location {LocationId} {Operation} by {ActorUserId}; changed: [{ChangedFields}].",
             location.LocationId, operation, userId, string.Join(", ", changed));
         var dto = ToDto(location);
-        await FillUsageAsync([dto], claims ?? LocationClaims.Trusted, cancellationToken);
+        await FillUsageAsync([dto], claims ?? LocationClaims.None, cancellationToken);
         return dto;
     }
 

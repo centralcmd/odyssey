@@ -1016,6 +1016,31 @@ public class LocationUnificationApiTests
         Assert.Equal(0, linked.SkippedAddressCount);
     }
 
+    /// <summary>
+    /// Security review, observation 1: a UID-matched update replaces a contact's addresses only when the importer
+    /// may re-create them. Without <c>locations.create</c> every ADR is skipped, so the existing rows must stay
+    /// rather than be deleted with nothing put back.
+    /// </summary>
+    [Fact]
+    public async Task VCard_update_without_locations_create_keeps_the_existing_addresses()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        const string original = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:kari-1\r\nFN:Kari\r\nN:Nordmann;Kari;;;\r\n"
+            + "ADR;TYPE=home:;;Storgata 1;Oslo;;0150;NO\r\nEND:VCARD\r\n";
+        var created = await ImportVCard(host.Client, original);
+        Assert.Equal(1, created.CreatedCount);
+        Assert.Equal(1, created.AddressesLinked);
+        var before = await host.ReadAsync(c => c.Addresses.Select(a => new { a.Id, a.LocationId }).SingleAsync());
+
+        await using var noCreate = await host.SharingAsync([PermissionClaims.ContactsCreate, PermissionClaims.ContactsUpdate, PermissionClaims.ContactsRead]);
+        var update = await ImportVCard(noCreate.Client, original.Replace("Storgata 1", "Kirkegata 2", StringComparison.Ordinal));
+
+        Assert.Equal(1, update.UpdatedCount);
+        Assert.Equal(1, update.SkippedAddressCount);
+        var after = await host.ReadAsync(c => c.Addresses.Select(a => new { a.Id, a.LocationId }).ToListAsync());
+        Assert.Equal([before], after);
+    }
+
     [Fact]
     public async Task VCard_export_round_trips_separators_and_newlines_from_the_linked_place()
     {

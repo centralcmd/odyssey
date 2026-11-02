@@ -457,8 +457,9 @@ public class ContactVCardService
     /// <param name="claims">
     /// The importer's location claims (issue #380 §8.4). <c>locations.create</c> is checked once for the whole
     /// file: without it every <c>ADR</c> is skipped and counted in
-    /// <see cref="VCardImportResult.SkippedAddressCount"/>, and the contact is still imported. Null is a
-    /// trusted, non-HTTP caller.
+    /// <see cref="VCardImportResult.SkippedAddressCount"/>, and the contact is still imported — and an update keeps
+    /// the contact's existing addresses rather than deleting them. Null is no capability at all; a trusted,
+    /// non-HTTP caller passes <see cref="LocationClaims.Trusted"/> explicitly.
     /// </param>
     /// <param name="userId">The acting user, attributed on any place the import creates.</param>
     public async Task<VCardImportOutcome> ImportWithOutcomeAsync(
@@ -466,7 +467,7 @@ public class ContactVCardService
         LocationClaims? claims = null, string? userId = null)
     {
         var typeChanges = new TypeChangeIds();
-        var addresses = new AddressImport(claims ?? LocationClaims.Trusted, userId);
+        var addresses = new AddressImport(claims ?? LocationClaims.None, userId);
         if (!IsAcceptedContentType(contentType))
         {
             throw new DomainValidationException("The uploaded file must be a vCard file (text/vcard).");
@@ -979,7 +980,13 @@ public class ContactVCardService
 
         if (isUpdate)
         {
-            foreach (var address in await contactService.GetAddresses(contactId, cancellationToken) ?? [])
+            // The replace is only a replace when the importer may re-create what it removes: without
+            // locations.create every ADR below is skipped, so deleting first would leave the contact with no
+            // addresses at all. Their existing ones stay instead (issue #380 security review, observation 1).
+            var addressRows = addresses.Claims.LocationsCreate
+                ? await contactService.GetAddresses(contactId, cancellationToken) ?? []
+                : [];
+            foreach (var address in addressRows)
             {
                 await contactService.DeleteAddress(contactId, address.Id, cancellationToken);
             }

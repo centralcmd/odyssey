@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Net;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -261,12 +262,12 @@ public class ContactVCardImageTests
         var (service, vCard) = CreateServices(context);
         var created = await service.Create(Person());
         await AttachAsync(context, created.ContactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
-        var before = (await service.Get(created.ContactId))!.AvatarFileId;
+        var before = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.AvatarFileId;
 
         var result = await ImportAsync(vCard, Card(created.ExternalUid, extra: null));
 
         Assert.Equal(1, result.UpdatedCount);
-        var after = (await service.Get(created.ContactId))!.AvatarFileId;
+        var after = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.AvatarFileId;
 
         // "No PHOTO" must never mean "clear the picture": most address books do not round-trip images,
         // so treating absence as a clear would strip every avatar on the first re-import.
@@ -280,12 +281,12 @@ public class ContactVCardImageTests
         var (service, vCard) = CreateServices(context);
         var created = await service.Create(Person());
         await AttachAsync(context, created.ContactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg");
-        var before = (await service.Get(created.ContactId))!.AvatarFileId;
+        var before = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.AvatarFileId;
 
         var png = Convert.ToBase64String(ContactImageFixtures.BaselinePng());
         await ImportAsync(vCard, Card(created.ExternalUid, $"PHOTO:data:image/png;base64,{png}"));
 
-        var after = (await service.Get(created.ContactId))!.AvatarFileId;
+        var after = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.AvatarFileId;
 
         Assert.NotEqual(before, after);
 
@@ -376,7 +377,7 @@ public class ContactVCardImageTests
     private static async Task<VCardImportResult> ImportAsync(ContactVCardService vCard, string content)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        return await vCard.ImportAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     private static async Task<string> ExportManyAsync(ContactVCardService vCard, bool includeImages)
