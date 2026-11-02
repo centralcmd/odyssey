@@ -507,8 +507,10 @@ and #191 undid it for terms. Four rules are easy to get backwards:
   fails *silently*, which is why they are shared while the scalar checks (non-negative value, owner
   currency) stay duplicated like the smart-tag services' are. A source-lint in
   `EstimateEffectiveDatingTests` fails on a second copy in any estimate file under `Odyssey.Core/Finance/`.
-- **The address, registration number and VIN are personal data** behind `properties.read` alone. They
-  go in no cross-claim projection, no embed, no error body and no log line; messages echo the route id.
+- **The registration number and VIN are personal data** behind `properties.read` alone, and so is the
+  address *as part of the property*. The address itself is a linked `Location` since issue #380, which
+  `locations.read` reads directly (product decision 3). None of them goes in a cross-claim projection, an
+  embed, an error body or a log line; messages echo the route id.
 - **`TransactionTagService.CountDeleteBlockers` has a fifth clause** for `PropertySmartTags`, and the
   `RESTRICT` key behind it is the backstop, not the guard — the same shape as the other four.
 - **The estimate figures outside the estimate endpoints follow `properties.estimates.read`, not
@@ -553,6 +555,36 @@ into two tables. What contains it, and must not be loosened:
   name, detail, note or estimate figure. There are deliberately **no** automatic estimate events: an
   event is read under `properties.read`, and an "estimate added" line would disclose what
   `properties.estimates.read` withholds.
+
+**Every place and address in the app is a `Location`** (issue #380). Events, series and entries link one
+by id beside an optional detail string; a contact `Address` is a link row; `RealEstateDetails.LocationId`
+is the property's address. Every key to `Locations` is `RESTRICT`. Six rules are easy to get backwards:
+
+- **One write path: `LocationResolver` (`Odyssey.Core/Locations/`).** By id, `locations.read` is needed
+  only when the link *changes* (re-sending the stored id needs no claim), a *new* link to an archived
+  place is a `422`, and a contact or property link needs `Line1`/`City`/`CountryCode`. By fields,
+  `locations.create` is checked *before* the lookup so a match and a miss look the same. Saves go through
+  `resolver.SaveChangesAsync`, which re-reads on a `1062` on `AddressKey` and maps a `1452` to `422`.
+- **`AddressKey` is the identity, computed by `LocationAddressKey` (in `Odyssey.Dtos`, shared with the
+  client), never by the database.** Case and whitespace fold; letters never do (`Å` ≠ `A`). A merged-away
+  place keeps its key and forwards through `MergedIntoLocationId` (one hop), so find-or-create lands on
+  the survivor.
+- **`applyTo: AllUses` is the one path where a contact or property write edits a `Location`.** It needs
+  `locations.update` and `expectedOtherUses`, recounted under `FOR UPDATE` inside one transaction with
+  the record (`LocationTransactions`); a property writes its four fields only. It recomposes a `Name`
+  or `AddressText` only when it equals the old auto-composition, and never touches coordinates. A
+  case/whitespace-only change is promoted to it whatever `applyTo` says.
+- **`LocationReferenceGuard` is the one definition of "used"**: the five tables plus a weather row, a
+  weather preference, the household default and a forwarder. Delete, merge, `?referenced=`, `usage` and
+  `otherUses` all read it; a sixth referencing table extends it. Counts of a kind the caller cannot read
+  are `null`, never `0`, and there is deliberately no total.
+- **Merge and delete decide inside their own transaction**, first statement `FOR UPDATE` (both rows in
+  ascending id order for a merge). The merge's per-class claim is the `DomainForbiddenException` shape,
+  with a generic body; the delete `409` is generic too.
+- **`locations.read` is pinned to exactly Admin, Owner, User and Guest**, `calendar.read` and
+  `journal.read` each imply it, and every contact/property editor holds all three location write claims
+  and all four record read claims (`AuthorizationPolicyTests`). Widening `locations.read` widens who
+  reads every address. Logs carry ids and counts only — never a name, address or detail.
 
 **Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
 through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
@@ -1089,7 +1121,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 107 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 108 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
