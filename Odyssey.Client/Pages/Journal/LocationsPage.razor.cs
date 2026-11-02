@@ -415,6 +415,13 @@ public partial class LocationsPage
 
     private Guid? _deleteNeighbour;
 
+    /// <summary>After a merge: the target's row menu, else the page heading (§3.8, §6.5).</summary>
+    internal static string MergeDestination(ExistingLocation target) => $"{MenuId(target.LocationId)} {PageHeader.HeadingId}";
+
+    /// <summary>After a delete: the neighbouring row's menu, else the page heading (§3.9, §6.5).</summary>
+    internal static string DeleteDestination(Guid? neighbour) =>
+        neighbour is { } id ? $"{MenuId(id)} {PageHeader.HeadingId}" : PageHeader.HeadingId;
+
     private async Task OnDeleted(ExistingLocation deleted)
     {
         Snackbar.Add($"Deleted {deleted.Name}.", Severity.Success);

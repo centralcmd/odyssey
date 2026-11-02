@@ -11,7 +11,7 @@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="delete" IconTone="OdsModalTone.Error"
           RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
-          DescribedById="@DescriptionId" ReturnFocusToId="@ReturnFocusToId"
+          DescribedById="@DescriptionId" ReturnFocusToId="@(_deleted ? ReturnFocusOnDeleted ?? ReturnFocusToId : ReturnFocusToId)"
           Title="@(b => b.AddContent(0, $"Delete “{Location.Name}”?"))">
     <ChildContent>
         <div class="ods-modal-body">
@@ -42,6 +42,15 @@
 
     [Parameter] public string? ReturnFocusToId { get; set; }
 
+    /// <summary>
+    /// Where focus goes after a SUCCESSFUL delete — the neighbouring row, else the page heading — since the
+    /// deleted row's own menu is about to disappear. Cancel still returns to <see cref="ReturnFocusToId"/>
+    /// (WCAG 2.4.3; accessibility review 3).
+    /// </summary>
+    [Parameter] public string? ReturnFocusOnDeleted { get; set; }
+
+    private bool _deleted;
+
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
     private string? _alert;
     private bool _busy;
@@ -64,6 +73,7 @@
             var result = await Locations.DeleteAsync(Location.LocationId);
             if (result.IsSuccess)
             {
+                _deleted = true;
                 await OpenChanged.InvokeAsync(false);
                 await OnDeleted.InvokeAsync(Location);
                 return;

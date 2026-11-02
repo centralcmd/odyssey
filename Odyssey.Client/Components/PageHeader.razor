@@ -49,7 +49,7 @@
                         @* The page's one <h1>: FocusOnNavigate (App.razor) moves focus to "h1" on every
                            route change, and heading navigation needs a top level. Typo.h2 keeps the look;
                            tabindex="-1" makes it a programmatic focus target without entering the tab order. *@
-                        <MudText Typo="Typo.h2" HtmlTag="h1" Class="ph-title" tabindex="-1">@Title</MudText>
+                        <MudText Typo="Typo.h2" HtmlTag="h1" Class="ph-title" tabindex="-1" id="@HeadingId">@Title</MudText>
                         @if (SubLine is not null)
                         {
                             <div class="ph-sub">@SubLine</div>

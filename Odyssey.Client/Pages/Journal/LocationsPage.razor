@@ -250,13 +250,13 @@
 @if (_mergeSource is not null)
 {
     <LocationMergeDialog @key="_mergeKey" @bind-Open="_mergeOpen" Source="_mergeSource" OnMerged="OnMerged"
-                         ReturnFocusToId="@MenuId(_mergeSource.LocationId)" />
+                         ReturnFocusToId="@MenuId(_mergeSource.LocationId)" ReturnFocusOnMerged="@MergeDestination" />
 }
 
 @if (_deleteLocation is not null)
 {
     <LocationDeleteDialog @key="_deleteKey" @bind-Open="_deleteOpen" Location="_deleteLocation" OnDeleted="OnDeleted"
-                          ReturnFocusToId="@MenuId(_deleteLocation.LocationId)" />
+                          ReturnFocusToId="@MenuId(_deleteLocation.LocationId)" ReturnFocusOnDeleted="@DeleteDestination(_deleteNeighbour)" />
 }
 
 @if (_wxSettingsLocation is not null)

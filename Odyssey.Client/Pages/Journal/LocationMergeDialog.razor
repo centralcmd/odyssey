@@ -10,7 +10,7 @@
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="call_merge" RequiredLegend="false"
-          Role="OdsModalRole.Dialog" DescribedById="@DescriptionId" ReturnFocusToId="@ReturnFocusToId"
+          Role="OdsModalRole.Dialog" DescribedById="@DescriptionId" ReturnFocusToId="@(_successFocus ?? ReturnFocusToId)"
           Title="@(b => b.AddContent(0, $"Merge “{Source.Name}” into another place"))">
     <ChildContent>
         <div class="ods-modal-body">
@@ -45,6 +45,16 @@
     [Parameter] public EventCallback<ExistingLocation> OnMerged { get; set; }
 
     [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Where focus goes after a SUCCESSFUL merge — the target's row (a chain, as for
+    /// <see cref="ReturnFocusToId"/>). Cancel still returns to <see cref="ReturnFocusToId"/>. Handing the dialog
+    /// the real destination means focus moves once, not to the source row and then again (WCAG 2.4.3;
+    /// accessibility review 3).
+    /// </summary>
+    [Parameter] public Func<ExistingLocation, string>? ReturnFocusOnMerged { get; set; }
+
+    private string? _successFocus;
 
     /// <summary>The picker's debounce; a test passes zero.</summary>
     [Parameter] public int DebounceMs { get; set; } = 250;
@@ -98,6 +108,7 @@
             var result = await Locations.MergeAsync(Source.LocationId, targetId);
             if (result.IsSuccess && result.Value is { } target)
             {
+                _successFocus = ReturnFocusOnMerged?.Invoke(target);
                 await OpenChanged.InvokeAsync(false);
                 await OnMerged.InvokeAsync(target);
                 return;

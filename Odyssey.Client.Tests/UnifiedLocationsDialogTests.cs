@@ -445,6 +445,69 @@ public class UnifiedLocationsDialogTests
         okCut.WaitForAssertion(() => Assert.Single(okDeleted));
     }
 
+    // ── Focus destinations (accessibility review 3) ─────────────────────────────
+
+    [Fact]
+    public async Task A_merge_returns_focus_to_the_source_on_cancel_and_to_the_target_row_on_success()
+    {
+        var ctx = Context();
+        await using var _ = ctx;
+        var api = Locations(Storgata(), Hytta());
+        api.Setup(a => a.MergeAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingLocation>.Success(Hytta(), HttpStatusCode.OK));
+        ctx.Services.AddSingleton(api.Object);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationMergeDialog>(d => d
+            .Add(x => x.Open, true)
+            .Add(x => x.Source, Storgata())
+            .Add(x => x.DebounceMs, 0)
+            .Add(x => x.ReturnFocusToId, LocationsPage.MenuId(StorgataId))
+            .Add(x => x.ReturnFocusOnMerged, LocationsPage.MergeDestination)));
+        string? ReturnFocus() => cut.FindComponent<OdsModal>().Instance.ReturnFocusToId;
+
+        Assert.Equal(LocationsPage.MenuId(StorgataId), ReturnFocus());
+
+        await PickTarget(cut);
+        Click(cut, "Merge");
+
+        cut.WaitForAssertion(() => Assert.Equal($"{LocationsPage.MenuId(HyttaId)} {PageHeader.HeadingId}", ReturnFocus()));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task A_delete_returns_focus_to_the_neighbour_else_the_heading_never_the_deleted_row(bool hasNeighbour)
+    {
+        var ctx = Context();
+        await using var _ = ctx;
+        var api = Locations(Hytta());
+        api.Setup(a => a.DeleteAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        ctx.Services.AddSingleton(api.Object);
+        var destination = LocationsPage.DeleteDestination(hasNeighbour ? StorgataId : null);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationDeleteDialog>(d => d
+            .Add(x => x.Open, true)
+            .Add(x => x.Location, Hytta())
+            .Add(x => x.ReturnFocusToId, LocationsPage.MenuId(HyttaId))
+            .Add(x => x.ReturnFocusOnDeleted, destination)));
+        string? ReturnFocus() => cut.FindComponent<OdsModal>().Instance.ReturnFocusToId;
+
+        Assert.Equal(LocationsPage.MenuId(HyttaId), ReturnFocus());
+
+        cut.FindAll("button").Last(b => b.TextContent.Contains("Delete", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(destination, ReturnFocus()));
+        Assert.DoesNotContain(LocationsPage.MenuId(HyttaId), ReturnFocus()!, StringComparison.Ordinal);
+        Assert.EndsWith(PageHeader.HeadingId, destination, StringComparison.Ordinal);
+        Assert.Equal(hasNeighbour, destination.StartsWith(LocationsPage.MenuId(StorgataId), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void The_page_heading_carries_the_id_a_focus_chain_ends_on()
+    {
+        var markup = File.ReadAllText(Path.Combine(ClientSource.Root, "Components", "PageHeader.razor"));
+
+        Assert.Matches(new System.Text.RegularExpressions.Regex(@"HtmlTag=""h1""[^>]*tabindex=""-1""[^>]*id=""@HeadingId"""), markup);
+    }
+
     // ── The location dialog (AC 16, §3.6) ─────────────────────────────────────
 
     private static (BunitContext Ctx, IRenderedComponent<ProvidersHost> Cut, Mock<ILocationsApiClient> Api, List<UpdateLocation> Updates, List<NewLocation> Creates)
