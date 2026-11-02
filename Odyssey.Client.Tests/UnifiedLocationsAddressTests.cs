@@ -41,6 +41,23 @@ public class UnifiedLocationsAddressTests
         AddressBlockStored? stored = null, AddressBlockVariant variant = AddressBlockVariant.Contact, AddressBlockPermissions? permissions = null) =>
         new(variant, stored, permissions ?? AddressBlockPermissions.Full);
 
+    /// <summary>
+    /// N3: the picker's 422 message comes from the picked place's completeness, never from the server's prose —
+    /// so it does not change when the server rewords its message, in either direction.
+    /// </summary>
+    [Fact]
+    public void The_locationId_refusal_message_follows_the_picked_places_address_not_the_servers_wording()
+    {
+        var incomplete = Model();
+        incomplete.Pick(Hytta() with { Line1 = null, City = null });
+        var complete = Model();
+        complete.Pick(Storgata());
+
+        Assert.Equal(AddressBlockModel.PlaceNotAddressComplete, incomplete.LocationIdMessage);
+        Assert.Equal(AddressBlockModel.PlaceUnusable, complete.LocationIdMessage);
+        Assert.Equal(AddressBlockModel.PlaceUnusable, Model().LocationIdMessage);
+    }
+
     // ── State table (AC 4) ─────────────────────────────────────────────────────
 
     [Fact]

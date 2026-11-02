@@ -214,10 +214,10 @@ public partial class ContactMethodDialog
             _errors[AddressBlockModel.ApplyToKey] = applyTo;
         }
 
-        if (problem?.ErrorFor("locationId") is { } locationId)
+        if (problem?.ErrorFor("locationId") is not null)
             _errors[AddressBlockModel.LocationIdKey] = conflict
                 ? AddressBlockModel.ContactAlreadyHasAddress
-                : AddressBlockModel.LocationIdMessage(locationId);
+                : block.LocationIdMessage;
         if (problem?.ErrorFor("line1") is not null)
             _errors[AddressBlockModel.Line1Key] = conflict
                 ? AddressBlockModel.DuplicateAddressMessage(block.Noun, Permissions.CanUpdateLocations)

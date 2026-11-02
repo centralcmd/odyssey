@@ -438,12 +438,14 @@ public sealed class AddressBlockModel
 
     public const string ContactAlreadyHasAddress = "This contact already has this address.";
 
-    /// <summary>The picker's 422 <c>locationId</c> message, chosen by whether the place lacks a full address.</summary>
-    public static string LocationIdMessage(string? serverMessage) =>
-        serverMessage is not null && serverMessage.Contains("address", StringComparison.OrdinalIgnoreCase)
-            && (serverMessage.Contains("complete", StringComparison.OrdinalIgnoreCase) || serverMessage.Contains("full", StringComparison.OrdinalIgnoreCase))
-            ? PlaceNotAddressComplete
-            : PlaceUnusable;
+    /// <summary>
+    /// The picker's 422 <c>locationId</c> message, chosen from the picked place itself: an incomplete address
+    /// (no Line 1, City or Country) is the one refusal the user can fix by typing, so it says so; anything else
+    /// (archived, gone) asks for another place. Never read from the server's prose, which is not a contract —
+    /// the coupling <c>LocationMergeDialog.SourceRefusal</c> avoids for the same reason (frontend review N3).
+    /// </summary>
+    public string LocationIdMessage =>
+        Picked is { } place && !LocationVisuals.IsAddressComplete(place) ? PlaceNotAddressComplete : PlaceUnusable;
 
     /// <summary>A <c>409 applyTo</c>: the usage is reloaded and the group asked again with no selection.</summary>
     public void UsesChanged(int otherUses, LocationUsage? breakdown)

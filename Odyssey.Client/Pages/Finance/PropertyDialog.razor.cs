@@ -488,9 +488,9 @@ public partial class PropertyDialog
         }
 
         var handled = false;
-        if (Leaf("locationId") is { } locationMessage)
+        if (Leaf("locationId") is not null)
         {
-            _errors[AddressBlockModel.LocationIdKey] = AddressBlockModel.LocationIdMessage(locationMessage);
+            _errors[AddressBlockModel.LocationIdKey] = _address.LocationIdMessage;
             handled = true;
         }
 
