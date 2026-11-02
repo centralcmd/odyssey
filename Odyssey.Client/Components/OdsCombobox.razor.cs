@@ -3,7 +3,7 @@ using Microsoft.JSInterop;
 
 namespace Odyssey.Client.Components;
 
-public partial class OdsCombobox
+public partial class OdsCombobox : IDisposable
 {
     /// <summary>Selected option value. Bindable via @bind-Value.</summary>
     [Parameter] public string? Value { get; set; }
@@ -85,8 +85,101 @@ public partial class OdsCombobox
     /// </summary>
     [Parameter] public bool FreeText { get; set; }
 
+    // ── Async mode (issue #383 §4) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// ASYNC MODE: resolves one server page of rows for the trimmed query, after <see cref="MinChars"/>
+    /// characters and a <see cref="DebounceMs"/> pause. Each keystroke cancels the search before it.
+    /// </summary>
+    [Parameter] public Func<string, CancellationToken, Task<IReadOnlyList<OdsOption>>>? SearchAsync { get; set; }
+
+    /// <summary>Renders a value that is in neither <see cref="Options"/> nor the loaded rows.</summary>
+    [Parameter] public Func<string, Task<OdsOption?>>? ResolveAsync { get; set; }
+
+    /// <summary>Async: the pause before a request is sent. Default 250 ms.</summary>
+    [Parameter] public int DebounceMs { get; set; } = 250;
+
+    /// <summary>Async: characters before a request is sent. Default 2.</summary>
+    [Parameter] public int MinChars { get; set; } = 2;
+
+    /// <summary>Async announcement below <see cref="MinChars"/>. Default "Type at least N characters".</summary>
+    [Parameter] public string? MinCharsText { get; set; }
+
+    /// <summary>Async announcement while a request is pending.</summary>
+    [Parameter] public string SearchingText { get; set; } = "Searching…";
+
+    /// <summary>Async announcement for N rows, e.g. <c>n => $"{n} places found"</c>.</summary>
+    [Parameter] public Func<int, string>? ResultsText { get; set; }
+
+    /// <summary>Async announcement when a request fails.</summary>
+    [Parameter] public string ErrorText { get; set; } = "Couldn’t load results";
+
+    /// <summary>
+    /// A muted second line on the create row that is also part of its accessible name — a disclosure
+    /// of who will see what is created (issue #383 §3.2).
+    /// </summary>
+    [Parameter] public string? CreateDescription { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
+
+    private bool IsAsync => SearchAsync is not null;
+
+    private OdsAsyncSearch? _async;
+
+    // Options this component has seen that are not in Options: a row picked from a server page, a value
+    // resolved through ResolveAsync, a staged create. Keyed by value, so the trigger keeps its label.
+    private readonly Dictionary<string, OdsOption> _known = new(StringComparer.Ordinal);
+
+    private string? _resolving;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsAsync && _async is null)
+        {
+            _async = new OdsAsyncSearch((q, ct) => SearchAsync!(q, ct)) { DebounceMs = DebounceMs, MinChars = MinChars };
+            _async.Changed += OnAsyncChanged;
+        }
+
+        if (ResolveAsync is not null && !string.IsNullOrEmpty(Value) && Selected is null && _resolving != Value)
+        {
+            var value = Value;
+            _resolving = value;
+            var option = await ResolveAsync(value);
+            if (option is not null)
+                _known[value] = option;
+        }
+    }
+
+    private void OnAsyncChanged() => _ = InvokeAsync(StateHasChanged);
+
+    /// <summary>The one polite status line of async mode — empty while the field has nothing to say.</summary>
+    private string AsyncStatusText => _async?.Status switch
+    {
+        OdsAsyncSearchStatus.Short => MinCharsText ?? $"Type at least {MinChars} characters",
+        OdsAsyncSearchStatus.Searching => SearchingText,
+        OdsAsyncSearchStatus.Failed => ErrorText,
+        OdsAsyncSearchStatus.Done => _async.Results.Count > 0
+            ? ResultsText?.Invoke(_async.Results.Count) ?? $"{_async.Results.Count} {(_async.Results.Count == 1 ? "result" : "results")} found"
+            : _createRows.Count > 0 || _firstCreateValue is not null ? string.Empty : EmptyText,
+        _ => string.Empty,
+    };
+
+    /// <summary>What the popover shows when there are no rows to list.</summary>
+    private string AsyncPopoverText => _async?.Status switch
+    {
+        OdsAsyncSearchStatus.Done => EmptyText,
+        null or OdsAsyncSearchStatus.Idle => MinCharsText ?? $"Type at least {MinChars} characters",
+        _ => AsyncStatusText,
+    };
+
+    public void Dispose()
+    {
+        if (_async is null)
+            return;
+        _async.Changed -= OnAsyncChanged;
+        _async.Dispose();
+    }
 
     // Sentinel marking a synthetic "Create …" row. The typed rows share the prefix and differ by the
     // kind key, so each is its own distinct option value (MudAutocomplete keys rows by value).
@@ -118,6 +211,7 @@ public partial class OdsCombobox
     // typed, not an invalid selection.
     private OdsOption? Selected =>
         Options.FirstOrDefault(o => o.Value == Value)
+        ?? (Value is not null ? _known.GetValueOrDefault(Value) : null)
         ?? (FreeText && !string.IsNullOrEmpty(Value) ? new OdsOption(Value, Value) : null);
 
     // The text as last typed into the input — what a FreeText blur commits. Null once a row is picked
@@ -179,7 +273,55 @@ public partial class OdsCombobox
 
     private string? _firstCreateValue;
 
-    private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token)
+    private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token) =>
+        IsAsync ? SearchRemoteAsync(text, token) : Task.FromResult(SearchLocal(text));
+
+    // Async mode: the server's rows ARE the options (no client filtering), then the create row.
+    private async Task<IEnumerable<OdsOption>> SearchRemoteAsync(string? text, CancellationToken token)
+    {
+        // Opening on a chosen value searches its label; that is not a query the user typed.
+        var query = text ?? string.Empty;
+        if (Selected is { } current && string.Equals(query, current.Label, StringComparison.Ordinal))
+            query = string.Empty;
+
+        _createRows.Clear();
+        _firstCreateValue = null;
+        var rows = await _async!.RunAsync(query, token);
+        if (rows is null)
+            return [];
+
+        var matches = rows.ToList();
+        var trimmed = query.Trim();
+        if (OnCreate is not null && _async.Status == OdsAsyncSearchStatus.Done && trimmed.Length >= MinChars
+            && !rows.Any(o => string.Equals(o.Label, trimmed, StringComparison.OrdinalIgnoreCase)))
+        {
+            var value = $"{CreatePrefix}{KindSeparator}{trimmed}";
+            _firstCreateValue = value;
+            matches.Add(CreateRow(value, trimmed));
+        }
+
+        await InvokeAsync(StateHasChanged);
+        return matches;
+    }
+
+    /// <summary>The create row: the label, the disclosure as its second line, and both as its name.</summary>
+    private OdsOption CreateRow(string value, string query) => CreateRow(CreateLabel, CreateDescription, value, query);
+
+    internal static OdsOption CreateRow(string createLabel, string? description, string value, string query)
+    {
+        var label = $"{createLabel} \"{query}\"";
+        return new OdsOption(value, label)
+        {
+            Icon = "add",
+            IsCreate = true,
+            Sub = description,
+            AriaLabel = string.IsNullOrEmpty(description)
+                ? null
+                : $"{label} — {char.ToLowerInvariant(description[0])}{description[1..]}",
+        };
+    }
+
+    private IEnumerable<OdsOption> SearchLocal(string? text)
     {
         var query = text ?? string.Empty;
         var matches = Options
@@ -202,18 +344,18 @@ public partial class OdsCombobox
                     var value = $"{CreatePrefix}{kind.Key}{KindSeparator}{query}";
                     _createRows[value] = kind;
                     _firstCreateValue ??= value;
-                    matches.Add(new OdsOption(value, label) { Icon = "add" });
+                    matches.Add(new OdsOption(value, label) { Icon = "add", IsCreate = true });
                 }
             }
             else
             {
                 var value = $"{CreatePrefix}{KindSeparator}{query}";
                 _firstCreateValue = value;
-                matches.Add(new OdsOption(value, label) { Icon = "add" });
+                matches.Add(CreateRow(value, query));
             }
         }
 
-        return Task.FromResult<IEnumerable<OdsOption>>(matches);
+        return matches;
     }
 
     private async Task OnSelected(OdsOption? option)
@@ -234,10 +376,15 @@ public partial class OdsCombobox
             var kind = split <= 0 ? null : payload[..split];
             var text = payload[(split + 1)..];
             var created = OnCreate?.Invoke(text, kind);
+            if (created is not null)
+                _known[created.Value] = created;
             Value = created?.Value;
         }
         else
         {
+            // A row from a server page is not in Options; keep it so the trigger can still name it.
+            if (option is not null && IsAsync)
+                _known[option.Value] = option;
             Value = option?.Value;
         }
         await ValueChanged.InvokeAsync(Value);

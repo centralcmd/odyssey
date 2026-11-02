@@ -1,47 +1,103 @@
-@* The dashboard's net-worth chart settings (NetWorthRangeDialog) is the first consumer; other
-   single-choice fields are OdsSegmentedControl (two or three peer options) or OdsSelect. *@
+@* The dashboard's net-worth chart settings (NetWorthRangeDialog) is the first consumer and the address
+   block's "Apply this change to" (OdsAddressBlock, issue #383) the second; other single-choice fields
+   are OdsSegmentedControl (two or three peer options) or OdsSelect. *@
 @*
     OdsRadioGroup — single choice from a small, mutually-exclusive set
     (Odyssey Design System · components/RadioGroup).
 
-    Transaction direction (Money in / Money out), status, document type. A
-    MudRadioGroup + MudRadio. Two-way bindable via @bind-Value. Pass Row for a
+    Native <input type="radio"> under the DS's styled dots, so arrow-key navigation, the single tab stop
+    and form semantics come from the browser. Two-way bindable via @bind-Value. Pass Row for a
     horizontal layout. Options are OdsRadioOption records.
+
+    With a visible Label the group is a <fieldset> whose <legend> is that label (issue #383 §6.2), so
+    the group's name, its required state and its error reach assistive technology without an ARIA
+    stand-in. Required adds the `*` marker, a visible "Required" word and aria-required. Error and Help
+    are lines under the options, both in the group's aria-describedby; an error also sets aria-invalid.
+    A per-option Description is a visible second line and that radio's aria-describedby — the radio's
+    accessible NAME stays its short label. Nothing is preselected unless the caller passes a Value.
 *@
+
+@inject IJSRuntime Js
 
 @{
     RenderFragment group =
-        @<MudRadioGroup T="string"
-                        Value="@Value"
-                        ValueChanged="OnValueChanged"
-                        Class="@CssClass"
-                        aria-labelledby="@(string.IsNullOrEmpty(Label) ? null : _labelId)"
-                        aria-label="@(string.IsNullOrEmpty(Label) ? AriaLabel : null)"
-                        @attributes="UserAttributes">
+        @<div class="@GroupClass"
+              role="radiogroup"
+              aria-labelledby="@(HasLabel ? _legendId : null)"
+              aria-label="@(HasLabel ? null : AriaLabel)"
+              aria-required="@(Required ? "true" : null)"
+              aria-invalid="@(HasError ? "true" : null)"
+              aria-describedby="@DescribedBy"
+              @attributes="UserAttributes">
             @foreach (var option in Options)
             {
-                <MudRadio T="string"
-                          Value="@option.Value"
-                          Color="Color.Primary"
-                          Disabled="@(Disabled || option.Disabled)">@option.Label</MudRadio>
+                var descId = string.IsNullOrEmpty(option.Description) ? null : $"{_uid}-{option.Value}-desc";
+                <label class="@(descId is null ? "odc-radio" : "odc-radio has-desc")">
+                    <input type="radio"
+                           name="@_uid"
+                           value="@option.Value"
+                           checked="@(Value == option.Value)"
+                           disabled="@(Disabled || option.Disabled)"
+                           aria-describedby="@descId"
+                           @onchange="@(() => OnValueChanged(option.Value))" />
+                    <span class="odc-radio-dot" aria-hidden="true"></span>
+                    @if (descId is null)
+                    {
+                        <span class="odc-radio-label">@option.Label</span>
+                    }
+                    else
+                    {
+                        <span class="odc-radio-text">
+                            <span class="odc-radio-label">@option.Label</span>
+                            <span class="odc-radio-desc" id="@descId">@option.Description</span>
+                        </span>
+                    }
+                </label>
             }
-        </MudRadioGroup>;
+        </div>;
+
+    RenderFragment lines =
+        @<text>
+            @if (!string.IsNullOrEmpty(Help))
+            {
+                <div class="odc-field-help" id="@HelpId">@Help</div>
+            }
+            @if (HasError)
+            {
+                <div class="odc-field-help error" id="@ErrorId" role="alert">@Error</div>
+            }
+        </text>;
 }
 
-@if (!string.IsNullOrEmpty(Label))
+@if (HasLabel)
 {
-    <div class="odc-field">
-        <span class="odc-field-label" id="@_labelId">@Label</span>
+    <fieldset class="@FieldClass" id="@GroupId">
+        <legend class="odc-field-label" id="@_legendId">
+            @Label
+            @if (Required)
+            {
+                <span class="odc-field-req" aria-hidden="true">*</span>
+                <span class="odc-radio-reqword">Required</span>
+            }
+        </legend>
         @group
+        @lines
+    </fieldset>
+}
+else if (!string.IsNullOrEmpty(Help) || HasError)
+{
+    <div class="@FieldClass" id="@GroupId">
+        @group
+        @lines
     </div>
 }
 else
 {
-    @group
+    <div id="@GroupId">@group</div>
 }
 
 @code {
-    /// <summary>Selected value. Bindable via @bind-Value.</summary>
+    /// <summary>Selected value. Bindable via @bind-Value. Null selects nothing.</summary>
     [Parameter] public string? Value { get; set; }
 
     [Parameter] public EventCallback<string> ValueChanged { get; set; }
@@ -54,24 +110,74 @@ else
 
     [Parameter] public bool Disabled { get; set; }
 
-    /// <summary>Visible group label (preferred) — renders the standard field label,
-    /// wired to the group via aria-labelledby.</summary>
+    /// <summary>Visible group label (preferred) — the fieldset's legend.</summary>
     [Parameter] public string? Label { get; set; }
 
-    /// <summary>Accessible name for the group when the surrounding UI already labels
-    /// it visually. Prefer <see cref="Label"/>.</summary>
+    /// <summary>Accessible name for the group when the surrounding UI already labels it visually.
+    /// Prefer <see cref="Label"/>.</summary>
     [Parameter] public string? AriaLabel { get; set; }
 
-    [Parameter] public string? Class { get; set; }
+    /// <summary>A choice must be made: the `*` marker, a visible "Required" word and aria-required.</summary>
+    [Parameter] public bool Required { get; set; }
 
-    private readonly string _labelId = $"rg-{Guid.NewGuid():N}";
+    /// <summary>Error line under the options; sets aria-invalid and joins aria-describedby.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Helper line under the options, in aria-describedby.</summary>
+    [Parameter] public string? Help { get; set; }
+
+    /// <summary>
+    /// Extra ids the group is described by, after the help and error lines — e.g. the address block's
+    /// coordinates warning (issue #383 §3.3 rule 3).
+    /// </summary>
+    [Parameter] public string? DescribedById { get; set; }
+
+    /// <summary>Id on the fieldset, so a host (an error summary link) can move focus into the group.</summary>
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public string? Class { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
-    private string CssClass => string.Join(' ', new[]
+    private readonly string _uid = $"rg-{Guid.NewGuid():N}";
+
+    private string _legendId => $"{_uid}-legend";
+
+    private string HelpId => $"{_uid}-help";
+
+    private string ErrorId => $"{_uid}-err";
+
+    /// <summary>The fieldset's id — the caller's, else a generated one.</summary>
+    public string GroupId => string.IsNullOrEmpty(Id) ? $"{_uid}-group" : Id;
+
+    private bool HasLabel => !string.IsNullOrEmpty(Label);
+
+    private bool HasError => !string.IsNullOrEmpty(Error);
+
+    private string? DescribedBy
     {
-        Row ? "d-flex flex-row" : "d-flex flex-column",
+        get
+        {
+            var ids = new[] { string.IsNullOrEmpty(Help) ? null : HelpId, HasError ? ErrorId : null, DescribedById }
+                .Where(v => !string.IsNullOrEmpty(v)).ToArray();
+            return ids.Length == 0 ? null : string.Join(' ', ids);
+        }
+    }
+
+    private string GroupClass => string.Join(' ', new[]
+    {
+        "odc-radiogroup",
+        Row ? "row" : null,
+        Options.Any(o => !string.IsNullOrEmpty(o.Description)) ? "described" : null,
+        HasLabel ? null : Class,
+    }.Where(x => !string.IsNullOrEmpty(x)));
+
+    private string FieldClass => string.Join(' ', new[]
+    {
+        "odc-field",
+        HasLabel ? "odc-radiofield" : null,
+        HasError ? "error" : null,
         Class,
     }.Where(x => !string.IsNullOrEmpty(x)));
 
@@ -79,5 +185,17 @@ else
     {
         Value = value;
         return ValueChanged.InvokeAsync(value);
+    }
+
+    /// <summary>
+    /// Moves focus to the group's first enabled radio — the error summary's apply-to link and the
+    /// <c>409 applyTo</c> re-show both land here (issue #383 §6.8).
+    /// </summary>
+    public async Task FocusAsync()
+    {
+        try
+        { await Js.InvokeVoidAsync("odsFocusFirstIn", GroupId, false, 1); }
+        catch (JSException) { /* JS unavailable (prerender / teardown) */ }
+        catch (InvalidOperationException) { /* no JS runtime under a static render */ }
     }
 }

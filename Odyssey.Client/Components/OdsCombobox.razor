@@ -30,6 +30,15 @@
     switches MudAutocomplete's CoerceText / CoerceValue OFF: coercing the text to
     the (still old) value on blur would wipe the typed name, so the commit is this
     component's own, made on focus leaving the field.
+
+    ASYNC MODE (SearchAsync, issue #383 §4) — for a list too large to load (OdsLocationSelect). The
+    query goes to SearchAsync after MinChars (2) and a DebounceMs (250 ms) pause; each keystroke
+    cancels the search before it, so only the latest answer renders (OdsAsyncSearch). The rows it
+    returns ARE the options; Options then only has to hold the current value, and ResolveAsync renders a
+    stored value outside both (a link outside the first page, an archived place). One polite status
+    line, outside the popover, says: "Type at least 2 characters" · "Searching…" · "N places found" ·
+    "No places match" · "Couldn't load places". The create row's CreateDescription is a muted second
+    line AND part of its accessible name. The synchronous mode is unchanged.
 *@
 
 @inject IJSRuntime Js
@@ -39,6 +48,11 @@
    focusout. MudAutocomplete updates its Text, and invokes its OnBlur, asynchronously, so relying on
    either let a fast Tab (or a slow machine) move on before the typed name was committed. *@
 <div class="@WrapClass" @oninput="OnTyped" @onfocusout="CommitTyped">
+    @if (IsAsync)
+    {
+        @* The one polite status line, outside MudBlazor's portaled popover (DS Combobox async mode). *@
+        <span class="odc-sr-only" role="status" aria-live="polite">@AsyncStatusText</span>
+    }
     @* A real <label for> beats a splatted aria-label: MudAutocomplete renders unmatched attributes on
        its root wrapper, not the inner role="combobox" input, so an aria-label there never names the
        control. With an explicit InputId the visually-hidden label associates with the actual input. *@
@@ -80,7 +94,7 @@
                 {
                     <span class="material-icons odc-combo-opt-ic" style="@OptionIconStyle(option)" aria-hidden="true">@option.Icon</span>
                 }
-                <span class="odc-combo-opt-label">@option.Label</span>
+                <OdsComboboxOptionText Option="option" />
                 @* A qualifier, always in WORDS — a row never says why it can't be picked by colour alone. *@
                 @if (!string.IsNullOrEmpty(option.Note))
                 {
@@ -100,7 +114,15 @@
             </span>
         </ItemTemplate>
         <NoItemsTemplate>
-            <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+            @if (IsAsync)
+            {
+                @* Visual only: the status line above already speaks this, once. *@
+                <div class="odc-combo-empty" aria-hidden="true">@AsyncPopoverText</div>
+            }
+            else
+            {
+                <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+            }
         </NoItemsTemplate>
     </MudAutocomplete>
 </div>

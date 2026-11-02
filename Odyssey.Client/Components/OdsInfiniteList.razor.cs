@@ -49,6 +49,9 @@ public partial class OdsInfiniteList<TItem>
     /// <summary>Clear every filter and search — offered from the filtered-empty state.</summary>
     [Parameter] public EventCallback OnClearFilters { get; set; }
 
+    /// <summary>The filtered-empty title, when the page words it itself (see <c>OdsListStatus</c>).</summary>
+    [Parameter] public string? FilteredEmptyTitle { get; set; }
+
     /// <summary>Material Icons ligature for the first-run empty state.</summary>
     [Parameter] public string EmptyIcon { get; set; } = "inbox";
 

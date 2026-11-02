@@ -104,6 +104,15 @@
             if (value === null || value === undefined || value === '') el.removeAttribute(name);
             else el.setAttribute(name, value);
         };
+        window.odsAddDescribedBy = function (elementId, extraId) {
+            // Append one id to an input's aria-describedby without dropping the ids MudBlazor already put
+            // there (its helper text) — the address block adds its coordinates warning to the field the
+            // user changed (issue #383 §3.3 rule 3).
+            const el = document.getElementById(elementId);
+            if (!el || !extraId) return;
+            const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+            if (!ids.includes(extraId)) { ids.push(extraId); el.setAttribute('aria-describedby', ids.join(' ')); }
+        };
         window.odsFocusById = function (elementId) {
             // Restore focus to a control by id — used after an action unmounts the element that had
             // focus (e.g. dismissing/applying a match-suggestion chip), so focus never falls to <body>.
@@ -209,8 +218,11 @@
             // the dialog unmounted with its popover, so the captured owner is gone. Then the owner if
             // it is still in the DOM, then the page heading — never <body>.
             const focusable = function (n) { return n && document.contains(n) && typeof n.focus === 'function'; };
-            if (preferredId) {
-                const host = document.getElementById(preferredId);
+            // preferredId may be a space-separated CHAIN, tried in order (issue #383 §6.5): the trigger, then
+            // the row's menu button, then — below — the page heading.
+            const preferred = preferredId ? String(preferredId).split(/\s+/).filter(Boolean) : [];
+            for (const id of preferred) {
+                const host = document.getElementById(id);
                 const target = host && (host.matches('button, a[href], input, select, textarea, [tabindex]')
                     ? host : host.querySelector('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
                 if (focusable(target)) { target.focus(); return; }
@@ -220,6 +232,34 @@
                 const h1 = document.querySelector('main h1, h1');
                 if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
             }
+        };
+        window.odsDialogA11y = function (role, describedById) {
+            // OdsModal Role / DescribedById (issue #383): set the topmost dialog's role (alertdialog for a
+            // destructive confirmation) and point aria-describedby at its body copy, so both are read on
+            // open. MudDialog renders its own role="dialog" element; the .ods-modal class sits on it or
+            // inside it.
+            const dialogs = document.querySelectorAll('.ods-modal');
+            const node = dialogs[dialogs.length - 1];
+            if (!node) return;
+            const dialog = node.matches('[role="dialog"], [role="alertdialog"]') ? node
+                : (node.closest('[role="dialog"], [role="alertdialog"]') || node);
+            if (role) dialog.setAttribute('role', role);
+            if (describedById) dialog.setAttribute('aria-describedby', describedById);
+        };
+        window.odsFocusChainOrHeading = function (ids) {
+            // Focus the first id in the chain that is on the page (a row's menu button), else the page h1 —
+            // which carries tabindex="-1" — never <body> (issue #383 §6.5). One frame later, so a list that
+            // just re-rendered has its rows in the DOM.
+            requestAnimationFrame(function () {
+                for (const id of (ids || [])) {
+                    const host = document.getElementById(id);
+                    if (!host) continue;
+                    const el = host.matches('button, a[href], input') ? host : host.querySelector('button, a[href], input');
+                    if (el) { el.focus(); return; }
+                }
+                const h1 = document.querySelector('main h1, h1');
+                if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
+            });
         };
         window.odsFocusDialogCancel = function () {
             // OdsModal InitialFocus="Cancel": a destructive confirmation opens on its safe choice — the

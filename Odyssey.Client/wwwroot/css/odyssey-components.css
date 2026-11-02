@@ -4749,3 +4749,76 @@ tr:focus-within > .odc-rowactions.reveal,
 @keyframes odc-switch-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
 
+
+/* ---------- RadioGroup (issue #383 — Odyssey Design System · components/RadioGroup) ----------
+   Native <input type="radio"> under a styled dot, in a <fieldset> whose <legend> is the field label.
+   Ported from components/bundle.css. */
+.odc-radiogroup { display: flex; flex-direction: column; gap: 10px; }
+.odc-radiogroup.row { flex-direction: row; gap: var(--space-4); flex-wrap: wrap; }
+.odc-radio { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; min-height: 24px; }
+.odc-radio input { position: absolute; opacity: 0; width: 0; height: 0; }
+.odc-radio-dot {
+  position: relative; flex: none; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--control-border);
+  display: grid; place-items: center; transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.odc-radio-dot::after {
+  content: ''; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--mud-palette-primary); transform: scale(0); transition: transform var(--duration-fast) var(--ease-standard);
+}
+.odc-radio input:checked + .odc-radio-dot { border-color: var(--mud-palette-primary); }
+.odc-radio input:checked + .odc-radio-dot::after { transform: scale(1); }
+.odc-radio input:focus-visible + .odc-radio-dot { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-radio input:disabled + .odc-radio-dot { opacity: 0.5; cursor: not-allowed; }
+.odc-radio-label { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-radiofield { border: 0; margin: 0; padding: 0; min-width: 0; }
+.odc-radiofield > legend.odc-field-label { padding: 0; margin-bottom: 8px; float: none; }
+.odc-radio-reqword { margin-left: 8px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); text-transform: none; letter-spacing: 0; }
+.odc-radio.has-desc { align-items: flex-start; }
+.odc-radio.has-desc .odc-radio-dot { margin-top: 1px; }
+.odc-radio-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.odc-radio-desc { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-radio input:disabled ~ .odc-radio-text, .odc-radio input:disabled ~ .odc-radio-label { color: var(--mud-palette-text-disabled); cursor: not-allowed; }
+.odc-radiogroup.described { gap: 12px; }
+
+/* ---------- Combobox two-line option (issue #383 — components/bundle.css) ----------
+   A label over a muted `sub` line (a place's composed address, "No coordinates"); both truncate. */
+.odc-combo-opt-text { flex: 1; min-width: 0; display: flex !important; flex-direction: column; gap: 2px; overflow: hidden; }
+.odc-combo-opt-text > .odc-combo-opt-label { flex: none; }
+.odc-combo-opt-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); }
+
+/* ---------- AddressBlock (issue #383 — components/bundle.css) ----------
+   The shared pick-or-type address editor. Usage line and coordinates warning are plain text with a
+   decorative glyph; address rows stack to one column below the sm breakpoint (400 % zoom at 1280 px). */
+.odc-addrblock { display: flex; flex-direction: column; gap: var(--space-3, 12px); min-width: 0; }
+.odc-addrblock-usage, .odc-addrblock-warn { display: flex; gap: 8px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-addrblock-usage .material-icons, .odc-addrblock-warn .material-icons { flex: none; font-size: var(--icon-sm); margin-top: 1px; color: var(--mud-palette-text-secondary); }
+.odc-addrblock-warn { padding: 9px 12px; border-radius: var(--radius-md); background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
+.odc-addrblock-warn .material-icons { color: var(--brand-text); }
+.odc-addrblock-apply { display: flex; flex-direction: column; gap: 10px; padding-top: var(--space-1, 4px); }
+.odc-addrblock-extra .odc-infotile-v { white-space: normal; overflow-wrap: anywhere; }
+@media (max-width: 600px) { .odc-addrblock .odc-form-row { grid-template-columns: minmax(0, 1fr) !important; } }
+/* Focus not obscured (WCAG 2.4.11, issue #383 §6.6): a field focused at the bottom of a dialog body
+   scrolls clear of the sticky footer. */
+.odc-modal-body, .ods-modal-body { scroll-padding-block: var(--space-2, 8px) var(--space-16, 64px); }
+
+/* ---------- Unified Locations (issue #383 — ui_kits/web/locations.css) ---------- */
+.loc-search-disclose { display: flex; gap: 6px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-search-disclose .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.loc-addr-group { display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 600px) { .loc-addr-group .odc-form-row { grid-template-columns: minmax(0, 1fr) !important; } }
+.loc-dialog-desc { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-dialog-alert { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-error); background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); }
+.loc-dialog-alert .material-icons { flex: none; color: var(--mud-palette-error); }
+.loc-err-summary { padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-error); background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); }
+.loc-err-summary:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
+.loc-err-summary ul { margin: 4px 0 0; padding-left: 18px; }
+.loc-err-summary a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; display: inline-block; min-height: 24px; }
+.loc-err-summary a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+.loc-place-line { display: inline-flex; flex-direction: column; gap: 1px; min-width: 0; }
+.loc-place-line-name { display: inline-flex; align-items: center; gap: 4px; }
+.loc-place-line-name .material-icons { font-size: var(--icon-sm); }
+.loc-place-line-details { padding-left: 18px; color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.loc-shared-line { display: flex; align-items: center; gap: 5px; margin-top: 4px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-shared-line .material-icons { color: var(--mud-palette-text-secondary); flex: none; font-size: var(--icon-sm); }
+.loc-find-coords { min-height: 24px; }
