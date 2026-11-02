@@ -87,6 +87,60 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         Assert.Equal(6, await check.Addresses.CountAsync());
     }
 
+    // ── AC 27: a geocode on the fields path (§5.3a, v9) ──────────────────────────────────────────
+
+    [SkippableFact]
+    public async Task A_geocoded_contact_address_stores_its_coordinates_and_a_match_keeps_the_existing_place()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var first = await SeedContactAsync("First");
+        var second = await SeedContactAsync("Second");
+
+        var created = await AddAsync(first, Geocoded(Address("Storgata 1", "Oslo"), 59.912734m, 10.746094m));
+        var linked = await AddAsync(second, Geocoded(Address("STORGATA 1", "oslo"), 61m, 5m));
+
+        Assert.Equal(created.LocationId, linked.LocationId);
+        await using var check = NewContext();
+        var place = await check.Locations.AsNoTracking().SingleAsync();
+        Assert.Equal(59.91273m, place.Latitude);
+        Assert.Equal(10.74609m, place.Longitude);
+        Assert.Equal("Europe/Oslo", place.TimeZoneId);
+        Assert.Equal(LocationSource.Kartverket, place.Source);
+        Assert.Equal("0301-12345-1", place.SourceReference);
+    }
+
+    [SkippableFact]
+    public async Task A_geocoded_create_that_loses_the_AddressKey_race_links_the_winner_without_its_geocode()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var calendar = await SeedCalendarAsync();
+        var address = LocationAddress.Of("Storgata 1", null, "0150", "Oslo", null, "NO");
+        var geocode = LocationGeocode.From(59.9m, 10.7m, "Europe/Oslo", LocationSource.Kartverket, null);
+
+        await using var loser = NewContext();
+        var loserResolver = new LocationResolver(loser);
+        var staged = await loserResolver.FindOrCreateAsync(address, LocationSource.ContactAddress, null, All, default, geocode);
+        loser.CalendarEvents.Add(NewEvent(calendar, staged.Location.LocationId));
+
+        Guid winnerId;
+        await using (var winner = NewContext())
+        {
+            var winnerResolver = new LocationResolver(winner);
+            winnerId = (await winnerResolver.FindOrCreateAsync(address, LocationSource.ContactAddress, null, All, default)).Location.LocationId;
+            await winnerResolver.SaveChangesAsync(default);
+        }
+
+        await loserResolver.SaveChangesAsync(default);
+
+        await using var check = NewContext();
+        var place = await check.Locations.AsNoTracking().SingleAsync();
+        Assert.Equal(winnerId, place.LocationId);
+        Assert.Null(place.Latitude);
+        Assert.Equal(LocationSource.ContactAddress, place.Source);
+    }
+
     // ── AC 11: delete ────────────────────────────────────────────────────────────────────────────
 
     [SkippableFact]
@@ -400,6 +454,15 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
     private static NewAddress Address(string line1, string city) => new()
     {
         Label = AddressLabel.Visiting, Line1 = line1, City = city, CountryCode = "NO",
+    };
+
+    private static NewAddress Geocoded(NewAddress body, decimal latitude, decimal longitude) => body with
+    {
+        Latitude = latitude,
+        Longitude = longitude,
+        TimeZoneId = "Europe/Oslo",
+        Source = LocationSource.Kartverket,
+        SourceReference = "0301-12345-1",
     };
 
     private static NewProperty PropertyBody(RealEstateDetailsDto details) => new()

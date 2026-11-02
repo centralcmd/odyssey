@@ -240,6 +240,14 @@ public class MoneyBoundsTests
             "A latitude in degrees, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #350).",
         [$"{nameof(Odyssey.Dtos.Journal.UpdateLocation)}.{nameof(Odyssey.Dtos.Journal.UpdateLocation.Longitude)}"] =
             "A longitude in degrees, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #350).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewAddress)}.{nameof(Odyssey.Dtos.Journal.NewAddress.Latitude)}"] =
+            "A geocode latitude for a place the write creates, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #380 §5.3a).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewAddress)}.{nameof(Odyssey.Dtos.Journal.NewAddress.Longitude)}"] =
+            "A geocode longitude for a place the write creates, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #380 §5.3a).",
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.Latitude)}"] =
+            "A geocode latitude for a place the write creates, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #380 §5.3a).",
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.Longitude)}"] =
+            "A geocode longitude for a place the write creates, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #380 §5.3a).",
     };
 
     private sealed record DecimalMember(string Name, RangeAttribute? Range);

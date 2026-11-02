@@ -61,6 +61,29 @@ public sealed record NewAddress
     [Range(0, int.MaxValue)]
     public int? ExpectedOtherUses { get; set; }
 
+    // ── Geocode (issue #380 §5.3a, v9): optional and write-only ─────────────────────────────────────
+    // Used only when the fields path CREATES a place: a match on the address key links the existing place
+    // and ignores them, so a geocode never overwrites a place someone else curated. Ignored with a
+    // LocationId and by an in-place (AllUses or case-only) edit. The coordinates and time zone are
+    // all-or-none (422 keyed latitude) and Source is Manual, Kartverket or OpenMeteo (422 keyed source).
+
+    /// <summary>The geocoded latitude of a place this write creates. See the geocode rules above.</summary>
+    [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal? Latitude { get; set; }
+
+    [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    public decimal? Longitude { get; set; }
+
+    [StringLength(IanaTimeZones.MaxLength)]
+    [IanaTimeZone]
+    public string? TimeZoneId { get; set; }
+
+    [EnumDataType(typeof(LocationSource))]
+    public LocationSource? Source { get; set; }
+
+    [StringLength(LocationRules.SourceReferenceMaxLength)]
+    public string? SourceReference { get; set; }
+
     /// <summary>Redacted: an address is personal data, and a record prints its members wherever it is logged.</summary>
     public override string ToString() => nameof(NewAddress) + " { (redacted) }";
 }

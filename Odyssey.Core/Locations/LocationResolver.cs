@@ -127,10 +127,13 @@ public sealed class LocationResolver
     /// <summary>
     /// Finds the place holding <paramref name="address"/> or stages a new one. <c>locations.create</c> is
     /// checked first, whatever the lookup would find (§7.1.4). A keyless (partial) address always creates.
+    /// <paramref name="geocode"/> (§5.3a, v9) is applied <b>only to a place this call creates</b>, whose source
+    /// then becomes the geocode's; a match — a merge forwarder's survivor included — is linked unchanged, so
+    /// a geocode never overwrites a place someone else curated.
     /// </summary>
     public async Task<FindOrCreateResult> FindOrCreateAsync(
         LocationAddress address, LocationSource source, string? userId, LocationClaims claims,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, LocationGeocode? geocode = null)
     {
         RequireCreate(claims);
 
@@ -146,7 +149,11 @@ public sealed class LocationResolver
             LocationId = Guid.NewGuid(),
             Name = await AllocateNameAsync(composed, excludeId: null, cancellationToken),
             AddressText = LocationNaming.Truncate(composed, LocationRules.AddressTextMaxLength),
-            Source = source,
+            Source = geocode?.Source ?? source,
+            SourceReference = geocode?.SourceReference,
+            Latitude = geocode?.Latitude,
+            Longitude = geocode?.Longitude,
+            TimeZoneId = geocode?.TimeZoneId,
             CreatedByUserId = userId,
             UpdatedByUserId = userId,
             CreatedAt = now,

@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Dtos.Finance;
@@ -49,6 +50,38 @@ public sealed record RealEstateDetailsDto
     /// <summary>The <see cref="OtherUses"/> the client showed; required when the write edits the place in place.</summary>
     [Range(0, int.MaxValue)]
     public int? ExpectedOtherUses { get; set; }
+
+    // ── Geocode (issue #380 §5.3a, v9): optional and REQUEST-only ───────────────────────────────────
+    // Used only when the fields path CREATES a place; a match on the address key links the existing place
+    // and ignores them. Ignored with a LocationId, on an unlink and by an in-place edit. All-or-none
+    // coordinates (422 keyed latitude); Source is Manual, Kartverket or OpenMeteo (422 keyed source). A read
+    // never fills them, and a null is not written, so no response carries the members at all.
+
+    /// <summary>Request only: the geocoded latitude of a place this write creates.</summary>
+    [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? Latitude { get; set; }
+
+    /// <summary>Request only.</summary>
+    [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public decimal? Longitude { get; set; }
+
+    /// <summary>Request only.</summary>
+    [StringLength(IanaTimeZones.MaxLength)]
+    [IanaTimeZone]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>Request only.</summary>
+    [EnumDataType(typeof(LocationSource))]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public LocationSource? Source { get; set; }
+
+    /// <summary>Request only.</summary>
+    [StringLength(LocationRules.SourceReferenceMaxLength)]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceReference { get; set; }
 
     /// <summary>
     /// Response only (ignored in a request): how many OTHER records use the linked place, over only the kinds

@@ -565,6 +565,11 @@ is the property's address. Every key to `Locations` is `RESTRICT`. Six rules are
   place is a `422`, and a contact or property link needs `Line1`/`City`/`CountryCode`. By fields,
   `locations.create` is checked *before* the lookup so a match and a miss look the same. Saves go through
   `resolver.SaveChangesAsync`, which re-reads on a `1062` on `AddressKey` and maps a `1452` to `422`.
+  A geocode sent on the fields path (`latitude`/`longitude`/`timeZoneId`/`source`/`sourceReference` on
+  `NewAddress` and `RealEstateDetailsDto`, `LocationGeocode`) **never overwrites an existing place**: it
+  applies only to a place that path creates, while a match on `AddressKey` (a forwarder's survivor
+  included), a `locationId`, a kept link and an in-place edit all ignore it. It is write-only — no read
+  echoes it.
 - **`AddressKey` is the identity, computed by `LocationAddressKey` (in `Odyssey.Dtos`, shared with the
   client), never by the database.** Case and whitespace fold; letters never do (`Å` ≠ `A`). A merged-away
   place keeps its key and forwards through `MergedIntoLocationId` (one hop), so find-or-create lands on

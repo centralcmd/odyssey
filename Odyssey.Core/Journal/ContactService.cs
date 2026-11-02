@@ -1247,6 +1247,7 @@ public class ContactService
             else
             {
                 var fields = RequiredAddressFields(request);
+                var geocode = GeocodeOf(request);
                 var current = address.Location;
                 if (fields != LocationAddress.FromLocation(current))
                 {
@@ -1263,7 +1264,7 @@ public class ContactService
                     {
                         mode = "copied";
                         var location = (await resolver.FindOrCreateAsync(
-                            fields, LocationSource.ContactAddress, userId, claims, cancellationToken)).Location;
+                            fields, LocationSource.ContactAddress, userId, claims, cancellationToken, geocode)).Location;
                         await EnsureNotListedAsync(contactId, location.LocationId, addressId, cancellationToken);
                         address.LocationId = location.LocationId;
                         address.Location = location;
@@ -1319,8 +1320,15 @@ public class ContactService
         }
 
         var fields = RequiredAddressFields(request);
-        return (await resolver.FindOrCreateAsync(fields, LocationSource.ContactAddress, userId, claims, cancellationToken)).Location;
+        var geocode = GeocodeOf(request);
+        return (await resolver.FindOrCreateAsync(
+            fields, LocationSource.ContactAddress, userId, claims, cancellationToken, geocode)).Location;
     }
+
+    // The optional geocode (§5.3a, v9): validated whenever the fields path runs, so its 422s do not depend on
+    // whether the address already exists, and applied only to a place the resolver creates.
+    private static LocationGeocode? GeocodeOf(NewAddress request) => LocationGeocode.From(
+        request.Latitude, request.Longitude, request.TimeZoneId, request.Source, request.SourceReference);
 
     private static LocationAddress SentAddressFields(NewAddress request) => LocationAddress.Of(
         request.Line1, request.Line2, request.PostalCode, request.City, request.Region, request.CountryCode);

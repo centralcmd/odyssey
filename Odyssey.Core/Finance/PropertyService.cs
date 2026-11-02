@@ -724,6 +724,11 @@ public class PropertyService
             return "unlinked";
         }
 
+        // The optional geocode (§5.3a, v9): validated on every fields-path write that is not an unlink, and
+        // applied only to a place the resolver creates below — never to a kept link or an in-place edit.
+        var geocode = LocationGeocode.From(
+            details.Latitude, details.Longitude, details.TimeZoneId, details.Source, details.SourceReference);
+
         if (current is not null && fields == FourOf(current))
             return null;
 
@@ -748,7 +753,7 @@ public class PropertyService
         }
 
         var location = (await resolver.FindOrCreateAsync(
-            fields, LocationSource.PropertyAddress, userId, claims, cancellationToken)).Location;
+            fields, LocationSource.PropertyAddress, userId, claims, cancellationToken, geocode)).Location;
         target.LocationId = location.LocationId;
         target.Location = location;
         return "linked";

@@ -1165,6 +1165,230 @@ public class LocationUnificationApiTests
         Assert.Contains(logs.Entries, e => e.Message.Contains("deleted by", StringComparison.Ordinal) && e.Message.Contains(Actor, StringComparison.Ordinal));
     }
 
+    // ── Geocode on the fields path (§5.3a, v9; AC 27) ──────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_contact_address_with_a_geocode_creates_a_place_with_those_coordinates_and_that_source()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var contactId = await host.PostContactAsync("Acme");
+
+        var address = await host.PostAddressAsync(contactId, Geocoded(Address("Storgata 1", "Oslo")));
+
+        Assert.True(address.PlaceHasCoordinates);
+        var place = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == address.LocationId));
+        Assert.Equal(59.91273m, place.Latitude);
+        Assert.Equal(10.74609m, place.Longitude);
+        Assert.Equal("Europe/Oslo", place.TimeZoneId);
+        Assert.Equal(LocationSource.Kartverket, place.Source);
+        Assert.Equal("0301-12345-1", place.SourceReference);
+        Assert.Equal("Storgata 1", place.Line1);
+    }
+
+    [Fact]
+    public async Task A_contact_address_with_a_geocode_for_an_existing_address_links_that_place_unchanged()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var existing = await host.SeedLocationAsync("Curated", line1: "Storgata 1", city: "Oslo", country: "NO", latitude: 60m);
+
+        var address = await host.PostAddressAsync(await host.PostContactAsync("Acme"), Geocoded(Address("STORGATA 1", "oslo")));
+
+        Assert.Equal(existing, address.LocationId);
+        var place = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == existing));
+        Assert.Equal(60m, place.Latitude);
+        Assert.Equal(10m, place.Longitude);
+        Assert.Equal(LocationSource.Manual, place.Source);
+        Assert.Null(place.SourceReference);
+        Assert.Equal("Curated", place.Name);
+        Assert.Equal(1, await host.ReadAsync(c => c.Locations.CountAsync()));
+    }
+
+    [Fact]
+    public async Task A_geocode_for_a_merged_away_address_links_the_survivor_unchanged()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var survivor = await host.SeedLocationAsync("Survivor");
+        await host.SeedLocationAsync("Forwarder", line1: "Storgata 1", city: "Oslo", country: "NO", archived: true, mergedInto: survivor);
+
+        var address = await host.PostAddressAsync(await host.PostContactAsync("Acme"), Geocoded(Address("Storgata 1", "Oslo")));
+
+        Assert.Equal(survivor, address.LocationId);
+        var place = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == survivor));
+        Assert.Null(place.Latitude);
+        Assert.Equal(LocationSource.Manual, place.Source);
+    }
+
+    [Fact]
+    public async Task A_geocode_sent_with_a_locationId_is_ignored()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var place = await host.SeedLocationAsync("Office", line1: "Storgata 1", city: "Oslo", country: "NO");
+        var contactId = await host.PostContactAsync("Acme");
+
+        var response = await host.Client.PostAsJsonAsync($"{ContactsPath}/{contactId}/addresses",
+            Geocoded(new NewAddress { Label = AddressLabel.Visiting, LocationId = place }) with { Source = LocationSource.Imported });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var stored = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == place));
+        Assert.Null(stored.Latitude);
+        Assert.Equal(LocationSource.Manual, stored.Source);
+    }
+
+    [Fact]
+    public async Task ThisRecord_with_a_geocode_creates_the_new_place_geocoded_and_AllUses_ignores_it()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var contactId = await host.PostContactAsync("Acme");
+        var address = await host.PostAddressAsync(contactId, Address("Storgata 1", "Oslo"));
+        var path = $"{ContactsPath}/{contactId}/addresses/{address.Id}";
+
+        var edited = await host.Client.PutAsJsonAsync(path, Geocoded(Address("Storgata 3", "Oslo")) with
+        {
+            ApplyTo = AddressApplyTo.AllUses, ExpectedOtherUses = 0,
+        });
+        Assert.Equal(HttpStatusCode.NoContent, edited.StatusCode);
+        var inPlace = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == address.LocationId));
+        Assert.Equal("Storgata 3", inPlace.Line1);
+        Assert.Null(inPlace.Latitude);
+        Assert.Equal(LocationSource.ContactAddress, inPlace.Source);
+
+        var copied = await host.Client.PutAsJsonAsync(path, Geocoded(Address("Storgata 5", "Oslo")) with { ApplyTo = AddressApplyTo.ThisRecord });
+        Assert.Equal(HttpStatusCode.NoContent, copied.StatusCode);
+        var moved = Assert.Single((await host.Client.GetFromJsonAsync<List<ExistingAddress>>($"{ContactsPath}/{contactId}/addresses"))!);
+        Assert.NotEqual(address.LocationId, moved.LocationId);
+        Assert.True(moved.PlaceHasCoordinates);
+        var created = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == moved.LocationId));
+        Assert.Equal(LocationSource.Kartverket, created.Source);
+    }
+
+    [Fact]
+    public async Task A_property_with_a_geocode_creates_a_geocoded_place_and_its_read_never_echoes_the_geocode()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var property = await host.PostPropertyAsync(new RealEstateDetailsDto
+        {
+            Kind = RealEstateKind.House, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo", CountryCode = "NO",
+            Latitude = 59.912734m, Longitude = 10.746094m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
+            SourceReference = "0301-12345-1",
+        });
+
+        var place = await host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == property).Select(d => d.Location!).AsNoTracking().SingleAsync());
+        Assert.Equal(59.91273m, place.Latitude);
+        Assert.Equal(10.74609m, place.Longitude);
+        Assert.Equal(LocationSource.Kartverket, place.Source);
+
+        using var read = await host.Client.GetAsync($"{PropertiesPath}/{property}");
+        var details = JsonNode.Parse(await read.Content.ReadAsStringAsync())!["realEstateDetails"]!.AsObject();
+        Assert.True(details["placeHasCoordinates"]!.GetValue<bool>());
+        foreach (var member in new[] { "latitude", "longitude", "timeZoneId", "source", "sourceReference" })
+        {
+            Assert.False(details.ContainsKey(member), $"The property read echoed '{member}'.");
+        }
+    }
+
+    [Fact]
+    public async Task A_property_geocode_for_an_existing_address_links_that_place_unchanged()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var existing = await host.SeedLocationAsync("Curated", line1: "Storgata 1", city: "Oslo", country: "NO");
+
+        var property = await host.PostPropertyAsync(new RealEstateDetailsDto
+        {
+            Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
+            Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
+        });
+
+        Assert.Equal(existing, await host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == property).Select(d => d.LocationId).SingleAsync()));
+        var place = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == existing));
+        Assert.Null(place.Latitude);
+        Assert.Equal(LocationSource.Manual, place.Source);
+    }
+
+    public static TheoryData<string, string> GeocodeRefusals => new()
+    {
+        { "lat-only", "latitude" },
+        { "no-zone", "latitude" },
+        { "source-only", "latitude" },
+        { "no-source", "source" },
+        { "imported", "source" },
+        { "contact-address", "source" },
+    };
+
+    private static NewAddress Refused(NewAddress body, string shape) => shape switch
+    {
+        "lat-only" => body with { Latitude = 59.9m },
+        "no-zone" => Geocoded(body) with { TimeZoneId = null },
+        "source-only" => body with { Source = LocationSource.Kartverket },
+        "no-source" => Geocoded(body) with { Source = null, SourceReference = null },
+        "imported" => Geocoded(body) with { Source = LocationSource.Imported, SourceReference = null },
+        "contact-address" => Geocoded(body) with { Source = LocationSource.ContactAddress, SourceReference = null },
+        _ => throw new ArgumentOutOfRangeException(nameof(shape)),
+    };
+
+    [Theory]
+    [MemberData(nameof(GeocodeRefusals))]
+    public async Task An_invalid_contact_geocode_is_422_on_the_documented_key_whether_or_not_the_address_exists(string shape, string key)
+    {
+        await using var host = await Host.StartAsync(Everything);
+        await host.SeedLocationAsync("Existing", line1: "Storgata 1", city: "Oslo", country: "NO");
+        var path = $"{ContactsPath}/{await host.PostContactAsync("Acme")}/addresses";
+
+        await AssertProblem(await host.Client.PostAsJsonAsync(path, Refused(Address("Storgata 1", "Oslo"), shape)), HttpStatusCode.UnprocessableEntity, key);
+        await AssertProblem(await host.Client.PostAsJsonAsync(path, Refused(Address("Storgata 9", "Oslo"), shape)), HttpStatusCode.UnprocessableEntity, key);
+        Assert.Equal(1, await host.ReadAsync(c => c.Locations.CountAsync()));
+    }
+
+    [Theory]
+    [InlineData("latitude")]
+    [InlineData("source")]
+    public async Task An_invalid_property_geocode_is_422_on_the_documented_key(string key)
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var details = new RealEstateDetailsDto
+        {
+            Kind = RealEstateKind.House, AddressLine = "Storgata 1", City = "Oslo", CountryCode = "NO",
+            Latitude = 59.9m, Longitude = key == "latitude" ? null : 10.7m, TimeZoneId = "Europe/Oslo",
+            Source = key == "source" ? LocationSource.PropertyAddress : LocationSource.Kartverket,
+        };
+
+        await AssertProblem(await host.Client.PostAsJsonAsync(PropertiesPath, PropertyBody(details)), HttpStatusCode.UnprocessableEntity, key);
+    }
+
+    [Fact]
+    public async Task A_geocode_reference_must_fit_its_source_and_a_bad_zone_or_range_is_400()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var path = $"{ContactsPath}/{await host.PostContactAsync("Acme")}/addresses";
+
+        Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.PostAsJsonAsync(path,
+            Geocoded(Address("Storgata 1", "Oslo")) with { Source = LocationSource.Manual })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.PostAsJsonAsync(path,
+            Geocoded(Address("Storgata 1", "Oslo")) with { SourceReference = "not a reference!" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.PostAsJsonAsync(path,
+            Geocoded(Address("Storgata 1", "Oslo")) with { TimeZoneId = "Mars/Olympus_Mons" })).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await host.Client.PostAsJsonAsync(path,
+            Geocoded(Address("Storgata 1", "Oslo")) with { Latitude = 91m })).StatusCode);
+        Assert.Equal(0, await host.ReadAsync(c => c.Locations.CountAsync()));
+    }
+
+    [Fact]
+    public void A_contact_address_body_with_a_geocode_still_prints_redacted()
+    {
+        var text = Geocoded(Address("Storgata 1", "Oslo")).ToString();
+
+        Assert.DoesNotContain("59.9", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("Storgata", text, StringComparison.Ordinal);
+    }
+
+    private static NewAddress Geocoded(NewAddress body) => body with
+    {
+        Latitude = 59.912734m,
+        Longitude = 10.746094m,
+        TimeZoneId = "Europe/Oslo",
+        Source = LocationSource.Kartverket,
+        SourceReference = "0301-12345-1",
+    };
+
     // ── Helpers ─────────────────────────────────────────────────────────────────────────────────────
 
     private static NewLocation Place(string line1, string city, string country = "NO") => new()
