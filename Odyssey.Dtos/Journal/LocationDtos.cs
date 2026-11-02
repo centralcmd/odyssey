@@ -14,6 +14,18 @@ public enum LocationSource
     Manual = 1,
     Kartverket = 2,
     OpenMeteo = 3,
+
+    /// <summary>Created by the one-time conversion of a free-text event, series or entry place (issue #380 §11).</summary>
+    Converted = 4,
+
+    /// <summary>Created from a contact's postal address (issue #380): by the conversion, the resolver or vCard import.</summary>
+    ContactAddress = 5,
+
+    /// <summary>Created from a real-estate property's address (issue #380).</summary>
+    PropertyAddress = 6,
+
+    /// <summary>Created by an ICS import (issue #380 §8.4).</summary>
+    Imported = 7,
 }
 
 /// <summary>Which geocoding provider receives a search. Only the selected one ever sees the query.</summary>
@@ -48,6 +60,14 @@ public static partial class LocationRules
     public const int DescriptionMaxLength = 1000;
     public const int AddressTextMaxLength = 300;
     public const int SourceReferenceMaxLength = 64;
+
+    // The structured address fields (issue #380 §4). Declared here since a location became the one address
+    // record; ContactMethodLimits names these, so the contact DTOs and the location columns cannot drift.
+    public const int AddressLineMaxLength = 256;
+    public const int PostalCodeMaxLength = 32;
+    public const int CityMaxLength = 128;
+    public const int RegionMaxLength = 128;
+    public const int CountryCodeLength = 2;
 
     /// <summary>Display-only: a candidate's description is never stored, so it has its own, shorter cap.</summary>
     public const int CandidateDescriptionMaxLength = 200;
@@ -93,6 +113,8 @@ public static partial class LocationRules
         LocationSource.Manual => reference is null,
         LocationSource.Kartverket => reference is null || KartverketReference().IsMatch(reference),
         LocationSource.OpenMeteo => reference is null || OpenMeteoReference().IsMatch(reference),
+        // B2: the issue #380 sources (Converted … Imported) carry no reference and are not assertable on
+        // POST (§4, A-R9); refused here until the location write contract lands.
         _ => false,
     };
 
