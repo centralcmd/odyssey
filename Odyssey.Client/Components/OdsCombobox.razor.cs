@@ -123,6 +123,19 @@ public partial class OdsCombobox : IDisposable
     /// </summary>
     [Parameter] public string? CreateDescription { get; set; }
 
+    // ── Groups and the footer row (issue #383 v5) ──────────────────────────────
+
+    /// <summary>
+    /// Group the rows (design system · Combobox <c>groups</c>): an option whose <see cref="OdsOption.Group"/>
+    /// names one of these is listed under that group's visible heading, in this order, after the ungrouped rows.
+    /// A group with no rows and no note is left out. A note (<see cref="OdsOption.IsNote"/>) shows in its group
+    /// and is read on the status line.
+    /// </summary>
+    [Parameter] public IReadOnlyList<OdsOptionGroup>? Groups { get; set; }
+
+    /// <summary>One final row, after a rule, present whenever the list is open (Combobox <c>footerOption</c>).</summary>
+    [Parameter] public OdsComboboxFooter? FooterOption { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -162,16 +175,21 @@ public partial class OdsCombobox : IDisposable
         OdsAsyncSearchStatus.Short => MinCharsText ?? $"Type at least {MinChars} characters",
         OdsAsyncSearchStatus.Searching => SearchingText,
         OdsAsyncSearchStatus.Failed => ErrorText,
-        OdsAsyncSearchStatus.Done => _async.Results.Count > 0
-            ? ResultsText?.Invoke(_async.Results.Count) ?? $"{_async.Results.Count} {(_async.Results.Count == 1 ? "result" : "results")} found"
-            : _createRows.Count > 0 || _firstCreateValue is not null ? string.Empty : EmptyText,
+        OdsAsyncSearchStatus.Done => JoinStatus(
+            _resultCount > 0
+                ? ResultsText?.Invoke(_resultCount) ?? $"{_resultCount} {(_resultCount == 1 ? "result" : "results")} found"
+                : _createRows.Count > 0 || _firstCreateValue is not null || _notes.Count > 0 ? string.Empty : EmptyText,
+            string.Join(" ", _notes)),
         _ => string.Empty,
     };
+
+    private static string JoinStatus(string first, string notes) =>
+        string.Join(". ", new[] { first, notes }.Where(v => !string.IsNullOrEmpty(v)));
 
     /// <summary>What the popover shows when there are no rows to list.</summary>
     private string AsyncPopoverText => _async?.Status switch
     {
-        OdsAsyncSearchStatus.Done => EmptyText,
+        OdsAsyncSearchStatus.Done => _notes.Count > 0 ? string.Empty : EmptyText,
         null or OdsAsyncSearchStatus.Idle => MinCharsText ?? $"Type at least {MinChars} characters",
         _ => AsyncStatusText,
     };
@@ -324,6 +342,88 @@ public partial class OdsCombobox : IDisposable
 
     private string? _firstCreateValue;
 
+    // ── Grouped rows, notes and the footer (issue #383 v5) ─────────────────────
+
+    // Sentinels for the synthetic rows: a group's heading and the footer. Like the create prefix they start with a
+    // character no option value can sensibly carry, and MudAutocomplete keys rows by value.
+    private const string HeadingPrefix = "\u001fgroup\u001f";
+    private const string FooterValue = "\u001ffooter";
+
+    // The selectable rows of the latest search (no heading, note, create or footer row), the notes it carried, and
+    // which row opens each group — that row's accessible name starts with the group's name.
+    private int _resultCount;
+    private readonly List<string> _notes = [];
+    private readonly Dictionary<string, string> _groupOpeners = new(StringComparer.Ordinal);
+
+    // The text the last search ran for — what the footer row hands to its callback.
+    private string _lastQuery = string.Empty;
+
+    // Set while a footer pick restores the field's own value, so the restore is not taken for a pick.
+    private bool _restoring;
+
+    private MudBlazor.MudAutocomplete<OdsOption>? _auto;
+
+    private bool HasRowExtras => Groups is { Count: > 0 } || FooterOption is not null;
+
+    /// <summary>Whether the rows are capped at MudAutocomplete's default ten — never with groups or a footer, which
+    /// would otherwise cut off the last group and the footer row itself.</summary>
+    private int? MaxItems => HasRowExtras ? null : 10;
+
+    internal static bool IsHeadingRow(OdsOption option) => option.Value.StartsWith(HeadingPrefix, StringComparison.Ordinal);
+
+    internal static bool IsFooterRow(OdsOption option) => string.Equals(option.Value, FooterValue, StringComparison.Ordinal);
+
+    /// <summary>A row the user can never pick: a disabled one, a group heading or a group note.</summary>
+    private static bool Unpickable(OdsOption? option) =>
+        option is not null && (option.Disabled || option.IsNote || IsHeadingRow(option));
+
+    /// <summary>The group a row opens, when it is the first row listed under a heading.</summary>
+    private string? GroupOpenedBy(OdsOption option) => _groupOpeners.GetValueOrDefault(option.Value);
+
+    /// <summary>Whether the popover lists no row the user came for — only a heading, a note or the footer.</summary>
+    private bool NoResultRows => _resultCount == 0 && _createRows.Count == 0 && _firstCreateValue is null;
+
+    /// <summary>
+    /// Orders the rows the way the design does — ungrouped first, then each group under its heading (its rows, then
+    /// its note), in <see cref="Groups"/> order — and records the count, the notes and each group's first row.
+    /// The keyboard order is the visual order, because both are this list.
+    /// </summary>
+    private List<OdsOption> Arrange(IEnumerable<OdsOption> rows)
+    {
+        var list = rows.ToList();
+        _notes.Clear();
+        _groupOpeners.Clear();
+        _resultCount = list.Count(o => !o.IsNote);
+        if (Groups is not { Count: > 0 } groups)
+        {
+            _notes.AddRange(list.Where(o => o.IsNote).Select(o => o.Label));
+            return list;
+        }
+
+        var known = groups.Select(g => g.Key).ToHashSet(StringComparer.Ordinal);
+        var arranged = list.Where(o => o.Group is null || !known.Contains(o.Group)).ToList();
+        foreach (var group in groups)
+        {
+            var members = list.Where(o => string.Equals(o.Group, group.Key, StringComparison.Ordinal)).ToList();
+            if (members.Count == 0)
+                continue;
+            arranged.Add(new OdsOption($"{HeadingPrefix}{group.Key}", group.Label));
+            var ordered = members.Where(o => !o.IsNote).Concat(members.Where(o => o.IsNote)).ToList();
+            _groupOpeners[ordered[0].Value] = group.Label;
+            _notes.AddRange(members.Where(o => o.IsNote).Select(o => o.Label));
+            arranged.AddRange(ordered);
+        }
+
+        return arranged;
+    }
+
+    /// <summary>The footer row, last, whenever the list is open.</summary>
+    private void AppendFooter(List<OdsOption> rows)
+    {
+        if (FooterOption is { } footer)
+            rows.Add(new OdsOption(FooterValue, footer.Label) { Icon = footer.Icon, AriaLabel = footer.AriaLabel });
+    }
+
     private Task<IEnumerable<OdsOption>> Search(string? text, CancellationToken token) =>
         IsAsync ? SearchRemoteAsync(text, token) : Task.FromResult(SearchLocal(text));
 
@@ -337,11 +437,16 @@ public partial class OdsCombobox : IDisposable
 
         _createRows.Clear();
         _firstCreateValue = null;
+        _lastQuery = query.Trim();
         var rows = await _async!.RunAsync(query, token);
         if (rows is null)
-            return [];
+        {
+            var superseded = new List<OdsOption>();
+            AppendFooter(superseded);
+            return superseded;
+        }
 
-        var matches = rows.ToList();
+        var matches = Arrange(rows);
         var trimmed = query.Trim();
         if (OnCreate is not null && _async.Status == OdsAsyncSearchStatus.Done && trimmed.Length >= MinChars
             && !rows.Any(o => string.Equals(o.Label, trimmed, StringComparison.OrdinalIgnoreCase)))
@@ -351,6 +456,7 @@ public partial class OdsCombobox : IDisposable
             matches.Add(CreateRow(value, trimmed));
         }
 
+        AppendFooter(matches);
         await InvokeAsync(StateHasChanged);
         return matches;
     }
@@ -375,10 +481,10 @@ public partial class OdsCombobox : IDisposable
     private IEnumerable<OdsOption> SearchLocal(string? text)
     {
         var query = text ?? string.Empty;
-        var matches = Options
-            .Where(o => string.IsNullOrWhiteSpace(query)
-                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase))
-            .ToList();
+        _lastQuery = query.Trim();
+        var matches = Arrange(Options
+            .Where(o => o.IsNote || string.IsNullOrWhiteSpace(query)
+                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase)));
 
         _createRows.Clear();
         _firstCreateValue = null;
@@ -406,6 +512,7 @@ public partial class OdsCombobox : IDisposable
             }
         }
 
+        AppendFooter(matches);
         return matches;
     }
 
@@ -414,8 +521,20 @@ public partial class OdsCombobox : IDisposable
         // ItemDisabledFunc greys the row and blocks the click, but a disabled option can still arrive
         // here — MudAutocomplete coerces a typed value that matches one by label. Ignoring it keeps the
         // selection where it was rather than silently accepting a row the user was told they can't pick.
-        if (option is { Disabled: true })
+        if (_restoring || Unpickable(option))
             return;
+
+        // The footer row is an action, not a value: it hands over the typed text and leaves the value alone, so the
+        // field is put back to what it held.
+        if (option is not null && IsFooterRow(option))
+        {
+            _typed = null;
+            var text = _lastQuery;
+            await RestoreAsync();
+            if (FooterOption is { } footer)
+                await footer.OnSelect(text);
+            return;
+        }
 
         // A pick supersedes whatever was typed to find it.
         _typed = null;
@@ -439,5 +558,16 @@ public partial class OdsCombobox : IDisposable
             Value = option?.Value;
         }
         await ValueChanged.InvokeAsync(Value);
+    }
+
+    /// <summary>Puts MudAutocomplete back on the field's own value after a footer pick selected the footer row.</summary>
+    private async Task RestoreAsync()
+    {
+        if (_auto is null)
+            return;
+        _restoring = true;
+        try { await _auto.SelectOptionAsync(Selected!); }
+        catch (Exception) { /* best-effort: teardown, or no JS runtime under bUnit */ }
+        finally { _restoring = false; }
     }
 }

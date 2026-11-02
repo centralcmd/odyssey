@@ -276,6 +276,42 @@ public sealed record OdsOption(string Value, string Label)
     /// Its <see cref="Sub"/> is a disclosure, so it is also part of the row's accessible name.
     /// </summary>
     public bool IsCreate { get; init; }
+
+    /// <summary>
+    /// The key of the <see cref="OdsOptionGroup"/> this row is listed under (Odyssey Design System · Combobox
+    /// <c>group</c>, issue #383 v5). Rows without one come first.
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>
+    /// A group's NOTE rather than a row to pick — a sentence shown in its group even when the group has no rows,
+    /// and read on the status line (Combobox <c>notes</c>: <i>Address search is unavailable — enter the address by
+    /// hand</i>). <c>OdsCombobox</c> never lets it be selected.
+    /// </summary>
+    public bool IsNote { get; init; }
+}
+
+/// <summary>
+/// One labelled group of <see cref="OdsCombobox"/> rows (Odyssey Design System · <c>ComboboxGroup</c>, issue #383
+/// v5): the address picker's <i>Saved places</i> and <i>Addresses from Kartverket</i>.
+/// </summary>
+/// <param name="Key">What an option's <see cref="OdsOption.Group"/> names.</param>
+/// <param name="Label">The visible heading, and the name the group is announced by.</param>
+public sealed record OdsOptionGroup(string Key, string Label);
+
+/// <summary>
+/// The one final row of an <see cref="OdsCombobox"/>, after a rule, present whenever the list is open (Odyssey
+/// Design System · <c>ComboboxFooterOption</c>, issue #383 v5): the address picker's <i>Enter an address by
+/// hand…</i>. It is a real option — reachable with ↓, picked with Enter — and choosing it calls
+/// <see cref="OnSelect"/> with the typed text without changing the value.
+/// </summary>
+public sealed record OdsComboboxFooter(string Label, Func<string, Task> OnSelect)
+{
+    /// <summary>Leading decorative glyph. Default <c>edit</c>.</summary>
+    public string Icon { get; init; } = "edit";
+
+    /// <summary>The full accessible name when the label abbreviates it.</summary>
+    public string? AriaLabel { get; init; }
 }
 
 /// <summary>

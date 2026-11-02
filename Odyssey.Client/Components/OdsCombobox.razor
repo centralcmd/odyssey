@@ -39,6 +39,15 @@
     line, outside the popover, says: "Type at least 2 characters" · "Searching…" · "N places found" ·
     "No places match" · "Couldn't load places". The create row's CreateDescription is a muted second
     line AND part of its accessible name. The synchronous mode is unchanged.
+
+    GROUPS and the FOOTER ROW (Groups, FooterOption, issue #383 v5) — the address picker's "Saved places" /
+    "Addresses from Kartverket" and its final "Enter an address by hand…". MudAutocomplete renders one flat
+    listbox, so a group cannot be a nested role="group": its heading is an unpickable row of its own (visible,
+    aria-hidden, skipped by the arrow keys) and the group's name opens the accessible name of its first row
+    instead. A group's note ("Address search is unavailable — enter the address by hand") is an unpickable row in
+    the group and is read on the status line. The footer row is a real option, always last after a rule; picking
+    it hands the typed text to FooterOption.OnSelect and leaves the value as it was. With either, the rows are
+    not capped at MudAutocomplete's default ten.
 *@
 
 @inject IJSRuntime Js
@@ -64,7 +73,7 @@
     {
         <span class="material-icons odc-combo-lead" style="@SelectedIconStyle" aria-hidden="true">@SelectedIcon</span>
     }
-    <MudAutocomplete T="OdsOption"
+    <MudAutocomplete T="OdsOption" @ref="_auto"
                      Value="@Selected"
                      ValueChanged="OnSelected"
                      SearchFunc="Search"
@@ -77,41 +86,86 @@
                      ResetValueOnEmptyText="false"
                      Class="@Class"
                      InputId="@InputId"
-                     ItemDisabledFunc="@(o => o?.Disabled == true)"
+                     ItemDisabledFunc="Unpickable"
+                     MaxItems="@MaxItems"
                      Error="@Error"
                      CoerceText="@(!FreeText)"
                      CoerceValue="@(!FreeText)"
                      @attributes="UserAttributes">
+        <BeforeItemsTemplate>
+            @if (HasRowExtras && NoResultRows)
+            {
+                @* The list always holds the footer row, so MudAutocomplete never shows NoItemsTemplate: say here what
+                   it would have said. Visual only in async mode — the status line speaks it, once. *@
+                @if (IsAsync)
+                {
+                    @if (!string.IsNullOrEmpty(AsyncPopoverText))
+                    {
+                        <div class="odc-combo-empty" aria-hidden="true">@AsyncPopoverText</div>
+                    }
+                }
+                else
+                {
+                    <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+                }
+            }
+        </BeforeItemsTemplate>
         <ItemTemplate Context="option">
-            @* aria-disabled rides on this span rather than on the row MudAutocomplete gives
-               role="option" — the template cannot reach that element. MudBlazor 9.9 emits no
-               aria-disabled of its own for a list item (ItemDisabledFunc blocks selection and styles
-               the row), so this is not redundant, but nor is it guaranteed to be announced as the
-               option's state. The meaning does not rest on it: OdsOption.Note carries the reason as
-               visible, readable TEXT ("in use"), which is the design system's actual contract. *@
-            <span class="@ItemClass(option)" aria-disabled="@(option.Disabled ? "true" : null)">
-                @if (!string.IsNullOrEmpty(option.Icon))
-                {
-                    <span class="material-icons odc-combo-opt-ic" style="@OptionIconStyle(option)" aria-hidden="true">@option.Icon</span>
-                }
-                <OdsComboboxOptionText Option="option" />
-                @* A qualifier, always in WORDS — a row never says why it can't be picked by colour alone. *@
-                @if (!string.IsNullOrEmpty(option.Note))
-                {
-                    <span class="odc-combo-opt-note">@option.Note</span>
-                }
-                @* The type the row would create — muted and trailing, never competing with the action. *@
-                @if (KindOf(option) is { } kind)
-                {
-                    <span class="odc-combo-create-kind">
-                        @if (!string.IsNullOrEmpty(kind.Icon))
-                        {
-                            <span class="material-icons" aria-hidden="true">@kind.Icon</span>
-                        }
-                        <span>@kind.Label</span>
-                    </span>
-                }
-            </span>
+            @if (IsHeadingRow(option))
+            {
+                <span class="odc-combo-group-label" aria-hidden="true">@option.Label</span>
+            }
+            else if (option.IsNote)
+            {
+                <span class="odc-combo-group-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>@option.Label</span>
+                </span>
+            }
+            else if (IsFooterRow(option))
+            {
+                <span class="odc-combo-item odc-combo-footer">
+                    <span class="material-icons odc-combo-opt-ic" aria-hidden="true">@option.Icon</span>
+                    <OdsComboboxOptionText Option="option" />
+                </span>
+            }
+            else
+            {
+                @* aria-disabled rides on this span rather than on the row MudAutocomplete gives
+                   role="option" — the template cannot reach that element. MudBlazor 9.9 emits no
+                   aria-disabled of its own for a list item (ItemDisabledFunc blocks selection and styles
+                   the row), so this is not redundant, but nor is it guaranteed to be announced as the
+                   option's state. The meaning does not rest on it: OdsOption.Note carries the reason as
+                   visible, readable TEXT ("in use"), which is the design system's actual contract. *@
+                <span class="@ItemClass(option)" aria-disabled="@(option.Disabled ? "true" : null)">
+                    @if (GroupOpenedBy(option) is { } group)
+                    {
+                        @* The heading row above is aria-hidden; the group is named here, once, as the first row is reached. *@
+                        <span class="odc-sr-only">@($"{group}: ")</span>
+                    }
+                    @if (!string.IsNullOrEmpty(option.Icon))
+                    {
+                        <span class="material-icons odc-combo-opt-ic" style="@OptionIconStyle(option)" aria-hidden="true">@option.Icon</span>
+                    }
+                    <OdsComboboxOptionText Option="option" />
+                    @* A qualifier, always in WORDS — a row never says why it can't be picked by colour alone. *@
+                    @if (!string.IsNullOrEmpty(option.Note))
+                    {
+                        <span class="odc-combo-opt-note">@option.Note</span>
+                    }
+                    @* The type the row would create — muted and trailing, never competing with the action. *@
+                    @if (KindOf(option) is { } kind)
+                    {
+                        <span class="odc-combo-create-kind">
+                            @if (!string.IsNullOrEmpty(kind.Icon))
+                            {
+                                <span class="material-icons" aria-hidden="true">@kind.Icon</span>
+                            }
+                            <span>@kind.Label</span>
+                        </span>
+                    }
+                </span>
+            }
         </ItemTemplate>
         <NoItemsTemplate>
             @if (IsAsync)
