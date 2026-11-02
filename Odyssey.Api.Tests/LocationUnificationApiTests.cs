@@ -850,6 +850,47 @@ public class LocationUnificationApiTests
         Assert.Equal(1, await host.ReadAsync(c => c.Locations.CountAsync()));
     }
 
+    /// <summary>
+    /// <c>PUT /api/properties/{id}</c> with a geocode (issue #383 v5 §3.3a, review note): a new address creates a
+    /// geocoded place and moves only this property onto it; an address a saved place already has links that place,
+    /// whose coordinates and source the geocode never overwrites.
+    /// </summary>
+    [Fact]
+    public async Task A_property_put_with_a_geocode_creates_a_geocoded_place_or_links_a_matching_one_unchanged()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var original = await host.SeedLocationAsync("Old address", line1: "Storgata 1", city: "Oslo", country: "NO");
+        var curated = await host.SeedLocationAsync("Curated", line1: "Storgata 9", city: "Oslo", country: "NO");
+        var property = await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = original });
+        RealEstateDetailsDto Geocoded(string line1) => new()
+        {
+            Kind = RealEstateKind.House, AddressLine = line1, PostalCode = null, City = "Oslo", CountryCode = "NO",
+            Latitude = 59.912734m, Longitude = 10.746094m, TimeZoneId = "Europe/Oslo", Source = LocationSource.Kartverket,
+            SourceReference = "0301-12345-1", ApplyTo = AddressApplyTo.ThisRecord, ExpectedOtherUses = 0,
+        };
+        Task<Guid?> Linked() => host.ReadAsync(c => c.RealEstateDetails.Where(d => d.PropertyId == property).Select(d => d.LocationId).SingleAsync());
+
+        var created = await host.Client.PutAsJsonAsync($"{PropertiesPath}/{property}", PropertyBody(Geocoded("Storgata 5")));
+
+        Assert.Equal(HttpStatusCode.NoContent, created.StatusCode);
+        var newPlaceId = (await Linked())!.Value;
+        Assert.NotEqual(original, newPlaceId);
+        var newPlace = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == newPlaceId));
+        Assert.Equal(("Storgata 5", 59.91273m, 10.74609m, "Europe/Oslo", LocationSource.Kartverket),
+            (newPlace.Line1, newPlace.Latitude, newPlace.Longitude, newPlace.TimeZoneId, newPlace.Source));
+        var old = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == original));
+        Assert.Equal(("Storgata 1", (decimal?)null), (old.Line1, old.Latitude));
+
+        var linked = await host.Client.PutAsJsonAsync($"{PropertiesPath}/{property}", PropertyBody(Geocoded("STORGATA 9")));
+
+        Assert.Equal(HttpStatusCode.NoContent, linked.StatusCode);
+        Assert.Equal(curated, await Linked());
+        var kept = await host.ReadAsync(c => c.Locations.AsNoTracking().SingleAsync(l => l.LocationId == curated));
+        Assert.Equal(("Curated", "Storgata 9", (decimal?)null, (string?)null, LocationSource.Manual, (string?)null),
+            (kept.Name, kept.Line1, kept.Latitude, kept.TimeZoneId, kept.Source, kept.SourceReference));
+        Assert.Equal(3, await host.ReadAsync(c => c.Locations.CountAsync()));
+    }
+
     [Fact]
     public async Task A_property_AllUses_edit_writes_four_fields_and_leaves_line2_and_region()
     {

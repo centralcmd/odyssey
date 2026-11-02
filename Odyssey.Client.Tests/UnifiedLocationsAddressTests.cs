@@ -29,8 +29,6 @@ namespace Odyssey.Client.Tests;
 /// </summary>
 public class UnifiedLocationsAddressTests
 {
-    private static readonly LocationAttribution Kartverket = new() { Text = "© Kartverket", License = "CC BY 4.0", Url = "https://www.kartverket.no" };
-
     private static AddressFields Fields(string line1 = "Storgata 1", string? line2 = null, string? region = null) => new()
     {
         Line1 = line1, Line2 = line2, PostalCode = "0155", City = "Oslo", Region = region, CountryCode = "NO",
@@ -47,28 +45,6 @@ public class UnifiedLocationsAddressTests
         AddressBlockStored? stored = null, AddressBlockVariant variant = AddressBlockVariant.Contact, AddressBlockPermissions? permissions = null,
         AddressFields? initial = null) =>
         new(variant, stored, permissions ?? AddressBlockPermissions.Full, initial);
-
-    private static LocationCandidate Candidate(
-        string line1 = "Storgata 3", string postalCode = "0155", string city = "OSLO",
-        LocationCandidateKind kind = LocationCandidateKind.Address, string reference = "kv-1", string? zone = "Europe/Oslo") => new()
-    {
-        Name = $"{line1}, {postalCode} {city}",
-        Kind = kind,
-        Line1 = kind == LocationCandidateKind.Address ? line1 : null,
-        PostalCode = kind == LocationCandidateKind.Address ? postalCode : null,
-        City = kind == LocationCandidateKind.Address ? city : null,
-        CountryCode = kind == LocationCandidateKind.Address ? "NO" : null,
-        Latitude = 59.91234m,
-        Longitude = 10.75012m,
-        TimeZoneId = zone,
-        Source = LocationSource.Kartverket,
-        SourceReference = reference,
-    };
-
-    private static void Answer(Mock<ILocationsApiClient> api, params LocationCandidate[] candidates) =>
-        api.Setup(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<LocationSearchResponse>.Success(
-                new LocationSearchResponse { Region = LocationSearchRegion.Norway, Candidates = candidates, Attribution = Kartverket }, HttpStatusCode.OK));
 
     // ── What each state sends (AC 3a) ─────────────────────────────────────────
 
@@ -253,6 +229,26 @@ public class UnifiedLocationsAddressTests
         Assert.False(model.Hand);
         model.EnterByHand("");
         Assert.Equal(("rue de rivoli 1", "Paris"), (model.Fields.Line1, model.Fields.City));
+    }
+
+    /// <summary>
+    /// Review note: entering by hand again with new text sets Line 1 only — the other fields entered by hand before
+    /// are kept, not wiped.
+    /// </summary>
+    [Fact]
+    public void Entering_by_hand_again_with_typed_text_keeps_the_other_hand_entered_fields()
+    {
+        var model = Model();
+        model.EnterByHand("Rue de Rivoli 1");
+        model.Edit(AddressBlockModel.PostalCodeKey, "75001");
+        model.Edit(AddressBlockModel.CityKey, "Paris");
+        model.Edit(AddressBlockModel.CountryCodeKey, "fr");
+        model.SearchInstead();
+
+        model.EnterByHand("Rue de Rivoli 3");
+
+        Assert.Equal(("Rue de Rivoli 3", "75001", "Paris", "FR"),
+            (model.Fields.Line1, model.Fields.PostalCode, model.Fields.City, model.Fields.CountryCode));
     }
 
     [Fact]
@@ -487,6 +483,15 @@ public class UnifiedLocationsAddressTests
         Assert.Null(h.Combo.OnCreate);
         Assert.Empty(h.Cut.FindAll(".odc-locsel-disclose"));
         h.Api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task The_clear_control_reads_clear_address_in_address_mode()
+    {
+        var h = RenderPicker(value: LocationPick.Existing(StorgataId));
+        await using var _ = h.Ctx;
+
+        Assert.Equal("Clear address", h.Cut.WaitForElement("button.odc-combo-clear").GetAttribute("aria-label"));
     }
 
     [Fact]

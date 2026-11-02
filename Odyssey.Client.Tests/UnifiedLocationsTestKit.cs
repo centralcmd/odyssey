@@ -81,6 +81,33 @@ internal static class UnifiedLocationsTestKit
         return api;
     }
 
+    /// <summary>The Kartverket credit a search response carries.</summary>
+    public static readonly LocationAttribution Kartverket = new() { Text = "© Kartverket", License = "CC BY 4.0", Url = "https://www.kartverket.no" };
+
+    /// <summary>A Kartverket search result — an address unless <c>kind</c> says otherwise.</summary>
+    public static LocationCandidate Candidate(
+        string line1 = "Storgata 3", string postalCode = "0155", string city = "OSLO",
+        LocationCandidateKind kind = LocationCandidateKind.Address, string reference = "kv-1", string? zone = "Europe/Oslo") => new()
+    {
+        Name = $"{line1}, {postalCode} {city}",
+        Kind = kind,
+        Line1 = kind == LocationCandidateKind.Address ? line1 : null,
+        PostalCode = kind == LocationCandidateKind.Address ? postalCode : null,
+        City = kind == LocationCandidateKind.Address ? city : null,
+        CountryCode = kind == LocationCandidateKind.Address ? "NO" : null,
+        Latitude = 59.91234m,
+        Longitude = 10.75012m,
+        TimeZoneId = zone,
+        Source = LocationSource.Kartverket,
+        SourceReference = reference,
+    };
+
+    /// <summary>Every location search answers with <paramref name="candidates"/>.</summary>
+    public static void Answer(Mock<ILocationsApiClient> api, params LocationCandidate[] candidates) =>
+        api.Setup(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<LocationSearchResponse>.Success(
+                new LocationSearchResponse { Region = LocationSearchRegion.Norway, Candidates = candidates, Attribution = Kartverket }, HttpStatusCode.OK));
+
     public static ApiProblem Problem(int status, string? field = null, string message = "Refused.") => new()
     {
         Title = message,
