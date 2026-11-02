@@ -3,7 +3,9 @@ using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
+using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Dtos;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Dtos.Journal;
@@ -80,6 +82,62 @@ public class UnifiedLocationsComponentTests
         Assert.Null(await slow);
         Assert.Equal("Hytta", fast!.Single().Value);
         Assert.Equal("Hytta", search.Results.Single().Value);
+    }
+
+    /// <summary>
+    /// Frontend review B1: the typed API client returns a cancelled call as a FAILED result, so the place search
+    /// surfaces it as a non-cancellation exception. A superseded request failing like that must not escape
+    /// <c>RunAsync</c> and must not report "Couldn't load places" over the newer answer.
+    /// </summary>
+    [Fact]
+    public async Task A_superseded_request_that_fails_on_cancel_is_silent()
+    {
+        var release = new TaskCompletionSource();
+        using var search = new OdsAsyncSearch(async (q, ct) =>
+        {
+            if (q == "Hy")
+            {
+                await release.Task;
+                if (ct.IsCancellationRequested)
+                    throw new InvalidOperationException("The request was cancelled.");
+            }
+
+            return Rows(q);
+        })
+        { DebounceMs = 0 };
+
+        var slow = search.RunAsync("Hy");
+        var fast = await search.RunAsync("Hytta");
+        release.SetResult();
+
+        Assert.Null(await slow);
+        Assert.Equal("Hytta", fast!.Single().Value);
+        Assert.Equal(OdsAsyncSearchStatus.Done, search.Status);
+        Assert.Equal("Hytta", search.Results.Single().Value);
+    }
+
+    /// <summary>B1, second shape: the host cancels the request's own token while it is still the current one.</summary>
+    [Fact]
+    public async Task A_request_whose_token_the_host_cancels_and_that_then_fails_is_silent()
+    {
+        using var host = new CancellationTokenSource();
+        var started = new TaskCompletionSource();
+        var release = new TaskCompletionSource();
+        using var search = new OdsAsyncSearch(async (_, ct) =>
+        {
+            started.SetResult();
+            await release.Task;
+            throw new InvalidOperationException(ct.IsCancellationRequested ? "cancelled" : "500");
+        })
+        { DebounceMs = 0 };
+
+        var pending = search.RunAsync("Hytta", host.Token);
+        await started.Task;
+        await host.CancelAsync();
+        release.SetResult();
+
+        Assert.Null(await pending);
+        Assert.NotEqual(OdsAsyncSearchStatus.Failed, search.Status);
     }
 
     [Fact]

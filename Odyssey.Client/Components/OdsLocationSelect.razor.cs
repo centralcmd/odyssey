@@ -133,7 +133,13 @@ public partial class OdsLocationSelect
     {
         var result = await Locations.ListAsync(1, PageSize, query, [nameof(ArchivalStatus.Active)], ct: ct);
         if (!result.IsSuccess)
+        {
+            // A cancelled request comes back as a failed result, not an exception; report it as the
+            // cancellation it is, so OdsAsyncSearch treats it as superseded rather than as a failure (B1).
+            ct.ThrowIfCancellationRequested();
             throw new InvalidOperationException(result.Error);
+        }
+
         return [.. (result.Value?.Items ?? []).Where(l => Offerable(l, Filter, ExcludeIds)).Select(LocationVisuals.OptionFor)];
     }
 

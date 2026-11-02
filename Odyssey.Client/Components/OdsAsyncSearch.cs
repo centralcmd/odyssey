@@ -84,7 +84,15 @@ public sealed class OdsAsyncSearch(Func<string, CancellationToken, Task<IReadOnl
         {
             return null;
         }
-        catch (Exception) when (ReferenceEquals(current, cts))
+        catch (Exception) when (token.IsCancellationRequested || cts.IsCancellationRequested || !ReferenceEquals(current, cts))
+        {
+            // A cancelled or superseded request is silent whatever it failed with. The typed API client turns
+            // a cancelled call into a failed result rather than an OperationCanceledException, so the search
+            // function may surface it as any exception — and a superseded one must neither escape into the
+            // host's search callback nor flash "Couldn't load places" over a newer query (frontend review B1).
+            return null;
+        }
+        catch (Exception)
         {
             Results = [];
             Set(OdsAsyncSearchStatus.Failed);
