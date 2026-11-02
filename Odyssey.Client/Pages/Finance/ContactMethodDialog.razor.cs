@@ -66,10 +66,11 @@ public partial class ContactMethodDialog
     private string SummaryId => $"cmd-errsum-{_uid}";
     private string ApplyGroupId => $"cmd-apply-{_uid}";
 
-    // The summary lists the address block's errors in field order; the label's own error stays on its field.
+    // The summary lists EVERY error in field order, the label first — as PropertyDialog and LocationDialog do —
+    // so a summary that takes focus never under-counts what is wrong (WCAG 3.3.1; accessibility review 1).
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
     [
-        .. new[] { AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key, AddressBlockModel.PostalCodeKey,
+        .. new[] { "label", AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key, AddressBlockModel.PostalCodeKey,
                    AddressBlockModel.CityKey, AddressBlockModel.RegionKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey }
             .Where(_errors.ContainsKey)
             .Select(k => new KeyValuePair<string, string>(k, _errors[k])),

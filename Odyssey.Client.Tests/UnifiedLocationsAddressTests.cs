@@ -475,6 +475,25 @@ public class UnifiedLocationsAddressTests
     private static void Submit(IRenderedComponent<ProvidersHost> cut, string text) =>
         cut.FindAll("button").Single(b => b.TextContent.Contains(text, StringComparison.Ordinal)).Click();
 
+    /// <summary>Accessibility review 1: the summary counts and lists the label's error too, first.</summary>
+    [Fact]
+    public async Task The_contact_address_summary_lists_the_label_error_with_the_address_errors()
+    {
+        var h = RenderContactDialog(null);
+        await using var _ = h.Ctx;
+
+        await h.Cut.InvokeAsync(() => h.Cut.FindComponent<OdsContactMethodLabelSelect>().Instance.ValueChanged.InvokeAsync(null));
+        await EditField(h.Cut, "Line 1", "Storgata 2");
+        Submit(h.Cut, "Create");
+
+        var summary = h.Cut.WaitForElement(".loc-err-summary");
+        var items = summary.QuerySelectorAll("li").Select(li => li.TextContent.Trim()).ToList();
+        Assert.True(items.Count >= 2, string.Join(" | ", items));
+        Assert.Equal(h.Cut.FindComponent<OdsContactMethodLabelSelect>().Instance.Error, items[0]);
+        Assert.StartsWith($"Fix these {items.Count} things", summary.TextContent.Trim(), StringComparison.Ordinal);
+        Assert.Empty(h.Sent);
+    }
+
     [Fact]
     public async Task Saving_a_shared_change_without_a_choice_shows_the_summary_which_takes_focus()
     {
