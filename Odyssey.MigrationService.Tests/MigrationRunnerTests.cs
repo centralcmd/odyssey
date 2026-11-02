@@ -6,9 +6,9 @@ using Xunit;
 namespace Odyssey.MigrationService.Tests;
 
 /// <summary>
-/// The two decisions in <see cref="MigrationRunner"/> that are neither the detector's arithmetic nor
-/// the relational round trip: the non-relational short-circuit, and the cancellation token deliberately
-/// withheld from <c>MigrateAsync</c> (issue #468).
+/// The decisions in <see cref="MigrationRunner"/> that are neither the detector's arithmetic nor the
+/// relational round trip: the non-relational short-circuit, the cancellation token deliberately withheld
+/// from <c>MigrateAsync</c> (issue #468), and the issue #380 staging around the location conversion.
 /// </summary>
 public class MigrationRunnerTests
 {
@@ -68,6 +68,58 @@ public class MigrationRunnerTests
         Assert.All(calls, call =>
             Assert.Equal("CancellationToken.None", call.Groups[1].Value.Split(',')[^1].Trim()));
         Assert.Contains(calls, call => call.Groups[1].Value.Contains(',', StringComparison.Ordinal));
+    }
+
+    // ── The staging decision (senior-tester L3) ──────────────────────────────
+
+    private const string Initial = "20260829095318_InitialCreate";
+    private const string Before = "20261001000000_SomethingBefore";
+    private const string Expand = "20261020000000_" + Odyssey.Core.Locations.Conversion.ILocationConversion.ExpandMigration;
+    private const string Contract = "20261020000001_" + Odyssey.Core.Locations.Conversion.ILocationConversion.ContractMigration;
+    private const string After = "20261101000000_SomethingAfter";
+
+    [Fact]
+    public void A_full_upgrade_migrates_through_Expand_then_converts()
+    {
+        var plan = MigrationRunner.PlanStages([Initial, Before, Expand, Contract, After], hasConversion: true);
+
+        Assert.True(plan.RunConversion);
+        Assert.Equal([Initial, Before, Expand], plan.ExpandStage);
+    }
+
+    [Fact]
+    public void A_restart_after_Expand_converts_without_an_Expand_stage()
+    {
+        var plan = MigrationRunner.PlanStages([Contract, After], hasConversion: true);
+
+        Assert.True(plan.RunConversion);
+        Assert.Null(plan.ExpandStage);
+    }
+
+    [Fact]
+    public void Once_the_contract_is_applied_the_conversion_never_runs_again()
+    {
+        string[][] cases = [[], [After], [Before, After]];
+
+        Assert.All(cases, pending =>
+            Assert.Equal(new MigrationRunner.StagePlan(null, false), MigrationRunner.PlanStages(pending, hasConversion: true)));
+    }
+
+    [Fact]
+    public void Without_a_conversion_everything_is_one_stage()
+    {
+        Assert.Equal(
+            new MigrationRunner.StagePlan(null, false),
+            MigrationRunner.PlanStages([Initial, Expand, Contract, After], hasConversion: false));
+    }
+
+    [Fact]
+    public void Only_a_suffix_match_names_a_stage_migration()
+    {
+        // A migration whose name merely contains the contract's is not the contract.
+        var lookalike = "20261102000000_" + Odyssey.Core.Locations.Conversion.ILocationConversion.ContractMigration + "Followup";
+
+        Assert.False(MigrationRunner.PlanStages([lookalike], hasConversion: true).RunConversion);
     }
 
     private static OdysseyContext InMemoryContext() =>

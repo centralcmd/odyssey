@@ -63,20 +63,18 @@ public static class MigrationRunner
         }
 
         var pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
-        var contractPending = pending.Any(id => IsNamed(id, ILocationConversion.ContractMigration));
+        var plan = PlanStages(pending, conversion is not null);
 
-        if (conversion is not null && contractPending)
+        if (plan.RunConversion)
         {
-            var expandAt = pending.FindIndex(id => IsNamed(id, ILocationConversion.ExpandMigration));
-            if (expandAt >= 0)
+            if (plan.ExpandStage is { } expandStage)
             {
-                var expandId = pending[expandAt];
-                var expandStage = pending.Take(expandAt + 1).ToList();
+                var expandId = expandStage[^1];
                 await RunStageAsync(dbContext, expandStage, cancellationToken,
                     () => dbContext.Database.MigrateAsync(expandId, CancellationToken.None));
             }
 
-            await conversion.ConvertAsync(cancellationToken);
+            await conversion!.ConvertAsync(cancellationToken);
             pending = (await dbContext.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
         }
 
@@ -95,6 +93,31 @@ public static class MigrationRunner
 
             await migrate();
         });
+    }
+
+    /// <summary>What <see cref="MigrateAsync(DbContext, ILocationConversion?, CancellationToken)"/> does before its final stage.</summary>
+    /// <param name="ExpandStage">
+    /// The pending migrations up to and including <see cref="ILocationConversion.ExpandMigration"/>, migrated as a
+    /// stage of their own before the conversion; null when Expand is already applied (or there is no conversion).
+    /// </param>
+    /// <param name="RunConversion">Whether the conversion runs: only while the contract migration is still pending.</param>
+    internal sealed record StagePlan(IReadOnlyList<string>? ExpandStage, bool RunConversion);
+
+    /// <summary>
+    /// The staging decision alone, with no database: a pure function of the pending migration ids, so the fast
+    /// tier can pin it (senior-tester L3). The conversion runs only while the contract migration is pending —
+    /// never on a later upgrade, never on a fresh database that a previous start already took past it — and
+    /// Expand gets its own stage only when it is itself still pending.
+    /// </summary>
+    internal static StagePlan PlanStages(IReadOnlyList<string> pending, bool hasConversion)
+    {
+        if (!hasConversion || !pending.Any(id => IsNamed(id, ILocationConversion.ContractMigration)))
+        {
+            return new StagePlan(null, false);
+        }
+
+        var expandAt = pending.ToList().FindIndex(id => IsNamed(id, ILocationConversion.ExpandMigration));
+        return new StagePlan(expandAt >= 0 ? pending.Take(expandAt + 1).ToList() : null, true);
     }
 
     private static bool IsNamed(string migrationId, string name) =>

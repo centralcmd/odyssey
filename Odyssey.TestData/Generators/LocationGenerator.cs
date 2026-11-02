@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using Odyssey.Core.Locations;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.TestData.Generators;
@@ -56,13 +57,10 @@ public static class LocationGenerator
         string key, LocationSource source, string? line1, string? line2, string? postalCode, string? city,
         string? region, string? countryCode, string createdBy, DateTime createdAt)
     {
-        var composed = string.Join(", ", new[]
-        {
-            string.Join(' ', new[] { line1, line2 }.Where(part => part is not null)),
-            string.Join(' ', new[] { postalCode, city }.Where(part => part is not null)),
-            region ?? string.Empty,
-            countryCode ?? string.Empty,
-        }.Where(group => group.Length > 0));
+        // The production composer, never a local join: a seeded name must be exactly the one the resolver
+        // would give the same address, or a find-or-create against the seed would mint a second place.
+        var composed = LocationNaming.ComposeAddress(line1, line2, postalCode, city, region, countryCode)
+            ?? throw new InvalidOperationException($"Demo address '{key}' has no part to compose.");
 
         return new Location
         {

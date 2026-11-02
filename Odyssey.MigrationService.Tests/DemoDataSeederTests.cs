@@ -832,6 +832,10 @@ public class DemoDataSeederTests
             Assert.Null(l.SourceReference);
             Assert.Equal(
                 LocationAddressKey.Compute(l.CountryCode, l.PostalCode, l.City, l.Line1, l.Line2, l.Region), l.AddressKey);
+            // Senior-tester L4: the seeded name is exactly what the resolver's composer would give this address.
+            var composed = Odyssey.Core.Locations.LocationNaming.ComposeAddress(l.Line1, l.Line2, l.PostalCode, l.City, l.Region, l.CountryCode);
+            Assert.Equal(composed, l.Name);
+            Assert.Equal(composed, l.AddressText);
         });
         Assert.Equal(rows.Count, rows.Select(l => l.Name.ToUpperInvariant()).Distinct().Count());
         Assert.Equal(expected.Locations.Select(l => l.LocationId), DemoDataSet.Build().Locations.Select(l => l.LocationId));
