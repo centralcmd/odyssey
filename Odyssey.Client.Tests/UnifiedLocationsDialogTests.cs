@@ -264,7 +264,12 @@ public class UnifiedLocationsDialogTests
         Assert.Contains("Merge “Storgata 1” into another place", cut.Markup);
         var description = cut.Find(".loc-dialog-desc");
         Assert.StartsWith("Every event, journal entry, contact and property that uses “Storgata 1” will use the target instead.", description.TextContent);
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsDialogA11y" && Equals(i.Arguments[0], "dialog") && Equals(i.Arguments[1], description.Id));
+        var a11y = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsDialogA11y");
+        Assert.Equal(("dialog", description.Id), ((string?)a11y.Arguments[1], (string?)a11y.Arguments[2]));
+        // N5: the script is told which dialog — its own class token, on this dialog and on no other.
+        var key = Assert.IsType<string>(a11y.Arguments[0]);
+        Assert.Equal(cut.FindComponent<OdsModal>().Instance.ModalKey, key);
+        Assert.Single(cut.FindAll($".{key}"));
         Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstField");
         // The picker is the body's first focusable control, so the default first-field focus lands on it.
         Assert.Equal("combobox", cut.Find(".ods-modal-body input, .ods-modal-body button").GetAttribute("role"));
@@ -358,6 +363,20 @@ public class UnifiedLocationsDialogTests
         return (ctx, cut, deleted);
     }
 
+    /// <summary>N5: the open-edge script finds its dialog by the key it is given, and waits for the portal.</summary>
+    [Fact]
+    public void The_dialog_a11y_script_targets_its_own_dialog_and_retries_until_it_renders()
+    {
+        var html = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "index.html"));
+        var start = html.IndexOf("window.odsDialogA11y", StringComparison.Ordinal);
+        var script = html[start..html.IndexOf("window.odsFocusChainOrHeading", start, StringComparison.Ordinal)];
+
+        Assert.Contains("function (modalKey, role, describedById)", script, StringComparison.Ordinal);
+        Assert.Contains("getElementsByClassName(modalKey)", script, StringComparison.Ordinal);
+        Assert.Contains("requestAnimationFrame(apply)", script, StringComparison.Ordinal);
+        Assert.DoesNotContain("length - 1", script, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task The_delete_dialog_is_an_alertdialog_described_on_open_that_starts_on_cancel()
     {
@@ -367,7 +386,12 @@ public class UnifiedLocationsDialogTests
         Assert.Contains("Delete “Hytta”?", cut.Markup);
         var description = cut.Find(".loc-dialog-desc");
         Assert.Equal("This removes the place permanently. It can only be deleted when nothing uses it.", description.TextContent);
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsDialogA11y" && Equals(i.Arguments[0], "alertdialog") && Equals(i.Arguments[1], description.Id));
+        var a11y = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsDialogA11y");
+        Assert.Equal(("alertdialog", description.Id), ((string?)a11y.Arguments[1], (string?)a11y.Arguments[2]));
+        // N5: the script is told which dialog — its own class token, on this dialog and on no other.
+        var key = Assert.IsType<string>(a11y.Arguments[0]);
+        Assert.Equal(cut.FindComponent<OdsModal>().Instance.ModalKey, key);
+        Assert.Single(cut.FindAll($".{key}"));
         Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusDialogCancel");
         Assert.NotNull(cut.Find("button[data-dialog-cancel]"));
     }

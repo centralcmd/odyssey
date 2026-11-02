@@ -233,18 +233,26 @@
                 if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
             }
         };
-        window.odsDialogA11y = function (role, describedById) {
-            // OdsModal Role / DescribedById (issue #383): set the topmost dialog's role (alertdialog for a
+        window.odsDialogA11y = function (modalKey, role, describedById) {
+            // OdsModal Role / DescribedById (issue #383): set THIS dialog's role (alertdialog for a
             // destructive confirmation) and point aria-describedby at its body copy, so both are read on
-            // open. MudDialog renders its own role="dialog" element; the .ods-modal class sits on it or
-            // inside it.
-            const dialogs = document.querySelectorAll('.ods-modal');
-            const node = dialogs[dialogs.length - 1];
-            if (!node) return;
-            const dialog = node.matches('[role="dialog"], [role="alertdialog"]') ? node
-                : (node.closest('[role="dialog"], [role="alertdialog"]') || node);
-            if (role) dialog.setAttribute('role', role);
-            if (describedById) dialog.setAttribute('aria-describedby', describedById);
+            // open. The dialog is found by its own class token (OdsModal.ModalKey), never as "the last
+            // .ods-modal", which may be an older dialog. MudDialog renders its own role="dialog" element;
+            // the class sits on it or inside it. If the portal has not rendered yet, retry on the next
+            // frames rather than silently dropping the role (frontend review N5).
+            let frames = 0;
+            const apply = function () {
+                const node = document.getElementsByClassName(modalKey)[0];
+                if (!node) {
+                    if (++frames <= 30) requestAnimationFrame(apply);
+                    return;
+                }
+                const dialog = node.matches('[role="dialog"], [role="alertdialog"]') ? node
+                    : (node.closest('[role="dialog"], [role="alertdialog"]') || node);
+                if (role) dialog.setAttribute('role', role);
+                if (describedById) dialog.setAttribute('aria-describedby', describedById);
+            };
+            apply();
         };
         window.odsFocusChainOrHeading = function (ids) {
             // Focus the first id in the chain that is on the page (a row's menu button), else the page h1 —
