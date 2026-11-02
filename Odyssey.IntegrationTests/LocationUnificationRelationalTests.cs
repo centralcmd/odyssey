@@ -297,6 +297,12 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
 
     // ── AC 10: nothing deletes a place implicitly ────────────────────────────────────────────────
 
+    /// <summary>
+    /// AC 10 (senior-tester L1): no record write ever deletes a place. Every kind of release is exercised — a
+    /// copy-on-write edit and an unlink, a merge, and the deletes of an event, a series, an entry, a contact
+    /// and a property — and every place each of them touched is asserted BY ID still to exist, so a regression
+    /// names the place it lost rather than an off-by-one count.
+    /// </summary>
     [SkippableFact]
     public async Task Unlinking_editing_merging_and_deleting_records_never_removes_a_place()
     {
@@ -310,39 +316,83 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
             property = await Properties(context).Create(PropertyBody(new RealEstateDetailsDto
             {
                 Kind = RealEstateKind.House, AddressLine = "Kirkegata 2", City = "Oslo", CountryCode = "NO",
-            }), Actor);
+            }), Actor, claims: LocationClaims.Trusted);
         }
 
         var calendar = await SeedCalendarAsync();
-        var spare = await SeedLocationAsync("Spare");
+        var eventPlace = await SeedLocationAsync("Event place");
+        var seriesPlace = await SeedLocationAsync("Series place");
+        var entryPlace = await SeedLocationAsync("Entry place");
+        var mergeSource = await SeedLocationAsync("Merge source");
+        var mergeTarget = await SeedLocationAsync("Merge target");
+        Guid eventId, seriesId, entryId;
         await using (var context = NewContext())
         {
-            context.CalendarEvents.Add(NewEvent(calendar, spare));
+            var calendarEvent = NewEvent(calendar, eventPlace);
+            var series = new RecurrencePattern
+            {
+                CalendarId = calendar, Title = "Series", LocationId = seriesPlace, Frequency = Odyssey.Context.RecurrenceFrequency.Weekly,
+                StartDateTime = new DateTime(2026, 1, 10, 9, 0, 0, DateTimeKind.Utc),
+                EndDateTime = new DateTime(2026, 1, 10, 10, 0, 0, DateTimeKind.Utc),
+                CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            };
+            var entry = new JournalEntry
+            {
+                ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "Entry", Content = "Body", LocationId = entryPlace,
+                EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            };
+            context.CalendarEvents.Add(calendarEvent);
+            context.CalendarEvents.Add(NewEvent(calendar, mergeSource));
+            context.RecurrencePatterns.Add(series);
+            context.JournalEntries.Add(entry);
             await context.SaveChangesAsync();
+            (eventId, seriesId, entryId) = (calendarEvent.CalendarEventId, series.RecurrencePatternId, entry.JournalEntryId);
         }
 
-        var before = await CountLocationsAsync();
+        var touched = new[]
+        {
+            address.LocationId, property.RealEstateDetails!.LocationId!.Value,
+            eventPlace, seriesPlace, entryPlace, mergeSource, mergeTarget,
+        };
 
         await using (var context = NewContext())
         {
-            await Contacts(context).UpdateAddress(contact, address.Id, Address("Storgata 5", "Oslo") with { ApplyTo = AddressApplyTo.ThisRecord });
+            await Contacts(context).UpdateAddress(contact, address.Id, Address("Storgata 5", "Oslo") with { ApplyTo = AddressApplyTo.ThisRecord }, claims: LocationClaims.Trusted);
+        }
+
+        Guid copied;
+        await using (var context = NewContext())
+        {
+            copied = (await context.Addresses.SingleAsync()).LocationId;
+            Assert.NotEqual(address.LocationId, copied);
+            await Properties(context).Update(property.PropertyId, PropertyBody(new RealEstateDetailsDto { Kind = RealEstateKind.House }), Actor, claims: LocationClaims.Trusted);
         }
 
         await using (var context = NewContext())
         {
-            await Properties(context).Update(property.PropertyId, PropertyBody(new RealEstateDetailsDto { Kind = RealEstateKind.House }), Actor);
+            await new LocationService(context).MergeAsync(mergeSource, mergeTarget, LocationClaims.Trusted, Actor);
         }
 
         await using (var context = NewContext())
         {
-            var row = await context.CalendarEvents.SingleAsync();
-            context.CalendarEvents.Remove(row);
-            await context.SaveChangesAsync();
+            Assert.True(await new CalendarEventService(context, new StubJournalLimitsLookup()).Delete(eventId));
+            Assert.True(await new RecurrencePatternService(context, new StubJournalLimitsLookup()).Delete(seriesId));
+            Assert.True(await Entries(context).Delete(entryId));
             await Contacts(context).Delete(contact, detachBlockingLinks: false, null);
             await Properties(context).Delete(property.PropertyId, Actor);
         }
 
-        Assert.Equal(before + 1, await CountLocationsAsync());
+        await using var check = NewContext();
+        var surviving = await check.Locations.AsNoTracking().Select(l => l.LocationId).ToListAsync();
+        Assert.All(touched.Append(copied), id => Assert.Contains(id, surviving));
+        Assert.Equal(mergeTarget, (await check.Locations.AsNoTracking().SingleAsync(l => l.LocationId == mergeSource)).MergedIntoLocationId);
+    }
+
+    private static JournalEntryService Entries(OdysseyContext context)
+    {
+        var files = new FileLookup(context);
+        return new JournalEntryService(
+            context, new ContactLookup(context), files, new PhotoLookup(context, files, null!), new StubJournalLimitsLookup());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────────
@@ -418,12 +468,6 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
         context.Locations.Add(location);
         await context.SaveChangesAsync();
         return location.LocationId;
-    }
-
-    private async Task<int> CountLocationsAsync()
-    {
-        await using var context = NewContext();
-        return await context.Locations.CountAsync();
     }
 
     private async Task MigratedAsync()

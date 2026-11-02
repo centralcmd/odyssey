@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -230,10 +231,10 @@ public class LocationUnificationApiTests
         Assert.Equal(0, await host.ReadAsync(c => c.Locations.CountAsync(l => l.LocationId == id)));
     }
 
-    public static TheoryData<string> References => new()
-    {
-        "event", "series", "entry", "address", "property", "weather", "preference", "household", "forwarder",
-    };
+    private static readonly string[] ReferenceKinds =
+        ["event", "series", "entry", "address", "property", "weather", "preference", "household", "forwarder"];
+
+    public static TheoryData<string> References => new(ReferenceKinds);
 
     [Theory]
     [MemberData(nameof(References))]
@@ -263,6 +264,46 @@ public class LocationUnificationApiTests
         Assert.DoesNotContain(reference, body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("Storgata", body, StringComparison.Ordinal);
         Assert.Equal(1, await host.ReadAsync(c => c.Locations.CountAsync(l => l.LocationId == id)));
+    }
+
+    /// <summary>
+    /// AC 11 (senior-tester L2): "generic" means the nine refusals are indistinguishable — one body whatever
+    /// holds the place, so the 409 is no oracle for WHICH kind of record uses it. Each place is referenced by
+    /// exactly one kind; the route id and the trace id are the only parts allowed to differ.
+    /// </summary>
+    [Fact]
+    public async Task The_nine_delete_refusals_have_one_identical_body()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var bodies = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var reference in ReferenceKinds)
+        {
+            var id = await host.SeedLocationAsync($"In use by {reference}", line1: $"Storgata {bodies.Count + 1}", city: "Oslo", country: "NO");
+            switch (reference)
+            {
+                case "event": await host.SeedEventAsync(id); break;
+                case "series": await host.SeedSeriesAsync(id); break;
+                case "entry": await host.SeedEntryAsync(id); break;
+                case "address":
+                    await host.PostAddressAsync(await host.PostContactAsync("Acme"), new NewAddress { Label = AddressLabel.Visiting, LocationId = id });
+                    break;
+                case "property": await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id }); break;
+                case "weather": await host.SeedWeatherAsync(id); break;
+                case "preference": await host.SeedPreferenceAsync(id); break;
+                case "household": await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, id.ToString()); break;
+                case "forwarder": await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true); break;
+            }
+
+            var response = await host.Client.DeleteAsync($"{LocationsPath}/{id}");
+            Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+            var problem = JsonNode.Parse(await response.Content.ReadAsStringAsync())!.AsObject();
+            problem.Remove("traceId");
+            bodies[reference] = problem.ToJsonString().Replace(id.ToString(), "{id}", StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.Equal(9, bodies.Count);
+        Assert.Single(bodies.Values.Distinct(StringComparer.Ordinal));
     }
 
     [Fact]
@@ -876,8 +917,15 @@ public class LocationUnificationApiTests
 
     // ── Weather (§5.8, AC 16, 17) ───────────────────────────────────────────────────────────────────
 
-    [Fact]
-    public async Task Event_weather_resolves_explicit_then_linked_with_coordinates_then_preference_then_household()
+    /// <summary>
+    /// AC 16 and 20 on both record kinds that link a place (senior-tester M2): the event path and the journal
+    /// entry path resolve through the same rule, and a linked place with no weather is <c>NoData</c> on THAT
+    /// place — never a silent fallback to the preference or the household default.
+    /// </summary>
+    [Theory]
+    [InlineData("event")]
+    [InlineData("entry")]
+    public async Task Record_weather_resolves_explicit_then_linked_with_coordinates_then_preference_then_household(string kind)
     {
         await using var host = await Host.StartAsync(Everything);
         var linkedWithWeather = await host.SeedLocationAsync("Cabin", latitude: 61m);
@@ -890,27 +938,60 @@ public class LocationUnificationApiTests
         await host.SeedWeatherAsync(preferred);
         await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, household.ToString());
 
-        async Task<JsonElement> Weather(Guid eventId, string query = "")
+        Task<Guid> Seed(Guid? locationId) => kind == "event" ? host.SeedEventAsync(locationId) : host.SeedEntryAsync(locationId);
+
+        async Task<JsonElement> Weather(Guid recordId, string query = "")
         {
-            var json = await host.Client.GetStringAsync($"{EventsPath}/{eventId}/weather{query}");
+            var path = kind == "event" ? EventsPath : EntriesPath;
+            var json = await host.Client.GetStringAsync($"{path}/{recordId}/weather{query}");
             return JsonDocument.Parse(json).RootElement.Clone();
         }
 
-        var withWeather = await Weather(await host.SeedEventAsync(linkedWithWeather));
-        Assert.Equal("Linked", withWeather.GetProperty("resolvedFrom").GetString());
-        Assert.Equal(linkedWithWeather, withWeather.GetProperty("location").GetProperty("locationId").GetGuid());
+        static Guid LocationOf(JsonElement weather) => weather.GetProperty("location").GetProperty("locationId").GetGuid();
 
-        var noWeather = await Weather(await host.SeedEventAsync(linkedNoWeather));
+        var withWeather = await Weather(await Seed(linkedWithWeather));
+        Assert.Equal("Linked", withWeather.GetProperty("resolvedFrom").GetString());
+        Assert.Equal(linkedWithWeather, LocationOf(withWeather));
+
+        var noWeather = await Weather(await Seed(linkedNoWeather));
         Assert.Equal("Linked", noWeather.GetProperty("resolvedFrom").GetString());
         Assert.Equal("NoData", noWeather.GetProperty("status").GetString());
+        Assert.Equal(linkedNoWeather, LocationOf(noWeather));
 
-        var noCoordinates = await host.SeedEventAsync(linkedNoCoordinates);
-        Assert.Equal("Household", (await Weather(noCoordinates)).GetProperty("resolvedFrom").GetString());
-        Assert.Equal("Explicit", (await Weather(noCoordinates, $"?locationId={preferred}")).GetProperty("resolvedFrom").GetString());
+        var noCoordinates = await Seed(linkedNoCoordinates);
+        var fallback = await Weather(noCoordinates);
+        Assert.Equal("Household", fallback.GetProperty("resolvedFrom").GetString());
+        Assert.Equal(household, LocationOf(fallback));
+        var explicitly = await Weather(noCoordinates, $"?locationId={preferred}");
+        Assert.Equal("Explicit", explicitly.GetProperty("resolvedFrom").GetString());
+        Assert.Equal(preferred, LocationOf(explicitly));
 
         await host.SeedPreferenceAsync(preferred);
-        Assert.Equal("Preferred", (await Weather(noCoordinates)).GetProperty("resolvedFrom").GetString());
+        var fromPreference = await Weather(noCoordinates);
+        Assert.Equal("Preferred", fromPreference.GetProperty("resolvedFrom").GetString());
+        Assert.Equal(preferred, LocationOf(fromPreference));
+    }
 
+    /// <summary>The hourly and daily reads carry <c>resolvedFrom</c> on the wire too (M2).</summary>
+    [Fact]
+    public async Task Hourly_and_daily_weather_carry_resolvedFrom()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var household = await host.SeedLocationAsync("Home", latitude: 59m);
+        await host.SeedWeatherAsync(household);
+        var named = await host.SeedLocationAsync("Cabin", latitude: 61m);
+        await host.SeedWeatherAsync(named);
+        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, household.ToString());
+
+        async Task<string?> ResolvedFrom(string url) =>
+            JsonDocument.Parse(await host.Client.GetStringAsync(url)).RootElement.GetProperty("resolvedFrom").GetString();
+
+        const string hourly = "/api/weather/hourly?fromUtc=2026-01-01T00:00:00Z&toUtc=2026-01-01T06:00:00Z";
+        const string daily = "/api/weather/daily?from=2026-01-01&to=2026-01-05";
+        Assert.Equal("Household", await ResolvedFrom(hourly));
+        Assert.Equal("Explicit", await ResolvedFrom($"{hourly}&locationId={named}"));
+        Assert.Equal("Household", await ResolvedFrom(daily));
+        Assert.Equal("Explicit", await ResolvedFrom($"{daily}&locationId={named}"));
     }
 
     [Fact]
