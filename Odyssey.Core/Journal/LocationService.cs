@@ -237,7 +237,7 @@ public class LocationService
     /// is a <c>403</c> whose message does not name the class.
     /// </remarks>
     public async Task<ExistingLocation?> MergeAsync(
-        Guid sourceId, Guid targetId, LocationClaims claims, string userId, CancellationToken cancellationToken = default)
+        Guid sourceId, Guid targetId, LocationClaims claims, string? userId, CancellationToken cancellationToken = default)
     {
         LocationEntity? result = null;
         var repointed = 0;
@@ -346,7 +346,7 @@ public class LocationService
     /// then the reference guard: any reference, a merge forwarder included, is a <c>409</c> whose body does
     /// not say what uses it. False when unknown.
     /// </summary>
-    public async Task<bool> DeleteAsync(Guid id, string userId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, string? userId, CancellationToken cancellationToken = default)
     {
         var found = false;
         await LocationTransactions.ExecuteAsync(context, async () =>

@@ -499,10 +499,12 @@ public sealed class LocationResolver
                 continue;
             }
 
+            // Repoint first, detach after: detaching the loser while a required link (a contact address)
+            // still points at it would sever that relationship.
             var survivorId = winner.MergedIntoLocationId ?? winner.LocationId;
-            context.Entry(pending).State = EntityState.Detached;
             var survivor = await context.Locations.FirstAsync(l => l.LocationId == survivorId, cancellationToken);
             Repoint(pending, survivor);
+            context.Entry(pending).State = EntityState.Detached;
             created.Remove(pending);
             relinked = true;
         }
