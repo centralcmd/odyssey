@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -22,6 +23,7 @@ public partial class LocationsPage
     [Inject] private IPageStateService PageState { get; set; } = default!;
     [Inject] private IWeatherApiClient Weather { get; set; } = default!;
     [Inject] private ISystemSettingsApiClient SystemSettings { get; set; } = default!;
+    [Inject] private Microsoft.JSInterop.IJSRuntime Js { get; set; } = default!;
 
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingLocation> _locations = [];
@@ -51,6 +53,16 @@ public partial class LocationsPage
     private string _searchString = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = LocationVisuals.DefaultStatusFilter;
 
+    // Issue #383 §3.6: two separate two-option filters beside status — none or both sends no parameter.
+    private IReadOnlyCollection<string> _coordinatesFilter = [];
+    private IReadOnlyCollection<string> _useFilter = [];
+
+    private bool? HasCoordinatesQuery =>
+        LocationVisuals.FilterValue(_coordinatesFilter, LocationVisuals.HasCoordinatesKey, LocationVisuals.NeedsCoordinatesKey);
+
+    private bool? ReferencedQuery =>
+        LocationVisuals.FilterValue(_useFilter, LocationVisuals.UsedKey, LocationVisuals.NotUsedKey);
+
     // ── Sort — LocationSortBy: Name (default, ascending), CreatedAt, UpdatedAt; the server applies it. ──
     private static readonly OdsTableSort DefaultSort = new("name", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
@@ -73,6 +85,7 @@ public partial class LocationsPage
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
+    private bool _canDelete;
     private bool _canReadWeather;
     private bool _canUpdateWeather;
     private bool _canPurgeWeather;
@@ -87,7 +100,8 @@ public partial class LocationsPage
     private bool _editOpen;
 
     // ── Computed ────────────────────────────────────────────────────────────────
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0;
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0
+        || _coordinatesFilter.Count > 0 || _useFilter.Count > 0;
 
     private int? FileTotal => _activeCount + _archivedCount;
 
@@ -122,6 +136,7 @@ public partial class LocationsPage
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.LocationsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.LocationsUpdate);
+        _canDelete = user.HasPermission(PermissionClaims.LocationsDelete);
         // Weather on this page is Admin-only (issue #348): without weather.locations.read it shows nothing.
         _canReadWeather = user.HasPermission(PermissionClaims.WeatherLocationsRead);
         _canUpdateWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
@@ -144,6 +159,8 @@ public partial class LocationsPage
         _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _statusFilter = LocationVisuals.StatusOptions.KnownValues(state.StatusFilter);
+        _coordinatesFilter = LocationVisuals.CoordinatesOptions.KnownValues(state.CoordinatesFilter);
+        _useFilter = LocationVisuals.UseOptions.KnownValues(state.UseFilter);
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
@@ -153,6 +170,8 @@ public partial class LocationsPage
         SearchOpen = _searchOpen,
         Search = _searchString,
         StatusFilter = [.. _statusFilter],
+        CoordinatesFilter = [.. _coordinatesFilter],
+        UseFilter = [.. _useFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         BatchSize = _batch,
@@ -163,6 +182,8 @@ public partial class LocationsPage
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _searchString = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await LoadLocations(); }
+    private async Task OnCoordinatesFilterChanged(IReadOnlyCollection<string> values) { _coordinatesFilter = values ?? []; PersistPageState(); await LoadLocations(); }
+    private async Task OnUseFilterChanged(IReadOnlyCollection<string> values) { _useFilter = values ?? []; PersistPageState(); await LoadLocations(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await LoadLocations(); }
     private void OnBatchChanged(int size) { _batch = size; PersistPageState(); StateHasChanged(); }
 
@@ -170,15 +191,19 @@ public partial class LocationsPage
     {
         _searchString = string.Empty;
         _statusFilter = [];
+        _coordinatesFilter = [];
+        _useFilter = [];
         PersistPageState();
         await LoadLocations();
     }
 
-    private sealed class LocationsPageState
+    internal sealed class LocationsPageState
     {
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> StatusFilter { get; set; } = [.. LocationVisuals.DefaultStatusFilter];
+        public List<string> CoordinatesFilter { get; set; } = [];
+        public List<string> UseFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
@@ -200,6 +225,8 @@ public partial class LocationsPage
             _statusFilter,
             SortByFor(_sort.Key),
             _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            HasCoordinatesQuery,
+            ReferencedQuery,
             ct));
         if (response.IsSuperseded)
             return;
@@ -207,12 +234,13 @@ public partial class LocationsPage
         var result = response.Value;
         _locations = result.ItemsOrToast(Snackbar, "locations");
         Credits = LocationVisuals.Credits(_locations);
+        _ = ResolveMergeTargetsAsync();
         _loadError = !result.IsSuccess;
         _archivedMatch = !_loadError && _locations.Count == 0 && await ArchivedRowMatchesAsync();
 
         _announce = _loadError ? "Couldn't load locations."
-            : _locations.Count == 0 ? "No locations match your filters."
-            : $"Showing {_locations.Count} location{(_locations.Count == 1 ? "" : "s")}.";
+            : _locations.Count == 0 ? LocationVisuals.NoFilterMatches
+            : $"Showing {_locations.Count} {(_locations.Count == 1 ? "place" : "places")}";
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
@@ -227,7 +255,9 @@ public partial class LocationsPage
         var hidesArchived = _statusFilter.Count == 1 && _statusFilter.Contains(nameof(ArchivalStatus.Active));
         if (!hidesArchived || string.IsNullOrWhiteSpace(_searchString) || _archivedCount is 0)
             return false;
-        var archived = await Locations.ListAsync(1, 1, _searchString, [nameof(ArchivalStatus.Archived)]);
+        // The archived-match hint honours the two #383 filters too, so it never points at a row they hide.
+        var archived = await Locations.ListAsync(1, 1, _searchString, [nameof(ArchivalStatus.Archived)],
+            hasCoordinates: HasCoordinatesQuery, referenced: ReferencedQuery);
         return archived.IsSuccess && archived.Value is { TotalCount: > 0 };
     }
 
@@ -250,49 +280,194 @@ public partial class LocationsPage
     // ── Row menu ──────────────────────────────────────────────────────────────────
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingLocation l) => BuildRowActions(
         l,
-        _canUpdate,
+        new LocationRowClaims(_canUpdate, _canDelete),
         edit: EventCallback.Factory.Create(this, () => EditClicked(l)),
         copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
         copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
         toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)),
+        merge: EventCallback.Factory.Create(this, () => MergeClicked(l)),
+        delete: EventCallback.Factory.Create(this, () => DeleteClicked(l)),
         weather: ShowWeather ? WeatherActions(l) : null);
 
+    /// <summary>The two claims beyond <c>locations.read</c> that decide the row menu (issue #383 §3.6).</summary>
+    internal sealed record LocationRowClaims(bool CanUpdate, bool CanDelete);
+
     /// <summary>
-    /// The row menu: Edit and Archive / Restore need <c>locations.update</c> and are ABSENT without it;
-    /// the two copies are read-only and always there. There is no Delete — a location is archived.
+    /// The row menu, by claim (issue #383 §3.6, SEC F7): Edit location · Copy coordinates (only with them) ·
+    /// Copy ID · Merge into… · (weather) · divider · Archive / Restore · Delete. A merged-away row offers only
+    /// Copy ID and Delete; Merge is absent on an archived row. Unavailable actions are ABSENT, never dimmed,
+    /// and every item names the place in its accessible name.
     /// </summary>
     internal static IReadOnlyList<OdsMenuItem> BuildRowActions(
-        ExistingLocation l, bool canUpdate, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
-        EventCallback toggleArchive, IReadOnlyList<OdsMenuItem>? weather = null)
+        ExistingLocation l, LocationRowClaims claims, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
+        EventCallback toggleArchive, EventCallback merge = default, EventCallback delete = default,
+        IReadOnlyList<OdsMenuItem>? weather = null)
     {
+        var merged = l.MergedIntoLocationId is not null;
         var items = new List<OdsMenuItem>();
-        if (canUpdate)
-            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", OnClick = edit });
+        if (claims.CanUpdate && !merged)
+            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", AriaLabel = $"Edit location {l.Name}", OnClick = edit });
 
-        items.Add(new OdsMenuItem { Icon = "my_location", Label = "Copy coordinates", TrailingIcon = "content_copy", OnClick = copyCoordinates });
-        items.Add(new OdsMenuItem { Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy", OnClick = copyId });
+        if (l.HasCoordinates && !merged)
+            items.Add(new OdsMenuItem
+            {
+                Icon = "my_location", Label = "Copy coordinates", AriaLabel = $"Copy coordinates of {l.Name}",
+                TrailingIcon = "content_copy", OnClick = copyCoordinates,
+            });
+        items.Add(new OdsMenuItem
+        {
+            Icon = "fingerprint", Label = "Copy ID", AriaLabel = $"Copy ID of {l.Name}", TrailingIcon = "content_copy", OnClick = copyId,
+        });
 
-        // The weather items sit after Copy ID and before Archive (issue #348).
-        if (weather is { Count: > 0 })
+        if (claims.CanUpdate && !merged && l.Archived is null)
+            items.Add(new OdsMenuItem { Icon = "call_merge", Label = "Merge into…", AriaLabel = $"Merge into… — {l.Name}", OnClick = merge });
+
+        // The weather items sit in their own group after Merge into… and before the Archive divider (issue #348).
+        if (weather is { Count: > 0 } && !merged)
         {
             items.Add(new OdsMenuItem { Divider = true });
             items.AddRange(weather);
         }
 
-        if (canUpdate)
+        var archive = claims.CanUpdate && !merged;
+        if (archive || claims.CanDelete)
+            items.Add(new OdsMenuItem { Divider = true });
+
+        if (archive)
         {
             var archived = l.Archived is not null;
-            items.Add(new OdsMenuItem { Divider = true });
             items.Add(new OdsMenuItem
             {
                 Icon = archived ? "unarchive" : "inventory_2",
                 Label = archived ? "Restore" : "Archive",
+                AriaLabel = $"{(archived ? "Restore" : "Archive")} {l.Name}",
                 OnClick = toggleArchive,
             });
         }
 
+        if (claims.CanDelete)
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", AriaLabel = $"Delete {l.Name}", Danger = true, OnClick = delete });
+
         return items;
     }
+
+    /// <summary>The id of a row's menu wrapper — a focus target after merge, delete and Find coordinates.</summary>
+    internal static string MenuId(Guid id) => $"loc-menu-{id}";
+
+    /// <summary>Find coordinates: a place without them, under <c>locations.update</c>, never on a merged-away row.</summary>
+    internal static bool ShowsFindCoordinates(ExistingLocation l, bool canUpdate) =>
+        canUpdate && !l.HasCoordinates && l.MergedIntoLocationId is null;
+
+    /// <summary>The id of a row's Find coordinates button.</summary>
+    internal static string FindId(Guid id) => $"loc-find-{id}";
+
+    /// <summary>
+    /// Where focus goes after a delete (issue #383 §3.9, FE m6): the next row's menu button, else the
+    /// previous one — recorded BEFORE the call, so list batching does not matter — else the page h1.
+    /// </summary>
+    internal static Guid? NeighbourOf(IReadOnlyList<ExistingLocation> rows, Guid id)
+    {
+        var index = rows.ToList().FindIndex(r => r.LocationId == id);
+        if (index < 0)
+            return null;
+        return index + 1 < rows.Count ? rows[index + 1].LocationId
+            : index > 0 ? rows[index - 1].LocationId
+            : null;
+    }
+
+    // ── Merge / delete (issue #383 §3.8, §3.9) ───────────────────────────────────────
+    private ExistingLocation? _mergeSource;
+    private bool _mergeOpen;
+    private Guid _mergeKey;
+    private ExistingLocation? _deleteLocation;
+    private bool _deleteOpen;
+    private Guid _deleteKey;
+    private Guid? _focusAfterRender;
+    private bool _focusPending;
+
+    private void MergeClicked(ExistingLocation l)
+    {
+        _mergeSource = l;
+        _mergeKey = Guid.NewGuid();
+        _mergeOpen = true;
+    }
+
+    private async Task OnMerged(ExistingLocation target)
+    {
+        var source = _mergeSource?.Name ?? "the place";
+        Snackbar.Add($"Merged {source} into {target.Name}.", Severity.Success);
+        await Task.WhenAll(LoadLocations(), LoadCounts());
+        Announce($"Merged {source} into {target.Name}");
+        FocusRowOrHeading(target.LocationId);
+    }
+
+    private void DeleteClicked(ExistingLocation l)
+    {
+        _deleteLocation = l;
+        _deleteKey = Guid.NewGuid();
+        _deleteOpen = true;
+        // The neighbour is recorded before anything is sent.
+        _deleteNeighbour = NeighbourOf(_locations, l.LocationId);
+    }
+
+    private Guid? _deleteNeighbour;
+
+    private async Task OnDeleted(ExistingLocation deleted)
+    {
+        Snackbar.Add($"Deleted {deleted.Name}.", Severity.Success);
+        _locations.RemoveAll(l => l.LocationId == deleted.LocationId);
+        Credits = LocationVisuals.Credits(_locations);
+        Announce($"Deleted {deleted.Name}");
+        FocusRowOrHeading(_deleteNeighbour);
+        await LoadCounts();
+    }
+
+    private void FocusRowOrHeading(Guid? id)
+    {
+        _focusAfterRender = id;
+        _focusPending = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPending)
+            return;
+        _focusPending = false;
+        try
+        {
+            await Js.InvokeVoidAsync("odsFocusChainOrHeading",
+                (object)(_focusAfterRender is { } id ? new[] { MenuId(id) } : Array.Empty<string>()));
+        }
+        catch (Microsoft.JSInterop.JSException) { }
+    }
+
+    // ── Merged-into chips ──────────────────────────────────────────────────────────────
+    private readonly Dictionary<Guid, string> _mergeTargets = [];
+
+    /// <summary>The target's name — from the loaded list, else <c>GET /api/locations/{id}</c> (issue #383 §3.6).</summary>
+    private async Task ResolveMergeTargetsAsync()
+    {
+        var missing = _locations
+            .Select(l => l.MergedIntoLocationId)
+            .OfType<Guid>()
+            .Distinct()
+            .Where(id => !_mergeTargets.ContainsKey(id))
+            .ToList();
+        foreach (var id in missing)
+        {
+            var loaded = _locations.FirstOrDefault(l => l.LocationId == id);
+            var name = loaded?.Name ?? (await Locations.GetAsync(id)).Value?.Name;
+            if (name is not null)
+                _mergeTargets[id] = name;
+        }
+
+        if (missing.Count > 0)
+            StateHasChanged();
+    }
+
+    private string? MergedInto(ExistingLocation l) =>
+        l.MergedIntoLocationId is { } id ? LocationVisuals.MergedInto(_mergeTargets.GetValueOrDefault(id) ?? "another place") : null;
 
     private async Task CopyAsync(string text, string message)
     {
@@ -313,12 +488,27 @@ public partial class LocationsPage
         _createOpen = true;
     }
 
-    private void EditClicked(ExistingLocation l)
+    private void EditClicked(ExistingLocation l) => OpenEdit(l, findCoordinates: false);
+
+    // Find coordinates (issue #383 §3.6): the edit dialog at the search step, prefilled; focus returns to the
+    // row's Find coordinates button, or — once the row has coordinates and the button is gone — its menu.
+    private void FindCoordinatesClicked(ExistingLocation l) => OpenEdit(l, findCoordinates: true);
+
+    private bool _editFindCoordinates;
+
+    private void OpenEdit(ExistingLocation l, bool findCoordinates)
     {
         _editLocation = l;
+        _editFindCoordinates = findCoordinates;
         _editKey = Guid.NewGuid();
         _editOpen = true;
+        // The weather dialogs' "Edit location" link closes them first.
+        _wxSettingsOpen = false;
+        _wxApplyOpen = false;
     }
+
+    private string EditReturnFocus(ExistingLocation l) =>
+        _editFindCoordinates ? $"{FindId(l.LocationId)} {MenuId(l.LocationId)}" : MenuId(l.LocationId);
 
     private async Task OnLocationCreated(ExistingLocation created)
     {
@@ -343,12 +533,21 @@ public partial class LocationsPage
         await LoadCounts();
     }
 
-    /// <summary>Builds the full-replacement body that changes only <see cref="UpdateLocation.Archived"/>.</summary>
+    /// <summary>
+    /// Builds the full-replacement body that changes only <see cref="UpdateLocation.Archived"/> — the
+    /// structured address included, or the PUT would clear it (issue #380).
+    /// </summary>
     internal static UpdateLocation WithArchived(ExistingLocation l, bool archived) => new()
     {
         Name = l.Name,
         Description = l.Description,
         AddressText = l.AddressText,
+        Line1 = l.Line1,
+        Line2 = l.Line2,
+        PostalCode = l.PostalCode,
+        City = l.City,
+        Region = l.Region,
+        CountryCode = l.CountryCode,
         Latitude = l.Latitude,
         Longitude = l.Longitude,
         AltitudeMeters = l.AltitudeMeters,
@@ -389,11 +588,17 @@ public partial class LocationsPage
     }
 
     // ── Card header ────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// The collapsed row's meta line (issue #383 §3.6): the address (structured, else as written, else a muted
+    /// <i>No address</i>), coordinates in mono and the time zone when set, then the usage sub-line.
+    /// </summary>
     private static IReadOnlyList<RenderFragment?> MetaFor(ExistingLocation l) =>
     [
-        string.IsNullOrWhiteSpace(l.AddressText) ? NoAddress : OdsRecordMeta.Text(l.AddressText),
-        OdsRecordMeta.Mono(LocationVisuals.FormatPair(l.Latitude, l.Longitude)),
-        OdsRecordMeta.Text(l.TimeZoneId),
+        LocationVisuals.ComposeAddress(l) is { } composed ? OdsRecordMeta.Text(composed)
+            : string.IsNullOrWhiteSpace(l.AddressText) ? NoAddress : OdsRecordMeta.Text(l.AddressText),
+        l.HasCoordinates ? OdsRecordMeta.Mono(LocationVisuals.FormatPair(l.Latitude, l.Longitude)) : null,
+        string.IsNullOrEmpty(l.TimeZoneId) ? null : OdsRecordMeta.Text(l.TimeZoneId),
+        OdsRecordMeta.Text(LocationVisuals.UsageSubLine(l.Usage)),
     ];
 
     private static readonly RenderFragment NoAddress = builder =>

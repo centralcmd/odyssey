@@ -11,7 +11,7 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Pages.Journal;
 
 /// <summary>A picked candidate, with the response's attribution so the provenance card can credit it.</summary>
-public sealed record LocationPick(LocationCandidate Candidate, LocationAttribution Attribution);
+public sealed record LocationCandidatePick(LocationCandidate Candidate, LocationAttribution Attribution);
 
 public partial class LocationSearch : IDisposable
 {
@@ -23,7 +23,7 @@ public partial class LocationSearch : IDisposable
     [Parameter] public LocationSearchRegion Region { get; set; } = LocationSearchRegion.Norway;
     [Parameter] public EventCallback<LocationSearchRegion> RegionChanged { get; set; }
 
-    [Parameter] public EventCallback<LocationPick> OnPick { get; set; }
+    [Parameter] public EventCallback<LocationCandidatePick> OnPick { get; set; }
 
     /// <summary>Offered beside "Search worldwide" on no matches; create only.</summary>
     [Parameter] public EventCallback OnManual { get; set; }
@@ -33,6 +33,32 @@ public partial class LocationSearch : IDisposable
 
     /// <summary>Focus the input on first render — the dialog's search step, or a re-search in edit.</summary>
     [Parameter] public bool AutoFocus { get; set; }
+
+    /// <summary>
+    /// Text to prefill — Find coordinates passes the composed address (issue #383 §3.7). Nothing is sent until
+    /// the user presses <b>Search</b> or types: opening the step sends nothing.
+    /// </summary>
+    [Parameter] public string? InitialQuery { get; set; }
+
+    /// <summary>The always-visible line above the field: where a search goes (issue #383 §3.7, SEC F9).</summary>
+    public const string Disclosure = "Searching sends the text you enter to Kartverket (Norway) or Open-Meteo (World).";
+
+    private bool _awaitingSearch;
+
+    protected override void OnInitialized()
+    {
+        if (string.IsNullOrWhiteSpace(InitialQuery))
+            return;
+        _query = InitialQuery;
+        _awaitingSearch = true;
+    }
+
+    private Task SearchNowAsync()
+    {
+        _awaitingSearch = false;
+        Schedule(immediate: true);
+        return Task.CompletedTask;
+    }
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
     private string _query = string.Empty;
@@ -88,8 +114,9 @@ public partial class LocationSearch : IDisposable
 
     protected override void OnParametersSet()
     {
-        // Switching region re-runs the current query against the newly selected provider only.
-        if (_lastRegion is { } last && last != Region)
+        // Switching region re-runs the current query against the newly selected provider only — but never a
+        // prefilled query nobody has asked to send yet.
+        if (_lastRegion is { } last && last != Region && !_awaitingSearch)
             Schedule(immediate: true);
         _lastRegion = Region;
     }
@@ -125,11 +152,13 @@ public partial class LocationSearch : IDisposable
         Region = region;
         _lastRegion = region;
         await RegionChanged.InvokeAsync(region);
-        Schedule(immediate: true);
+        if (!_awaitingSearch)
+            Schedule(immediate: true);
     }
 
     private void OnInput(ChangeEventArgs e)
     {
+        _awaitingSearch = false;
         _query = e.Value?.ToString() ?? string.Empty;
         Schedule(immediate: false);
     }
@@ -258,7 +287,7 @@ public partial class LocationSearch : IDisposable
     }
 
     private Task PickAsync(LocationCandidate candidate) =>
-        _response is { } response ? OnPick.InvokeAsync(new LocationPick(candidate, response.Attribution)) : Task.CompletedTask;
+        _response is { } response ? OnPick.InvokeAsync(new LocationCandidatePick(candidate, response.Attribution)) : Task.CompletedTask;
 
     public void Dispose()
     {

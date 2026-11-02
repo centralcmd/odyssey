@@ -1,0 +1,83 @@
+@using System.Net
+@using Odyssey.Dtos.Journal
+@inject ILocationsApiClient Locations
+
+@*
+    LocationDeleteDialog — Delete (issue #383 §3.9; design system · Locations.jsx). An `alertdialog` named
+    "Delete "‹name›"?" whose description is read on open; focus starts on Cancel, because the action is
+    destructive. A 409 stays inside the dialog as role="alert"; the success toast and announcement are the
+    page's.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="delete" IconTone="OdsModalTone.Error"
+          RequiredLegend="false" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+          DescribedById="@DescriptionId" ReturnFocusToId="@ReturnFocusToId"
+          Title="@(b => b.AddContent(0, $"Delete “{Location.Name}”?"))">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <p class="loc-dialog-desc" id="@DescriptionId">@Description</p>
+            @if (_alert is not null)
+            {
+                <div class="loc-dialog-alert" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span>
+                    <span>@_alert</span>
+                </div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync" data-dialog-cancel="true">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_busy" OnClick="DeleteAsync">Delete</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+
+    /// <summary>Raised after a <c>204</c>.</summary>
+    [Parameter] public EventCallback<ExistingLocation> OnDeleted { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private string? _alert;
+    private bool _busy;
+
+    private string DescriptionId => $"loc-del-desc-{_uid}";
+
+    internal const string Description = "This removes the place permanently. It can only be deleted when nothing uses it.";
+
+    internal const string StillUsed =
+        "This place is still used — by a record, weather settings, or a merged place (merged places are listed under Archived). Remove those uses first.";
+
+    private async Task DeleteAsync()
+    {
+        if (_busy)
+            return;
+        _alert = null;
+        _busy = true;
+        try
+        {
+            var result = await Locations.DeleteAsync(Location.LocationId);
+            if (result.IsSuccess)
+            {
+                await OpenChanged.InvokeAsync(false);
+                await OnDeleted.InvokeAsync(Location);
+                return;
+            }
+
+            _alert = result.Status == HttpStatusCode.Conflict
+                ? StillUsed
+                : result.Problem?.Message ?? "The place couldn’t be deleted. Try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+}

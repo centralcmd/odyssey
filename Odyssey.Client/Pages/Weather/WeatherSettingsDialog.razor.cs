@@ -26,6 +26,9 @@ public partial class WeatherSettingsDialog
 
     [Parameter] public EventCallback<ExistingWeatherLocation> OnSaved { get; set; }
 
+    /// <summary>Opens the place's Edit dialog — the way out of <i>Add coordinates first</i> (issue #383 §5.5).</summary>
+    [Parameter] public EventCallback OnEditLocation { get; set; }
+
     private static readonly DateTime HistoryFloor = WeatherRules.HistoryFloor.ToDateTime(TimeOnly.MinValue);
 
     private bool _forecast;

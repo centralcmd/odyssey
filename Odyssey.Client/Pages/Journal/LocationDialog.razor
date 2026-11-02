@@ -14,7 +14,7 @@
     here — PUT is a full replacement, so the stored flag is round-tripped.
 *@
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" ReturnFocusToId="@ReturnFocusToId"
           Icon="@(IsEdit ? "edit" : "add_location_alt")" Class="loc-dialog"
           RequiredLegend="@(_step == Step.Details)"
           Title="@TitleFragment" Subtitle="@SubtitleFragment">
@@ -27,6 +27,7 @@
             }
             else
             {
+                <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" />
                 @if (_researching)
                 {
                     <div class="loc-research">
@@ -103,22 +104,45 @@
                           Placeholder="e.g. Home, Cabin, School"
                           Help="Unique across the household’s locations, archived ones included." />
 
-                <OdsField Label="Address" MaxLength="LocationRules.AddressTextMaxLength"
+                @* The structured address (issue #383 §3.6). A search candidate does not fill it (#380 non-goal 3). *@
+                <div class="loc-addr-group">
+                    <OdsFormRow>
+                        <OdsField Label="Line 1" MaxLength="LocationRules.AddressLineMaxLength" Value="@_line1"
+                                  ValueChanged="@(v => Set(ref _line1, v, "line1"))" Error="@Err("line1")" Placeholder="Street name and number" />
+                        <OdsField Label="Line 2" MaxLength="LocationRules.AddressLineMaxLength" Value="@_line2"
+                                  ValueChanged="@(v => Set(ref _line2, v, "line2"))" Error="@Err("line2")" Placeholder="Apartment, floor, etc." />
+                    </OdsFormRow>
+                    <OdsFormRow>
+                        <OdsField Label="Postal code" MaxLength="LocationRules.PostalCodeMaxLength" Value="@_postalCode"
+                                  ValueChanged="@(v => Set(ref _postalCode, v, "postalCode"))" Error="@Err("postalCode")" />
+                        <OdsField Label="City" MaxLength="LocationRules.CityMaxLength" Value="@_city"
+                                  ValueChanged="@(v => Set(ref _city, v, "city"))" Error="@Err("city")" />
+                    </OdsFormRow>
+                    <OdsFormRow>
+                        <OdsField Label="Region" MaxLength="LocationRules.RegionMaxLength" Value="@_region"
+                                  ValueChanged="@(v => Set(ref _region, v, "region"))" Error="@Err("region")" />
+                        <OdsField Label="Country" MaxLength="LocationRules.CountryCodeLength" Value="@_countryCode"
+                                  ValueChanged="@(v => Set(ref _countryCode, v?.ToUpperInvariant(), "countryCode"))" Error="@Err("countryCode")"
+                                  Placeholder="NO" Help="Two letters, e.g. NO" />
+                    </OdsFormRow>
+                </div>
+
+                <OdsField Label="Address as written" MaxLength="LocationRules.AddressTextMaxLength"
                           Value="@_address" ValueChanged="@(v => Set(ref _address, v, "addressText"))" Error="@Err("addressText")"
                           Placeholder="Street and number, postcode and town" Help="@AddressHelp" />
 
-                <OdsCoordinateField Required="true" Lat="_lat" LatChanged="OnLatChanged" Lng="_lng" LngChanged="OnLngChanged"
+                <OdsCoordinateField Lat="_lat" LatChanged="OnLatChanged" Lng="_lng" LngChanged="OnLngChanged"
                                     Help="@CoordinatesHelp" Error="@CoordinatesError" />
 
                 <OdsFormRow>
                     <OdsNumberField Label="Altitude" Unit="m" Min="LocationRules.AltitudeMin" Max="LocationRules.AltitudeMax" Step="1"
                                     Value="_altitude" ValueChanged="@(v => { _altitude = v; _errors.Remove("altitudeMeters"); })"
                                     Error="@Err("altitudeMeters")" Help="Above sea level. Leave empty if you don’t know." />
-                    <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneInputId" Required="true"
+                    <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneInputId"
                                    Help="@(Err("timeZoneId") is null ? TimeZoneHelp : null)" Error="@Err("timeZoneId")">
                         <OdsCombobox InputId="@TimeZoneInputId" Value="@_timeZone" ValueChanged="OnTimeZoneChanged"
                                      Options="TimeZoneOptions" Placeholder="Search, e.g. Oslo or Lisbon"
-                                     EmptyText="No time zone matches" Clearable="true" Required="true"
+                                     EmptyText="No time zone matches" Clearable="true"
                                      Error="@(Err("timeZoneId") is not null)" AriaDescribedBy="@($"{TimeZoneInputId}-help")" />
                     </OdsFieldShell>
                 </OdsFormRow>
@@ -151,6 +175,6 @@
     private RenderFragment SubtitleFragment => @<text>@SubtitleText</text>;
 
     private RenderFragment SearchPanel => @<LocationSearch Region="Region" RegionChanged="OnRegionChanged" OnPick="ApplyPick"
-                                                           AutoFocus="true"
+                                                           AutoFocus="true" InitialQuery="@InitialQuery"
                                                            OnManual="@(IsEdit ? default : EventCallback.Factory.Create(this, EnterByHand))" />;
 }

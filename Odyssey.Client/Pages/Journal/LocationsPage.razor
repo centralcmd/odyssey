@@ -10,8 +10,10 @@
     /locations (issue #350; design system · Locations.jsx). The household's important places — home, the
     cabin, school — on the shared PageHeader + expandable OdsRecordCard list, one card open at a time.
     Household-shared: no owner, access by claim. A location has no sub-collections in v1, so the card
-    carries no counts and no figure (the record-card rule is "never invent one"), and the page has no
-    Overview region. There is no delete: the row menu offers Archive / Restore, a PUT with `archived`.
+    carries no figure (the record-card rule is "never invent one") and the page has no Overview region.
+    Issue #383 makes a location the one store for every place and address: the row adds a usage sub-line,
+    No coordinates / Merged into chips and the four new source labels; the page adds the Coordinates and Use
+    filters, Merge into… and Delete — every control gated by the §3.6 claim table, absent rather than dimmed.
 *@
 
 <PageTitle>Locations</PageTitle>
@@ -35,6 +37,11 @@
                                 Class="ph-search" />
                 <OdsMultiSelect Label="Any status" Icon="check_circle" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="LocationVisuals.StatusOptions" Class="ph-select" />
+                @* Issue #383 §3.6: two SEPARATE filters, ANDed with status, persisted in locations-page. *@
+                <OdsMultiSelect Label="Coordinates" Icon="my_location" Values="_coordinatesFilter" ValuesChanged="OnCoordinatesFilterChanged"
+                                Options="LocationVisuals.CoordinatesOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Use" Icon="link" Values="_useFilter" ValuesChanged="OnUseFilterChanged"
+                                Options="LocationVisuals.UseOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingLocation" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Locations per batch"
                                    Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
@@ -50,7 +57,8 @@
                          Empty="ArchivedMatchLine"
                          EmptyIcon="place"
                          EmptyTitle="@EmptyTitle"
-                         EmptyDescription="@EmptyDescription">
+                         EmptyDescription="@EmptyDescription"
+                         FilteredEmptyTitle="@LocationVisuals.NoFilterMatches">
             <RenderItem Context="l">
                 <OdsRecordCard Id="@($"loc-{l.LocationId}")"
                                Icon="place"
@@ -67,6 +75,15 @@
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
                         }
+                        @* Issue #383 §3.6: words, the glyph only echoes them. *@
+                        @if (!l.HasCoordinates)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="@LocationVisuals.NoCoordinatesIcon" Class="sm">@LocationVisuals.NoCoordinates</OdsChip>
+                        }
+                        @if (MergedInto(l) is { } merged)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="@LocationVisuals.MergedIcon" Class="sm">@merged</OdsChip>
+                        }
                         @if (ShowWeather && WeatherRow(l) is { } wx)
                         {
                             @WeatherChip(wx, l)
@@ -74,7 +91,9 @@
                     </Chips>
 
                     <Actions>
-                        <OdsMenu Items="RowActions(l)" AriaLabel="@($"Actions for {l.Name}")" />
+                        <span id="@MenuId(l.LocationId)">
+                            <OdsMenu Items="RowActions(l)" AriaLabel="@($"Actions for {l.Name}")" />
+                        </span>
                     </Actions>
 
                     <Details>
@@ -83,28 +102,56 @@
                             var edited = l.UpdatedAt != l.CreatedAt;
                         }
                         <OdsInfoTileGrid>
-                            @if (!string.IsNullOrWhiteSpace(l.AddressText))
+                            @{
+                                var composed = LocationVisuals.ComposeAddress(l);
+                                var written = string.IsNullOrWhiteSpace(l.AddressText) ? null : l.AddressText;
+                            }
+                            @if (composed is not null)
                             {
                                 @* The address tile wears the address hue, as on a contact or property. *@
                                 <OdsInfoTile Icon="location_on" IconColor="@LocationVisuals.Accent" IconSoft="@LocationVisuals.AccentSoft"
                                              Label="Address" Wide="true" WrapValue="true" ValueVariant="OdsInfoTileVariant.Text">
-                                    <Value>@l.AddressText</Value>
+                                    <Value>@composed</Value>
                                 </OdsInfoTile>
                             }
-                            <OdsInfoTile Icon="my_location" Label="Coordinates" ValueVariant="OdsInfoTileVariant.Sm"
-                                         Foot="@OdsInfoTile.Caption(LocationVisuals.FormatHemispheres(l.Latitude, l.Longitude))">
-                                <Value>@LocationVisuals.FormatPair(l.Latitude, l.Longitude)</Value>
+                            @if (written is not null && !string.Equals(written, composed, StringComparison.Ordinal))
+                            {
+                                <OdsInfoTile Icon="location_on" IconColor="@LocationVisuals.Accent" IconSoft="@LocationVisuals.AccentSoft"
+                                             Label="@(composed is null ? "Address" : "Address as written")" Wide="true" WrapValue="true"
+                                             ValueVariant="OdsInfoTileVariant.Text">
+                                    <Value>@written</Value>
+                                </OdsInfoTile>
+                            }
+                            <OdsInfoTile Icon="link" Label="Used by" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true">
+                                <Value>@LocationVisuals.UsageTile(l.Usage)</Value>
                             </OdsInfoTile>
+                            @if (l.HasCoordinates)
+                            {
+                                <OdsInfoTile Icon="my_location" Label="Coordinates" ValueVariant="OdsInfoTileVariant.Sm"
+                                             Foot="@OdsInfoTile.Caption(LocationVisuals.FormatHemispheres(l.Latitude, l.Longitude))">
+                                    <Value>@LocationVisuals.FormatPair(l.Latitude, l.Longitude)</Value>
+                                </OdsInfoTile>
+                            }
+                            else
+                            {
+                                <OdsInfoTile Icon="location_off" Label="Coordinates" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                                             Foot="@FindCoordinatesFoot(l)">
+                                    <Value>Not set — weather and the map need them</Value>
+                                </OdsInfoTile>
+                            }
                             @if (l.AltitudeMeters is { } altitude)
                             {
                                 <OdsInfoTile Icon="terrain" Label="Altitude" Foot="@OdsInfoTile.Caption("above sea level")">
                                     <Value>@($"{altitude.ToString("N0", System.Globalization.CultureInfo.InvariantCulture)} m")</Value>
                                 </OdsInfoTile>
                             }
-                            <OdsInfoTile Icon="schedule" Label="Time zone" ValueVariant="OdsInfoTileVariant.Text"
-                                         Foot="@OdsInfoTile.Caption(LocationVisuals.NowThere(l.TimeZoneId, DateTime.UtcNow))">
-                                <Value>@l.TimeZoneId</Value>
-                            </OdsInfoTile>
+                            @if (!string.IsNullOrEmpty(l.TimeZoneId))
+                            {
+                                <OdsInfoTile Icon="schedule" Label="Time zone" ValueVariant="OdsInfoTileVariant.Text"
+                                             Foot="@OdsInfoTile.Caption(LocationVisuals.NowThere(l.TimeZoneId, DateTime.UtcNow))">
+                                    <Value>@l.TimeZoneId</Value>
+                                </OdsInfoTile>
+                            }
                             <OdsInfoTile Icon="@source.Icon" Label="Source" ValueVariant="OdsInfoTileVariant.Text"
                                          Foot="@SourceFoot(l)">
                                 <Value>@source.Label</Value>
@@ -196,20 +243,34 @@
 @if (_editLocation is not null)
 {
     <LocationDialog @key="_editKey" @bind-Open="_editOpen" Location="_editLocation" CanSearch="_canCreate"
+                    FindCoordinates="_editFindCoordinates" ReturnFocusToId="@EditReturnFocus(_editLocation)"
                     OnSaved="OnLocationSaved" />
+}
+
+@if (_mergeSource is not null)
+{
+    <LocationMergeDialog @key="_mergeKey" @bind-Open="_mergeOpen" Source="_mergeSource" OnMerged="OnMerged"
+                         ReturnFocusToId="@MenuId(_mergeSource.LocationId)" />
+}
+
+@if (_deleteLocation is not null)
+{
+    <LocationDeleteDialog @key="_deleteKey" @bind-Open="_deleteOpen" Location="_deleteLocation" OnDeleted="OnDeleted"
+                          ReturnFocusToId="@MenuId(_deleteLocation.LocationId)" />
 }
 
 @if (_wxSettingsLocation is not null)
 {
     <WeatherSettingsDialog @key="_wxKey" @bind-Open="_wxSettingsOpen" Location="_wxSettingsLocation"
                            Row="WeatherRow(_wxSettingsLocation)" TrackedCount="TrackedCount" Cap="_weatherCap"
-                           OnSaved="OnWeatherSaved" />
+                           OnSaved="OnWeatherSaved"
+                           OnEditLocation="@(() => EditClicked(_wxSettingsLocation))" />
 }
 
 @if (_wxApplyLocation is not null && WeatherRow(_wxApplyLocation) is { } applyRow)
 {
     <WeatherApplyMoveDialog @key="_wxKey" @bind-Open="_wxApplyOpen" Location="_wxApplyLocation" Row="applyRow"
-                            OnApplied="OnWeatherApplied" />
+                            OnApplied="OnWeatherApplied" OnEditLocation="@(() => EditClicked(_wxApplyLocation))" />
 }
 
 @if (_wxPurgeLocation is not null && WeatherRow(_wxPurgeLocation) is { } purgeRow)
@@ -228,6 +289,13 @@
         : !row.HistoryEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Forecast only</OdsChip>
         : !row.ForecastEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="history" Class="sm">History only</OdsChip>
         : @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Weather</OdsChip>;
+
+    // The unset Coordinates tile's foot (issue #383 §3.6): Find coordinates, under locations.update and never on a
+    // merged-away row. Its accessible name carries the place's name (A11Y 11).
+    private RenderFragment? FindCoordinatesFoot(ExistingLocation l) => ShowsFindCoordinates(l, _canUpdate)
+        ? @<button type="button" id="@FindId(l.LocationId)" class="loc-link loc-find-coords" aria-label="@($"Find coordinates for {l.Name}")"
+                   @onclick="() => FindCoordinatesClicked(l)">Find coordinates</button>
+        : null;
 
     // When a search matches only archived rows and the filter hides them, say so — otherwise a household
     // member who archived "Cabin" would conclude it is gone.

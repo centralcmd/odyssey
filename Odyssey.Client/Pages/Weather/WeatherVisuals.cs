@@ -223,4 +223,15 @@ public static class WeatherVisuals
         location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }
             ? WeatherRules.Fingerprint(latitude, longitude, location.AltitudeMeters, zone)
             : WeatherRules.NoCoordinatesFingerprint;
+
+    /// <summary>
+    /// Weather needs a position: a place without coordinates is not offered weather setup (issue #383 §5.5) —
+    /// the dialogs say <see cref="AddCoordinatesFirst"/> and link to Edit instead.
+    /// </summary>
+    public static bool HasPosition(ExistingLocation location) =>
+        location is { Latitude: not null, Longitude: not null, TimeZoneId: not null };
+
+    public const string AddCoordinatesFirst = "Add coordinates first";
+
+    public const string AddCoordinatesFirstDetail = "Weather needs this place’s coordinates and time zone to know where it is.";
 }

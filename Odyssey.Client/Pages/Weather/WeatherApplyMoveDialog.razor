@@ -19,6 +19,13 @@
             {
                 <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
             }
+            @if (!WeatherVisuals.HasPosition(_live))
+            {
+                @* Issue #383 §5.5: the place lost its coordinates — there is no new position to apply. *@
+                <AddCoordinatesFirst OnEdit="OnEditLocation" />
+            }
+            else
+            {
             <p class="wx-lede">The location has moved since weather copied its position. Weather keeps using the old position until you apply the move.</p>
             <div class="wx-compare">
                 <WeatherSiteCard Title="Weather uses now" Latitude="Row.Site.Latitude" Longitude="Row.Site.Longitude"
@@ -38,12 +45,14 @@
                 }
                 <li>If MET Norway has paused fetching for this place, the pause still runs out first.</li>
             </ul>
+            }
             <WeatherDisclosure />
         </div>
     </ChildContent>
     <Footer>
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
-        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_saving" OnClick="ApplyAsync">Apply new position</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_saving" Disabled="@(!WeatherVisuals.HasPosition(_live))"
+                   OnClick="ApplyAsync">Apply new position</OdsButton>
     </Footer>
 </OdsModal>
 
@@ -53,6 +62,9 @@
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
     [Parameter, EditorRequired] public ExistingWeatherLocation Row { get; set; } = default!;
     [Parameter] public EventCallback<ExistingWeatherLocation> OnApplied { get; set; }
+
+    /// <summary>Opens the place's Edit dialog — the way out of <i>Add coordinates first</i> (issue #383 §5.5).</summary>
+    [Parameter] public EventCallback OnEditLocation { get; set; }
 
     private ExistingLocation _live = default!;
     private bool _saving;

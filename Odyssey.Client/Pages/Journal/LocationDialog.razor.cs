@@ -45,6 +45,19 @@ public partial class LocationDialog
     /// <summary>Raised with the stored row after a successful create or update.</summary>
     [Parameter] public EventCallback<ExistingLocation> OnSaved { get; set; }
 
+    /// <summary>
+    /// Find coordinates (issue #383 §3.6): open an edit at the search step, prefilled with the composed address.
+    /// Nothing is sent until the user presses Search.
+    /// </summary>
+    [Parameter] public bool FindCoordinates { get; set; }
+
+    /// <summary>Where focus goes on close: a space-separated chain of ids, tried in order (issue #383 §6.5).</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    private string? InitialQuery => FindCoordinates && Location is { } l
+        ? LocationVisuals.ComposeAddress(l) ?? l.AddressText ?? l.Name
+        : null;
+
     // The region is remembered for the browser session (DS: locations-page.region) — the WASM runtime
     // lives exactly as long as the tab, which is what a session-scoped value means here.
     private static LocationSearchRegion RememberedRegion = LocationSearchRegion.Norway;
@@ -59,6 +72,12 @@ public partial class LocationDialog
     private string? _name;
     private string? _description;
     private string? _address;
+    private string? _line1;
+    private string? _line2;
+    private string? _postalCode;
+    private string? _city;
+    private string? _region;
+    private string? _countryCode;
     private decimal? _lat;
     private decimal? _lng;
     private decimal? _altitude;
@@ -74,6 +93,24 @@ public partial class LocationDialog
     private string _announce = "";
 
     private string PickedId => $"loc-picked-{_uid}";
+
+    private string SummaryId => $"loc-errsum-{_uid}";
+
+    private bool _focusSummary;
+
+    // An application-set source (#380: Converted, ContactAddress, PropertyAddress, Imported) is round-tripped
+    // while the coordinates stay as stored, and becomes Entered by hand when they are edited — as a provider row.
+    private LocationSource? _storedAppSource;
+    private (decimal? Lat, decimal? Lng) _storedCoordinates;
+
+    // The summary lists every error at once, in field order (issue #383 §6.8).
+    private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
+    [
+        .. new[] { "name", "line1", "line2", "postalCode", "city", "region", "countryCode", "addressText",
+                   "coordinates", "latitude", "longitude", "altitudeMeters", "timeZoneId", "description" }
+            .Where(_errors.ContainsKey)
+            .Select(k => new KeyValuePair<string, string>(k, _errors[k])),
+    ];
 
     // Keyed by the NewLocation JSON property name, so a server 400/409 lands on the control a client
     // pre-check would have marked. Coordinates share one key — the field shows one error line.
@@ -93,7 +130,10 @@ public partial class LocationDialog
 
     private bool Diverged => _pick is not null && !Anchored;
 
-    internal LocationSource Source => Anchored ? _pick!.Source : LocationSource.Manual;
+    internal LocationSource Source =>
+        Anchored ? _pick!.Source
+        : _storedAppSource is { } stored && LatRounded == _storedCoordinates.Lat && LngRounded == _storedCoordinates.Lng ? stored
+        : LocationSource.Manual;
 
     private string PickLabel => _pick is { } p ? LocationVisuals.SourceOf(p.Source).Label : "search";
 
@@ -122,7 +162,7 @@ public partial class LocationDialog
     private string CoordinatesHelp =>
         (LocationVisuals.WillRound(_lat) || LocationVisuals.WillRound(_lng)) && LatRounded is { } lat && LngRounded is { } lng
             ? $"Saved as {LocationVisuals.FormatPair(lat, lng)} — 5 decimals, about 1 m."
-            : "Decimal degrees (WGS 84). Negative is south or west.";
+            : "Optional. Weather and the map need them.";
 
     private string? CoordinatesError => Err("coordinates") ?? Err("latitude") ?? Err("longitude");
 
@@ -158,14 +198,24 @@ public partial class LocationDialog
         }
 
         _step = Step.Details;
+        _researching = FindCoordinates && CanSearch;
         _name = l.Name;
         _description = l.Description;
         _address = l.AddressText;
+        _line1 = l.Line1;
+        _line2 = l.Line2;
+        _postalCode = l.PostalCode;
+        _city = l.City;
+        _region = l.Region;
+        _countryCode = l.CountryCode;
+        _storedAppSource = LocationRules.IsAssertable(l.Source) ? null : l.Source;
+        _storedCoordinates = (l.Latitude, l.Longitude);
         _lat = l.Latitude;
         _lng = l.Longitude;
         _altitude = l.AltitudeMeters;
         _timeZone = l.TimeZoneId;
-        _pick = l.Source == LocationSource.Manual || l.Latitude is not { } latitude || l.Longitude is not { } longitude
+        _pick = !LocationRules.IsAssertable(l.Source) || l.Source == LocationSource.Manual
+                || l.Latitude is not { } latitude || l.Longitude is not { } longitude
             ? null
             : new Anchor(l.Source, l.SourceReference, latitude, longitude, null, l.Name, null, l.Attribution);
     }
@@ -209,7 +259,7 @@ public partial class LocationDialog
         RememberedRegion = region;
     }
 
-    private void ApplyPick(LocationPick picked)
+    private void ApplyPick(LocationCandidatePick picked)
     {
         var c = picked.Candidate;
         // Create: the candidate names the place unless the user already typed their own name. Edit: the
@@ -246,6 +296,15 @@ public partial class LocationDialog
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_focusSummary)
+        {
+            _focusSummary = false;
+            try
+            { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+            catch (JSException) { }
+            return;
+        }
+
         if (!_focusPicked)
             return;
         _focusPicked = false;
@@ -303,17 +362,24 @@ public partial class LocationDialog
             _errors["name"] = $"Keep the name to {LocationRules.NameMaxLength} characters or fewer.";
         if ((_address?.Length ?? 0) > LocationRules.AddressTextMaxLength)
             _errors["addressText"] = $"Keep the address to {LocationRules.AddressTextMaxLength} characters or fewer.";
+        if (Blank(_countryCode) is { } country && !System.Text.RegularExpressions.Regex.IsMatch(country, LocationRules.CountryCodePattern))
+            _errors["countryCode"] = "Two letters, e.g. NO.";
         if ((_description?.Length ?? 0) > LocationRules.DescriptionMaxLength)
             _errors["description"] = $"Keep the description to {LocationRules.DescriptionMaxLength} characters or fewer.";
-        if (LatRounded is not { } lat || LngRounded is not { } lng)
-            _errors["coordinates"] = "Enter both latitude and longitude.";
-        else if (lat is < -90 or > 90 || lng is < -180 or > 180)
+        // Coordinates and time zone are optional since issue #380, but all-or-none — a partial pair is reported
+        // here, on save, with the other validation, never on blur (issue #383 §3.6).
+        if ((LatRounded is null) != (LngRounded is null))
+            _errors["coordinates"] = "Enter both latitude and longitude, or neither.";
+        else if (LatRounded is { } lat && LngRounded is { } lng && (lat is < -90 or > 90 || lng is < -180 or > 180))
             _errors["coordinates"] = "Latitude is −90 to 90 and longitude −180 to 180.";
         if (_altitude is { } alt && (alt < LocationRules.AltitudeMin || alt > LocationRules.AltitudeMax || alt != decimal.Truncate(alt)))
             _errors["altitudeMeters"] = string.Create(CultureInfo.InvariantCulture,
                 $"A whole number between {LocationRules.AltitudeMin} and {LocationRules.AltitudeMax:N0} m.");
-        if (string.IsNullOrEmpty(_timeZone))
+        var hasCoordinates = LatRounded is not null && LngRounded is not null;
+        if (hasCoordinates && string.IsNullOrEmpty(_timeZone))
             _errors["timeZoneId"] = _zoneOrigin == ZoneOrigin.Missing ? "Choose the time zone this place keeps." : "Choose a time zone.";
+        else if (!hasCoordinates && !_errors.ContainsKey("coordinates") && !string.IsNullOrEmpty(_timeZone))
+            _errors["timeZoneId"] = "A time zone goes with coordinates — add them, or clear the time zone.";
     }
 
     private async Task SubmitAsync()
@@ -322,7 +388,10 @@ public partial class LocationDialog
             return;
         Validate();
         if (_errors.Count > 0)
+        {
+            _focusSummary = true;
             return;
+        }
 
         _saving = true;
         try
@@ -336,20 +405,27 @@ public partial class LocationDialog
                 ? await Locations.UpdateAsync(Location!.LocationId, new UpdateLocation
                 {
                     Name = name, Description = Blank(_description), AddressText = Blank(_address),
+                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
+                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
                     Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = _timeZone, Source = Source, SourceReference = reference,
+                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
                     Archived = Location.Archived is not null,
                 })
                 : await Locations.CreateAsync(new NewLocation
                 {
                     Name = name, Description = Blank(_description), AddressText = Blank(_address),
+                    Line1 = Blank(_line1), Line2 = Blank(_line2), PostalCode = Blank(_postalCode),
+                    City = Blank(_city), Region = Blank(_region), CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
                     Latitude = LatRounded, Longitude = LngRounded, AltitudeMeters = altitude,
-                    TimeZoneId = _timeZone, Source = Source, SourceReference = reference,
+                    TimeZoneId = Blank(_timeZone), Source = Source, SourceReference = reference,
                 });
 
             var outcome = result.IsSuccess ? ApiResult.Success(result.Status) : ApiResult.Failure(result.Status, result.Problem!);
             if (!outcome.ToastOrFields(Snackbar, IsEdit ? "Unable to save location" : "Unable to create location", AssignServerError))
+            {
+                _focusSummary = _errors.Count > 0;
                 return;
+            }
 
             // Close first: the host's follow-up (a list reload, the new row's highlight) should not hold the
             // dialog open.
@@ -367,7 +443,11 @@ public partial class LocationDialog
     private bool AssignServerError(string field, string message)
     {
         var leaf = field[(field.LastIndexOf('.') + 1)..];
-        string[] known = ["name", "description", "addressText", "latitude", "longitude", "altitudeMeters", "timeZoneId"];
+        string[] known =
+        [
+            "name", "description", "addressText", "line1", "line2", "postalCode", "city", "region", "countryCode",
+            "latitude", "longitude", "altitudeMeters", "timeZoneId",
+        ];
         var key = known.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)
             return false;
