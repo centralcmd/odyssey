@@ -4,6 +4,9 @@
 @inject IReferenceDataCache ReferenceData
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
 @inject ISnackbar Snackbar
+@inject ILocationsApiClient Locations
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime Js
 
 @*
     PropertyDialog — New / Edit property (issue #167; design system · AddPropertyModal.jsx). Mirrors
@@ -24,6 +27,10 @@
                SubmitLabel="@(IsEdit ? "Save changes" : "Create property")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
+
+    <OdsLiveAnnouncer Message="@_announce" />
+    <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId"
+                                                       OnApplyTo="FocusApplyToAsync" />
 
     @if (IsEdit)
     {
@@ -94,13 +101,13 @@
     }
     else
     {
-        <OdsField Label="Address" MaxLength="256" @bind-Value="_addressLine" Placeholder="Street and number" />
-        <OdsFormRow Cols="3">
-            <OdsField Label="Postal code" MaxLength="32" @bind-Value="_postalCode" />
-            <OdsField Label="City" MaxLength="128" @bind-Value="_city" />
-            <OdsField Label="Country" MaxLength="2" Value="@_countryCode" ValueChanged="OnCountryChanged"
-                      Placeholder="NO" Help="ISO code, two letters" Error="@Err("countryCode")" />
-        </OdsFormRow>
+        @* The shared address block (issue #383 §3.3), property variant. *@
+        @if (!string.IsNullOrEmpty(_formAlert))
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
+        }
+        <OdsAddressBlock @ref="_addressBlock" Model="_address" Errors="_errors" ApplyToAlert="@_applyToAlert"
+                         ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@(m => _announce = m)" />
         <OdsField Label="Cadastral number" MaxLength="64" @bind-Value="_cadastralNumber"
                   Placeholder="e.g. 208/451 or APN 3612-044" Help="The land-registry identifier, as written. Not checked." />
         <OdsHomeownerAssociationSelect Value="@_homeownerAssociationId" ValueChanged="OnAssociationChanged"

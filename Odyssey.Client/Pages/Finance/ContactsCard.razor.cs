@@ -36,6 +36,8 @@ public partial class ContactsCard
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
+
+    [Inject] private IDialogService DialogService { get; set; } = default!;
     // The other halves of the composed detach gate (issue #27 §7 #6, widened by issue #157 §7.3).
     // The server enforces them with a 403 — per blocker class actually present — and these only keep
     // the blocked-delete dialog from offering an action it knows will fail.
@@ -457,9 +459,18 @@ public partial class ContactsCard
         }
     }
 
+    /// <summary>The delete confirmation's body (issue #383 §3.9): the contact goes, its address stays.</summary>
+    internal static string DeleteMessage(string name) =>
+        $"Permanently delete ‘{name}’? This cannot be undone. {Odyssey.Client.Pages.Journal.LocationVisuals.RecordDeleteSentence}";
+
     private async Task HandleDelete(ExistingContact contact)
     {
         if (!_canDelete)
+            return;
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete contact", DeleteMessage(contact.ResolvedDisplayName), yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
             return;
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts

@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
@@ -52,10 +53,19 @@ public partial class PropertyDialog
 
     // Both drafts are kept, so flipping the type on create and back loses nothing typed.
     private RealEstateKind _realEstateKind = RealEstateKind.House;
-    private string? _addressLine;
-    private string? _postalCode;
-    private string? _city;
-    private string? _countryCode;
+
+    // The address is the shared address block's (issue #383 §3.3): a saved place or a typed address.
+    private AddressBlockModel _address = new(AddressBlockVariant.Property, null, new(false, false, false));
+    private OdsAddressBlock? _addressBlock;
+    private AddressBlockPermissions _addressPermissions = new(false, false, false);
+    private string _announce = string.Empty;
+    private string? _formAlert;
+    private string? _applyToAlert;
+    private bool _focusSummary;
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private string SummaryId => $"prop-errsum-{_uid}";
+    private string ApplyGroupId => $"prop-apply-{_uid}";
+
     private string? _cadastralNumber;
     private decimal? _livingArea;
     private decimal? _plotArea;
@@ -105,7 +115,47 @@ public partial class PropertyDialog
 
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        _addressPermissions = AddressBlockPermissions.For(user);
+        InitializeFields();
+        var stored = Property?.RealEstateDetails is { LocationId: { } locationId } re ? await StoredFor(locationId, re) : null;
+        var unlinked = Property?.RealEstateDetails is { LocationId: null } legacy
+            ? new AddressFields { Line1 = legacy.AddressLine, PostalCode = legacy.PostalCode, City = legacy.City, CountryCode = legacy.CountryCode }
+            : null;
+        _address = new AddressBlockModel(AddressBlockVariant.Property, stored, _addressPermissions, unlinked);
+        await LoadContactsAsync();
+    }
+
+    /// <summary>
+    /// The stored link. The place's Line 2 and Region are not on the property DTO, so the place is read
+    /// (under <c>locations.read</c>) for them and for the per-kind breakdown of its other uses.
+    /// </summary>
+    private async Task<AddressBlockStored> StoredFor(Guid locationId, RealEstateDetailsDto re)
+    {
+        ExistingLocation? place = null;
+        if (_addressPermissions.CanReadLocations && (await Locations.GetAsync(locationId)) is { IsSuccess: true, Value: { } found })
+            place = found;
+        return new AddressBlockStored
+        {
+            LocationId = locationId,
+            Fields = new AddressFields
+            {
+                Line1 = re.AddressLine, PostalCode = re.PostalCode, City = re.City, CountryCode = re.CountryCode,
+                Line2 = place?.Line2, Region = place?.Region,
+            },
+            OtherUses = re.OtherUses ?? 0,
+            PlaceHasCoordinates = re.PlaceHasCoordinates ?? false,
+            OthersBreakdown = OthersOf(place),
+        };
+    }
+
+    /// <summary>The place's per-kind usage less this property — the breakdown of its OTHER uses.</summary>
+    private static LocationUsage? OthersOf(ExistingLocation? place) =>
+        place?.Usage is { } usage ? usage with { Properties = usage.Properties is { } n ? Math.Max(0, n - 1) : null } : null;
+
+    private void InitializeFields()
     {
         if (Property is not { } p)
         {
@@ -124,10 +174,6 @@ public partial class PropertyDialog
         if (p.RealEstateDetails is { } re)
         {
             _realEstateKind = re.Kind;
-            _addressLine = re.AddressLine;
-            _postalCode = re.PostalCode;
-            _city = re.City;
-            _countryCode = re.CountryCode;
             _cadastralNumber = re.CadastralNumber;
             _livingArea = re.LivingAreaSqm;
             _plotArea = re.PlotAreaSqm;
@@ -147,7 +193,7 @@ public partial class PropertyDialog
         }
     }
 
-    protected override async Task OnInitializedAsync()
+    private async Task LoadContactsAsync()
     {
         if (!OperatingSystem.IsBrowser())
             return;
@@ -199,10 +245,35 @@ public partial class PropertyDialog
         _errors.Remove("disposedDate");
     }
 
-    private void OnCountryChanged(string value)
+    private void OnAddressChanged()
     {
-        _countryCode = (value ?? string.Empty).Trim().ToUpperInvariant();
-        _errors.Remove("countryCode");
+        _formAlert = null;
+        foreach (var key in new[] { AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.PostalCodeKey,
+                                    AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey })
+            _errors.Remove(key);
+        if (!_address.AsksApplyTo)
+            _applyToAlert = null;
+    }
+
+    private Task FocusApplyToAsync() => _addressBlock?.FocusApplyToAsync() ?? Task.CompletedTask;
+
+    // The summary lists the address block's errors in field order (issue #383 §6.8).
+    private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
+    [
+        .. new[] { "name", "description", "currencyCode", "disposedDate", AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key,
+                   AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey,
+                   "buildYear", "livingAreaSqm", "plotAreaSqm", "homeownerAssociationId", "modelYear", "registrationNumber", "vin" }
+            .Where(_errors.ContainsKey)
+            .Select(k => new KeyValuePair<string, string>(k, _errors[k])),
+    ];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusSummary)
+            return;
+        _focusSummary = false;
+        try { await Js.InvokeVoidAsync("odsFocusById", SummaryId); }
+        catch (Exception) { /* best-effort: no JS runtime under bUnit */ }
     }
 
     /// <summary>
@@ -243,8 +314,8 @@ public partial class PropertyDialog
         }
         else
         {
-            if (!string.IsNullOrEmpty(_countryCode) && !(_countryCode.Length == 2 && _countryCode.All(char.IsAsciiLetter)))
-                _errors["countryCode"] = "Two letters, e.g. NO or US.";
+            foreach (var (key, message) in _address.Validate())
+                _errors[key] = message;
             if (_buildYear is { } by && (by < 1000 || by > ThisYear))
                 _errors["buildYear"] = by > ThisYear ? "Build year can’t be in the future." : "Enter a year after 1000.";
             if (_livingArea is { } la && (la < 0 || la > 1_000_000))
@@ -292,10 +363,15 @@ public partial class PropertyDialog
         RealEstateDetails = IsVehicle ? null : new RealEstateDetailsDto
         {
             Kind = _realEstateKind,
-            AddressLine = Blank(_addressLine),
-            PostalCode = Blank(_postalCode),
-            City = Blank(_city),
-            CountryCode = Blank(_countryCode)?.ToUpperInvariant(),
+            // Per the address block's state (issue #383 §5.1): a place by id, the four fields, or — Cleared —
+            // neither, which unlinks the property and leaves the place on the Locations page.
+            LocationId = _addressWrite.LocationId,
+            AddressLine = _addressWrite.Fields?.Line1,
+            PostalCode = _addressWrite.Fields?.PostalCode,
+            City = _addressWrite.Fields?.City,
+            CountryCode = _addressWrite.Fields?.CountryCode,
+            ApplyTo = _addressWrite.ApplyTo,
+            ExpectedOtherUses = _addressWrite.ExpectedOtherUses,
             CadastralNumber = Blank(_cadastralNumber),
             LivingAreaSqm = _livingArea,
             PlotAreaSqm = _plotArea,
@@ -314,28 +390,52 @@ public partial class PropertyDialog
         },
     };
 
+    private AddressWrite _addressWrite = new(AddressWriteKind.None, null, null, null, null);
+
     private async Task<bool> SaveAsync()
     {
+        _formAlert = null;
+        _applyToAlert = null;
         Validate();
         if (_errors.Count > 0)
+        {
+            // The submit is the form dialog's, not this component's event: re-render so the summary takes focus.
+            _focusSummary = true;
+            StateHasChanged();
             return false;
+        }
 
+        _addressWrite = IsVehicle ? new(AddressWriteKind.None, null, null, null, null) : _address.ToWrite();
         var request = BuildRequest();
 
         if (IsEdit)
         {
             var updated = await Properties.UpdateAsync(Property!.PropertyId, request);
+            if (!updated.IsSuccess && await AddressFailureAsync(updated.Status, updated.Problem))
+            {
+                StateHasChanged();
+                return false;
+            }
+
             var ok = updated.ToastOrFields(Snackbar, "Unable to update property", AssignServerError, "Property updated.");
+            _focusSummary = !ok && SummaryErrors.Count > 0;
             StateHasChanged();
             return ok;
         }
 
         var created = await Properties.CreateAsync(request);
+        if (!created.IsSuccess && await AddressFailureAsync(created.Status, created.Problem))
+        {
+            StateHasChanged();
+            return false;
+        }
+
         var outcome = created.IsSuccess
             ? ApiResult.Success(created.Status)
             : ApiResult.Failure(created.Status, created.Problem!);
         if (!outcome.ToastOrFields(Snackbar, "Unable to create property", AssignServerError, "Property created."))
         {
+            _focusSummary = SummaryErrors.Count > 0;
             StateHasChanged();
             return false;
         }
@@ -347,6 +447,64 @@ public partial class PropertyDialog
     }
 
     /// <summary>
+    /// A refusal of the ADDRESS half (issue #383 §5.3, §7), placed where it belongs; true when it was one.
+    /// The 403 carries no reason, so its message is chosen from the request that was sent.
+    /// </summary>
+    private async Task<bool> AddressFailureAsync(System.Net.HttpStatusCode status, ApiProblem? problem)
+    {
+        if (IsVehicle)
+            return false;
+        if (status == System.Net.HttpStatusCode.Forbidden)
+        {
+            _formAlert = AddressBlockModel.ForbiddenMessage(_addressWrite.Kind, _address.Noun);
+            return true;
+        }
+
+        string? Leaf(string key) => problem?.Errors.FirstOrDefault(e =>
+            string.Equals(e.Key[(e.Key.LastIndexOf('.') + 1)..], key, StringComparison.OrdinalIgnoreCase)).Value?.FirstOrDefault();
+
+        var conflict = status == System.Net.HttpStatusCode.Conflict;
+        if (conflict && Leaf("applyTo") is not null && Property is { } p)
+        {
+            // The uses changed under the user: reload the usage and ask again with nothing chosen.
+            var fresh = await Properties.GetAsync(p.PropertyId);
+            var locationId = _address.Stored?.LocationId;
+            ExistingLocation? place = null;
+            if (locationId is { } id && _addressPermissions.CanReadLocations && (await Locations.GetAsync(id)) is { IsSuccess: true, Value: { } found })
+                place = found;
+            _address.UsesChanged(fresh.Value?.RealEstateDetails?.OtherUses ?? _address.Stored?.OtherUses ?? 0, OthersOf(place));
+            _applyToAlert = AddressBlockModel.UsesChangedAlert;
+            StateHasChanged();
+            await FocusApplyToAsync();
+            return true;
+        }
+
+        var handled = false;
+        if (Leaf("locationId") is { } locationMessage)
+        {
+            _errors[AddressBlockModel.LocationIdKey] = AddressBlockModel.LocationIdMessage(locationMessage);
+            handled = true;
+        }
+
+        if (Leaf("addressLine") is not null || Leaf("line1") is not null)
+        {
+            _errors[AddressBlockModel.Line1Key] = conflict
+                ? AddressBlockModel.DuplicateAddressMessage(_address.Noun, _addressPermissions.CanUpdateLocations)
+                : Leaf("addressLine") ?? Leaf("line1")!;
+            handled = true;
+        }
+
+        if (!conflict && Leaf("applyTo") is { } applyTo)
+        {
+            _errors[AddressBlockModel.ApplyToKey] = applyTo;
+            handled = true;
+        }
+
+        _focusSummary = handled && SummaryErrors.Count > 0;
+        return handled;
+    }
+
+    /// <summary>
     /// Places a server field error on its control. The keys arrive as JSON paths
     /// (<c>RealEstateDetails.BuildYear</c>), so the leaf names the field.
     /// </summary>
@@ -355,7 +513,7 @@ public partial class PropertyDialog
         var leaf = field[(field.LastIndexOf('.') + 1)..];
         string[] known =
         [
-            "name", "description", "currencyCode", "disposedDate", "countryCode", "buildYear",
+            "name", "description", "currencyCode", "disposedDate", "countryCode", "city", "postalCode", "buildYear",
             "livingAreaSqm", "plotAreaSqm", "modelYear", "registrationNumber", "vin",
         ];
 

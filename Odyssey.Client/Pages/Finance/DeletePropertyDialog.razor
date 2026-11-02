@@ -67,6 +67,8 @@
                 }
                 The transaction tags themselves and the transactions carrying them are not affected. Archiving
                 keeps everything and hides the property from the default list.
+                @* Issue #383 §3.9: the address is a shared place and outlives the property. *@
+                @(Property.RealEstateDetails?.LocationId is not null ? " " + Odyssey.Client.Pages.Journal.LocationVisuals.RecordDeleteSentence : null)
             </p>
         </div>
     </ChildContent>
