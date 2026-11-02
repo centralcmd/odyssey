@@ -8,8 +8,10 @@ using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Xunit;
@@ -18,410 +20,531 @@ using static Odyssey.Client.Tests.UnifiedLocationsTestKit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The shared address block (issue #383 §3.3, AC 4–6, 19): the state table, the apply-to rule, the coordinates
-/// warning, the property tile, and what each state sends — then the same rules through the contact and property
-/// dialogs, including the status-chosen 403 copy (§5.3) and the 409 <c>applyTo</c> re-ask.
+/// The Address field of a contact or property (issue #383 v5 §3.3a, AC 3a): the picker lists saved places and
+/// Kartverket addresses in labelled groups; a Kartverket pick makes no request until Save, which sends the fields
+/// plus the geocode; hand entry sends fields only; a fields write on an existing address relinks only this record
+/// (<c>applyTo: ThisRecord</c> with <c>expectedOtherUses</c>) and the UI never sends <c>AllUses</c>; Edit address
+/// opens the location dialog for the linked place; picking another place sends its id; the claims decide what is
+/// offered; the disclosure is always visible.
 /// </summary>
 public class UnifiedLocationsAddressTests
 {
+    private static readonly LocationAttribution Kartverket = new() { Text = "© Kartverket", License = "CC BY 4.0", Url = "https://www.kartverket.no" };
+
     private static AddressFields Fields(string line1 = "Storgata 1", string? line2 = null, string? region = null) => new()
     {
         Line1 = line1, Line2 = line2, PostalCode = "0155", City = "Oslo", Region = region, CountryCode = "NO",
     };
 
-    private static AddressBlockStored Stored(int otherUses = 2, bool coordinates = false, AddressFields? fields = null) => new()
+    private static AddressBlockStored Stored(int otherUses = 2, AddressFields? fields = null) => new()
     {
         LocationId = StorgataId,
         Fields = fields ?? Fields(),
         OtherUses = otherUses,
-        PlaceHasCoordinates = coordinates,
     };
 
     private static AddressBlockModel Model(
-        AddressBlockStored? stored = null, AddressBlockVariant variant = AddressBlockVariant.Contact, AddressBlockPermissions? permissions = null) =>
-        new(variant, stored, permissions ?? AddressBlockPermissions.Full);
+        AddressBlockStored? stored = null, AddressBlockVariant variant = AddressBlockVariant.Contact, AddressBlockPermissions? permissions = null,
+        AddressFields? initial = null) =>
+        new(variant, stored, permissions ?? AddressBlockPermissions.Full, initial);
 
-    /// <summary>
-    /// N3: the picker's 422 message comes from the picked place's completeness, never from the server's prose —
-    /// so it does not change when the server rewords its message, in either direction.
-    /// </summary>
-    [Fact]
-    public void The_locationId_refusal_message_follows_the_picked_places_address_not_the_servers_wording()
+    private static LocationCandidate Candidate(
+        string line1 = "Storgata 3", string postalCode = "0155", string city = "OSLO",
+        LocationCandidateKind kind = LocationCandidateKind.Address, string reference = "kv-1", string? zone = "Europe/Oslo") => new()
     {
-        var incomplete = Model();
-        incomplete.Pick(Hytta() with { Line1 = null, City = null });
-        var complete = Model();
-        complete.Pick(Storgata());
+        Name = $"{line1}, {postalCode} {city}",
+        Kind = kind,
+        Line1 = kind == LocationCandidateKind.Address ? line1 : null,
+        PostalCode = kind == LocationCandidateKind.Address ? postalCode : null,
+        City = kind == LocationCandidateKind.Address ? city : null,
+        CountryCode = kind == LocationCandidateKind.Address ? "NO" : null,
+        Latitude = 59.91234m,
+        Longitude = 10.75012m,
+        TimeZoneId = zone,
+        Source = LocationSource.Kartverket,
+        SourceReference = reference,
+    };
 
-        Assert.Equal(AddressBlockModel.PlaceNotAddressComplete, incomplete.LocationIdMessage);
-        Assert.Equal(AddressBlockModel.PlaceUnusable, complete.LocationIdMessage);
-        Assert.Equal(AddressBlockModel.PlaceUnusable, Model().LocationIdMessage);
-    }
+    private static void Answer(Mock<ILocationsApiClient> api, params LocationCandidate[] candidates) =>
+        api.Setup(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<LocationSearchResponse>.Success(
+                new LocationSearchResponse { Region = LocationSearchRegion.Norway, Candidates = candidates, Attribution = Kartverket }, HttpStatusCode.OK));
 
-    // ── State table (AC 4) ─────────────────────────────────────────────────────
+    // ── What each state sends (AC 3a) ─────────────────────────────────────────
 
     [Fact]
-    public void A_new_typed_address_sends_its_fields()
+    public void Picking_a_saved_place_sends_its_id_and_nothing_else()
     {
         var model = Model();
-        model.Edit(AddressBlockModel.Line1Key, " Storgata  1 ");
-        model.Edit(AddressBlockModel.CityKey, "Oslo");
-        model.Edit(AddressBlockModel.CountryCodeKey, "no");
+        model.PickPlace(HyttaId, Hytta());
 
         var write = model.ToWrite();
 
-        Assert.Equal(AddressBlockState.Typed, model.State);
+        Assert.Equal(new AddressWrite(AddressWriteKind.LinkById, HyttaId, null, null, null), write);
+    }
+
+    [Fact]
+    public void A_staged_Kartverket_address_sends_its_fields_and_its_geocode()
+    {
+        var model = Model();
+        var said = model.Stage(Candidate());
+
+        var write = model.ToWrite();
+
+        Assert.Equal("Storgata 3, 0155 OSLO will be added when you save", said);
         Assert.Equal(AddressWriteKind.Typed, write.Kind);
         Assert.Null(write.LocationId);
-        Assert.Equal(("Storgata 1", "Oslo", "NO"), (write.Fields!.Line1, write.Fields.City, write.Fields.CountryCode));
-        Assert.Equal("Addresses are shared places. Saving uses the existing place at this address, or adds a new one.", model.PickerHelp);
+        Assert.Null(write.ApplyTo);
+        Assert.Equal(("Storgata 3", "0155", "OSLO", "NO"), (write.Fields!.Line1, write.Fields.PostalCode, write.Fields.City, write.Fields.CountryCode));
+        Assert.Equal(new AddressGeocode(59.91234m, 10.75012m, "Europe/Oslo", "kv-1"), write.Geocode);
+        Assert.Equal(LocationSource.Kartverket, write.Geocode!.Source);
     }
 
     [Fact]
-    public void Picking_fills_the_fields_and_sends_the_id()
+    public void A_Kartverket_address_without_a_time_zone_sends_no_partial_geocode()
     {
         var model = Model();
+        model.Stage(Candidate(zone: null));
 
-        var said = model.Pick(Hytta());
+        Assert.Null(model.ToWrite().Geocode);
+    }
 
-        Assert.Equal("Address filled from Hytta", said);
-        Assert.Equal(AddressBlockState.Picked, model.State);
-        Assert.Equal("Fjellveien 12", model.Fields.Line1);
+    [Fact]
+    public void Hand_entry_sends_the_fields_only()
+    {
+        var model = Model();
+        model.EnterByHand("Rue de Rivoli 1");
+        model.Edit(AddressBlockModel.CityKey, " Paris ");
+        model.Edit(AddressBlockModel.CountryCodeKey, "fr");
+
+        var write = model.ToWrite();
+
+        Assert.Equal(AddressWriteKind.Typed, write.Kind);
+        Assert.Equal(("Rue de Rivoli 1", "Paris", "FR"), (write.Fields!.Line1, write.Fields.City, write.Fields.CountryCode));
+        Assert.Null(write.Geocode);
+        Assert.Null(write.LocationId);
+    }
+
+    [Fact]
+    public void On_an_existing_address_a_fields_write_relinks_only_this_record_with_the_count_shown()
+    {
+        var staged = Model(Stored(otherUses: 3));
+        staged.Stage(Candidate());
+        var byHand = Model(Stored(otherUses: 3));
+        byHand.EnterByHand("Storgata 2");
+        byHand.Edit(AddressBlockModel.CityKey, "Oslo");
+        byHand.Edit(AddressBlockModel.CountryCodeKey, "NO");
+
+        foreach (var write in new[] { staged.ToWrite(), byHand.ToWrite() })
+        {
+            Assert.Equal(AddressWriteKind.ThisRecord, write.Kind);
+            Assert.Equal(AddressApplyTo.ThisRecord, write.ApplyTo);
+            Assert.Equal(3, write.ExpectedOtherUses);
+            Assert.Null(write.LocationId);
+        }
+    }
+
+    [Fact]
+    public void An_unchanged_existing_address_resends_the_stored_id_and_another_place_sends_its_own()
+    {
+        var model = Model(Stored());
+        Assert.Equal(new AddressWrite(AddressWriteKind.None, StorgataId, null, null, null), model.ToWrite());
+
+        model.PickPlace(HyttaId, Hytta());
         Assert.Equal(new AddressWrite(AddressWriteKind.LinkById, HyttaId, null, null, null), model.ToWrite());
+
+        model.PickPlace(StorgataId);
+        Assert.Equal(new AddressWrite(AddressWriteKind.None, StorgataId, null, null, null), model.ToWrite());
     }
 
     [Fact]
-    public void Editing_a_picked_field_clears_the_pick_and_says_so()
+    public void Hand_entry_that_matches_the_stored_address_resends_the_stored_id()
     {
-        var model = Model();
-        model.Pick(Hytta());
+        var model = Model(Stored(), permissions: new AddressBlockPermissions(false, false, false));
 
-        var said = model.Edit(AddressBlockModel.Line1Key, "Fjellveien 14");
+        Assert.True(model.Hand);
+        model.Edit(AddressBlockModel.Line1Key, " Storgata  1 ");
 
-        Assert.Equal("Place cleared — saving uses the address you type", said);
-        Assert.Equal(AddressBlockState.Typed, model.State);
-        Assert.Null(model.ToWrite().LocationId);
-        Assert.Equal("Fjellveien 14", model.ToWrite().Fields!.Line1);
+        Assert.Equal(new AddressWrite(AddressWriteKind.None, StorgataId, null, null, null), model.ToWrite());
+    }
+
+    /// <summary>The UI never sends AllUses (§3.3a): a change for everyone goes through Edit address.</summary>
+    [Fact]
+    public void No_state_ever_sends_all_uses()
+    {
+        var writes = new List<AddressWrite>();
+        foreach (var variant in new[] { AddressBlockVariant.Contact, AddressBlockVariant.Property })
+        {
+            var model = Model(Stored(otherUses: 0), variant);
+            writes.Add(model.ToWrite());
+            model.Stage(Candidate());
+            writes.Add(model.ToWrite());
+            model.EnterByHand("STORGATA 1");
+            model.Edit(AddressBlockModel.CityKey, "OSLO");
+            model.Edit(AddressBlockModel.CountryCodeKey, "no");
+            writes.Add(model.ToWrite());
+            model.SearchInstead();
+            model.ClearPick();
+            writes.Add(model.ToWrite());
+        }
+
+        Assert.DoesNotContain(writes, w => w.ApplyTo == AddressApplyTo.AllUses);
+        Assert.False(Enum.IsDefined(typeof(AddressWriteKind), "AllUses"));
     }
 
     [Fact]
-    public void Clearing_the_picker_keeps_the_filled_values()
+    public void Clearing_a_property_unlinks_it_and_says_the_place_stays()
     {
-        var model = Model();
-        model.Pick(Hytta());
+        var model = Model(Stored(), AddressBlockVariant.Property);
 
         model.ClearPick();
 
-        Assert.Equal(AddressBlockState.Typed, model.State);
-        Assert.Equal("Fjellveien 12", model.Fields.Line1);
-    }
-
-    [Fact]
-    public void An_existing_address_unchanged_sends_the_stored_id_and_picking_a_different_place_sends_the_new_one()
-    {
-        var model = Model(Stored());
-        Assert.Equal(AddressBlockState.Unchanged, model.State);
-        Assert.Equal(StorgataId, model.ToWrite().LocationId);
-        Assert.Equal(AddressWriteKind.None, model.ToWrite().Kind);
-
-        model.Pick(Hytta());
-
-        Assert.Equal(AddressBlockState.Picked, model.State);
-        Assert.Equal(HyttaId, model.ToWrite().LocationId);
-    }
-
-    [Fact]
-    public void Clearing_every_property_field_unlinks_and_says_the_place_stays()
-    {
-        var model = Model(Stored(), AddressBlockVariant.Property);
-        foreach (var key in new[] { AddressBlockModel.Line1Key, AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey })
-            model.Edit(key, "");
-        // A property's Line 2 / Region are the place's, not inputs: they are emptied with the address.
-        model.Fields.Line2 = null;
-        model.Fields.Region = null;
-
-        Assert.Equal(AddressBlockState.Cleared, model.State);
-        Assert.Equal(new AddressWrite(AddressWriteKind.None, null, null, null, null), model.ToWrite());
-        Assert.Equal("The address stays as a saved place on the Locations page.", AddressBlockModel.ClearedHelp);
-    }
-
-    [Fact]
-    public void Changed_compares_cleaned_values_ordinally()
-    {
-        var model = Model(Stored());
-
-        model.Edit(AddressBlockModel.Line1Key, "  Storgata   1 ");
-        Assert.Equal(AddressBlockState.Unchanged, model.State);
-
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.Equal(AddressBlockState.Changed, model.State);
-    }
-
-    [Fact]
-    public void A_case_only_change_is_sent_without_asking_as_all_uses()
-    {
-        var model = Model(Stored(otherUses: 3));
-
-        model.Edit(AddressBlockModel.Line1Key, "STORGATA 1");
-
-        Assert.Equal(AddressBlockState.Changed, model.State);
-        Assert.True(model.CaseOnly);
-        Assert.False(model.AsksApplyTo);
-        var write = model.ToWrite();
-        Assert.Equal(AddressApplyTo.AllUses, write.ApplyTo);
-        Assert.Equal(3, write.ExpectedOtherUses);
-        Assert.Equal("You can’t change this address for everyone. Choose “Only this contact”.",
-            AddressBlockModel.ForbiddenMessage(write.Kind, model.Noun));
-    }
-
-    // ── Apply-to rule (AC 5, SEC F1/N1) ────────────────────────────────────────
-
-    [Fact]
-    public void The_question_is_skipped_only_when_nothing_else_uses_it_and_every_kind_is_readable()
-    {
-        var alone = Model(Stored(otherUses: 0));
-        alone.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.False(alone.AsksApplyTo);
-        var write = alone.ToWrite();
-        Assert.Equal((AddressWriteKind.AllUses, (AddressApplyTo?)AddressApplyTo.AllUses, (int?)0), (write.Kind, write.ApplyTo, write.ExpectedOtherUses));
-
-        var hidden = Model(Stored(otherUses: 0), permissions: new AddressBlockPermissions(true, true, AllKindsReadable: false));
-        hidden.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.True(hidden.AsksApplyTo);
-
-        var shared = Model(Stored(otherUses: 2));
-        shared.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.True(shared.AsksApplyTo);
-    }
-
-    [Fact]
-    public void Without_locations_update_all_uses_is_never_offered_and_the_save_sends_this_record()
-    {
-        var model = Model(Stored(otherUses: 2), permissions: new AddressBlockPermissions(true, false, true));
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-
-        Assert.False(model.AsksApplyTo);
-        Assert.Equal(AddressApplyTo.ThisRecord, model.ToWrite().ApplyTo);
-    }
-
-    [Fact]
-    public void The_group_has_no_default_requires_a_choice_and_sends_it_with_the_count_shown()
-    {
-        var model = Model(Stored(otherUses: 3));
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-
-        Assert.Null(model.ApplyTo);
-        Assert.Equal("Choose who this change applies to", model.Validate()[AddressBlockModel.ApplyToKey]);
-        Assert.Equal(["All 4 uses of this address", "Only this contact"], model.ApplyToOptions.Select(o => o.Label));
-        Assert.All(model.ApplyToOptions, o => Assert.False(string.IsNullOrEmpty(o.Description)));
-
-        model.ApplyTo = AddressBlockModel.ThisRecord;
-
+        Assert.True(model.Cleared);
+        Assert.Equal("The address stays as a saved place on the Locations page.", model.PickerHelp);
+        Assert.Same(AddressWrite.None, model.ToWrite());
         Assert.Empty(model.Validate());
-        Assert.Equal((AddressApplyTo?)AddressApplyTo.ThisRecord, model.ToWrite().ApplyTo);
-        Assert.Equal(3, model.ToWrite().ExpectedOtherUses);
-    }
-
-    [Fact]
-    public void Without_every_read_claim_the_all_uses_option_names_no_count()
-    {
-        var model = Model(Stored(otherUses: 3), permissions: new AddressBlockPermissions(true, true, false));
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-
-        Assert.Equal("All uses of this address", model.ApplyToOptions[0].Label);
-    }
-
-    // ── Coordinates warning (AC 6, decision 8) ─────────────────────────────────
-
-    [Fact]
-    public void The_warning_shows_only_when_the_save_sends_all_uses_to_a_geocoded_place()
-    {
-        var skipped = Model(Stored(otherUses: 0, coordinates: true));
-        skipped.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.True(skipped.ShowsCoordinatesWarning);
-
-        var asked = Model(Stored(otherUses: 2, coordinates: true));
-        asked.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.False(asked.ShowsCoordinatesWarning);
-        asked.ApplyTo = AddressBlockModel.AllUses;
-        Assert.True(asked.ShowsCoordinatesWarning);
-        asked.ApplyTo = AddressBlockModel.ThisRecord;
-        Assert.False(asked.ShowsCoordinatesWarning);
-
-        var ungeocoded = Model(Stored(otherUses: 0, coordinates: false));
-        ungeocoded.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.False(ungeocoded.ShowsCoordinatesWarning);
-    }
-
-    // ── The property tile (AC 19, FE c) ────────────────────────────────────────
-
-    [Fact]
-    public void Also_on_the_saved_place_shows_in_picked_unchanged_and_all_uses_changed_only()
-    {
-        var stored = Stored(otherUses: 2, fields: Fields(line2: "Etg. 4", region: "Oslo"));
-        var model = Model(stored, AddressBlockVariant.Property);
-        Assert.Equal("Etg. 4 · Oslo", model.AlsoOnSavedPlace);
-
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.Null(model.AlsoOnSavedPlace);
-        model.ApplyTo = AddressBlockModel.AllUses;
-        Assert.Equal("Etg. 4 · Oslo", model.AlsoOnSavedPlace);
-        model.ApplyTo = AddressBlockModel.ThisRecord;
-        Assert.Null(model.AlsoOnSavedPlace);
-
-        var typed = Model(null, AddressBlockVariant.Property);
-        typed.Edit(AddressBlockModel.Line1Key, "Storgata 2");
-        Assert.Null(typed.AlsoOnSavedPlace);
-
-        var picked = Model(null, AddressBlockVariant.Property);
-        picked.Pick(Storgata());
-        Assert.Equal("Etg. 4 · Oslo", picked.AlsoOnSavedPlace);
     }
 
     [Fact]
     public void A_property_never_sends_line_two_or_region()
     {
-        var model = Model(null, AddressBlockVariant.Property);
-        model.Pick(Storgata());
-        model.Edit(AddressBlockModel.Line1Key, "Storgata 3");
+        var model = Model(variant: AddressBlockVariant.Property);
+        model.EnterByHand("Storgata 1");
+        model.Edit(AddressBlockModel.Line2Key, "Etg. 4");
+        model.Edit(AddressBlockModel.RegionKey, "Oslo");
 
-        var fields = model.ToWrite().Fields!;
+        var write = model.ToWrite();
 
-        Assert.Null(fields.Line2);
-        Assert.Null(fields.Region);
+        Assert.Null(write.Fields!.Line2);
+        Assert.Null(write.Fields.Region);
     }
-
-    // ── Usage line (§3.3) ──────────────────────────────────────────────────────
 
     [Fact]
-    public void The_usage_line_follows_the_state_and_disappears_without_locations_read()
+    public void A_contact_needs_an_address_and_hand_entry_needs_line_one_city_and_a_two_letter_country()
     {
-        Assert.Equal("Shared with 2 other records", Model(Stored()).UsageLine);
-        Assert.Null(Model(Stored(), permissions: new AddressBlockPermissions(false, false, true)).UsageLine);
+        var empty = Model();
+        Assert.Equal(new Dictionary<string, string> { [AddressBlockModel.AddressKey] = "Choose an address, or enter one by hand." }, empty.Validate());
 
-        var picked = Model();
-        picked.Pick(Storgata());
-        Assert.Equal("Shared with 2 other records — 1 contact, 1 property", picked.UsageLine);
+        var hand = Model();
+        hand.EnterByHand(null);
+        Assert.Equal(["city", "countryCode", "line1"], hand.Validate().Keys.Order().ToArray());
+        hand.Edit(AddressBlockModel.Line1Key, "Storgata 1");
+        hand.Edit(AddressBlockModel.CityKey, "Oslo");
+        hand.Edit(AddressBlockModel.CountryCodeKey, "NOR");
+        Assert.Equal("Two letters, e.g. NO.", hand.Validate()[AddressBlockModel.CountryCodeKey]);
+
+        // A property's address is optional: an unlinked one needs nothing.
+        Assert.Empty(Model(variant: AddressBlockVariant.Property).Validate());
     }
 
-    // ── 403 copy (§5.3) and the 409/422 messages (§7) ──────────────────────────
+    [Fact]
+    public void Entering_by_hand_prefills_line_one_and_search_instead_keeps_what_was_typed()
+    {
+        var model = Model();
+        model.Stage(Candidate());
+
+        model.EnterByHand("  rue de rivoli 1 ");
+        Assert.True(model.Hand);
+        Assert.Null(model.Staged);
+        Assert.Equal("rue de rivoli 1", model.Fields.Line1);
+
+        model.Edit(AddressBlockModel.CityKey, "Paris");
+        model.SearchInstead();
+        Assert.False(model.Hand);
+        model.EnterByHand("");
+        Assert.Equal(("rue de rivoli 1", "Paris"), (model.Fields.Line1, model.Fields.City));
+    }
+
+    [Fact]
+    public void A_legacy_property_address_without_a_place_and_a_caller_without_locations_read_open_in_hand_entry()
+    {
+        var legacy = Model(variant: AddressBlockVariant.Property, initial: new AddressFields { Line1 = "Storgata 1", City = "Oslo", CountryCode = "NO" });
+        Assert.True(legacy.Hand);
+        Assert.Equal(AddressWriteKind.Typed, legacy.ToWrite().Kind);
+
+        var noRead = Model(Stored(), permissions: new AddressBlockPermissions(false, true, true, true));
+        Assert.True(noRead.Hand);
+        Assert.False(noRead.CanSearchInstead);
+        Assert.False(noRead.CanEditAddress);
+
+        Assert.False(Model(Stored()).Hand);
+    }
+
+    [Fact]
+    public void The_usage_line_follows_the_linked_place_and_the_visible_kind_rule()
+    {
+        Assert.Equal("Shared with 2 other records", Model(Stored(otherUses: 2)).UsageLine);
+        Assert.Equal("Only this contact uses this address", Model(Stored(otherUses: 0)).UsageLine);
+        Assert.Equal("Only this property uses this address", Model(Stored(otherUses: 0), AddressBlockVariant.Property).UsageLine);
+        Assert.Equal("No other records you can see use this address",
+            Model(Stored(otherUses: 0), permissions: new AddressBlockPermissions(true, true, false, true)).UsageLine);
+
+        var picked = Model(Stored());
+        picked.PickPlace(HyttaId, Hytta());
+        Assert.StartsWith("Shared with 8 other records — 2 contacts", picked.UsageLine, StringComparison.Ordinal);
+
+        var staged = Model(Stored());
+        staged.Stage(Candidate());
+        Assert.Null(staged.UsageLine);
+        Assert.False(staged.ShowsLinked);
+    }
+
+    [Fact]
+    public void Edit_address_needs_locations_update_and_counts_every_use_this_record_included()
+    {
+        Assert.True(Model(Stored(otherUses: 2)).CanEditAddress);
+        Assert.Equal(3, Model(Stored(otherUses: 2)).SharedUses);
+        Assert.False(Model(Stored(), permissions: new AddressBlockPermissions(true, false, true, true)).CanEditAddress);
+        Assert.Null(Model(Stored(), permissions: new AddressBlockPermissions(true, true, false, true)).SharedUses);
+        Assert.Equal("Changes apply to every record that uses this address (3)", LocationVisuals.SharedUsesLine(3));
+        Assert.Equal("Changes apply to every record that uses this address.", LocationVisuals.SharedUsesLine(null));
+    }
 
     [Theory]
     [InlineData(AddressWriteKind.LinkById, "You don’t have permission to choose a saved place.")]
     [InlineData(AddressWriteKind.Typed, "Adding a new address needs permission to create locations.")]
-    [InlineData(AddressWriteKind.ThisRecord, "Changing this address for only this property needs permission to create locations.")]
-    [InlineData(AddressWriteKind.AllUses, "You can’t change this address for everyone. Choose “Only this property”.")]
-    public void A_403_is_explained_by_the_request_that_was_sent(AddressWriteKind kind, string message)
-    {
-        Assert.Equal(message, AddressBlockModel.ForbiddenMessage(kind, "property"));
-    }
+    [InlineData(AddressWriteKind.ThisRecord, "Moving this contact to a new address needs permission to create locations.")]
+    public void A_403_is_explained_by_the_request_that_was_sent(AddressWriteKind kind, string message) =>
+        Assert.Equal(message, AddressBlockModel.ForbiddenMessage(kind, "contact"));
 
+    /// <summary>
+    /// N3: the picker's 422 message comes from the picked place's completeness, never from the server's prose.
+    /// </summary>
     [Fact]
-    public void A_duplicate_address_mentions_merging_only_to_someone_who_can()
+    public void The_locationId_refusal_message_follows_the_picked_places_address_not_the_servers_wording()
     {
-        Assert.Contains("Merge them on the Locations page", AddressBlockModel.DuplicateAddressMessage("contact", canUpdateLocations: true));
-        Assert.DoesNotContain("Merge", AddressBlockModel.DuplicateAddressMessage("contact", canUpdateLocations: false));
+        var complete = Model();
+        complete.PickPlace(HyttaId, Hytta());
+        var incomplete = Model();
+        incomplete.PickPlace(HyttaId, Hytta() with { Line1 = null });
+
+        Assert.Equal(AddressBlockModel.PlaceUnusable, complete.LocationIdMessage);
+        Assert.Equal(AddressBlockModel.PlaceNotAddressComplete, incomplete.LocationIdMessage);
     }
 
-    // ── The block rendered (AC 5, 6) ───────────────────────────────────────────
+    // ── The picker in address mode ────────────────────────────────────────────
 
-    private static (BunitContext Ctx, IRenderedComponent<OdsAddressBlock> Cut, List<string> Said) RenderBlock(AddressBlockModel model)
+    private sealed record PickerHarness(
+        BunitContext Ctx, IRenderedComponent<OdsLocationSelect> Cut, Mock<ILocationsApiClient> Api, List<LocationPick?> Picks, List<string> ByHand)
+    {
+        public MudAutocomplete<OdsOption> Auto => Cut.FindComponent<MudAutocomplete<OdsOption>>().Instance;
+
+        public OdsCombobox Combo => Cut.FindComponent<OdsCombobox>().Instance;
+
+        public Task<IEnumerable<OdsOption>> Rows(string text) => Cut.InvokeAsync(async () => (await Auto.SearchFunc!(text, CancellationToken.None)!)!);
+    }
+
+    private static PickerHarness RenderPicker(bool allowCreate = true, LocationPick? value = null, params ExistingLocation[] places)
     {
         var ctx = Context();
-        ctx.Services.AddSingleton(Locations(Hytta(), Storgata()).Object);
-        var said = new List<string>();
-        var cut = ctx.Render<OdsAddressBlock>(p => p
-            .Add(b => b.Model, model)
-            .Add(b => b.ApplyGroupId, "apply")
-            .Add(b => b.PickerDebounceMs, 0)
-            .Add(b => b.OnAnnounce, EventCallback.Factory.Create<string>(new object(), m => said.Add(m))));
-        return (ctx, cut, said);
-    }
-
-    private static Task Edit(IRenderedComponent<OdsAddressBlock> cut, string label, string value) =>
-        cut.InvokeAsync(() => cut.FindComponents<OdsField>().Single(f => f.Instance.Label == label).Instance.ValueChanged.InvokeAsync(value));
-
-    [Fact]
-    public async Task The_group_appears_after_a_change_is_announced_once_and_nothing_is_preselected()
-    {
-        var (ctx, cut, said) = RenderBlock(Model(Stored(otherUses: 2)));
-        await using var _ = ctx;
-        Assert.Empty(cut.FindAll("fieldset.odc-radiofield"));
-
-        await Edit(cut, "Line 1", "Storgata 2");
-        await Edit(cut, "Line 1", "Storgata 22");
-
-        Assert.Equal("Apply this change to", cut.Find("fieldset#apply > legend").FirstChild!.TextContent.Trim());
-        Assert.Equal("true", cut.Find("[role=radiogroup]").GetAttribute("aria-required"));
-        Assert.Empty(cut.FindAll("input[type=radio][checked]"));
-        Assert.Single(said, m => m.Contains("This address is shared — choose who the change applies to", StringComparison.Ordinal));
-
-        // Back to unchanged: the group goes, silently.
-        await Edit(cut, "Line 1", "Storgata 1");
-        Assert.Empty(cut.FindAll("fieldset.odc-radiofield"));
-        Assert.Single(said, m => m.Contains("This address is shared", StringComparison.Ordinal));
+        var api = Locations(places.Length == 0 ? [Storgata()] : places);
+        Answer(api, Candidate("Storgata 1", "0155", "OSLO", reference: "kv-same"), Candidate(),
+            Candidate("Storgata", kind: LocationCandidateKind.PlaceName, reference: "kv-name"));
+        ctx.Services.AddSingleton(api.Object);
+        var picks = new List<LocationPick?>();
+        var byHand = new List<string>();
+        var cut = ctx.Render<OdsLocationSelect>(p => p
+            .Add(s => s.Mode, LocationSelectMode.Address)
+            .Add(s => s.Id, "addr")
+            .Add(s => s.Value, value)
+            .Add(s => s.AllowCreate, allowCreate)
+            .Add(s => s.DebounceMs, 0)
+            .Add(s => s.AddressDebounceMs, 0)
+            .Add(s => s.ValueChanged, EventCallback.Factory.Create<LocationPick?>(new object(), v => picks.Add(v)))
+            .Add(s => s.OnEnterByHand, EventCallback.Factory.Create<string>(new object(), t => byHand.Add(t))));
+        return new(ctx, cut, api, picks, byHand);
     }
 
     [Fact]
-    public async Task When_the_group_is_skipped_the_warning_is_announced_once_and_describes_the_changed_field()
+    public async Task The_picker_lists_saved_places_and_Kartverket_addresses_in_labelled_groups_then_the_hand_entry_row()
     {
-        var (ctx, cut, said) = RenderBlock(Model(Stored(otherUses: 0, coordinates: true)));
-        await using var _ = ctx;
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
 
-        await Edit(cut, "City", "Bergen");
-        await Edit(cut, "City", "Bergen sentrum");
+        var rows = (await h.Rows("storgata")).ToList();
 
-        var warning = cut.Find(".odc-addrblock-warn");
-        Assert.Contains("This place has map coordinates for the old address", warning.TextContent);
-        Assert.Single(said, m => m.Contains("map coordinates for the old address", StringComparison.Ordinal));
-        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsAddDescribedBy"
-            && ((string)i.Arguments[0]!).EndsWith("-city", StringComparison.Ordinal) && Equals(i.Arguments[1], warning.Id));
+        Assert.Equal(
+            ["Saved places", "Storgata 1", "Addresses from Kartverket", "Storgata 3, 0155 OSLO", "Enter an address by hand…"],
+            rows.Select(r => r.Label));
+        Assert.True(OdsCombobox.IsHeadingRow(rows[0]) && OdsCombobox.IsHeadingRow(rows[2]));
+        Assert.True(h.Auto.ItemDisabledFunc!(rows[0]) && h.Auto.ItemDisabledFunc(rows[2]));
+        Assert.False(h.Auto.ItemDisabledFunc(rows[1]) || h.Auto.ItemDisabledFunc(rows[3]) || h.Auto.ItemDisabledFunc(rows[4]));
+        Assert.True(OdsCombobox.IsFooterRow(rows[4]));
+        Assert.Null(h.Auto.MaxItems);
+
+        // The saved place reads "used by N"; the Kartverket row says where it is from and that it is new.
+        Assert.Contains("used by 2", rows[1].Sub);
+        Assert.Equal("Storgata 3, 0155 OSLO, address from Kartverket, new saved place added when you save", rows[3].AriaLabel);
+        Assert.Equal("2 addresses found", h.Cut.Find("[role=status]").TextContent);
+
+        // The search went to Kartverket, region Norway; a place name and the saved place's own address were dropped.
+        h.Api.Verify(a => a.SearchAsync(It.Is<LocationSearchRequest>(r => r.Query == "storgata" && r.Region == LocationSearchRegion.Norway),
+            It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Choosing_all_uses_shows_the_warning_and_joins_it_to_the_groups_description()
+    public async Task Below_three_characters_only_saved_places_are_searched_and_the_hand_entry_row_stays()
     {
-        var model = Model(Stored(otherUses: 2, coordinates: true));
-        var (ctx, cut, said) = RenderBlock(model);
-        await using var _ = ctx;
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
 
-        await Edit(cut, "Line 1", "Storgata 2");
-        Assert.Empty(cut.FindAll(".odc-addrblock-warn"));
-        cut.FindAll("input[type=radio]")[0].Change(true);
+        var rows = (await h.Rows("st")).ToList();
 
-        var warning = cut.Find(".odc-addrblock-warn");
-        Assert.Contains(warning.Id, cut.Find("[role=radiogroup]").GetAttribute("aria-describedby")!.Split(' '));
-        Assert.Single(said, m => m.Contains("map coordinates for the old address", StringComparison.Ordinal));
+        h.Api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(["Saved places", "Storgata 1", "Enter an address by hand…"], rows.Select(r => r.Label));
+
+        var shortRows = (await h.Rows("s")).ToList();
+        Assert.Equal(["Enter an address by hand…"], shortRows.Select(r => r.Label));
+        Assert.Equal("Type at least 2 characters", h.Cut.Find("[role=status]").TextContent);
     }
 
     [Fact]
-    public async Task Picking_a_place_fills_the_fields_and_is_announced()
+    public async Task A_failed_address_search_says_so_in_its_group_and_saved_places_still_work()
     {
-        var (ctx, cut, said) = RenderBlock(Model());
-        await using var _ = ctx;
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+        h.Api.Setup(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<LocationSearchResponse>.Failure(HttpStatusCode.ServiceUnavailable, Problem(503)));
 
-        await cut.InvokeAsync(() => cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(LocationPick.Existing(HyttaId)));
+        var rows = (await h.Rows("storgata")).ToList();
 
-        Assert.Equal("Fjellveien 12", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Line 1").Instance.Value);
-        Assert.Contains("Address filled from Hytta", said);
-        Assert.Equal(LocationPickFilter.AddressComplete, cut.FindComponent<OdsLocationSelect>().Instance.Filter);
-        Assert.False(cut.FindComponent<OdsLocationSelect>().Instance.AllowCreate);
+        Assert.Equal(
+            ["Saved places", "Storgata 1", "Addresses from Kartverket", "Address search is unavailable — enter the address by hand", "Enter an address by hand…"],
+            rows.Select(r => r.Label));
+        Assert.True(rows[3].IsNote);
+        Assert.True(h.Auto.ItemDisabledFunc!(rows[3]));
+        Assert.Equal("1 address found. Address search is unavailable — enter the address by hand", h.Cut.Find("[role=status]").TextContent);
     }
 
     [Fact]
-    public async Task Without_locations_read_there_is_no_picker_and_no_usage_line()
+    public async Task A_superseded_address_search_is_silent()
     {
-        var (ctx, cut, _) = RenderBlock(Model(Stored(), permissions: new AddressBlockPermissions(false, false, false)));
-        await using var _ = ctx;
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+        h.Api.Setup(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<LocationSearchResponse>.Failure(new TaskCanceledException()));
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
 
-        Assert.Empty(cut.FindComponents<OdsLocationSelect>());
-        Assert.Empty(cut.FindAll(".odc-addrblock-usage"));
-        Assert.NotEmpty(cut.FindComponents<OdsField>());
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => h.Combo.SearchAsync!("storgata", cancelled.Token));
     }
 
-    // ── Through the contact dialog (AC 4, 5) ───────────────────────────────────
+    [Fact]
+    public async Task Picking_a_Kartverket_address_stages_it_and_creates_nothing()
+    {
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+        var rows = (await h.Rows("storgata")).ToList();
 
-    private static ExistingAddress Address(int otherUses = 2, bool coordinates = false) => new()
+        await h.Cut.InvokeAsync(() => h.Auto.ValueChanged.InvokeAsync(rows[3]));
+
+        var pick = Assert.Single(h.Picks);
+        Assert.True(pick!.IsStagedAddress);
+        Assert.Equal("kv-1", pick.Candidate!.SourceReference);
+        h.Api.Verify(a => a.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        h.Cut.Render(p => p.Add(s => s.Value, pick));
+        Assert.Equal("Storgata 3, 0155 OSLO (new)", h.Combo.Options.Single().Label);
+    }
+
+    [Fact]
+    public async Task The_hand_entry_row_hands_over_the_typed_text_and_leaves_the_value()
+    {
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+        var footer = (await h.Rows("rue de rivoli 1")).Last();
+
+        await h.Cut.InvokeAsync(() => h.Auto.ValueChanged.InvokeAsync(footer));
+
+        Assert.Equal(["rue de rivoli 1"], h.ByHand);
+        Assert.Empty(h.Picks);
+    }
+
+    [Fact]
+    public async Task The_disclosure_is_always_visible_and_describes_the_input()
+    {
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+
+        var disclosure = h.Cut.Find(".odc-locsel-disclose");
+        Assert.Equal("Address search sends what you type to Kartverket.", disclosure.TextContent.Replace("info", "").Trim());
+        Assert.Equal("addr-disclose", disclosure.Id);
+        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsSetAttr" && Equals(i.Arguments[0], "addr")
+            && Equals(i.Arguments[1], "aria-describedby") && ((string)i.Arguments[2]!).Split(' ').Contains("addr-disclose"));
+        Assert.Equal("Address", h.Cut.Find("label.odc-field-label, .odc-field-label").TextContent.Trim().TrimEnd('*'));
+    }
+
+    [Fact]
+    public async Task Without_locations_create_there_is_no_Kartverket_group_no_hand_entry_row_and_no_disclosure()
+    {
+        var h = RenderPicker(allowCreate: false);
+        await using var _ = h.Ctx;
+
+        var rows = (await h.Rows("storgata")).ToList();
+
+        Assert.Equal(["Saved places", "Storgata 1"], rows.Select(r => r.Label));
+        Assert.Null(h.Combo.FooterOption);
+        Assert.Null(h.Combo.OnCreate);
+        Assert.Empty(h.Cut.FindAll(".odc-locsel-disclose"));
+        h.Api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task The_address_search_waits_its_own_400_ms_and_a_superseded_one_is_never_sent()
+    {
+        var ctx = Context();
+        await using var _ = ctx;
+        var api = Locations(Storgata());
+        Answer(api, Candidate());
+        ctx.Services.AddSingleton(api.Object);
+        var cut = ctx.Render<OdsLocationSelect>(p => p
+            .Add(s => s.Mode, LocationSelectMode.Address)
+            .Add(s => s.AllowCreate, true)
+            .Add(s => s.DebounceMs, 0)
+            .Add(s => s.AddressDebounceMs, 400));
+        var search = cut.FindComponent<OdsCombobox>().Instance.SearchAsync!;
+        using var superseded = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => search("storgata", superseded.Token));
+        api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        var rows = await search("storgata", CancellationToken.None);
+        Assert.Contains(rows, r => r.Group == OdsLocationSelect.KartverketGroup);
+        api.Verify(a => a.SearchAsync(It.IsAny<LocationSearchRequest>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    /// <summary>The Combobox's groups and footer row (design system · Combobox <c>groups</c>, <c>footerOption</c>).</summary>
+    [Fact]
+    public async Task The_combobox_lists_ungrouped_rows_first_then_each_group_and_always_ends_on_the_footer_row()
+    {
+        await using var ctx = Context();
+        var footer = new List<string>();
+        var values = new List<string?>();
+        var cut = ctx.Render<OdsCombobox>(p => p
+            .Add(c => c.Value, "a")
+            .Add(c => c.ValueChanged, EventCallback.Factory.Create<string?>(new object(), v => values.Add(v)))
+            .Add(c => c.Options, [
+                new OdsOption("b", "Beta") { Group = "two" }, new OdsOption("a", "Alpha") { Group = "one" },
+                new OdsOption("u", "Unsorted"), new OdsOption("empty", "Nothing here") { Group = "three" }])
+            .Add(c => c.Groups, [new OdsOptionGroup("one", "First"), new OdsOptionGroup("two", "Second"), new OdsOptionGroup("four", "Empty")])
+            .Add(c => c.FooterOption, new OdsComboboxFooter("Enter by hand…", t => { footer.Add(t); return Task.CompletedTask; })));
+        var auto = cut.FindComponent<MudAutocomplete<OdsOption>>().Instance;
+
+        var all = (await cut.InvokeAsync(async () => (await auto.SearchFunc!(null!, CancellationToken.None)!)!)).ToList();
+        Assert.Equal(["Unsorted", "Nothing here", "First", "Alpha", "Second", "Beta", "Enter by hand…"], all.Select(o => o.Label));
+
+        var none = (await cut.InvokeAsync(async () => (await auto.SearchFunc!("zzz", CancellationToken.None)!)!)).ToList();
+        Assert.Equal(["Enter by hand…"], none.Select(o => o.Label));
+
+        await cut.InvokeAsync(() => auto.ValueChanged.InvokeAsync(none[0]));
+        Assert.Equal(["zzz"], footer);
+        Assert.Empty(values);
+        Assert.Equal("a", cut.Instance.Value);
+    }
+
+    // ── Through the contact dialog ────────────────────────────────────────────
+
+    private static ExistingAddress Address(int otherUses = 2) => new()
     {
         Id = Guid.NewGuid(),
         ContactId = Guid.NewGuid(),
@@ -433,14 +556,20 @@ public class UnifiedLocationsAddressTests
         City = "Oslo",
         CountryCode = "NO",
         OtherUses = otherUses,
-        PlaceHasCoordinates = coordinates,
     };
 
     private sealed record ContactHarness(
-        BunitContext Ctx, IRenderedComponent<ProvidersHost> Cut, Mock<IContactsApiClient> Contacts, List<NewAddress> Sent);
+        BunitContext Ctx, IRenderedComponent<ProvidersHost> Cut, Mock<IContactsApiClient> Contacts, Mock<ILocationsApiClient> Api, List<NewAddress> Sent)
+    {
+        public Task Pick(LocationPick? pick) =>
+            Cut.InvokeAsync(() => Cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(pick));
+
+        public Task EnterByHand(string text) =>
+            Cut.InvokeAsync(() => Cut.FindComponent<OdsLocationSelect>().Instance.OnEnterByHand.InvokeAsync(text));
+    }
 
     private static ContactHarness RenderContactDialog(
-        ExistingAddress? stored, Func<NewAddress, ApiResult>? reply = null, ExistingAddress? reloaded = null)
+        ExistingAddress? stored, Func<NewAddress, ApiResult>? reply = null, AddressBlockPermissions? permissions = null)
     {
         var ctx = Context();
         var sent = new List<NewAddress>();
@@ -450,9 +579,11 @@ public class UnifiedLocationsAddressTests
         contacts.Setup(c => c.AddAddressAsync(It.IsAny<Guid>(), It.IsAny<NewAddress>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid _, NewAddress body, CancellationToken _) => { sent.Add(body); return reply?.Invoke(body) ?? ApiResult.Success(HttpStatusCode.Created); });
         contacts.Setup(c => c.ListAddressesAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ApiResult<List<ExistingAddress>>.Success(reloaded is null ? [] : [reloaded], HttpStatusCode.OK));
+            .ReturnsAsync(ApiResult<List<ExistingAddress>>.Success([], HttpStatusCode.OK));
         ctx.Services.AddSingleton(contacts.Object);
-        ctx.Services.AddSingleton(Locations(Hytta(), Storgata()).Object);
+        var api = Locations(Hytta(), Storgata(new LocationUsage { Contacts = 3, Properties = 0, CalendarEvents = 0, RecurringSeries = 0, JournalEntries = 0 }));
+        Answer(api, Candidate());
+        ctx.Services.AddSingleton(api.Object);
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
 
         var draft = stored is null
@@ -465,8 +596,10 @@ public class UnifiedLocationsAddressTests
             .Add(x => x.IsEdit, stored is not null)
             .Add(x => x.ContactType, ContactType.Person)
             .Add(x => x.ContactId, Guid.NewGuid())
-            .Add(x => x.Permissions, AddressBlockPermissions.Full)));
-        return new(ctx, cut, contacts, sent);
+            .Add(x => x.PickerDebounceMs, 0)
+            .Add(x => x.AddressDebounceMs, 0)
+            .Add(x => x.Permissions, permissions ?? AddressBlockPermissions.Full)));
+        return new(ctx, cut, contacts, api, sent);
     }
 
     private static Task EditField(IRenderedComponent<ProvidersHost> cut, string label, string value) =>
@@ -475,128 +608,199 @@ public class UnifiedLocationsAddressTests
     private static void Submit(IRenderedComponent<ProvidersHost> cut, string text) =>
         cut.FindAll("button").Single(b => b.TextContent.Contains(text, StringComparison.Ordinal)).Click();
 
-    /// <summary>Accessibility review 1: the summary counts and lists the label's error too, first.</summary>
     [Fact]
-    public async Task The_contact_address_summary_lists_the_label_error_with_the_address_errors()
+    public async Task The_dialog_shows_one_Address_field_and_no_line_fields_or_apply_to_group()
+    {
+        var h = RenderContactDialog(Address());
+        await using var _ = h.Ctx;
+
+        var picker = h.Cut.FindComponent<OdsLocationSelect>().Instance;
+        Assert.Equal(LocationSelectMode.Address, picker.Mode);
+        Assert.True(picker.Required);
+        Assert.DoesNotContain(h.Cut.FindComponents<OdsField>(), f => f.Instance.Label is "Line 1" or "City");
+        Assert.Empty(h.Cut.FindAll("[role=radiogroup], fieldset.odc-radiofield, .odc-addrblock-warn"));
+        Assert.DoesNotContain("Also on the saved place", h.Cut.Markup);
+        Assert.Contains("Shared with 2 other records", h.Cut.Find(".odc-addrblock-usage").TextContent);
+        Assert.Contains("Address search sends what you type to Kartverket.", h.Cut.Find(".odc-locsel-disclose").TextContent);
+    }
+
+    [Fact]
+    public async Task A_Kartverket_address_makes_no_request_until_Save_which_sends_the_fields_and_the_geocode()
+    {
+        var h = RenderContactDialog(null);
+        await using var _ = h.Ctx;
+
+        await h.Pick(LocationPick.Address(Candidate()));
+        h.Api.Verify(a => a.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Empty(h.Sent);
+        h.Cut.WaitForAssertion(() => Assert.Contains("Storgata 3, 0155 OSLO will be added when you save", h.Cut.FindComponent<OdsLiveAnnouncer>().Markup));
+
+        Submit(h.Cut, "Create address");
+
+        h.Cut.WaitForAssertion(() => Assert.Single(h.Sent));
+        var body = h.Sent[0];
+        Assert.Null(body.LocationId);
+        Assert.Equal(("Storgata 3", "0155", "OSLO", "NO"), (body.Line1, body.PostalCode, body.City, body.CountryCode));
+        Assert.Equal((59.91234m, 10.75012m, "Europe/Oslo"), (body.Latitude!.Value, body.Longitude!.Value, body.TimeZoneId));
+        Assert.Equal((LocationSource.Kartverket, "kv-1"), (body.Source!.Value, body.SourceReference));
+        Assert.Null(body.ApplyTo);
+        h.Api.Verify(a => a.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Hand_entry_on_an_existing_address_sends_the_fields_only_for_this_record()
+    {
+        var h = RenderContactDialog(Address(otherUses: 2));
+        await using var _ = h.Ctx;
+
+        await h.EnterByHand("Rue de Rivoli 1");
+        Assert.Equal("Rue de Rivoli 1", h.Cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Line 1").Instance.Value);
+        Assert.Equal("Address", h.Cut.Find("fieldset.odc-addrblock-hand > legend").FirstChild!.TextContent.Trim());
+        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && ((string)i.Arguments[0]!).EndsWith("-line1", StringComparison.Ordinal));
+        await EditField(h.Cut, "City", "Paris");
+        await EditField(h.Cut, "Country", "fr");
+        Submit(h.Cut, "Save changes");
+
+        h.Cut.WaitForAssertion(() => Assert.Single(h.Sent));
+        var body = h.Sent[0];
+        Assert.Equal(("Rue de Rivoli 1", "Paris", "FR"), (body.Line1, body.City, body.CountryCode));
+        Assert.Equal(AddressApplyTo.ThisRecord, body.ApplyTo);
+        Assert.Equal(2, body.ExpectedOtherUses);
+        Assert.Null(body.LocationId);
+        Assert.Null(body.Latitude);
+        Assert.Null(body.Source);
+    }
+
+    [Fact]
+    public async Task Search_instead_returns_to_the_picker_and_focuses_it()
+    {
+        var h = RenderContactDialog(null);
+        await using var _ = h.Ctx;
+
+        await h.EnterByHand("Rue");
+        h.Cut.FindAll("button").Single(b => b.TextContent.Trim() == "Search instead").Click();
+
+        var picker = h.Cut.FindComponent<OdsLocationSelect>();
+        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && ((string)i.Arguments[0]!).EndsWith("-picker", StringComparison.Ordinal));
+        Assert.Equal(LocationSelectMode.Address, picker.Instance.Mode);
+    }
+
+    [Fact]
+    public async Task Picking_a_different_place_sends_its_id_without_apply_to()
+    {
+        var h = RenderContactDialog(Address());
+        await using var _ = h.Ctx;
+
+        await h.Pick(LocationPick.Existing(HyttaId));
+        Assert.Contains("Shared with 8 other records", h.Cut.Find(".odc-addrblock-usage").TextContent);
+        Submit(h.Cut, "Save changes");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(HyttaId, h.Sent.Single().LocationId));
+        Assert.Null(h.Sent.Single().Line1);
+        Assert.Null(h.Sent.Single().ApplyTo);
+    }
+
+    [Fact]
+    public async Task Edit_address_opens_the_location_dialog_for_the_linked_place_with_the_shared_uses_line()
+    {
+        var h = RenderContactDialog(Address(otherUses: 2));
+        await using var _ = h.Ctx;
+
+        var edit = h.Cut.Find("button.odc-addrblock-edit");
+        Assert.Equal("Edit address", edit.TextContent.Replace("edit_location_alt", "").Trim());
+        Assert.Equal(h.Cut.Find(".odc-addrblock-usage").Id, edit.GetAttribute("aria-describedby"));
+        await h.Cut.InvokeAsync(() => edit.Click());
+
+        var dialog = h.Cut.WaitForElement(".loc-dialog, .loc-note");
+        Assert.NotNull(dialog);
+        var location = h.Cut.FindComponent<LocationDialog>().Instance;
+        Assert.Equal(StorgataId, location.Location!.LocationId);
+        Assert.Equal(edit.Id, location.ReturnFocusToId);
+        Assert.Contains(h.Cut.FindAll(".loc-note"), n => n.TextContent.Contains("Changes apply to every record that uses this address (3)", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Without_locations_update_there_is_no_Edit_address()
+    {
+        var h = RenderContactDialog(Address(), permissions: new AddressBlockPermissions(true, false, true, true));
+        await using var _ = h.Ctx;
+
+        Assert.Empty(h.Cut.FindAll("button.odc-addrblock-edit"));
+        Assert.NotEmpty(h.Cut.FindAll(".odc-addrblock-usage"));
+    }
+
+    [Fact]
+    public async Task Without_locations_create_the_picker_offers_saved_places_only()
+    {
+        var h = RenderContactDialog(Address(), permissions: new AddressBlockPermissions(true, true, true, false));
+        await using var _ = h.Ctx;
+
+        var picker = h.Cut.FindComponent<OdsLocationSelect>().Instance;
+        Assert.False(picker.AllowCreate);
+        Assert.Null(h.Cut.FindComponent<OdsCombobox>().Instance.FooterOption);
+        Assert.Empty(h.Cut.FindAll(".odc-locsel-disclose"));
+    }
+
+    [Fact]
+    public async Task Without_locations_read_there_is_no_picker_and_an_untouched_save_keeps_the_stored_place()
+    {
+        var h = RenderContactDialog(Address(), permissions: new AddressBlockPermissions(false, false, false, true));
+        await using var _ = h.Ctx;
+
+        Assert.Empty(h.Cut.FindComponents<OdsLocationSelect>());
+        Assert.Empty(h.Cut.FindAll(".odc-addrblock-usage, button.odc-addrblock-edit"));
+        Assert.DoesNotContain("Search instead", h.Cut.Markup);
+        Assert.Equal("Storgata 1", h.Cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Line 1").Instance.Value);
+        Submit(h.Cut, "Save changes");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(StorgataId, h.Sent.Single().LocationId));
+        Assert.Null(h.Sent.Single().Line1);
+    }
+
+    /// <summary>Accessibility review 1: the summary counts and lists every error, the label first, the address linked to its picker.</summary>
+    [Fact]
+    public async Task Saving_a_new_address_with_none_chosen_shows_the_summary_linking_to_the_picker()
     {
         var h = RenderContactDialog(null);
         await using var _ = h.Ctx;
 
         await h.Cut.InvokeAsync(() => h.Cut.FindComponent<OdsContactMethodLabelSelect>().Instance.ValueChanged.InvokeAsync(null));
-        await EditField(h.Cut, "Line 1", "Storgata 2");
-        Submit(h.Cut, "Create");
+        Submit(h.Cut, "Create address");
 
         var summary = h.Cut.WaitForElement(".loc-err-summary");
         var items = summary.QuerySelectorAll("li").Select(li => li.TextContent.Trim()).ToList();
-        Assert.True(items.Count >= 2, string.Join(" | ", items));
-        Assert.Equal(h.Cut.FindComponent<OdsContactMethodLabelSelect>().Instance.Error, items[0]);
-        Assert.StartsWith($"Fix these {items.Count} things", summary.TextContent.Trim(), StringComparison.Ordinal);
-        Assert.Empty(h.Sent);
-    }
-
-    [Fact]
-    public async Task Saving_a_shared_change_without_a_choice_shows_the_summary_which_takes_focus()
-    {
-        var h = RenderContactDialog(Address(otherUses: 2));
-        await using var _ = h.Ctx;
-
-        await EditField(h.Cut, "Line 1", "Storgata 2");
-        Submit(h.Cut, "Save changes");
-
-        var summary = h.Cut.WaitForElement(".loc-err-summary");
-        Assert.Equal("alert", summary.GetAttribute("role"));
-        Assert.Equal("-1", summary.GetAttribute("tabindex"));
-        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], summary.Id));
-        Assert.Equal("true", h.Cut.Find("[role=radiogroup]").GetAttribute("aria-invalid"));
-        Assert.Empty(h.Sent);
-
-        // The summary's link focuses the group's first radio.
-        var link = summary.QuerySelector("a")!;
-        Assert.Equal("Choose who this change applies to", link.TextContent);
+        Assert.Equal([h.Cut.FindComponent<OdsContactMethodLabelSelect>().Instance.Error!, "Choose an address, or enter one by hand."], items);
+        var link = summary.QuerySelectorAll("a").Single();
+        Assert.EndsWith("-picker", link.GetAttribute("href"), StringComparison.Ordinal);
         await h.Cut.InvokeAsync(() => link.Click());
-        var groupId = h.Cut.Find("fieldset.odc-radiofield").Id;
-        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn" && Equals(i.Arguments[0], groupId));
+        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && ((string)i.Arguments[0]!).EndsWith("-picker", StringComparison.Ordinal));
+        Assert.Equal("Choose an address, or enter one by hand.", h.Cut.FindComponent<OdsLocationSelect>().Instance.Error);
+        Assert.Empty(h.Sent);
     }
 
     [Fact]
-    public async Task The_choice_is_sent_with_the_count_that_was_shown()
-    {
-        var h = RenderContactDialog(Address(otherUses: 2));
-        await using var _ = h.Ctx;
-
-        await EditField(h.Cut, "Line 1", "Storgata 2");
-        h.Cut.FindAll("input[type=radio]")[1].Change(true);
-        Submit(h.Cut, "Save changes");
-
-        h.Cut.WaitForAssertion(() => Assert.Single(h.Sent));
-        Assert.Equal(AddressApplyTo.ThisRecord, h.Sent[0].ApplyTo);
-        Assert.Equal(2, h.Sent[0].ExpectedOtherUses);
-        Assert.Equal("Storgata 2", h.Sent[0].Line1);
-        Assert.Null(h.Sent[0].LocationId);
-    }
-
-    [Fact]
-    public async Task A_409_on_apply_to_reloads_the_usage_and_asks_again()
-    {
-        var stored = Address(otherUses: 2);
-        var h = RenderContactDialog(stored,
-            reply: _ => ApiResult.Failure(HttpStatusCode.Conflict, Problem(409, "applyTo", "The uses changed.")),
-            reloaded: stored with { OtherUses = 5 });
-        await using var _ = h.Ctx;
-
-        await EditField(h.Cut, "Line 1", "Storgata 2");
-        h.Cut.FindAll("input[type=radio]")[0].Change(true);
-        Submit(h.Cut, "Save changes");
-
-        h.Cut.WaitForAssertion(() => Assert.Contains("Someone changed who uses this address. Check the count and choose again.", h.Cut.Markup));
-        Assert.Contains("All 6 uses of this address", h.Cut.Markup);
-        Assert.Empty(h.Cut.FindAll("input[type=radio][checked]"));
-        Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusFirstIn");
-    }
-
-    [Fact]
-    public async Task A_403_on_a_case_only_change_says_it_cannot_change_the_address_for_everyone()
-    {
-        var h = RenderContactDialog(Address(otherUses: 2),
-            reply: _ => ApiResult.Failure(HttpStatusCode.Forbidden, Problem(403)));
-        await using var _ = h.Ctx;
-
-        await EditField(h.Cut, "Line 1", "STORGATA 1");
-        Submit(h.Cut, "Save changes");
-
-        h.Cut.WaitForAssertion(() => Assert.Contains("You can’t change this address for everyone. Choose “Only this contact”.", h.Cut.Markup));
-        Assert.Equal(AddressApplyTo.AllUses, h.Sent.Single().ApplyTo);
-        Assert.Equal(2, h.Sent.Single().ExpectedOtherUses);
-        Assert.Empty(h.Cut.FindAll("fieldset.odc-radiofield"));
-    }
-
-    [Fact]
-    public async Task Picking_a_different_place_sends_its_id()
-    {
-        var h = RenderContactDialog(Address());
-        await using var _ = h.Ctx;
-
-        await h.Cut.InvokeAsync(() => h.Cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(LocationPick.Existing(HyttaId)));
-        Submit(h.Cut, "Save changes");
-
-        h.Cut.WaitForAssertion(() => Assert.Equal(HyttaId, h.Sent.Single().LocationId));
-        Assert.Null(h.Sent.Single().Line1);
-    }
-
-    [Fact]
-    public async Task A_409_on_line_one_explains_the_duplicate()
+    public async Task A_refused_geocode_lands_on_the_picker()
     {
         var h = RenderContactDialog(null,
-            reply: _ => ApiResult.Failure(HttpStatusCode.Conflict, Problem(409, "line1", "Exists.")));
+            reply: _ => ApiResult.Failure(HttpStatusCode.UnprocessableEntity, Problem(422, "latitude", "Send all three or none.")));
         await using var _ = h.Ctx;
 
-        await EditField(h.Cut, "Line 1", "Storgata 1");
-        await EditField(h.Cut, "City", "Oslo");
-        await EditField(h.Cut, "Country", "no");
+        await h.Pick(LocationPick.Address(Candidate()));
         Submit(h.Cut, "Create address");
 
-        h.Cut.WaitForAssertion(() => Assert.Contains("Another saved place already has this address.", h.Cut.Markup));
-        Assert.Equal("NO", h.Sent.Single().CountryCode);
+        h.Cut.WaitForAssertion(() => Assert.Equal(AddressBlockModel.StagedAddressUnusable, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
+    }
+
+    [Fact]
+    public async Task A_403_on_a_relink_says_choosing_a_saved_place_needs_permission()
+    {
+        var h = RenderContactDialog(Address(), reply: _ => ApiResult.Failure(HttpStatusCode.Forbidden, Problem(403)));
+        await using var _ = h.Ctx;
+
+        await h.Pick(LocationPick.Existing(HyttaId));
+        Submit(h.Cut, "Save changes");
+
+        h.Cut.WaitForAssertion(() => Assert.Contains("You don’t have permission to choose a saved place.", h.Cut.Markup));
     }
 
     // ── N2: nothing to save, and nothing to type into, before the stored place loads ─────
@@ -612,7 +816,7 @@ public class UnifiedLocationsAddressTests
         cut.FindAll("button").Single(b => b.TextContent.Contains(text, StringComparison.Ordinal));
 
     [Fact]
-    public async Task The_contact_address_dialog_disables_Save_until_its_block_has_loaded()
+    public async Task The_contact_address_dialog_disables_Save_until_its_field_has_loaded()
     {
         var ctx = Context();
         await using var _ = ctx;
@@ -632,87 +836,143 @@ public class UnifiedLocationsAddressTests
             .Add(x => x.Permissions, AddressBlockPermissions.Full)));
 
         Assert.Contains("Loading address…", cut.Markup);
-        Assert.Empty(cut.FindComponents<OdsAddressBlock>());
+        Assert.Empty(cut.FindComponents<LocationAddressField>());
         Assert.True(Button(cut, "Save changes").HasAttribute("disabled"));
         Button(cut, "Save changes").Click();
         // The strict mock proves nothing was sent.
 
         await cut.InvokeAsync(() => pending.SetResult(ApiResult<ExistingLocation>.Success(Storgata(), HttpStatusCode.OK)));
 
-        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsAddressBlock>()));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<LocationAddressField>()));
         Assert.DoesNotContain("Loading address…", cut.Markup);
         Assert.False(Button(cut, "Save changes").HasAttribute("disabled"));
     }
 
-    [Fact]
-    public async Task The_property_dialog_offers_no_address_field_to_type_into_before_the_place_loads()
+    // ── Through the property dialog ────────────────────────────────────────────
+
+    private static ExistingProperty Property(Guid? locationId = null) => new()
     {
-        var ctx = Context(Odyssey.Dtos.Authorization.PermissionClaims.LocationsRead, Odyssey.Dtos.Authorization.PermissionClaims.LocationsUpdate);
-        await using var _ = ctx;
-        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>(MockBehavior.Strict).Object);
-        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        var pending = new TaskCompletionSource<ApiResult<ExistingLocation>>();
-        ctx.Services.AddSingleton(PendingPlace(pending).Object);
-        ctx.Services.AddSingleton(new Mock<Odyssey.Client.Theme.IUserPreferenceService>().Object);
-        var property = new ExistingProperty
+        PropertyId = Guid.NewGuid(), Name = "Flat", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
+        RealEstateDetails = new RealEstateDetailsDto
         {
-            PropertyId = Guid.NewGuid(), Name = "Flat", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
-            RealEstateDetails = new RealEstateDetailsDto
-            {
-                Kind = RealEstateKind.Apartment, LocationId = StorgataId, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo",
-                CountryCode = "NO", OtherUses = 1, PlaceHasCoordinates = false,
-            },
-        };
+            Kind = RealEstateKind.Apartment, LocationId = locationId, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo",
+            CountryCode = "NO", OtherUses = locationId is null ? null : 1, PlaceHasCoordinates = false,
+        },
+    };
 
-        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<PropertyDialog>(d => d.Add(x => x.Open, true).Add(x => x.Property, property)));
-
-        Assert.Contains("Loading address…", cut.Markup);
-        Assert.Empty(cut.FindComponents<OdsAddressBlock>());
-        Assert.True(Button(cut, "Save changes").HasAttribute("disabled"));
-
-        await cut.InvokeAsync(() => pending.SetResult(ApiResult<ExistingLocation>.Success(Storgata(), HttpStatusCode.OK)));
-
-        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsAddressBlock>()));
-        Assert.False(Button(cut, "Save changes").HasAttribute("disabled"));
-    }
-
-    // ── Through the property dialog (AC 4) ─────────────────────────────────────
-
-    [Fact]
-    public async Task Clearing_every_property_field_saves_an_unlinked_property()
+    private static (BunitContext Ctx, IRenderedComponent<ProvidersHost> Cut, Func<NewProperty?> Sent) RenderPropertyDialog(
+        ExistingProperty property, params string[] permissions)
     {
-        var ctx = Context(Odyssey.Dtos.Authorization.PermissionClaims.LocationsRead, Odyssey.Dtos.Authorization.PermissionClaims.LocationsUpdate);
-        await using var _ = ctx;
+        var ctx = Context(permissions.Length == 0
+            ? [PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate, PermissionClaims.LocationsCreate]
+            : permissions);
         var properties = new Mock<IPropertiesApiClient>();
         NewProperty? sent = null;
         properties.Setup(p => p.UpdateAsync(It.IsAny<Guid>(), It.IsAny<NewProperty>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid _, NewProperty body, CancellationToken _) => { sent = body; return ApiResult.Success(HttpStatusCode.OK); });
         ctx.Services.AddSingleton(properties.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
-        ctx.Services.AddSingleton(Locations(Storgata()).Object);
-        var preferences = new Mock<Odyssey.Client.Theme.IUserPreferenceService>();
-        ctx.Services.AddSingleton(preferences.Object);
-        var property = new ExistingProperty
-        {
-            PropertyId = Guid.NewGuid(), Name = "Flat", Description = "Home", Type = PropertyType.RealEstate, CurrencyCode = "NOK",
-            RealEstateDetails = new RealEstateDetailsDto
-            {
-                Kind = RealEstateKind.Apartment, LocationId = StorgataId, AddressLine = "Storgata 1", PostalCode = "0155", City = "Oslo",
-                CountryCode = "NO", OtherUses = 1, PlaceHasCoordinates = false,
-            },
-        };
-        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<PropertyDialog>(d => d.Add(x => x.Open, true).Add(x => x.Property, property)));
-        Assert.Contains("Etg. 4 · Oslo", cut.Markup);
+        var api = Locations(Storgata());
+        Answer(api, Candidate());
+        ctx.Services.AddSingleton(api.Object);
+        ctx.Services.AddSingleton(new Mock<Odyssey.Client.Theme.IUserPreferenceService>().Object);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<PropertyDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.Property, property).Add(x => x.PickerDebounceMs, 0).Add(x => x.AddressDebounceMs, 0)));
+        return (ctx, cut, () => sent);
+    }
 
-        foreach (var label in new[] { "Address line", "Postal code", "City", "Country" })
-            await cut.InvokeAsync(() => cut.FindComponents<OdsField>().Single(f => f.Instance.Label == label).Instance.ValueChanged.InvokeAsync(""));
+    [Fact]
+    public async Task The_property_dialog_offers_no_address_field_before_the_place_loads()
+    {
+        var ctx = Context(PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate);
+        await using var _ = ctx;
+        ctx.Services.AddSingleton(new Mock<IPropertiesApiClient>(MockBehavior.Strict).Object);
+        ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        var pending = new TaskCompletionSource<ApiResult<ExistingLocation>>();
+        ctx.Services.AddSingleton(PendingPlace(pending).Object);
+        ctx.Services.AddSingleton(new Mock<Odyssey.Client.Theme.IUserPreferenceService>().Object);
+
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<PropertyDialog>(d => d.Add(x => x.Open, true).Add(x => x.Property, Property(StorgataId))));
+
+        Assert.Contains("Loading address…", cut.Markup);
+        Assert.Empty(cut.FindComponents<LocationAddressField>());
+        Assert.True(Button(cut, "Save changes").HasAttribute("disabled"));
+
+        await cut.InvokeAsync(() => pending.SetResult(ApiResult<ExistingLocation>.Success(Storgata(), HttpStatusCode.OK)));
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<LocationAddressField>()));
+        Assert.False(Button(cut, "Save changes").HasAttribute("disabled"));
+    }
+
+    [Fact]
+    public async Task Clearing_the_property_address_saves_it_unlinked_and_says_the_place_stays()
+    {
+        var (ctx, cut, sent) = RenderPropertyDialog(Property(StorgataId));
+        await using var _ = ctx;
+        Assert.False(cut.FindComponent<OdsLocationSelect>().Instance.Required);
+
+        await cut.InvokeAsync(() => cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(null));
         Assert.Contains("The address stays as a saved place on the Locations page.", cut.Markup);
-        Assert.DoesNotContain("Also on the saved place", cut.Markup);
-        cut.FindAll("button").Single(b => b.TextContent.Contains("Save changes", StringComparison.Ordinal)).Click();
+        Button(cut, "Save changes").Click();
 
-        cut.WaitForAssertion(() => Assert.NotNull(sent));
-        Assert.Null(sent!.RealEstateDetails!.LocationId);
-        Assert.Null(sent.RealEstateDetails.AddressLine);
-        Assert.Null(sent.RealEstateDetails.City);
+        cut.WaitForAssertion(() => Assert.NotNull(sent()));
+        Assert.Null(sent()!.RealEstateDetails!.LocationId);
+        Assert.Null(sent()!.RealEstateDetails!.AddressLine);
+    }
+
+    [Fact]
+    public async Task A_property_Kartverket_address_sends_its_geocode_for_this_property_only()
+    {
+        var (ctx, cut, sent) = RenderPropertyDialog(Property(StorgataId));
+        await using var _ = ctx;
+
+        await cut.InvokeAsync(() => cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(LocationPick.Address(Candidate())));
+        Button(cut, "Save changes").Click();
+
+        cut.WaitForAssertion(() => Assert.NotNull(sent()));
+        var re = sent()!.RealEstateDetails!;
+        Assert.Equal(("Storgata 3", "0155", "OSLO", "NO"), (re.AddressLine, re.PostalCode, re.City, re.CountryCode));
+        Assert.Equal((59.91234m, LocationSource.Kartverket, "kv-1"), (re.Latitude!.Value, re.Source!.Value, re.SourceReference));
+        Assert.Equal(AddressApplyTo.ThisRecord, re.ApplyTo);
+        Assert.Equal(1, re.ExpectedOtherUses);
+        Assert.Null(re.LocationId);
+    }
+
+    [Fact]
+    public async Task A_legacy_property_address_opens_in_hand_entry_with_the_four_property_fields()
+    {
+        var (ctx, cut, sent) = RenderPropertyDialog(Property());
+        await using var _ = ctx;
+
+        Assert.Empty(cut.FindComponents<OdsLocationSelect>());
+        Assert.Equal(["Line 1", "Postal code", "City", "Country"],
+            cut.FindComponent<OdsAddressBlock>().FindComponents<OdsField>().Select(f => f.Instance.Label));
+        Assert.Equal("Storgata 1", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Line 1").Instance.Value);
+        Assert.Contains("Search instead", cut.Markup);
+        Button(cut, "Save changes").Click();
+
+        cut.WaitForAssertion(() => Assert.NotNull(sent()));
+        Assert.Equal(("Storgata 1", "Oslo"), (sent()!.RealEstateDetails!.AddressLine, sent()!.RealEstateDetails!.City));
+        Assert.Null(sent()!.RealEstateDetails!.ApplyTo);
+    }
+
+    // ── The location dialog (§3.3a, #380 §5.5a) ───────────────────────────────
+
+    [Fact]
+    public async Task A_Kartverket_address_candidate_fills_the_location_dialogs_Address_group_and_a_place_name_does_not()
+    {
+        await using var ctx = Context();
+        ctx.Services.AddSingleton(Locations().Object);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationDialog>(d => d.Add(x => x.Open, true)));
+        string? Value(string label) => cut.FindComponents<OdsField>().Single(f => f.Instance.Label == label).Instance.Value;
+
+        await cut.InvokeAsync(() => cut.FindComponent<LocationSearch>().Instance.OnPick.InvokeAsync(
+            new LocationCandidatePick(Candidate(kind: LocationCandidateKind.PlaceName), Kartverket)));
+        Assert.Null(Value("Line 1"));
+
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Search again", StringComparison.Ordinal)).Click();
+        await cut.InvokeAsync(() => cut.FindComponent<LocationSearch>().Instance.OnPick.InvokeAsync(new LocationCandidatePick(Candidate(), Kartverket)));
+
+        Assert.Equal(("Storgata 3", "0155", "OSLO", "NO"), (Value("Line 1"), Value("Postal code"), Value("City"), Value("Country")));
     }
 }
