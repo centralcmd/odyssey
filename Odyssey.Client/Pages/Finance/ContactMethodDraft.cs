@@ -55,8 +55,7 @@ public sealed class ContactMethodDraft
         switch (kind)
         {
             case "address":
-                // The fields are the address block's (OdsAddressBlock / AddressBlockModel.Validate): a picked
-                // place needs none of them.
+                // The address is the Address field's (AddressBlockModel.Validate): a picked place needs no fields.
                 break;
             case "email":
                 if (!EmailRegex.IsMatch(Value.Trim())) errors["value"] = "Enter a valid email address.";
@@ -76,8 +75,9 @@ public sealed class ContactMethodDraft
     };
 
     /// <summary>
-    /// The address body for what the address block decided (issue #383 §5.1): a place by id, or the fields —
-    /// with <c>applyTo</c> and <c>expectedOtherUses</c> when a stored address was changed.
+    /// The address body for what the address field decided (issue #383 §5.1, §3.3a): a place by id, or the fields —
+    /// with <c>applyTo: ThisRecord</c> and <c>expectedOtherUses</c> when they replace a stored address, and a staged
+    /// Kartverket address's geocode (#380 §5.3a).
     /// </summary>
     public NewAddress ToNewAddress(AddressWrite write) => new()
     {
@@ -92,6 +92,11 @@ public sealed class ContactMethodDraft
         CountryCode = write.Fields?.CountryCode,
         ApplyTo = write.ApplyTo,
         ExpectedOtherUses = write.ExpectedOtherUses,
+        Latitude = write.Geocode?.Latitude,
+        Longitude = write.Geocode?.Longitude,
+        TimeZoneId = write.Geocode?.TimeZoneId,
+        Source = write.Geocode?.Source,
+        SourceReference = write.Geocode?.SourceReference,
     };
 
     /// <summary>

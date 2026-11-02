@@ -54,6 +54,18 @@ public partial class LocationDialog
     /// <summary>Where focus goes on close: a space-separated chain of ids, tried in order (issue #383 §6.5).</summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
 
+    /// <summary>
+    /// Opened from a contact or property's <b>Edit address</b> (issue #383 v5 §3.3a): the dialog says the change
+    /// reaches every record that uses the place — <i>Changes apply to every record that uses this address (N)</i>.
+    /// </summary>
+    [Parameter] public bool ShowSharedUses { get; set; }
+
+    /// <summary>
+    /// Every use of the place, this record included — or null when the caller cannot see every kind, and the line
+    /// then names no count.
+    /// </summary>
+    [Parameter] public int? SharedUses { get; set; }
+
     private string? InitialQuery => FindCoordinates && Location is { } l
         ? LocationVisuals.ComposeAddress(l) ?? l.AddressText ?? l.Name
         : null;
@@ -267,6 +279,15 @@ public partial class LocationDialog
         if (!IsEdit && (string.IsNullOrWhiteSpace(_name) || (_pick is not null && _name == _pick.Name)))
             _name = c.Name;
         _address = c.AddressText;
+        // A Kartverket ADDRESS fills the Address group (issue #380 §5.5a); a place name or a locality leaves it.
+        if (c.Kind == LocationCandidateKind.Address && !string.IsNullOrEmpty(c.Line1))
+        {
+            _line1 = c.Line1;
+            _postalCode = c.PostalCode;
+            _city = c.City;
+            _countryCode = c.CountryCode;
+        }
+
         _lat = c.Latitude;
         _lng = c.Longitude;
         _altitude = c.AltitudeMeters;

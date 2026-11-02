@@ -91,6 +91,13 @@
                         Address, coordinates, altitude and time zone were replaced from @PickLabel. The name and description are unchanged.
                     </div>
                 }
+                @if (IsEdit && ShowSharedUses)
+                {
+                    <div class="loc-note">
+                        <span class="material-icons" aria-hidden="true">link</span>
+                        @LocationVisuals.SharedUsesLine(SharedUses)
+                    </div>
+                }
                 @if (Location?.Archived is not null)
                 {
                     <div class="loc-note">
@@ -104,7 +111,7 @@
                           Placeholder="e.g. Home, Cabin, School"
                           Help="Unique across the household’s locations, archived ones included." />
 
-                @* The structured address (issue #383 §3.6). A search candidate does not fill it (#380 non-goal 3). *@
+                @* The structured address (issue #383 §3.6). A Kartverket address candidate fills it (#380 §5.5a, v9). *@
                 <div class="loc-addr-group">
                     <OdsFormRow>
                         <OdsField Label="Line 1" MaxLength="LocationRules.AddressLineMaxLength" Value="@_line1"

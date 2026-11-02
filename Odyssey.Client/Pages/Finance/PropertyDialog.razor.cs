@@ -27,6 +27,12 @@ public partial class PropertyDialog
     /// <summary>When set, the dialog edits this property. Null = create mode.</summary>
     [Parameter] public ExistingProperty? Property { get; set; }
 
+    /// <summary>The address picker's debounce; a test passes zero.</summary>
+    [Parameter] public int PickerDebounceMs { get; set; } = 250;
+
+    /// <summary>The address search's whole pause; a test passes zero.</summary>
+    [Parameter] public int AddressDebounceMs { get; set; } = 400;
+
     private bool IsEdit => Property is not null;
 
     private static int ThisYear => DateTime.UtcNow.Year;
@@ -54,9 +60,8 @@ public partial class PropertyDialog
     // Both drafts are kept, so flipping the type on create and back loses nothing typed.
     private RealEstateKind _realEstateKind = RealEstateKind.House;
 
-    // The address is the shared address block's (issue #383 §3.3): a saved place or a typed address.
+    // The address is the one Address field's (issue #383 v5 §3.3a): a saved place, a Kartverket address or hand entry.
     private AddressBlockModel _address = new(AddressBlockVariant.Property, null, new(false, false, false));
-    private OdsAddressBlock? _addressBlock;
 
     // False until _address is the real model (the stored place and its usage loaded). The block is not
     // rendered and Save is disabled before then, so nothing is typed into the placeholder above (N2).
@@ -71,11 +76,10 @@ public partial class PropertyDialog
     /// </summary>
     private void Announce(string message) => _ = _announcer?.Announce(message);
     private string? _formAlert;
-    private string? _applyToAlert;
     private bool _focusSummary;
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
     private string SummaryId => $"prop-errsum-{_uid}";
-    private string ApplyGroupId => $"prop-apply-{_uid}";
+    private string AddressIdBase => $"prop-addr-{_uid}";
 
     private string? _cadastralNumber;
     private decimal? _livingArea;
@@ -141,8 +145,7 @@ public partial class PropertyDialog
     }
 
     /// <summary>
-    /// The stored link. The place's Line 2 and Region are not on the property DTO, so the place is read
-    /// (under <c>locations.read</c>) for them and for the per-kind breakdown of its other uses.
+    /// The stored link, with the per-kind breakdown of the place's other uses when the caller may read it.
     /// </summary>
     private async Task<AddressBlockStored> StoredFor(Guid locationId, RealEstateDetailsDto re)
     {
@@ -158,7 +161,6 @@ public partial class PropertyDialog
                 Line2 = place?.Line2, Region = place?.Region,
             },
             OtherUses = re.OtherUses ?? 0,
-            PlaceHasCoordinates = re.PlaceHasCoordinates ?? false,
             OthersBreakdown = OthersOf(place),
         };
     }
@@ -260,20 +262,16 @@ public partial class PropertyDialog
     private void OnAddressChanged()
     {
         _formAlert = null;
-        foreach (var key in new[] { AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.PostalCodeKey,
-                                    AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey })
+        foreach (var key in new[] { AddressBlockModel.AddressKey, AddressBlockModel.Line1Key, AddressBlockModel.PostalCodeKey,
+                                    AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey })
             _errors.Remove(key);
-        if (!_address.AsksApplyTo)
-            _applyToAlert = null;
     }
 
-    private Task FocusApplyToAsync() => _addressBlock?.FocusApplyToAsync() ?? Task.CompletedTask;
-
-    // The summary lists the address block's errors in field order (issue #383 §6.8).
+    // The summary lists the address field's errors in field order (issue #383 §6.8).
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
     [
-        .. new[] { "name", "description", "currencyCode", "disposedDate", AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key,
-                   AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey,
+        .. new[] { "name", "description", "currencyCode", "disposedDate", AddressBlockModel.AddressKey, AddressBlockModel.Line1Key,
+                   AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey,
                    "buildYear", "livingAreaSqm", "plotAreaSqm", "homeownerAssociationId", "modelYear", "registrationNumber", "vin" }
             .Where(_errors.ContainsKey)
             .Select(k => new KeyValuePair<string, string>(k, _errors[k])),
@@ -375,8 +373,9 @@ public partial class PropertyDialog
         RealEstateDetails = IsVehicle ? null : new RealEstateDetailsDto
         {
             Kind = _realEstateKind,
-            // Per the address block's state (issue #383 §5.1): a place by id, the four fields, or — Cleared —
-            // neither, which unlinks the property and leaves the place on the Locations page.
+            // Per the Address field (issue #383 §5.1, §3.3a): a place by id, the four fields (with a staged Kartverket
+            // address's geocode), or — cleared — neither, which unlinks the property and leaves the place on the
+            // Locations page.
             LocationId = _addressWrite.LocationId,
             AddressLine = _addressWrite.Fields?.Line1,
             PostalCode = _addressWrite.Fields?.PostalCode,
@@ -384,6 +383,11 @@ public partial class PropertyDialog
             CountryCode = _addressWrite.Fields?.CountryCode,
             ApplyTo = _addressWrite.ApplyTo,
             ExpectedOtherUses = _addressWrite.ExpectedOtherUses,
+            Latitude = _addressWrite.Geocode?.Latitude,
+            Longitude = _addressWrite.Geocode?.Longitude,
+            TimeZoneId = _addressWrite.Geocode?.TimeZoneId,
+            Source = _addressWrite.Geocode?.Source,
+            SourceReference = _addressWrite.Geocode?.SourceReference,
             CadastralNumber = Blank(_cadastralNumber),
             LivingAreaSqm = _livingArea,
             PlotAreaSqm = _plotArea,
@@ -410,7 +414,6 @@ public partial class PropertyDialog
             return false;
 
         _formAlert = null;
-        _applyToAlert = null;
         Validate();
         if (_errors.Count > 0)
         {
@@ -481,37 +484,44 @@ public partial class PropertyDialog
         var conflict = status == System.Net.HttpStatusCode.Conflict;
         if (conflict && Leaf("applyTo") is not null && Property is { } p)
         {
-            // The uses changed under the user: reload the usage and ask again with nothing chosen.
+            // A case-only change is edited in place, and the uses changed under the user: show the count now.
             var fresh = await Properties.GetAsync(p.PropertyId);
             var locationId = _address.Stored?.LocationId;
             ExistingLocation? place = null;
             if (locationId is { } id && _addressPermissions.CanReadLocations && (await Locations.GetAsync(id)) is { IsSuccess: true, Value: { } found })
                 place = found;
             _address.UsesChanged(fresh.Value?.RealEstateDetails?.OtherUses ?? _address.Stored?.OtherUses ?? 0, OthersOf(place));
-            _applyToAlert = AddressBlockModel.UsesChangedAlert;
-            StateHasChanged();
-            await FocusApplyToAsync();
+            _formAlert = AddressBlockModel.UsesChangedAlert;
             return true;
         }
+
+        // A field the user cannot see is reported on the picker: in hand entry the fields are the field.
+        string FieldKey(string key) => _address.Hand ? key : AddressBlockModel.AddressKey;
 
         var handled = false;
         if (Leaf("locationId") is not null)
         {
-            _errors[AddressBlockModel.LocationIdKey] = _address.LocationIdMessage;
+            _errors[AddressBlockModel.AddressKey] = _address.LocationIdMessage;
+            handled = true;
+        }
+
+        if (new[] { "latitude", "longitude", "timeZoneId", "source", "sourceReference" }.Any(k => Leaf(k) is not null))
+        {
+            _errors[AddressBlockModel.AddressKey] = AddressBlockModel.StagedAddressUnusable;
             handled = true;
         }
 
         if (Leaf("addressLine") is not null || Leaf("line1") is not null)
         {
-            _errors[AddressBlockModel.Line1Key] = conflict
-                ? AddressBlockModel.DuplicateAddressMessage(_address.Noun, _addressPermissions.CanUpdateLocations)
+            _errors[FieldKey(AddressBlockModel.Line1Key)] = conflict
+                ? AddressBlockModel.DuplicateAddressMessage(_addressPermissions.CanUpdateLocations)
                 : Leaf("addressLine") ?? Leaf("line1")!;
             handled = true;
         }
 
         if (!conflict && Leaf("applyTo") is { } applyTo)
         {
-            _errors[AddressBlockModel.ApplyToKey] = applyTo;
+            _formAlert = applyTo;
             handled = true;
         }
 
@@ -546,6 +556,10 @@ public partial class PropertyDialog
         var key = known.FirstOrDefault(k => string.Equals(k, leaf, StringComparison.OrdinalIgnoreCase));
         if (key is null)
             return false;
+
+        // An address field the picker hides is reported on the picker.
+        if (!IsVehicle && !_address.Hand && key is "countryCode" or "city" or "postalCode")
+            key = AddressBlockModel.AddressKey;
 
         _errors[key] = message;
         return true;

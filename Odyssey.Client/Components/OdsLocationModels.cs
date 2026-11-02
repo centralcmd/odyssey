@@ -8,9 +8,10 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Components;
 
 /// <summary>
-/// The value of an <c>OdsLocationSelect</c> (issue #383 §4): an existing place by <see cref="Id"/>, or a
-/// <b>staged</b> new one by <see cref="NewName"/> that the parent creates when its own dialog saves.
-/// Exactly one of the two is set.
+/// The value of an <c>OdsLocationSelect</c> (issue #383 §4): an existing place by <see cref="Id"/>, a
+/// <b>staged</b> new one by <see cref="NewName"/> that the parent creates when its own dialog saves, or — in
+/// address mode (v5) — a staged Kartverket <see cref="Candidate"/> that the record write sends as fields plus its
+/// geocode. Exactly one of the three is set.
 /// </summary>
 public sealed record LocationPick(Guid? Id, string? NewName)
 {
@@ -18,7 +19,29 @@ public sealed record LocationPick(Guid? Id, string? NewName)
 
     public static LocationPick Staged(string name) => new(null, name);
 
+    /// <summary>A Kartverket address picked in the address picker: nothing is created until the record saves.</summary>
+    public static LocationPick Address(LocationCandidate candidate) => new(null, null) { Candidate = candidate };
+
+    /// <summary>The staged Kartverket address, in address mode.</summary>
+    public LocationCandidate? Candidate { get; init; }
+
     public bool IsStaged => Id is null && !string.IsNullOrEmpty(NewName);
+
+    /// <summary>A staged Kartverket address (design system · <c>isStagedAddress</c>).</summary>
+    public bool IsStagedAddress => Id is null && Candidate is not null;
+}
+
+/// <summary>What an <c>OdsLocationSelect</c> is for (design system · LocationSelect <c>mode</c>).</summary>
+public enum LocationSelectMode
+{
+    /// <summary>The Place of an event, series or journal entry.</summary>
+    Place,
+
+    /// <summary>
+    /// The one Address field of a contact or property (issue #383 v5 §3.3a): address-complete saved places, the
+    /// Kartverket addresses and the hand-entry row, in labelled groups; never a create row.
+    /// </summary>
+    Address,
 }
 
 /// <summary>Which places an <c>OdsLocationSelect</c> offers.</summary>

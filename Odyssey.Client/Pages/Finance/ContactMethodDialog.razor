@@ -2,8 +2,8 @@
     Add / edit dialog for a single contact-method record — address, email, or phone
     (Odyssey Design System · Contacts ContactForm, issue #325). An email or phone is handed back to the
     host as a ContactMethodDraft, which performs the sub-resource API call. An ADDRESS is a shared place
-    since issue #380: the dialog edits it through OdsAddressBlock and writes it itself, because only it
-    knows which request it sent — the 403 carries no reason (issue #383 §5.3).
+    since issue #380: the dialog edits it through the one Address field (LocationAddressField, issue #383 v5
+    §3.3a) and writes it itself, because only it knows which request it sent — the 403 carries no reason (§5.3).
 *@
 @using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
@@ -24,9 +24,9 @@
 
         @if (Kind == "address")
         {
-            @* The shared address block (issue #383 §3.3): pick a saved place or type the address. *@
+            @* The one Address field (issue #383 v5 §3.3a): a saved place, a Kartverket address, or one entered by hand. *@
             <OdsLiveAnnouncer @ref="_announcer" />
-            <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId" OnApplyTo="FocusApplyToAsync" />
+            <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" Links="@LocationAddressField.ErrorLinks(AddressIdBase)" />
             @if (!string.IsNullOrEmpty(_formAlert))
             {
                 <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
@@ -39,8 +39,9 @@
             }
             else
             {
-                <OdsAddressBlock @ref="_addressBlock" Model="_block" Errors="_errors" ApplyToAlert="@_applyToAlert"
-                                 ApplyGroupId="@ApplyGroupId" OnChange="OnBlockChanged" OnAnnounce="@Announce" />
+                <LocationAddressField Model="_block" Errors="_errors" IdBase="@AddressIdBase" OnChange="OnBlockChanged"
+                                      OnAnnounce="@Announce" OnPlaceEdited="OnAddressSaved" DebounceMs="PickerDebounceMs"
+                                      AddressDebounceMs="AddressDebounceMs" />
             }
         }
         else if (Kind == "email")

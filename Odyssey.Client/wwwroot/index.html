@@ -104,15 +104,6 @@
             if (value === null || value === undefined || value === '') el.removeAttribute(name);
             else el.setAttribute(name, value);
         };
-        window.odsAddDescribedBy = function (elementId, extraId) {
-            // Append one id to an input's aria-describedby without dropping the ids MudBlazor already put
-            // there (its helper text) — the address block adds its coordinates warning to the field the
-            // user changed (issue #383 §3.3 rule 3).
-            const el = document.getElementById(elementId);
-            if (!el || !extraId) return;
-            const ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
-            if (!ids.includes(extraId)) { ids.push(extraId); el.setAttribute('aria-describedby', ids.join(' ')); }
-        };
         window.odsFocusById = function (elementId) {
             // Restore focus to a control by id — used after an action unmounts the element that had
             // focus (e.g. dismissing/applying a match-suggestion chip), so focus never falls to <body>.

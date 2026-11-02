@@ -29,8 +29,8 @@
                SubmitDisabled="@(!_addressReady)" OnSubmit="SaveAsync">
 
     <OdsLiveAnnouncer @ref="_announcer" />
-    <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId"
-                                                       OnApplyTo="FocusApplyToAsync" />
+    <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors"
+                                                       Links="@Odyssey.Client.Pages.Journal.LocationAddressField.ErrorLinks(AddressIdBase)" />
 
     @if (IsEdit)
     {
@@ -101,15 +101,17 @@
     }
     else
     {
-        @* The shared address block (issue #383 §3.3), property variant. *@
+        @* The one Address field (issue #383 v5 §3.3a), property variant: clearing it unlinks the property. *@
         @if (!string.IsNullOrEmpty(_formAlert))
         {
             <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
         }
         @if (_addressReady)
         {
-            <OdsAddressBlock @ref="_addressBlock" Model="_address" Errors="_errors" ApplyToAlert="@_applyToAlert"
-                             ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@Announce" />
+            <Odyssey.Client.Pages.Journal.LocationAddressField Model="_address" Errors="_errors" IdBase="@AddressIdBase"
+                                                               OnChange="OnAddressChanged" OnAnnounce="@Announce"
+                                                               OnPlaceEdited="OnSaved" DebounceMs="PickerDebounceMs"
+                                                               AddressDebounceMs="AddressDebounceMs" />
         }
         else
         {

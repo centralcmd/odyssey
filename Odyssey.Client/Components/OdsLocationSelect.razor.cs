@@ -16,6 +16,30 @@ public partial class OdsLocationSelect
 
     private const string StagedPrefix = "new:";
 
+    // A staged Kartverket address (design system · isStagedAddress): `addr:‹source reference›`.
+    private const string AddressPrefix = "addr:";
+
+    /// <summary>The address search's disclosure under the field (issue #383 v5 §3.3a) — always visible while it is on.</summary>
+    public const string AddressSearchDisclosure = "Address search sends what you type to Kartverket.";
+
+    /// <summary>The Kartverket group's note when the address search failed.</summary>
+    public const string AddressSearchUnavailable = "Address search is unavailable — enter the address by hand";
+
+    /// <summary>The address picker's final row.</summary>
+    public const string EnterByHandLabel = "Enter an address by hand…";
+
+    /// <summary>Characters before the address search is sent (design system · LocationSelect, 3).</summary>
+    public const int AddressMinChars = 3;
+
+    public const string SavedGroup = "saved";
+    public const string KartverketGroup = "kartverket";
+
+    internal static readonly IReadOnlyList<OdsOptionGroup> AddressGroups =
+    [
+        new(SavedGroup, "Saved places"),
+        new(KartverketGroup, "Addresses from Kartverket"),
+    ];
+
     [Inject] private ILocationsApiClient Locations { get; set; } = default!;
 
     /// <summary>An existing place, a staged new one, or nothing.</summary>
@@ -23,7 +47,20 @@ public partial class OdsLocationSelect
 
     [Parameter] public EventCallback<LocationPick?> ValueChanged { get; set; }
 
-    [Parameter] public string Label { get; set; } = "Place";
+    /// <summary>The field label. Default <c>Place</c>, or <c>Address</c> in address mode.</summary>
+    [Parameter] public string? Label { get; set; }
+
+    /// <summary><see cref="LocationSelectMode.Place"/> (default) or the address field of a contact or property.</summary>
+    [Parameter] public LocationSelectMode Mode { get; set; } = LocationSelectMode.Place;
+
+    /// <summary>
+    /// Address mode: the final <i>Enter an address by hand…</i> row, called with the typed text. Offered only with
+    /// <see cref="AllowCreate"/>.
+    /// </summary>
+    [Parameter] public EventCallback<string> OnEnterByHand { get; set; }
+
+    /// <summary>Address mode: the whole pause before the address search is sent — the design's 400 ms; a test passes zero.</summary>
+    [Parameter] public int AddressDebounceMs { get; set; } = 400;
 
     [Parameter] public string? Help { get; set; }
 
@@ -33,7 +70,7 @@ public partial class OdsLocationSelect
 
     [Parameter] public bool Disabled { get; set; }
 
-    [Parameter] public string Placeholder { get; set; } = "Search places…";
+    [Parameter] public string? Placeholder { get; set; }
 
     /// <summary>Offer <c>Create place "…"</c>. The caller gates it on <c>locations.create</c>.</summary>
     [Parameter] public bool AllowCreate { get; set; }
@@ -72,7 +109,11 @@ public partial class OdsLocationSelect
         pick is null ? null
         : pick.Id is { } id ? id.ToString()
         : !string.IsNullOrEmpty(pick.NewName) ? StagedPrefix + pick.NewName
+        : pick.Candidate is { } candidate ? AddressValue(candidate)
         : null;
+
+    private static string AddressValue(LocationCandidate candidate) =>
+        AddressPrefix + (candidate.SourceReference ?? LocationVisuals.CandidateAddress(candidate));
 
     /// <summary>The pick for a combobox value — the inverse of <see cref="ToComboValue"/>.</summary>
     internal static LocationPick? FromComboValue(string? value) =>
@@ -83,6 +124,36 @@ public partial class OdsLocationSelect
 
     private string? ComboValue => ToComboValue(Value);
 
+    private bool IsAddressMode => Mode == LocationSelectMode.Address;
+
+    /// <summary>The Kartverket group, its hand-entry row and its disclosure: address mode under <c>locations.create</c>.</summary>
+    private bool AddressSearchOn => IsAddressMode && AllowCreate;
+
+    private string EffectiveLabel => Label ?? (IsAddressMode ? "Address" : "Place");
+
+    private string EffectivePlaceholder => Placeholder ?? (IsAddressMode ? "Search saved places and addresses…" : "Search places…");
+
+    private LocationPickFilter EffectiveFilter => IsAddressMode ? LocationPickFilter.AddressComplete : Filter;
+
+    private string DisclosureId => $"{_inputId}-disclose";
+
+    // The candidates behind the Kartverket rows of the latest search, by their row value.
+    private readonly Dictionary<string, LocationCandidate> _candidates = new(StringComparer.Ordinal);
+
+    private OdsComboboxFooter? Footer => AddressSearchOn && OnEnterByHand.HasDelegate
+        ? new OdsComboboxFooter(EnterByHandLabel, text => OnEnterByHand.InvokeAsync(text)) { Icon = "edit_location_alt" }
+        : null;
+
+    /// <summary>
+    /// Shows <paramref name="place"/> as the current value's label — after the place was edited through the location
+    /// dialog (issue #383 v5 Edit address), so the field names the address it now has.
+    /// </summary>
+    public void Refresh(ExistingLocation place)
+    {
+        _current[place.LocationId.ToString()] = IsAddressMode ? LocationVisuals.AddressOptionFor(place) : LocationVisuals.OptionFor(place);
+        StateHasChanged();
+    }
+
     private IReadOnlyList<OdsOption> CurrentOptions
     {
         get
@@ -90,6 +161,8 @@ public partial class OdsLocationSelect
             // A staged value names itself; it was never on the server.
             if (Value is { IsStaged: true } staged)
                 return [StagedOption(staged.NewName!)];
+            if (Value is { IsStagedAddress: true } address)
+                return [LocationVisuals.StagedAddressOptionFor(ComboValue!, address.Candidate!)];
             return ComboValue is { } v && _current.TryGetValue(v, out var known) ? [known] : [];
         }
     }
@@ -103,13 +176,15 @@ public partial class OdsLocationSelect
             var hasHelp = !string.IsNullOrEmpty(Help);
             var helpId = hasHelp ? $"{_inputId}-help" : null;
             var errorId = string.IsNullOrEmpty(Error) ? null : hasHelp ? $"{_inputId}-help-error" : $"{_inputId}-help";
-            var ids = new[] { helpId, errorId, DescribedById }
+            if (Bare)
+                helpId = errorId = null;
+            var ids = new[] { helpId, errorId, AddressSearchOn ? DisclosureId : null, DescribedById }
                 .Where(v => !string.IsNullOrEmpty(v)).ToArray();
             return ids.Length == 0 ? null : string.Join(' ', ids);
         }
     }
 
-    private string EffectiveEmptyText => Filter == LocationPickFilter.AddressComplete
+    private string EffectiveEmptyText => EffectiveFilter == LocationPickFilter.AddressComplete
         ? "No saved place with a full address matches."
         : "No places match";
 
@@ -129,7 +204,13 @@ public partial class OdsLocationSelect
         && (filter != LocationPickFilter.AddressComplete || LocationVisuals.IsAddressComplete(l));
 
     /// <summary>One server page of active places for the query — never the unpaged list (issue #383 AC 13).</summary>
-    private async Task<IReadOnlyList<OdsOption>> SearchAsync(string query, CancellationToken ct)
+    private Task<IReadOnlyList<OdsOption>> SearchAsync(string query, CancellationToken ct) =>
+        IsAddressMode ? SearchAddressesAsync(query, ct) : SearchPlacesAsync(query, ct);
+
+    private async Task<IReadOnlyList<OdsOption>> SearchPlacesAsync(string query, CancellationToken ct) =>
+        [.. (await SavedPlacesAsync(query, ct)).Select(LocationVisuals.OptionFor)];
+
+    private async Task<IReadOnlyList<ExistingLocation>> SavedPlacesAsync(string query, CancellationToken ct)
     {
         var result = await Locations.ListAsync(1, PageSize, query, [nameof(ArchivalStatus.Active)], ct: ct);
         if (!result.IsSuccess)
@@ -140,8 +221,62 @@ public partial class OdsLocationSelect
             throw new InvalidOperationException(result.Error);
         }
 
-        return [.. (result.Value?.Items ?? []).Where(l => Offerable(l, Filter, ExcludeIds)).Select(LocationVisuals.OptionFor)];
+        return [.. (result.Value?.Items ?? []).Where(l => Offerable(l, EffectiveFilter, ExcludeIds))];
     }
+
+    /// <summary>
+    /// Address mode (issue #383 v5 §3.3a): the saved places, and — with the address search on and 3 characters —
+    /// the Kartverket addresses, both for the same query and run side by side. Only address results with a Line 1
+    /// are listed, and one whose address equals a listed saved place is dropped, since Save would link that place
+    /// anyway. The address search failing is a note in its group, never a failed field; saved places still list.
+    /// </summary>
+    private async Task<IReadOnlyList<OdsOption>> SearchAddressesAsync(string query, CancellationToken ct)
+    {
+        var addresses = AddressSearchOn && query.Trim().Length >= AddressMinChars ? SearchKartverketAsync(query, ct) : null;
+        var places = await SavedPlacesAsync(query, ct);
+        var rows = places.Select(p => LocationVisuals.AddressOptionFor(p) with { Group = SavedGroup }).ToList();
+        if (addresses is null)
+            return rows;
+
+        var candidates = await addresses;
+        if (candidates is null)
+        {
+            rows.Add(new OdsOption($"note:{KartverketGroup}", AddressSearchUnavailable) { Group = KartverketGroup, IsNote = true });
+            return rows;
+        }
+
+        var saved = places.Select(p => SameAddressKey(p.Line1, p.PostalCode, p.CountryCode)).ToHashSet(StringComparer.Ordinal);
+        _candidates.Clear();
+        foreach (var candidate in candidates.Where(c => !saved.Contains(SameAddressKey(c.Line1, c.PostalCode, c.CountryCode ?? "NO"))))
+        {
+            var value = AddressValue(candidate);
+            if (!_candidates.TryAdd(value, candidate))
+                continue;
+            rows.Add(LocationVisuals.CandidateOptionFor(value, candidate));
+        }
+
+        return rows;
+    }
+
+    /// <summary>
+    /// The address results of the location search, region Norway, after the rest of the 400 ms pause — or null when
+    /// it failed. A cancelled search throws, so a superseded query stays silent rather than reading as a failure.
+    /// </summary>
+    private async Task<IReadOnlyList<LocationCandidate>?> SearchKartverketAsync(string query, CancellationToken ct)
+    {
+        var extra = Math.Max(0, AddressDebounceMs - DebounceMs);
+        if (extra > 0)
+            await Task.Delay(extra, ct);
+        var result = await Locations.SearchAsync(new LocationSearchRequest { Query = query.Trim(), Region = LocationSearchRegion.Norway }, ct);
+        ct.ThrowIfCancellationRequested();
+        if (!result.IsSuccess || result.Value is not { } response)
+            return null;
+        return [.. response.Candidates.Where(c => c.Kind == LocationCandidateKind.Address && !string.IsNullOrWhiteSpace(c.Line1))];
+    }
+
+    /// <summary>The design's "same address" test for the dedupe: Line 1, postal code and country, cleaned, any case.</summary>
+    private static string SameAddressKey(string? line1, string? postalCode, string? countryCode) =>
+        string.Join("|", new[] { line1, postalCode, countryCode }.Select(v => LocationAddressKey.CleanField(v)?.ToUpperInvariant() ?? string.Empty));
 
     /// <summary>Renders a stored id outside the loaded options, archived ones included.</summary>
     private async Task<OdsOption?> ResolveAsync(string value)
@@ -151,7 +286,7 @@ public partial class OdsLocationSelect
         var result = await Locations.GetAsync(id);
         if (!result.IsSuccess || result.Value is not { } place)
             return null;
-        var option = LocationVisuals.OptionFor(place);
+        var option = IsAddressMode ? LocationVisuals.AddressOptionFor(place) : LocationVisuals.OptionFor(place);
         _current[value] = option;
         return option;
     }
@@ -167,7 +302,11 @@ public partial class OdsLocationSelect
 
     private Task OnValueChanged(string? value)
     {
-        var pick = FromComboValue(value);
+        var pick = value is not null && value.StartsWith(AddressPrefix, StringComparison.Ordinal)
+            ? _candidates.TryGetValue(value, out var candidate) ? LocationPick.Address(candidate)
+              : Value is { IsStagedAddress: true } same && ComboValue == value ? same
+              : null
+            : FromComboValue(value);
         Value = pick;
         return ValueChanged.InvokeAsync(pick);
     }

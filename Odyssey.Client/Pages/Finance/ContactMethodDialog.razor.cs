@@ -13,8 +13,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 /// <summary>
 /// The add / edit dialog for one contact method. Parameters, state and the save path; the markup is in
-/// <c>ContactMethodDialog.razor</c>. An ADDRESS is written by this dialog itself, through the shared
-/// address block (issue #383 §3.3); an email or phone goes back to the host through <see cref="OnCommit"/>.
+/// <c>ContactMethodDialog.razor</c>. An ADDRESS is written by this dialog itself, through the one Address field
+/// (issue #383 v5 §3.3a); an email or phone goes back to the host through <see cref="OnCommit"/>.
 /// </summary>
 public partial class ContactMethodDialog
 {
@@ -49,14 +49,19 @@ public partial class ContactMethodDialog
     /// <summary>The contact the address belongs to — the dialog writes an address itself (issue #383).</summary>
     [Parameter] public Guid ContactId { get; set; }
 
-    /// <summary>What the caller may do with saved places; decides the picker, the usage line and apply-to.</summary>
+    /// <summary>What the caller may do with saved places; decides the picker, the address search, the usage line and Edit address.</summary>
     [Parameter] public AddressBlockPermissions Permissions { get; set; } = new(false, false, false);
 
-    /// <summary>Raised after an address was saved, so the host reloads the contact's collections.</summary>
+    /// <summary>Raised after an address was saved — or its place edited — so the host reloads the contact's collections.</summary>
     [Parameter] public EventCallback OnAddressSaved { get; set; }
 
+    /// <summary>The picker's debounce; a test passes zero.</summary>
+    [Parameter] public int PickerDebounceMs { get; set; } = 250;
+
+    /// <summary>The address search's whole pause; a test passes zero.</summary>
+    [Parameter] public int AddressDebounceMs { get; set; } = 400;
+
     private AddressBlockModel? _block;
-    private OdsAddressBlock? _addressBlock;
     private OdsLiveAnnouncer? _announcer;
 
     /// <summary>
@@ -66,19 +71,18 @@ public partial class ContactMethodDialog
     /// </summary>
     private void Announce(string message) => _ = _announcer?.Announce(message);
     private string? _formAlert;
-    private string? _applyToAlert;
     private bool _focusSummary;
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
 
     private string SummaryId => $"cmd-errsum-{_uid}";
-    private string ApplyGroupId => $"cmd-apply-{_uid}";
+    private string AddressIdBase => $"cmd-addr-{_uid}";
 
     // The summary lists EVERY error in field order, the label first — as PropertyDialog and LocationDialog do —
     // so a summary that takes focus never under-counts what is wrong (WCAG 3.3.1; accessibility review 1).
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
     [
-        .. new[] { "label", AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key, AddressBlockModel.PostalCodeKey,
-                   AddressBlockModel.CityKey, AddressBlockModel.RegionKey, AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey }
+        .. new[] { "label", AddressBlockModel.AddressKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key, AddressBlockModel.PostalCodeKey,
+                   AddressBlockModel.CityKey, AddressBlockModel.RegionKey, AddressBlockModel.CountryCodeKey }
             .Where(_errors.ContainsKey)
             .Select(k => new KeyValuePair<string, string>(k, _errors[k])),
     ];
@@ -100,8 +104,10 @@ public partial class ContactMethodDialog
         if (Kind != "address")
             return;
 
-        var stored = Draft.Stored is { } a ? await StoredFor(a) : null;
-        _block = new AddressBlockModel(AddressBlockVariant.Contact, stored, Permissions);
+        // An address with no linked place (legacy) opens in hand entry, its fields as they are (issue #383 v5).
+        var stored = Draft.Stored is { } a && a.LocationId != Guid.Empty ? await StoredFor(a) : null;
+        var legacy = Draft.Stored is { } l && l.LocationId == Guid.Empty ? FieldsOf(l) : null;
+        _block = new AddressBlockModel(AddressBlockVariant.Contact, stored, Permissions, legacy);
     }
 
     /// <summary>The stored link, with the other uses broken down by kind when the caller may read the place.</summary>
@@ -110,16 +116,17 @@ public partial class ContactMethodDialog
         var stored = new AddressBlockStored
         {
             LocationId = a.LocationId,
-            Fields = new AddressFields
-            {
-                Line1 = a.Line1, Line2 = a.Line2, PostalCode = a.PostalCode, City = a.City, Region = a.Region, CountryCode = a.CountryCode,
-            },
+            Fields = FieldsOf(a),
             OtherUses = a.OtherUses,
-            PlaceHasCoordinates = a.PlaceHasCoordinates,
         };
         stored.OthersBreakdown = await OthersBreakdownAsync(a.LocationId);
         return stored;
     }
+
+    private static AddressFields FieldsOf(ExistingAddress a) => new()
+    {
+        Line1 = a.Line1, Line2 = a.Line2, PostalCode = a.PostalCode, City = a.City, Region = a.Region, CountryCode = a.CountryCode,
+    };
 
     /// <summary>The place's per-kind usage less this contact — the breakdown of its OTHER uses.</summary>
     private async Task<LocationUsage?> OthersBreakdownAsync(Guid locationId)
@@ -135,14 +142,11 @@ public partial class ContactMethodDialog
     private void OnBlockChanged()
     {
         _formAlert = null;
-        foreach (var key in new[] { AddressBlockModel.LocationIdKey, AddressBlockModel.Line1Key, AddressBlockModel.CityKey,
-                                    AddressBlockModel.CountryCodeKey, AddressBlockModel.ApplyToKey })
+        foreach (var key in new[] { AddressBlockModel.AddressKey, AddressBlockModel.Line1Key, AddressBlockModel.Line2Key,
+                                    AddressBlockModel.PostalCodeKey, AddressBlockModel.CityKey, AddressBlockModel.RegionKey,
+                                    AddressBlockModel.CountryCodeKey })
             _errors.Remove(key);
-        if (_block?.AsksApplyTo != true)
-            _applyToAlert = null;
     }
-
-    private Task FocusApplyToAsync() => _addressBlock?.FocusApplyToAsync() ?? Task.CompletedTask;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -161,7 +165,6 @@ public partial class ContactMethodDialog
     {
         var block = _block!;
         _formAlert = null;
-        _applyToAlert = null;
         _errors = Draft.Validate(Kind, ContactType);
         foreach (var (key, message) in block.Validate())
             _errors[key] = message;
@@ -193,7 +196,7 @@ public partial class ContactMethodDialog
         return false;
     }
 
-    /// <summary>Puts a refused address write where it belongs — a field, the apply-to group, or the dialog's alert.</summary>
+    /// <summary>Puts a refused address write where it belongs — the picker, a hand-entry field, or the dialog's alert.</summary>
     private async Task ApplyAddressFailureAsync(System.Net.HttpStatusCode status, ApiProblem? problem, AddressWrite write)
     {
         var block = _block!;
@@ -204,38 +207,42 @@ public partial class ContactMethodDialog
         }
 
         var conflict = status == System.Net.HttpStatusCode.Conflict;
-        if (problem?.ErrorFor("applyTo") is { } applyTo)
+        if (conflict && problem?.ErrorFor("applyTo") is not null)
         {
-            if (conflict)
-            {
-                // The uses changed under the user: reload the usage and ask again with nothing chosen.
-                var addresses = await Contacts.ListAddressesAsync(ContactId);
-                var fresh = addresses.Value?.FirstOrDefault(x => x.Id == Draft.Id);
-                block.UsesChanged(fresh?.OtherUses ?? block.Stored?.OtherUses ?? 0,
-                    block.Stored is { } s ? await OthersBreakdownAsync(s.LocationId) : null);
-                _applyToAlert = AddressBlockModel.UsesChangedAlert;
-                StateHasChanged();
-                await FocusApplyToAsync();
-                return;
-            }
-
-            _errors[AddressBlockModel.ApplyToKey] = applyTo;
+            // A case-only change is edited in place, and the uses changed under the user: show the count now.
+            var addresses = await Contacts.ListAddressesAsync(ContactId);
+            var fresh = addresses.Value?.FirstOrDefault(x => x.Id == Draft.Id);
+            block.UsesChanged(fresh?.OtherUses ?? block.Stored?.OtherUses ?? 0,
+                block.Stored is { } s ? await OthersBreakdownAsync(s.LocationId) : null);
+            _formAlert = AddressBlockModel.UsesChangedAlert;
+            return;
         }
 
+        // A field the user cannot see is reported on the picker: in hand entry the fields are the field.
+        string FieldKey(string key) => block.Hand ? key : AddressBlockModel.AddressKey;
+
         if (problem?.ErrorFor("locationId") is not null)
-            _errors[AddressBlockModel.LocationIdKey] = conflict
+            _errors[AddressBlockModel.AddressKey] = conflict
                 ? AddressBlockModel.ContactAlreadyHasAddress
                 : block.LocationIdMessage;
+        if (problem?.ErrorFor("latitude") is not null || problem?.ErrorFor("source") is not null
+            || problem?.ErrorFor("longitude") is not null || problem?.ErrorFor("timeZoneId") is not null
+            || problem?.ErrorFor("sourceReference") is not null)
+            _errors[AddressBlockModel.AddressKey] = AddressBlockModel.StagedAddressUnusable;
         if (problem?.ErrorFor("line1") is not null)
-            _errors[AddressBlockModel.Line1Key] = conflict
-                ? AddressBlockModel.DuplicateAddressMessage(block.Noun, Permissions.CanUpdateLocations)
+            _errors[FieldKey(AddressBlockModel.Line1Key)] = conflict
+                ? AddressBlockModel.DuplicateAddressMessage(Permissions.CanUpdateLocations)
                 : AddressBlockModel.ContactsNeedFullAddress;
-        foreach (var key in new[] { AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey, "label" })
+        foreach (var key in new[] { AddressBlockModel.CityKey, AddressBlockModel.CountryCodeKey })
             if (problem?.ErrorFor(key) is { } message)
-                _errors[key] = message;
+                _errors.TryAdd(FieldKey(key), message);
+        if (problem?.ErrorFor("label") is { } label)
+            _errors["label"] = label;
+        if (problem?.ErrorFor("applyTo") is { } applyTo)
+            _formAlert = applyTo;
 
         if (_errors.Count == 0)
-            _formAlert = problem?.Message ?? "The address couldn’t be saved.";
+            _formAlert ??= problem?.Message ?? "The address couldn’t be saved.";
         _focusSummary = SummaryErrors.Count > 0;
     }
 

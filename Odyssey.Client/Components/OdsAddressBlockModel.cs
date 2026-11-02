@@ -4,39 +4,43 @@ using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Components;
 
-/// <summary>The two address editors that share <c>OdsAddressBlock</c> (issue #383 §3.3).</summary>
+/// <summary>The two address editors that share the address field (issue #383 §3.3a).</summary>
 public enum AddressBlockVariant
 {
-    /// <summary>A contact address: six fields; Line 1, City and Country required for a typed address.</summary>
+    /// <summary>A contact address: the address is required; hand entry has six fields.</summary>
     Contact,
 
-    /// <summary>A real-estate property: four fields; Line 2 and Region are the place's, shown read-only.</summary>
+    /// <summary>A real-estate property: the address is optional; hand entry has the four fields the property carries.</summary>
     Property,
 }
 
-/// <summary>The §3.3 state of an address block.</summary>
-public enum AddressBlockState
+/// <summary>What <c>OdsAddressBlock</c> draws (design system · AddressBlock <c>mode</c>, issue #383 v5).</summary>
+public enum AddressBlockMode
 {
-    /// <summary>A new address, typed: save sends the fields.</summary>
-    Typed,
+    /// <summary>The hand-entry group, opened by the picker's <i>Enter an address by hand…</i> row.</summary>
+    Hand,
 
-    /// <summary>A (different) saved place picked: save sends its id.</summary>
-    Picked,
-
-    /// <summary>An existing address, unchanged: save sends the stored id.</summary>
-    Unchanged,
-
-    /// <summary>An existing address, edited: the apply-to rule applies.</summary>
-    Changed,
-
-    /// <summary>An existing PROPERTY address with every field emptied: save unlinks; the place stays.</summary>
-    Cleared,
+    /// <summary>Under a linked address: the usage line and <b>Edit address</b>.</summary>
+    Linked,
 }
 
-/// <summary>What an address write changed, for picking the 403 message (issue #383 §5.3).</summary>
-public enum AddressWriteKind { None, LinkById, Typed, ThisRecord, AllUses }
+/// <summary>What an address write sends, for picking the 403 message (issue #383 §5.3).</summary>
+public enum AddressWriteKind
+{
+    /// <summary>Nothing changes: the stored place re-sent by id, or no address at all.</summary>
+    None,
 
-/// <summary>The six structured fields of an address, as typed (a property shows four of them).</summary>
+    /// <summary>A different saved place, by id.</summary>
+    LinkById,
+
+    /// <summary>Fields for a record with no place yet — find-or-create.</summary>
+    Typed,
+
+    /// <summary>Fields replacing a stored place — <c>applyTo: ThisRecord</c>, relinking only this record.</summary>
+    ThisRecord,
+}
+
+/// <summary>The six structured fields of an address (a property uses four of them).</summary>
 public sealed class AddressFields
 {
     public string? Line1 { get; set; }
@@ -60,24 +64,18 @@ public sealed class AddressFields
     public bool IsEmpty =>
         new[] { Line1, Line2, PostalCode, City, Region, CountryCode }.All(v => LocationAddressKey.CleanField(v) is null);
 
-    /// <summary>
-    /// The four fields a property edits are empty — its Line 2 and Region belong to the place and are not inputs,
-    /// so they do not keep an emptied property address linked.
-    /// </summary>
+    /// <summary>The four fields a property carries are empty — its hand entry has no Line 2 or Region.</summary>
     public bool InputsEmpty =>
         new[] { Line1, PostalCode, City, CountryCode }.All(v => LocationAddressKey.CleanField(v) is null);
 
-    /// <summary>The shared key normalization (#380) — case and whitespace only differ when this is equal.</summary>
-    public string Normalized =>
-        LocationAddressKey.Normalize(CountryCode, PostalCode, City, Line1, Line2, Region);
-
     /// <summary>
-    /// Ordinal equality after <see cref="LocationTextCleaner.Clean"/> and whitespace collapse — the rule #380
-    /// applies to decide whether an address changed.
+    /// Ordinal equality after <see cref="LocationTextCleaner.Clean"/> and whitespace collapse — the rule #380 applies
+    /// to decide whether an address changed. A property compares the four fields it carries.
     /// </summary>
-    public bool SameAs(AddressFields other) =>
-        Same(Line1, other.Line1) && Same(Line2, other.Line2) && Same(PostalCode, other.PostalCode)
-        && Same(City, other.City) && Same(Region, other.Region) && Same(CountryCode, other.CountryCode);
+    public bool SameAs(AddressFields other, bool propertyFields = false) =>
+        Same(Line1, other.Line1) && Same(PostalCode, other.PostalCode) && Same(City, other.City)
+        && Same(CountryCode, other.CountryCode)
+        && (propertyFields || (Same(Line2, other.Line2) && Same(Region, other.Region)));
 
     private static bool Same(string? a, string? b) =>
         string.Equals(LocationAddressKey.CleanField(a), LocationAddressKey.CleanField(b), StringComparison.Ordinal);
@@ -112,52 +110,73 @@ public sealed class AddressBlockStored
 {
     public required Guid LocationId { get; init; }
 
-    public required AddressFields Fields { get; init; }
+    public required AddressFields Fields { get; set; }
 
     /// <summary>The server's <c>OtherUses</c> — this record excluded, over the kinds the caller can read.</summary>
     public int OtherUses { get; set; }
 
     /// <summary>The per-kind breakdown of the OTHER uses, when the caller could read it (null kinds hidden).</summary>
     public LocationUsage? OthersBreakdown { get; set; }
-
-    public bool PlaceHasCoordinates { get; init; }
 }
 
-/// <summary>The caller's claims that decide what the block offers (issue #383 §3.3).</summary>
-public sealed record AddressBlockPermissions(bool CanReadLocations, bool CanUpdateLocations, bool AllKindsReadable)
+/// <summary>The caller's claims that decide what the address field offers (issue #383 §3.3a).</summary>
+/// <param name="CanReadLocations"><c>locations.read</c>: the picker and the usage line.</param>
+/// <param name="CanUpdateLocations"><c>locations.update</c>: <b>Edit address</b>.</param>
+/// <param name="AllKindsReadable">The four read claims a place's uses span — the usage line's "you can see" rule.</param>
+/// <param name="CanCreateLocations"><c>locations.create</c>: the Kartverket group, hand entry by choice and the disclosure.</param>
+public sealed record AddressBlockPermissions(
+    bool CanReadLocations, bool CanUpdateLocations, bool AllKindsReadable, bool CanCreateLocations = false)
 {
-    public static AddressBlockPermissions Full { get; } = new(true, true, true);
+    public static AddressBlockPermissions Full { get; } = new(true, true, true, true);
 
     /// <summary>
     /// From the signed-in principal. "Every kind readable" is the four read claims a place's uses span —
     /// contacts, properties, calendar (events and series) and journal (§3.3 rule 1, SEC F1).
     /// </summary>
     public static AddressBlockPermissions For(System.Security.Claims.ClaimsPrincipal user) => new(
-        user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.LocationsRead),
-        user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.LocationsUpdate),
-        user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.ContactsRead)
-        && user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.PropertiesRead)
-        && user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.CalendarRead)
-        && user.HasPermission(Odyssey.Dtos.Authorization.PermissionClaims.JournalRead));
+        user.HasPermission(PermissionClaims.LocationsRead),
+        user.HasPermission(PermissionClaims.LocationsUpdate),
+        user.HasPermission(PermissionClaims.ContactsRead)
+        && user.HasPermission(PermissionClaims.PropertiesRead)
+        && user.HasPermission(PermissionClaims.CalendarRead)
+        && user.HasPermission(PermissionClaims.JournalRead),
+        user.HasPermission(PermissionClaims.LocationsCreate));
 }
 
 /// <summary>
-/// What one address write sends (issue #383 §5.1). Built only by <see cref="AddressBlockModel.ToWrite"/> (and
-/// <see cref="None"/> for "no address at all"), so the link it carries is always the block's own decision;
+/// The geocode a staged Kartverket address carries to the record write (#380 §5.3a). The server uses it only when the
+/// write CREATES the place; an existing place with that address is linked unchanged.
+/// </summary>
+public sealed record AddressGeocode(decimal Latitude, decimal Longitude, string TimeZoneId, string? SourceReference)
+{
+    public LocationSource Source => LocationSource.Kartverket;
+}
+
+/// <summary>
+/// What one address write sends (issue #383 §5.1, §3.3a). Built only by <see cref="AddressBlockModel.ToWrite"/> (and
+/// <see cref="None"/> for "no address at all"), so the link it carries is always the field's own decision;
 /// <c>LocationWriteBuilderLintTests</c> enforces it (frontend review N6).
 /// </summary>
 public sealed record AddressWrite(
-    AddressWriteKind Kind, Guid? LocationId, AddressFields? Fields, AddressApplyTo? ApplyTo, int? ExpectedOtherUses)
+    AddressWriteKind Kind, Guid? LocationId, AddressFields? Fields, AddressApplyTo? ApplyTo, int? ExpectedOtherUses,
+    AddressGeocode? Geocode = null)
 {
-    /// <summary>No address: nothing linked, nothing typed — a vehicle, or a cleared block.</summary>
+    /// <summary>No address: nothing linked, nothing typed — a vehicle, or a cleared property.</summary>
     public static AddressWrite None { get; } = new(AddressWriteKind.None, null, null, null, null);
 }
 
 /// <summary>
-/// The address block's state and rules (issue #383 §3.3, design system · AddressBlock) — the editable value
-/// plus every decision the block and its dialog make from it. Kept apart from the component so each state
-/// transition and its request are unit-tested without rendering.
+/// The address field's state and rules (issue #383 v5 §3.3a; design system · AddressBlock <c>AddressValue</c>,
+/// <c>validate</c>, <c>toRequest</c>): the linked or picked saved place, a staged Kartverket address, or the
+/// hand-entry fields — and every decision the field and its dialog make from them. Kept apart from the components
+/// so what each state sends is unit-tested without rendering.
 /// </summary>
+/// <remarks>
+/// The v4 editor (the Typed/Picked/Unchanged/Changed/Cleared table, the apply-to group, the coordinates warning and
+/// the "Also on the saved place" tile) is retired. The UI never sends <c>AllUses</c>: picking or entering a different
+/// address relinks only this record, and a change "for everyone" goes through <b>Edit address</b>, which edits the
+/// place itself in the location dialog.
+/// </remarks>
 public sealed class AddressBlockModel
 {
     public const string Line1Key = "line1";
@@ -166,15 +185,13 @@ public sealed class AddressBlockModel
     public const string CityKey = "city";
     public const string RegionKey = "region";
     public const string CountryCodeKey = "countryCode";
-    public const string ApplyToKey = "applyTo";
-    public const string LocationIdKey = "locationId";
 
-    public const string AllUses = nameof(AddressApplyTo.AllUses);
-    public const string ThisRecord = nameof(AddressApplyTo.ThisRecord);
+    /// <summary>The picker's own error key (design system · AddressBlock.validate <c>address</c>).</summary>
+    public const string AddressKey = "address";
 
     /// <param name="initialFields">
-    /// Fields to start from when there is no stored link — an address the record carries without a place, which
-    /// #380 converts away; it is then sent as a typed address.
+    /// Fields to start from when there is no stored link — an address the record carries without a place (a legacy
+    /// property address #380 did not convert). It opens in hand entry, so it is sent as typed.
     /// </param>
     public AddressBlockModel(
         AddressBlockVariant variant, AddressBlockStored? stored, AddressBlockPermissions permissions, AddressFields? initialFields = null)
@@ -182,7 +199,10 @@ public sealed class AddressBlockModel
         Variant = variant;
         Stored = stored;
         Permissions = permissions;
+        LinkedId = stored?.LocationId;
         Fields = stored?.Fields.Copy() ?? initialFields?.Copy() ?? new AddressFields();
+        // Without locations.read there is no picker: the fields are the field, as before v5 (issue #383 AC 2).
+        Hand = !permissions.CanReadLocations || (stored is null && initialFields is { IsEmpty: false });
     }
 
     public AddressBlockVariant Variant { get; }
@@ -191,170 +211,139 @@ public sealed class AddressBlockModel
 
     public AddressBlockPermissions Permissions { get; }
 
+    /// <summary>The saved place the picker holds — the stored one, or one just picked. Null for none.</summary>
+    public Guid? LinkedId { get; private set; }
+
+    /// <summary>A different saved place just picked, for its usage. Null for the stored place or none.</summary>
+    public ExistingLocation? PickedPlace { get; private set; }
+
+    /// <summary>A Kartverket address picked in the picker — staged until Save.</summary>
+    public LocationCandidate? Staged { get; private set; }
+
+    /// <summary>The hand-entry group is open in place of the picker.</summary>
+    public bool Hand { get; private set; }
+
+    /// <summary>The hand-entry values. Kept across <see cref="SearchInstead"/>, so going back and forth loses nothing.</summary>
     public AddressFields Fields { get; private set; }
-
-    /// <summary>The picked place, while it is picked.</summary>
-    public ExistingLocation? Picked { get; private set; }
-
-    /// <summary>The apply-to choice: <see cref="AllUses"/>, <see cref="ThisRecord"/>, or nothing.</summary>
-    public string? ApplyTo { get; set; }
-
-    /// <summary>The key of the address field the user last changed — the warning joins its describedby.</summary>
-    public string? LastChangedField { get; private set; }
 
     /// <summary>The record noun the copy uses: <c>contact</c> or <c>property</c>.</summary>
     public string Noun => Variant == AddressBlockVariant.Property ? "property" : "contact";
 
     // ── Transitions ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// A place was picked: the fields fill from it. Returns the announcement (<i>Address filled from ‹name›</i>).
-    /// </summary>
-    public string Pick(ExistingLocation place)
+    /// <summary>A saved place was picked — the stored one, or another (with its usage, when it could be read).</summary>
+    public void PickPlace(Guid id, ExistingLocation? place = null)
     {
-        Picked = place;
-        Fields = AddressFields.From(place);
-        ApplyTo = null;
-        return $"Address filled from {place.Name}";
+        LinkedId = id;
+        PickedPlace = id == Stored?.LocationId ? null : place;
+        Staged = null;
     }
 
-    /// <summary>The picker was cleared: back to the typed fields, keeping the values it filled in.</summary>
-    public void ClearPick() => Picked = null;
+    /// <summary>A Kartverket address was picked: staged, nothing created. Returns the announcement.</summary>
+    public string Stage(LocationCandidate candidate)
+    {
+        Staged = candidate;
+        LinkedId = null;
+        PickedPlace = null;
+        return $"{LocationVisuals.CandidateAddress(candidate)} will be added when you save";
+    }
+
+    /// <summary>The picker was cleared — on a property, that unlinks it.</summary>
+    public void ClearPick()
+    {
+        LinkedId = null;
+        PickedPlace = null;
+        Staged = null;
+    }
 
     /// <summary>
-    /// A field was edited. Editing a picked place's field clears the pick; the returned announcement says so
-    /// (<i>Place cleared — saving uses the address you type</i>), else null. Country is uppercased as typed.
+    /// <i>Enter an address by hand…</i>: the hand-entry group opens with the typed text as Line 1. With nothing typed,
+    /// what was entered before is kept.
     /// </summary>
-    public string? Edit(string key, string? value)
+    public void EnterByHand(string? typed)
+    {
+        Hand = true;
+        Staged = null;
+        var text = typed?.Trim();
+        if (!string.IsNullOrEmpty(text))
+            Fields = new AddressFields { Line1 = text };
+    }
+
+    /// <summary><i>Search instead</i>: back to the picker, keeping the typed fields until Save or Cancel.</summary>
+    public void SearchInstead() => Hand = false;
+
+    /// <summary>A hand-entry field was edited. Country is uppercased as typed.</summary>
+    public void Edit(string key, string? value)
     {
         if (key == CountryCodeKey && value is not null)
             value = value.ToUpperInvariant();
         Fields.Set(key, value);
-        LastChangedField = key;
-        if (Picked is null)
-            return null;
-        var wasDifferent = Stored is null || Picked.LocationId != Stored.LocationId;
-        Picked = null;
-        return wasDifferent ? "Place cleared — saving uses the address you type" : null;
     }
 
-    // ── State ────────────────────────────────────────────────────────────────
-
-    public AddressBlockState State =>
-        Picked is { } p
-            ? Stored is not null && p.LocationId == Stored.LocationId ? AddressBlockState.Unchanged : AddressBlockState.Picked
-            : Stored is null ? AddressBlockState.Typed
-            : Variant == AddressBlockVariant.Property && Fields.InputsEmpty ? AddressBlockState.Cleared
-            : Fields.SameAs(Stored.Fields) ? AddressBlockState.Unchanged
-            : AddressBlockState.Changed;
-
-    /// <summary>
-    /// A change only in case or whitespace — equal under the shared <see cref="LocationAddressKey.Normalize"/>.
-    /// Applied in place without asking; the server does the same.
-    /// </summary>
-    public bool CaseOnly => State == AddressBlockState.Changed && Stored is not null
-        && string.Equals(Fields.Normalized, Stored.Fields.Normalized, StringComparison.Ordinal);
-
-    /// <summary>
-    /// Whether the apply-to question is asked (§3.3 rule 1): a Changed address that is not case-only, by a
-    /// caller who may edit the place, unless nothing else uses it AND every kind is readable.
-    /// </summary>
-    public bool AsksApplyTo =>
-        State == AddressBlockState.Changed && !CaseOnly && Permissions.CanUpdateLocations
-        && (!Permissions.CanReadLocations || !(Stored!.OtherUses == 0 && Permissions.AllKindsReadable));
-
-    /// <summary>Whether the save will send <c>AllUses</c>.</summary>
-    public bool SendsAllUses =>
-        State == AddressBlockState.Changed
-        && (CaseOnly || (AsksApplyTo ? ApplyTo == AllUses : Permissions.CanUpdateLocations));
-
-    /// <summary>
-    /// The coordinates warning (§3.3 rule 3, decision 8): Changed, the place has coordinates, and the save
-    /// will send <c>AllUses</c>. Never for <i>Only this ‹noun›</i>, where the old place keeps them.
-    /// </summary>
-    public bool ShowsCoordinatesWarning => SendsAllUses && Stored?.PlaceHasCoordinates == true;
-
-    public const string CoordinatesWarning =
-        "This place has map coordinates for the old address — check them on the Locations page after saving.";
-
-    public const string GroupAppears = "This address is shared — choose who the change applies to";
-
-    /// <summary>
-    /// The property's <i>Also on the saved place</i> tile: the linked place's Line 2 and Region, read-only. In
-    /// Picked and Unchanged, and in Changed only when the save sends <c>AllUses</c>; hidden in Typed and Cleared.
-    /// </summary>
-    public string? AlsoOnSavedPlace
+    /// <summary>The place was edited through <b>Edit address</b>: its new fields are what the record now shows.</summary>
+    public void PlaceEdited(ExistingLocation place)
     {
-        get
-        {
-            if (Variant != AddressBlockVariant.Property)
-                return null;
-            var source = State switch
-            {
-                AddressBlockState.Picked => Picked is { } p ? AddressFields.From(p) : null,
-                AddressBlockState.Unchanged => Picked is { } p ? AddressFields.From(p) : Stored?.Fields,
-                AddressBlockState.Changed when SendsAllUses => Stored?.Fields,
-                _ => null,
-            };
-            if (source is null)
-                return null;
-            var parts = new[] { source.Line2, source.Region }.Select(LocationAddressKey.CleanField).Where(v => v is not null).ToArray();
-            return parts.Length == 0 ? null : string.Join(" · ", parts);
-        }
+        if (Stored is not null && place.LocationId == Stored.LocationId)
+            Stored.Fields = AddressFields.From(place);
+        if (PickedPlace?.LocationId == place.LocationId)
+            PickedPlace = place;
     }
 
-    /// <summary>The picker's value: the picked place, or the stored one while unchanged.</summary>
-    public Guid? PickerId => Picked?.LocationId ?? (State == AddressBlockState.Unchanged ? Stored?.LocationId : null);
+    // ── What the field shows ─────────────────────────────────────────────────
 
-    /// <summary>The usage line, or null when there is none to show (§3.3 usage copy).</summary>
+    /// <summary>Whether the picker can be shown — <c>locations.read</c>; without it the fields are the field.</summary>
+    public bool CanSearchInstead => Permissions.CanReadLocations;
+
+    /// <summary>The picker's value: a staged address, a saved place, or nothing.</summary>
+    public LocationPick? PickerValue =>
+        Staged is { } c ? LocationPick.Address(c) : LinkedId is { } id ? LocationPick.Existing(id) : null;
+
+    /// <summary>The picker holds a saved place: the usage line and <b>Edit address</b> show under it.</summary>
+    public bool ShowsLinked => !Hand && Staged is null && LinkedId is not null;
+
+    /// <summary><b>Edit address</b> — <c>locations.update</c>, and the place must be readable to edit it.</summary>
+    public bool CanEditAddress => ShowsLinked && Permissions.CanUpdateLocations && Permissions.CanReadLocations;
+
+    private bool LinkedIsStored => LinkedId is { } id && id == Stored?.LocationId;
+
+    /// <summary>The usage line, or null when there is none to show (§3.3 usage copy, visible-kind rule).</summary>
     public string? UsageLine
     {
         get
         {
-            if (!Permissions.CanReadLocations)
+            if (!ShowsLinked || !Permissions.CanReadLocations)
                 return null;
-            switch (State)
-            {
-                case AddressBlockState.Picked when Picked?.Usage is { } usage:
-                    return LocationVisuals.AddressUsageLine(
-                        LocationVisuals.VisibleUses(usage), usage, Permissions.AllKindsReadable, Noun, picked: true);
-                case AddressBlockState.Unchanged or AddressBlockState.Changed when Stored is not null:
-                    return LocationVisuals.AddressUsageLine(
-                        Stored.OtherUses, Stored.OthersBreakdown, Permissions.AllKindsReadable, Noun, picked: false);
-                default:
-                    return null;
-            }
+            if (LinkedIsStored)
+                return LocationVisuals.AddressUsageLine(
+                    Stored!.OtherUses, Stored.OthersBreakdown, Permissions.AllKindsReadable, Noun, picked: false);
+            return PickedPlace?.Usage is { } usage
+                ? LocationVisuals.AddressUsageLine(LocationVisuals.VisibleUses(usage), usage, Permissions.AllKindsReadable, Noun, picked: true)
+                : null;
         }
     }
 
     /// <summary>Whether the usage line names other records (its glyph is <c>link</c>, else <c>info</c>).</summary>
-    public bool UsageIsShared => State switch
-    {
-        AddressBlockState.Picked => LocationVisuals.VisibleUses(Picked?.Usage) > 0,
-        _ => Stored?.OtherUses > 0,
-    };
+    public bool UsageIsShared => LinkedIsStored ? Stored!.OtherUses > 0 : LocationVisuals.VisibleUses(PickedPlace?.Usage) > 0;
 
-    /// <summary>The help under the picker for a typed new address.</summary>
-    public string? PickerHelp => Stored is null && Picked is null
-        ? "Addresses are shared places. Saving uses the existing place at this address, or adds a new one."
+    /// <summary>
+    /// The N in the location dialog's <i>Changes apply to every record that uses this address (N)</i>: every use, this
+    /// record included once it is linked — or null when some kinds are hidden, and the line then names no count.
+    /// </summary>
+    public int? SharedUses =>
+        !Permissions.AllKindsReadable ? null
+        : LinkedIsStored ? Stored!.OtherUses + 1
+        : PickedPlace?.Usage is { } usage ? LocationVisuals.VisibleUses(usage)
         : null;
+
+    /// <summary>A property whose picker was cleared: saving unlinks it, and the place stays.</summary>
+    public bool Cleared => Variant == AddressBlockVariant.Property && Stored is not null && !Hand && Staged is null && LinkedId is null;
+
+    /// <summary>The help under the picker.</summary>
+    public string? PickerHelp => Cleared ? ClearedHelp : null;
 
     public const string ClearedHelp = "The address stays as a saved place on the Locations page.";
 
-    /// <summary>The two apply-to options, each with its consequence as the description.</summary>
-    public IReadOnlyList<OdsRadioOption> ApplyToOptions =>
-    [
-        new(AllUses, Permissions.CanReadLocations && Permissions.AllKindsReadable && Stored is not null
-            ? $"All {Stored.OtherUses + 1} uses of this address"
-            : "All uses of this address")
-        {
-            Description = "Every contact, property and event at this place is updated.",
-        },
-        new(ThisRecord, $"Only this {Noun}")
-        {
-            Description = $"This {Noun} moves to the new address; the others keep the old one.",
-        },
-    ];
+    public const string AddressRequired = "Choose an address, or enter one by hand.";
 
     // ── Validation and the request ───────────────────────────────────────────
 
@@ -362,61 +351,74 @@ public sealed class AddressBlockModel
     public Dictionary<string, string> Validate()
     {
         var errors = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        if (State is AddressBlockState.Typed or AddressBlockState.Changed)
+        if (Hand)
         {
-            if (Variant == AddressBlockVariant.Contact)
-            {
-                if (LocationAddressKey.CleanField(Fields.Line1) is null)
-                    errors[Line1Key] = "Line 1 is required.";
-                if (LocationAddressKey.CleanField(Fields.City) is null)
-                    errors[CityKey] = "City is required.";
-                if (LocationAddressKey.CleanField(Fields.CountryCode) is null)
-                    errors[CountryCodeKey] = "Country is required.";
-            }
-
-            if (LocationAddressKey.CleanField(Fields.CountryCode) is { } country
-                && !System.Text.RegularExpressions.Regex.IsMatch(country, LocationRules.CountryCodePattern))
+            // An emptied property address unlinks it; nothing is required.
+            if (Variant == AddressBlockVariant.Property && Fields.InputsEmpty)
+                return errors;
+            if (LocationAddressKey.CleanField(Fields.Line1) is null)
+                errors[Line1Key] = "Line 1 is required.";
+            if (LocationAddressKey.CleanField(Fields.City) is null)
+                errors[CityKey] = "City is required.";
+            if (LocationAddressKey.CleanField(Fields.CountryCode) is not { } country)
+                errors[CountryCodeKey] = "Country is required.";
+            else if (!System.Text.RegularExpressions.Regex.IsMatch(country, LocationRules.CountryCodePattern))
                 errors[CountryCodeKey] = "Two letters, e.g. NO.";
         }
+        else if (Variant == AddressBlockVariant.Contact && LinkedId is null && Staged is null)
+        {
+            errors[AddressKey] = AddressRequired;
+        }
 
-        if (AsksApplyTo && string.IsNullOrEmpty(ApplyTo))
-            errors[ApplyToKey] = "Choose who this change applies to";
         return errors;
     }
 
-    /// <summary>What the save sends for the address (§5.1), given the state.</summary>
+    /// <summary>
+    /// What the save sends for the address (#380 §5.3a; design system · AddressBlock.toRequest): a saved place by id;
+    /// a staged Kartverket address as its fields plus its geocode; hand entry as the fields; nothing for a cleared
+    /// property. A fields write on a record that already has a place sends <c>applyTo: ThisRecord</c> and the
+    /// <c>expectedOtherUses</c> shown — the record moves to the new address and the old place is left as it is.
+    /// </summary>
     public AddressWrite ToWrite()
     {
-        switch (State)
+        if (Hand)
         {
-            case AddressBlockState.Picked:
-                return new(AddressWriteKind.LinkById, Picked!.LocationId, null, null, null);
-            case AddressBlockState.Unchanged:
-                return new(AddressWriteKind.None, Stored!.LocationId, null, null, null);
-            case AddressBlockState.Cleared:
+            var propertyFields = Variant == AddressBlockVariant.Property;
+            if (propertyFields && Fields.InputsEmpty)
                 return AddressWrite.None;
-            case AddressBlockState.Typed:
-                return new(AddressWriteKind.Typed, null, Cleaned(), null, null);
-            default:
-                var allUses = SendsAllUses;
-                return new(
-                    allUses ? AddressWriteKind.AllUses : AddressWriteKind.ThisRecord,
-                    null,
-                    Cleaned(),
-                    allUses ? AddressApplyTo.AllUses : AddressApplyTo.ThisRecord,
-                    Stored!.OtherUses);
+            if (Stored is not null && Fields.SameAs(Stored.Fields, propertyFields))
+                return new(AddressWriteKind.None, Stored.LocationId, null, null, null);
+            return FieldsWrite(Cleaned(Fields), null);
         }
+
+        if (Staged is { } c)
+        {
+            var fields = Cleaned(new AddressFields { Line1 = c.Line1, PostalCode = c.PostalCode, City = c.City, CountryCode = c.CountryCode ?? "NO" });
+            var geocode = c.TimeZoneId is { } zone ? new AddressGeocode(c.Latitude, c.Longitude, zone, c.SourceReference) : null;
+            return FieldsWrite(fields, geocode);
+        }
+
+        if (LinkedId is { } id)
+            return id == Stored?.LocationId
+                ? new(AddressWriteKind.None, id, null, null, null)
+                : new(AddressWriteKind.LinkById, id, null, null, null);
+
+        return AddressWrite.None;
     }
 
+    private AddressWrite FieldsWrite(AddressFields fields, AddressGeocode? geocode) => Stored is null
+        ? new(AddressWriteKind.Typed, null, fields, null, null, geocode)
+        : new(AddressWriteKind.ThisRecord, null, fields, AddressApplyTo.ThisRecord, Stored.OtherUses, geocode);
+
     /// <summary>The fields as sent: cleaned, whitespace collapsed, empty as null, country upper-cased.</summary>
-    private AddressFields Cleaned() => new()
+    private AddressFields Cleaned(AddressFields source) => new()
     {
-        Line1 = LocationAddressKey.CleanField(Fields.Line1),
-        Line2 = Variant == AddressBlockVariant.Property ? null : LocationAddressKey.CleanField(Fields.Line2),
-        PostalCode = LocationAddressKey.CleanField(Fields.PostalCode),
-        City = LocationAddressKey.CleanField(Fields.City),
-        Region = Variant == AddressBlockVariant.Property ? null : LocationAddressKey.CleanField(Fields.Region),
-        CountryCode = LocationAddressKey.CleanField(Fields.CountryCode)?.ToUpperInvariant(),
+        Line1 = LocationAddressKey.CleanField(source.Line1),
+        Line2 = Variant == AddressBlockVariant.Property ? null : LocationAddressKey.CleanField(source.Line2),
+        PostalCode = LocationAddressKey.CleanField(source.PostalCode),
+        City = LocationAddressKey.CleanField(source.City),
+        Region = Variant == AddressBlockVariant.Property ? null : LocationAddressKey.CleanField(source.Region),
+        CountryCode = LocationAddressKey.CleanField(source.CountryCode)?.ToUpperInvariant(),
     };
 
     // ── Server replies (issue #383 §5.3, §7) ─────────────────────────────────
@@ -426,17 +428,17 @@ public sealed class AddressBlockModel
     {
         AddressWriteKind.LinkById => "You don’t have permission to choose a saved place.",
         AddressWriteKind.Typed => "Adding a new address needs permission to create locations.",
-        AddressWriteKind.ThisRecord => $"Changing this address for only this {noun} needs permission to create locations.",
-        AddressWriteKind.AllUses => $"You can’t change this address for everyone. Choose “Only this {noun}”.",
+        AddressWriteKind.ThisRecord => $"Moving this {noun} to a new address needs permission to create locations.",
         _ => "You don’t have permission to make this change.",
     };
 
-    /// <summary>The <c>409</c> keyed <c>line1</c>: another place already has the typed address (SEC F8).</summary>
-    public static string DuplicateAddressMessage(string noun, bool canUpdateLocations) => canUpdateLocations
-        ? $"Another saved place already has this address. Merge them on the Locations page, or choose “Only this {noun}”."
-        : $"Another saved place already has this address. Choose “Only this {noun}”.";
+    /// <summary>The <c>409</c> keyed <c>line1</c>: another place already has the address (SEC F8).</summary>
+    public static string DuplicateAddressMessage(bool canUpdateLocations) => canUpdateLocations
+        ? "Another saved place already has this address. Merge them on the Locations page, or pick that place."
+        : "Another saved place already has this address. Pick that place instead.";
 
-    public const string UsesChangedAlert = "Someone changed who uses this address. Check the count and choose again.";
+    /// <summary>A <c>409</c> keyed <c>applyTo</c>: the uses changed under the user (a case-only change is edited in place).</summary>
+    public const string UsesChangedAlert = "Someone changed who uses this address. Check it and save again.";
 
     public const string ContactsNeedFullAddress = "Contacts use this place, so it needs Line 1, City and Country.";
 
@@ -446,22 +448,23 @@ public sealed class AddressBlockModel
 
     public const string ContactAlreadyHasAddress = "This contact already has this address.";
 
+    /// <summary>A <c>422</c> keyed <c>latitude</c> or <c>source</c> on a staged Kartverket address.</summary>
+    public const string StagedAddressUnusable = "That address can’t be used — search again or enter it by hand.";
+
     /// <summary>
-    /// The picker's 422 <c>locationId</c> message, chosen from the picked place itself: an incomplete address
-    /// (no Line 1, City or Country) is the one refusal the user can fix by typing, so it says so; anything else
-    /// (archived, gone) asks for another place. Never read from the server's prose, which is not a contract —
-    /// the coupling <c>LocationMergeDialog.SourceRefusal</c> avoids for the same reason (frontend review N3).
+    /// The picker's 422 <c>locationId</c> message, chosen from the picked place itself: an incomplete address is the
+    /// one refusal the user can fix by entering it, so it says so; anything else (archived, gone) asks for another
+    /// place. Never read from the server's prose, which is not a contract (frontend review N3).
     /// </summary>
     public string LocationIdMessage =>
-        Picked is { } place && !LocationVisuals.IsAddressComplete(place) ? PlaceNotAddressComplete : PlaceUnusable;
+        PickedPlace is { } place && !LocationVisuals.IsAddressComplete(place) ? PlaceNotAddressComplete : PlaceUnusable;
 
-    /// <summary>A <c>409 applyTo</c>: the usage is reloaded and the group asked again with no selection.</summary>
+    /// <summary>A <c>409 applyTo</c>: the usage is reloaded so the line shows the count the server now has.</summary>
     public void UsesChanged(int otherUses, LocationUsage? breakdown)
     {
         if (Stored is null)
             return;
         Stored.OtherUses = otherUses;
         Stored.OthersBreakdown = breakdown;
-        ApplyTo = null;
     }
 }

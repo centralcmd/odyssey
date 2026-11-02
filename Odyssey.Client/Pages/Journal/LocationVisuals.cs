@@ -325,6 +325,65 @@ public static partial class LocationVisuals
             : $"Only this {noun} uses this address";
     }
 
+    /// <summary>
+    /// The line the location dialog shows when a contact or property's <b>Edit address</b> opened it (issue #383 v5
+    /// §3.3a): every use, this record included, or no count when some kinds are hidden from the caller.
+    /// </summary>
+    public static string SharedUsesLine(int? uses) => uses is { } n
+        ? $"Changes apply to every record that uses this address ({n})"
+        : "Changes apply to every record that uses this address.";
+
+    // ── Address mode of the place picker (issue #383 v5 §3.3a) ───────────────
+
+    /// <summary>A saved place in the address picker: its second line ends <i>used by N</i> (visible uses only).</summary>
+    public static OdsOption AddressOptionFor(ExistingLocation l)
+    {
+        var address = ComposeAddress(l) ?? (string.IsNullOrWhiteSpace(l.AddressText) ? null : l.AddressText);
+        var shown = address is not null && !string.Equals(address, l.Name, StringComparison.Ordinal) ? address : null;
+        var used = l.Usage is { } usage ? $"used by {VisibleUses(usage)}" : null;
+        var sub = string.Join(" · ", new[] { shown, used, l.HasCoordinates ? null : NoCoordinates }.Where(v => v is not null));
+        return new OdsOption(l.LocationId.ToString(), l.Name)
+        {
+            Icon = "place",
+            Sub = sub.Length == 0 ? null : sub,
+            AriaLabel = string.Join(", ", new[] { l.Name, shown, used, l.HasCoordinates ? null : "no coordinates" }
+                .Where(v => v is not null)),
+        };
+    }
+
+    /// <summary>A Kartverket address candidate as one line: <c>Storgata 1, 0155 OSLO</c> — provider text, as returned.</summary>
+    public static string CandidateAddress(LocationCandidate c)
+    {
+        var town = string.Join(" ", new[] { c.PostalCode, c.City }.Where(v => !string.IsNullOrWhiteSpace(v)));
+        var parts = new[] { c.Line1 ?? c.Name, town }.Where(v => !string.IsNullOrWhiteSpace(v)).ToArray();
+        return parts.Length > 0 ? string.Join(", ", parts) : c.AddressText ?? c.Name;
+    }
+
+    /// <summary>A Kartverket address in the picker's list, before it is picked.</summary>
+    public static OdsOption CandidateOptionFor(string value, LocationCandidate c)
+    {
+        var address = CandidateAddress(c);
+        return new OdsOption(value, address)
+        {
+            Icon = "map",
+            Group = OdsLocationSelect.KartverketGroup,
+            Sub = "New saved place, added when you save",
+            AriaLabel = $"{address}, address from Kartverket, new saved place added when you save",
+        };
+    }
+
+    /// <summary>A picked Kartverket address — staged until Save: <c>Storgata 1, 0155 OSLO (new)</c>.</summary>
+    public static OdsOption StagedAddressOptionFor(string value, LocationCandidate c)
+    {
+        var address = CandidateAddress(c);
+        return new OdsOption(value, StagedLabel(address))
+        {
+            Icon = "add_location_alt",
+            Sub = "From Kartverket · added when you save",
+            AriaLabel = $"{address}, new saved place from Kartverket, added when you save",
+        };
+    }
+
     // ── Record deletes and imports (issue #383 §3.9, §3.10) ──────────────────
 
     /// <summary>
