@@ -156,6 +156,84 @@ public class UnifiedLocationsPageTests
         Assert.Matches(new Regex(pattern), code);
     }
 
+    // ── N4: merge-target names ────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Merge_target_names_are_fetched_in_parallel_under_the_cap()
+    {
+        var ids = Enumerable.Range(0, 10).Select(_ => Guid.NewGuid()).ToList();
+        var inFlight = 0;
+        var peak = 0;
+        var gate = new TaskCompletionSource();
+
+        var fetching = LocationsPage.FetchNamesAsync(ids, async (id, _) =>
+        {
+            var now = Interlocked.Increment(ref inFlight);
+            InterlockedMax(ref peak, now);
+            await gate.Task;
+            Interlocked.Decrement(ref inFlight);
+            return id.ToString();
+        }, LocationsPage.MergeTargetConcurrency, CancellationToken.None);
+
+        await Task.Delay(50);
+        Assert.Equal(LocationsPage.MergeTargetConcurrency, Volatile.Read(ref inFlight));
+        gate.SetResult();
+        var names = await fetching;
+
+        Assert.Equal(LocationsPage.MergeTargetConcurrency, peak);
+        Assert.Equal(ids.Count, names.Count);
+    }
+
+    [Fact]
+    public async Task A_failed_or_empty_merge_target_lookup_is_left_out_not_thrown()
+    {
+        var ok = Guid.NewGuid();
+        var failing = Guid.NewGuid();
+        var gone = Guid.NewGuid();
+
+        var names = await LocationsPage.FetchNamesAsync([ok, failing, gone], (id, _) =>
+            id == failing ? throw new HttpRequestException("500")
+            : Task.FromResult(id == ok ? "Hytta" : null), 4, CancellationToken.None);
+
+        Assert.Equal(new Dictionary<Guid, string> { [ok] = "Hytta" }, names);
+    }
+
+    [Fact]
+    public async Task A_superseded_merge_target_lookup_is_cancelled()
+    {
+        using var cts = new CancellationTokenSource();
+        var started = new TaskCompletionSource();
+        var fetching = LocationsPage.FetchNamesAsync([Guid.NewGuid()], async (_, ct) =>
+        {
+            started.SetResult();
+            await Task.Delay(Timeout.Infinite, ct);
+            return "never";
+        }, 4, cts.Token);
+
+        await started.Task;
+        await cts.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => fetching);
+    }
+
+    [Fact]
+    public void The_merge_targets_are_awaited_by_the_load_and_cancelled_on_dispose()
+    {
+        var code = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Journal", "LocationsPage.razor.cs"));
+
+        Assert.DoesNotContain("_ = ResolveMergeTargetsAsync", code, StringComparison.Ordinal);
+        Assert.Contains("await ResolveMergeTargetsAsync(_locations);", code, StringComparison.Ordinal);
+        Assert.Matches(new Regex(@"public void Dispose\(\)\s*\{\s*CancelMergeTargets\(\);"), code);
+    }
+
+    private static void InterlockedMax(ref int target, int value)
+    {
+        int current;
+        while (value > (current = Volatile.Read(ref target)) && Interlocked.CompareExchange(ref target, value, current) != current)
+        {
+        }
+    }
+
     [Fact]
     public void The_two_filters_are_separate_multi_selects_beside_status()
     {

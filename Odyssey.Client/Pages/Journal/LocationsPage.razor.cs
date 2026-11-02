@@ -234,7 +234,6 @@ public partial class LocationsPage
         var result = response.Value;
         _locations = result.ItemsOrToast(Snackbar, "locations");
         Credits = LocationVisuals.Credits(_locations);
-        _ = ResolveMergeTargetsAsync();
         _loadError = !result.IsSuccess;
         _archivedMatch = !_loadError && _locations.Count == 0 && await ArchivedRowMatchesAsync();
 
@@ -244,6 +243,10 @@ public partial class LocationsPage
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
+
+        // Awaited, not fire-and-forget: the chips' names arrive after the list renders, and a newer load or a
+        // dispose cancels this one so its answers never land on rows they no longer describe (N4).
+        await ResolveMergeTargetsAsync(_locations);
     }
 
     /// <summary>
@@ -444,26 +447,94 @@ public partial class LocationsPage
 
     // ── Merged-into chips ──────────────────────────────────────────────────────────────
     private readonly Dictionary<Guid, string> _mergeTargets = [];
+    private CancellationTokenSource? _mergeTargetsCts;
 
-    /// <summary>The target's name — from the loaded list, else <c>GET /api/locations/{id}</c> (issue #383 §3.6).</summary>
-    private async Task ResolveMergeTargetsAsync()
+    /// <summary>At most this many target GETs are in flight at once.</summary>
+    internal const int MergeTargetConcurrency = 4;
+
+    /// <summary>
+    /// The target's name — from the loaded list, else <c>GET /api/locations/{id}</c> (issue #383 §3.6). The GETs
+    /// run in parallel under <see cref="MergeTargetConcurrency"/>; a failed one leaves its chip reading
+    /// "another place"; and the run is cancelled by the next load or by dispose, so a superseded answer never
+    /// reaches the page (frontend review N4).
+    /// </summary>
+    private async Task ResolveMergeTargetsAsync(IReadOnlyList<ExistingLocation> rows)
     {
-        var missing = _locations
-            .Select(l => l.MergedIntoLocationId)
-            .OfType<Guid>()
-            .Distinct()
-            .Where(id => !_mergeTargets.ContainsKey(id))
-            .ToList();
-        foreach (var id in missing)
+        CancelMergeTargets();
+        var cts = new CancellationTokenSource();
+        _mergeTargetsCts = cts;
+        var ct = cts.Token;
+
+        var targets = rows.Select(l => l.MergedIntoLocationId).OfType<Guid>().Distinct().ToList();
+        foreach (var id in targets)
         {
-            var loaded = _locations.FirstOrDefault(l => l.LocationId == id);
-            var name = loaded?.Name ?? (await Locations.GetAsync(id)).Value?.Name;
-            if (name is not null)
-                _mergeTargets[id] = name;
+            if (rows.FirstOrDefault(l => l.LocationId == id) is { } loaded)
+                _mergeTargets[id] = loaded.Name;
         }
 
-        if (missing.Count > 0)
+        var missing = targets.Where(id => !_mergeTargets.ContainsKey(id)).ToList();
+        if (missing.Count == 0)
+            return;
+
+        try
+        {
+            var names = await FetchNamesAsync(
+                missing, async (id, token) =>
+                {
+                    var result = await Locations.GetAsync(id, token);
+                    return result.IsSuccess ? result.Value?.Name : null;
+                },
+                MergeTargetConcurrency, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+            foreach (var (id, name) in names)
+                _mergeTargets[id] = name;
+
             StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer load, or the page went away.
+        }
+    }
+
+    /// <summary>
+    /// The names of <paramref name="ids"/>, fetched in parallel with at most <paramref name="concurrency"/> in
+    /// flight. An id whose fetch fails or answers nothing is left out, so its chip falls back to "another
+    /// place"; cancellation propagates.
+    /// </summary>
+    internal static async Task<IReadOnlyDictionary<Guid, string>> FetchNamesAsync(
+        IReadOnlyCollection<Guid> ids, Func<Guid, CancellationToken, Task<string?>> fetch, int concurrency, CancellationToken ct)
+    {
+        using var gate = new SemaphoreSlim(concurrency);
+        var fetched = await Task.WhenAll(ids.Select(async id =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                return (Id: id, Name: await fetch(id, ct));
+            }
+            catch (Exception) when (!ct.IsCancellationRequested)
+            {
+                return (Id: id, Name: (string?)null);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }));
+
+        ct.ThrowIfCancellationRequested();
+        return fetched.Where(f => f.Name is not null).ToDictionary(f => f.Id, f => f.Name!);
+    }
+
+    private void CancelMergeTargets()
+    {
+        var previous = _mergeTargetsCts;
+        _mergeTargetsCts = null;
+        previous?.Cancel();
+        previous?.Dispose();
     }
 
     private string? MergedInto(ExistingLocation l) =>
@@ -865,5 +936,9 @@ public partial class LocationsPage
         Announce(message);
     }
 
-    public void Dispose() => _listLoader.Dispose();
+    public void Dispose()
+    {
+        CancelMergeTargets();
+        _listLoader.Dispose();
+    }
 }
