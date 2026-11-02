@@ -236,6 +236,50 @@ public class UnifiedLocationsComponentTests
         Assert.Equal(before, ctx.JSInterop.Invocations["odsSetAttr"].Count);
     }
 
+    /// <summary>
+    /// Accessibility review 5. MudBlazor renders its clear icon-button with <c>tabindex="-1"</c> at its small size,
+    /// so a keyboard user could not clear a picked place. The picker's clear control is now a real button in the
+    /// tab order, named "Clear place", and clearing returns focus to the input.
+    /// </summary>
+    [Fact]
+    public async Task A_picked_place_can_be_cleared_from_the_keyboard()
+    {
+        var (ctx, cut, _, picks) = RenderSelect(value: LocationPick.Existing(HyttaId), places: Hytta());
+        await using var _ctx = ctx;
+
+        var clear = cut.WaitForElement("button.odc-combo-clear");
+        Assert.Equal("Clear place", clear.GetAttribute("aria-label"));
+        Assert.Equal("button", clear.GetAttribute("type"));
+        Assert.False(clear.HasAttribute("tabindex"));
+        Assert.Empty(cut.FindAll(".mud-input-clear-button"));
+
+        await cut.InvokeAsync(() => clear.Click());
+
+        Assert.Equal([null], picks);
+        var input = cut.Find("input[role=combobox], input");
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id));
+    }
+
+    [Fact]
+    public async Task There_is_no_clear_control_without_a_value()
+    {
+        var (ctx, cut, _, _) = RenderSelect();
+        await using var _ctx = ctx;
+
+        Assert.Empty(cut.FindAll("button.odc-combo-clear"));
+    }
+
+    [Fact]
+    public void The_clear_control_is_at_least_24_by_24_css_pixels()
+    {
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "Components", "OdsCombobox.razor.css"));
+        var rule = css[css.IndexOf(".odc-combo-clear {", StringComparison.Ordinal)..];
+        rule = rule[..rule.IndexOf('}')];
+
+        Assert.Contains("min-width: 24px;", rule, StringComparison.Ordinal);
+        Assert.Contains("min-height: 24px;", rule, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task Without_locations_create_there_is_no_create_row()
     {

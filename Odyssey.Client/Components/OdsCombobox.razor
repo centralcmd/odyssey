@@ -73,7 +73,7 @@
                      Variant="Variant.Outlined"
                      Margin="Margin.Dense"
                      Disabled="@Disabled"
-                     Clearable="@Clearable"
+                     Clearable="false"
                      ResetValueOnEmptyText="false"
                      Class="@Class"
                      InputId="@InputId"
@@ -125,4 +125,13 @@
             }
         </NoItemsTemplate>
     </MudAutocomplete>
+    @if (ShowClear)
+    {
+        @* Our own clear control, not MudBlazor's: Mud renders its clear icon-button with tabindex="-1" at
+           its small size, so a keyboard user could not clear a pick (WCAG 2.1.1) and the target fell short of
+           24 × 24 (2.5.8). This one is in the tab order, named, and at least 24 × 24 (accessibility review 5). *@
+        <button type="button" class="odc-combo-clear" aria-label="@ClearLabel" title="@ClearLabel" @onclick="ClearAsync">
+            <span class="material-icons" aria-hidden="true">close</span>
+        </button>
+    }
 </div>

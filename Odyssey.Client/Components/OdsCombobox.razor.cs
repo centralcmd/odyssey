@@ -36,6 +36,9 @@ public partial class OdsCombobox : IDisposable
     /// <summary>Show a trailing clear (✕) affordance that empties the selection. Default true.</summary>
     [Parameter] public bool Clearable { get; set; } = true;
 
+    /// <summary>The clear control's accessible name and tooltip, e.g. <c>Clear place</c>. Default <c>Clear</c>.</summary>
+    [Parameter] public string ClearLabel { get; set; } = "Clear";
+
     /// <summary>Text shown in the popover when the query matches no option. Default "No matches".</summary>
     [Parameter] public string EmptyText { get; set; } = "No matches";
 
@@ -277,7 +280,28 @@ public partial class OdsCombobox : IDisposable
     // Leading glyph on the trigger once a real value is selected (mirrors the DS .odc-input-icon).
     private string? SelectedIcon => Selected?.Icon;
     private string? SelectedIconStyle => OptionIconStyle(Selected);
-    private string WrapClass => SelectedIcon is null ? "odc-combo-wrap" : "odc-combo-wrap has-lead";
+    private string WrapClass => string.Join(' ', new[]
+    {
+        "odc-combo-wrap",
+        SelectedIcon is null ? null : "has-lead",
+        ShowClear ? "has-clear" : null,
+    }.Where(c => c is not null));
+
+    /// <summary>The clear control shows while there is a value to clear and the field can be changed.</summary>
+    private bool ShowClear => Clearable && !Disabled && Selected is not null;
+
+    /// <summary>
+    /// Clears the value the same way picking nothing does, then puts focus back in the input — the button
+    /// itself disappears with the value, and focus must not fall to the page.
+    /// </summary>
+    private async Task ClearAsync()
+    {
+        await OnSelected(null);
+        if (string.IsNullOrEmpty(InputId))
+            return;
+        try { await Js.InvokeVoidAsync("odsFocusById", InputId); }
+        catch { /* JS unavailable (e.g. teardown) */ }
+    }
 
     private static string? OptionIconStyle(OdsOption? option) =>
         string.IsNullOrEmpty(option?.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(option.IconColor)};";
