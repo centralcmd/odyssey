@@ -20,6 +20,18 @@ public sealed record LocationAddress(
             LocationAddressKey.CleanField(region),
             LocationAddressKey.CleanField(countryCode)?.ToUpperInvariant());
 
+    /// <summary>The six stored fields of <paramref name="location"/>, read back through the same cleaning.</summary>
+    public static LocationAddress FromLocation(Odyssey.Context.Location location) =>
+        Of(location.Line1, location.Line2, location.PostalCode, location.City, location.Region, location.CountryCode);
+
+    /// <summary>
+    /// The first of <c>line1</c>, <c>city</c>, <c>countryCode</c> that is empty — the wire key of the
+    /// completeness <c>422</c> (issue #380 §5.3, V7-2) — or <see langword="null"/> when the address is
+    /// complete enough to back a contact or property link.
+    /// </summary>
+    public string? FirstMissingRequiredField =>
+        Line1 is null ? "line1" : City is null ? "city" : CountryCode is null ? "countryCode" : null;
+
     public bool IsEmpty =>
         Line1 is null && Line2 is null && PostalCode is null && City is null && Region is null && CountryCode is null;
 

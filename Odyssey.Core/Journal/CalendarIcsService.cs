@@ -6,6 +6,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Core.Journal.Interop;
+using Odyssey.Core.Locations;
 using Ical.Net.Serialization;
 using IcalCalendar = Ical.Net.Calendar;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
@@ -64,11 +65,26 @@ public class CalendarIcsService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    // The linked places' names for the export being built — filled only for a locations.read holder
+    // (issue #380 §8.4); empty otherwise, so every VEVENT carries the detail text alone. Never GEO.
+    private Dictionary<Guid, string> placeNames = [];
+
+    private bool exportPlaceNames;
+
+    private async Task LoadPlaceNamesAsync(bool includePlaceNames, IEnumerable<Guid?> ids, CancellationToken cancellationToken)
+    {
+        foreach (var (id, name) in await IcsPlaces.NamesAsync(context, ids, includePlaceNames, cancellationToken))
+        {
+            placeNames[id] = name;
+        }
+    }
+
     // ---------------------------------------------------------------- Export
 
     /// <summary>Serializes a calendar's events to an ICS document. Returns null if the calendar
     /// doesn't exist (the controller maps that to 404).</summary>
-    public async Task<IcsExport?> ExportAsync(Guid calendarId, CancellationToken cancellationToken = default)
+    /// <param name="includePlaceNames">Whether the caller holds <c>locations.read</c> (issue #380 §8.4).</param>
+    public async Task<IcsExport?> ExportAsync(Guid calendarId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
         var calendar = await context.Calendars.AsNoTracking()
             .FirstOrDefaultAsync(c => c.CalendarId == calendarId, cancellationToken);
@@ -85,12 +101,14 @@ public class CalendarIcsService
             .OrderBy(p => p.StartDateTime).ThenBy(p => p.RecurrencePatternId)
             .ToListAsync(cancellationToken);
 
+        await LoadPlaceNamesAsync(includePlaceNames, patterns.Select(p => p.LocationId), cancellationToken);
         foreach (var pattern in patterns)
         {
             var rows = await context.CalendarEvents.AsNoTracking()
                 .Where(e => e.RecurrencePatternId == pattern.RecurrencePatternId)
                 .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
                 .ToListAsync(cancellationToken);
+            await LoadPlaceNamesAsync(includePlaceNames, rows.Select(r => r.LocationId), cancellationToken);
 
             if (CanExportAsRule(pattern, rows, occurrenceCap))
             {
@@ -109,6 +127,7 @@ public class CalendarIcsService
             .Where(e => e.CalendarId == calendarId && e.RecurrencePatternId == null)
             .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
             .ToListAsync(cancellationToken);
+        await LoadPlaceNamesAsync(includePlaceNames, standalone.Select(r => r.LocationId), cancellationToken);
 
         foreach (var row in standalone)
         {
@@ -122,7 +141,7 @@ public class CalendarIcsService
 
     /// <summary>Exports a single event as a standalone VEVENT (issue #340). Returns null if the event
     /// doesn't exist (the controller maps that to 404).</summary>
-    public async Task<IcsExport?> ExportEventAsync(Guid eventId, CancellationToken cancellationToken = default)
+    public async Task<IcsExport?> ExportEventAsync(Guid eventId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
         var row = await context.CalendarEvents.AsNoTracking()
             .FirstOrDefaultAsync(e => e.CalendarEventId == eventId, cancellationToken);
@@ -130,6 +149,8 @@ public class CalendarIcsService
         {
             return null;
         }
+
+        await LoadPlaceNamesAsync(includePlaceNames, [row.LocationId], cancellationToken);
 
         var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
         ical.Events.Add(BuildStandaloneVEvent(row));
@@ -142,7 +163,7 @@ public class CalendarIcsService
     /// <summary>Exports a recurring series as one RRULE VEVENT, or its documented per-occurrence
     /// fallback (issue #340). Returns null if the pattern doesn't exist (the controller maps that to
     /// 404).</summary>
-    public async Task<IcsExport?> ExportPatternAsync(Guid patternId, CancellationToken cancellationToken = default)
+    public async Task<IcsExport?> ExportPatternAsync(Guid patternId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
         var pattern = await context.RecurrencePatterns.AsNoTracking()
             .FirstOrDefaultAsync(p => p.RecurrencePatternId == patternId, cancellationToken);
@@ -155,6 +176,7 @@ public class CalendarIcsService
             .Where(e => e.RecurrencePatternId == patternId)
             .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
             .ToListAsync(cancellationToken);
+        await LoadPlaceNamesAsync(includePlaceNames, rows.Select(r => r.LocationId).Append(pattern.LocationId), cancellationToken);
 
         var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
         var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
@@ -205,8 +227,9 @@ public class CalendarIcsService
     /// </summary>
     public async Task ExportAggregateStreamingAsync(
         CalendarEventsIcsExportQueryParams query, string userId, Stream output, Action<string, int> onReady,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
+        exportPlaceNames = includePlaceNames;
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
         var (from, to) = ValidateAggregateWindow(
@@ -322,6 +345,7 @@ public class CalendarIcsService
             }
 
             var calendarNames = await GetCalendarNamesAsync(ordered.Select(r => r.CalendarId), cancellationToken);
+            await LoadPlaceNamesAsync(exportPlaceNames, ordered.Select(r => r.LocationId), cancellationToken);
             var chunk = new IcalCalendar();
             foreach (var row in ordered)
             {
@@ -414,6 +438,10 @@ public class CalendarIcsService
         var calendarIdsNeeded = standaloneRows.Select(r => r.CalendarId)
             .Concat(decisions.SelectMany(d => d.Rows.Select(r => r.CalendarId)));
         var calendarNames = await GetCalendarNamesAsync(calendarIdsNeeded, cancellationToken);
+        await LoadPlaceNamesAsync(
+            exportPlaceNames,
+            rows.Select(r => r.LocationId).Concat(patterns.Values.Select(p => p.LocationId)),
+            cancellationToken);
 
         foreach (var (pattern, groupRows, collapse) in decisions)
         {
@@ -537,7 +565,8 @@ public class CalendarIcsService
             var row = rows[i];
             var (start, end) = literal[i];
             if (row.StartDateTime != start || row.EndDateTime != end || row.IsAllDay != pattern.IsAllDay
-                || row.Title != pattern.Title || row.Description != pattern.Description || row.Location != pattern.Location)
+                || row.Title != pattern.Title || row.Description != pattern.Description || row.Location != pattern.Location
+                || row.LocationId != pattern.LocationId)
             {
                 return false;
             }
@@ -546,14 +575,14 @@ public class CalendarIcsService
         return true;
     }
 
-    private static IcalEvent BuildRecurringVEvent(RecurrencePattern pattern)
+    private IcalEvent BuildRecurringVEvent(RecurrencePattern pattern)
     {
         var ev = new IcalEvent
         {
             Uid = pattern.ExternalUid ?? $"{pattern.RecurrencePatternId}{SyntheticUidSuffix}",
             Summary = pattern.Title,
             Description = pattern.Description,
-            Location = pattern.Location,
+            Location = IcsPlaces.ExportText(pattern.LocationId, pattern.Location, placeNames),
             Start = ToCalDateTime(pattern.StartDateTime, pattern.IsAllDay),
             End = ToCalDateTime(pattern.EndDateTime, pattern.IsAllDay),
         };
@@ -561,12 +590,12 @@ public class CalendarIcsService
         return ev;
     }
 
-    private static IcalEvent BuildStandaloneVEvent(ContextCalendarEvent row) => new()
+    private IcalEvent BuildStandaloneVEvent(ContextCalendarEvent row) => new()
     {
         Uid = row.ExternalUid ?? $"{row.CalendarEventId}{SyntheticUidSuffix}",
         Summary = row.Title,
         Description = row.Description,
-        Location = row.Location,
+        Location = IcsPlaces.ExportText(row.LocationId, row.Location, placeNames),
         Start = ToCalDateTime(row.StartDateTime, row.IsAllDay),
         End = ToCalDateTime(row.EndDateTime, row.IsAllDay),
     };
@@ -575,25 +604,25 @@ public class CalendarIcsService
     // UID is ALWAYS synthesized (never ExternalUid, which is only unique within its own calendar — see
     // ExportAggregateAsync's XML doc), and Categories names the source calendar so a caller can tell
     // events from different calendars apart in the merged file.
-    private static IcalEvent BuildAggregateStandaloneVEvent(ContextCalendarEvent row, string calendarName) => new()
+    private IcalEvent BuildAggregateStandaloneVEvent(ContextCalendarEvent row, string calendarName) => new()
     {
         Uid = $"{row.CalendarEventId}{SyntheticUidSuffix}",
         Summary = row.Title,
         Description = row.Description,
-        Location = row.Location,
+        Location = IcsPlaces.ExportText(row.LocationId, row.Location, placeNames),
         Start = ToCalDateTime(row.StartDateTime, row.IsAllDay),
         End = ToCalDateTime(row.EndDateTime, row.IsAllDay),
         Categories = [calendarName],
     };
 
-    private static IcalEvent BuildAggregateRecurringVEvent(RecurrencePattern pattern, string calendarName)
+    private IcalEvent BuildAggregateRecurringVEvent(RecurrencePattern pattern, string calendarName)
     {
         var ev = new IcalEvent
         {
             Uid = $"{pattern.RecurrencePatternId}{SyntheticUidSuffix}",
             Summary = pattern.Title,
             Description = pattern.Description,
-            Location = pattern.Location,
+            Location = IcsPlaces.ExportText(pattern.LocationId, pattern.Location, placeNames),
             Start = ToCalDateTime(pattern.StartDateTime, pattern.IsAllDay),
             End = ToCalDateTime(pattern.EndDateTime, pattern.IsAllDay),
             Categories = [calendarName],
@@ -665,9 +694,13 @@ public class CalendarIcsService
 
     // ---------------------------------------------------------------- Import
 
+    /// <param name="claims">
+    /// The importer's location claims (issue #380 §8.4): places are linked or created only with both
+    /// <c>locations.read</c> and <c>locations.create</c>. Null imports every place as detail text.
+    /// </param>
     public async Task<IcsImportResult> ImportAsync(
         Guid targetCalendarId, Stream icsFile, long contentLength, string? contentType, string userId,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         if (!IsAcceptedContentType(contentType))
         {
@@ -732,6 +765,7 @@ public class CalendarIcsService
             .Where(e => e.CalendarId == targetCalendarId).ToListAsync(cancellationToken);
         var eventIndex = BuildIndex(existingEvents, e => e.ExternalUid, e => e.CalendarEventId);
 
+        var places = await IcsPlaces.ForImportAsync(context, claims ?? LocationClaims.None, userId, timeProvider, cancellationToken);
         var seenUids = new HashSet<string>(StringComparer.Ordinal);
         var skipped = new ImportSkipCollector(cap.ImportMaxSamplesPerSkipReason);
         var imported = 0;
@@ -812,7 +846,7 @@ public class CalendarIcsService
             if (ev.RecurrenceRule is null)
             {
                 ImportStandalone(targetCalendarId, ev, uid, title, description, location, startUtc, endUtc, isAllDay,
-                    userId, now, eventIndex, maxAggregateOccurrences, ref imported, ref updated, ref aggregate);
+                    userId, now, eventIndex, maxAggregateOccurrences, places, ref imported, ref updated, ref aggregate);
                 continue;
             }
 
@@ -854,6 +888,17 @@ public class CalendarIcsService
             {
                 skipped.Add("Recurrence rule produces no occurrences.", sampleTitle);
                 continue;
+            }
+
+            // Mapped once the block is certain to be stored, so a skipped block never creates a place.
+            patternIndex.TryGetValue(uid ?? string.Empty, out var matchedPattern);
+            if (places.Enabled)
+            {
+                (pattern.LocationId, pattern.Location) = places.Map(location);
+            }
+            else
+            {
+                pattern.LocationId = matchedPattern?.LocationId;
             }
 
             if (uid is not null && patternIndex.TryGetValue(uid, out var existingPattern))
@@ -899,13 +944,15 @@ public class CalendarIcsService
             }
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await places.SaveChangesAsync(context, cancellationToken);
 
         return new IcsImportResult
         {
             ImportedCount = imported,
             UpdatedCount = updated,
             AnySeriesRegenerated = anySeriesRegenerated,
+            PlacesLinked = places.Linked,
+            PlacesCreated = places.Created,
             Skipped = skipped.ToGroups((reason, count, samples) => new IcsImportSkipGroup
             {
                 Reason = reason,
@@ -918,7 +965,7 @@ public class CalendarIcsService
     private void ImportStandalone(
         Guid calendarId, IcalEvent ev, string? uid, string title, string? description, string? location,
         DateTime startUtc, DateTime endUtc, bool isAllDay, string userId, DateTime now,
-        Dictionary<string, ContextCalendarEvent> eventIndex, int maxAggregateOccurrences,
+        Dictionary<string, ContextCalendarEvent> eventIndex, int maxAggregateOccurrences, IcsPlaces places,
         ref int imported, ref int updated, ref int aggregate)
     {
         if (uid is not null && eventIndex.TryGetValue(uid, out var existing))
@@ -931,7 +978,15 @@ public class CalendarIcsService
 
             existing.Title = title;
             existing.Description = description;
-            existing.Location = location;
+            if (places.Enabled)
+            {
+                (existing.LocationId, existing.Location) = places.Map(location);
+            }
+            else
+            {
+                existing.Location = location;
+            }
+
             existing.StartDateTime = startUtc;
             existing.EndDateTime = endUtc;
             existing.IsAllDay = isAllDay;
@@ -948,12 +1003,14 @@ public class CalendarIcsService
             throw AggregateExceeded(maxAggregateOccurrences);
         }
 
+        var (locationId, detail) = places.Map(location);
         context.CalendarEvents.Add(new ContextCalendarEvent
         {
             CalendarId = calendarId,
             Title = title,
             Description = description,
-            Location = location,
+            Location = detail,
+            LocationId = locationId,
             StartDateTime = startUtc,
             EndDateTime = endUtc,
             IsAllDay = isAllDay,
@@ -1111,6 +1168,7 @@ public class CalendarIcsService
         target.Title = source.Title;
         target.Description = source.Description;
         target.Location = source.Location;
+        target.LocationId = source.LocationId;
         target.StartDateTime = source.StartDateTime;
         target.EndDateTime = source.EndDateTime;
         target.IsAllDay = source.IsAllDay;
@@ -1132,6 +1190,7 @@ public class CalendarIcsService
         Title = pattern.Title,
         Description = pattern.Description,
         Location = pattern.Location,
+        LocationId = pattern.LocationId,
         StartDateTime = start,
         EndDateTime = end,
         IsAllDay = pattern.IsAllDay,

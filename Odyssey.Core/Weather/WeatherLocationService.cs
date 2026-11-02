@@ -127,6 +127,10 @@ public sealed class WeatherLocationService
                         "Review the location's position before turning weather on.", code: null, field: "expectedLocationFingerprint");
                 }
 
+                // Weather needs a position (issue #380 §5.8): a place without coordinates is a 422 keyed
+                // locationId, decided before the fingerprint, which would otherwise read as a moved place.
+                RequirePosition(location);
+
                 // Compared against, and copied from, this one row read — so the site written is exactly the
                 // state the Admin reviewed (SB, security note on B).
                 EnsureFingerprint(location, request.ExpectedLocationFingerprint);
@@ -294,6 +298,7 @@ public sealed class WeatherLocationService
                 throw Conflict(WeatherConflictException.Disabled, "Turn weather back on before applying the new position.");
             }
 
+            RequirePosition(location);
             EnsureFingerprint(location, request.ExpectedLocationFingerprint!);
 
             var site = await context.WeatherLocationSites.AsNoTracking()
@@ -583,8 +588,8 @@ public sealed class WeatherLocationService
 
     /// <summary>
     /// Weather needs a position (issue #380 §5.8): a place without coordinates is a <c>422</c> keyed
-    /// <c>locationId</c>. Normally unreachable — the fingerprint check refuses first — and kept as the
-    /// direct-caller backstop.
+    /// <c>locationId</c>. Checked before the fingerprint on every path that turns weather on or applies a
+    /// position, and again where a site is built.
     /// </summary>
     private static (decimal Latitude, decimal Longitude, string TimeZoneId) RequirePosition(LocationEntity location) =>
         WeatherCoordinates.Position(location)

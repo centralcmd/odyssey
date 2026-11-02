@@ -38,39 +38,62 @@ public sealed class WeatherReadService
 
     // ── Resolution (§3) ───────────────────────────────────────────────────────────────────────────
 
-    /// <summary>What a read resolved to. <see cref="Location"/> is null when nothing resolved (<c>NoPlace</c>).</summary>
-    public sealed record Resolution(WeatherLocationRef? Location, bool Selectable, bool Tracked);
+    /// <summary>
+    /// What a read resolved to. <see cref="Location"/> is null when nothing resolved (<c>NoPlace</c>), and then
+    /// <see cref="From"/> is null too.
+    /// </summary>
+    public sealed record Resolution(WeatherLocationRef? Location, bool Selectable, bool Tracked, WeatherResolvedFrom? From = null);
 
     /// <summary>
-    /// Explicit id, then the caller's own preference if selectable, then the household default if selectable.
-    /// An explicit id with no location row is a 404; one that exists but is not selectable still returns stored
-    /// history and never fetches.
+    /// Explicit id, then — for an event or entry — its linked place when that place has coordinates (issue #380
+    /// §5.8), then the caller's own preference if selectable, then the household default if selectable. An
+    /// explicit id with no location row is a 404; an explicit or linked place that is not selectable still
+    /// returns stored history and never fetches, and never falls back: a linked place with no weather reads as
+    /// <c>NoData</c>. A linked place WITHOUT coordinates is skipped, so the preference and the default apply.
     /// </summary>
-    public async Task<Resolution> ResolveAsync(Guid? explicitId, string userId, CancellationToken cancellationToken)
+    public async Task<Resolution> ResolveAsync(
+        Guid? explicitId, string userId, CancellationToken cancellationToken, Guid? linkedId = null)
     {
         if (explicitId is { } id)
         {
-            var name = await context.Locations.AsNoTracking().Where(l => l.LocationId == id)
-                .Select(l => l.Name).FirstOrDefaultAsync(cancellationToken)
+            return await ResolveFixedAsync(id, WeatherResolvedFrom.Explicit, cancellationToken)
                 ?? throw new DomainNotFoundException($"Location ID {id} not found.");
-            var state = await SelectableStateAsync(id, cancellationToken);
-            return new Resolution(new WeatherLocationRef { LocationId = id, Name = name }, state.Selectable, state.Tracked);
+        }
+
+        if (linkedId is { } linked
+            && await context.Locations.AsNoTracking().AnyAsync(l => l.LocationId == linked && l.Latitude != null, cancellationToken)
+            && await ResolveFixedAsync(linked, WeatherResolvedFrom.Linked, cancellationToken) is { } fromLink)
+        {
+            return fromLink;
         }
 
         var preferred = await PreferredLocationIdAsync(userId, cancellationToken);
         var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultLocationId;
 
-        foreach (var candidate in new[] { preferred, household })
+        foreach (var (candidate, from) in new[] { (preferred, WeatherResolvedFrom.Preferred), (household, WeatherResolvedFrom.Household) })
         {
             if (candidate is { } candidateId && await SelectableStateAsync(candidateId, cancellationToken) is { Selectable: true } state)
             {
                 var name = await context.Locations.AsNoTracking().Where(l => l.LocationId == candidateId)
                     .Select(l => l.Name).FirstAsync(cancellationToken);
-                return new Resolution(new WeatherLocationRef { LocationId = candidateId, Name = name }, true, state.Tracked);
+                return new Resolution(new WeatherLocationRef { LocationId = candidateId, Name = name }, true, state.Tracked, from);
             }
         }
 
         return new Resolution(null, false, false);
+    }
+
+    private async Task<Resolution?> ResolveFixedAsync(Guid id, WeatherResolvedFrom from, CancellationToken cancellationToken)
+    {
+        var name = await context.Locations.AsNoTracking().Where(l => l.LocationId == id)
+            .Select(l => l.Name).FirstOrDefaultAsync(cancellationToken);
+        if (name is null)
+        {
+            return null;
+        }
+
+        var state = await SelectableStateAsync(id, cancellationToken);
+        return new Resolution(new WeatherLocationRef { LocationId = id, Name = name }, state.Selectable, state.Tracked, from);
     }
 
     /// <summary>Selectable: the location exists, is not archived, has weather enabled and is not being purged.</summary>
@@ -116,6 +139,7 @@ public sealed class WeatherReadService
         return new WeatherCurrentResponse
         {
             Location = location,
+            ResolvedFrom = resolution.From,
             Status = await StatusAsync(resolution, hasData, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             Step = step is null ? null : ToStep(step),
@@ -136,7 +160,7 @@ public sealed class WeatherReadService
         var now = Now;
         if (from > now + Horizon)
         {
-            return new WeatherHourlyResponse { Location = location, Status = WeatherStatus.OutOfRange };
+            return new WeatherHourlyResponse { Location = location, ResolvedFrom = resolution.From, Status = WeatherStatus.OutOfRange };
         }
 
         if (to > now)
@@ -148,6 +172,7 @@ public sealed class WeatherReadService
         return new WeatherHourlyResponse
         {
             Location = location,
+            ResolvedFrom = resolution.From,
             Status = await StatusAsync(resolution, steps.Count > 0, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             Steps = steps.Select(ToStep).ToList(),
@@ -167,7 +192,7 @@ public sealed class WeatherReadService
         var now = Now;
         if (from > DateOnly.FromDateTime(now + Horizon))
         {
-            return new WeatherDailyResponse { Location = location, Status = WeatherStatus.OutOfRange };
+            return new WeatherDailyResponse { Location = location, ResolvedFrom = resolution.From, Status = WeatherStatus.OutOfRange };
         }
 
         // Only a range that reaches the location's own today asks MET for a forecast, as hourly and journal
@@ -184,6 +209,7 @@ public sealed class WeatherReadService
         return new WeatherDailyResponse
         {
             Location = location,
+            ResolvedFrom = resolution.From,
             Status = await StatusAsync(resolution, days.Count > 0, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             Days = days,
@@ -201,14 +227,14 @@ public sealed class WeatherReadService
     {
         var calendarEvent = await context.CalendarEvents.AsNoTracking()
             .Where(e => e.CalendarEventId == eventId)
-            .Select(e => new { e.StartDateTime, e.EndDateTime, e.IsAllDay })
+            .Select(e => new { e.StartDateTime, e.EndDateTime, e.IsAllDay, e.LocationId })
             .FirstOrDefaultAsync(cancellationToken);
         if (calendarEvent is null)
         {
             return null;
         }
 
-        var resolution = await ResolveAsync(locationId, userId, cancellationToken);
+        var resolution = await ResolveAsync(locationId, userId, cancellationToken, calendarEvent.LocationId);
         if (resolution.Location is not { } location)
         {
             return new CalendarEventWeatherResponse { Status = WeatherStatus.NoPlace, IsAllDay = calendarEvent.IsAllDay };
@@ -219,7 +245,7 @@ public sealed class WeatherReadService
         var end = AsUtc(calendarEvent.EndDateTime);
         if (start > now + Horizon && !await HasAnyDataAsync(location.LocationId, cancellationToken))
         {
-            return new CalendarEventWeatherResponse { Location = location, Status = WeatherStatus.OutOfRange, IsAllDay = calendarEvent.IsAllDay };
+            return new CalendarEventWeatherResponse { Location = location, ResolvedFrom = resolution.From, Status = WeatherStatus.OutOfRange, IsAllDay = calendarEvent.IsAllDay };
         }
 
         if (end > now)
@@ -255,6 +281,7 @@ public sealed class WeatherReadService
         return new CalendarEventWeatherResponse
         {
             Location = location,
+            ResolvedFrom = resolution.From,
             Status = await StatusAsync(resolution, steps.Count > 0 || days.Count > 0, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             IsAllDay = calendarEvent.IsAllDay,
@@ -270,16 +297,17 @@ public sealed class WeatherReadService
     public async Task<JournalEntryWeatherResponse?> JournalEntryAsync(
         Guid entryId, Guid? locationId, string userId, CancellationToken cancellationToken)
     {
-        var entryDate = await context.JournalEntries.AsNoTracking()
+        var entry = await context.JournalEntries.AsNoTracking()
             .Where(e => e.JournalEntryId == entryId)
-            .Select(e => (DateTime?)e.EntryDate)
+            .Select(e => new { e.EntryDate, e.LocationId })
             .FirstOrDefaultAsync(cancellationToken);
-        if (entryDate is null)
+        if (entry is null)
         {
             return null;
         }
 
-        var resolution = await ResolveAsync(locationId, userId, cancellationToken);
+        var entryDate = (DateTime?)entry.EntryDate;
+        var resolution = await ResolveAsync(locationId, userId, cancellationToken, entry.LocationId);
         if (resolution.Location is not { } location)
         {
             return new JournalEntryWeatherResponse { Status = WeatherStatus.NoPlace };
@@ -291,6 +319,7 @@ public sealed class WeatherReadService
             return new JournalEntryWeatherResponse
             {
                 Location = location,
+                ResolvedFrom = resolution.From,
                 Status = await StatusAsync(resolution, false, cancellationToken),
             };
         }
@@ -307,6 +336,7 @@ public sealed class WeatherReadService
         return new JournalEntryWeatherResponse
         {
             Location = location,
+            ResolvedFrom = resolution.From,
             Status = await StatusAsync(resolution, day is not null, cancellationToken),
             Stale = await StaleAsync(resolution, location.LocationId, cancellationToken),
             Date = date,
@@ -435,7 +465,9 @@ public sealed class WeatherReadService
 
         if (!resolution.Selectable)
         {
-            return WeatherStatus.WeatherDisabled;
+            // A linked place with coordinates is used as if named explicitly, with no fallback (issue #380
+            // §5.8): without weather it simply has no data.
+            return resolution.From == WeatherResolvedFrom.Linked ? WeatherStatus.NoData : WeatherStatus.WeatherDisabled;
         }
 
         return (await settings.GetAsync(cancellationToken)).IsConfigured ? WeatherStatus.NoData : WeatherStatus.NotConfigured;

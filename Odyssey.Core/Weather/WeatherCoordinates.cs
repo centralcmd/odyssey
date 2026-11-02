@@ -28,7 +28,7 @@ public static class WeatherCoordinates
         || WeatherRules.Moved(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId,
             site.Latitude, site.Longitude, site.AltitudeMeters, site.TimeZoneId);
 
-    public const string NoCoordinatesFingerprint = "v1:none";
+    public const string NoCoordinatesFingerprint = WeatherRules.NoCoordinatesFingerprint;
 
     /// <summary>
     /// The location's position, or <see langword="null"/> when it has none. The three columns are

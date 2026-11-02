@@ -2,6 +2,7 @@ using Odyssey.Core;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
@@ -35,9 +36,11 @@ public class CalendarEventService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    /// <param name="claims">Decides whether the <c>locationRef</c> embed is filled; null is trusted.</param>
     public async Task<PagedResult<ExistingCalendarEvent>> ListAsync(
         CalendarEventsQueryParams query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
         if (query.From is not { } from || query.To is not { } to)
         {
@@ -67,6 +70,11 @@ public class CalendarEventService
             q = q.Where(e => ids.Contains(e.CalendarId));
         }
 
+        if (query.LocationId is { } locationId)
+        {
+            q = q.Where(e => e.LocationId == locationId);
+        }
+
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
         {
@@ -83,23 +91,52 @@ public class CalendarEventService
         };
         q = sorted.ThenBy(e => e.CalendarEventId);
 
-        return await q.ToPagedResultAsync(query.Offset, query.Limit, e => e.Adapt<ExistingCalendarEvent>(), cancellationToken);
+        var page = await q.ToPagedResultAsync(query.Offset, query.Limit, e => e.Adapt<ExistingCalendarEvent>(), cancellationToken);
+        await FillLocationRefsAsync(context, page.Items, claims, cancellationToken);
+        return page;
     }
 
-    public async Task<ExistingCalendarEvent?> Get(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ExistingCalendarEvent?> Get(Guid id, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var calendarEvent = await context.CalendarEvents.AsNoTracking()
             .FirstOrDefaultAsync(e => e.CalendarEventId == id, cancellationToken);
-        return calendarEvent?.Adapt<ExistingCalendarEvent>();
+        return calendarEvent is null ? null : await ToDtoAsync(calendarEvent, claims, cancellationToken);
     }
 
-    public async Task<ExistingCalendarEvent> Create(NewCalendarEvent request, string userId, CancellationToken cancellationToken = default)
+    /// <summary>Fills each row's <see cref="ExistingCalendarEvent.LocationRef"/> in one query (issue #380 §5.1).</summary>
+    internal static async Task FillLocationRefsAsync(
+        OdysseyContext context, IReadOnlyCollection<ExistingCalendarEvent> rows, LocationClaims? claims,
+        CancellationToken cancellationToken)
+    {
+        var refs = await LocationRefs.LoadAsync(context, rows.Select(r => r.LocationId), claims ?? LocationClaims.Trusted, cancellationToken);
+        foreach (var row in rows)
+        {
+            row.LocationRef = refs.For(row.LocationId);
+        }
+    }
+
+    private async Task<ExistingCalendarEvent> ToDtoAsync(Context.CalendarEvent calendarEvent, LocationClaims? claims, CancellationToken cancellationToken)
+    {
+        var dto = calendarEvent.Adapt<ExistingCalendarEvent>();
+        await FillLocationRefsAsync(context, [dto], claims, cancellationToken);
+        return dto;
+    }
+
+    /// <param name="claims">
+    /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
+    /// Null is a trusted, non-HTTP caller.
+    /// </param>
+    public async Task<ExistingCalendarEvent> Create(
+        NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         request = NormalizeTimes(request);
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateTimes(request.StartDateTime, request.EndDateTime, request.IsAllDay,
             effectiveLimits.CalendarMaxEventDurationDays);
+
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.Trusted, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var calendarEvent = new Context.CalendarEvent
@@ -108,6 +145,7 @@ public class CalendarEventService
             Title = request.Title,
             Description = request.Description,
             Location = request.Location,
+            LocationId = locationId,
             StartDateTime = request.StartDateTime,
             EndDateTime = request.EndDateTime,
             IsAllDay = request.IsAllDay,
@@ -117,14 +155,17 @@ public class CalendarEventService
         };
 
         context.CalendarEvents.Add(calendarEvent);
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        return calendarEvent.Adapt<ExistingCalendarEvent>();
+        return await ToDtoAsync(calendarEvent, claims, cancellationToken);
     }
 
     // Edits this occurrence only. RecurrencePatternId is immutable — it isn't part of NewCalendarEvent,
     // so there is no request-body path that can set or clear it (structurally enforced, spec §7/§9).
-    public async Task<ExistingCalendarEvent?> Update(Guid id, NewCalendarEvent request, string userId, CancellationToken cancellationToken = default)
+    // PUT is a full replacement (issue #380 §5.2): an omitted locationId clears the link, an unchanged one
+    // is kept (even to a place archived since) with no claim, and a changed one needs locations.read.
+    public async Task<ExistingCalendarEvent?> Update(
+        Guid id, NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         request = NormalizeTimes(request);
         var calendarEvent = await context.CalendarEvents.FirstOrDefaultAsync(e => e.CalendarEventId == id, cancellationToken);
@@ -138,19 +179,24 @@ public class CalendarEventService
         ValidateTimes(request.StartDateTime, request.EndDateTime, request.IsAllDay,
             effectiveLimits.CalendarMaxEventDurationDays);
 
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(
+            request.LocationId, calendarEvent.LocationId, claims ?? LocationClaims.Trusted, cancellationToken);
+
         calendarEvent.CalendarId = request.CalendarId;
         calendarEvent.Title = request.Title;
         calendarEvent.Description = request.Description;
         calendarEvent.Location = request.Location;
+        calendarEvent.LocationId = locationId;
         calendarEvent.StartDateTime = request.StartDateTime;
         calendarEvent.EndDateTime = request.EndDateTime;
         calendarEvent.IsAllDay = request.IsAllDay;
         calendarEvent.UpdatedByUserId = userId;
         calendarEvent.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        return calendarEvent.Adapt<ExistingCalendarEvent>();
+        return await ToDtoAsync(calendarEvent, claims, cancellationToken);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)

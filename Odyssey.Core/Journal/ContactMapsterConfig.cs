@@ -67,8 +67,8 @@ public static class ContactMapsterConfig
                     src => src.DissolvedDate == null ? (DateTime?)null : src.DissolvedDate.Value.ToDateTime(TimeOnly.MinValue));
 
             // A contact address is a link row since issue #380; today's address shape is projected from the
-            // linked location, which every read loads (ThenInclude). B2: adds LocationId, otherUses and
-            // placeHasCoordinates to ExistingAddress.
+            // linked location, which every read loads (ThenInclude), under contacts.read alone (AC 5).
+            // OtherUses depends on the caller's claims, so ContactService fills it after mapping.
             TypeAdapterConfig<Address, ExistingAddress>
                 .NewConfig()
                 .Map(dest => dest.Line1, src => src.Location != null ? src.Location.Line1 ?? string.Empty : string.Empty)
@@ -76,7 +76,9 @@ public static class ContactMapsterConfig
                 .Map(dest => dest.City, src => src.Location != null ? src.Location.City ?? string.Empty : string.Empty)
                 .Map(dest => dest.PostalCode, src => src.Location != null ? src.Location.PostalCode : null)
                 .Map(dest => dest.Region, src => src.Location != null ? src.Location.Region : null)
-                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode ?? string.Empty : string.Empty);
+                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode ?? string.Empty : string.Empty)
+                .Map(dest => dest.PlaceHasCoordinates, src => src.Location != null && src.Location.Latitude != null)
+                .Ignore(dest => dest.OtherUses);
 
             configured = true;
         }

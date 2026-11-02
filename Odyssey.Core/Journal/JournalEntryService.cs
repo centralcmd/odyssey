@@ -8,6 +8,8 @@ using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 
+using Odyssey.Core.Locations;
+
 namespace Odyssey.Core.Journal;
 
 /// <summary>
@@ -45,7 +47,8 @@ public class JournalEntryService
     /// attachment-presence/archival filters + allowlisted sort.</summary>
     public async Task<PagedResult<JournalEntrySummary>> ListAsync(
         JournalEntriesQueryParams query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
         var q = ApplyFilters(context.JournalEntries.AsQueryable(), query);
 
@@ -76,6 +79,7 @@ public class JournalEntryService
                 Content = e.Content,
                 EntryDate = e.EntryDate,
                 Location = e.Location,
+                LocationId = e.LocationId,
                 CreatedByUserId = e.CreatedByUserId,
                 UpdatedByUserId = e.UpdatedByUserId,
                 CreatedAt = e.CreatedAt,
@@ -115,6 +119,7 @@ public class JournalEntryService
                 Content = row.Content,
                 EntryDate = row.EntryDate,
                 Location = row.Location,
+                LocationId = row.LocationId,
                 CreatedByUserId = row.CreatedByUserId,
                 UpdatedByUserId = row.UpdatedByUserId,
                 CreatedAt = row.CreatedAt,
@@ -126,6 +131,12 @@ public class JournalEntryService
         }, cancellationToken);
 
         await AttachPhotoLinksAsync(page.Items, linkRows, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, page.Items.Select(i => i.LocationId), claims ?? LocationClaims.Trusted, cancellationToken);
+        foreach (var item in page.Items)
+        {
+            item.LocationRef = refs.For(item.LocationId);
+        }
+
         return page;
     }
 
@@ -170,17 +181,24 @@ public class JournalEntryService
         }
     }
 
-    public async Task<ExistingJournalEntry?> Get(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ExistingJournalEntry?> Get(Guid id, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var entry = await LoadWithDetails(id, cancellationToken);
-        return entry is null ? null : await ToDtoAsync(entry, cancellationToken);
+        return entry is null ? null : await ToDtoAsync(entry, cancellationToken, claims);
     }
 
-    public async Task<ExistingJournalEntry> Create(NewJournalEntry request, string userId, CancellationToken cancellationToken = default)
+    /// <param name="claims">
+    /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
+    /// Null is a trusted, non-HTTP caller.
+    /// </param>
+    public async Task<ExistingJournalEntry> Create(
+        NewJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         ValidateFields(request.Title, request.Content, request.EntryDate);
         var links = await ValidateLinks(
             request.TagIds, request.ContactIds, request.PhotoFileIds, request.AttachmentFileIds, cancellationToken);
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.Trusted, cancellationToken);
 
         var externalUid = NormalizeExternalUid(request.ExternalUid) ?? NewExternalUid();
         await EnsureExternalUidAvailable(externalUid, excludeId: null, cancellationToken);
@@ -198,6 +216,7 @@ public class JournalEntryService
             Content = request.Content,
             EntryDate = DateTimeNormalization.NormalizeToUtc(request.EntryDate),
             Location = request.Location,
+            LocationId = locationId,
             CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -224,12 +243,15 @@ public class JournalEntryService
         }
 
         context.JournalEntries.Add(entry);
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        return await ToDtoAsync(entry, cancellationToken);
+        return await ToDtoAsync(entry, cancellationToken, claims);
     }
 
-    public async Task<ExistingJournalEntry?> Update(Guid id, UpdateJournalEntry request, string userId, CancellationToken cancellationToken = default)
+    // A full replacement (issue #380 §5.2): an omitted locationId clears the link, an unchanged one is kept
+    // with no claim, and a changed one needs locations.read.
+    public async Task<ExistingJournalEntry?> Update(
+        Guid id, UpdateJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var entry = await LoadWithDetailsForUpdate(id, cancellationToken);
         if (entry is null)
@@ -250,6 +272,10 @@ public class JournalEntryService
             entry.ExternalUid = newExternalUid;
         }
 
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(
+            request.LocationId, entry.LocationId, claims ?? LocationClaims.Trusted, cancellationToken);
+
         var photoIds = await ResolvePhotoIdsAsync(links.PhotoFileIds, userId, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -257,6 +283,7 @@ public class JournalEntryService
         entry.Content = request.Content;
         entry.EntryDate = DateTimeNormalization.NormalizeToUtc(request.EntryDate);
         entry.Location = request.Location;
+        entry.LocationId = locationId;
         entry.UpdatedByUserId = userId;
         entry.UpdatedAt = now;
         ApplyArchiveTransition(entry, request.Archived);
@@ -266,9 +293,9 @@ public class JournalEntryService
         DiffPhotos(entry, photoIds, now);
         DiffAttachments(entry, links.AttachmentFileIds, now);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        return await ToDtoAsync(entry, cancellationToken);
+        return await ToDtoAsync(entry, cancellationToken, claims);
     }
 
     public async Task<bool> Delete(Guid id, CancellationToken cancellationToken = default)
@@ -322,6 +349,11 @@ public class JournalEntryService
                 EF.Functions.Like(e.Title, pattern) ||
                 EF.Functions.Like(e.Content, pattern) ||
                 (e.Location != null && EF.Functions.Like(e.Location, pattern)));
+        }
+
+        if (query.LocationId is { } locationId)
+        {
+            q = q.Where(e => e.LocationId == locationId);
         }
 
         if (query.TagIds is { Length: > 0 } tags)
@@ -604,9 +636,11 @@ public class JournalEntryService
         }
     }
 
-    private async Task<ExistingJournalEntry> ToDtoAsync(JournalEntry entry, CancellationToken cancellationToken)
+    private async Task<ExistingJournalEntry> ToDtoAsync(JournalEntry entry, CancellationToken cancellationToken, LocationClaims? claims = null)
     {
         var dto = entry.Adapt<ExistingJournalEntry>();
+        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.Trusted, cancellationToken);
+        dto.LocationRef = refs.For(dto.LocationId);
         var tagIds = entry.EntryTags.Select(t => t.JournalTagId).ToList();
         TagIconProjection.Apply(dto, tagIds, await TagIconProjection.JournalTagsAsync(context, tagIds, cancellationToken));
         dto.ContactIds = entry.Contacts.Select(c => c.ContactId).ToList();
@@ -659,6 +693,8 @@ public class JournalEntryService
         public DateTime EntryDate { get; set; }
 
         public string? Location { get; set; }
+
+        public Guid? LocationId { get; set; }
 
         public string? CreatedByUserId { get; set; }
 

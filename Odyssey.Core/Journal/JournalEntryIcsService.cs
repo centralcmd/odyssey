@@ -9,6 +9,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Interop;
+using Odyssey.Core.Locations;
 using Ical.Net.Serialization;
 using IcalCalendar = Ical.Net.Calendar;
 using IcalJournal = Ical.Net.CalendarComponents.Journal;
@@ -100,7 +101,7 @@ public class JournalEntryIcsService
 
     /// <summary>Exports a single entry by id, or null when it does not exist (→ 404).</summary>
     public async Task<JournalEntryIcsExport?> ExportSingleAsync(
-        Guid id, bool includeContacts, CancellationToken cancellationToken = default)
+        Guid id, bool includeContacts, CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
         var entry = await context.JournalEntries
             .AsNoTracking()
@@ -114,7 +115,7 @@ public class JournalEntryIcsService
             return null;
         }
 
-        var content = await SerializeAsync([entry], includeContacts, cancellationToken);
+        var content = await SerializeAsync([entry], includeContacts, includePlaceNames, cancellationToken);
         var exportDate = timeProvider.GetUtcNow().UtcDateTime;
         return new JournalEntryIcsExport($"odyssey-journal-entry-{exportDate:yyyyMMdd-HHmmss}Z.ics", content);
     }
@@ -130,7 +131,7 @@ public class JournalEntryIcsService
     /// </summary>
     public async Task ExportStreamingAsync(
         JournalEntriesQueryParams query, bool includeContacts, Stream output, Action<string, int> onReady,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default, bool includePlaceNames = false)
     {
         var baseQuery = JournalEntryService.ApplyFilters(context.JournalEntries.AsNoTracking(), query);
 
@@ -189,7 +190,7 @@ public class JournalEntryIcsService
                 continue; // every id in this batch was deleted between the snapshot and this fetch
             }
 
-            var chunkCalendar = await BuildCalendarAsync(entries, includeContacts, cancellationToken);
+            var chunkCalendar = await BuildCalendarAsync(entries, includeContacts, includePlaceNames, cancellationToken);
             var chunkText = IcsChunkSerializer.SerializeComponents(chunkCalendar);
             var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
 
@@ -229,9 +230,9 @@ public class JournalEntryIcsService
         || query.Status is not null;
 
     private async Task<string> SerializeAsync(
-        IReadOnlyList<JournalEntry> entries, bool includeContacts, CancellationToken cancellationToken)
+        IReadOnlyList<JournalEntry> entries, bool includeContacts, bool includePlaceNames, CancellationToken cancellationToken)
     {
-        var ical = await BuildCalendarAsync(entries, includeContacts, cancellationToken);
+        var ical = await BuildCalendarAsync(entries, includeContacts, includePlaceNames, cancellationToken);
         ical.ProductId = ProductId;
         return new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
     }
@@ -240,8 +241,11 @@ public class JournalEntryIcsService
     // both by the single-shot SerializeAsync above and, per-chunk, by the streaming export (issue #343
     // §5 Goal 8), so each chunk's lookups stay scoped to that chunk rather than the whole matched set.
     private async Task<IcalCalendar> BuildCalendarAsync(
-        IReadOnlyList<JournalEntry> entries, bool includeContacts, CancellationToken cancellationToken)
+        IReadOnlyList<JournalEntry> entries, bool includeContacts, bool includePlaceNames, CancellationToken cancellationToken)
     {
+        // A linked place's name is written only for a locations.read holder (issue #380 §8.4); never GEO.
+        var placeNames = await IcsPlaces.NamesAsync(context, entries.Select(e => e.LocationId), includePlaceNames, cancellationToken);
+
         var tagIds = entries.SelectMany(e => e.EntryTags.Select(t => t.JournalTagId)).Distinct().ToList();
         var tagNames = tagIds.Count == 0
             ? new Dictionary<Guid, string>()
@@ -267,7 +271,7 @@ public class JournalEntryIcsService
         var ical = new IcalCalendar();
         foreach (var entry in entries)
         {
-            ical.Journals.Add(BuildVJournal(entry, tagNames, photoFileIds, contactUids));
+            ical.Journals.Add(BuildVJournal(entry, tagNames, photoFileIds, contactUids, placeNames));
         }
 
         return ical;
@@ -277,7 +281,8 @@ public class JournalEntryIcsService
         JournalEntry entry,
         IReadOnlyDictionary<Guid, string> tagNames,
         IReadOnlyDictionary<Guid, Guid> photoFileIds,
-        IReadOnlyDictionary<Guid, string>? contactUids)
+        IReadOnlyDictionary<Guid, string>? contactUids,
+        IReadOnlyDictionary<Guid, string> placeNames)
     {
         var journal = new IcalJournal
         {
@@ -290,9 +295,9 @@ public class JournalEntryIcsService
             Start = new CalDateTime(entry.EntryDate.Year, entry.EntryDate.Month, entry.EntryDate.Day),
         };
 
-        if (!string.IsNullOrEmpty(entry.Location))
+        if (IcsPlaces.ExportText(entry.LocationId, entry.Location, placeNames) is { } place)
         {
-            journal.Properties.Add(new CalendarProperty(LocationProperty, entry.Location));
+            journal.Properties.Add(new CalendarProperty(LocationProperty, place));
         }
 
         foreach (var link in entry.EntryTags)
@@ -337,7 +342,8 @@ public class JournalEntryIcsService
 
     public async Task<JournalEntryIcsImportResult> ImportAsync(
         Stream icsFile, long contentLength, string? contentType, string userId,
-        bool canLinkFiles, bool canReadContacts, CancellationToken cancellationToken = default)
+        bool canLinkFiles, bool canReadContacts, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
         var journals = await ParseJournalsAsync(icsFile, contentLength, contentType, cancellationToken);
         var lookups = await LoadLookupsAsync(journals, userId, canLinkFiles, canReadContacts, cancellationToken);
@@ -349,6 +355,8 @@ public class JournalEntryIcsService
         var maxLinksPerKind = (await journalLimits.GetAsync(cancellationToken)).JournalEntryMaxLinksPerKind;
         var skipped = new ImportSkipCollector(importLimits.ImportMaxSamplesPerSkipReason);
         var counts = new LinkSkipCounts();
+        // Places link only with locations.read + locations.create (issue #380 §8.4); null claims import text.
+        var places = await IcsPlaces.ForImportAsync(context, claims ?? LocationClaims.None, userId, timeProvider, cancellationToken);
         var createdByUid = new Dictionary<string, JournalEntry>(StringComparer.Ordinal);
         var imported = 0;
         var updated = 0;
@@ -366,7 +374,7 @@ public class JournalEntryIcsService
             target.Title = fields.Title;
             target.Content = fields.Content;
             target.EntryDate = fields.EntryDate;
-            ApplyLocation(target, journal);
+            ApplyLocation(target, journal, places);
             ApplyStatus(target, journal, isNew, now);
 
             if (isNew)
@@ -390,10 +398,13 @@ public class JournalEntryIcsService
                 maxLinksPerKind, skipped);
         }
 
-        var collisions = await SaveWithCollisionHandlingAsync(skipped, cancellationToken);
+        var collisions = await SaveWithCollisionHandlingAsync(skipped, places, cancellationToken);
         imported -= collisions;
 
-        return BuildResult(imported, updated, skipped, counts);
+        var result = BuildResult(imported, updated, skipped, counts);
+        result.PlacesLinked = places.Linked;
+        result.PlacesCreated = places.Created;
+        return result;
     }
 
     /// <summary>
@@ -706,7 +717,7 @@ public class JournalEntryIcsService
 
     // ── Per-block field application ─────────────────────────────────────────────
 
-    private static void ApplyLocation(JournalEntry entry, IcalJournal journal)
+    private static void ApplyLocation(JournalEntry entry, IcalJournal journal, IcsPlaces places)
     {
         var location = journal.Properties.Get<string>(LocationProperty);
 
@@ -717,7 +728,16 @@ public class JournalEntryIcsService
             return;
         }
 
-        entry.Location = string.IsNullOrEmpty(location) ? null : location;
+        var value = string.IsNullOrEmpty(location) ? null : location;
+        if (places.Enabled)
+        {
+            (entry.LocationId, entry.Location) = places.Map(value);
+        }
+        else
+        {
+            // Without both location claims the link is left as it is: only the detail text is imported.
+            entry.Location = value;
+        }
     }
 
     private void ApplyStatus(JournalEntry entry, IcalJournal journal, bool isNew, DateTime now)
@@ -863,14 +883,15 @@ public class JournalEntryIcsService
     // save retried, so it never surfaces as a raw 500 / unhandled DbUpdateException (§5 step 3.2, AC 25).
     // Detection is provider-agnostic: after a failed save, any Added entry whose UID now exists in the DB
     // is the loser of a race. Returns the number of entries dropped as collisions.
-    private async Task<int> SaveWithCollisionHandlingAsync(ImportSkipCollector skipped, CancellationToken cancellationToken)
+    private async Task<int> SaveWithCollisionHandlingAsync(
+        ImportSkipCollector skipped, IcsPlaces places, CancellationToken cancellationToken)
     {
         var droppedCollisions = 0;
         for (var attempt = 0; attempt < 3; attempt++)
         {
             try
             {
-                await context.SaveChangesAsync(cancellationToken);
+                await places.SaveChangesAsync(context, cancellationToken);
                 return droppedCollisions;
             }
             catch (DbUpdateException)

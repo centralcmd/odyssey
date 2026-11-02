@@ -135,14 +135,19 @@ public static class MapsterConfig
             // config moved to Odyssey.Core.Journal/ContactMapsterConfig.cs with the aggregate (issue #325).)
 
             // A property's address is its linked location since issue #380; the four DTO fields are projected
-            // from it (AddressLine is Line1), and every read loads it (ThenInclude). B2: adds LocationId,
-            // otherUses and placeHasCoordinates.
+            // from it (AddressLine is Line1) under properties.read alone, and every read loads it
+            // (ThenInclude). OtherUses depends on the caller's claims, so PropertyService fills it; the two
+            // request-only members never echo.
             TypeAdapterConfig<Odyssey.Context.RealEstateDetails, Odyssey.Dtos.Finance.RealEstateDetailsDto>
                 .NewConfig()
                 .Map(dest => dest.AddressLine, src => src.Location != null ? src.Location.Line1 : null)
                 .Map(dest => dest.PostalCode, src => src.Location != null ? src.Location.PostalCode : null)
                 .Map(dest => dest.City, src => src.Location != null ? src.Location.City : null)
-                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode : null);
+                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode : null)
+                .Map(dest => dest.PlaceHasCoordinates, src => src.Location != null ? src.Location.Latitude != null : (bool?)null)
+                .Ignore(dest => dest.OtherUses)
+                .Ignore(dest => dest.ApplyTo)
+                .Ignore(dest => dest.ExpectedOtherUses);
 
             configured = true;
         }

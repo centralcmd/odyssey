@@ -12,6 +12,8 @@ using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos.Journal;
 using Odyssey.Core.Journal.Interop;
 
+using Odyssey.Core.Locations;
+
 namespace Odyssey.Core.Journal;
 
 /// <summary>
@@ -442,8 +444,9 @@ public class ContactVCardService
     // ---------------------------------------------------------------- Import
 
     public async Task<VCardImportResult> ImportAsync(
-        Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default) =>
-        (await ImportWithOutcomeAsync(file, contentLength, contentType, cancellationToken)).Result;
+        Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null, string? userId = null) =>
+        (await ImportWithOutcomeAsync(file, contentLength, contentType, cancellationToken, claims, userId)).Result;
 
     /// <summary>
     /// <see cref="ImportAsync"/>, plus the ids of the contacts whose type the import changed and of
@@ -451,10 +454,19 @@ public class ContactVCardService
     /// <see cref="VCardImportResult"/>: that is the wire type, and the lists exist only so the controller —
     /// which holds the principal — can write the actor-bearing audit lines.
     /// </summary>
+    /// <param name="claims">
+    /// The importer's location claims (issue #380 §8.4). <c>locations.create</c> is checked once for the whole
+    /// file: without it every <c>ADR</c> is skipped and counted in
+    /// <see cref="VCardImportResult.SkippedAddressCount"/>, and the contact is still imported. Null is a
+    /// trusted, non-HTTP caller.
+    /// </param>
+    /// <param name="userId">The acting user, attributed on any place the import creates.</param>
     public async Task<VCardImportOutcome> ImportWithOutcomeAsync(
-        Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default)
+        Stream file, long contentLength, string? contentType, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null, string? userId = null)
     {
         var typeChanges = new TypeChangeIds();
+        var addresses = new AddressImport(claims ?? LocationClaims.Trusted, userId);
         if (!IsAcceptedContentType(contentType))
         {
             throw new DomainValidationException("The uploaded file must be a vCard file (text/vcard).");
@@ -495,7 +507,7 @@ public class ContactVCardService
             var props = ParseProperties(block);
             var (sampleName, outcome, reason) = await ImportOneAsync(
                 props, skipped, cap.ContactVCardMaxRepeatablePropertiesPerEntry, effectiveMaxAvatarBytes,
-                typeChanges, cancellationToken);
+                typeChanges, addresses, cancellationToken);
             switch (outcome)
             {
                 case ImportOutcome.Created:
@@ -525,6 +537,11 @@ public class ContactVCardService
                 Count = count,
                 SampleNames = samples,
             }),
+            AddressesLinked = addresses.Linked,
+            // AddressesLinked − PlacesCreated is the number of addresses that matched an existing place,
+            // which only a locations.read holder may learn (v8-L3).
+            PlacesCreated = addresses.Claims.LocationsRead ? addresses.Created : null,
+            SkippedAddressCount = addresses.Skipped,
         };
 
         return new VCardImportOutcome(result, typeChanges.Converted, typeChanges.Blocked);
@@ -539,6 +556,20 @@ public class ContactVCardService
 
     private enum ImportOutcome { Created, Updated, Skipped }
 
+    /// <summary>The import's location claims and its address counts (issue #380 §8.4).</summary>
+    private sealed class AddressImport(LocationClaims claims, string? userId)
+    {
+        public LocationClaims Claims { get; } = claims;
+
+        public string? UserId { get; } = userId;
+
+        public int Linked { get; set; }
+
+        public int Created { get; set; }
+
+        public int Skipped { get; set; }
+    }
+
     private sealed class TypeChangeIds
     {
         public List<Guid> Converted { get; } = [];
@@ -549,7 +580,7 @@ public class ContactVCardService
     private async Task<(string SampleName, ImportOutcome Outcome, string? Reason)> ImportOneAsync(
         Dictionary<string, List<VCardProperty>> props, ImportSkipCollector skipped,
         int maxRepeatableProperties, long effectiveMaxAvatarBytes, TypeChangeIds typeChanges,
-        CancellationToken cancellationToken)
+        AddressImport addresses, CancellationToken cancellationToken)
     {
         var uid = TextValue(props, "UID");
         var nRaw = RawValue(props, "N");
@@ -684,7 +715,7 @@ public class ContactVCardService
                 }
 
                 await ReplaceContactCollections(
-                    id, type, props, updated, sampleName, skipped, maxRepeatableProperties, cancellationToken);
+                    id, type, props, updated, sampleName, skipped, maxRepeatableProperties, addresses, cancellationToken);
 
                 // The image rides the SAME transaction as the contact and its collections, so an entry
                 // never commits half-imported. A failure here is recorded and the entry still imports:
@@ -938,7 +969,8 @@ public class ContactVCardService
     // silently vanishing (issue #338 review) — the entry itself is still reported Created/Updated.
     private async Task ReplaceContactCollections(
         Guid contactId, ContactType contactType, Dictionary<string, List<VCardProperty>> props, bool isUpdate,
-        string sampleName, ImportSkipCollector skipped, int maxRepeatableProperties, CancellationToken cancellationToken)
+        string sampleName, ImportSkipCollector skipped, int maxRepeatableProperties, AddressImport addresses,
+        CancellationToken cancellationToken)
     {
         // Aliases MERGE rather than replace, unlike the three collections below (issue #48 §9): an
         // import must never delete an alias a person typed, and must never overwrite a label they
@@ -965,6 +997,14 @@ public class ContactVCardService
 
         foreach (var prop in CappedProperties(props, "ADR", "Address", sampleName, skipped, maxRepeatableProperties))
         {
+            // A link-level skip, counted and never listed: the contact is still imported, and a skip group
+            // would echo its name (v8-L4).
+            if (!addresses.Claims.LocationsCreate)
+            {
+                addresses.Skipped++;
+                continue;
+            }
+
             var address = ParseAddress(prop, contactType);
             if (address is null)
             {
@@ -976,7 +1016,16 @@ public class ContactVCardService
 
             try
             {
-                await contactService.CreateAddress(contactId, address, cancellationToken);
+                var (linked, placeCreated) = await contactService.CreateAddressCoreAsync(
+                    contactId, address, addresses.Claims, addresses.UserId, cancellationToken);
+                if (linked is not null)
+                {
+                    addresses.Linked++;
+                    if (placeCreated)
+                    {
+                        addresses.Created++;
+                    }
+                }
             }
             catch (DomainException ex)
             {
