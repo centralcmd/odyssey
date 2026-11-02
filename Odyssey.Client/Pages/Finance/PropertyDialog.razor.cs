@@ -62,7 +62,14 @@ public partial class PropertyDialog
     // rendered and Save is disabled before then, so nothing is typed into the placeholder above (N2).
     private bool _addressReady;
     private AddressBlockPermissions _addressPermissions = new(false, false, false);
-    private string _announce = string.Empty;
+    private OdsLiveAnnouncer? _announcer;
+
+    /// <summary>
+    /// Announces through the announcer's own method, never by setting its Message: an identical string (the
+    /// same place failing to create twice — the usual retry) renders nothing new and would be silent the
+    /// second time (WCAG 4.1.3; accessibility review 2).
+    /// </summary>
+    private void Announce(string message) => _ = _announcer?.Announce(message);
     private string? _formAlert;
     private string? _applyToAlert;
     private bool _focusSummary;

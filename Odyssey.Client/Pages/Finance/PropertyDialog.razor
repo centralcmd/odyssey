@@ -28,7 +28,7 @@
                SubmitIcon="@(IsEdit ? "check" : "add")"
                SubmitDisabled="@(!_addressReady)" OnSubmit="SaveAsync">
 
-    <OdsLiveAnnouncer Message="@_announce" />
+    <OdsLiveAnnouncer @ref="_announcer" />
     <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId"
                                                        OnApplyTo="FocusApplyToAsync" />
 
@@ -109,7 +109,7 @@
         @if (_addressReady)
         {
             <OdsAddressBlock @ref="_addressBlock" Model="_address" Errors="_errors" ApplyToAlert="@_applyToAlert"
-                             ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@(m => _announce = m)" />
+                             ApplyGroupId="@ApplyGroupId" OnChange="OnAddressChanged" OnAnnounce="@Announce" />
         }
         else
         {

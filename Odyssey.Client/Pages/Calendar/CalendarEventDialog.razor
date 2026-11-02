@@ -17,7 +17,7 @@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent">
     <ChildContent>
-        <OdsLiveAnnouncer Message="@_announce" />
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body">
             @if (OccurrenceOfSeries)
             {

@@ -163,7 +163,38 @@ public class UnifiedLocationsDialogTests
         h.Cut.WaitForAssertion(() => Assert.Equal("A location with this name already exists.",
             h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
         Assert.Equal(["place"], h.Calls);
-        Assert.Contains("Couldn’t add Storgata", h.Cut.Markup);
+        h.Cut.WaitForAssertion(() => Assert.Contains("Couldn’t add Storgata", h.Cut.Markup));
+    }
+
+    /// <summary>
+    /// Accessibility review 2: retrying a save whose staged place fails the same way again produces the SAME
+    /// status text. It must still be spoken — the region empties and refills — rather than being a no-op
+    /// assignment of an unchanged Message.
+    /// </summary>
+    [Fact]
+    public async Task A_repeated_failed_create_is_announced_again()
+    {
+        var h = RenderEventDialog(CalendarEventDialogMode.Create, null, canRead: true, canCreate: true,
+            createResult: ApiResult<ExistingLocation>.Failure(HttpStatusCode.Conflict, Problem(409, "name", "A location with this name already exists.")));
+        await using var _ = h.Ctx;
+        await h.Cut.InvokeAsync(() => h.Cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Title").Instance.ValueChanged.InvokeAsync("Dinner"));
+        await Stage(h.Cut, "Storgata");
+
+        var announcer = h.Cut.FindComponents<OdsLiveAnnouncer>().Single(a => a.Instance.Message is null);
+        var spoken = new List<string>();
+        announcer.OnMarkupUpdated += (_, _) =>
+        {
+            var text = announcer.Find("[role=status]").TextContent;
+            if (spoken.Count == 0 || spoken[^1] != text)
+                spoken.Add(text);
+        };
+
+        Click(h.Cut, "Create event");
+        h.Cut.WaitForAssertion(() => Assert.Contains("Couldn’t add Storgata", spoken));
+        Click(h.Cut, "Create event");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(2, spoken.Count(t => t == "Couldn’t add Storgata")));
+        Assert.Equal(["place", "place"], h.Calls);
     }
 
     [Fact]

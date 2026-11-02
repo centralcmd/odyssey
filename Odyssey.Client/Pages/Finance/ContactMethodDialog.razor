@@ -25,7 +25,7 @@
         @if (Kind == "address")
         {
             @* The shared address block (issue #383 §3.3): pick a saved place or type the address. *@
-            <OdsLiveAnnouncer Message="@_announce" />
+            <OdsLiveAnnouncer @ref="_announcer" />
             <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" ApplyGroupId="@ApplyGroupId" OnApplyTo="FocusApplyToAsync" />
             @if (!string.IsNullOrEmpty(_formAlert))
             {
@@ -40,7 +40,7 @@
             else
             {
                 <OdsAddressBlock @ref="_addressBlock" Model="_block" Errors="_errors" ApplyToAlert="@_applyToAlert"
-                                 ApplyGroupId="@ApplyGroupId" OnChange="OnBlockChanged" OnAnnounce="@(m => _announce = m)" />
+                                 ApplyGroupId="@ApplyGroupId" OnChange="OnBlockChanged" OnAnnounce="@Announce" />
             }
         }
         else if (Kind == "email")

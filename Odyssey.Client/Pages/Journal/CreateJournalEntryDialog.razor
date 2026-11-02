@@ -26,7 +26,7 @@
                SubmitLabel="@(IsEdit ? "Save changes" : "Create entry")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
                OnSubmit="SaveAsync">
-    <OdsLiveAnnouncer Message="@_announce" />
+    <OdsLiveAnnouncer @ref="_announcer" />
     @if (_loadingDetail)
     {
         <OdsSpinner Size="OdsSize.Lg" AriaLabel="Loading entry" />
@@ -38,6 +38,6 @@
                             OnCreateContact="@(_canCreateContact ? CreateContactOption : null)"
                             CanDownload="_canDownloadFiles"
                             CanReadLocations="_canReadLocations" CanCreateLocations="_canCreateLocations"
-                            OnAnnounce="@(m => _announce = m)" />
+                            OnAnnounce="@Announce" />
     }
 </OdsFormDialog>

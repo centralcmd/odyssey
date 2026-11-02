@@ -67,7 +67,14 @@ public partial class CalendarEventDialog
     ];
 
     private CalendarEventDraft _draft = new();
-    private string _announce = string.Empty;
+    private OdsLiveAnnouncer? _announcer;
+
+    /// <summary>
+    /// Announces through the announcer's own method, never by setting its Message: an identical string (the
+    /// same place failing to create twice — the usual retry) renders nothing new and would be silent the
+    /// second time (WCAG 4.1.3; accessibility review 2).
+    /// </summary>
+    private void Announce(string message) => _ = _announcer?.Announce(message);
     private ExistingCalendarEvent? _sourceEvent;
     private bool _isSaving;
     private bool _previousOpen;
@@ -148,7 +155,7 @@ public partial class CalendarEventDialog
         _draft.Place.Error = null;
     }
 
-    private void OnPlaceStaged(string name) => _announce = $"{name} will be added when you save";
+    private void OnPlaceStaged(string name) => Announce($"{name} will be added when you save");
 
     private async Task EditSeriesClicked()
     {
@@ -192,7 +199,7 @@ public partial class CalendarEventDialog
         // nothing else is written. A retry after a failed record write reuses the created id (issue #383 §3.2).
         if (!await _draft.Place.EnsureCreatedAsync(Locations, CanReadLocations))
         {
-            _announce = $"Couldn’t add {_draft.Place.Pick?.NewName}";
+            Announce($"Couldn’t add {_draft.Place.Pick?.NewName}");
             return false;
         }
 

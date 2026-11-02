@@ -57,7 +57,14 @@ public partial class ContactMethodDialog
 
     private AddressBlockModel? _block;
     private OdsAddressBlock? _addressBlock;
-    private string _announce = string.Empty;
+    private OdsLiveAnnouncer? _announcer;
+
+    /// <summary>
+    /// Announces through the announcer's own method, never by setting its Message: an identical string (the
+    /// same place failing to create twice — the usual retry) renders nothing new and would be silent the
+    /// second time (WCAG 4.1.3; accessibility review 2).
+    /// </summary>
+    private void Announce(string message) => _ = _announcer?.Announce(message);
     private string? _formAlert;
     private string? _applyToAlert;
     private bool _focusSummary;
