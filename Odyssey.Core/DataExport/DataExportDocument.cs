@@ -97,7 +97,10 @@ public sealed class DataExportExclusions
             "Contact entity itself now lives in Journal (issue #325 follow-up). Only the Contact " +
             "row itself is exported: its detail tables (PersonDetails, OrganizationDetails, " +
             "ContactAliases, Addresses, EmailAddresses, PhoneNumbers) are served by the vCard " +
-            "export at GET /api/contacts/vcard instead",
+            "export at GET /api/contacts/vcard instead. Contact addresses are the one partial " +
+            "exception: since issue #380 an address is a link to a shared Location, so its street, " +
+            "city, postal code and country DO reach this export through the Locations table — " +
+            "without the contact it belongs to, since the Addresses link rows are not exported",
         ];
 }
 

@@ -1374,8 +1374,7 @@ public class ContactService
         {
             await resolver.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex)
-            && ex.InnerException?.Message.Contains("IX_Addresses_ContactId_LocationId'", StringComparison.Ordinal) == true)
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKeyOn(ex, "IX_Addresses_ContactId_LocationId"))
         {
             throw ListedTwice();
         }

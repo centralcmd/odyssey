@@ -263,7 +263,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.Cascade);
     }
 
-    /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     /// <summary>
     /// Every reference to a <see cref="Location"/> (issue #380 §4), reviewed as a set. Each is
     /// <c>RESTRICT</c>: the only delete path refuses a location that is still referenced, and the key backs
@@ -305,6 +304,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.Restrict);
     }
 
+    /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
         // Twenty-eight columns across twenty entities, naming the user who created, updated,

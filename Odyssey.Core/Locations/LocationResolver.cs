@@ -553,8 +553,7 @@ public sealed class LocationResolver
     }
 
     private static bool IsLocationIndex(DbUpdateException exception, string column) =>
-        exception.InnerException is MySqlException { Number: 1062 } mysql
-        && mysql.Message.Contains($"IX_Locations_{column}'", StringComparison.Ordinal);
+        DbErrors.IsDuplicateKeyOn(exception, $"IX_Locations_{column}");
 
     /// <summary>MariaDB 1452: a child row names a parent that does not exist — here, a deleted place.</summary>
     public static bool IsMissingLocation(DbUpdateException exception) =>

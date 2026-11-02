@@ -530,7 +530,7 @@ public class LocationService
         catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
         {
             context.ChangeTracker.Clear();
-            if (ex.InnerException?.Message.Contains("IX_Locations_AddressKey'", StringComparison.Ordinal) == true)
+            if (DbErrors.IsDuplicateKeyOn(ex, "IX_Locations_AddressKey"))
             {
                 throw LocationResolver.DuplicateAddress();
             }
