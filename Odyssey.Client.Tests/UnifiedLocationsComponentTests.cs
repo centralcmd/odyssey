@@ -183,6 +183,59 @@ public class UnifiedLocationsComponentTests
         Assert.Equal(LocationPick.Staged("Hytta"), OdsLocationSelect.FromComboValue(staged.Value));
     }
 
+    /// <summary>
+    /// B1, the picker's half: a cancelled list call comes back from the typed client as a failed result. The
+    /// picker reports that as the cancellation it is, never as a load failure.
+    /// </summary>
+    [Fact]
+    public async Task A_cancelled_place_search_throws_cancellation_not_a_load_failure()
+    {
+        var (ctx, cut, api, _) = RenderSelect();
+        await using var _ctx = ctx;
+        api.Setup(a => a.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<ExistingLocation>>.Failure(new TaskCanceledException()));
+        var search = cut.FindComponent<OdsCombobox>().Instance.SearchAsync!;
+        using var cancelled = new CancellationTokenSource();
+        await cancelled.CancelAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => search("Hyt", cancelled.Token));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => search("Hyt", CancellationToken.None));
+    }
+
+    /// <summary>
+    /// N1: an error that appears AFTER the first render — a 422 keyed to the picker, an empty merge target — still
+    /// reaches the inner input as <c>aria-describedby</c> and <c>aria-invalid</c>, and goes away again with it.
+    /// </summary>
+    [Fact]
+    public async Task The_combobox_keeps_its_aria_in_step_after_the_first_render()
+    {
+        await using var ctx = Context();
+        var cut = ctx.Render<OdsCombobox>(p => p
+            .Add(c => c.InputId, "place")
+            .Add(c => c.Options, [new OdsOption("a", "A")])
+            .Add(c => c.Required, true));
+
+        string[] Calls(string attribute) =>
+            [.. ctx.JSInterop.Invocations["odsSetAttr"].Where(i => Equals(i.Arguments[1], attribute)).Select(i => (string?)i.Arguments[2] ?? "<removed>")];
+
+        Assert.Empty(Calls("aria-describedby"));
+        Assert.Equal(["true"], Calls("aria-required"));
+
+        cut.Render(p => p.Add(c => c.AriaDescribedBy, "place-help-error").Add(c => c.Error, true));
+        Assert.Equal(["place-help-error"], Calls("aria-describedby"));
+        Assert.Equal(["true"], Calls("aria-invalid"));
+
+        cut.Render(p => p.Add(c => c.AriaDescribedBy, "place-help").Add(c => c.Error, false));
+        Assert.Equal(["place-help-error", "place-help"], Calls("aria-describedby"));
+        Assert.Equal(["true", "false"], Calls("aria-invalid"));
+
+        // An unchanged render sends nothing.
+        var before = ctx.JSInterop.Invocations["odsSetAttr"].Count;
+        cut.Render(p => p.Add(c => c.AriaDescribedBy, "place-help"));
+        Assert.Equal(before, ctx.JSInterop.Invocations["odsSetAttr"].Count);
+    }
+
     [Fact]
     public async Task Without_locations_create_there_is_no_create_row()
     {

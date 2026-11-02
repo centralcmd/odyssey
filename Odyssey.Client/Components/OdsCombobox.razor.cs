@@ -61,8 +61,8 @@ public partial class OdsCombobox : IDisposable
     /// inner input.</summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 
-    /// <summary>Puts the control in the error state — MudBlazor owns the resulting
-    /// <c>aria-invalid</c> on the input and the error outline.</summary>
+    /// <summary>Puts the control in the error state: the error outline (MudBlazor's) and <c>aria-invalid</c>
+    /// on the inner input, which <see cref="OnAfterRenderAsync"/> keeps in step on every render.</summary>
     [Parameter] public bool Error { get; set; }
 
     /// <summary>
@@ -192,17 +192,44 @@ public partial class OdsCombobox : IDisposable
 
     // Wire the input's aria-describedby / aria-required once (MudAutocomplete won't put either on the
     // inner input itself). Idempotent; JS-unavailable environments no-op.
+    // What the inner input last received through JS. Null/false is "nothing applied", which is also the
+    // input's own initial state, so the first render sends only what is actually set.
+    private string? _appliedDescribedBy;
+    private bool _appliedRequired;
+    private bool _appliedInvalid;
+
+    /// <summary>
+    /// Keeps the inner input's <c>aria-describedby</c>, <c>aria-required</c> and <c>aria-invalid</c> in step
+    /// with the parameters on EVERY render, not just the first: an error that appears after the field is shown
+    /// (a 422 keyed to it, a merge target left empty) changes <see cref="AriaDescribedBy"/> and
+    /// <see cref="Error"/> later, and must still be linked to the input (frontend review N1). Only a changed
+    /// value is sent, so a re-render costs no interop.
+    /// </summary>
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || string.IsNullOrEmpty(InputId))
+        if (string.IsNullOrEmpty(InputId))
             return;
 
+        var describedBy = string.IsNullOrEmpty(AriaDescribedBy) ? null : AriaDescribedBy;
         try
         {
-            if (!string.IsNullOrEmpty(AriaDescribedBy))
-                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-describedby", AriaDescribedBy);
-            if (Required)
-                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-required", "true");
+            if (!string.Equals(describedBy, _appliedDescribedBy, StringComparison.Ordinal))
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-describedby", describedBy);
+                _appliedDescribedBy = describedBy;
+            }
+
+            if (Required != _appliedRequired)
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-required", Required ? "true" : null);
+                _appliedRequired = Required;
+            }
+
+            if (Error != _appliedInvalid)
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", InputId, "aria-invalid", Error ? "true" : "false");
+                _appliedInvalid = Error;
+            }
         }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }
     }
