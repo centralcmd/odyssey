@@ -278,14 +278,13 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// Architect review 2 — a contact address whose six fields are all empty once cleaned (control characters
-    /// and whitespace only — a shape the demo seed never produces) cannot be linked, and the contract migration
-    /// would fail on <c>NOT NULL</c> on every start. The conversion reports it before any contract DDL, naming
-    /// the count and the repair and never a value; the row is not deleted; and once repaired by hand the
-    /// upgrade resumes and links it.
+    /// A contact address whose six fields are all empty once cleaned (control characters and whitespace only — a
+    /// shape the demo seed never produces) cannot be linked. By product decision on PR #385 the conversion deletes
+    /// it and the upgrade completes: the row is gone, the contact and its other addresses survive, and the
+    /// contract migration runs.
     /// </summary>
     [SkippableFact]
-    public async Task An_address_with_no_usable_text_stops_before_the_contract_and_names_the_repair()
+    public async Task An_address_with_no_usable_text_is_removed_and_the_upgrade_completes()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         const string database = "odyssey_location_conversion_empty_address";
@@ -300,34 +299,20 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
                 await AddressAsync(context, "address-empty", "contact-2", primary: false, "\u0007", null, " \t ", "\u202E", null, "\u0001");
             }
 
+            long addressesBefore;
             await using (var context = NewContext(database))
             {
-                var refused = await Assert.ThrowsAsync<LocationConversionException>(
-                    () => MigrationRunner.MigrateAsync(context, new LocationConversion(context), CancellationToken.None));
-                Assert.StartsWith("1 contact address row(s)", refused.Message, StringComparison.Ordinal);
-                Assert.Contains("WHERE `LocationId` IS NULL", refused.Message, StringComparison.Ordinal);
-                Assert.Contains("Nothing was deleted", refused.Message, StringComparison.Ordinal);
-                Assert.DoesNotContain("\u0007", refused.Message, StringComparison.Ordinal);
-
-                Assert.False(await MigrationSeam.HasRunAsync(context, Contract));
-                Assert.Equal(1, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `Addresses` WHERE `LocationId` IS NULL"));
-                Assert.Equal(1, await MigrationSeam.CountAsync(context,
-                    $"SELECT COUNT(*) FROM `Addresses` WHERE `Id` = '{Id("address-empty")}'"));
-            }
-
-            // The repair the message names: fill the row in by hand, then restart.
-            await using (var context = NewContext(database))
-            {
-                await context.Database.ExecuteSqlAsync(
-                    $"UPDATE `Addresses` SET `Line1` = {"Torggata 9"}, `City` = {"Oslo"}, `CountryCode` = {"NO"} WHERE `Id` = {Id("address-empty")}");
+                addressesBefore = await MigrationSeam.CountAsync(context,
+                    $"SELECT COUNT(*) FROM `Addresses` WHERE `ContactId` = '{Id("contact-2")}' AND `Id` <> '{Id("address-empty")}'");
                 await MigrationRunner.MigrateAsync(context, new LocationConversion(context), CancellationToken.None);
                 Assert.Empty(await context.Database.GetPendingMigrationsAsync());
             }
 
             await using (var context = NewContext(database))
             {
-                var repaired = await context.Addresses.AsNoTracking().Include(a => a.Location).SingleAsync(a => a.Id == Id("address-empty"));
-                Assert.Equal(("Torggata 9", "Oslo"), (repaired.Location.Line1, repaired.Location.City));
+                Assert.False(await context.Addresses.AsNoTracking().AnyAsync(a => a.Id == Id("address-empty")));
+                Assert.Equal(addressesBefore, await context.Addresses.CountAsync(a => a.ContactId == Id("contact-2")));
+                Assert.True(await context.Contacts.AsNoTracking().AnyAsync(c => c.ContactId == Id("contact-2")));
             }
         }
         finally

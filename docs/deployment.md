@@ -1025,14 +1025,10 @@ and locations are kept until someone overwrites them (next section).
   kept, so **rollback is a database restore** — a migration `Down()` restores schema, not rows. The
   migration service logs the conversion's row counts at start and its created and linked counts at the
   end (counts only).
-- **A contact address with no usable text stops the upgrade before any column is dropped.** An
-  `Addresses` row whose six fields are all empty once control characters and whitespace are cleaned
-  cannot be linked to a place, and the contract migration would otherwise fail on `NOT NULL`. The
-  conversion counts such rows and the migration service exits naming the count and the repair (it never
-  deletes one): find them with ``SELECT `Id`, `ContactId` FROM `Addresses` WHERE `LocationId` IS NULL``,
-  then by hand either fill in its address columns (`Line1`, `City`, `CountryCode`, …) or delete the row
-  — the API is not running yet, so this is a SQL repair — and restart the migrations job. The
-  conversion is restart-safe and picks up where it stopped.
+- **A contact address with no usable text is removed.** An `Addresses` row whose six fields are all
+  empty once control characters and whitespace are cleaned has no address to link to a place. The
+  conversion deletes such rows before the contract migration and logs how many (a warning, count only);
+  the contact itself is kept. This is an accepted loss, chosen so the upgrade never stops on it.
 - **Link-like values stay text.** A place that looks like a meeting link or carries a passcode is never
   turned into a location (locations are readable by every `locations.read` holder, Guest included).
 - **New claim `locations.delete`** (Admin, Owner, User; not Guest). **Every user must sign out and back
