@@ -32,6 +32,9 @@ public class DomainExceptionHierarchyGuardTests
         // A failed file-storage startup check (issue #346 §3.6): it stops the host before it listens, so it
         // never reaches a request and has no status to map to.
         "Odyssey.Core.FileStorage.FileStorageMisconfiguredException",
+        // The issue #380 location conversion refusing data it must not guess about (an address with no usable
+        // text): it stops the migrations job before the contract migration runs, never reaching a request.
+        "Odyssey.Core.Locations.Conversion.LocationConversionException",
     ];
 
     [Fact]
