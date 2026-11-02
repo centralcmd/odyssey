@@ -131,10 +131,14 @@
                         }
                         @* The Map band (issue #371): after the tiles and description, before weather. Only one card
                            is open at a time, so the page holds at most one map; collapsing disposes it. *@
-                        <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
-                            <LocationMap @key="l.LocationId" Latitude="l.Latitude" Longitude="l.Longitude" Name="@l.Name"
-                                         OnStatus="Announce" />
-                        </OdsRecordSection>
+                        @* A place without coordinates has nothing to pin, so it has no Map band (issue #383 §3.6). *@
+                        @if (l.Latitude is { } lat && l.Longitude is { } lng)
+                        {
+                            <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
+                                <LocationMap @key="l.LocationId" Latitude="lat" Longitude="lng" Name="@l.Name"
+                                             OnStatus="Announce" />
+                            </OdsRecordSection>
+                        }
                         @if (ShowWeather)
                         {
                             <LocationWeatherSection Location="l" Row="WeatherRow(l)" CanUpdate="_canUpdateWeather"
