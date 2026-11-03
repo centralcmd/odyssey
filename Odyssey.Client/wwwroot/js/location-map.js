@@ -272,6 +272,11 @@ function build(lib, h, element, options, dotnet, generation) {
     });
     map.on('error', e => {
         if (h.disposed) return;
+        // A source-level error (a sourceId, no tile) means the source's own index could not load — a TileJSON
+        // or, for the self-hosted basemap, the archive's header (a 401 after sign-out, a 429, a 404). Such a
+        // source draws nothing at all, and MapLibre still fires 'load' after it, so counting it as one tile
+        // error would leave a blank map reporting ready (issue #384 review). Fail at once, before or after ready.
+        if (e.sourceId && !e.tile) { fail('tiles'); return; }
         const isTile = !!(e.tile || e.sourceId);
         if (!h.ready) {
             if (!isTile) { fail('style'); return; }

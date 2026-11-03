@@ -171,6 +171,28 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         }
     }
 
+    // ── A refused archive fails the map in place (PR 386 review) ─────────────────────────────────────
+
+    [SkippableFact]
+    public async Task A_refused_archive_fails_the_map_instead_of_drawing_a_blank_ready_one()
+    {
+        SkipUnlessSelfHosted();
+        var page = await browserContext!.NewPageAsync();
+        // As a session that expired after the page loaded would see it: nginx's auth_request answers 401.
+        await page.RouteAsync("**/basemap/basemap.pmtiles", route => route.FulfillAsync(new() { Status = 401, Body = string.Empty }));
+
+        await page.GotoAsync("/locations");
+        var trigger = page.Locator(".odc-record-trigger", new PageLocatorOptions { HasText = "Cabin" }).First;
+        await trigger.WaitForAsync(new LocatorWaitForOptions { Timeout = 60_000 });
+        if (await trigger.GetAttributeAsync("aria-expanded") != "true")
+            await trigger.ClickAsync();
+
+        // Well inside the 15 s load timeout: the failure is the archive's, reported as soon as it happens.
+        await Expect(page.Locator(".loc-map-state")).ToContainTextAsync("couldn't load", new() { Timeout = 10_000 });
+        await Expect(page.Locator(".loc-map-caption")).ToHaveCountAsync(0);
+        await page.CloseAsync();
+    }
+
     // ── AC 20 ─────────────────────────────────────────────────────────────────────────────────────
 
     [SkippableFact]
