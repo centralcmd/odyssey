@@ -579,8 +579,9 @@ is the property's address. Every key to `Locations` is `RESTRICT`. Six rules are
   the record (`LocationTransactions`); a property writes its four fields only. It recomposes a `Name`
   or `AddressText` only when it equals the old auto-composition, and never touches coordinates. A
   case/whitespace-only change is promoted to it whatever `applyTo` says.
-- **`LocationReferenceGuard` is the one definition of "used"**: the five tables plus a weather row, a
-  weather preference, the household default and a forwarder. Delete, merge, `?referenced=`, `usage` and
+- **`LocationReferenceGuard` is the one definition of "used"**: the five tables plus a forwarder. Weather
+  is not a use (issue #387): a place's weather link is a column on the place, and the preference and the
+  household default name a weather point. Delete, merge, `?referenced=`, `usage` and
   `otherUses` all read it; a sixth referencing table extends it. Counts of a kind the caller cannot read
   are `null`, never `0`, and there is deliberately no total.
 - **Merge and delete decide inside their own transaction**, first statement `FOR UPDATE` (both rows in
@@ -590,6 +591,24 @@ is the property's address. Every key to `Locations` is `RESTRICT`. Six rules are
   `journal.read` each imply it, and every contact/property editor holds all three location write claims
   and all four record read claims (`AuthorizationPolicyTests`). Widening `locations.read` widens who
   reads every address. Logs carry ids and counts only — never a name, address or detail.
+
+**Weather is kept per weather POINT, and a place only links to one** (issue #387). `WeatherPoint` is a named
+position with its own versioned sites, schedule and data; every weather table is keyed on `WeatherPointId`,
+and `Locations.WeatherPointId` (nullable, `SET NULL`) is the link — many places per point, never a point to a
+point. Rules that are easy to get backwards:
+
+- **The link has one writer**, `WeatherLinkService` (`PUT /api/locations/{id}/weather-point`, `locations.update`
+  + `weather.read`), which locks the place `FOR UPDATE` first and maps a `1452` to `422` keyed
+  `weatherPointId`. No location, contact, property or point write takes a point id or a location list; a merge
+  keeps the survivor's link, else inherits the source's.
+- **`WeatherPoints.CurrentSiteVersion` has no foreign key** — the site depends on the point, so a key back
+  would be a cycle. The point service writes both in one save. `SettingsVersion` is the Admin's concurrency
+  token (rotated by create, `PUT` and purge start only); the fetch fence stays on `WeatherPointSchedule.Version`.
+- **Runs, observations and days reference the point with `RESTRICT`** (delete goes through the batched purger);
+  sites, schedule and stations cascade; `WeatherForecastSteps` has no key to the point at all.
+- **Distances are whole kilometres** (`WeatherDistance`), computed at read time, never stored.
+- **A converted point kept its location's GUID.** Nothing may resolve a bare id across `Locations` and
+  `WeatherPoints`.
 
 **Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
 through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
@@ -642,7 +661,7 @@ service, and registered with one `services.AddPeriodicJob<TJob>()` line in `Odys
 next one going ahead, runs never overlapping. Four rules:
 
 - **Every replica runs every job.** A job that must not run twice at once coordinates through the rows it
-  works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherLocationSchedule.Version`
+  works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherPointSchedule.Version`
   is the working pattern), never through process state. That is also why the worker has no in-memory
   database mode: a private, empty copy would coordinate with nothing.
 - **Share a dependency, don't copy it.** When a job needs something the API already has, move it into
@@ -1180,7 +1199,10 @@ A fixture that signs in for real (rather than through `TestAuthHandler`) has to 
 Claim **values** are a wire contract: they are persisted in `AspNetRoleClaims` and baked into issued
 auth cookies, so renaming one de-authorizes existing rows and sessions. `RolePermissions` is *not*
 named `RoleClaims` because `OdysseyContext` already has an Identity `DbSet` by that name.
-Remember that a role-claim change only reaches existing sessions after a sign-out/sign-in.
+A role-claim change reaches an existing session at its next security-stamp revalidation — within one
+`SecurityStampValidatorOptions.ValidationInterval` (one minute, `Odyssey.Api/Program.cs`) — because
+revalidation re-runs the claims factory; no sign-out is needed (issue #387 AC 9a pins it). Until then the
+session keeps the claims it was issued with.
 
 ## Testing & Demo Data
 
