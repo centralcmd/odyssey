@@ -19,6 +19,9 @@
     scrolling the dialog and reports the column count. The caption names the selection in words and
     previews the label of the cell under the pointer or focus, so meaning never rests on the glyph.
 
+    The cells are 48px with 24px glyphs and the grid scrolls inside a seven-row window; icon-picker.js
+    scrolls the selected cell into that window on attach, and arrow-key focus keeps it there.
+
     Keys render only as text inside a material-icons span — never MarkupString, never a class or style
     fragment (issue #279 security review).
 *@

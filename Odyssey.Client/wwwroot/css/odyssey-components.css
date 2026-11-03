@@ -3303,9 +3303,10 @@ tr:focus-within > .odc-rowactions.reveal,
 /* TagIconPicker — the tag icon chooser for all four tag types (issues #279, #345): a radiogroup grid
    of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
-.odc-iconpick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--space-1); padding: var(--space-2); }
-.odc-iconpick-cell { appearance: none; position: relative; height: 40px; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
-.odc-iconpick-cell .material-icons { font-size: var(--icon-lg); }
+/* 48px cells, 24px glyphs; the grid scrolls inside a seven-row window (the catalogue is 110 keys). */
+.odc-iconpick-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: var(--space-1); padding: var(--space-2); max-height: calc(7 * 48px + 6 * var(--space-1) + 2 * var(--space-2)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--space-2); }
+.odc-iconpick-cell { appearance: none; position: relative; height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
+.odc-iconpick-cell .material-icons { font-size: var(--icon-xl); }
 .odc-iconpick-cell:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 /* --control-border, not the DS's text-disabled: the dashed edge is the cell's only boundary (WCAG 1.4.11, 3:1). */
 .odc-iconpick-cell.default:not(.selected) { box-shadow: none; border: 1px dashed var(--control-border); }
