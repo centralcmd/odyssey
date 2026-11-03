@@ -227,6 +227,11 @@ input:-webkit-autofill:active {
      ink-400 is 4.42:1 on the light surface and 4.27:1 on the light background.
      Hover steps to --mud-palette-text-secondary (ink-500), still distinct. */
   --control-border: var(--ink-400);
+  /* The softer outline of the controls in a page header's Search region, which sit
+     on the recessed --mud-palette-background fill inside the surface card. The
+     lightest ink-400 → ink-300 mix that still clears 3:1 on both: 3.29:1 on the
+     surface, 3.17:1 on the background. */
+  --control-border-quiet: #828EA9;
   /* Text on the error call-to-action fill (coral-700 in light): white is 5.86:1,
      the dark ink the dark theme uses on coral-500 is only 3.07:1 here. */
   --error-cta-text: #FFFFFF;
@@ -248,6 +253,8 @@ input:-webkit-autofill:active {
   /* ink-400 is 3.91:1 on the dark surface and 4.12:1 on the dark background. Not
      ink-300: that is the hover colour (text-secondary), so the hover would vanish. */
   --control-border: var(--ink-400);
+  /* ink-400 mixed toward ink-600: 3.16:1 on the dark surface, 3.32:1 on the dark background. */
+  --control-border-quiet: #5D6986;
   --error-cta-text: #2A0E0E; /* on coral-500: 6.48:1 */
 }
 

@@ -151,6 +151,27 @@
     min-width: 170px;
 }
 
+/* The Search region's controls are recessed: the page-background fill the overview's
+   breakdown tiles use, with the softer --control-border-quiet outline (still 3:1 on
+   both the fill and the card's surface, WCAG 1.4.11). Redefining the token on the
+   region reaches every control that draws its edge from --control-border — the search
+   field, the multiselect, sort, page-size and date-range triggers — and nothing outside it, since
+   their popovers are portaled out of the region. A quiet multiselect keeps its
+   transparent rest state. */
+.ph-root ::deep .ph-search-region {
+    --control-border: var(--control-border-quiet);
+}
+
+.ph-root ::deep .ph-search-region .mud-input.mud-input-outlined,
+.ph-root ::deep .ph-search-region .odc-input,
+.ph-root ::deep .ph-search-region .odc-ms-trigger:not(.quiet),
+.ph-root ::deep .ph-search-region .odc-sortsel-trigger,
+.ph-root ::deep .ph-search-region .odc-sortsel-dir,
+.ph-root ::deep .ph-search-region .odc-rpp-trigger,
+.ph-root ::deep .ph-search-region .odc-dpr {
+    background-color: var(--mud-palette-background);
+}
+
 /* Problem-signal toggle — count badge punched out of the MudButton's tint.
    The badge fills with the button's own text color (currentColor: the severity
    text token when outlined, the surface colour when filled) and the number is
