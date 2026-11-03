@@ -54,6 +54,12 @@ public enum LocationPickFilter
 
     /// <summary>Only places with Line 1, City and Country — a contact or property address (#380).</summary>
     AddressComplete,
+
+    /// <summary>
+    /// Only places with coordinates (issue #388 §4) — a weather point's source. Sent to the server as
+    /// <c>hasCoordinates: true</c>, so an eligible place is never hidden by a client-side page filter.
+    /// </summary>
+    HasCoordinates,
 }
 
 /// <summary>

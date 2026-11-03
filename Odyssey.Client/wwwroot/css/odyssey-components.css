@@ -4855,3 +4855,47 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 .loc-shared-line { display: flex; align-items: center; gap: 5px; margin-top: 4px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .loc-shared-line .material-icons { color: var(--mud-palette-text-secondary); flex: none; font-size: var(--icon-sm); }
 .loc-find-coords { min-height: 24px; }
+
+/* ---------- Toast / Snackbar ---------- */
+.odc-toast-stack {
+  position: fixed; z-index: var(--z-toast); bottom: var(--space-6); right: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  width: min(380px, calc(100vw - 48px)); pointer-events: none;
+}
+.odc-toast-stack.start { right: auto; left: var(--space-6); }
+.odc-toast-stack.center { right: 50%; transform: translateX(50%); align-items: center; }
+.odc-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-700); color: var(--ink-50);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+  animation: odc-toast-in var(--duration-slow) var(--ease-standard);
+}
+[data-theme='light'] .odc-toast { background: var(--ink-800); color: var(--ink-50); border-color: transparent; }
+@keyframes odc-toast-in { from { opacity: 0; transform: translateY(8px); } }
+.odc-toast-ic { font-size: var(--icon-lg); flex: none; line-height: 1.4; }
+.odc-toast.success .odc-toast-ic { color: var(--mint-300); }
+.odc-toast.warning .odc-toast-ic { color: var(--amber-500); }
+.odc-toast.error   .odc-toast-ic { color: var(--coral-300); }
+.odc-toast.info    .odc-toast-ic { color: var(--sea-300); }
+.odc-toast-body { flex: 1; min-width: 0; }
+.odc-toast-action {
+  appearance: none; background: none; border: none; cursor: pointer;
+  color: var(--tide-300); padding: 0; margin-top: 2px;
+  font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+}
+.odc-toast-action:hover { text-decoration: underline; }
+.odc-toast-close {
+  appearance: none; background: none; border: none; cursor: pointer; flex: none;
+  color: var(--ink-300); width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: var(--radius-sm); margin: -1px -4px 0 0;
+}
+.odc-toast-close .material-icons { font-size: var(--icon-md); }
+.odc-toast-close:hover { color: var(--ink-50); }
+.odc-toast-close:focus-visible, .odc-toast-action:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
+@media (prefers-reduced-motion: reduce) { .odc-toast { animation: none; } }
+.odc-toast-close { position: relative; }
+.odc-toast-close::after { content: ''; position: absolute; inset: -2px; }
