@@ -374,7 +374,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
             new StubDisplayNameResolver(),
             new RequestCapCeilings(Options.Create(new FileStorageOptions())),
             secrets,
-            new Odyssey.Core.Weather.WeatherLocationRules(),
+            new Odyssey.Core.Weather.WeatherPointRules(),
             LoggerFor<SystemSettingsService>(auditLogs));
 
         await service.UpdateAsync(Caller(), ActorId, request);

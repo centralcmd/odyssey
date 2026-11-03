@@ -14,24 +14,24 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// Weather history in a location's record (design system · Weather.jsx LocationWeatherHistorySection
+/// Weather history in a location's record (design system · Weather.jsx WeatherHistorySection
 /// and WeatherHistoryChart, components-weather.md → Weather history): the window, its bounds from
 /// the daily response, the custom range, the measures and the states.
 /// </summary>
 [Collection(nameof(WeatherWidgetSeam))]
-public class LocationWeatherHistoryTests : IDisposable
+public class WeatherHistorySectionTests : IDisposable
 {
     private static readonly DateOnly Today = new(2026, 10, 28);
     private static readonly DateOnly Yesterday = Today.AddDays(-1);
 
     private readonly Mock<IWeatherApiClient> weather = new();
     private readonly List<(DateOnly From, DateOnly To)> requests = [];
-    private readonly List<(string Key, LocationWeatherHistorySection.SavedWindow State)> saves = [];
-    private LocationWeatherHistorySection.SavedWindow? saved;
+    private readonly List<(string Key, WeatherHistorySection.SavedWindow State)> saves = [];
+    private WeatherHistorySection.SavedWindow? saved;
 
-    public LocationWeatherHistoryTests() => LocationWeatherHistorySection.Today = static () => Today;
+    public WeatherHistorySectionTests() => WeatherHistorySection.Today = static () => Today;
 
-    public void Dispose() => LocationWeatherHistorySection.Today = static () => DateOnly.FromDateTime(DateTime.Now);
+    public void Dispose() => WeatherHistorySection.Today = static () => DateOnly.FromDateTime(DateTime.Now);
 
     // ── The window ──────────────────────────────────────────────────────────────────────────────────
 
@@ -73,7 +73,7 @@ public class LocationWeatherHistoryTests : IDisposable
         var button = info.Find("button");
         // The tooltip's popover is not linked to its trigger, so the same text describes the button.
         var described = section.Find($"#{button.GetAttribute("aria-describedby")}");
-        Assert.Equal(LocationWeatherHistorySection.AboutText(Stations), described.TextContent);
+        Assert.Equal(WeatherHistorySection.AboutText(Stations), described.TextContent);
         Assert.Contains("Temperature: Oslo - Blindern, 3 km", described.TextContent);
         Assert.NotNull(section.Find(".wx-hist-card .wx-hist-lead").QuerySelector("button[aria-label='About these values']"));
         // The attribution, which both licences require to be visible, closes the ledger row inside the card.
@@ -96,14 +96,14 @@ public class LocationWeatherHistoryTests : IDisposable
 
         popover.WaitForAssertion(() => Assert.NotNull(popover.Find(".wx-hist-about-body")));
         var body = popover.Find(".wx-hist-about-body");
-        Assert.Equal(LocationWeatherHistorySection.AboutLead(Stations), body.QuerySelector(".wx-hist-about-lead")!.TextContent);
+        Assert.Equal(WeatherHistorySection.AboutLead(Stations), body.QuerySelector(".wx-hist-about-lead")!.TextContent);
         Assert.Equal(
             Stations.Select(WeatherMeasures.StationLine),
             body.QuerySelectorAll(".wx-hist-about-list > .wx-hist-about-row").Select(r => r.TextContent));
-        Assert.Equal(LocationWeatherHistorySection.DayNote, body.Children[^1].TextContent);
+        Assert.Equal(WeatherHistorySection.DayNote, body.Children[^1].TextContent);
         // The structured bubble does not replace the plain description the trigger is linked to.
         var button = section.Find("button[aria-label='About these values']");
-        Assert.Equal(LocationWeatherHistorySection.AboutText(Stations), section.Find($"#{button.GetAttribute("aria-describedby")}").TextContent);
+        Assert.Equal(WeatherHistorySection.AboutText(Stations), section.Find($"#{button.GetAttribute("aria-describedby")}").TextContent);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class LocationWeatherHistoryTests : IDisposable
     {
         stations = [Stations[0], Stations[1], new() { Group = WeatherMeasureGroup.Wind, MaxDistanceKm = 30 }];
         // A wind chart was remembered, from before the wind station was gone.
-        saved = new LocationWeatherHistorySection.SavedWindow { Measures = ["wind", "gust"] };
+        saved = new WeatherHistorySection.SavedWindow { Measures = ["wind", "gust"] };
         Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
         await using var ctx = Context();
 
@@ -128,7 +128,7 @@ public class LocationWeatherHistoryTests : IDisposable
     public void Before_any_lookup_every_measure_is_offered()
     {
         Assert.Equal(WeatherMeasures.All, WeatherMeasures.Offered([]));
-        Assert.StartsWith("Daily values from the MET Norway stations nearest", LocationWeatherHistorySection.AboutText([]), StringComparison.Ordinal);
+        Assert.StartsWith("Daily values from the MET Norway stations nearest", WeatherHistorySection.AboutText([]), StringComparison.Ordinal);
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
         section.WaitForAssertion(() => Assert.Equal(2, requests.Count));
         Assert.Equal((new DateOnly(2026, 1, 1), stopped), requests[1]);
-        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for this place.", section.Markup));
+        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for Cabin point.", section.Markup));
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public class LocationWeatherHistoryTests : IDisposable
     {
         var start = Yesterday.AddDays(-89);
         Serve(measuredFrom: start, measuredThrough: Yesterday);
-        saved = new LocationWeatherHistorySection.SavedWindow { From = Yesterday.AddDays(-39) };
+        saved = new WeatherHistorySection.SavedWindow { From = Yesterday.AddDays(-39) };
         await using var ctx = Context();
         var section = Render(ctx);
         section.WaitForAssertion(() => Assert.Contains("Days measured", section.Markup));
@@ -224,7 +224,7 @@ public class LocationWeatherHistoryTests : IDisposable
         await section.InvokeAsync(() => Picker(section, "From").Instance.ValueChanged.InvokeAsync(from.ToDateTime(TimeOnly.MinValue)));
 
         var (key, state) = Assert.Single(saves);
-        Assert.Equal($"weather-history-{Cabin.LocationId}", key);
+        Assert.Equal($"weather-history-{CabinPoint}", key);
         Assert.Equal(from, state.From);
         // "Up to now" means up to now on the next visit, not up to the day it was chosen.
         Assert.Null(state.To);
@@ -250,7 +250,7 @@ public class LocationWeatherHistoryTests : IDisposable
     public async Task An_open_end_runs_to_the_newest_day_and_a_closed_one_comes_back_as_it_was()
     {
         Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
-        saved = new LocationWeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), Measures = ["wind", "gust"] };
+        saved = new WeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), Measures = ["wind", "gust"] };
         await using (var ctx = Context())
         {
             var section = Render(ctx);
@@ -261,7 +261,7 @@ public class LocationWeatherHistoryTests : IDisposable
         }
 
         requests.Clear();
-        saved = new LocationWeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), To = new DateOnly(2026, 7, 31) };
+        saved = new WeatherHistorySection.SavedWindow { From = new DateOnly(2026, 6, 1), To = new DateOnly(2026, 7, 31) };
         await using (var ctx = Context())
         {
             var section = Render(ctx);
@@ -298,14 +298,14 @@ public class LocationWeatherHistoryTests : IDisposable
     public void A_remembered_window_resolves_inside_the_history_and_the_cap(
         string? from, string? to, string earliest, string expectedFrom, string expectedTo)
     {
-        var state = from is null ? null : new LocationWeatherHistorySection.SavedWindow
+        var state = from is null ? null : new WeatherHistorySection.SavedWindow
         {
             From = DateOnly.Parse(from),
             To = to is null ? null : DateOnly.Parse(to),
         };
 
         Assert.Equal((DateOnly.Parse(expectedFrom), DateOnly.Parse(expectedTo)),
-            LocationWeatherHistorySection.Resolve(state, new DateOnly(2026, 10, 27), DateOnly.Parse(earliest)));
+            WeatherHistorySection.Resolve(state, new DateOnly(2026, 10, 27), DateOnly.Parse(earliest)));
     }
 
     [Theory]
@@ -313,7 +313,7 @@ public class LocationWeatherHistoryTests : IDisposable
     [InlineData(new[] { "precip", "wind" }, new[] { "precip" })]
     [InlineData(new[] { "sunshine" }, new[] { "temp" })]
     public void Remembered_measures_keep_one_unit(string[] saved, string[] expected) =>
-        Assert.Equal(expected, LocationWeatherHistorySection.RestoreMeasures(saved));
+        Assert.Equal(expected, WeatherHistorySection.RestoreMeasures(saved));
 
     // ── States ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -366,7 +366,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
         var section = Render(ctx, Row(enabled: false), canSetUp: true, canOpenSettings: true);
 
-        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for this place.", section.Markup));
+        section.WaitForAssertion(() => Assert.Contains("Historical data is turned off for Cabin point.", section.Markup));
         Assert.DoesNotContain("not configured", section.Markup);
     }
 
@@ -384,7 +384,7 @@ public class LocationWeatherHistoryTests : IDisposable
 
     [Theory]
     [InlineData(true, "No measured weather yet.")]
-    [InlineData(false, "Historical data is turned off for this place.")]
+    [InlineData(false, "Historical data is turned off for Cabin point.")]
     public async Task Nothing_stored_names_the_reason(bool enabled, string expected)
     {
         Serve(measuredFrom: null, measuredThrough: null);
@@ -407,17 +407,6 @@ public class LocationWeatherHistoryTests : IDisposable
         section.WaitForAssertion(() => Assert.Contains("Weather is resting for a moment", section.Markup));
         Assert.Contains("Try again", section.Markup);
         Assert.DoesNotContain("Weather data from MET Norway", section.Markup);
-    }
-
-    [Fact]
-    public async Task A_purge_in_progress_renders_nothing()
-    {
-        Serve(measuredFrom: new DateOnly(2025, 1, 1), measuredThrough: Yesterday);
-        await using var ctx = Context();
-
-        var section = Render(ctx, Row(enabled: false) with { PurgeInProgress = true });
-
-        Assert.DoesNotContain("Weather history", section.Markup);
     }
 
     // ── The chart ───────────────────────────────────────────────────────────────────────────────────
@@ -526,7 +515,7 @@ public class LocationWeatherHistoryTests : IDisposable
         var from = new DateOnly(2026, 10, 1);
         var days = Enumerable.Range(0, 4).Select(i => Day(from.AddDays(i), i * 2)).ToList();
 
-        var mm = LocationWeatherHistorySection.FactsFor(days, 5, "mm");
+        var mm = WeatherHistorySection.FactsFor(days, 5, "mm");
         Assert.Equal(["Total", "Wettest day", "Days with precipitation", "Days measured"], mm.Select(f => f.Label));
         Assert.Equal("6.0 mm", mm[0].Value);
         Assert.Equal(from.AddDays(3), mm[1].Date);
@@ -534,7 +523,7 @@ public class LocationWeatherHistoryTests : IDisposable
         Assert.Equal("3", mm[2].Value);
         Assert.Equal((" of 5"), mm[3].After);
 
-        var ms = LocationWeatherHistorySection.FactsFor(days, 5, "ms");
+        var ms = WeatherHistorySection.FactsFor(days, 5, "ms");
         Assert.Equal(["Average wind", "Windiest day", "Strongest gust", "Days measured"], ms.Select(f => f.Label));
         Assert.Equal("8.0 m/s", ms[2].Value);
     }
@@ -565,28 +554,22 @@ public class LocationWeatherHistoryTests : IDisposable
     [InlineData("2026-03-01", 60, "2026-03-02", "2026-04-30")]
     [InlineData("2026-03-01", 365, "2026-03-02", "2026-10-27")]
     public void A_step_stays_whole_and_inside_the_stored_history(string end, int days, string from, string to) =>
-        Assert.Equal((DateOnly.Parse(from), DateOnly.Parse(to)), LocationWeatherHistorySection.Place(
+        Assert.Equal((DateOnly.Parse(from), DateOnly.Parse(to)), WeatherHistorySection.Place(
             DateOnly.Parse(end), days, new DateOnly(2026, 3, 2), new DateOnly(2026, 10, 27)));
 
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────────
 
-    private static readonly ExistingLocation Cabin = new()
-    {
-        LocationId = Guid.Parse("22222222-2222-2222-2222-222222222222"),
-        Name = "Cabin",
-        Latitude = 61.52914m,
-        Longitude = 10.13802m,
-        TimeZoneId = "Europe/Oslo",
-    };
+    /// <summary>The weather point the cabin links to (issue #387).</summary>
+    private static readonly Guid CabinPoint = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
-    /// <summary>The Admin row; <paramref name="enabled"/> is historical data — the half this section follows.</summary>
-    private static ExistingWeatherLocation Row(bool enabled) => new()
+    /// <summary>The cabin's link; <paramref name="enabled"/> is historical data — the half this section follows.</summary>
+    private static LinkedWeatherPointRef Row(bool enabled) => new()
     {
-        LocationId = Cabin.LocationId,
-        Name = Cabin.Name,
+        WeatherPointId = CabinPoint,
+        Name = "Cabin point",
         ForecastEnabled = true,
         HistoryEnabled = enabled,
-        Site = new WeatherLocationSiteDto { Version = 1, TimeZoneId = "Europe/Oslo" },
+        HasStoredHistory = true,
     };
 
     private static WeatherDaySummary Day(DateOnly date, decimal mean) => new()
@@ -611,7 +594,7 @@ public class LocationWeatherHistoryTests : IDisposable
     private IReadOnlyList<WeatherStationRef> stations = Stations;
 
     private void Serve(DateOnly? measuredFrom, DateOnly? measuredThrough, bool station = true, bool configured = true) =>
-        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), Cabin.LocationId, It.IsAny<CancellationToken>()))
+        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), CabinPoint, It.IsAny<CancellationToken>()))
             .ReturnsAsync((DateOnly from, DateOnly to, Guid? _, CancellationToken _) =>
             {
                 requests.Add((from, to));
@@ -621,22 +604,25 @@ public class LocationWeatherHistoryTests : IDisposable
                     : [];
                 return ApiResult<WeatherDailyResponse>.Success(new WeatherDailyResponse
                 {
-                    Location = new WeatherLocationRef { LocationId = Cabin.LocationId, Name = Cabin.Name },
+                    Point = new WeatherPointRef { WeatherPointId = CabinPoint, Name = "Cabin point" },
                     Status = days.Count > 0 ? WeatherStatus.Ok : WeatherStatus.NoData,
                     Days = days,
                     History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station, ObservationsConfigured = configured, Stations = stations },
                 }, HttpStatusCode.OK);
             });
 
-    private IRenderedComponent<LocationWeatherHistorySection> Render(
-        BunitContext ctx, ExistingWeatherLocation? row = null, bool canSetUp = false, bool canOpenSettings = false) =>
-        ctx.Render<LocationWeatherHistorySection>(p => p.Add(c => c.Location, Cabin).Add(c => c.Row, row)
+    /// <summary>The section reads one point; with no <paramref name="row"/> the cabin point's history is on.</summary>
+    private IRenderedComponent<WeatherHistorySection> Render(
+        BunitContext ctx, LinkedWeatherPointRef? row = null, bool canSetUp = false, bool canOpenSettings = false) =>
+        ctx.Render<WeatherHistorySection>(p => p.Add(c => c.WeatherPointId, (row ?? Row(enabled: true)).WeatherPointId)
+            .Add(c => c.PointName, (row ?? Row(enabled: true)).Name)
+            .Add(c => c.HistoryOff, !(row ?? Row(enabled: true)).HistoryEnabled)
             .Add(c => c.CanSetUp, canSetUp).Add(c => c.CanOpenSettings, canOpenSettings));
 
-    private static IRenderedComponent<OdsIconButton> Nav(IRenderedComponent<LocationWeatherHistorySection> section, string direction) =>
+    private static IRenderedComponent<OdsIconButton> Nav(IRenderedComponent<WeatherHistorySection> section, string direction) =>
         section.FindComponents<OdsIconButton>().Single(b => b.Instance.AriaLabel.StartsWith(direction, StringComparison.Ordinal));
 
-    private static IRenderedComponent<OdsDatePicker> Picker(IRenderedComponent<LocationWeatherHistorySection> section, string end) =>
+    private static IRenderedComponent<OdsDatePicker> Picker(IRenderedComponent<WeatherHistorySection> section, string end) =>
         section.FindComponents<OdsDatePicker>().Single(p => p.Instance.AriaLabel == end);
 
     private BunitContext Context()
@@ -646,9 +632,9 @@ public class LocationWeatherHistoryTests : IDisposable
         ctx.Services.AddMudServices();
         ctx.Services.AddSingleton(weather.Object);
         var pageState = new Mock<IPageStateService>();
-        pageState.Setup(p => p.LoadAsync<LocationWeatherHistorySection.SavedWindow>(It.IsAny<string>())).ReturnsAsync(() => saved);
-        pageState.Setup(p => p.QueueSave(It.IsAny<string>(), It.IsAny<LocationWeatherHistorySection.SavedWindow>()))
-            .Callback((string key, LocationWeatherHistorySection.SavedWindow state) => saves.Add((key, state)));
+        pageState.Setup(p => p.LoadAsync<WeatherHistorySection.SavedWindow>(It.IsAny<string>())).ReturnsAsync(() => saved);
+        pageState.Setup(p => p.QueueSave(It.IsAny<string>(), It.IsAny<WeatherHistorySection.SavedWindow>()))
+            .Callback((string key, WeatherHistorySection.SavedWindow state) => saves.Add((key, state)));
         ctx.Services.AddSingleton(pageState.Object);
         return ctx;
     }

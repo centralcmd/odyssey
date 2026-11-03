@@ -37,9 +37,9 @@ public partial class Preferences
     // server-owned user-preferences row, written only through PUT /api/weather/preferences, which
     // checks the place is selectable. "" follows the household default, as on the dashboard card.
     private bool _canChooseWeather;
-    private WeatherLocationOptions _weatherOptions = new();
-    private string _weatherLocation = WeatherVisuals.FollowHouseholdDefault;
-    private string _savedWeatherLocation = WeatherVisuals.FollowHouseholdDefault;
+    private WeatherPointOptions _weatherOptions = new();
+    private string _weatherPoint = WeatherVisuals.FollowHouseholdDefault;
+    private string _savedWeatherPoint = WeatherVisuals.FollowHouseholdDefault;
     private string? _weatherError;
 
     /// <summary>The interactivity check, as a seam for bUnit (the <c>WeatherWidget.InteractiveCheck</c> pattern).</summary>
@@ -63,10 +63,10 @@ public partial class Preferences
     private bool DarkModeDirty => _isDarkMode != _savedDarkMode;
     private bool DefaultCurrencyDirty => !string.Equals(_currencyCode, _savedCurrencyCode, StringComparison.Ordinal);
     private bool MainCurrencyDirty => !string.Equals(_mainCurrencyCode, _savedMainCurrencyCode, StringComparison.Ordinal);
-    private bool WeatherLocationDirty => !string.Equals(_weatherLocation, _savedWeatherLocation, StringComparison.Ordinal);
+    private bool WeatherPointDirty => !string.Equals(_weatherPoint, _savedWeatherPoint, StringComparison.Ordinal);
     private bool PagePreferencesDirty => DarkModeDirty || DefaultCurrencyDirty || MainCurrencyDirty;
 
-    private bool HasUnsavedChanges => PagePreferencesDirty || WeatherLocationDirty;
+    private bool HasUnsavedChanges => PagePreferencesDirty || WeatherPointDirty;
 
     // ── Page view-state persistence (search section + box) ────────────────────
     private async Task RestoreViewStateAsync()
@@ -97,12 +97,12 @@ public partial class Preferences
     private bool ShowCurrencyCard => Matches("Default currency", "Currency used by default for new transactions");
     private bool ShowMainCurrencyCard => Matches("Main currency", "Currency used to display total net worth, assets and liabilities");
 
-    /// <summary>As the dashboard card's picker: the claim, and two or more places to choose between.</summary>
-    private bool ShowWeatherLocationCard =>
-        _canChooseWeather && _weatherOptions.Locations.Count > 1
-        && Matches("Weather location", "Place the weather card on your dashboard shows");
+    /// <summary>As the dashboard card's picker: the claim, and two or more weather points to choose between.</summary>
+    private bool ShowWeatherPointCard =>
+        _canChooseWeather && WeatherVisuals.Selectable(_weatherOptions).Count() > 1
+        && Matches("Weather point", "Weather point the card on your dashboard shows");
 
-    private IReadOnlyList<OdsOption> WeatherLocationOptions => WeatherVisuals.PickerOptions(_weatherOptions);
+    private IReadOnlyList<OdsOption> WeatherPickerOptions => WeatherVisuals.PickerOptions(_weatherOptions);
 
     private bool Matches(string title, string description) =>
         string.IsNullOrWhiteSpace(_searchText) ||
@@ -130,7 +130,7 @@ public partial class Preferences
         _isDarkMode = _savedDarkMode;
         _currencyCode = UserPreferences.DefaultCurrency ?? string.Empty;
         _mainCurrencyCode = UserPreferences.MainCurrency ?? string.Empty;
-        await Task.WhenAll(LoadCurrencies(), LoadWeatherLocationAsync());
+        await Task.WhenAll(LoadCurrencies(), LoadWeatherPointAsync());
         // Baseline after LoadCurrencies, which may substitute an archived/unknown
         // saved code for an active one — so the page opens clean, not pre-dirtied.
         _savedCurrencyCode = _currencyCode;
@@ -160,26 +160,26 @@ public partial class Preferences
     /// A stored place that is no longer selectable reads as the household default, as on the dashboard card.
     /// A failed read leaves the row hidden rather than offering a choice it cannot show the current value of.
     /// </summary>
-    private async Task LoadWeatherLocationAsync()
+    private async Task LoadWeatherPointAsync()
     {
         var user = await Auth.GetUserAsync();
         if (!user.HasPermission(PermissionClaims.WeatherPreferencesUpdate))
             return;
 
-        var options = Weather.OptionsAsync();
+        var options = WeatherOptions.GetAsync();
         var preferences = Weather.PreferencesAsync();
         await Task.WhenAll(options, preferences);
         if ((await options).Value is not { } loaded || (await preferences).Value is not { } own)
             return;
 
         _weatherOptions = loaded;
-        _weatherLocation = _savedWeatherLocation = WeatherVisuals.PickerValue(loaded, own.DefaultLocation);
+        _weatherPoint = _savedWeatherPoint = WeatherVisuals.PickerValue(loaded, own.DefaultPoint);
         _canChooseWeather = true;
     }
 
-    private void OnWeatherLocationChanged(string value)
+    private void OnWeatherPointChanged(string value)
     {
-        _weatherLocation = value;
+        _weatherPoint = value;
         _weatherError = null;
     }
 
@@ -213,8 +213,8 @@ public partial class Preferences
             _savedMainCurrencyCode = _mainCurrencyCode;
         }
 
-        if (WeatherLocationDirty)
-            saved &= await SaveWeatherLocationAsync();
+        if (WeatherPointDirty)
+            saved &= await SaveWeatherPointAsync();
 
         _isSaving = false;
 
@@ -229,19 +229,19 @@ public partial class Preferences
         }
     }
 
-    private async Task<bool> SaveWeatherLocationAsync()
+    private async Task<bool> SaveWeatherPointAsync()
     {
-        Guid? next = Guid.TryParse(_weatherLocation, out var id) ? id : null;
+        Guid? next = Guid.TryParse(_weatherPoint, out var id) ? id : null;
         var result = await Weather.SetPreferenceAsync(next);
         if (!result.IsSuccess)
         {
             _weatherError = result.Status == HttpStatusCode.BadRequest
-                ? "That location no longer has weather. Choose another one."
-                : "Your weather location couldn't be saved. Try again.";
+                ? "That weather point no longer has a forecast. Choose another one."
+                : "Your weather point couldn't be saved. Try again.";
             return false;
         }
 
-        _savedWeatherLocation = _weatherLocation;
+        _savedWeatherPoint = _weatherPoint;
         _weatherError = null;
         return true;
     }

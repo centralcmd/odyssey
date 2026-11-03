@@ -3082,6 +3082,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("UpdatedByUserId")
                         .HasColumnType("varchar(255)");
 
+                    b.Property<Guid?>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.HasKey("LocationId");
 
                     b.HasIndex("AddressKey")
@@ -3095,6 +3098,8 @@ namespace Odyssey.Context.Migrations
                         .IsUnique();
 
                     b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("WeatherPointId");
 
                     b.HasIndex("Archived", "Name");
 
@@ -4469,13 +4474,13 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
-                            Key = "WeatherMaxTrackedLocations",
+                            Key = "WeatherMaxTrackedPoints",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "5"
                         },
                         new
                         {
-                            Key = "WeatherDefaultLocationId",
+                            Key = "WeatherDefaultPointId",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = ""
                         },
@@ -5150,7 +5155,7 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.WeatherDay", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
 
                     b.Property<DateOnly>("LocalDate")
@@ -5222,7 +5227,7 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.HasKey("LocationId", "LocalDate");
+                    b.HasKey("WeatherPointId", "LocalDate");
 
                     b.ToTable("WeatherDays", t =>
                         {
@@ -5249,9 +5254,6 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(6, 3)
                         .HasColumnType("decimal(6,3)");
 
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
                     b.Property<decimal>("Longitude")
                         .HasPrecision(7, 3)
                         .HasColumnType("decimal(7,3)");
@@ -5265,9 +5267,12 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("SiteVersion")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.HasKey("WeatherForecastRunId");
 
-                    b.HasIndex("LocationId", "SiteVersion", "ProviderUpdatedAt")
+                    b.HasIndex("WeatherPointId", "SiteVersion", "ProviderUpdatedAt")
                         .IsUnique();
 
                     b.ToTable("WeatherForecastRuns", t =>
@@ -5295,9 +5300,6 @@ namespace Odyssey.Context.Migrations
                     b.Property<decimal?>("CloudAreaFractionPct")
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
 
                     b.Property<byte>("PeriodHours")
                         .HasColumnType("tinyint unsigned");
@@ -5345,6 +5347,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("WeatherForecastRunId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.Property<decimal?>("WindFromDirectionDeg")
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");
@@ -5362,14 +5367,79 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("WeatherForecastRunId", "TimeUtc")
                         .IsUnique();
 
-                    b.HasIndex("LocationId", "TimeUtc", "SiteVersion", "RunProviderUpdatedAt", "RunFetchedAtUtc");
+                    b.HasIndex("WeatherPointId", "TimeUtc", "SiteVersion", "RunProviderUpdatedAt", "RunFetchedAtUtc");
 
                     b.ToTable("WeatherForecastSteps");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocation", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherObservationId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FetchedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly>("LocalDate")
+                        .HasColumnType("date");
+
+                    b.Property<decimal?>("MaxTempC")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<decimal?>("MaxWindGustMps")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<decimal?>("MeanTempC")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<decimal?>("MeanWindSpeedMps")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<decimal?>("MinTempC")
+                        .HasPrecision(4, 1)
+                        .HasColumnType("decimal(4,1)");
+
+                    b.Property<decimal?>("PrecipitationMm")
+                        .HasPrecision(5, 1)
+                        .HasColumnType("decimal(5,1)");
+
+                    b.Property<string>("PrecipitationStationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SiteVersion")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TemperatureStationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("WindStationId")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.HasKey("WeatherObservationId");
+
+                    b.HasIndex("WeatherPointId", "LocalDate", "SiteVersion", "FetchedAtUtc");
+
+                    b.ToTable("WeatherObservations");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
                     b.Property<DateTime>("CreatedAt")
@@ -5396,8 +5466,20 @@ namespace Odyssey.Context.Migrations
                     b.Property<bool>("IsTracked")
                         .HasColumnType("tinyint(1)");
 
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("PurgeMode")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("PurgeStartedAt")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("SettingsVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime?>("StationResolvedAtUtc")
                         .HasColumnType("datetime(6)");
@@ -5408,27 +5490,27 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("UpdatedByUserId")
                         .HasColumnType("varchar(255)");
 
-                    b.HasKey("LocationId");
+                    b.HasKey("WeatherPointId");
 
                     b.HasIndex("CreatedByUserId");
 
+                    b.HasIndex("Name")
+                        .IsUnique();
+
                     b.HasIndex("UpdatedByUserId");
 
-                    b.HasIndex("LocationId", "CurrentSiteVersion");
-
-                    b.ToTable("WeatherLocations", t =>
+                    b.ToTable("WeatherPoints", t =>
                         {
-                            t.HasCheckConstraint("CK_WeatherLocations_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1");
+                            t.HasCheckConstraint("CK_WeatherPoints_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1");
+
+                            t.HasCheckConstraint("CK_WeatherPoints_PurgeModeWithFence", "(`PurgeStartedAt` IS NULL) = (`PurgeMode` IS NULL)");
                         });
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSchedule", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
-
-                    b.Property<bool>("ArchivedSkipLogged")
-                        .HasColumnType("tinyint(1)");
 
                     b.Property<int>("ForecastConsecutiveFailures")
                         .HasColumnType("int");
@@ -5474,14 +5556,14 @@ namespace Odyssey.Context.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("char(36)");
 
-                    b.HasKey("LocationId");
+                    b.HasKey("WeatherPointId");
 
-                    b.ToTable("WeatherLocationSchedules");
+                    b.ToTable("WeatherPointSchedules");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSite", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSite", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
 
                     b.Property<int>("SiteVersion")
@@ -5509,83 +5591,19 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
-                    b.HasKey("LocationId", "SiteVersion");
+                    b.HasKey("WeatherPointId", "SiteVersion");
 
                     b.HasIndex("AppliedByUserId");
 
-                    b.ToTable("WeatherLocationSites", t =>
+                    b.ToTable("WeatherPointSites", t =>
                         {
-                            t.HasCheckConstraint("CK_WeatherLocationSites_VersionPositive", "`SiteVersion` >= 1");
+                            t.HasCheckConstraint("CK_WeatherPointSites_VersionPositive", "`SiteVersion` >= 1");
                         });
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
-                {
-                    b.Property<Guid>("WeatherObservationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("FetchedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateOnly>("LocalDate")
-                        .HasColumnType("date");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<decimal?>("MaxTempC")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("decimal(4,1)");
-
-                    b.Property<decimal?>("MaxWindGustMps")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("decimal(4,1)");
-
-                    b.Property<decimal?>("MeanTempC")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("decimal(4,1)");
-
-                    b.Property<decimal?>("MeanWindSpeedMps")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("decimal(4,1)");
-
-                    b.Property<decimal?>("MinTempC")
-                        .HasPrecision(4, 1)
-                        .HasColumnType("decimal(4,1)");
-
-                    b.Property<decimal?>("PrecipitationMm")
-                        .HasPrecision(5, 1)
-                        .HasColumnType("decimal(5,1)");
-
-                    b.Property<string>("PrecipitationStationId")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<int>("Provider")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SiteVersion")
-                        .HasColumnType("int");
-
-                    b.Property<string>("TemperatureStationId")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<string>("WindStationId")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.HasKey("WeatherObservationId");
-
-                    b.HasIndex("LocationId", "LocalDate", "SiteVersion", "FetchedAtUtc");
-
-                    b.ToTable("WeatherObservations");
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
 
                     b.Property<int>("Group")
@@ -5609,7 +5627,7 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
-                    b.HasKey("LocationId", "Group");
+                    b.HasKey("WeatherPointId", "Group");
 
                     b.ToTable("WeatherStations", t =>
                         {
@@ -6276,6 +6294,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.OrganizationDetails", b =>
@@ -6769,18 +6792,18 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.WeatherDay", b =>
                 {
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherForecastRun", b =>
                 {
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -6794,68 +6817,56 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocation", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Odyssey.Context.Location", null)
-                        .WithOne()
-                        .HasForeignKey("Odyssey.Context.WeatherLocation", "LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Odyssey.Context.WeatherLocationSite", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId", "CurrentSiteVersion")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSchedule", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>
                 {
-                    b.HasOne("Odyssey.Context.WeatherLocation", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithOne()
-                        .HasForeignKey("Odyssey.Context.WeatherLocationSchedule", "LocationId")
+                        .HasForeignKey("Odyssey.Context.WeatherPointSchedule", "WeatherPointId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSite", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSite", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("AppliedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
-                {
-                    b.HasOne("Odyssey.Context.Location", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
                 {
-                    b.HasOne("Odyssey.Context.WeatherLocation", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

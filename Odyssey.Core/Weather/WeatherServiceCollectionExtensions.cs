@@ -20,7 +20,7 @@ public static class WeatherServiceCollectionExtensions
     public static IServiceCollection AddWeatherFetching(this IServiceCollection services)
     {
         services.AddScoped<IWeatherSettingsLookup, WeatherSettingsLookup>();
-        services.AddSingleton<IWeatherLocationRules, WeatherLocationRules>();
+        services.AddSingleton<IWeatherPointRules, WeatherPointRules>();
         services.AddScoped<WeatherFetchService>();
 
         foreach (var (client, baseAddress) in new[]

@@ -83,6 +83,9 @@ public partial class OdsLocationSelect
 
     [Parameter] public LocationPickFilter Filter { get; set; } = LocationPickFilter.All;
 
+    /// <summary>Overrides the no-match line — e.g. the weather-point source's <i>No places have coordinates yet</i>.</summary>
+    [Parameter] public string? EmptyText { get; set; }
+
     /// <summary>Ids never offered — the Merge dialog's source.</summary>
     [Parameter] public IReadOnlyCollection<Guid>? ExcludeIds { get; set; }
 
@@ -193,9 +196,12 @@ public partial class OdsLocationSelect
         }
     }
 
-    private string EffectiveEmptyText => EffectiveFilter == LocationPickFilter.AddressComplete
-        ? "No saved place with a full address matches."
-        : "No places match";
+    private string EffectiveEmptyText => EmptyText ?? (EffectiveFilter switch
+    {
+        LocationPickFilter.AddressComplete => "No saved place with a full address matches.",
+        LocationPickFilter.HasCoordinates => "No place with coordinates matches",
+        _ => "No places match",
+    });
 
     internal static OdsOption StagedOption(string name) =>
         new(StagedPrefix + name, LocationVisuals.StagedLabel(name))
@@ -210,7 +216,8 @@ public partial class OdsLocationSelect
         l.Archived is null
         && l.MergedIntoLocationId is null
         && (exclude is null || !exclude.Contains(l.LocationId))
-        && (filter != LocationPickFilter.AddressComplete || LocationVisuals.IsAddressComplete(l));
+        && (filter != LocationPickFilter.AddressComplete || LocationVisuals.IsAddressComplete(l))
+        && (filter != LocationPickFilter.HasCoordinates || l.HasCoordinates);
 
     /// <summary>One server page of active places for the query — never the unpaged list (issue #383 AC 13).</summary>
     private Task<IReadOnlyList<OdsOption>> SearchAsync(string query, CancellationToken ct) =>
@@ -221,7 +228,8 @@ public partial class OdsLocationSelect
 
     private async Task<IReadOnlyList<ExistingLocation>> SavedPlacesAsync(string query, CancellationToken ct)
     {
-        var result = await Locations.ListAsync(1, PageSize, query, [nameof(ArchivalStatus.Active)], ct: ct);
+        var result = await Locations.ListAsync(1, PageSize, query, [nameof(ArchivalStatus.Active)],
+            hasCoordinates: EffectiveFilter == LocationPickFilter.HasCoordinates ? true : null, ct: ct);
         if (!result.IsSuccess)
         {
             // A cancelled request comes back as a failed result, not an exception; report it as the

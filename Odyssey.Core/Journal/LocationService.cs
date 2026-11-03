@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
+using Odyssey.Core.Weather;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using LocationEntity = Odyssey.Context.Location;
@@ -68,7 +69,7 @@ public class LocationService
 
         if (query.Referenced is { } referenced)
         {
-            q = guard.WhereReferenced(q, referenced, await guard.NonRecordReferencesAsync(cancellationToken));
+            q = guard.WhereReferenced(q, referenced);
         }
 
         var term = ListQuery.NormalizeSearch(query.Search);
@@ -151,8 +152,8 @@ public class LocationService
     /// <summary>
     /// Full replacement (issue #350 §5; issue #380 §5.5). A merged-away place is frozen (<c>422</c> keyed
     /// <c>id</c>); the source may be kept or changed to one a caller may assert (<c>422</c> keyed
-    /// <c>source</c>); coordinates are all-or-none and cannot be cleared while weather uses them (<c>422</c>
-    /// keyed <c>latitude</c>); an address another place holds is a <c>409</c> keyed <c>line1</c>; and a
+    /// <c>source</c>); coordinates are all-or-none (<c>422</c> keyed <c>latitude</c>) and, since issue #387, may be
+    /// cleared whatever weather point the place links to; an address another place holds is a <c>409</c> keyed <c>line1</c>; and a
     /// place a contact address uses keeps a complete street address.
     /// </summary>
     public async Task<ExistingLocation?> Update(
@@ -181,13 +182,6 @@ public class LocationService
             request.PostalCode, request.City, request.Region, request.CountryCode, request.Latitude, request.Longitude,
             request.AltitudeMeters, request.TimeZoneId, source, request.SourceReference);
         await EnsureNameAvailable(fields.Name, id, cancellationToken);
-
-        if (fields.Latitude is null && location.Latitude is not null
-            && await context.WeatherLocations.AnyAsync(w => w.LocationId == id, cancellationToken))
-        {
-            throw new DomainUnprocessableException(
-                "Weather uses this place's coordinates. Turn weather off and remove it before clearing them.", LatitudeField);
-        }
 
         var addressChanged = LocationAddress.FromLocation(location) != fields.Address;
         if (addressChanged)
@@ -271,12 +265,6 @@ public class LocationService
                 throw new DomainUnprocessableException("Restore this place before merging it.", "sourceId");
             }
 
-            if (await context.WeatherLocations.AnyAsync(w => w.LocationId == sourceId, cancellationToken))
-            {
-                throw new DomainUnprocessableException(
-                    "Weather is set up for this place. Remove its weather before merging it away.", "sourceId");
-            }
-
             var events = await context.CalendarEvents.Where(e => e.LocationId == sourceId).ToListAsync(cancellationToken);
             var series = await context.RecurrencePatterns.Where(p => p.LocationId == sourceId).ToListAsync(cancellationToken);
             var entries = await context.JournalEntries.Where(e => e.LocationId == sourceId).ToListAsync(cancellationToken);
@@ -316,6 +304,11 @@ public class LocationService
             // Chains are at most one hop: whatever forwarded to the source now forwards to the target.
             var forwarders = await context.Locations.Where(l => l.MergedIntoLocationId == sourceId).ToListAsync(cancellationToken);
             forwarders.ForEach(f => f.MergedIntoLocationId = targetId);
+
+            // The weather link (issue #387 §8): the survivor keeps its own; if it has none it inherits the source's.
+            // The source's is cleared, decided on this same locked snapshot.
+            target.WeatherPointId ??= source.WeatherPointId;
+            source.WeatherPointId = null;
 
             var now = timeProvider.GetUtcNow().UtcDateTime;
             source.Archived = now;
@@ -396,6 +389,67 @@ public class LocationService
             dto.Usage = LocationReferenceGuard.ToUsage(
                 counts.GetValueOrDefault(dto.LocationId) ?? LocationReferenceGuard.Counts.Zero, claims);
         }
+
+        await FillWeatherAsync(context, dtos, claims, cancellationToken);
+    }
+
+    /// <summary>
+    /// <see cref="ExistingLocation.WeatherPoint"/> and <see cref="ExistingLocation.WeatherPointDistanceKm"/>
+    /// (issue #387 §5 endpoint 11): filled only for a caller holding <c>weather.read</c>, null otherwise. A fixed
+    /// number of queries for the whole page — the links, the linked points with their current sites, and ONE
+    /// grouped existence query for <see cref="LinkedWeatherPointRef.HasStoredHistory"/> — never one per row.
+    /// </summary>
+    internal static async Task FillWeatherAsync(
+        OdysseyContext context, IReadOnlyList<ExistingLocation> dtos, LocationClaims claims, CancellationToken cancellationToken)
+    {
+        if (!claims.WeatherRead || dtos.Count == 0)
+        {
+            return;
+        }
+
+        var locationIds = dtos.Select(d => d.LocationId).Distinct().ToList();
+        var links = await context.Locations.AsNoTracking()
+            .Where(l => locationIds.Contains(l.LocationId) && l.WeatherPointId != null)
+            .Select(l => new { l.LocationId, PointId = l.WeatherPointId!.Value })
+            .ToDictionaryAsync(l => l.LocationId, l => l.PointId, cancellationToken);
+        if (links.Count == 0)
+        {
+            return;
+        }
+
+        var pointIds = links.Values.Distinct().ToList();
+        var points = await (
+                from point in context.WeatherPoints.AsNoTracking()
+                join site in context.WeatherPointSites.AsNoTracking()
+                    on new { point.WeatherPointId, Version = point.CurrentSiteVersion } equals new { site.WeatherPointId, Version = site.SiteVersion }
+                where pointIds.Contains(point.WeatherPointId)
+                select new { point.WeatherPointId, point.Name, point.ForecastEnabled, point.HistoryEnabled, point.PurgeStartedAt, site.Latitude, site.Longitude })
+            .ToDictionaryAsync(p => p.WeatherPointId, cancellationToken);
+        var withHistory = (await context.WeatherDays.AsNoTracking()
+                .Where(d => pointIds.Contains(d.WeatherPointId) && d.ObservedFetchedAtUtc != null)
+                .GroupBy(d => d.WeatherPointId)
+                .Select(g => g.Key)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        foreach (var dto in dtos)
+        {
+            if (!links.TryGetValue(dto.LocationId, out var pointId) || !points.TryGetValue(pointId, out var point))
+            {
+                continue;
+            }
+
+            dto.WeatherPoint = new LinkedWeatherPointRef
+            {
+                WeatherPointId = point.WeatherPointId,
+                Name = point.Name,
+                ForecastEnabled = point.ForecastEnabled,
+                HistoryEnabled = point.HistoryEnabled,
+                HasStoredHistory = withHistory.Contains(point.WeatherPointId),
+                PurgeInProgress = point.PurgeStartedAt is not null,
+            };
+            dto.WeatherPointDistanceKm = WeatherDistance.KmOrNull(dto.Latitude, dto.Longitude, point.Latitude, point.Longitude);
+        }
     }
 
     internal static ExistingLocation ToDto(LocationEntity location) => new()
@@ -422,6 +476,7 @@ public class LocationService
         Archived = location.Archived,
         CreatedAt = location.CreatedAt,
         UpdatedAt = location.UpdatedAt,
+        WeatherFingerprint = WeatherCoordinates.FingerprintOrNull(location),
     };
 
     /// <summary>

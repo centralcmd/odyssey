@@ -1,0 +1,98 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherPointSection — the Weather point section of a location's record, for every weather.read holder
+    (issue #388 §3; design system · Weather.jsx LocationWeatherPointSection). Read-only: linking is in the row menu.
+    Everything it shows arrives on ExistingLocation, so it makes no request. Advisories from the last link are
+    transient — they are not stored on the location — and the page clears them when the record closes.
+*@
+
+@if (Location.WeatherPoint is not { } p)
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather point" Empty="true"
+                      EmptyText="@Text(CanLink
+                          ? "No weather point. Link one to see forecasts and weather history for this place."
+                          : "No weather point is linked to this place.")" />
+}
+else if (p.PurgeInProgress)
+{
+    @* The point is being deleted: no tiles, no forecast, no history — only the notice. *@
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather point" Meta="weather point"
+                      Notice="@Text($"Weather for {p.Name} is being deleted.")"
+                      NoticeTone="OdsRecordSectionTone.Warning" NoticeIconName="delete_sweep" />
+}
+else
+{
+    <OdsRecordSection Class="acct-section wx-section" Label="Weather point" Meta="weather point"
+                      Notice="@(p.ForecastEnabled ? null : Text($"{p.Name} has no forecast turned on, so only stored history shows here."))"
+                      NoticeIconName="info">
+        @if (AdvisoryTexts(p) is { Count: > 0 } texts)
+        {
+            <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">
+                @if (texts.Count == 1)
+                {
+                    @texts[0]
+                }
+                else
+                {
+                    <ul class="wx-advisories">
+                        @foreach (var text in texts)
+                        {
+                            <li>@text</li>
+                        }
+                    </ul>
+                }
+            </OdsAlert>
+        }
+        <OdsInfoTileGrid>
+            <OdsInfoTile Icon="wb_sunny" Label="Weather point" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                         Foot="@OdsInfoTile.Caption(WeatherVisuals.Offers(p.ForecastEnabled, p.HistoryEnabled))">
+                <Value>@p.Name</Value>
+            </OdsInfoTile>
+            @if (Location.WeatherPointDistanceKm is { } km)
+            {
+                <OdsInfoTile Icon="straighten" Label="Distance" ValueVariant="OdsInfoTileVariant.Text"
+                             Foot="@OdsInfoTile.Caption("from this place to the point")">
+                    <Value>@WeatherVisuals.Km(km)</Value>
+                </OdsInfoTile>
+            }
+            else
+            {
+                <OdsInfoTile Icon="location_off" Label="Distance" ValueVariant="OdsInfoTileVariant.Text" WrapValue="true"
+                             Foot="@OdsInfoTile.Caption("this place has no coordinates")">
+                    <Value>Distance unknown</Value>
+                </OdsInfoTile>
+            }
+        </OdsInfoTileGrid>
+        @if (CanOpenPoints)
+        {
+            <div class="wx-sec-acts">
+                <a class="wx-link wx-open-link" href="@($"/weather-points?open={p.WeatherPointId}")">Open @p.Name in Weather points</a>
+            </div>
+        }
+    </OdsRecordSection>
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+
+    /// <summary><c>locations.update</c> + <c>weather.read</c> — picks the empty line's wording only.</summary>
+    [Parameter] public bool CanLink { get; set; }
+
+    /// <summary><c>weather.points.read</c>: the <i>Open ‹point› in Weather points</i> link.</summary>
+    [Parameter] public bool CanOpenPoints { get; set; }
+
+    /// <summary>The warnings the last link returned, shown until the record closes or another link is saved.</summary>
+    [Parameter] public IReadOnlyList<WeatherAdvisory> Advisories { get; set; } = [];
+
+    private static RenderFragment Text(string text) => b => b.AddContent(0, text);
+
+    /// <summary>The forecast-off advisory is not repeated: the notice band already says it.</summary>
+    private List<string> AdvisoryTexts(LinkedWeatherPointRef p) =>
+    [
+        .. Advisories
+            .Where(a => !(a.Code == WeatherAdvisoryCode.PointNotSelectable && !p.ForecastEnabled))
+            .Select(a => WeatherVisuals.AdvisoryText(a, p.Name))
+            .OfType<string>(),
+    ];
+}

@@ -25,6 +25,12 @@ internal sealed class LocationConfiguration : IEntityTypeConfiguration<Location>
             .HasForeignKey(location => location.MergedIntoLocationId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        // The weather link (issue #387 §4). SET NULL: deleting a point unlinks its places, never blocks.
+        entity.HasOne<WeatherPoint>()
+            .WithMany()
+            .HasForeignKey(location => location.WeatherPointId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // The database-side twins of the DTO bounds (issue #350 §4, N7). decimal(7,5) alone admits ±99.99999
         // and decimal(8,5) ±999.99999, so the ranges are stated here too; a hand edit or a restore cannot
         // bypass model validation the way a request cannot. 0 is a permanent hole in LocationSource.

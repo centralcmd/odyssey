@@ -1,0 +1,225 @@
+@using System.Net
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IWeatherApiClient Weather
+@*
+    WeatherPointPurgeDialog — Delete weather history / Delete weather point (issue #388 flow D; design system ·
+    Weather.jsx WeatherPointPurgeModal). History mode is offered only while historical data is off; point mode only
+    while both halves are off and the point is not the household default — and always for an interrupted purge,
+    which only a point-mode delete can complete. A TYPED confirmation (the point's name) gates both: the danger
+    button stays focusable and aria-disabled until the name matches, and pressing it early says so, in this dialog's
+    own polite region. A 504 or a dropped connection means "may still be running": the point is re-read, and with
+    purgeInProgress the dialog offers to continue. While it runs, it cannot be dismissed.
+*@
+
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_running ? default : EventCallback.Factory.Create(this, CloseAsync))"
+          Icon="delete_forever" IconTone="OdsModalTone.Error" RequiredLegend="false" ReturnFocusToId="@ReturnFocusToId"
+          Title="@(b => b.AddContent(0, Resuming ? $"Finish deleting {Noun}" : $"Delete {Noun}"))"
+          Subtitle="@(b => b.AddContent(0, Point.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form">
+            <OdsLiveAnnouncer Message="@_announce" />
+            @if (_busy)
+            {
+                <OdsAlert Severity="Severity.Warning">A weather fetch is running for this point right now. Try again in a minute.</OdsAlert>
+            }
+            @if (_error is not null)
+            {
+                <OdsAlert Severity="Severity.Error">@_error</OdsAlert>
+            }
+            @if (Resuming)
+            {
+                <OdsAlert Severity="Severity.Warning">The deletion was interrupted before it finished. Weather for this point stays paused, and nothing new is stored, until it completes. Continue to delete the rest.</OdsAlert>
+            }
+            @if (Whole)
+            {
+                <p class="wx-lede">This permanently deletes the weather point @Point.Name and everything Odyssey has stored for it:</p>
+                <ul class="wx-effects" id="@EffectsId">
+                    <li>every forecast fetched for it, and the daily summaries built from them;</li>
+                    <li>its measured history and the MET stations it was matched to;</li>
+                    <li>every position it has used.</li>
+                </ul>
+                @* A null count (no locations.read) is never "0": the countless sentence says it instead. *@
+                @if (LinkedLocationCount is > 0 and var linked)
+                {
+                    <p class="wx-lede"><b>@(linked == 1 ? "1 location uses" : $"{linked} locations use") this point and will be unlinked.</b> The locations themselves are kept, and can be linked to another point.</p>
+                }
+                else if (LinkedLocationCount is null)
+                {
+                    <p class="wx-lede">Locations that use this point will be unlinked. The locations themselves are kept, and can be linked to another point.</p>
+                }
+                <p class="wx-lede">Anyone who picked @Point.Name on the dashboard goes back to the household default. Backups follow the deployment’s own retention.</p>
+            }
+            else
+            {
+                <p class="wx-lede">This permanently deletes the measured weather Odyssey has stored for @Point.Name:</p>
+                <ul class="wx-effects" id="@EffectsId">
+                    <li>every measured day — temperature, precipitation and wind;</li>
+                    <li>the MET stations it was matched to, which are looked up again if historical data is turned back on.</li>
+                </ul>
+                <p class="wx-lede">The weather point, its settings@(Point.ForecastEnabled ? ", its forecast" : "") and its linked locations are kept. Backups follow the deployment’s own retention.</p>
+            }
+            <OdsTextInputField Id="@FieldId" Label="@($"Type {Point.Name} to confirm")" Value="@_typed" ValueChanged="OnTyped"
+                               Disabled="_running" AriaDescribedBy="@EffectsId" Error="@_nudge" Placeholder=""
+                               Help="@(_running ? "Deleting. This can take up to a minute — keep this dialog open." : _nudge is null ? "The name must match exactly." : null)" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_running" OnClick="CloseAsync">@(_interrupted ? "Close" : "Cancel")</OdsButton>
+        @* The press is handled on the wrapper: an aria-disabled OdsButton swallows its own click, and an early press
+           must still say why nothing happened. *@
+        <span class="wx-confirm @(_running ? "busy" : null)" @onclick="PressAsync">
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete_forever" Loading="_running" AriaDisabled="@(_running || !Matches)">
+                @(Resuming ? "Continue deleting" : $"Delete {Noun}")
+            </OdsButton>
+        </span>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter, EditorRequired] public ExistingWeatherPoint Point { get; set; } = default!;
+
+    /// <summary>History only, or the whole point. An interrupted purge always resumes as the whole point.</summary>
+    [Parameter] public WeatherPurgeMode Mode { get; set; } = WeatherPurgeMode.HistoryOnly;
+
+    /// <summary>The point's linked-location count, or null when the caller cannot read locations.</summary>
+    [Parameter] public int? LinkedLocationCount { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>The purge completed (or the point was already gone).</summary>
+    [Parameter] public EventCallback OnDone { get; set; }
+
+    /// <summary>The purge may still be running or stopped part-way; carries the re-read point, when there is one.</summary>
+    [Parameter] public EventCallback<ExistingWeatherPoint?> OnInterrupted { get; set; }
+
+    [Parameter] public EventCallback<HttpStatusCode> OnStatus { get; set; }
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private string _typed = "";
+    private string _announce = "";
+    private string? _nudge;
+    private bool _running;
+    private bool _busy;
+    private bool _interrupted;
+    private string? _error;
+
+    private string FieldId => $"wp-confirm-{_uid}";
+    private string EffectsId => $"wp-effects-{_uid}";
+
+    private bool Whole => Mode == WeatherPurgeMode.Full || Point.PurgeInProgress;
+
+    private string Noun => Whole ? "weather point" : "weather history";
+
+    private bool Resuming => Point.PurgeInProgress || _interrupted;
+
+    private bool Matches => string.Equals(_typed.Trim(), Point.Name, StringComparison.Ordinal);
+
+    private void OnTyped(string? value)
+    {
+        _typed = value ?? "";
+        _nudge = null;
+    }
+
+    private async Task PressAsync()
+    {
+        if (_running)
+            return;
+        if (!Matches)
+        {
+            _nudge = $"Type {Point.Name} exactly to confirm.";
+            _announce = _nudge;
+            StateHasChanged();
+            await FocusFieldAsync();
+            return;
+        }
+
+        await RunAsync();
+    }
+
+    [Inject] private Microsoft.JSInterop.IJSRuntime Js { get; set; } = default!;
+
+    private async Task FocusFieldAsync()
+    {
+        try { await Js.InvokeVoidAsync("odsFocusById", FieldId); }
+        catch (Microsoft.JSInterop.JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private async Task RunAsync()
+    {
+        _running = true;
+        _busy = false;
+        _error = null;
+        _announce = $"Deleting {Noun}. This can take up to a minute.";
+        StateHasChanged();
+
+        var result = Whole
+            ? await Weather.DeletePointAsync(Point.WeatherPointId)
+            : await Weather.PurgePointHistoryAsync(Point.WeatherPointId);
+        await OnStatus.InvokeAsync(result.Status);
+        _running = false;
+
+        if (result.IsSuccess || result.Status == HttpStatusCode.NotFound)
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnDone.InvokeAsync();
+            return;
+        }
+
+        if (result.Status == HttpStatusCode.Conflict)
+        {
+            switch (result.Problem?.Code)
+            {
+                case "fetch-in-progress":
+                    _busy = true;
+                    _announce = "A weather fetch is running for this point right now. Try again in a minute.";
+                    return;
+                case "household-default":
+                    _error = "This is the household’s default weather point. Choose another default in System settings → Weather first.";
+                    _announce = _error;
+                    return;
+                case "still-enabled":
+                    _error = "Turn the point’s weather off before deleting it.";
+                    _announce = _error;
+                    return;
+            }
+        }
+
+        if (result.Status == HttpStatusCode.TooManyRequests)
+        {
+            _error = "Weather actions have been used many times in the last few minutes. Wait a moment, then try again.";
+            _announce = _error;
+            return;
+        }
+
+        if (result.Status is not (HttpStatusCode.GatewayTimeout or 0))
+        {
+            _error = result.Problem?.Message ?? $"The {Noun} couldn’t be deleted. Try again.";
+            _announce = _error;
+            return;
+        }
+
+        // A gateway timeout or a dropped connection: the server may still be deleting. Re-read the point.
+        var reread = await Weather.PointAsync(Point.WeatherPointId);
+        if (reread.Status == HttpStatusCode.NotFound)
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnDone.InvokeAsync();
+            return;
+        }
+
+        _interrupted = reread.Value is { PurgeInProgress: true };
+        _announce = _interrupted ? "The deletion was interrupted. Continue to delete the rest." : $"The {Noun} couldn't be deleted.";
+        if (!_interrupted)
+            _error = result.Problem?.Message ?? $"The {Noun} couldn’t be deleted. Try again.";
+        await OnInterrupted.InvokeAsync(reread.Value);
+    }
+
+    private Task CloseAsync() => _running ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
+
+    private Task OnOpenChanged(bool open) => open || !_running ? OpenChanged.InvokeAsync(open) : Task.CompletedTask;
+}

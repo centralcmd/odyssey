@@ -272,10 +272,10 @@ public static class SystemSettingsBounds
 
     public const int WeatherRefreshIntervalMinutesMax = 1440;
 
-    public const int WeatherMaxTrackedLocationsMin = 1;
+    public const int WeatherMaxTrackedPointsMin = 1;
 
     /// <summary>Each tracked location is ≈ 0.8 M forecast-step rows a year; 20 bounds the storage growth.</summary>
-    public const int WeatherMaxTrackedLocationsMax = 20;
+    public const int WeatherMaxTrackedPointsMax = 20;
 
     /// <summary>One hour to one week (issue #349 §8). Below six hours the advisory says why it buys nothing.</summary>
     public const int ExchangeRateSyncIntervalHoursMin = 1;

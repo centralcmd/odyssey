@@ -217,8 +217,8 @@ public partial class Settings
         StateHasChanged();
     }
 
-    /// <summary>The places that can be the household weather default, served at read time (issue #348).</summary>
-    private IReadOnlyList<WeatherLocationRef> _weatherOptions = [];
+    /// <summary>The points that can be the household weather default, served at read time (issue #348, #387).</summary>
+    private IReadOnlyList<WeatherPointOption> _weatherOptions = [];
 
     private async Task LoadWeatherOptionsAsync()
     {
@@ -226,21 +226,21 @@ public partial class Settings
         // uses. Without it the row still shows its stored value, it just offers nothing else to pick.
         if (!(await Auth.GetUserAsync()).HasPermission(PermissionClaims.WeatherRead))
             return;
-        var options = await Weather.OptionsAsync();
-        _weatherOptions = options.IsSuccess && options.Value is { } value ? value.Locations : [];
+        var options = await WeatherOptions.GetAsync();
+        _weatherOptions = options.IsSuccess && options.Value is { } value ? [.. value.Points.Where(p => p.ForecastEnabled)] : [];
     }
 
     /// <summary>
-    /// <i>None</i>, then every selectable place. A stored default that is no longer selectable stays in the
+    /// <i>None</i>, then every selectable point. A stored default that is no longer selectable stays in the
     /// list, named as such, so opening the page never silently changes what is saved.
     /// </summary>
     internal IReadOnlyList<OdsOption> WeatherDefaultOptions()
     {
         var options = new List<OdsOption> { new("", "None") };
-        options.AddRange(_weatherOptions.Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
-        var stored = _texts.TryGetValue("weatherDefaultLocationId", out var state) ? state.Saved : "";
+        options.AddRange(_weatherOptions.Select(p => new OdsOption(p.WeatherPointId.ToString("D"), p.Name)));
+        var stored = _texts.TryGetValue("weatherDefaultPointId", out var state) ? state.Saved : "";
         if (stored.Length > 0 && options.All(o => !string.Equals(o.Value, stored, StringComparison.OrdinalIgnoreCase)))
-            options.Add(new OdsOption(stored, "A place that no longer has weather"));
+            options.Add(new OdsOption(stored, "A weather point that is no longer selectable"));
         return options;
     }
 
@@ -679,23 +679,23 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
                 Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
                 Unit: "min"),
-            new("weatherMaxTrackedLocations", "format_list_numbered", "Places on a schedule",
-                "How many locations may refresh their forecast in the background. Others are fetched only "
+            new("weatherMaxTrackedPoints", "format_list_numbered", "Points on a schedule",
+                "How many weather points may refresh their forecast in the background. Others are fetched only "
                 + "when someone looks. Lowering it pauses the most recently enabled ones first.",
                 SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.WeatherMaxTrackedLocationsMin, Max: SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
-                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
-                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedLocations", dto.WeatherMaxTrackedLocations),
-                Write: (p, req) => req.WeatherMaxTrackedLocations = p.IntRequest("weatherMaxTrackedLocations")),
-            new("weatherDefaultLocationId", "home", "Household default location",
-                "The weather everyone sees until they pick their own on the dashboard. Only locations with "
-                + "weather turned on can be chosen.",
+                Min: SystemSettingsBounds.WeatherMaxTrackedPointsMin, Max: SystemSettingsBounds.WeatherMaxTrackedPointsMax,
+                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedPoints),
+                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedPoints", dto.WeatherMaxTrackedPoints),
+                Write: (p, req) => req.WeatherMaxTrackedPoints = p.IntRequest("weatherMaxTrackedPoints")),
+            new("weatherDefaultPointId", "home", "Household default weather point",
+                "The weather everyone sees until they pick their own on the dashboard. Only weather points with "
+                + "their forecast on can be chosen.",
                 SettingClaim.Count, SettingControl.Text,
-                Field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
-                Load: (p, dto) => p.SetTextLoaded("weatherDefaultLocationId", dto.WeatherDefaultLocationId),
-                Write: (p, req) => req.WeatherDefaultLocationId = p.TextRequest("weatherDefaultLocationId"),
+                Field: nameof(SystemSettingsUpdate.WeatherDefaultPointId),
+                Load: (p, dto) => p.SetTextLoaded("weatherDefaultPointId", dto.WeatherDefaultPointId),
+                Write: (p, req) => req.WeatherDefaultPointId = p.TextRequest("weatherDefaultPointId"),
                 AllowEmpty: true,
-                Rule: WeatherRules.ValidateDefaultLocationId,
+                Rule: WeatherRules.ValidateDefaultPointId,
                 OptionsFrom: p => p.WeatherDefaultOptions()),
         ]),
         // ── Per-request caps (issue #421 Wave 3) ──────────────────────────────────────────────────
@@ -2715,6 +2715,8 @@ public partial class Settings
             // the affordance change without a reload. Note this reaches only THIS browser: a user with
             // an open gate is covered server-side by the disclosureVersion check, not by this call.
             Disclosures.Invalidate();
+            // The household default rides on the weather-point picker list (issue #388 §5).
+            WeatherOptions.Invalidate();
             StateHasChanged();
             await Task.Delay(OdsTiming.ConfirmFlashMs);
             _justSaved = false;

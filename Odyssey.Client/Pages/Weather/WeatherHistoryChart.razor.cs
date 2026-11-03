@@ -202,16 +202,29 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         })];
     }
 
-    private static string Enc(string s) => System.Net.WebUtility.HtmlEncode(s);
 
     // Razor reserves <text> as a control keyword, so the axis labels are emitted as raw SVG markup.
     // An amount axis says its unit once, above the top tick; temperature's ° rides on every tick.
-    private string YAxisMarkup => string.Concat(_ticks.Select(v =>
-        $"<text x=\"{F(X0 - 10)}\" y=\"{F(Sy(v) + 4)}\" text-anchor=\"end\"{(v == 0 ? " class=\"odc-lc-axis-zero\"" : "")}>"
-        + $"{Enc(Temp ? WeatherVisuals.Temp((decimal)v) : F(v))}</text>"))
-        + (Temp ? "" : $"<text x=\"{F(X0 - 10)}\" y=\"10\" text-anchor=\"end\">{Enc(_shown[0].Unit)}</text>");
+    /// <summary>One axis label, rendered as SVG text by the markup — never a markup string (issue #388 AC 24).</summary>
+    internal sealed record AxisLabel(string X, string Y, string Anchor, string Text, string? Class = null);
 
-    private string XAxisMarkup => string.Concat(DateLabels(From, N, X1 - X0).Select(l =>
+    private static RenderFragment AxisText(AxisLabel label) => builder =>
+    {
+        builder.OpenElement(0, "text");
+        builder.AddAttribute(1, "x", label.X);
+        builder.AddAttribute(2, "y", label.Y);
+        builder.AddAttribute(3, "text-anchor", label.Anchor);
+        builder.AddAttribute(4, "class", label.Class);
+        builder.AddContent(5, label.Text);
+        builder.CloseElement();
+    };
+
+    private IEnumerable<AxisLabel> YAxisLabels =>
+        _ticks.Select(v => new AxisLabel(F(X0 - 10), F(Sy(v) + 4), "end",
+                Temp ? WeatherVisuals.Temp((decimal)v) : F(v), v == 0 ? "odc-lc-axis-zero" : null))
+            .Concat(Temp ? [] : [new AxisLabel(F(X0 - 10), "10", "end", _shown[0].Unit)]);
+
+    private IEnumerable<AxisLabel> XAxisLabels => DateLabels(From, N, X1 - X0).Select(l =>
     {
         // A label centred on the newest column overhangs the viewBox on a narrow plot; one that would is
         // pinned to the edge instead (the axis text advances about AxisCharWidth units per character).
@@ -219,8 +232,8 @@ public partial class WeatherHistoryChart : IAsyncDisposable
         var width = l.Text.Length * OdsLineChart.AxisCharWidth;
         var anchor = l.Start ? (x + width > _vbW ? "end" : "start") : (x + width / 2 > _vbW ? "end" : "middle");
         if (anchor == "end") x = _vbW - 1;
-        return $"<text x=\"{F(x)}\" y=\"{F(YBot + 24)}\" text-anchor=\"{anchor}\">{Enc(l.Text)}</text>";
-    }));
+        return new AxisLabel(F(x), F(YBot + 24), anchor, l.Text);
+    });
 
     // ── Hover and keyboard readout (the LineChart pattern) ─────────────────────────────────────────
 

@@ -162,7 +162,7 @@ public sealed class DataExportService
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyFiles), PropertyFilesQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.PropertyEvents), PropertyEventsQuery(), cancellationToken);
         await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.Locations), LocationsQuery(), cancellationToken);
-        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.WeatherLocations), WeatherLocationsQuery(), cancellationToken);
+        await WriteTableAsync(export, rowCounts, nameof(FinanceDatabaseExport.WeatherPoints), WeatherPointsQuery(), cancellationToken);
     }
 
     /// <summary>
@@ -541,6 +541,7 @@ public sealed class DataExportService
                 CountryCode = location.CountryCode,
                 AddressKey = location.AddressKey,
                 MergedIntoLocationId = location.MergedIntoLocationId,
+                WeatherPointId = location.WeatherPointId,
                 Latitude = location.Latitude,
                 Longitude = location.Longitude,
                 AltitudeMeters = location.AltitudeMeters,
@@ -554,12 +555,13 @@ public sealed class DataExportService
 
     // ── Issue #348 ────────────────────────────────────────────────────────────
 
-    private IQueryable<WeatherLocationExport> WeatherLocationsQuery() =>
-        context.WeatherLocations.AsNoTracking()
-            .OrderBy(weather => weather.LocationId)
-            .Select(weather => new WeatherLocationExport
+    private IQueryable<WeatherPointExport> WeatherPointsQuery() =>
+        context.WeatherPoints.AsNoTracking()
+            .OrderBy(weather => weather.WeatherPointId)
+            .Select(weather => new WeatherPointExport
             {
-                LocationId = weather.LocationId,
+                WeatherPointId = weather.WeatherPointId,
+                Name = weather.Name,
                 ForecastEnabled = weather.ForecastEnabled,
                 HistoryEnabled = weather.HistoryEnabled,
                 IsTracked = weather.IsTracked,
@@ -567,6 +569,7 @@ public sealed class DataExportService
                 EnabledAt = weather.EnabledAt,
                 CurrentSiteVersion = weather.CurrentSiteVersion,
                 PurgeStartedAt = weather.PurgeStartedAt,
+                PurgeMode = weather.PurgeMode,
                 CreatedAt = weather.CreatedAt,
                 UpdatedAt = weather.UpdatedAt,
             });

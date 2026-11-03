@@ -412,18 +412,15 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
 
     private static async Task SeedAsync(OdysseyContext context)
     {
-        // Existing places: Åsen, an archived one, and Cabin … Cabin (7) to push a suffix past (6).
-        context.Locations.Add(NewLocation("location-åsen", "Åsen"));
-        var archived = NewLocation("location-archived", "Old Cabin");
-        archived.Archived = Now;
-        context.Locations.Add(archived);
-        context.Locations.Add(NewLocation("location-cabin-1", "Cabin"));
+        // Existing places: Åsen, an archived one, and Cabin … Cabin (7) to push a suffix past (6). Raw SQL: the
+        // Location entity maps a later column (Locations.WeatherPointId, issue #387) this schema does not have yet.
+        await LocationAsync(context, "location-åsen", "Åsen");
+        await LocationAsync(context, "location-archived", "Old Cabin", archived: Now);
+        await LocationAsync(context, "location-cabin-1", "Cabin");
         for (var i = 2; i <= 7; i++)
         {
-            context.Locations.Add(NewLocation($"location-cabin-{i}", $"Cabin ({i})"));
+            await LocationAsync(context, $"location-cabin-{i}", $"Cabin ({i})");
         }
-
-        await context.SaveChangesAsync();
 
         // Contacts and their old-shape addresses.
         foreach (var key in new[] { "contact-1", "contact-2", "contact-3" })
@@ -497,17 +494,11 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         context.ChangeTracker.Clear();
     }
 
-    private static Location NewLocation(string key, string name) => new()
-    {
-        LocationId = Id(key),
-        Name = name,
-        Latitude = 59.9m,
-        Longitude = 10.7m,
-        TimeZoneId = "Europe/Oslo",
-        Source = LocationSource.Manual,
-        CreatedAt = Now,
-        UpdatedAt = Now,
-    };
+    private static Task LocationAsync(OdysseyContext context, string key, string name, DateTime? archived = null) =>
+        context.Database.ExecuteSqlAsync($"""
+            INSERT INTO `Locations` (`LocationId`, `Name`, `Latitude`, `Longitude`, `TimeZoneId`, `Source`, `Archived`, `CreatedAt`, `UpdatedAt`)
+            VALUES ({Id(key)}, {name}, {59.9m}, {10.7m}, {"Europe/Oslo"}, {(int)LocationSource.Manual}, {archived}, {Now}, {Now})
+            """);
 
     private static Task AddressAsync(
         OdysseyContext context, string key, string contactKey, bool primary,

@@ -85,11 +85,11 @@ public class MoneyBoundsTests
         // and by CHECK constraints in the database (issue #350).
         (typeof(Context.Location), nameof(Context.Location.Latitude)),
         (typeof(Context.Location), nameof(Context.Location.Longitude)),
-        // Weather (issue #348): never written from a request body. Site coordinates are rounded copies of a
-        // Location's; the run, step, observation and day values are parsed from MET/Frost responses and
+        // Weather (issue #348): never written from a request body. Site coordinates are the rounded copies a
+        // weather-point write (issue #387, range-checked on NewWeatherPoint/UpdateWeatherPoint) produces; the run, step, observation and day values are parsed from MET/Frost responses and
         // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
-        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Latitude)),
-        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Longitude)),
+        (typeof(Context.WeatherPointSite), nameof(Context.WeatherPointSite.Latitude)),
+        (typeof(Context.WeatherPointSite), nameof(Context.WeatherPointSite.Longitude)),
         (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Latitude)),
         (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Longitude)),
         ..WeatherValueColumns(typeof(Context.WeatherForecastStep)),
@@ -248,6 +248,14 @@ public class MoneyBoundsTests
             "A geocode latitude for a place the write creates, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #380 §5.3a).",
         [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.Longitude)}"] =
             "A geocode longitude for a place the write creates, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #380 §5.3a).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.NewWeatherPoint.Latitude)}"] =
+            "A weather point's latitude, rounded to decimal(6,3); bounded by [Range(WeatherRules.LatitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.NewWeatherPoint.Longitude)}"] =
+            "A weather point's longitude, rounded to decimal(7,3); bounded by [Range(WeatherRules.LongitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint.Latitude)}"] =
+            "A weather point's latitude, rounded to decimal(6,3); bounded by [Range(WeatherRules.LatitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint.Longitude)}"] =
+            "A weather point's longitude, rounded to decimal(7,3); bounded by [Range(WeatherRules.LongitudeMin/Max)] (issue #387 §8).",
     };
 
     private sealed record DecimalMember(string Name, RangeAttribute? Range);

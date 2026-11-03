@@ -114,8 +114,8 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // scheduled places, no household default.
             new SystemSetting { Key = SystemSettingsKeys.WeatherUserAgentContact, Value = SystemSettingsDefaults.WeatherUserAgentContact, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.WeatherRefreshIntervalMinutes, Value = "1440", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.WeatherMaxTrackedLocations, Value = "5", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.WeatherDefaultLocationId, Value = SystemSettingsDefaults.WeatherDefaultLocationId, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherMaxTrackedPoints, Value = "5", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.WeatherDefaultPointId, Value = SystemSettingsDefaults.WeatherDefaultPointId, UpdatedAt = seededAt },
             // The file-analysis kill switch, model and destination (issue #439). Seeded to today's
             // effective values, so a default install is behaviourally identical: analysis OFF,
             // claude-sonnet-5, api.anthropic.com.

@@ -27,8 +27,18 @@
             {
                 <line class="odc-lc-zero" x1="@F(X0)" y1="@F(Sy(0))" x2="@F(X1)" y2="@F(Sy(0))" />
             }
-            <g class="odc-lc-axis">@((MarkupString)YAxisMarkup)</g>
-            <g class="odc-lc-axis">@((MarkupString)XAxisMarkup)</g>
+            <g class="odc-lc-axis">
+                @foreach (var label in YAxisLabels)
+                {
+                    @AxisText(label)
+                }
+            </g>
+            <g class="odc-lc-axis">
+                @foreach (var label in XAxisLabels)
+                {
+                    @AxisText(label)
+                }
+            </g>
 
             @* A day nobody measured is shaded when bars are drawn — a missing bar would otherwise read as a dry
                day. Lines break instead. *@

@@ -59,6 +59,12 @@ public interface ILocationsApiClient
 
     /// <summary>Deletes a location nothing uses (<c>204</c>); a generic <c>409</c> while anything does.</summary>
     Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>
+    /// Links the place to a weather point, or clears the link with null (issue #387 §5 endpoint 10). The response
+    /// carries the whole-km distance and any advisory; <c>422</c> keyed <c>weatherPointId</c> for an unusable point.
+    /// </summary>
+    Task<ApiResult<LocationWeatherPointLink>> SetWeatherPointAsync(Guid id, Guid? weatherPointId, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="ILocationsApiClient" />
@@ -119,4 +125,8 @@ public sealed class LocationsApiClient(IOdysseyApi api) : ILocationsApiClient
 
     public Task<ApiResult> DeleteAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Base}/{id}", null, ct);
+
+    public Task<ApiResult<LocationWeatherPointLink>> SetWeatherPointAsync(Guid id, Guid? weatherPointId, CancellationToken ct = default) =>
+        api.SendAsync<LocationWeatherPointLink>(
+            HttpMethod.Put, $"{Base}/{id}/weather-point", new SetLocationWeatherPoint { WeatherPointId = weatherPointId }, ct);
 }

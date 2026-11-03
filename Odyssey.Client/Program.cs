@@ -100,6 +100,8 @@ builder.Services.AddScoped<Odyssey.Client.Services.IReferenceDataCache, Odyssey.
 builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.Client.Services.ImportLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IMapStylesCache, Odyssey.Client.Services.MapStylesCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.IWeatherPointOptionsCache, Odyssey.Client.Services.WeatherPointOptionsCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.IWeatherClaimsRefresher, Odyssey.Client.Services.WeatherClaimsRefresher>();
 builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.Client.Services.AccountLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IContractLimitsCache, Odyssey.Client.Services.ContractLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IPropertyLimitsCache, Odyssey.Client.Services.PropertyLimitsCache>();

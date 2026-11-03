@@ -160,15 +160,17 @@ public static class PermissionClaims
     // deliberately no delete claim and a location could only be archived.
     public const string LocationsDelete = "locations.delete";
 
-    // Weather (issue #348). Reading weather and choosing one's own weather location are every role's;
-    // configuring which locations have weather, and purging a location's weather history, are Admin's
-    // alone. weather.history.delete is separate from weather.locations.update so the one destructive,
-    // erasure-shaped action can be revoked on its own.
+    // Weather (issue #348; weather points, issue #387). Reading weather and choosing one's own weather
+    // point are every role's; managing weather points — creating, moving, refreshing, purging and
+    // deleting them — is Admin's alone. weather.points.delete is separate from weather.points.update so
+    // the one destructive, erasure-shaped action can be revoked on its own. Linking a place to a point
+    // reuses locations.update plus weather.read. The three point values replaced the per-location
+    // weather claims (issue #387 §7.2); RoleClaimSeeder revokes the old values on its next run.
     public const string WeatherRead = "weather.read";
     public const string WeatherPreferencesUpdate = "weather.preferences.update";
-    public const string WeatherLocationsRead = "weather.locations.read";
-    public const string WeatherLocationsUpdate = "weather.locations.update";
-    public const string WeatherHistoryDelete = "weather.history.delete";
+    public const string WeatherPointsRead = "weather.points.read";
+    public const string WeatherPointsUpdate = "weather.points.update";
+    public const string WeatherPointsDelete = "weather.points.delete";
 
     /// <summary>
     /// Read another user's profile picture (issue #94 §10.5). A deliberately <b>low-tier</b> claim,

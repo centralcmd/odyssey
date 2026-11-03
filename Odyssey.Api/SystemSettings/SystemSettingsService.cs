@@ -39,7 +39,7 @@ public sealed class SystemSettingsService(
     IUserDisplayNameResolver displayNames,
     RequestCapCeilings ceilings,
     SecretSettingsService secrets,
-    IWeatherLocationRules weatherRules,
+    IWeatherPointRules weatherRules,
     ILogger<SystemSettingsService> logger)
 {
     /// <summary>
@@ -266,10 +266,10 @@ public sealed class SystemSettingsService(
             rows, SystemSettingsKeys.JournalIcsMaxExportRows, SystemSettingsKeys.JournalIcsMaxImportEntries,
             request.JournalIcsMaxExportRows, request.JournalIcsMaxImportEntries, "journal-entries");
 
-        // Phase 1d — the household weather default must name a selectable location (issue #348 §11). Only
+        // Phase 1d — the household weather default must name a selectable point (issue #348 §11, #387). Only
         // a CHANGE is checked: a stored default whose location was archived since is treated as unset on
         // read, and refusing every unrelated save until it is cleared would freeze the whole page.
-        await ValidateWeatherDefaultAsync(rows, request.WeatherDefaultLocationId, cancellationToken);
+        await ValidateWeatherDefaultAsync(rows, request.WeatherDefaultPointId, cancellationToken);
 
         // Phase 2 — every claim/shape/round-trip check passed; now mutate. Not a Mapster Adapt call:
         // IgnoreNullValues defaults to false, so a bare Adapt would write false/0 for every null
@@ -506,7 +506,7 @@ public sealed class SystemSettingsService(
             return;
         }
 
-        var stored = rows.TryGetValue(SystemSettingsKeys.WeatherDefaultLocationId, out var row) ? row.Value : "";
+        var stored = rows.TryGetValue(SystemSettingsKeys.WeatherDefaultPointId, out var row) ? row.Value : "";
         if (Guid.TryParse(stored, out var storedId) && storedId == id)
         {
             return;
@@ -515,9 +515,9 @@ public sealed class SystemSettingsService(
         if (!await weatherRules.IsSelectableAsync(context, id, cancellationToken))
         {
             throw new DomainValidationException(
-                "That location has no weather. Turn weather on for it on the Locations page first.",
+                "That weather point has no forecast. Turn its forecast on on the Weather points page first.",
                 code: null,
-                field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId));
+                field: nameof(SystemSettingsUpdate.WeatherDefaultPointId));
         }
     }
 

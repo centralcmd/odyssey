@@ -154,27 +154,35 @@ public class LocationResolverTests
     }
 
     [Fact]
-    public async Task The_household_default_and_a_preference_make_a_place_referenced()
+    public async Task Weather_no_longer_makes_a_place_referenced()
     {
+        // Issue #387 §8: the preference and the household default name a weather POINT, and a place's own link
+        // to a point is a column on the place — none of them is a use that blocks a delete.
         await using var context = TestContextFactory.CreateJournal();
         var preferred = await SeedAsync(context, Located("Preferred"));
         var household = await SeedAsync(context, Located("Household"));
-        var unused = await SeedAsync(context, Located("Unused"));
+        var linked = await SeedAsync(context, Located("Linked"));
+        var pointId = Guid.NewGuid();
+        context.WeatherPoints.Add(new Odyssey.Context.WeatherPoint
+        {
+            WeatherPointId = pointId, Name = "Oslo", CurrentSiteVersion = 1, HistoryFrom = new DateOnly(2025, 1, 1),
+        });
+        (await context.Locations.SingleAsync(l => l.LocationId == linked)).WeatherPointId = pointId;
         context.UserPreferences.Add(new Odyssey.Context.UserPreference
         {
             UserPreferenceId = Guid.NewGuid(), UserId = "u", Key = "weather-preferences",
-            PreferencesJson = $"{{\"defaultLocationId\":\"{preferred}\"}}", UpdatedAt = DateTime.UtcNow,
+            PreferencesJson = $"{{\"defaultPointId\":\"{preferred}\"}}", UpdatedAt = DateTime.UtcNow,
         });
         context.SystemSettings.Add(new Odyssey.Context.SystemSetting
         {
-            Key = Odyssey.Context.SystemSettingsKeys.WeatherDefaultLocationId, Value = household.ToString(), UpdatedAt = DateTime.UtcNow,
+            Key = Odyssey.Context.SystemSettingsKeys.WeatherDefaultPointId, Value = household.ToString(), UpdatedAt = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();
         var guard = new LocationReferenceGuard(context);
 
-        Assert.True(await guard.IsReferencedAsync(preferred, default));
-        Assert.True(await guard.IsReferencedAsync(household, default));
-        Assert.False(await guard.IsReferencedAsync(unused, default));
+        Assert.False(await guard.IsReferencedAsync(preferred, default));
+        Assert.False(await guard.IsReferencedAsync(household, default));
+        Assert.False(await guard.IsReferencedAsync(linked, default));
     }
 
     [Fact]

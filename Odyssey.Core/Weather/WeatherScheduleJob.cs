@@ -9,9 +9,10 @@ namespace Odyssey.Core.Weather;
 
 /// <summary>
 /// The weather schedule (issue #348 §3), run by <c>Odyssey.Worker</c> once a minute: the forecasts of the
-/// tracked locations within the cap, then the observations of every enabled location. Requests go out one
+/// tracked points within the cap, then the observations of every history-enabled point (issue #387: one
+/// dataset per point, however many places link to it). Requests go out one
 /// at a time, at most one a second. Every worker replica runs it; claiming on
-/// <see cref="WeatherLocationSchedule.Version"/> is what keeps two from fetching the same location.
+/// <see cref="WeatherPointSchedule.Version"/> is what keeps two from fetching the same point.
 /// </summary>
 /// <remarks>
 /// Nothing registers it in the API or any test host, so no test tier sends a request to MET; the tests
@@ -49,27 +50,25 @@ public sealed class WeatherScheduleJob(
             return;
         }
 
-        await LogArchivedSkipsAsync(context, cancellationToken);
-
-        var tracked = await WeatherLocationService.TrackedQueue(context)
-            .Select(w => w.LocationId)
-            .Take(settings.MaxTrackedLocations)
+        var tracked = await WeatherPointService.TrackedQueue(context)
+            .Select(w => w.WeatherPointId)
+            .Take(settings.MaxTrackedPoints)
             .ToListAsync(cancellationToken);
-        foreach (var locationId in tracked)
+        foreach (var pointId in tracked)
         {
-            // A fresh scope per location, so one location's tracked entities or failed save cannot leak.
+            // A fresh scope per point, so one point's tracked entities or failed save cannot leak.
             await using var inner = scopes.CreateAsyncScope();
             WeatherAttempt attempt;
             try
             {
                 attempt = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
-                    .FetchForecastAsync(locationId, WeatherFetchMode.Scheduled, cancellationToken);
+                    .FetchForecastAsync(pointId, WeatherFetchMode.Scheduled, cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                // One location's unexpected failure must not end the run: the queue is ordered, so it would
+                // One point's unexpected failure must not end the run: the queue is ordered, so it would
                 // come first again on every tick and starve every place behind it.
-                logger.LogError(ex, "Scheduled weather forecast fetch for location {LocationId} failed unexpectedly.", locationId);
+                logger.LogError(ex, "Scheduled weather forecast fetch for point {WeatherPointId} failed unexpectedly.", pointId);
                 await Task.Delay(RequestSpacing, time, cancellationToken);
                 continue;
             }
@@ -81,14 +80,13 @@ public sealed class WeatherScheduleJob(
         }
 
         var enabled = await (
-                from weather in context.WeatherLocations.AsNoTracking()
-                join location in context.Locations.AsNoTracking() on weather.LocationId equals location.LocationId
-                join schedule in context.WeatherLocationSchedules.AsNoTracking() on weather.LocationId equals schedule.LocationId
-                where weather.HistoryEnabled && weather.PurgeStartedAt == null && location.Archived == null
-                orderby weather.EnabledAt, weather.LocationId
+                from weather in context.WeatherPoints.AsNoTracking()
+                join schedule in context.WeatherPointSchedules.AsNoTracking() on weather.WeatherPointId equals schedule.WeatherPointId
+                where weather.HistoryEnabled && weather.PurgeStartedAt == null
+                orderby weather.EnabledAt, weather.WeatherPointId
                 select new
                 {
-                    weather.LocationId,
+                    weather.WeatherPointId,
                     schedule.NextObservationFetchAfterUtc,
                     // WeatherFetchService.FirstLookupPending, spelled out so the query translates to SQL.
                     FirstLookupPending = weather.StationResolvedAtUtc == null
@@ -104,12 +102,12 @@ public sealed class WeatherScheduleJob(
             try
             {
                 state = await inner.ServiceProvider.GetRequiredService<WeatherFetchService>()
-                    .FetchObservationsAsync(row.LocationId, cancellationToken);
+                    .FetchObservationsAsync(row.WeatherPointId, cancellationToken);
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
-                // As for forecasts: one location's unexpected failure must not starve the places behind it.
-                logger.LogError(ex, "Weather observation fetch for location {LocationId} failed unexpectedly.", row.LocationId);
+                // As for forecasts: one point's unexpected failure must not starve the places behind it.
+                logger.LogError(ex, "Weather observation fetch for point {WeatherPointId} failed unexpectedly.", row.WeatherPointId);
                 await Task.Delay(RequestSpacing, time, cancellationToken);
                 continue;
             }
@@ -140,47 +138,5 @@ public sealed class WeatherScheduleJob(
         lastUnreadableLog = now;
         logger.LogError(
             "The Frost client id cannot be decrypted, so no weather observations are fetched. Re-enter it in System settings → Weather.");
-    }
-
-    /// <summary>An archived location with weather on is skipped silently, after one Information line (§3).</summary>
-    private async Task LogArchivedSkipsAsync(OdysseyContext context, CancellationToken cancellationToken)
-    {
-        var rows = await (
-                from schedule in context.WeatherLocationSchedules
-                join weather in context.WeatherLocations on schedule.LocationId equals weather.LocationId
-                join location in context.Locations on weather.LocationId equals location.LocationId
-                where (weather.ForecastEnabled || weather.HistoryEnabled) && weather.PurgeStartedAt == null
-                      && (location.Archived != null) != schedule.ArchivedSkipLogged
-                select new { schedule, Archived = location.Archived != null })
-            .ToListAsync(cancellationToken);
-        if (rows.Count == 0)
-        {
-            return;
-        }
-
-        foreach (var row in rows)
-        {
-            if (row.Archived)
-            {
-                logger.LogInformation(
-                    "Weather for location {LocationId} is on but the location is archived; skipping it until it is restored.",
-                    row.schedule.LocationId);
-            }
-
-            row.schedule.ArchivedSkipLogged = row.Archived;
-        }
-
-        try
-        {
-            await context.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // A fetch or an Admin action rotated the version meanwhile; the flag is re-evaluated next tick.
-        }
-        finally
-        {
-            context.ChangeTracker.Clear();
-        }
     }
 }
