@@ -199,14 +199,14 @@ public static class SystemSettingsKeys
     // ---------------------------------------------------------------------------------------------
     // Weather (issue #348). The contact travels to MET Norway in the User-Agent of every weather
     // request, as MET's terms require; empty means nothing is fetched. The household default is a
-    // location id with no FK — WeatherLocationRules checks it is selectable on every write, and an
+    // location id with no FK — WeatherPointRules checks it is selectable on every write, and an
     // archived default is treated as unset on read.
     // ---------------------------------------------------------------------------------------------
 
     public const string WeatherUserAgentContact = "WeatherUserAgentContact";
     public const string WeatherRefreshIntervalMinutes = "WeatherRefreshIntervalMinutes";
-    public const string WeatherMaxTrackedLocations = "WeatherMaxTrackedLocations";
-    public const string WeatherDefaultLocationId = "WeatherDefaultLocationId";
+    public const string WeatherMaxTrackedPoints = "WeatherMaxTrackedPoints";
+    public const string WeatherDefaultPointId = "WeatherDefaultPointId";
 
     // ---------------------------------------------------------------------------------------------
     // Exchange-rate sync (issue #349). The global history start date is a string so that EMPTY can
@@ -294,8 +294,8 @@ public static class SystemSettingsKeys
         FileAnalysisBaseUrl,
         WeatherUserAgentContact,
         WeatherRefreshIntervalMinutes,
-        WeatherMaxTrackedLocations,
-        WeatherDefaultLocationId,
+        WeatherMaxTrackedPoints,
+        WeatherDefaultPointId,
         ExchangeRateHistoryStartDate,
         ExchangeRateSyncIntervalHours,
         FileStorageDeletionGraceHours,
