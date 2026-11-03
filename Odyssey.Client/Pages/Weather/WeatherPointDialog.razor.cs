@@ -233,6 +233,7 @@ public partial class WeatherPointDialog
     private void OnModeChanged(string mode)
     {
         _mode = mode;
+        _focusSearch = false;
         _errors.Clear();
         _conflict = null;
     }
@@ -279,6 +280,7 @@ public partial class WeatherPointDialog
     {
         var c = picked.Candidate;
         _candidate = picked;
+        _focusSearch = false;
         if (!_nameTouched)
             _name = c.Name.Length > WeatherRules.PointNameMaxLength ? c.Name[..WeatherRules.PointNameMaxLength] : c.Name;
         _lat = WeatherRules.RoundCoordinate(c.Latitude);

@@ -414,6 +414,14 @@ public class WeatherPointsUiTests : IDisposable
         cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
             i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id)));
         Assert.Empty(cut.FindComponents<OdsCoordinateField>());
+
+        // Leaving the card and choosing it again must not pull focus into the new search (WCAG 3.2.2).
+        var select = cut.FindComponent<OdsCardSelect>().Instance;
+        await cut.InvokeAsync(() => select.ValueChanged.InvokeAsync(WeatherPointDialog.CoordinatesMode));
+        await cut.InvokeAsync(() => select.ValueChanged.InvokeAsync(WeatherPointDialog.SearchMode));
+        var again = cut.WaitForElement(".loc-search input[role=combobox]");
+        Assert.DoesNotContain(ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], again.Id));
     }
 
     [Theory]
