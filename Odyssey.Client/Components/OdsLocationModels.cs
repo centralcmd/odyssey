@@ -191,18 +191,18 @@ public sealed class PlaceDraft
         return false;
     }
 
-    /// <summary>
-    /// A staged Kartverket address (§3.2a): <c>POST /api/locations</c> named by the composed address, with the
-    /// structured fields and the geocode. A <c>409</c> keyed <c>line1</c> means the address is already a saved
-    /// place, which is found by its address key and linked unchanged — never posted again. A <c>409</c> keyed
-    /// <c>name</c> means a different place has the name, so the name is retried with a suffix.
-    /// </summary>
     /// <summary>How many places sharing a street line the lookup reads — far beyond the picker's page of 20.</summary>
     internal const int AddressLookupPageSize = 500;
 
     internal const string AddressArchived =
         "This address is archived on the Locations page — restore it there, or pick another place.";
 
+    /// <summary>
+    /// A staged Kartverket address (§3.2a): <c>POST /api/locations</c> named by the composed address, with the
+    /// structured fields and the geocode. A <c>409</c> keyed <c>line1</c> means the address is already a saved
+    /// place, which is found by its address key and linked unchanged — never posted again. A <c>409</c> keyed
+    /// <c>name</c> means a different place has the name, so the name is retried with a suffix.
+    /// </summary>
     private async Task<bool> CreateAddressAsync(ILocationsApiClient locations, LocationPick pick, LocationCandidate candidate)
     {
         var baseName = AddressPlaceName(candidate);
