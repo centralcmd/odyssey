@@ -174,21 +174,150 @@ public class ControlContrastTests
         Assert.NotEqual(Hex(palette.TextSecondary), border, StringComparer.OrdinalIgnoreCase);
     }
 
+    /// <summary>The client's outlined-input border rule (see <see cref="A_named_control_boundary_uses_the_control_border"/>).</summary>
+    private const string ClientOutlinedBorder =
+        ".mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border";
+
     /// <summary>
-    /// MudBlazor.min.css loads after the client's sheets and paints the resting outlined-input
-    /// border with the sub-3:1 hairline under <c>.mud-input.mud-input-outlined .mud-input-outlined-border</c>.
-    /// The client's <c>--control-border</c> rule must out-rank that selector or it never applies —
-    /// which it silently didn't, until the search field was seen beside the filter triggers. Its
-    /// border colour is pinned by <see cref="A_named_control_boundary_uses_the_control_border"/>; this
-    /// pins that the selector names the border class twice, the extra class being what out-ranks.
+    /// MudBlazor.min.css loads after the client's sheets and paints the resting outlined-input border
+    /// with the sub-3:1 hairline. At equal specificity the later sheet wins, so the client's
+    /// <c>--control-border</c> rule must be strictly MORE specific than MudBlazor's resting rule or it
+    /// never applies — which it silently didn't, until the search field was seen beside the filter
+    /// triggers. Read from the MudBlazor package actually restored, so a MudBlazor upgrade that
+    /// re-specifies the resting rule fails here rather than in a browser.
     /// </summary>
     [Fact]
     public void The_outlined_input_border_rule_outranks_MudBlazors_resting_rule()
     {
-        Assert.Contains(Rules(File.ReadAllText(ComponentsCss)), r =>
-            r.Selector == ".mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border");
-        Assert.DoesNotContain(Rules(File.ReadAllText(ComponentsCss)), r =>
-            r.Selector == ".mud-input.mud-input-outlined .mud-input-outlined-border" && r.Body.Contains("border-color", StringComparison.Ordinal));
+        var ours = Specificity(Assert.Single(Rules(File.ReadAllText(ComponentsCss)), r => r.Selector == ClientOutlinedBorder).Selector);
+        var resting = Specificity(MudSelectorSettingBorderColor(
+            ".mud-input.mud-input-outlined .mud-input-outlined-border", "--mud-palette-lines-inputs"));
+
+        Assert.True(ours.CompareTo(resting) > 0,
+            $"The client rule {ours} must out-rank MudBlazor's resting rule {resting}.");
+    }
+
+    /// <summary>
+    /// The other half of the same bargain: MudBlazor's focus and disabled rules are (0,4,0) like the
+    /// client's and win only because MudBlazor.min.css loads later. One more class on the client
+    /// selector would silently replace the focus border and the disabled border on every outlined
+    /// input. Hover is more specific and the error rule is <c>!important</c>, so they are pinned too.
+    /// </summary>
+    [Theory]
+    [InlineData(".mud-input.mud-input-outlined:focus-within>.mud-input-outlined-border", "--mud-palette-primary")]
+    [InlineData(".mud-input.mud-input-outlined.mud-disabled .mud-input-outlined-border", "--mud-palette-action-disabled")]
+    [InlineData(".mud-input.mud-input-outlined:not(.mud-disabled):not(:focus-within):hover .mud-input-outlined-border", "--mud-palette-action-default")]
+    public void The_outlined_input_border_rule_never_outranks_MudBlazors_state_rules(string mudSelector, string mudColor)
+    {
+        var ours = Specificity(ClientOutlinedBorder);
+        var state = Specificity(MudSelectorSettingBorderColor(mudSelector, mudColor));
+
+        Assert.True(ours.CompareTo(state) <= 0,
+            $"The client rule {ours} must not out-rank MudBlazor's state rule {mudSelector} {state}.");
+    }
+
+    [Fact]
+    public void MudBlazors_error_border_stays_important()
+    {
+        var error = Assert.Single(MudRules(), r => r.Selector == ".mud-input-error .mud-input-outlined-border");
+        Assert.Matches(@"border-color:\s*var\(--mud-palette-error\)\s*!important", error.Body);
+    }
+
+    /// <summary>Ties above resolve by load order, so MudBlazor's sheet has to stay after the client's.</summary>
+    [Fact]
+    public void MudBlazors_stylesheet_loads_after_the_clients()
+    {
+        var index = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "index.html"));
+        var mud = index.IndexOf("_content/MudBlazor/MudBlazor.min.css", StringComparison.Ordinal);
+        var ours = index.IndexOf("css/odyssey-components.css", StringComparison.Ordinal);
+
+        Assert.True(ours >= 0 && mud > ours, "MudBlazor.min.css must be linked after css/odyssey-components.css.");
+    }
+
+    // ── Page-header Search region ───────────────────────────────────────────────────────────────
+
+    private static readonly string PageHeaderCss =
+        Path.Combine(ClientSource.Root, "Components", "PageHeader.razor.css");
+
+    /// <summary>
+    /// The Search region swaps every control's edge to the quiet border by redefining the token on the
+    /// region itself, so the controls need no per-control rule. Without this declaration the region's
+    /// controls fall back to the full-strength --control-border while the fill stays recessed.
+    /// </summary>
+    [Fact]
+    public void The_search_region_redefines_the_control_border_as_the_quiet_one()
+    {
+        var body = Rule(PageHeaderCss, ".ph-root ::deep .ph-search-region");
+
+        Assert.Matches(@"--control-border:\s*var\(--control-border-quiet\)\s*;", body);
+    }
+
+    /// <summary>
+    /// Every control a Search region holds recesses to the page-background fill, the same fill the
+    /// overview's breakdown tiles use; one missing here reads as a lighter box among darker ones, which
+    /// is the inconsistency this rule exists to remove. A quiet multiselect keeps its transparent rest.
+    /// </summary>
+    [Theory]
+    [InlineData(".mud-input.mud-input-outlined")]
+    [InlineData(".odc-input")]
+    [InlineData(".odc-ms-trigger:not(.quiet)")]
+    [InlineData(".odc-sortsel-trigger")]
+    [InlineData(".odc-sortsel-dir")]
+    [InlineData(".odc-rpp-trigger")]
+    [InlineData(".odc-dpr")]
+    public void Every_search_region_control_recesses_to_the_background_fill(string control)
+    {
+        var wanted = ".ph-root ::deep .ph-search-region " + control;
+        var rule = Assert.Single(Rules(File.ReadAllText(PageHeaderCss)),
+            r => r.Selector.Split(',').Contains(wanted, StringComparer.Ordinal));
+
+        Assert.Matches(@"background-color:\s*var\(--mud-palette-background\)\s*;", rule.Body);
+    }
+
+    // ── MudBlazor stylesheet + specificity ──────────────────────────────────────────────────────
+
+    private static readonly Lazy<string> MudCss = new(() =>
+    {
+        var props = File.ReadAllText(Path.Combine(ClientSource.Root, "..", "Directory.Packages.props"));
+        var version = Regex.Match(props, @"<PackageVersion\s+Include=""MudBlazor""\s+Version=""(?<v>[^""]+)""").Groups["v"].Value;
+        Assert.False(string.IsNullOrEmpty(version), "MudBlazor has no PackageVersion in Directory.Packages.props.");
+
+        var packages = Environment.GetEnvironmentVariable("NUGET_PACKAGES") is { Length: > 0 } configured
+            ? configured
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
+        var path = Path.Combine(packages, "mudblazor", version, "staticwebassets", "MudBlazor.min.css");
+        Assert.True(File.Exists(path), $"MudBlazor.min.css not found at {path} — restore the solution first.");
+        return File.ReadAllText(path);
+    });
+
+    /// <summary>MudBlazor's rules with each comma-separated selector split into its own entry.</summary>
+    private static IEnumerable<(string Selector, string Body)> MudRules() =>
+        Rules(MudCss.Value).SelectMany(r => r.Selector.Split(',').Select(sel => (sel, r.Body)));
+
+    private static string MudSelectorSettingBorderColor(string selector, string colorToken) =>
+        Assert.Single(MudRules(), r => r.Selector == selector
+            && Regex.IsMatch(r.Body, @"border-color:\s*var\(" + Regex.Escape(colorToken) + @"\)")).Selector;
+
+    /// <summary>
+    /// CSS selector specificity as (ids, classes/attributes/pseudo-classes, types). Covers what these
+    /// selectors use: <c>:not()</c> and <c>:is()</c> count their argument, <c>:where()</c> counts nothing,
+    /// pseudo-elements count as types.
+    /// </summary>
+    private static (int A, int B, int C) Specificity(string selector)
+    {
+        var (a, b, c) = (0, 0, 0);
+        var rest = Regex.Replace(selector, @":where\((?:[^()]|\((?<d>)|\)(?<-d>))*\)", "");
+        foreach (Match m in Regex.Matches(rest, @":(?:not|is)\((?<arg>(?:[^()]|\((?<d>)|\)(?<-d>))*)\)"))
+        {
+            var inner = Specificity(m.Groups["arg"].Value);
+            (a, b, c) = (a + inner.A, b + inner.B, c + inner.C);
+        }
+        rest = Regex.Replace(rest, @":(?:not|is)\((?:[^()]|\((?<d>)|\)(?<-d>))*\)", "");
+        a += Regex.Matches(rest, @"#[\w-]+").Count;
+        b += Regex.Matches(rest, @"\.[\w-]+|\[[^\]]*\]|(?<!:):[\w-]+").Count;
+        c += Regex.Matches(rest, @"::[\w-]+").Count;
+        c += Regex.Matches(Regex.Replace(rest, @"[.#:\[][^\s>+~.#:\[]*\]?", " "), @"(?<![\w-])[a-zA-Z][\w-]*").Count;
+        return (a, b, c);
     }
 
     /// <summary>
