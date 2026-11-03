@@ -978,7 +978,7 @@ operator's concern.
 ### Release note
 
 - **New claims.** `locations.read` (every role, Guest included), `locations.create` and
-  `locations.update` (Admin, Owner, User). There is no `locations.delete`. Claims are baked into the
+  `locations.update` (Admin, Owner, User). Issue #380 later added `locations.delete` (below). Claims are baked into the
   auth cookie, so **every user must sign out and back in** before the Locations page appears.
 - **Address search sends text to a third party** (below).
 - **The runtime image needs `tzdata`.** The API Dockerfile installs it, and the API refuses to start
@@ -1017,23 +1017,54 @@ viewing a location's map sends the viewer's IP address and the map tiles around 
 tile host (see [Location map](#location-map-what-leaves-the-deployment-and-how-to-switch-it-off));
 and locations are kept until someone overwrites them (next section).
 
+### Release note: unified locations (issue #380)
+
+- **Take and verify a backup first.** The upgrade converts every contact address, every property
+  address and every free-text place on calendar events, recurring series and journal entries into
+  locations, once, and drops the old address columns in the same release. No copy of the old values is
+  kept, so **rollback is a database restore** — a migration `Down()` restores schema, not rows. The
+  migration service logs the conversion's row counts at start and its created and linked counts at the
+  end (counts only).
+- **A contact address with no usable text is removed.** An `Addresses` row whose six fields are all
+  empty once control characters and whitespace are cleaned has no address to link to a place. The
+  conversion deletes such rows before the contract migration and logs how many (a warning, count only);
+  the contact itself is kept. This is an accepted loss, chosen so the upgrade never stops on it.
+- **Link-like values stay text.** A place that looks like a meeting link or carries a passcode is never
+  turned into a location (locations are readable by every `locations.read` holder, Guest included).
+- **New claim `locations.delete`** (Admin, Owner, User; not Guest). **Every user must sign out and back
+  in** to receive it.
+- **Converted places have no coordinates** until someone geocodes them on the Locations page.
+- **An event or entry linked to a geocoded place without weather shows no weather** — the linked place
+  is used as if chosen explicitly, with no fallback to the caller's preference or the household default.
+- **`locations.read` sees every address in the app** (product decision 3), including those that used to
+  sit behind `contacts.read` or `properties.read` alone.
+
 ### Erasing a location (data-subject requests)
 
-There is **no delete** in this version — a product decision, recorded in issue #350 §7.8. An update
-overwrites in place and keeps no previous value anywhere in the application, so erasure is an edit:
+Since issue #380 an **unused** location can be deleted outright under `locations.delete` — a real
+`DELETE`, the erasure path. A location something still uses (a contact address, a property, an event,
+a recurring series, a journal entry, weather, a user's weather preference, the household default, or a
+merge forwarder) refuses with a `409`.
 
-1. As **Admin**, find the row on the Locations page (turn on *Archived* in the status filter if it is
-   already archived). **If the location has weather** (issue #348), turn **both** its forecast and its
-   historical data off and then **Delete weather history** first — the weather tables hold their own copies of the coordinates (the
-   frozen sites and every forecast run), and an edit of the location does not reach them. See
+1. As **Admin**, find the row on the Locations page. **If the location has weather** (issue #348), turn
+   **both** its forecast and its historical data off and then **Delete weather history** first — the
+   weather tables hold their own copies of the coordinates (the frozen sites and every forecast run),
+   and an edit of the location does not reach them. See
    [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
-2. **Edit** it: replace the name with something neutral (it must stay unique, e.g. `Erased 2026-10-23`),
-   clear the address and the description, and replace the coordinates with a coarse value (e.g. `0, 0`).
-   Save, then **Archive** it.
-3. The audit log records who made the change and which fields changed — never the old values.
-4. Copies outside the live row are **not** purged by the edit: the Admin data export (which includes
-   locations) and database backups age out under your existing export and backup retention.
-5. Record the request, the date and the backup retention that still applies.
+2. **If it is unused** (the *Not used* filter, `?referenced=false`), **delete** it.
+   **Deleting a contact or a property never deletes its address**: the address stays behind as an unused
+   location, readable by every `locations.read` holder (Guest included). When a request follows the
+   deletion of a contact or a property, open the Locations page, choose the **Not used** filter to find
+   the addresses those records left, and delete each one that belonged to the data subject.
+3. **If it is used**, either overwrite it in place — replace the name with something neutral (it must
+   stay unique, e.g. `Erased 2026-10-23`), clear the address fields, the address text and the
+   description, and clear the coordinates; an update keeps no previous value — or **merge** it into
+   another place and then delete the merged-away forwarder. A forwarder must be deleted before the place
+   it forwards to.
+4. The log records who deleted, merged or changed it and which fields changed — never the values.
+5. Copies outside the live row are **not** purged: the Admin data export (which includes locations) and
+   database backups age out under your existing export and backup retention.
+6. Record the request, the date and the backup retention that still applies.
 
 Deleting a user leaves every location they created; only the attribution is cleared.
 

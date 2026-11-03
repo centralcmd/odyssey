@@ -5,6 +5,12 @@ namespace Odyssey.Client.Components;
 
 public partial class PageHeader
 {
+    /// <summary>
+    /// The id of the page's one <c>h1</c> (focusable, <c>tabindex="-1"</c>): the last link of a focus chain
+    /// when the row an action was about is gone — a deleted place with no neighbour (issue #383 §6.5).
+    /// </summary>
+    public const string HeadingId = "page-heading";
+
     /// <summary>Page name shown as the title (rendered at Typo.h2).</summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 

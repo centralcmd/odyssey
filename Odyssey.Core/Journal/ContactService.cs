@@ -10,6 +10,7 @@ using DetachedContactLinks = Odyssey.Dtos.Finance.DetachedContactLinks;
 using ContactDeleteBlockerClass = Odyssey.Dtos.Finance.ContactDeleteBlockerClass;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Journal.Interop;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Mapster;
@@ -57,7 +58,7 @@ public class ContactService
         .Include(c => c.PersonDetails)
         .Include(c => c.OrganizationDetails)
         .Include(c => c.Aliases)
-        .Include(c => c.Addresses)
+        .Include(c => c.Addresses).ThenInclude(a => a.Location)
         .Include(c => c.EmailAddresses)
         .Include(c => c.PhoneNumbers)
         .AsSplitQuery();
@@ -65,7 +66,8 @@ public class ContactService
     /// <summary>Server-side paged list (issue #277): search + type/status filters + allowlisted sort.</summary>
     public async Task<PagedResult<ExistingContact>> ListAsync(
         ContactsQueryParams query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
         var q = ApplyFilters(ReadQuery(), query);
 
@@ -80,7 +82,9 @@ public class ContactService
         };
         q = sorted.ThenBy(c => c.ContactId);
 
-        return await q.ToPagedResultAsync(query.Offset, query.Limit, MapWithOrderedContacts, cancellationToken);
+        var page = await q.ToPagedResultAsync(query.Offset, query.Limit, MapWithOrderedContacts, cancellationToken);
+        await FillOtherUsesAsync(page.Items.SelectMany(c => c.Addresses).ToList(), claims, cancellationToken);
+        return page;
     }
 
     /// <summary>
@@ -190,12 +194,17 @@ public class ContactService
         };
     }
 
-    public async Task<ExistingContact?> Get(Guid contactId, CancellationToken cancellationToken = default)
+    public async Task<ExistingContact?> Get(
+        Guid contactId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var contact = await ReadQuery()
             .FirstOrDefaultAsync(value => value.ContactId == contactId, cancellationToken);
+        if (contact is null)
+            return null;
 
-        return contact is null ? null : MapWithOrderedContacts(contact);
+        var dto = MapWithOrderedContacts(contact);
+        await FillOtherUsesAsync(dto.Addresses, claims, cancellationToken);
+        return dto;
     }
 
     // EF can't order an Include, so the inline contact collections are sorted after materialisation to
@@ -1121,39 +1130,279 @@ public class ContactService
     // One code path per verb, shared by all three collections (issue #287 M7). Each collection supplies
     // only what differs: its DbSet, its label-scope check, and how a request becomes column values.
 
-    public Task<IReadOnlyList<ExistingAddress>?> GetAddresses(Guid contactId, CancellationToken cancellationToken = default) =>
-        GetMethodsAsync<Address, ExistingAddress>(context.Addresses, contactId, cancellationToken);
+    /// <summary>Null when the contact does not exist; primary first, then by id. The address fields are
+    /// projected from each row's linked location (issue #380), with <see cref="ExistingAddress.OtherUses"/>
+    /// counted over the kinds <paramref name="claims"/> may read.</summary>
+    public async Task<IReadOnlyList<ExistingAddress>?> GetAddresses(
+        Guid contactId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+    {
+        if (!await context.Contacts.AnyAsync(c => c.ContactId == contactId, cancellationToken))
+            return null;
 
-    public Task<ExistingAddress?> CreateAddress(Guid contactId, NewAddress request, CancellationToken cancellationToken = default) =>
-        CreateMethodAsync<Address, ExistingAddress>(context.Addresses, contactId, request.IsPrimary,
-            contact => RequireLabelValidFor(request.Label, contact.Type),
-            () => new Address
-            {
-                ContactId = contactId,
-                Label = request.Label,
-                Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1"),
-                Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2"),
-                City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City"),
-                PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code"),
-                Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region"),
-                CountryCode = NormalizeCountryCode(request.CountryCode),
-            },
-            cancellationToken);
+        var rows = await context.Addresses.AsNoTracking()
+            .Include(a => a.Location)
+            .Where(a => a.ContactId == contactId)
+            .OrderByDescending(a => a.IsPrimary).ThenBy(a => a.Id)
+            .ToListAsync(cancellationToken);
+        var dtos = rows.Adapt<List<ExistingAddress>>();
+        await FillOtherUsesAsync(dtos, claims, cancellationToken);
+        return dtos;
+    }
 
-    public Task<bool> UpdateAddress(Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default) =>
-        UpdateMethodAsync<Address>(context.Addresses, contactId, addressId, request.IsPrimary,
-            contact => RequireLabelValidFor(request.Label, contact.Type),
-            address =>
+    /// <summary>
+    /// Null when the contact does not exist. The address is a link to a place (issue #380 §5.3), given by
+    /// <see cref="NewAddress.LocationId"/> or found-or-created from the fields; <c>applyTo</c> is ignored, since
+    /// a new address has no linked place to edit.
+    /// </summary>
+    /// <param name="claims">The caller's location claims; null is no capability at all (pass <see cref="LocationClaims.Trusted"/> explicitly for a trusted, non-HTTP caller).</param>
+    /// <param name="userId">The acting user, attributed on a place this creates and in the log.</param>
+    public async Task<ExistingAddress?> CreateAddress(
+        Guid contactId, NewAddress request, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null, string? userId = null) =>
+        (await CreateAddressCoreAsync(contactId, request, claims, userId, cancellationToken)).Address;
+
+    /// <summary><see cref="CreateAddress"/>, plus whether a new place was created — vCard import counts it.</summary>
+    internal async Task<(ExistingAddress? Address, bool PlaceCreated)> CreateAddressCoreAsync(
+        Guid contactId, NewAddress request, LocationClaims? claims, string? userId, CancellationToken cancellationToken)
+    {
+        claims ??= LocationClaims.None;
+        var contact = await LoadForChildMutation(contactId, cancellationToken);
+        if (contact is null)
+            return (null, false);
+
+        RequireLabelValidFor(request.Label, contact.Type);
+        var resolver = NewResolver();
+        var location = await ResolveAddressLinkAsync(resolver, request, currentId: null, claims, userId, cancellationToken);
+        var placeCreated = resolver.PendingCreates > 0;
+        await EnsureNotListedAsync(contactId, location.LocationId, excludeAddressId: null, cancellationToken);
+
+        var siblings = await context.Addresses.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+        var created = new Address
+        {
+            ContactId = contactId,
+            Label = request.Label,
+            LocationId = location.LocationId,
+            Location = location,
+        };
+        context.Addresses.Add(created);
+
+        ArbitratePrimaryOnCreate(siblings, created, request.IsPrimary);
+        Touch(contact);
+        await SaveAddressAsync(resolver, cancellationToken);
+
+        logger?.LogInformation(
+            "Contact {ContactId} address {AddressId} linked to location {LocationId} by {ActorUserId}.",
+            contactId, created.Id, created.LocationId, userId);
+        var dto = created.Adapt<ExistingAddress>();
+        await FillOtherUsesAsync([dto], claims, cancellationToken);
+        return (dto, placeCreated);
+    }
+
+    /// <summary>
+    /// False when the contact does not exist or the row is not one of its rows. A <c>locationId</c> relinks
+    /// (a changed one needs <c>locations.read</c>); unchanged fields keep the link; changed fields need
+    /// <see cref="NewAddress.ApplyTo"/> (issue #380 §5.3, v6–v8):
+    /// <list type="bullet">
+    /// <item><c>ThisRecord</c> — copy-on-write under <c>locations.create</c>; the old place is unchanged;</item>
+    /// <item><c>AllUses</c> — the linked place is edited in place under <c>locations.update</c>, with
+    /// <see cref="NewAddress.ExpectedOtherUses"/> rechecked under <c>FOR UPDATE</c>;</item>
+    /// <item>a change of case or whitespace only (the address key is unchanged) is applied in place as
+    /// <c>AllUses</c>, whatever <c>applyTo</c> says, since there is no other place to move to.</item>
+    /// </list>
+    /// The whole write is one transaction. A place is never deleted here.
+    /// </summary>
+    public async Task<bool> UpdateAddress(
+        Guid contactId, Guid addressId, NewAddress request, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null, string? userId = null)
+    {
+        claims ??= LocationClaims.None;
+        var found = false;
+        var mode = "kept";
+        Guid? linked = null;
+
+        await LocationTransactions.ExecuteAsync(context, async () =>
+        {
+            found = false;
+            var contact = await LoadForChildMutation(contactId, cancellationToken);
+            if (contact is null)
+                return;
+
+            var address = await FindChildAsync(context.Addresses, contactId, addressId, cancellationToken);
+            if (address is null)
+                return;
+
+            found = true;
+            RequireLabelValidFor(request.Label, contact.Type);
+            await context.Entry(address).Reference(a => a.Location).LoadAsync(cancellationToken);
+
+            var resolver = NewResolver();
+            if (request.LocationId is not null)
             {
-                address.Label = request.Label;
-                address.Line1 = CleanRequired(request.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1");
-                address.Line2 = CleanOptional(request.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2");
-                address.City = CleanRequired(request.City, ContactMethodLimits.CityMaxLength, "City");
-                address.PostalCode = CleanOptional(request.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code");
-                address.Region = CleanOptional(request.Region, ContactMethodLimits.RegionMaxLength, "Region");
-                address.CountryCode = NormalizeCountryCode(request.CountryCode);
-            },
+                var location = await ResolveAddressLinkAsync(resolver, request, address.LocationId, claims, userId, cancellationToken);
+                mode = location.LocationId == address.LocationId ? "kept" : "relinked";
+                await EnsureNotListedAsync(contactId, location.LocationId, addressId, cancellationToken);
+                address.LocationId = location.LocationId;
+                address.Location = location;
+            }
+            else
+            {
+                var fields = RequiredAddressFields(request);
+                var geocode = GeocodeOf(request);
+                var current = address.Location;
+                if (fields != LocationAddress.FromLocation(current))
+                {
+                    var sameKey = fields.Key is { } key && key == current.AddressKey;
+                    if (sameKey || request.ApplyTo == AddressApplyTo.AllUses)
+                    {
+                        mode = "edited in place";
+                        await resolver.EditInPlaceAsync(
+                            new LocationResolver.InPlaceEdit(current.LocationId, fields, PropertyFields: false,
+                                request.ExpectedOtherUses, LocationReferenceGuard.Kind.Contact),
+                            claims, userId, cancellationToken);
+                    }
+                    else if (request.ApplyTo == AddressApplyTo.ThisRecord)
+                    {
+                        mode = "copied";
+                        var location = (await resolver.FindOrCreateAsync(
+                            fields, LocationSource.ContactAddress, userId, claims, cancellationToken, geocode)).Location;
+                        await EnsureNotListedAsync(contactId, location.LocationId, addressId, cancellationToken);
+                        address.LocationId = location.LocationId;
+                        address.Location = location;
+                    }
+                    else
+                    {
+                        throw new DomainUnprocessableException(
+                            "Say whether the new address applies to this contact only or to every use of the place.", "applyTo");
+                    }
+                }
+            }
+
+            address.Label = request.Label;
+            var siblings = await context.Addresses.Where(m => m.ContactId == contactId).ToListAsync(cancellationToken);
+            ArbitratePrimaryOnUpdate(siblings, address, request.IsPrimary);
+            Touch(contact);
+            await SaveAddressAsync(resolver, cancellationToken);
+            linked = address.LocationId;
+        }, IsolationLevel.ReadCommitted, cancellationToken);
+
+        if (found)
+        {
+            logger?.LogInformation(
+                "Contact {ContactId} address {AddressId} saved by {ActorUserId}: location {LocationId} {Mode}.",
+                contactId, addressId, userId, linked, mode);
+        }
+
+        return found;
+    }
+
+    private LocationResolver NewResolver() => new(context, timeProvider, logger);
+
+    /// <summary>
+    /// The place a create, or a <c>locationId</c> update, links to: by id (an address-complete place; a changed
+    /// link needs <c>locations.read</c>; fields sent with it must equal the place's, else <c>422</c> keyed
+    /// <c>locationId</c>), or found-or-created from the fields under <c>locations.create</c>.
+    /// </summary>
+    private static async Task<Odyssey.Context.Location> ResolveAddressLinkAsync(
+        LocationResolver resolver, NewAddress request, Guid? currentId, LocationClaims claims, string? userId,
+        CancellationToken cancellationToken)
+    {
+        if (request.LocationId is { } id)
+        {
+            var location = await resolver.LinkByIdAsync(id, currentId, requireAddress: true, claims, cancellationToken);
+            var sent = SentAddressFields(request);
+            if (!sent.IsEmpty && sent != LocationAddress.FromLocation(location))
+            {
+                throw new DomainUnprocessableException(
+                    "Send either a place or address fields; these fields do not match that place.", LocationResolver.LocationIdField);
+            }
+
+            return location;
+        }
+
+        var fields = RequiredAddressFields(request);
+        var geocode = GeocodeOf(request);
+        return (await resolver.FindOrCreateAsync(
+            fields, LocationSource.ContactAddress, userId, claims, cancellationToken, geocode)).Location;
+    }
+
+    // The optional geocode (§5.3a, v9): validated whenever the fields path runs, so its 422s do not depend on
+    // whether the address already exists, and applied only to a place the resolver creates.
+    private static LocationGeocode? GeocodeOf(NewAddress request) => LocationGeocode.From(
+        request.Latitude, request.Longitude, request.TimeZoneId, request.Source, request.SourceReference);
+
+    private static LocationAddress SentAddressFields(NewAddress request) => LocationAddress.Of(
+        request.Line1, request.Line2, request.PostalCode, request.City, request.Region, request.CountryCode);
+
+    // The fields path (§5.3): cleaned into the stored form, the length and country shape checked as before
+    // issue #380 (400s), and line 1, city and country required — a 422 keyed on the first one missing, since
+    // the id path leaves them out of the body.
+    private static LocationAddress RequiredAddressFields(NewAddress request)
+    {
+        var fields = SentAddressFields(request);
+        CheckLength(fields.Line1, ContactMethodLimits.AddressLineMaxLength, "Line 1");
+        CheckLength(fields.Line2, ContactMethodLimits.AddressLineMaxLength, "Line 2");
+        CheckLength(fields.PostalCode, ContactMethodLimits.PostalCodeMaxLength, "Postal code");
+        CheckLength(fields.City, ContactMethodLimits.CityMaxLength, "City");
+        CheckLength(fields.Region, ContactMethodLimits.RegionMaxLength, "Region");
+        if (fields.CountryCode is { } country && !CountryCodeRegex.IsMatch(country))
+            throw new DomainValidationException("Country code must be two letters.", code: null, field: "countryCode");
+        if (fields.FirstMissingRequiredField is { } missing)
+            throw new DomainUnprocessableException("Give line 1, a city and a country, or choose a place.", missing);
+        return fields;
+    }
+
+    private static void CheckLength(string? value, int maxLength, string label)
+    {
+        if (value is { } text && text.Length > maxLength)
+            throw new DomainValidationException($"{label} cannot exceed {maxLength} characters.");
+    }
+
+    /// <summary>
+    /// A contact lists a place at most once (unique <c>(ContactId, LocationId)</c>, issue #380 §5.3): a
+    /// <c>409</c> keyed <c>locationId</c>.
+    /// </summary>
+    private async Task EnsureNotListedAsync(Guid contactId, Guid locationId, Guid? excludeAddressId, CancellationToken cancellationToken)
+    {
+        var listed = await context.Addresses.AnyAsync(
+            a => a.ContactId == contactId && a.LocationId == locationId && a.Id != excludeAddressId,
             cancellationToken);
+        if (listed)
+        {
+            throw ListedTwice();
+        }
+    }
+
+    private static DomainConflictException ListedTwice() =>
+        new("This contact already lists that address.", LocationResolver.LocationIdField);
+
+    // The unique (ContactId, LocationId) index is the race backstop for the pre-check above.
+    private static async Task SaveAddressAsync(LocationResolver resolver, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await resolver.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKeyOn(ex, "IX_Addresses_ContactId_LocationId"))
+        {
+            throw ListedTwice();
+        }
+    }
+
+    /// <summary>Fills <see cref="ExistingAddress.OtherUses"/> for every row, from one batch of counts.</summary>
+    private async Task FillOtherUsesAsync(IReadOnlyCollection<ExistingAddress> dtos, LocationClaims? claims, CancellationToken cancellationToken)
+    {
+        if (dtos.Count == 0)
+            return;
+
+        claims ??= LocationClaims.None;
+        var counts = await new LocationReferenceGuard(context).CountAsync(dtos.Select(d => d.LocationId).ToList(), cancellationToken);
+        foreach (var dto in dtos)
+        {
+            dto.OtherUses = LocationReferenceGuard.OtherUses(
+                counts.GetValueOrDefault(dto.LocationId) ?? LocationReferenceGuard.Counts.Zero,
+                LocationReferenceGuard.Kind.Contact, claims);
+        }
+    }
 
     public Task<bool> DeleteAddress(Guid contactId, Guid addressId, CancellationToken cancellationToken = default) =>
         DeleteMethodAsync(context.Addresses, contactId, addressId, cancellationToken);
@@ -1414,14 +1663,6 @@ public class ContactService
         await context.Contacts.FirstOrDefaultAsync(c => c.ContactId == contactId, cancellationToken);
 
     private void Touch(Contact contact) => contact.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
-
-    private static string NormalizeCountryCode(string value)
-    {
-        var cleaned = (value ?? string.Empty).Trim();
-        if (!CountryCodeRegex.IsMatch(cleaned))
-            throw new DomainValidationException("Country code must be two letters.");
-        return cleaned.ToUpperInvariant();
-    }
 
     // On create: if requested primary — or this is the first record in the collection — make it the
     // sole primary; otherwise leave the existing primary untouched (§9).

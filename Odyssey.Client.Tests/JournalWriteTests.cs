@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Net;
 using Moq;
 using Odyssey.ApiClient;
@@ -137,8 +138,8 @@ public class JournalWriteTests
             Attachments = [Meta(fileA), Meta(fileB)],
         };
 
-        var created = JournalWrite.ToNew(draft);
-        var updated = JournalWrite.ToUpdate(draft, archived: true);
+        var created = JournalWrite.ToNew(draft, LocationLink.Keep(null));
+        var updated = JournalWrite.ToUpdate(draft, archived: true, LocationLink.Keep(null));
 
         Assert.Equal([photoB, photoA], created.PhotoFileIds);
         Assert.Equal([fileA, fileB], created.AttachmentFileIds);
@@ -157,7 +158,7 @@ public class JournalWriteTests
 
         var draft = JournalEntryDraft.From(entry,
             ordered.Select(p => new JournalDraftPhoto(p.FileId, "photo")), [Meta(file)]);
-        var update = JournalWrite.ToUpdate(draft, archived: false);
+        var update = JournalWrite.ToUpdate(draft, archived: false, draft.Place.Link(pickerShown: true));
 
         Assert.Equal(ordered.Select(p => p.FileId), update.PhotoFileIds);
         Assert.Equal([file], update.AttachmentFileIds);

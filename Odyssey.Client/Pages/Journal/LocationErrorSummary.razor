@@ -1,0 +1,47 @@
+@*
+    LocationErrorSummary — every error at once on a failed save (issue #383 §6.8; design system ·
+    AddLocationModal.jsx LocationErrorSummary). The dialog moves focus to it, so the list is read as one
+    alert. Shared by the location, contact-address and property dialogs. An entry whose key is in Links is a
+    LINK that focuses the control it is about — the Address picker, or a hand-entry field (v5). Plain text
+    throughout.
+*@
+@inject IJSRuntime Js
+
+@if (Errors.Count > 0)
+{
+    <div id="@Id" tabindex="-1" class="loc-err-summary" role="alert">
+        <b>@(Errors.Count == 1 ? "Fix this before saving:" : $"Fix these {Errors.Count} things before saving:")</b>
+        <ul>
+            @foreach (var error in Errors)
+            {
+                <li>
+                    @if (Links is not null && Links.TryGetValue(error.Key, out var target))
+                    {
+                        <a href="@($"#{target}")" @onclick="@(() => FocusAsync(target))" @onclick:preventDefault="true">@error.Value</a>
+                    }
+                    else
+                    {
+                        @error.Value
+                    }
+                </li>
+            }
+        </ul>
+    </div>
+}
+
+@code {
+    /// <summary>The errors, in field order.</summary>
+    [Parameter] public IReadOnlyList<KeyValuePair<string, string>> Errors { get; set; } = [];
+
+    [Parameter, EditorRequired] public string Id { get; set; } = default!;
+
+    /// <summary>Error key → the id of the control it is about; such an entry is a link that focuses it.</summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? Links { get; set; }
+
+    private async Task FocusAsync(string id)
+    {
+        try { await Js.InvokeVoidAsync("odsFocusById", id); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { /* no JS runtime (prerender, bUnit) */ }
+    }
+}

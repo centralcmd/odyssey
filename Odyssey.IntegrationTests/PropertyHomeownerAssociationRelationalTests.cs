@@ -3,6 +3,7 @@
 // ENGINE resolves the foreign key rather than application code.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -74,8 +75,11 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
             """).SingleAsync();
         Assert.Equal(1L, nonUnique);
 
-        var stored = await verify.RealEstateDetails.AsNoTracking().SingleAsync(d => d.PropertyId == propertyId);
-        Assert.Null(stored.HomeownerAssociationId);
+        // Raw: this schema predates issue #380, so the entity's LocationId has no column yet.
+        var stored = await verify.Database.SqlQuery<Guid?>($"""
+            SELECT HomeownerAssociationId AS Value FROM RealEstateDetails WHERE PropertyId = {propertyId}
+            """).SingleAsync();
+        Assert.Null(stored);
     }
 
     [SkippableFact]
@@ -136,9 +140,10 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
     private async Task AssertClearedAsync(Guid propertyId, Guid contactId, bool contactShouldExist)
     {
         await using var verify = NewContext();
-        var details = await verify.RealEstateDetails.AsNoTracking().SingleAsync(d => d.PropertyId == propertyId);
+        var details = await verify.RealEstateDetails.AsNoTracking().Include(d => d.Location)
+            .SingleAsync(d => d.PropertyId == propertyId);
         Assert.Null(details.HomeownerAssociationId);
-        Assert.Equal("Storgata 12", details.AddressLine);
+        Assert.Equal("Storgata 12", details.Location!.Line1);
         Assert.True(await verify.Properties.AnyAsync(p => p.PropertyId == propertyId));
         Assert.Equal(contactShouldExist, await verify.Contacts.AnyAsync(c => c.ContactId == contactId));
     }
@@ -172,7 +177,7 @@ public class PropertyHomeownerAssociationRelationalTests(MariaDbFixture fixture)
                 AddressLine = "Storgata 12",
                 HomeownerAssociationId = associationId,
             },
-        }, userId: null)).PropertyId;
+        }, userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
     private async Task MigrateAsync()
     {

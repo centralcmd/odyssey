@@ -11,6 +11,11 @@
 *@
 
 <div class="loc-search">
+    @* The third-party disclosure (issue #383 §3.7, SEC F9): always visible, above the field. *@
+    <div class="loc-search-disclose">
+        <span class="material-icons" aria-hidden="true">travel_explore</span>
+        <span>@Disclosure</span>
+    </div>
     <div class="loc-search-bar">
         <OdsSegmentedControl AriaLabel="Search in" Value="@Region.ToString()" ValueChanged="OnRegionChanged"
                              Options="RegionOptions" />
@@ -36,6 +41,14 @@
             }
         </div>
     </div>
+
+    @if (_awaitingSearch)
+    {
+        @* A prefilled query (Find coordinates) is sent only when the user presses Search (issue #383 §3.7). *@
+        <div>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="search" OnClick="SearchNowAsync">Search</OdsButton>
+        </div>
+    }
 
     @* The data-flow disclosure (§7.5) — always visible, naming the one provider this region sends to. *@
     <div id="@HelpId" class="loc-search-help">

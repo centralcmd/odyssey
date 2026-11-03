@@ -1,0 +1,16 @@
+@*
+    AddCoordinatesFirst — what a weather dialog shows for a place without coordinates (issue #383 §5.5): weather
+    setup is not offered; the words say why and the link opens the place's Edit dialog.
+*@
+
+<OdsAlert Severity="Severity.Info" Live="OdsAlertLive.Status">
+    <b>@WeatherVisuals.AddCoordinatesFirst</b> — @WeatherVisuals.AddCoordinatesFirstDetail
+    @if (OnEdit.HasDelegate)
+    {
+        <button type="button" class="loc-link" @onclick="OnEdit">Edit location</button>
+    }
+</OdsAlert>
+
+@code {
+    [Parameter] public EventCallback OnEdit { get; set; }
+}

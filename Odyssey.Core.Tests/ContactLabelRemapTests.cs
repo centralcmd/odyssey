@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -41,7 +42,7 @@ public class ContactLabelRemapTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.Home, Value = "ada@example.com" });
         await service.CreatePhone(created.ContactId, new NewPhoneNumber { Label = PhoneLabel.Home, Value = "+47 22 00 00 00" });
 
@@ -66,7 +67,7 @@ public class ContactLabelRemapTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Postal, Line1 = "Postboks 1", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         var updated = await service.Update(created.ContactId, Org());
 
@@ -94,7 +95,7 @@ public class ContactLabelRemapTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         context.ChangeTracker.Clear();
         await service.Update(created.ContactId, Org("Acme Renamed"));

@@ -47,7 +47,7 @@ public sealed class JournalEntriesController : ControllerBase
         [FromQuery] JournalEntriesQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.ListAsync(query, cancellationToken);
+        var result = await service.ListAsync(query, cancellationToken, User.LocationClaims());
         // The card states who last edited an entry, so the row needs the editor resolved too — both
         // ids go into the one batched lookup rather than a second round trip for the second column.
         var authorIds = result.Items.Select(i => i.CreatedByUserId)
@@ -71,7 +71,7 @@ public sealed class JournalEntriesController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var entry = await service.Get(id, cancellationToken);
+        var entry = await service.Get(id, cancellationToken, User.LocationClaims());
         if (entry is null)
         {
             return this.NotFoundProblem($"Journal entry ID {id} not found.");
@@ -102,7 +102,7 @@ public sealed class JournalEntriesController : ControllerBase
             return this.ForbiddenProblem("Linking files requires the files.read permission.");
         }
 
-        var created = await service.Create(request, userId, cancellationToken);
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
         await EnrichAuthorsAsync(created, cancellationToken);
         ApplyThumbnailRule(created.Photos);
         return CreatedAtRoute("GetJournalEntry", new { id = created.JournalEntryId }, created);
@@ -130,7 +130,7 @@ public sealed class JournalEntriesController : ControllerBase
             return this.ForbiddenProblem("Linking files requires the files.read permission.");
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken);
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
         if (updated is null)
         {
             return this.NotFoundProblem($"Journal entry ID {id} not found.");
@@ -165,7 +165,7 @@ public sealed class JournalEntriesController : ControllerBase
     public async Task<IActionResult> ExportSingleVJournal(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var export = await icsService.ExportSingleAsync(id, CanReadContacts(), cancellationToken);
+        var export = await icsService.ExportSingleAsync(id, CanReadContacts(), cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
         if (export is null)
         {
             return this.NotFoundProblem($"Journal entry ID {id} not found.");
@@ -196,7 +196,7 @@ public sealed class JournalEntriesController : ControllerBase
             contentDisposition.SetHttpFileName(fileName);
             Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
             Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
-        }, cancellationToken);
+        }, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
 
         return new EmptyResult();
     }
@@ -239,7 +239,8 @@ public sealed class JournalEntriesController : ControllerBase
 
         await using var stream = file.OpenReadStream();
         var result = await icsService.ImportAsync(
-            stream, file.Length, file.ContentType, userId, CanLinkFiles(), CanReadContacts(), cancellationToken);
+            stream, file.Length, file.ContentType, userId, CanLinkFiles(), CanReadContacts(), cancellationToken,
+            User.LocationClaims());
         return Ok(result);
     }
 

@@ -130,6 +130,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         ConfigureCurrencyReferences(modelBuilder);
         ConfigureCrossModuleForeignKeys(modelBuilder);
+        ConfigureLocationReferences(modelBuilder);
         ConfigureUserAttribution(modelBuilder);
     }
 
@@ -260,6 +261,47 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .WithMany()
             .HasForeignKey(attachment => attachment.FileId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    /// <summary>
+    /// Every reference to a <see cref="Location"/> (issue #380 §4), reviewed as a set. Each is
+    /// <c>RESTRICT</c>: the only delete path refuses a location that is still referenced, and the key backs
+    /// that up so a guard bug fails the save instead of nulling references. Adding a sixth referencing table
+    /// means extending the reference guard's counts too.
+    /// </summary>
+    private static void ConfigureLocationReferences(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CalendarEvent>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(calendarEvent => calendarEvent.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RecurrencePattern>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(pattern => pattern.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(entry => entry.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // A contact address is a link row (ContactId, LocationId, Label, IsPrimary) since issue #380; the
+        // navigation is how the read path projects today's address fields from the linked place.
+        modelBuilder.Entity<Address>()
+            .HasOne(address => address.Location)
+            .WithMany()
+            .HasForeignKey(address => address.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RealEstateDetails>()
+            .HasOne(details => details.Location)
+            .WithMany()
+            .HasForeignKey(details => details.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
     }
 
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>

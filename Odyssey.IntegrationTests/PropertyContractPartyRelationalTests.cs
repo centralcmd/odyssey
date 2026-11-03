@@ -3,6 +3,7 @@
 // go around the services so the ENGINE's constraints are what is being tested.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using MySqlConnector;
@@ -187,10 +188,10 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
         await using (var context = NewContext())
         {
             var properties = new PropertyService(context, new ContactLookup(context));
-            var page = await properties.ListAsync(new PropertiesQueryParams(), includeContractCount: true);
+            var page = await properties.ListAsync(new PropertiesQueryParams(), includeContractCount: true, claims: LocationClaims.Trusted);
             Assert.Equal(2, page.Items.Single(p => p.PropertyId == propertyId).ContractCount);
             Assert.Equal(0, page.Items.Single(p => p.PropertyId == loneId).ContractCount);
-            Assert.Equal(2, (await properties.Get(propertyId, includeContractCount: true))!.ContractCount);
+            Assert.Equal(2, (await properties.Get(propertyId, includeContractCount: true, claims: LocationClaims.Trusted))!.ContractCount);
         }
 
         await using (var context = NewContext())
@@ -259,7 +260,7 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
             CurrencyCode = "USD",
             CreatedAt = Anchor,
             UpdatedAt = Anchor,
-            RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House, City = "Oslo" },
+            RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House },
         };
         context.Properties.Add(property);
         await context.SaveChangesAsync();

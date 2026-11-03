@@ -49,7 +49,7 @@ public sealed class ContactsController : ControllerBase
         [FromQuery] ContactsQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var result = await contactService.ListAsync(query, cancellationToken);
+        var result = await contactService.ListAsync(query, cancellationToken, User.LocationClaims());
         return Ok(result);
     }
 
@@ -62,7 +62,7 @@ public sealed class ContactsController : ControllerBase
         [FromRoute(Name = "id")] [SwaggerParameter("ID", Required = true,
             Description = @"The ID for the contact to get.")] Guid id, CancellationToken cancellationToken = default)
     {
-        var contact = await contactService.Get(id, cancellationToken);
+        var contact = await contactService.Get(id, cancellationToken, User.LocationClaims());
         if (contact is null)
         {
             return this.NotFoundProblem($"Contact ID {id} not found.");

@@ -62,6 +62,7 @@ public static class RolePermissions
         LocationsCreate,
         LocationsRead,
         LocationsUpdate,
+        LocationsDelete,
     ];
 
     /// <summary>

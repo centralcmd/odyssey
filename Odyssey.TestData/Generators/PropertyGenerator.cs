@@ -52,10 +52,7 @@ public static class PropertyGenerator
                 new RealEstateDetails
                 {
                     Kind = RealEstateKind.Cabin,
-                    AddressLine = "Fjellvegen 7",
-                    PostalCode = "3580",
-                    City = "Geilo",
-                    CountryCode = "NO",
+                    LocationId = LocationGenerator.LocationIdFor(LocationGenerator.CabinAddress),
                     CadastralNumber = "57/12",
                     LivingAreaSqm = 86.5m,
                     PlotAreaSqm = 1200m,
@@ -65,10 +62,7 @@ public static class PropertyGenerator
                 new RealEstateDetails
                 {
                     Kind = RealEstateKind.Apartment,
-                    AddressLine = "Example Street 12, 3rd floor",
-                    PostalCode = "10115",
-                    City = "Berlin",
-                    CountryCode = "DE",
+                    LocationId = LocationGenerator.LocationIdFor(LocationGenerator.ApartmentAddress),
                     LivingAreaSqm = 64m,
                     BuildYear = 2008,
                 }),
@@ -77,8 +71,8 @@ public static class PropertyGenerator
                 new RealEstateDetails
                 {
                     Kind = RealEstateKind.Plot,
-                    City = "Hamar",
-                    CountryCode = "NO",
+                    // A partial, keyless-in-spirit address: a city and a country only.
+                    LocationId = LocationGenerator.LocationIdFor(LocationGenerator.PlotAddress),
                     PlotAreaSqm = 950m,
                 }),
             Vehicle(Car, "Daily driver", DemoDataDefaults.Currencies.Nok, D(2023, 4, 20),

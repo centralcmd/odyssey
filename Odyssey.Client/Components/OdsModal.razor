@@ -20,7 +20,7 @@
 @inject IJSRuntime Js
 
 <MudDialog @ref="_dialog" @key="Wide" Visible="@Open" VisibleChanged="OnVisibleChanged" Options="_options"
-           Class="@($"ods-modal {Class}".TrimEnd())"
+           Class="@($"ods-modal {ModalKey} {Class}".TrimEnd())"
            ContentClass="@(HideHeader ? null : "ods-modal-content")"
            TitleClass="ods-modal-head"
            ActionsClass="ods-modal-foot"

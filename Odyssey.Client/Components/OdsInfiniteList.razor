@@ -25,7 +25,7 @@
    for a failed load without saying so. *@
 <OdsListStatus Loading="Loading" Refetching="Refetching" Error="Error" OnRetry="OnRetry"
                ErrorDescription="@ErrorDescription"
-               IsEmpty="@(Total == 0)" HasFilters="HasFilters" OnClearFilters="OnClearFilters"
+               IsEmpty="@(Total == 0)" HasFilters="HasFilters" OnClearFilters="OnClearFilters" FilteredEmptyTitle="@FilteredEmptyTitle"
                Noun="@Noun" EmptyIcon="@EmptyIcon" EmptyTitle="@EmptyTitle"
                EmptyDescription="@EmptyDescription" CreateAction="CreateAction" Empty="Empty"
                BarClass="@BarClass">

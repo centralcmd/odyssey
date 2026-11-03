@@ -73,6 +73,9 @@
                     </div>
                 </div>
 
+                <Odyssey.Client.Pages.Journal.LocationImportLines
+                    Lines="@([Odyssey.Client.Pages.Journal.LocationVisuals.PlacesImportLine(_result.PlacesLinked, _result.PlacesCreated)])" />
+
                 @if (_result.AnySeriesRegenerated)
                 {
                     <OdsAlert Severity="Severity.Warning">

@@ -34,6 +34,16 @@ public partial class CreateJournalEntryDialog
     private bool _canCreateTag;
     private bool _canCreateContact;
     private bool _canDownloadFiles;
+    private bool _canReadLocations;
+    private bool _canCreateLocations;
+    private OdsLiveAnnouncer? _announcer;
+
+    /// <summary>
+    /// Announces through the announcer's own method, never by setting its Message: an identical string (the
+    /// same place failing to create twice — the usual retry) renders nothing new and would be silent the
+    /// second time (WCAG 4.1.3; accessibility review 2).
+    /// </summary>
+    private void Announce(string message) => _ = _announcer?.Announce(message);
 
     // Members created inline, ahead of the host's option-list refresh, so their chips resolve at once.
     private readonly List<OdsOption> _createdTags = [];
@@ -54,6 +64,8 @@ public partial class CreateJournalEntryDialog
         _canCreateTag = user.HasPermission(PermissionClaims.JournalTagsCreate);
         _canCreateContact = user.HasPermission(PermissionClaims.ContactsCreate);
         _canDownloadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
+        _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
 
         if (Entry is not { } entry)
             return;
@@ -137,13 +149,25 @@ public partial class CreateJournalEntryDialog
         _draft.TagIds = [.. _draft.TagIds.Select(TagCreator.Resolve).Where(id => id is not null).Select(id => id!)];
         _draft.ContactIds = [.. _draft.ContactIds.Select(ContactCreator.Resolve).Where(id => id is not null).Select(id => id!)];
 
-        if (IsEdit)
+        // A staged place is created immediately before the record write; a failed create stops the save, and a
+        // retry after a failed record write reuses the created place (issue #383 §3.2, §3.2a).
+        if (!await _draft.Place.EnsureCreatedAsync(Locations, _canReadLocations))
         {
-            var update = JournalWrite.ToUpdate(_draft, Entry!.Archived is not null);
-            return (await Journal.UpdateAsync(Entry.JournalEntryId, update)).Toast(Snackbar, "Unable to update entry", "Entry updated.");
+            Announce($"Couldn’t add {_draft.Place.StagedName}");
+            StateHasChanged();
+            return false;
         }
 
-        var entry = JournalWrite.ToNew(_draft);
-        return (await Journal.CreateAsync(entry)).Toast(Snackbar, "Unable to create entry", "Entry created.");
+        var link = _draft.Place.Link(_canReadLocations);
+        if (IsEdit)
+        {
+            var update = JournalWrite.ToUpdate(_draft, Entry!.Archived is not null, link);
+            return (await Journal.UpdateAsync(Entry.JournalEntryId, update))
+                .PlacedOrToast(Snackbar, "Unable to update entry", "Entry updated.", _draft.Place, link);
+        }
+
+        var entry = JournalWrite.ToNew(_draft, link);
+        return (await Journal.CreateAsync(entry))
+            .PlacedOrToast(Snackbar, "Unable to create entry", "Entry created.", _draft.Place, link);
     }
 }

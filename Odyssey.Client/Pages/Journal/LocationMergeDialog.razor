@@ -1,0 +1,137 @@
+@using System.Net
+@using Odyssey.Dtos.Journal
+@inject ILocationsApiClient Locations
+
+@*
+    LocationMergeDialog — Merge into… (issue #383 §3.8; design system · Locations.jsx). A `dialog` named
+    "Merge "‹source›" into another place" whose description is read on open. Focus starts on the TARGET
+    picker — choosing is the first task. Errors stay inside the dialog as role="alert"; the success toast and
+    announcement are the page's.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="call_merge" RequiredLegend="false"
+          Role="OdsModalRole.Dialog" DescribedById="@DescriptionId" ReturnFocusToId="@(_successFocus ?? ReturnFocusToId)"
+          Title="@(b => b.AddContent(0, $"Merge “{Source.Name}” into another place"))">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <p class="loc-dialog-desc" id="@DescriptionId">@Description(Source.Name)</p>
+            @if (_alert is not null)
+            {
+                <div class="loc-dialog-alert" role="alert">
+                    <span class="material-icons" aria-hidden="true">error_outline</span>
+                    <span>@_alert</span>
+                </div>
+            }
+            @* The description is also on the picker (issue #383 AC 12, A11Y R5), so it is read where focus lands. *@
+            <OdsLocationSelect Label="Merge into" Required="true" Value="_target" ValueChanged="OnTargetChanged"
+                               ExcludeIds="@([Source.LocationId])" AllowCreate="false" Error="@_targetError"
+                               DescribedById="@DescriptionId" DebounceMs="DebounceMs" />
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="call_merge" Loading="_busy" OnClick="MergeAsync">Merge</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+
+    /// <summary>The place being merged away.</summary>
+    [Parameter, EditorRequired] public ExistingLocation Source { get; set; } = default!;
+
+    /// <summary>Raised with the surviving target after a successful merge.</summary>
+    [Parameter] public EventCallback<ExistingLocation> OnMerged { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Where focus goes after a SUCCESSFUL merge — the target's row (a chain, as for
+    /// <see cref="ReturnFocusToId"/>). Cancel still returns to <see cref="ReturnFocusToId"/>. Handing the dialog
+    /// the real destination means focus moves once, not to the source row and then again (WCAG 2.4.3;
+    /// accessibility review 3).
+    /// </summary>
+    [Parameter] public Func<ExistingLocation, string>? ReturnFocusOnMerged { get; set; }
+
+    private string? _successFocus;
+
+    /// <summary>The picker's debounce; a test passes zero.</summary>
+    [Parameter] public int DebounceMs { get; set; } = 250;
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private LocationPick? _target;
+    private string? _targetError;
+    private string? _alert;
+    private bool _busy;
+
+    private string DescriptionId => $"loc-merge-desc-{_uid}";
+
+    internal static string Description(string source) =>
+        $"Every event, journal entry, contact and property that uses “{source}” will use the target instead. "
+        + $"“{source}” is then archived and stays visible as a merged place. The target’s name, address and coordinates don’t change.";
+
+    internal const string NoTarget = "Choose the place to merge into.";
+
+    internal const string Forbidden = "You don’t have permission to change every record that uses this place.";
+
+    internal const string UnusableTarget = "That place can’t be used here — pick another.";
+
+    /// <summary>
+    /// The <c>422 sourceId</c> message, chosen from the RELOADED source (issue #383 §3.8, SEC F8, N3) — never
+    /// from server text: archived → it can't be merged; otherwise it is weather that blocks it.
+    /// </summary>
+    internal static string SourceRefusal(ExistingLocation reloaded) => reloaded.Archived is not null
+        ? "This place is archived and can’t be merged."
+        : "Weather is set up for this place. An admin must turn weather off before it can be merged.";
+
+    private void OnTargetChanged(LocationPick? pick)
+    {
+        _target = pick;
+        _targetError = null;
+    }
+
+    private async Task MergeAsync()
+    {
+        if (_busy)
+            return;
+        _alert = null;
+        if (_target?.Id is not { } targetId)
+        {
+            _targetError = NoTarget;
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await Locations.MergeAsync(Source.LocationId, targetId);
+            if (result.IsSuccess && result.Value is { } target)
+            {
+                _successFocus = ReturnFocusOnMerged?.Invoke(target);
+                await OpenChanged.InvokeAsync(false);
+                await OnMerged.InvokeAsync(target);
+                return;
+            }
+
+            if (result.Status == HttpStatusCode.Forbidden)
+                _alert = Forbidden;
+            else if (result.Problem?.ErrorFor("targetLocationId") is not null)
+                _targetError = UnusableTarget;
+            else if (result.Problem?.ErrorFor("sourceId") is not null)
+            {
+                // Reload the source first, then choose the message from what it is now.
+                var reloaded = await Locations.GetAsync(Source.LocationId);
+                _alert = SourceRefusal(reloaded.Value ?? Source);
+            }
+            else
+                _alert = result.Problem?.Message ?? "The places couldn’t be merged. Try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+}

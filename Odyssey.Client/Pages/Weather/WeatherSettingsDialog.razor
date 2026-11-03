@@ -20,10 +20,15 @@
                 <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
             }
 
-            @if (Creating)
+            @if (Creating && !WeatherVisuals.HasPosition(_preview))
+            {
+                @* Issue #383 §5.5: no position, no weather setup — say what to do instead. *@
+                <AddCoordinatesFirst OnEdit="OnEditLocation" />
+            }
+            else if (Creating)
             {
                 <WeatherSiteCard Title="Weather position"
-                                 Latitude="_preview.Latitude" Longitude="_preview.Longitude"
+                                 Latitude="_preview.Latitude.GetValueOrDefault()" Longitude="_preview.Longitude.GetValueOrDefault()"
                                  AltitudeMeters="_preview.AltitudeMeters" TimeZoneId="@_preview.TimeZoneId"
                                  Foot="Copied from the location now. If the location moves later, weather keeps this position until you apply the move." />
                 <WeatherDisclosure />
@@ -96,7 +101,8 @@
     </ChildContent>
     <Footer>
         <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CancelAsync">Cancel</OdsButton>
-        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving" Disabled="NothingToTurnOn" OnClick="SaveAsync">
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "wb_sunny" : "save")" Loading="_saving"
+                   Disabled="@(NothingToTurnOn || (Creating && !WeatherVisuals.HasPosition(_preview)))" OnClick="SaveAsync">
             @(Creating ? "Turn on weather" : "Save")
         </OdsButton>
     </Footer>

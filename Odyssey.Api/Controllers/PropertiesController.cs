@@ -73,7 +73,7 @@ public sealed class PropertiesController : ControllerBase
 
         var result = await propertyService.ListAsync(
             query, includeEstimates: CanReadEstimates(), cancellationToken,
-            includeContractCount: CanReadContracts());
+            includeContractCount: CanReadContracts(), claims: User.LocationClaims());
         return Ok(result);
     }
 
@@ -107,7 +107,7 @@ public sealed class PropertiesController : ControllerBase
     {
         var property = await propertyService.Get(
             id, includeEstimates: CanReadEstimates(), cancellationToken,
-            includeContractCount: CanReadContracts());
+            includeContractCount: CanReadContracts(), claims: User.LocationClaims());
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 
@@ -152,7 +152,7 @@ public sealed class PropertiesController : ControllerBase
         }
 
         var property = await propertyService.Create(
-            newProperty, userId, cancellationToken);
+            newProperty, userId, cancellationToken, User.LocationClaims());
         return CreatedAtRoute("GetProperty", new { id = property.PropertyId }, property);
     }
 
@@ -177,7 +177,7 @@ public sealed class PropertiesController : ControllerBase
         }
 
         var property = await propertyService.Update(
-            id, putProperty, userId, cancellationToken);
+            id, putProperty, userId, cancellationToken, User.LocationClaims());
         if (property is null)
             return this.NotFoundProblem($"Property ID {id} not found.");
 

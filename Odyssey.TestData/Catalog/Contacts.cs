@@ -198,6 +198,30 @@ public static class Contacts
         return (blobs, files);
     }
 
+    /// <summary>
+    /// The contacts listing the shared address (issue #380): one place, two contacts — so correcting it
+    /// once corrects it for both.
+    /// </summary>
+    public static readonly string[] AtSharedAddress = [PolicyHolder, Spouse];
+
+    public static Guid AddressIdFor(string contactKey) => DeterministicGuid.From($"contact-address::{contactKey}");
+
+    private static void AttachAddresses(List<Contact> contacts)
+    {
+        foreach (var key in AtSharedAddress)
+        {
+            var contact = contacts.First(c => c.ContactId == IdFor(key));
+            contact.Addresses.Add(new Address
+            {
+                Id = AddressIdFor(key),
+                ContactId = contact.ContactId,
+                Label = AddressLabel.Home,
+                IsPrimary = true,
+                LocationId = Generators.LocationGenerator.LocationIdFor(Generators.LocationGenerator.SharedAddress),
+            });
+        }
+    }
+
     public static List<Contact> Build()
     {
         var contacts = Organizations
@@ -246,6 +270,7 @@ public static class Contacts
             dateOfBirth: new DateOnly(1951, 9, 2), dateOfDeath: new DateOnly(2024, 3, 11)));
 
         AttachAliases(contacts);
+        AttachAddresses(contacts);
 
         // One person with a picture, one organization with a logo (issue #86). Attached here rather
         // than in the definitions above so the pair is named in exactly one place.

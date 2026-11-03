@@ -351,18 +351,8 @@ namespace Odyssey.Context.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
                     b.Property<Guid>("ContactId")
                         .HasColumnType("char(36)");
-
-                    b.Property<string>("CountryCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("varchar(2)");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("tinyint(1)");
@@ -370,26 +360,15 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("Label")
                         .HasColumnType("int");
 
-                    b.Property<string>("Line1")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<string>("Line2")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<string>("Region")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("char(36)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContactId");
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("ContactId", "LocationId")
+                        .IsUnique();
 
                     b.ToTable("Addresses");
                 });
@@ -605,6 +584,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid?>("RecurrencePatternId")
                         .HasColumnType("char(36)");
 
@@ -625,6 +607,8 @@ namespace Odyssey.Context.Migrations
                     b.HasKey("CalendarEventId");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("RecurrencePatternId");
 
@@ -2679,6 +2663,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2696,6 +2683,8 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("ExternalUid")
                         .IsUnique();
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -3009,6 +2998,13 @@ namespace Odyssey.Context.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("AddressKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("AddressKey"), "ascii");
+
                     b.Property<string>("AddressText")
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
@@ -3018,6 +3014,14 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -3029,18 +3033,37 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
-                    b.Property<decimal>("Latitude")
+                    b.Property<decimal?>("Latitude")
                         .HasPrecision(7, 5)
                         .HasColumnType("decimal(7,5)");
 
-                    b.Property<decimal>("Longitude")
+                    b.Property<string>("Line1")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Line2")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<decimal?>("Longitude")
                         .HasPrecision(8, 5)
                         .HasColumnType("decimal(8,5)");
+
+                    b.Property<Guid?>("MergedIntoLocationId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int>("Source")
                         .HasColumnType("int");
@@ -3050,7 +3073,6 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("varchar(64)");
 
                     b.Property<string>("TimeZoneId")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
@@ -3062,7 +3084,12 @@ namespace Odyssey.Context.Migrations
 
                     b.HasKey("LocationId");
 
+                    b.HasIndex("AddressKey")
+                        .IsUnique();
+
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MergedIntoLocationId");
 
                     b.HasIndex("Name")
                         .IsUnique();
@@ -3075,13 +3102,15 @@ namespace Odyssey.Context.Migrations
                         {
                             t.HasCheckConstraint("CK_Locations_AltitudeRange", "`AltitudeMeters` IS NULL OR `AltitudeMeters` BETWEEN -500 AND 9000");
 
+                            t.HasCheckConstraint("CK_Locations_CoordinatesAllOrNone", "(`Latitude` IS NULL AND `Longitude` IS NULL AND `TimeZoneId` IS NULL) OR (`Latitude` IS NOT NULL AND `Longitude` IS NOT NULL AND `TimeZoneId` IS NOT NULL)");
+
                             t.HasCheckConstraint("CK_Locations_LatitudeRange", "`Latitude` BETWEEN -90 AND 90");
 
                             t.HasCheckConstraint("CK_Locations_LongitudeRange", "`Longitude` BETWEEN -180 AND 180");
 
                             t.HasCheckConstraint("CK_Locations_ManualHasNoReference", "`Source` <> 1 OR `SourceReference` IS NULL");
 
-                            t.HasCheckConstraint("CK_Locations_SourceKnown", "`Source` IN (1, 2, 3)");
+                            t.HasCheckConstraint("CK_Locations_SourceKnown", "`Source` IN (1, 2, 3, 4, 5, 6, 7)");
                         });
                 });
 
@@ -3830,24 +3859,12 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("AddressLine")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
                     b.Property<int?>("BuildYear")
                         .HasColumnType("int");
 
                     b.Property<string>("CadastralNumber")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
-                    b.Property<string>("CountryCode")
-                        .HasMaxLength(2)
-                        .HasColumnType("varchar(2)");
 
                     b.Property<Guid?>("HomeownerAssociationId")
                         .HasColumnType("char(36)");
@@ -3859,17 +3876,18 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<decimal?>("PlotAreaSqm")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
                     b.HasKey("PropertyId");
 
                     b.HasIndex("HomeownerAssociationId");
+
+                    b.HasIndex("LocationId");
 
                     b.ToTable("RealEstateDetails");
                 });
@@ -3919,6 +3937,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<int?>("MonthOfYear")
                         .HasColumnType("int");
 
@@ -3947,6 +3968,8 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("CalendarId");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -5781,7 +5804,15 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Odyssey.Context.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Contact");
+
+                    b.Navigation("Location");
                 });
 
             modelBuilder.Entity("Odyssey.Context.Budget", b =>
@@ -5837,6 +5868,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.RecurrencePattern", "RecurrencePattern")
                         .WithMany("GeneratedEvents")
@@ -6094,6 +6130,11 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
@@ -6225,6 +6266,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("MergedIntoLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6471,11 +6517,18 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("HomeownerAssociationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Odyssey.Context.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.Property", "Property")
                         .WithOne("RealEstateDetails")
                         .HasForeignKey("Odyssey.Context.RealEstateDetails", "PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Location");
 
                     b.Navigation("Property");
                 });
@@ -6492,6 +6545,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()

@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Microsoft.Extensions.Logging;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
@@ -49,7 +50,7 @@ public class LocationServiceTests
         var service = new LocationService(context);
 
         var created = await service.Create(Cabin() with { Latitude = 59.912734m, Longitude = 10.750271m }, UserId);
-        var read = await service.Get(created.LocationId);
+        var read = await service.Get(created.LocationId, claims: LocationClaims.Trusted);
 
         Assert.NotNull(read);
         Assert.Equal(59.91273m, read!.Latitude);
@@ -98,7 +99,7 @@ public class LocationServiceTests
         using var context = TestContextFactory.CreateJournal();
         var service = new LocationService(context);
         var cabin = await service.Create(Cabin(), UserId);
-        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId);
+        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId, claims: LocationClaims.Trusted);
 
         var ex = await Assert.ThrowsAsync<DomainConflictException>(() => service.Create(Cabin("cabín"), UserId));
 
@@ -112,7 +113,7 @@ public class LocationServiceTests
         var service = new LocationService(context);
         var cabin = await service.Create(Cabin(), UserId);
 
-        var updated = await service.Update(cabin.LocationId, AsUpdate(cabin) with { Name = "CABIN" }, UserId);
+        var updated = await service.Update(cabin.LocationId, AsUpdate(cabin) with { Name = "CABIN" }, UserId, claims: LocationClaims.Trusted);
 
         Assert.Equal("CABIN", updated!.Name);
     }
@@ -126,11 +127,11 @@ public class LocationServiceTests
         var home = await service.Create(Cabin("Home"), UserId);
 
         var ex = await Assert.ThrowsAsync<DomainConflictException>(
-            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "cabín" }, UserId));
+            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "cabín" }, UserId, claims: LocationClaims.Trusted));
 
         Assert.Equal("A location with this name already exists.", ex.Message);
         Assert.Contains("name", ex.Errors!.Keys);
-        Assert.Equal("Home", (await service.Get(home.LocationId))!.Name);
+        Assert.Equal("Home", (await service.Get(home.LocationId, claims: LocationClaims.Trusted))!.Name);
     }
 
     [Fact]
@@ -139,11 +140,11 @@ public class LocationServiceTests
         using var context = TestContextFactory.CreateJournal();
         var service = new LocationService(context);
         var cabin = await service.Create(Cabin(), UserId);
-        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId);
+        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId, claims: LocationClaims.Trusted);
         var home = await service.Create(Cabin("Home"), UserId);
 
         var ex = await Assert.ThrowsAsync<DomainConflictException>(
-            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "Cabin" }, UserId));
+            () => service.Update(home.LocationId, AsUpdate(home) with { Name = "Cabin" }, UserId, claims: LocationClaims.Trusted));
 
         Assert.Equal("An archived location with this name exists — restore it or choose another name.", ex.Message);
     }
@@ -155,7 +156,7 @@ public class LocationServiceTests
         var service = new LocationService(context, new StepClock(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero)));
         var cabin = await service.Create(Cabin(), UserId);
 
-        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin), "someone-else");
+        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin), "someone-else", claims: LocationClaims.Trusted);
 
         Assert.Equal(cabin.UpdatedAt, saved!.UpdatedAt);
         var entity = context.Locations.Single();
@@ -169,7 +170,7 @@ public class LocationServiceTests
         var service = new LocationService(context, new StepClock(new DateTimeOffset(2026, 10, 1, 8, 0, 0, TimeSpan.Zero)));
         var cabin = await service.Create(Cabin(), UserId);
 
-        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin) with { Description = "New key spot" }, "someone-else");
+        var saved = await service.Update(cabin.LocationId, AsUpdate(cabin) with { Description = "New key spot" }, "someone-else", claims: LocationClaims.Trusted);
 
         Assert.True(saved!.UpdatedAt > cabin.UpdatedAt);
         Assert.Equal(cabin.CreatedAt, saved.CreatedAt);
@@ -186,19 +187,19 @@ public class LocationServiceTests
         var cabin = await service.Create(Cabin(), UserId);
         await service.Create(Cabin("Home"), UserId);
 
-        var archived = await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId);
+        var archived = await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId, claims: LocationClaims.Trusted);
         Assert.NotNull(archived!.Archived);
 
-        var active = await service.ListAsync(new LocationsQueryParams { Status = ArchivalStatus.Active });
-        var archivedOnly = await service.ListAsync(new LocationsQueryParams { Status = ArchivalStatus.Archived });
-        var all = await service.ListAsync(new LocationsQueryParams());
+        var active = await service.ListAsync(new LocationsQueryParams { Status = ArchivalStatus.Active }, claims: LocationClaims.Trusted);
+        var archivedOnly = await service.ListAsync(new LocationsQueryParams { Status = ArchivalStatus.Archived }, claims: LocationClaims.Trusted);
+        var all = await service.ListAsync(new LocationsQueryParams(), claims: LocationClaims.Trusted);
 
         Assert.Equal(["Home"], active.Items.Select(l => l.Name));
         Assert.Equal(["Cabin"], archivedOnly.Items.Select(l => l.Name));
         Assert.Equal(1, archivedOnly.TotalCount);
         Assert.Equal(2, all.TotalCount);
 
-        var restored = await service.Update(cabin.LocationId, AsUpdate(archived, archived: false), UserId);
+        var restored = await service.Update(cabin.LocationId, AsUpdate(archived, archived: false), UserId, claims: LocationClaims.Trusted);
         Assert.Null(restored!.Archived);
     }
 
@@ -209,8 +210,8 @@ public class LocationServiceTests
         var service = new LocationService(context);
         var cabin = await service.Create(Cabin(), UserId);
 
-        Assert.Null(await service.Update(Guid.NewGuid(), AsUpdate(cabin), UserId));
-        Assert.Equal(1, (await service.ListAsync(new LocationsQueryParams())).TotalCount);
+        Assert.Null(await service.Update(Guid.NewGuid(), AsUpdate(cabin), UserId, claims: LocationClaims.Trusted));
+        Assert.Equal(1, (await service.ListAsync(new LocationsQueryParams(), claims: LocationClaims.Trusted)).TotalCount);
     }
 
     [Fact]
@@ -221,9 +222,9 @@ public class LocationServiceTests
         await service.Create(Cabin(), UserId);
         await service.Create(Cabin("Home") with { Description = "Third floor", AddressText = "Storgata 1, 0155 Oslo" }, UserId);
 
-        Assert.Equal(["Cabin"], (await service.ListAsync(new LocationsQueryParams { Search = "ringebu" })).Items.Select(l => l.Name));
-        Assert.Equal(["Home"], (await service.ListAsync(new LocationsQueryParams { Search = "floor" })).Items.Select(l => l.Name));
-        Assert.Equal(["Home"], (await service.ListAsync(new LocationsQueryParams { Search = "hom" })).Items.Select(l => l.Name));
+        Assert.Equal(["Cabin"], (await service.ListAsync(new LocationsQueryParams { Search = "ringebu" }, claims: LocationClaims.Trusted)).Items.Select(l => l.Name));
+        Assert.Equal(["Home"], (await service.ListAsync(new LocationsQueryParams { Search = "floor" }, claims: LocationClaims.Trusted)).Items.Select(l => l.Name));
+        Assert.Equal(["Home"], (await service.ListAsync(new LocationsQueryParams { Search = "hom" }, claims: LocationClaims.Trusted)).Items.Select(l => l.Name));
     }
 
     // Created Bravo, Charlie, Alpha in that order, then Bravo edited last — so the creation order and the
@@ -246,9 +247,9 @@ public class LocationServiceTests
             created.Add(await service.Create(Cabin(name), UserId));
         }
 
-        await service.Update(created[0].LocationId, AsUpdate(created[0]) with { Description = "Edited" }, UserId);
+        await service.Update(created[0].LocationId, AsUpdate(created[0]) with { Description = "Edited" }, UserId, claims: LocationClaims.Trusted);
 
-        var rows = await service.ListAsync(new LocationsQueryParams { SortBy = sortBy, SortDir = dir });
+        var rows = await service.ListAsync(new LocationsQueryParams { SortBy = sortBy, SortDir = dir }, claims: LocationClaims.Trusted);
 
         Assert.Equal(expected, rows.Items.Select(l => l.Name));
     }
@@ -316,7 +317,7 @@ public class LocationServiceTests
             AddressText = "Secret street 9",
             Latitude = 60.1m,
             Longitude = 9.2m,
-        }, UserId);
+        }, UserId, claims: LocationClaims.Trusted);
 
         var update = Assert.Single(logger.Lines, line => line.Contains("updated", StringComparison.Ordinal));
         Assert.Contains("[AddressText, Latitude, Longitude]", update);
@@ -339,8 +340,8 @@ public class LocationServiceTests
         var service = new LocationService(context, logger: logger);
         var cabin = await service.Create(Cabin(), UserId);
 
-        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId);
-        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: false), UserId);
+        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: true), UserId, claims: LocationClaims.Trusted);
+        await service.Update(cabin.LocationId, AsUpdate(cabin, archived: false), UserId, claims: LocationClaims.Trusted);
 
         Assert.Contains(logger.Lines, line => line.Contains("archived by", StringComparison.Ordinal));
         Assert.Contains(logger.Lines, line => line.Contains("restored by", StringComparison.Ordinal));

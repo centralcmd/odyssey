@@ -209,8 +209,11 @@
             // the dialog unmounted with its popover, so the captured owner is gone. Then the owner if
             // it is still in the DOM, then the page heading — never <body>.
             const focusable = function (n) { return n && document.contains(n) && typeof n.focus === 'function'; };
-            if (preferredId) {
-                const host = document.getElementById(preferredId);
+            // preferredId may be a space-separated CHAIN, tried in order (issue #383 §6.5): the trigger, then
+            // the row's menu button, then — below — the page heading.
+            const preferred = preferredId ? String(preferredId).split(/\s+/).filter(Boolean) : [];
+            for (const id of preferred) {
+                const host = document.getElementById(id);
                 const target = host && (host.matches('button, a[href], input, select, textarea, [tabindex]')
                     ? host : host.querySelector('button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])'));
                 if (focusable(target)) { target.focus(); return; }
@@ -220,6 +223,42 @@
                 const h1 = document.querySelector('main h1, h1');
                 if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
             }
+        };
+        window.odsDialogA11y = function (modalKey, role, describedById) {
+            // OdsModal Role / DescribedById (issue #383): set THIS dialog's role (alertdialog for a
+            // destructive confirmation) and point aria-describedby at its body copy, so both are read on
+            // open. The dialog is found by its own class token (OdsModal.ModalKey), never as "the last
+            // .ods-modal", which may be an older dialog. MudDialog renders its own role="dialog" element;
+            // the class sits on it or inside it. If the portal has not rendered yet, retry on the next
+            // frames rather than silently dropping the role (frontend review N5).
+            let frames = 0;
+            const apply = function () {
+                const node = document.getElementsByClassName(modalKey)[0];
+                if (!node) {
+                    if (++frames <= 30) requestAnimationFrame(apply);
+                    return;
+                }
+                const dialog = node.matches('[role="dialog"], [role="alertdialog"]') ? node
+                    : (node.closest('[role="dialog"], [role="alertdialog"]') || node);
+                if (role) dialog.setAttribute('role', role);
+                if (describedById) dialog.setAttribute('aria-describedby', describedById);
+            };
+            apply();
+        };
+        window.odsFocusChainOrHeading = function (ids) {
+            // Focus the first id in the chain that is on the page (a row's menu button), else the page h1 —
+            // which carries tabindex="-1" — never <body> (issue #383 §6.5). One frame later, so a list that
+            // just re-rendered has its rows in the DOM.
+            requestAnimationFrame(function () {
+                for (const id of (ids || [])) {
+                    const host = document.getElementById(id);
+                    if (!host) continue;
+                    const el = host.matches('button, a[href], input') ? host : host.querySelector('button, a[href], input');
+                    if (el) { el.focus(); return; }
+                }
+                const h1 = document.querySelector('main h1, h1');
+                if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
+            });
         };
         window.odsFocusDialogCancel = function () {
             // OdsModal InitialFocus="Cancel": a destructive confirmation opens on its safe choice — the

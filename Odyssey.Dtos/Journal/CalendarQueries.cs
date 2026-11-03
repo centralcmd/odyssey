@@ -17,11 +17,17 @@ public sealed class CalendarEventsQueryParams : QueryParams<CalendarEventSortBy>
     public DateTime? To { get; set; } // UTC
 
     public Guid[]? CalendarIds { get; set; }
+
+    /// <summary>Only records linked to this place (issue #380 §5.2).</summary>
+    public Guid? LocationId { get; set; }
 }
 
 public sealed class RecurrencePatternsQueryParams : QueryParams<RecurrencePatternSortBy>
 {
     public Guid? CalendarId { get; set; }
+
+    /// <summary>Only records linked to this place (issue #380 §5.2).</summary>
+    public Guid? LocationId { get; set; }
 }
 
 // Query contract for the aggregate/filtered .ics export (issue #340). Deliberately does NOT derive

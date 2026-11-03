@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Odyssey.Dtos;
 using System.Text.RegularExpressions;
 using Odyssey.Dtos.Finance;
@@ -36,7 +37,6 @@ public sealed class ContactMethodDraft
 
     private static readonly Regex EmailRegex = new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
     private static readonly Regex PhoneRegex = new(@"^[+\d][\d\s()\-]{5,}$", RegexOptions.Compiled);
-    private static readonly Regex CountryRegex = new("^[A-Za-z]{2}$", RegexOptions.Compiled);
 
     /// <summary>
     /// Client-side pre-check. The label rule is <b>set membership</b>, not non-emptiness (issue #47
@@ -55,9 +55,7 @@ public sealed class ContactMethodDraft
         switch (kind)
         {
             case "address":
-                if (string.IsNullOrWhiteSpace(Line1)) errors["line1"] = "Line 1 is required.";
-                if (string.IsNullOrWhiteSpace(City)) errors["city"] = "City is required.";
-                if (!CountryRegex.IsMatch(CountryCode.Trim())) errors["countryCode"] = "Two-letter country code.";
+                // The address is the Address field's (AddressBlockModel.Validate): a picked place needs no fields.
                 break;
             case "email":
                 if (!EmailRegex.IsMatch(Value.Trim())) errors["value"] = "Enter a valid email address.";
@@ -76,16 +74,40 @@ public sealed class ContactMethodDraft
         _ => Enum.TryParse<AddressLabel>(Label, out var a) && ContactLabelScope.IsValidFor(a, contactType),
     };
 
-    public NewAddress ToNewAddress() => new()
+    /// <summary>
+    /// The address body for what the address field decided (issue #383 §5.1, §3.3a): a place by id, or the fields —
+    /// with <c>applyTo: ThisRecord</c> and <c>expectedOtherUses</c> when they replace a stored address, and a staged
+    /// Kartverket address's geocode (#380 §5.3a).
+    /// </summary>
+    public NewAddress ToNewAddress(AddressWrite write) => new()
     {
         Label = Enum.TryParse<AddressLabel>(Label, out var l) ? l : AddressLabel.Other,
         IsPrimary = IsPrimary,
-        Line1 = Line1.Trim(),
-        Line2 = string.IsNullOrWhiteSpace(Line2) ? null : Line2.Trim(),
-        City = City.Trim(),
-        PostalCode = string.IsNullOrWhiteSpace(PostalCode) ? null : PostalCode.Trim(),
-        Region = string.IsNullOrWhiteSpace(Region) ? null : Region.Trim(),
-        CountryCode = CountryCode.Trim().ToUpperInvariant(),
+        LocationId = write.LocationId,
+        Line1 = write.Fields?.Line1,
+        Line2 = write.Fields?.Line2,
+        City = write.Fields?.City,
+        PostalCode = write.Fields?.PostalCode,
+        Region = write.Fields?.Region,
+        CountryCode = write.Fields?.CountryCode,
+        ApplyTo = write.ApplyTo,
+        ExpectedOtherUses = write.ExpectedOtherUses,
+        Latitude = write.Geocode?.Latitude,
+        Longitude = write.Geocode?.Longitude,
+        TimeZoneId = write.Geocode?.TimeZoneId,
+        Source = write.Geocode?.Source,
+        SourceReference = write.Geocode?.SourceReference,
+    };
+
+    /// <summary>
+    /// "Set as primary": the stored place re-sent BY ID and nothing else. Re-sending the fields would take
+    /// the by-fields path, which needs <c>locations.create</c> (#380 §5.3).
+    /// </summary>
+    public static NewAddress PrimaryAddressBody(ExistingAddress a) => new()
+    {
+        Label = a.Label,
+        IsPrimary = true,
+        LocationId = a.LocationId,
     };
 
     public NewEmailAddress ToNewEmail() => new()
@@ -107,7 +129,11 @@ public sealed class ContactMethodDraft
         Id = a.Id, Label = a.Label.ToString(), IsPrimary = a.IsPrimary,
         Line1 = a.Line1, Line2 = a.Line2 ?? string.Empty, City = a.City,
         PostalCode = a.PostalCode ?? string.Empty, Region = a.Region ?? string.Empty, CountryCode = a.CountryCode,
+        Stored = a,
     };
+
+    /// <summary>The address being edited, or null for a new one (issue #383).</summary>
+    public ExistingAddress? Stored { get; set; }
 
     public static ContactMethodDraft FromEmail(ExistingEmailAddress e) => new()
     {

@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -25,7 +26,7 @@ public class PropertyListEnrichmentTests
     private static async Task<(PropertyService Service, Guid PropertyId)> SeedAsync(OdysseyContext context)
     {
         var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
-        var propertyId = (await service.Create(PropertyTestData.House(), userId: null)).PropertyId;
+        var propertyId = (await service.Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
         context.PropertyEstimates.AddRange(
             new PropertyEstimate { PropertyId = propertyId, Value = 3_000_000m, CurrencyCode = "SEK", EffectiveFrom = Utc(2025, 1, 1), CreatedAtUtc = Utc(2025, 1, 1) },
@@ -49,7 +50,7 @@ public class PropertyListEnrichmentTests
         await using var context = TestContextFactory.Create();
         var (service, _) = await SeedAsync(context);
 
-        var row = Assert.Single((await service.ListAsync(new PropertiesQueryParams(), includeEstimates: true)).Items);
+        var row = Assert.Single((await service.ListAsync(new PropertiesQueryParams(), includeEstimates: true, claims: LocationClaims.Trusted)).Items);
 
         Assert.Equal(1, row.SmartTagCount);
         Assert.Equal(4, row.EstimateCount);
@@ -63,7 +64,7 @@ public class PropertyListEnrichmentTests
         await using var context = TestContextFactory.Create();
         var (service, _) = await SeedAsync(context);
 
-        var row = Assert.Single((await service.ListAsync(new PropertiesQueryParams(), includeEstimates: false)).Items);
+        var row = Assert.Single((await service.ListAsync(new PropertiesQueryParams(), includeEstimates: false, claims: LocationClaims.Trusted)).Items);
 
         Assert.Equal(1, row.SmartTagCount);
         Assert.Null(row.EstimateCount);
@@ -77,8 +78,8 @@ public class PropertyListEnrichmentTests
         await using var context = TestContextFactory.Create();
         var (service, propertyId) = await SeedAsync(context);
 
-        var withEstimates = await service.Get(propertyId, includeEstimates: true);
-        var without = await service.Get(propertyId, includeEstimates: false);
+        var withEstimates = await service.Get(propertyId, includeEstimates: true, claims: LocationClaims.Trusted);
+        var without = await service.Get(propertyId, includeEstimates: false, claims: LocationClaims.Trusted);
 
         Assert.Equal(3_200_000m, withEstimates!.CurrentEstimatedValue);
         Assert.Equal(4, withEstimates.EstimateCount);
@@ -96,18 +97,18 @@ public class PropertyListEnrichmentTests
     {
         await using var context = TestContextFactory.Create();
         var (service, propertyId) = await SeedAsync(context);
-        var bareId = (await service.Create(PropertyTestData.Car(), userId: null)).PropertyId;
+        var bareId = (await service.Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         context.PropertyFiles.AddRange(
             new PropertyFile { PropertyId = propertyId, FileMetadataId = Guid.NewGuid(), AttachedAtUtc = Utc(2026, 3, 1) },
             new PropertyFile { PropertyId = propertyId, FileMetadataId = Guid.NewGuid(), AttachedAtUtc = Utc(2026, 3, 2) });
         await context.SaveChangesAsync();
 
-        var listed = (await service.ListAsync(new PropertiesQueryParams(), includeEstimates: false)).Items;
+        var listed = (await service.ListAsync(new PropertiesQueryParams(), includeEstimates: false, claims: LocationClaims.Trusted)).Items;
 
         Assert.Equal(2, listed.Single(p => p.PropertyId == propertyId).FileCount);
         Assert.Equal(0, listed.Single(p => p.PropertyId == bareId).FileCount);
-        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: false))!.FileCount);
-        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: true))!.FileCount);
+        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: false, claims: LocationClaims.Trusted))!.FileCount);
+        Assert.Equal(2, (await service.Get(propertyId, includeEstimates: true, claims: LocationClaims.Trusted))!.FileCount);
     }
 
     [Fact]
@@ -115,14 +116,14 @@ public class PropertyListEnrichmentTests
     {
         await using var context = TestContextFactory.Create();
         var service = new PropertyService(context, TestContextFactory.ContactLookup(context), new FixedTimeProvider(Now));
-        var propertyId = (await service.Create(PropertyTestData.Car(), userId: null)).PropertyId;
+        var propertyId = (await service.Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         context.PropertyEstimates.Add(new PropertyEstimate
         {
             PropertyId = propertyId, Value = 250_000m, CurrencyCode = "SEK", EffectiveFrom = Utc(2026, 12, 1), CreatedAtUtc = Utc(2026, 5, 1),
         });
         await context.SaveChangesAsync();
 
-        var row = (await service.Get(propertyId, includeEstimates: true))!;
+        var row = (await service.Get(propertyId, includeEstimates: true, claims: LocationClaims.Trusted))!;
 
         Assert.Equal(1, row.EstimateCount);
         Assert.Null(row.CurrentEstimatedValue);

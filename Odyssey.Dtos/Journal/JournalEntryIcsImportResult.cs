@@ -22,6 +22,15 @@ public sealed record JournalEntryIcsImportResult
     public int SkippedAttachmentCount { get; set; }
 
     public int SkippedPhotoCount { get; set; }
+
+    /// <summary>
+    /// Entries linked to a place, whether it already existed or was created by this import (issue #380 §8.4).
+    /// Zero unless the importer holds both <c>locations.read</c> and <c>locations.create</c>.
+    /// </summary>
+    public int PlacesLinked { get; set; }
+
+    /// <summary>Places this import created (a subset of what <see cref="PlacesLinked"/> counts).</summary>
+    public int PlacesCreated { get; set; }
 }
 
 /// <summary>A group of blocks skipped for the same reason, with a capped list of sample titles.</summary>

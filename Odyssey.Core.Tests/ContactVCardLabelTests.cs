@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal.Avatar;
 using System.Text;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -53,7 +54,7 @@ public class ContactVCardLabelTests
     private static async Task<VCardImportResult> ImportAsync(ContactVCardService vCard, string content)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        return await vCard.ImportAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     // What a third-party address book does to a property it does not understand: drop the X- parameter
@@ -90,7 +91,7 @@ public class ContactVCardLabelTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
 
@@ -115,7 +116,7 @@ public class ContactVCardLabelTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Work, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
 
@@ -137,7 +138,7 @@ public class ContactVCardLabelTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Postal, Line1 = "Postboks 1", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
 
@@ -213,7 +214,7 @@ public class ContactVCardLabelTests
         await service.CreateAddress(created.ContactId, new NewAddress
         {
             Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "NO",
-        });
+        }, claims: LocationClaims.Trusted);
 
         var export = await vCard.ExportOneAsync(created.ContactId);
         var stripped = string.Join("\r\n", export!.Content.Split("\r\n").Select(StripExtensionParams));

@@ -148,11 +148,17 @@ public static class PermissionClaims
     public const string CalendarUpdate = "calendar.update";
     public const string CalendarDelete = "calendar.delete";
 
-    // Household locations (issue #350). There is deliberately no delete claim: a location is archived,
-    // never deleted. Read is granted to Guest as well — see RolePermissions.GuestClaims.
+    // Household locations (issue #350). Read is granted to Guest as well — see RolePermissions.GuestClaims.
+    // locations.read sees every address in the app since issue #380 made a location the one address
+    // record (product decision 3): no implication guard ties it to contacts.read or properties.read.
     public const string LocationsCreate = "locations.create";
     public const string LocationsRead = "locations.read";
     public const string LocationsUpdate = "locations.update";
+
+    // Deleting a location (issue #380 decision 4): explicit, one at a time, and only while nothing uses it
+    // — the erasure path. Owner, User and Admin hold it; Guest does not. Before #380 there was
+    // deliberately no delete claim and a location could only be archived.
+    public const string LocationsDelete = "locations.delete";
 
     // Weather (issue #348). Reading weather and choosing one's own weather location are every role's;
     // configuring which locations have weather, and purging a location's weather history, are Admin's

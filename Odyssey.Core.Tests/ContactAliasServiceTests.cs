@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
@@ -49,7 +50,7 @@ public class ContactAliasServiceTests
         Assert.Equal("nickname", created.Label);
         Assert.Equal(contact.ContactId, created.ContactId);
 
-        var reread = await service.Get(contact.ContactId);
+        var reread = await service.Get(contact.ContactId, claims: LocationClaims.Trusted);
         var inline = Assert.Single(reread!.Aliases);
         Assert.Equal("Kari", inline.Value);
         Assert.Equal("nickname", inline.Label);
@@ -85,7 +86,7 @@ public class ContactAliasServiceTests
         Assert.DoesNotContain("kari", conflict.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("kari", conflict.Errors["value"][0], StringComparison.OrdinalIgnoreCase);
 
-        Assert.Single((await service.Get(contact.ContactId))!.Aliases);
+        Assert.Single((await service.Get(contact.ContactId, claims: LocationClaims.Trusted))!.Aliases);
     }
 
     // AC 3: accents fold too. This is what IgnoreNonSpace buys, and what an OrdinalIgnoreCase check
@@ -241,7 +242,7 @@ public class ContactAliasServiceTests
         ContactService service, Guid contactId, DateTime before, Func<Guid, Task> mutate)
     {
         await mutate(contactId);
-        var after = (await service.Get(contactId))!.UpdatedAt;
+        var after = (await service.Get(contactId, claims: LocationClaims.Trusted))!.UpdatedAt;
         Assert.True(after >= before);
         return after;
     }
@@ -294,7 +295,7 @@ public class ContactAliasServiceTests
         await service.CreateAlias(contact.ContactId, Alias("Kari", "nickname"));
         await service.Create(Person("Sam", "Rivera"));
 
-        var page = await service.ListAsync(new ContactsQueryParams { Search = "Kari" });
+        var page = await service.ListAsync(new ContactsQueryParams { Search = "Kari" }, claims: LocationClaims.Trusted);
 
         Assert.Equal(contact.ContactId, Assert.Single(page.Items).ContactId);
     }
@@ -308,7 +309,7 @@ public class ContactAliasServiceTests
         var contact = await service.Create(Person("Karoline", "Hansen"));
         await service.CreateAlias(contact.ContactId, Alias("Kari", "maiden name"));
 
-        var page = await service.ListAsync(new ContactsQueryParams { Search = "maiden" });
+        var page = await service.ListAsync(new ContactsQueryParams { Search = "maiden" }, claims: LocationClaims.Trusted);
 
         Assert.Empty(page.Items);
     }
@@ -324,7 +325,7 @@ public class ContactAliasServiceTests
         var contact = await service.Create(person);
         await service.Create(Person("Sam", "Rivera"));
 
-        var page = await service.ListAsync(new ContactsQueryParams { Search = "Elisabeth" });
+        var page = await service.ListAsync(new ContactsQueryParams { Search = "Elisabeth" }, claims: LocationClaims.Trusted);
 
         Assert.Equal(contact.ContactId, Assert.Single(page.Items).ContactId);
     }
@@ -487,7 +488,7 @@ public class ContactAliasServiceTests
         }
 
         var dedicated = (await service.GetAliases(contact.ContactId))!.Select(a => a.Value);
-        var inline = (await service.Get(contact.ContactId))!.Aliases.Select(a => a.Value);
+        var inline = (await service.Get(contact.ContactId, claims: LocationClaims.Trusted))!.Aliases.Select(a => a.Value);
 
         Assert.Equal(dedicated, inline);
     }

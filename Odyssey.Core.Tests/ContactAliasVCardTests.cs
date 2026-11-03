@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Finance;
 using System.Text;
@@ -53,7 +54,7 @@ public class ContactAliasVCardTests
     private static async Task<VCardImportResult> ImportAsync(ContactVCardService vCard, string content)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        return await vCard.ImportAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     // AC 26: the whole shape, in one card — two groups (one labelled, one not), the extended N, and
@@ -88,7 +89,7 @@ public class ContactAliasVCardTests
         await service.DeleteAlias(contact.ContactId, (await service.GetAliases(contact.ContactId))![0].Id);
         await ImportAsync(vCard, export.Content);
 
-        var reread = await service.Get(contact.ContactId);
+        var reread = await service.Get(contact.ContactId, claims: LocationClaims.Trusted);
         Assert.Equal("Marie", reread!.PersonDetails!.MiddleName);
         Assert.Equal(new DateTime(2024, 3, 11), reread.PersonDetails.DateOfDeath);
         var aliases = reread.Aliases.ToDictionary(a => a.Value, a => a.Label);
@@ -212,7 +213,7 @@ public class ContactAliasVCardTests
             "item1.EMAIL;TYPE=home:kari@example.com", "item1.X-ABLabel:_$!<Home>!$_"));
 
         var id = await service.FindIdByExternalUid("urn:uuid:apple");
-        var contact = await service.Get(id!.Value);
+        var contact = await service.Get(id!.Value, claims: LocationClaims.Trusted);
 
         Assert.Equal("Karoline Hansen", contact!.ResolvedDisplayName);
         Assert.Equal("Marie", contact.PersonDetails!.MiddleName);
@@ -372,7 +373,7 @@ public class ContactAliasVCardTests
         Assert.Contains("X-ODYSSEY-DISSOLVED:20230630", export.Content);
 
         await ImportAsync(vCard, export.Content);
-        var reread = await service.Get(contact.ContactId);
+        var reread = await service.Get(contact.ContactId, claims: LocationClaims.Trusted);
         Assert.Equal(new DateTime(1974, 6, 1), reread!.OrganizationDetails!.EstablishedDate);
         Assert.Equal(new DateTime(2023, 6, 30), reread.OrganizationDetails.DissolvedDate);
     }
@@ -388,7 +389,7 @@ public class ContactAliasVCardTests
 
         Assert.Equal(1, result.CreatedCount);
         var id = await service.FindIdByExternalUid("urn:uuid:baddate");
-        Assert.Null((await service.Get(id!.Value))!.PersonDetails!.DateOfDeath);
+        Assert.Null((await service.Get(id!.Value, claims: LocationClaims.Trusted))!.PersonDetails!.DateOfDeath);
     }
 
     /// <summary>Imports a one-entry card carrying <paramref name="aliasLines"/> and returns its aliases.</summary>

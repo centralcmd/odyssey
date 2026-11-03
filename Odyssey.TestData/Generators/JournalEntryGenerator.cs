@@ -57,6 +57,13 @@ public static class JournalEntryGenerator
 
     public static Guid IdFor(string key) => DeterministicGuid.From($"journal-entry::{key}");
 
+    /// <summary>The entries linked to a household location (issue #380), by entry key → location key.</summary>
+    public static readonly IReadOnlyDictionary<string, string> LinkedPlaces = new Dictionary<string, string>(StringComparer.Ordinal)
+    {
+        ["kitchen-reno"] = LocationGenerator.Home,
+        ["espresso-machine"] = LocationGenerator.Home,
+    };
+
     /// <summary>
     /// Builds the journal-entry graph. <paramref name="anchor"/> is the reference "today"; entry
     /// dates are placed relative to it. Deterministic: the same anchor always yields byte-identical
@@ -195,7 +202,9 @@ public static class JournalEntryGenerator
                 Title = spec.Title,
                 Content = spec.Content,
                 EntryDate = spec.EntryDate,
-                Location = spec.Location,
+                // Issue #380: an entry at a known place links it and drops the text, as the conversion does.
+                LocationId = LinkedPlaces.TryGetValue(spec.Key, out var place) ? LocationGenerator.LocationIdFor(place) : null,
+                Location = LinkedPlaces.ContainsKey(spec.Key) ? null : spec.Location,
                 CreatedByUserId = authorId,
                 UpdatedByUserId = spec.EditorRole is null ? null : UserId(spec.EditorRole),
                 CreatedAt = spec.EntryDate,

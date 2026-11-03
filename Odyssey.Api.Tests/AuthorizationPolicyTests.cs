@@ -73,11 +73,12 @@ public class AuthorizationPolicyTests
     /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
     /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
     /// <c>weather.locations.update</c> and <c>weather.history.delete</c>. 107 once issue #346 added
-    /// <c>file-storage.read</c>.
+    /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
+    /// deliberately left out.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(107, DeclaredClaims().Count());
+        Assert.Equal(108, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -274,7 +275,7 @@ public class AuthorizationPolicyTests
 
     /// <summary>
     /// Issue #350 §7.2/§7.3: Guest reads the household's locations — a product decision — and writes none
-    /// of them, and no location delete claim exists for anyone to hold.
+    /// of them. Issue #380 decision 4 added <c>locations.delete</c>, and Guest does not hold it either.
     /// </summary>
     [Fact]
     public void Guest_holds_exactly_locations_read_among_the_location_claims()
@@ -285,7 +286,124 @@ public class AuthorizationPolicyTests
             .ToArray();
 
         Assert.Equal([PermissionClaims.LocationsRead], guestLocationClaims);
-        Assert.DoesNotContain(DeclaredClaims(), claim => claim == "locations.delete");
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 4 (AC 12): <c>locations.delete</c> is the erasure path and reaches Admin, Owner
+    /// and User through <c>JournalModuleClaims</c> — never Guest.
+    /// </summary>
+    [Fact]
+    public void LocationsDelete_is_held_by_exactly_Admin_Owner_and_User()
+    {
+        Assert.Equal("locations.delete", PermissionClaims.LocationsDelete);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.JournalModuleClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.AdminClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.OwnerClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.UserClaims);
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 3 (S-R6): <c>locations.read</c> sees every address in the app, so the set of roles
+    /// holding it is pinned exactly — widening it is a visible change, not a side effect.
+    /// </summary>
+    [Fact]
+    public void LocationsRead_is_held_by_exactly_Admin_Owner_User_and_Guest()
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["Admin", "Guest", "Owner", "User"], holders);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 3: after the conversion, the place text of a linked event, series or entry lives
+    /// only in the <c>locations.read</c>-gated embed, so every role that reads the calendar or the journal
+    /// must also read places.
+    /// </summary>
+    [Fact]
+    public void Calendar_read_and_journal_read_each_imply_locations_read()
+    {
+        var gaps = MappedRoles()
+            .Where(role => (role.Claims.Contains(PermissionClaims.CalendarRead) || role.Claims.Contains(PermissionClaims.JournalRead))
+                && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(gaps);
+    }
+
+    /// <summary>
+    /// Issue #380 §7.1.4 and v8-L3: entering an address on a contact or property creates or finds a place, so
+    /// every role with <c>contacts.create</c>/<c>.update</c> or <c>properties.create</c>/<c>.update</c> holds
+    /// <c>locations.create</c>; and every role with <c>contacts.create</c> holds <c>locations.read</c>, since a
+    /// vCard import's <c>AddressesLinked − PlacesCreated</c> is a count of matched places.
+    /// </summary>
+    [Fact]
+    public void Contact_and_property_writers_hold_locations_create_and_contact_creators_locations_read()
+    {
+        string[] writers =
+        [
+            PermissionClaims.ContactsCreate, PermissionClaims.ContactsUpdate,
+            PermissionClaims.PropertiesCreate, PermissionClaims.PropertiesUpdate,
+        ];
+
+        var createGaps = MappedRoles()
+            .Where(role => writers.Any(role.Claims.Contains) && !role.Claims.Contains(PermissionClaims.LocationsCreate))
+            .Select(role => role.Role)
+            .ToArray();
+        var readGaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsCreate) && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(createGaps);
+        Assert.Empty(readGaps);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 7 (v7, D3): an editor's <c>otherUses</c> must be a full count of record uses, so
+    /// "nothing else uses it" is true for every kind before an <c>AllUses</c> edit. Every role with
+    /// <c>contacts.update</c> or <c>properties.update</c> therefore holds the three location write claims and
+    /// all four record read claims.
+    /// </summary>
+    [Fact]
+    public void Contact_and_property_editors_hold_every_claim_an_AllUses_edit_relies_on() =>
+        Assert.Empty(AllUsesEditorGaps(MappedRoles()));
+
+    /// <summary>The decision 7 guard is not decorative: it fails for a role missing a read claim (AC 26).</summary>
+    [Fact]
+    public void The_AllUses_editor_guard_fails_for_a_role_that_cannot_read_every_kind()
+    {
+        (string, string[])[] hypothetical =
+        [
+            ("Editor", [
+                PermissionClaims.ContactsUpdate, PermissionClaims.LocationsRead,
+                PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate,
+            ]),
+        ];
+
+        Assert.Equal(["Editor"], AllUsesEditorGaps(hypothetical));
+    }
+
+    private static string[] AllUsesEditorGaps(IEnumerable<(string Role, string[] Claims)> roles)
+    {
+        string[] required =
+        [
+            PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate,
+            PermissionClaims.ContactsRead, PermissionClaims.PropertiesRead,
+            PermissionClaims.CalendarRead, PermissionClaims.JournalRead,
+        ];
+
+        return roles
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsUpdate) || role.Claims.Contains(PermissionClaims.PropertiesUpdate))
+            .Where(role => required.Any(claim => !role.Claims.Contains(claim)))
+            .Select(role => role.Role)
+            .ToArray();
     }
 
     /// <summary>

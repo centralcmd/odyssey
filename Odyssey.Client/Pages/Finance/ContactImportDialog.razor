@@ -56,6 +56,10 @@
                     </div>
                 </div>
 
+                <Odyssey.Client.Pages.Journal.LocationImportLines
+                    Lines="@([Odyssey.Client.Pages.Journal.LocationVisuals.AddressesImportLine(_result.AddressesLinked, _result.PlacesCreated),
+                             Odyssey.Client.Pages.Journal.LocationVisuals.SkippedAddressesLine(_result.SkippedAddressCount)])" />
+
                 @if (SkippedTotal > 0)
                 {
                     <div class="cp-imp-skips">

@@ -16,13 +16,18 @@ namespace Odyssey.Core.Journal.Geocoding;
 /// <c>navneobjekttype</c>, <c>kommuner[].kommunenavn</c> and <c>representasjonspunkt.nord</c>/<c>.øst</c>.
 /// An address has no single object id, so its reference is composed from the parts that identify it in
 /// the national register — <c>{kommunenummer}-{adressekode}-{nummer}{bokstav}</c> — which fits the
-/// Kartverket reference shape.
+/// Kartverket reference shape. An address also carries its structured fields (issue #380 §5.5a):
+/// <c>adressetekst</c> as line 1, <c>postnummer</c>, <c>poststed</c> as the city, and country <c>NO</c>; a
+/// place name carries none.
 /// </remarks>
 public sealed class KartverketLocationSearch(HttpClient http) : ILocationSearchSource
 {
     public const string BaseAddress = "https://ws.geonorge.no/";
 
     private const string TimeZone = "Europe/Oslo";
+
+    /// <summary>Every address in Kartverket's register is in Norway.</summary>
+    private const string CountryCode = "NO";
 
     public LocationSearchRegion Region => LocationSearchRegion.Norway;
 
@@ -70,8 +75,9 @@ public sealed class KartverketLocationSearch(HttpClient http) : ILocationSearchS
                 continue;
             }
 
-            var postal = string.Join(' ', new[] { GeocodingHttp.String(address, "postnummer"), GeocodingHttp.String(address, "poststed") }
-                .Where(part => !string.IsNullOrWhiteSpace(part)));
+            var postalCode = GeocodingHttp.String(address, "postnummer");
+            var city = GeocodingHttp.String(address, "poststed");
+            var postal = string.Join(' ', new[] { postalCode, city }.Where(part => !string.IsNullOrWhiteSpace(part)));
             rows.Add(new LocationCandidate
             {
                 Kind = LocationCandidateKind.Address,
@@ -83,6 +89,11 @@ public sealed class KartverketLocationSearch(HttpClient http) : ILocationSearchS
                 TimeZoneId = TimeZone,
                 Source = LocationSource.Kartverket,
                 SourceReference = AddressReference(address),
+                // The structured address (§5.5a, v9): the parts as returned; the search service cleans them.
+                Line1 = text,
+                PostalCode = postalCode,
+                City = city,
+                CountryCode = CountryCode,
             });
         }
 

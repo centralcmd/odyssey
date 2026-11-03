@@ -215,9 +215,23 @@ public static class WeatherVisuals
     /// edit on this page turns the chip and notice on without a re-read.
     /// </summary>
     public static bool Moved(ExistingWeatherLocation row, ExistingLocation location) =>
-        WeatherRules.Moved(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId,
+        location is not { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }
+        || WeatherRules.Moved(latitude, longitude, location.AltitudeMeters, zone,
             row.Site.Latitude, row.Site.Longitude, row.Site.AltitudeMeters, row.Site.TimeZoneId);
 
     public static string Fingerprint(ExistingLocation location) =>
-        WeatherRules.Fingerprint(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId);
+        location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }
+            ? WeatherRules.Fingerprint(latitude, longitude, location.AltitudeMeters, zone)
+            : WeatherRules.NoCoordinatesFingerprint;
+
+    /// <summary>
+    /// Weather needs a position: a place without coordinates is not offered weather setup (issue #383 §5.5) —
+    /// the dialogs say <see cref="AddCoordinatesFirst"/> and link to Edit instead.
+    /// </summary>
+    public static bool HasPosition(ExistingLocation location) =>
+        location is { Latitude: not null, Longitude: not null, TimeZoneId: not null };
+
+    public const string AddCoordinatesFirst = "Add coordinates first";
+
+    public const string AddCoordinatesFirstDetail = "Weather needs this place’s coordinates and time zone to know where it is.";
 }

@@ -22,11 +22,14 @@ public class LocationsPageTests
         LocationId = Guid.NewGuid(),
         Name = "Cabin",
         TimeZoneId = "Europe/Oslo",
+        Latitude = 61.1m,
+        Longitude = 10.4m,
+        HasCoordinates = true,
         Archived = archived ? DateTime.UtcNow : null,
     };
 
-    private static IReadOnlyList<string?> Labels(ExistingLocation row, bool canUpdate) =>
-        [.. LocationsPage.BuildRowActions(row, canUpdate, default, default, default, default)
+    private static IReadOnlyList<string?> Labels(ExistingLocation row, bool canUpdate, bool canDelete = false) =>
+        [.. LocationsPage.BuildRowActions(row, new LocationsPage.LocationRowClaims(canUpdate, canDelete), default, default, default, default)
             .Where(i => !i.Divider).Select(i => i.Label)];
 
     [Fact]
@@ -36,9 +39,9 @@ public class LocationsPageTests
     }
 
     [Fact]
-    public void An_editor_gets_edit_and_archive_and_never_delete()
+    public void An_editor_without_delete_gets_edit_merge_and_archive_but_no_delete()
     {
-        Assert.Equal(["Edit location", "Copy coordinates", "Copy ID", "Archive"], Labels(Row(), canUpdate: true));
+        Assert.Equal(["Edit location", "Copy coordinates", "Copy ID", "Merge into…", "Archive"], Labels(Row(), canUpdate: true));
         Assert.Equal("Restore", Labels(Row(archived: true), canUpdate: true)[^1]);
     }
 

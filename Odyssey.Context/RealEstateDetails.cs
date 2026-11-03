@@ -10,8 +10,10 @@ namespace Odyssey.Context;
 /// the <see cref="PersonDetails"/> shape — and cascade-deleted with it.
 ///
 /// <para>
-/// The address is personal data (it identifies a natural person); it is reachable only through
-/// <c>properties.read</c> and is never echoed in an error body or a log line.
+/// The address is personal data (it identifies a natural person) and is never echoed in an error body or
+/// a log line. Since issue #380 it is the linked <see cref="Location"/> (optional, <c>RESTRICT</c>), which
+/// <c>properties.read</c> reads through this record and <c>locations.read</c> reads directly (product
+/// decision 3).
 /// </para>
 /// </summary>
 public class RealEstateDetails
@@ -24,18 +26,10 @@ public class RealEstateDetails
     [Required]
     public RealEstateKind Kind { get; set; }
 
-    [StringLength(256)]
-    public string? AddressLine { get; set; }
+    /// <summary>The property's address (issue #380), or null when it has none.</summary>
+    public Guid? LocationId { get; set; }
 
-    [StringLength(32)]
-    public string? PostalCode { get; set; }
-
-    [StringLength(128)]
-    public string? City { get; set; }
-
-    /// <summary>ISO 3166-1 alpha-2, uppercased by the service.</summary>
-    [StringLength(2)]
-    public string? CountryCode { get; set; }
+    public Location? Location { get; set; }
 
     /// <summary>The land-registry identifier — free text, deliberately not parsed.</summary>
     [StringLength(64)]

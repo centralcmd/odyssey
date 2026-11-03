@@ -47,6 +47,19 @@ public partial class OdsModal
     /// </summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
 
+    /// <summary>
+    /// The dialog's role (Odyssey Design System · Modal <c>role</c>, issue #383): <c>dialog</c> by default,
+    /// <c>alertdialog</c> for a destructive confirmation — which then opens on Cancel
+    /// (<see cref="InitialFocus"/>).
+    /// </summary>
+    [Parameter] public OdsModalRole Role { get; set; } = OdsModalRole.Dialog;
+
+    /// <summary>
+    /// Id of an element in the body that describes the dialog, read on open as its
+    /// <c>aria-describedby</c> (Odyssey Design System · Modal <c>describedById</c>, issue #383).
+    /// </summary>
+    [Parameter] public string? DescribedById { get; set; }
+
     /// <summary>Wide variant — for batch grids / file analysis.</summary>
     [Parameter] public bool Wide { get; set; }
 
@@ -111,6 +124,13 @@ public partial class OdsModal
     // and the closed edge so we restore focus to whatever triggered the open (WCAG 2.4.3) —
     // without either, focus silently drops to <body> when the dialog closes.
     private bool wasOpen;
+    /// <summary>
+    /// This modal's own class token, so the open-edge script finds THIS dialog rather than whichever
+    /// <c>.ods-modal</c> happens to be last in the DOM — an older dialog still closing, or none yet while
+    /// MudDialog's portal renders (frontend review N5).
+    /// </summary>
+    internal string ModalKey { get; } = $"ods-modal-{Guid.NewGuid():N}";
+
     private bool focusPending;
     private bool restorePending;
 
@@ -145,6 +165,10 @@ public partial class OdsModal
                 // Capture (synchronously, before MudBlazor's own deferred focus-trap can run) whatever
                 // had focus — the row action that opened us — so the close edge below can restore it.
                 await Js.InvokeVoidAsync("odsCaptureFocusOwner");
+                // Role and description go on before focus moves, so the name, role and description are
+                // what a screen reader reads as focus lands (WCAG 4.1.2).
+                if (Role != OdsModalRole.Dialog || !string.IsNullOrEmpty(DescribedById))
+                    await Js.InvokeVoidAsync("odsDialogA11y", ModalKey, RoleAttribute(Role), DescribedById);
                 await Js.InvokeVoidAsync(InitialFocus == OdsModalInitialFocus.Cancel ? "odsFocusDialogCancel" : "odsFocusFirstField");
             }
             catch { /* JS unavailable (e.g. prerender / teardown) */ }
@@ -163,6 +187,9 @@ public partial class OdsModal
             catch { /* JS unavailable (e.g. teardown) */ }
         }
     }
+
+    /// <summary>The ARIA role value for <paramref name="role"/>.</summary>
+    internal static string RoleAttribute(OdsModalRole role) => role == OdsModalRole.AlertDialog ? "alertdialog" : "dialog";
 
     private async Task OnVisibleChanged(bool visible)
     {

@@ -15,8 +15,10 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Odyssey.Api.Controllers;
 
 /// <summary>
-/// The household's locations (issue #350). There is no <c>DELETE</c>: a location is archived through
-/// <c>PUT</c> with <c>archived: true</c>, and a <c>DELETE</c> request is a <c>405</c>.
+/// The household's places (issue #350) — since issue #380 the one store for every place and address in the
+/// app. A place is archived through <c>PUT</c> with <c>archived: true</c>; two duplicates are merged with
+/// <c>POST {id}/merge</c>; and an unused place is deleted outright with <c>DELETE</c>, under
+/// <c>locations.delete</c> — refused with a <c>409</c> while anything uses it.
 /// </summary>
 [ApiController]
 [Route("api/locations")]
@@ -37,7 +39,7 @@ public sealed class LocationsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] LocationsQueryParams query, CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken));
+        return Ok(await service.ListAsync(query, cancellationToken, User.LocationClaims()));
     }
 
     [HttpGet("{id:guid}", Name = "GetLocation")]
@@ -48,7 +50,7 @@ public sealed class LocationsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var location = await service.Get(id, cancellationToken);
+        var location = await service.Get(id, cancellationToken, User.LocationClaims());
         return location is null ? this.NotFoundProblem($"Location ID {id} not found.") : Ok(location);
     }
 
@@ -57,6 +59,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingLocation))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Create a location.")]
     public async Task<IActionResult> Post(
         [FromBody] NewLocation request, CancellationToken cancellationToken = default)
@@ -76,6 +79,7 @@ public sealed class LocationsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Replace a location; archived: true archives it, false restores it. Not an upsert.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
@@ -86,8 +90,58 @@ public sealed class LocationsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken);
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
         return updated is null ? this.NotFoundProblem($"Location ID {id} not found.") : Ok(updated);
+    }
+
+    /// <summary>
+    /// Merges a duplicate into another place (issue #380 §5.6): every reference moves to the target, and the
+    /// source is archived as a forwarder. Needs <c>locations.update</c> plus the update claim of every kind of
+    /// record that actually references the source, decided inside the merge's own transaction; a missing one
+    /// is a <c>403</c> that does not say which.
+    /// </summary>
+    [HttpPost("{sourceId:guid}/merge", Name = "MergeLocation")]
+    [Authorize(Policy = PermissionClaims.LocationsUpdate)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingLocation))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Merge a location into another; returns the surviving target.")]
+    public async Task<IActionResult> Merge(
+        [FromRoute(Name = "sourceId")] Guid sourceId,
+        [FromBody] MergeLocationRequest request, CancellationToken cancellationToken = default)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var target = await service.MergeAsync(sourceId, request.TargetLocationId!.Value, User.LocationClaims(), userId, cancellationToken);
+        return target is null ? this.NotFoundProblem("Location not found.") : Ok(target);
+    }
+
+    /// <summary>
+    /// Deletes an unused place outright — the erasure path (issue #380 §5.7). Anything that uses it, a merge
+    /// forwarder included, is a <c>409</c> whose body does not say what.
+    /// </summary>
+    [HttpDelete("{id:guid}", Name = "DeleteLocation")]
+    [Authorize(Policy = PermissionClaims.LocationsDelete)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete a location nothing uses.")]
+    public async Task<IActionResult> Delete(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        return await service.DeleteAsync(id, userId, cancellationToken)
+            ? NoContent()
+            : this.NotFoundProblem($"Location ID {id} not found.");
     }
 
     /// <summary>

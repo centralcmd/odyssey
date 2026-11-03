@@ -14,6 +14,18 @@ public enum LocationSource
     Manual = 1,
     Kartverket = 2,
     OpenMeteo = 3,
+
+    /// <summary>Created by the one-time conversion of a free-text event, series or entry place (issue #380 §11).</summary>
+    Converted = 4,
+
+    /// <summary>Created from a contact's postal address (issue #380): by the conversion, the resolver or vCard import.</summary>
+    ContactAddress = 5,
+
+    /// <summary>Created from a real-estate property's address (issue #380).</summary>
+    PropertyAddress = 6,
+
+    /// <summary>Created by an ICS import (issue #380 §8.4).</summary>
+    Imported = 7,
 }
 
 /// <summary>Which geocoding provider receives a search. Only the selected one ever sees the query.</summary>
@@ -48,6 +60,14 @@ public static partial class LocationRules
     public const int DescriptionMaxLength = 1000;
     public const int AddressTextMaxLength = 300;
     public const int SourceReferenceMaxLength = 64;
+
+    // The structured address fields (issue #380 §4). Declared here since a location became the one address
+    // record; ContactMethodLimits names these, so the contact DTOs and the location columns cannot drift.
+    public const int AddressLineMaxLength = 256;
+    public const int PostalCodeMaxLength = 32;
+    public const int CityMaxLength = 128;
+    public const int RegionMaxLength = 128;
+    public const int CountryCodeLength = 2;
 
     /// <summary>Display-only: a candidate's description is never stored, so it has its own, shorter cap.</summary>
     public const int CandidateDescriptionMaxLength = 200;
@@ -93,8 +113,23 @@ public static partial class LocationRules
         LocationSource.Manual => reference is null,
         LocationSource.Kartverket => reference is null || KartverketReference().IsMatch(reference),
         LocationSource.OpenMeteo => reference is null || OpenMeteoReference().IsMatch(reference),
+        // The issue #380 sources (Converted … Imported) are set by the application and carry no reference
+        // (§4, A-R9). Whether a caller may assert one at all is IsAssertable's question, not this one's.
+        LocationSource.Converted or LocationSource.ContactAddress or LocationSource.PropertyAddress
+            or LocationSource.Imported => reference is null,
         _ => false,
     };
+
+    /// <summary>
+    /// Whether a caller may assert <paramref name="source"/> (issue #380 §4, A-R9): only the three a person
+    /// or a geocoder produces. The other four are set by the application. A <c>PUT</c> may also keep the
+    /// stored value, whatever it is — that rule needs the stored row, so the service applies it.
+    /// </summary>
+    public static bool IsAssertable(LocationSource source) =>
+        source is LocationSource.Manual or LocationSource.Kartverket or LocationSource.OpenMeteo;
+
+    /// <summary>The <c>countryCode</c> shape (§8.3): two ASCII letters, either case; stored upper-cased.</summary>
+    public const string CountryCodePattern = "^[A-Za-z]{2}$";
 
     internal static IEnumerable<ValidationResult> ValidateReference(LocationSource? source, string? reference)
     {
@@ -129,13 +164,45 @@ public sealed record ExistingLocation
 
     public string? AddressText { get; set; }
 
-    public decimal Latitude { get; set; }
+    // The structured address (issue #380 §4). Optional; a location is the one address record.
+    public string? Line1 { get; set; }
 
-    public decimal Longitude { get; set; }
+    public string? Line2 { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? City { get; set; }
+
+    public string? Region { get; set; }
+
+    public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// Null together with <see cref="Longitude"/> and <see cref="TimeZoneId"/> when the place has no
+    /// coordinates — a converted or address-derived place until someone geocodes it (issue #380 §5.5).
+    /// </summary>
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
 
     public int? AltitudeMeters { get; set; }
 
-    public required string TimeZoneId { get; set; }
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>Whether the three coordinate fields are set (they are all-or-none).</summary>
+    public bool HasCoordinates { get; set; }
+
+    /// <summary>
+    /// Set on a location merged away into another (§5.6): archived, frozen, and deletable only. A later
+    /// find-or-create of its address links to the survivor.
+    /// </summary>
+    public Guid? MergedIntoLocationId { get; set; }
+
+    /// <summary>
+    /// How many records of each kind use this place (issue #380 §5.5, decision 6). A kind the caller cannot
+    /// read is <see langword="null"/>, never 0, and there is deliberately no total.
+    /// </summary>
+    public LocationUsage? Usage { get; set; }
 
     public LocationSource Source { get; set; }
 
@@ -169,18 +236,38 @@ public sealed record NewLocation : IValidatableObject
     [StringLength(LocationRules.AddressTextMaxLength)]
     public string? AddressText { get; set; }
 
-    [Required]
+    [StringLength(LocationRules.AddressLineMaxLength)]
+    public string? Line1 { get; set; }
+
+    [StringLength(LocationRules.AddressLineMaxLength)]
+    public string? Line2 { get; set; }
+
+    [StringLength(LocationRules.PostalCodeMaxLength)]
+    public string? PostalCode { get; set; }
+
+    [StringLength(LocationRules.CityMaxLength)]
+    public string? City { get; set; }
+
+    [StringLength(LocationRules.RegionMaxLength)]
+    public string? Region { get; set; }
+
+    [StringLength(LocationRules.CountryCodeLength)]
+    [RegularExpression(LocationRules.CountryCodePattern)]
+    public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// The coordinates and time zone are optional since issue #380, but all-or-none: a partial set is a
+    /// <c>422</c> keyed <c>latitude</c>, decided by the service.
+    /// </summary>
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Latitude { get; set; }
 
-    [Required]
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Longitude { get; set; }
 
     [Range(LocationRules.AltitudeMin, LocationRules.AltitudeMax)]
     public int? AltitudeMeters { get; set; }
 
-    [Required]
     [StringLength(IanaTimeZones.MaxLength)]
     [IanaTimeZone]
     public string? TimeZoneId { get; set; }
@@ -216,18 +303,38 @@ public sealed record UpdateLocation : IValidatableObject
     [StringLength(LocationRules.AddressTextMaxLength)]
     public string? AddressText { get; set; }
 
-    [Required]
+    [StringLength(LocationRules.AddressLineMaxLength)]
+    public string? Line1 { get; set; }
+
+    [StringLength(LocationRules.AddressLineMaxLength)]
+    public string? Line2 { get; set; }
+
+    [StringLength(LocationRules.PostalCodeMaxLength)]
+    public string? PostalCode { get; set; }
+
+    [StringLength(LocationRules.CityMaxLength)]
+    public string? City { get; set; }
+
+    [StringLength(LocationRules.RegionMaxLength)]
+    public string? Region { get; set; }
+
+    [StringLength(LocationRules.CountryCodeLength)]
+    [RegularExpression(LocationRules.CountryCodePattern)]
+    public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// The coordinates and time zone are optional since issue #380, but all-or-none: a partial set is a
+    /// <c>422</c> keyed <c>latitude</c>, decided by the service.
+    /// </summary>
     [Range(typeof(decimal), "-90", "90", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Latitude { get; set; }
 
-    [Required]
     [Range(typeof(decimal), "-180", "180", ParseLimitsInInvariantCulture = true, ConvertValueInInvariantCulture = true)]
     public decimal? Longitude { get; set; }
 
     [Range(LocationRules.AltitudeMin, LocationRules.AltitudeMax)]
     public int? AltitudeMeters { get; set; }
 
-    [Required]
     [StringLength(IanaTimeZones.MaxLength)]
     [IanaTimeZone]
     public string? TimeZoneId { get; set; }
@@ -260,6 +367,73 @@ public sealed record UpdateLocation : IValidatableObject
 public sealed class LocationsQueryParams : QueryParams<LocationSortBy>
 {
     public ArchivalStatus? Status { get; set; }
+
+    /// <summary><c>true</c>: only places with coordinates; <c>false</c>: only places without; omitted: both.</summary>
+    public bool? HasCoordinates { get; set; }
+
+    /// <summary>
+    /// <c>true</c>: only places something references; <c>false</c>: only unused ones. "Referenced" is any
+    /// reference the delete guard counts — records, weather, a preference, the household default or a merge
+    /// forwarder (issue #380 §5.5, decision 9).
+    /// </summary>
+    public bool? Referenced { get; set; }
+}
+
+/// <summary>
+/// Per-kind use counts of a location (issue #380 §5.5). Each is filled only when the caller holds that
+/// kind's read claim, and is <see langword="null"/> otherwise. A recurring series' generated occurrences
+/// count as calendar events, and the series once more in <see cref="RecurringSeries"/>. Weather rows,
+/// preferences and merge forwarders are not records and are not counted.
+/// </summary>
+public sealed record LocationUsage
+{
+    public int? Contacts { get; set; }
+
+    public int? Properties { get; set; }
+
+    public int? CalendarEvents { get; set; }
+
+    public int? RecurringSeries { get; set; }
+
+    public int? JournalEntries { get; set; }
+}
+
+/// <summary>
+/// The read embed of a linked location on an event, series or entry (issue #380 §5.1): the name, the archived
+/// flag and whether it has coordinates — nothing else. <see langword="null"/> without <c>locations.read</c>.
+/// </summary>
+public sealed record LocationRef
+{
+    public required Guid LocationId { get; set; }
+
+    public required string Name { get; set; }
+
+    public bool Archived { get; set; }
+
+    public bool HasCoordinates { get; set; }
+
+    /// <summary>Redacted: the name is a place, and a record prints its members wherever it is logged.</summary>
+    public override string ToString() => nameof(LocationRef) + " { (redacted) }";
+}
+
+/// <summary><c>POST /api/locations/{sourceId}/merge</c> (issue #380 §5.6).</summary>
+public sealed record MergeLocationRequest
+{
+    /// <summary>The surviving location. Nullable so an omitted value is a <c>400</c>, not <see cref="Guid.Empty"/>.</summary>
+    [Required]
+    public Guid? TargetLocationId { get; set; }
+}
+
+/// <summary>
+/// How an address edit on a contact or a property applies to the shared place (issue #380 §5.3, v6).
+/// </summary>
+public enum AddressApplyTo
+{
+    /// <summary>Copy-on-write: find or create the place for the new fields and move only this record's link.</summary>
+    ThisRecord = 1,
+
+    /// <summary>Edit the linked place in place, for every record using it. Needs <c>locations.update</c>.</summary>
+    AllUses = 2,
 }
 
 /// <summary>
@@ -322,6 +496,18 @@ public sealed record LocationCandidate
     public LocationSource Source { get; set; }
 
     public string? SourceReference { get; set; }
+
+    // The structured address of a Kartverket ADDRESS result (issue #380 §5.5a, v9): adressetekst, postnummer
+    // and poststed as returned, and "NO". Null on a place name or an Open-Meteo locality. Cleaned and capped
+    // to the location column limits, so a picked candidate always fits a NewAddress or a NewLocation.
+
+    public string? Line1 { get; set; }
+
+    public string? PostalCode { get; set; }
+
+    public string? City { get; set; }
+
+    public string? CountryCode { get; set; }
 
     /// <summary>Redacted for the same reason as <see cref="LocationSearchRequest"/>: it echoes what was searched.</summary>
     public override string ToString() => nameof(LocationCandidate) + " { (redacted) }";

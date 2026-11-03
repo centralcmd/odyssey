@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
@@ -30,12 +31,12 @@ public class PropertyHomeownerAssociationServiceTests
                      ("A", first), ("B", first), ("C", second), ("D", second), ("E", (Guid?)null),
                  })
         {
-            await service.Create(Flat(name, association), userId: null);
+            await service.Create(Flat(name, association), userId: null, claims: LocationClaims.Trusted);
         }
 
         lookup.Reset();
 
-        var rows = (await service.ListAsync(new PropertiesQueryParams())).Items;
+        var rows = (await service.ListAsync(new PropertiesQueryParams(), claims: LocationClaims.Trusted)).Items;
 
         Assert.Equal(1, lookup.ResolveRefsCalls);
         Assert.Equal(new[] { first, second }.Order(), lookup.LastIds.Order());
@@ -50,11 +51,11 @@ public class PropertyHomeownerAssociationServiceTests
         await using var context = TestContextFactory.Create();
         var lookup = new CountingContactLookup(TestContextFactory.ContactLookup(context));
         var service = new PropertyService(context, lookup);
-        await service.Create(Flat("A", null), userId: null);
-        await service.Create(PropertyTestData.Car(), userId: null);
+        await service.Create(Flat("A", null), userId: null, claims: LocationClaims.Trusted);
+        await service.Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted);
         lookup.Reset();
 
-        await service.ListAsync(new PropertiesQueryParams());
+        await service.ListAsync(new PropertiesQueryParams(), claims: LocationClaims.Trusted);
 
         Assert.Equal(0, lookup.ResolveRefsCalls);
     }
@@ -66,7 +67,7 @@ public class PropertyHomeownerAssociationServiceTests
         var service = new PropertyService(context, TestContextFactory.ContactLookup(context));
         var association = SeedContact(context, "Gone Sameie");
         await context.SaveChangesAsync();
-        var id = (await service.Create(Flat("A", association), userId: null)).PropertyId;
+        var id = (await service.Create(Flat("A", association), userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
         // The InMemory provider enforces no FK, so the dangling id survives here — the case the read
         // path must tolerate if a delete ever bypasses the guard.
@@ -76,7 +77,7 @@ public class PropertyHomeownerAssociationServiceTests
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
-        var property = await service.Get(id);
+        var property = await service.Get(id, claims: LocationClaims.Trusted);
 
         Assert.Equal(association, property!.RealEstateDetails!.HomeownerAssociationId);
         Assert.Null(property.HomeownerAssociation);
@@ -98,7 +99,7 @@ public class PropertyHomeownerAssociationServiceTests
         };
         await context.SaveChangesAsync();
 
-        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(Flat("A", id), userId: null));
+        var ex = await Assert.ThrowsAsync<DomainValidationException>(() => service.Create(Flat("A", id), userId: null, claims: LocationClaims.Trusted));
 
         Assert.Contains(AssociationKey, ex.Errors!.Keys);
         Assert.Empty(context.Properties);
@@ -113,7 +114,7 @@ public class PropertyHomeownerAssociationServiceTests
         await context.SaveChangesAsync();
 
         var ex = await Assert.ThrowsAsync<DomainUnprocessableException>(
-            () => service.Create(Flat("A", person), userId: null));
+            () => service.Create(Flat("A", person), userId: null, claims: LocationClaims.Trusted));
 
         Assert.Contains(AssociationKey, ex.Errors!.Keys);
         Assert.DoesNotContain("Kari", ex.Message, StringComparison.Ordinal);
@@ -127,14 +128,14 @@ public class PropertyHomeownerAssociationServiceTests
         var service = new PropertyService(context, lookup);
         var association = SeedContact(context, "Storgata Borettslag");
         await context.SaveChangesAsync();
-        var id = (await service.Create(Flat("A", association), userId: null)).PropertyId;
+        var id = (await service.Create(Flat("A", association), userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
         var contact = context.Contacts.Single(c => c.ContactId == association);
         contact.Type = ContactType.Person;
         contact.Archived = DateTime.UtcNow;
         await context.SaveChangesAsync();
 
-        var updated = await service.Update(id, Flat("Renamed", association), userId: null);
+        var updated = await service.Update(id, Flat("Renamed", association), userId: null, claims: LocationClaims.Trusted);
 
         Assert.Equal("Renamed", updated!.Name);
         Assert.Equal(association, updated.RealEstateDetails!.HomeownerAssociationId);

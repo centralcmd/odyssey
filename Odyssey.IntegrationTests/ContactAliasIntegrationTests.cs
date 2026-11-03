@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Core.Journal;
 using Odyssey.Context;
@@ -201,14 +202,14 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
         {
             var service = new ContactService(context, new NoopContactReferenceGuard());
 
-            var byAlias = await service.ListAsync(new ContactsQueryParams { Search = "kari" });
+            var byAlias = await service.ListAsync(new ContactsQueryParams { Search = "kari" }, claims: LocationClaims.Trusted);
             Assert.Equal(hansenId, Assert.Single(byAlias.Items).ContactId);
 
-            var byMiddleName = await service.ListAsync(new ContactsQueryParams { Search = "marie" });
+            var byMiddleName = await service.ListAsync(new ContactsQueryParams { Search = "marie" }, claims: LocationClaims.Trusted);
             Assert.Equal(hansenId, Assert.Single(byMiddleName.Items).ContactId);
 
             // AC 14 holds on real MariaDB too: the label is not searched.
-            Assert.Empty((await service.ListAsync(new ContactsQueryParams { Search = "maiden" })).Items);
+            Assert.Empty((await service.ListAsync(new ContactsQueryParams { Search = "maiden" }, claims: LocationClaims.Trusted)).Items);
         }
 
         await DropAsync();
@@ -296,7 +297,7 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
         {
             var service = new ContactService(context, new NoopContactReferenceGuard());
             var dedicated = (await service.GetAliases(contactId))!.Select(a => a.Value).ToList();
-            var inline = (await service.Get(contactId))!.Aliases.Select(a => a.Value).ToList();
+            var inline = (await service.Get(contactId, claims: LocationClaims.Trusted))!.Aliases.Select(a => a.Value).ToList();
 
             // Same SET either way — the divergence the caveat allows is ordering, never membership.
             Assert.Equal(dedicated.Order(StringComparer.Ordinal), inline.Order(StringComparer.Ordinal));
@@ -397,11 +398,11 @@ public class ContactAliasIntegrationTests(MariaDbFixture fixture)
             var address = (await service.CreateAddress(contactId, new NewAddress
             {
                 Label = AddressLabel.Home, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
-            }))!;
+            }, claims: LocationClaims.Trusted))!;
             Assert.True(address.IsPrimary);
             Assert.Equal("NO", address.CountryCode);
             Assert.Empty((await service.GetEmails(contactId))!);
-            Assert.Null(await service.GetAddresses(Guid.NewGuid()));
+            Assert.Null(await service.GetAddresses(Guid.NewGuid(), claims: LocationClaims.Trusted));
         }
 
         await DropAsync();

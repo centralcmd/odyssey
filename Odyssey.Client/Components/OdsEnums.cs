@@ -112,6 +112,10 @@ public enum OdsModalTone { Brand, Warning, Error }
 /// <c>initialFocus</c>). <c>Cancel</c> opens a destructive confirmation on its safe choice.</summary>
 public enum OdsModalInitialFocus { FirstField, Cancel }
 
+/// <summary>An <c>OdsModal</c>'s role (Odyssey Design System · Modal <c>role</c>, issue #383): a destructive
+/// confirmation is an <c>AlertDialog</c>, opened on Cancel.</summary>
+public enum OdsModalRole { Dialog, AlertDialog }
+
 /// <summary>Live-region role of an <c>OdsAlert</c> (Odyssey Design System · Alert <c>live</c>):
 /// <c>Alert</c> interrupts, <c>Status</c> is polite — for a persistent banner that renders on load.</summary>
 public enum OdsAlertLive

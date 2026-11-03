@@ -704,12 +704,16 @@ public partial class JournalCard
         }
     }
 
+    /// <summary>The delete confirmation's body: attached files and the entry's place both stay (issue #383 §3.9).</summary>
+    internal static string DeleteMessage(string title) =>
+        $"Permanently delete '{title}'? This cannot be undone. Attached files stay in your files. {LocationVisuals.RecordDeleteSentence}";
+
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
         if (!_canDelete) return;
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete entry",
-            $"Permanently delete '{e.Title}'? This cannot be undone. Attached files stay in your files.",
+            DeleteMessage(e.Title),
             yesText: "Delete", cancelText: "Cancel");
 
         if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))

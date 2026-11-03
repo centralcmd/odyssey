@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
@@ -14,7 +15,12 @@ public sealed class JournalEntryDraft
     public string Title { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public DateTime? EntryDate { get; set; } = DateTime.UtcNow.Date;
+    /// <summary>The Details text beside the place (issue #383 §3.2) — meeting links, room numbers.</summary>
     public string Location { get; set; } = string.Empty;
+
+    /// <summary>The linked place: the stored link, the picker's value and a staged create (issue #383).</summary>
+    public PlaceDraft Place { get; set; } = new();
+
     public IReadOnlyCollection<string> TagIds { get; set; } = [];
     public IReadOnlyCollection<string> ContactIds { get; set; } = [];
     public List<JournalDraftPhoto> Photos { get; set; } = [];
@@ -42,6 +48,7 @@ public sealed class JournalEntryDraft
         Content = e.Content,
         EntryDate = e.EntryDate.ToLocalTime().Date,
         Location = e.Location ?? string.Empty,
+        Place = PlaceDraft.For(e.LocationId, e.LocationRef),
         TagIds = [.. e.TagIds.Select(id => id.ToString())],
         ContactIds = [.. e.ContactIds.Select(id => id.ToString())],
         Photos = [.. photos],
@@ -56,55 +63,91 @@ public sealed class JournalEntryDraft
 /// </summary>
 public sealed record JournalDraftPhoto(Guid FileId, string Name, Guid? PhotoId = null, bool ThumbnailsReady = false);
 
-/// <summary>Builds the journal write DTOs from a draft.</summary>
+/// <summary>
+/// The one builder per journal write DTO (issue #383 §5.2). The server's <c>PUT</c> is a full replacement and
+/// an omitted <c>locationId</c> clears an entry's place, so every client construction of
+/// <see cref="NewJournalEntry"/> and <see cref="UpdateJournalEntry"/> goes through <see cref="New"/> and
+/// <see cref="Update"/>, with the link as a REQUIRED <see cref="LocationLink"/> argument. A source-lint
+/// (<c>LocationWriteBuilderLintTests</c>) fails on either DTO constructed anywhere else in the client.
+/// </summary>
 public static class JournalWrite
 {
     private static Guid[] ToGuids(IReadOnlyCollection<string> ids) =>
         [.. ids.Select(s => Guid.TryParse(s, out var g) ? g : Guid.Empty).Where(g => g != Guid.Empty)];
 
-    public static NewJournalEntry ToNew(JournalEntryDraft d) => new()
+    /// <summary>The single construction of <see cref="NewJournalEntry"/> in the client.</summary>
+    public static NewJournalEntry New(
+        string title, string content, DateTime entryDate, string? details, Guid[] tagIds, Guid[] contactIds,
+        Guid[] photoFileIds, Guid[] attachmentFileIds, LocationLink link) => new()
     {
-        Title = d.Title.Trim(),
-        Content = d.Content.Trim(),
-        EntryDate = ToUtc(d.EntryDate!.Value),
-        Location = string.IsNullOrWhiteSpace(d.Location) ? null : d.Location.Trim(),
-        TagIds = ToGuids(d.TagIds),
-        ContactIds = ToGuids(d.ContactIds),
-        PhotoFileIds = [.. d.Photos.Select(p => p.FileId)],
-        AttachmentFileIds = [.. d.Attachments.Select(a => a.Id)],
+        Title = title,
+        Content = content,
+        EntryDate = entryDate,
+        Location = details,
+        LocationId = link.Id,
+        TagIds = tagIds,
+        ContactIds = contactIds,
+        PhotoFileIds = photoFileIds,
+        AttachmentFileIds = attachmentFileIds,
     };
 
-    public static UpdateJournalEntry ToUpdate(JournalEntryDraft d, bool archived) => new()
+    /// <summary>The single construction of <see cref="UpdateJournalEntry"/> in the client.</summary>
+    public static UpdateJournalEntry Update(
+        string title, string content, DateTime entryDate, string? details, bool archived, Guid[] tagIds, Guid[] contactIds,
+        Guid[] photoFileIds, Guid[] attachmentFileIds, LocationLink link) => new()
     {
-        Title = d.Title.Trim(),
-        Content = d.Content.Trim(),
-        EntryDate = ToUtc(d.EntryDate!.Value),
-        Location = string.IsNullOrWhiteSpace(d.Location) ? null : d.Location.Trim(),
+        Title = title,
+        Content = content,
+        EntryDate = entryDate,
+        Location = details,
+        LocationId = link.Id,
         Archived = archived,
-        TagIds = ToGuids(d.TagIds),
-        ContactIds = ToGuids(d.ContactIds),
-        PhotoFileIds = [.. d.Photos.Select(p => p.FileId)],
-        AttachmentFileIds = [.. d.Attachments.Select(a => a.Id)],
+        TagIds = tagIds,
+        ContactIds = contactIds,
+        PhotoFileIds = photoFileIds,
+        AttachmentFileIds = attachmentFileIds,
     };
+
+    public static NewJournalEntry ToNew(JournalEntryDraft d, LocationLink link) => New(
+        d.Title.Trim(),
+        d.Content.Trim(),
+        ToUtc(d.EntryDate!.Value),
+        string.IsNullOrWhiteSpace(d.Location) ? null : d.Location.Trim(),
+        ToGuids(d.TagIds),
+        ToGuids(d.ContactIds),
+        [.. d.Photos.Select(p => p.FileId)],
+        [.. d.Attachments.Select(a => a.Id)],
+        link);
+
+    public static UpdateJournalEntry ToUpdate(JournalEntryDraft d, bool archived, LocationLink link) => Update(
+        d.Title.Trim(),
+        d.Content.Trim(),
+        ToUtc(d.EntryDate!.Value),
+        string.IsNullOrWhiteSpace(d.Location) ? null : d.Location.Trim(),
+        archived,
+        ToGuids(d.TagIds),
+        ToGuids(d.ContactIds),
+        [.. d.Photos.Select(p => p.FileId)],
+        [.. d.Attachments.Select(a => a.Id)],
+        link);
 
     /// <summary>Re-project a loaded entry into an update DTO with only <paramref name="archived"/> changed
-    /// (used by the archive/unarchive row action — no fields edited, no re-upload).</summary>
-    public static UpdateJournalEntry FromDetail(ExistingJournalEntry e, bool archived) => new()
-    {
-        Title = e.Title,
-        Content = e.Content,
-        EntryDate = e.EntryDate,
-        Location = e.Location,
-        Archived = archived,
-        TagIds = [.. e.TagIds],
-        ContactIds = [.. e.ContactIds],
-        PhotoFileIds = [.. e.Photos.OrderBy(p => p.Position).Select(p => p.FileId)],
-        AttachmentFileIds = [.. e.Attachments.Select(a => a.FileId)],
-    };
+    /// (used by the archive/unarchive row action — no fields edited, no re-upload). The stored place is KEPT.</summary>
+    public static UpdateJournalEntry FromDetail(ExistingJournalEntry e, bool archived) => Update(
+        e.Title,
+        e.Content,
+        e.EntryDate,
+        e.Location,
+        archived,
+        [.. e.TagIds],
+        [.. e.ContactIds],
+        [.. e.Photos.OrderBy(p => p.Position).Select(p => p.FileId)],
+        [.. e.Attachments.Select(a => a.FileId)],
+        LocationLink.Keep(e.LocationId));
 
     /// <summary>Re-project a loaded entry with one ATTACHMENT link removed and everything else
     /// unchanged — the file row's "Remove from entry" action. Detaching edits the entry; the file stays
-    /// in the files store.</summary>
+    /// in the files store, and the entry keeps its place.</summary>
     public static UpdateJournalEntry WithoutAttachment(ExistingJournalEntry e, Guid fileId)
     {
         var update = FromDetail(e, e.Archived is not null);

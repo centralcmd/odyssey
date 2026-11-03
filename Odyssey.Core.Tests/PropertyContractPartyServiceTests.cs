@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -81,7 +82,7 @@ public class PropertyContractPartyServiceTests
     public async Task AddParty_WithAProperty_ProjectsAsPropertyKind_NotInstitution()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.Car("Volvo XC60"), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.Car("Volvo XC60"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
@@ -107,7 +108,7 @@ public class PropertyContractPartyServiceTests
     public async Task AddParty_WithAPropertyAndAnAccount_IsRefused_KeyedOnPropertyId()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
@@ -124,7 +125,7 @@ public class PropertyContractPartyServiceTests
         await using var context = TestContextFactory.Create();
         var body = PropertyTestData.House();
         body.Archived = true;
-        var propertyId = (await Properties(context).Create(body, userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(body, userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
 
@@ -138,7 +139,7 @@ public class PropertyContractPartyServiceTests
     public async Task UpdateParty_RedatingAPropertyParty_IsNotARetarget()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(), userId: null);
         var party = await Parties(context).AddParty(contract.ContractId,
@@ -155,7 +156,7 @@ public class PropertyContractPartyServiceTests
     public async Task FindPartiesRejectedByType_NamesAPropertyPartyByTheProperty()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.House("Cabin"), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.House("Cabin"), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var service = Contracts(context);
         var contract = await service.Create(Contract(type: DtoContractType.Insurance), userId: null);
         await Parties(context).AddParty(contract.ContractId,
@@ -170,7 +171,7 @@ public class PropertyContractPartyServiceTests
     public async Task PropertyDelete_RemovesPartyRows_EventsEachOnItsContract_WithOneTimestampAndTheCaller()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var contracts = Contracts(context);
         var loan = await contracts.Create(Contract("Loan"), userId: null);
         var cover = await contracts.Create(Contract("Cover"), userId: null);
@@ -215,7 +216,7 @@ public class PropertyContractPartyServiceTests
     public async Task PropertyDelete_WithNoParties_StagesNothing()
     {
         await using var context = TestContextFactory.Create();
-        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null)).PropertyId;
+        var propertyId = (await Properties(context).Create(PropertyTestData.House(), userId: null, claims: LocationClaims.Trusted)).PropertyId;
         var logger = new RecordingLogger<PropertyService>();
 
         Assert.True(await Properties(context, logger).Delete(propertyId, UserId));

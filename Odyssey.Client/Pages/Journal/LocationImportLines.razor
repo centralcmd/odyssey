@@ -1,0 +1,17 @@
+@*
+    LocationImportLines — the places an import linked or added (issue #383 §3.10): one muted line per
+    sentence the import result supports, with a decorative `place` glyph. Lines that are null are not
+    shown, so an import that touched no place adds nothing. Plain text.
+*@
+
+@foreach (var line in Lines.Where(l => !string.IsNullOrEmpty(l)))
+{
+    <div class="loc-shared-line">
+        <span class="material-icons" aria-hidden="true">place</span>
+        <span>@line</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<string?> Lines { get; set; } = [];
+}

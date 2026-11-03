@@ -263,6 +263,55 @@ public sealed record OdsOption(string Value, string Label)
     /// cannot be picked must say so in words. Honoured by <c>OdsCombobox</c>.
     /// </summary>
     public bool Disabled { get; init; }
+
+    /// <summary>
+    /// The option's full accessible name when the visible rows abbreviate it (Odyssey Design System ·
+    /// Combobox <c>ariaLabel</c>) — a place reads <c>‹name›, ‹address›, no coordinates, archived</c>.
+    /// <c>OdsCombobox</c> speaks it in place of the visible label and second line.
+    /// </summary>
+    public string? AriaLabel { get; init; }
+
+    /// <summary>
+    /// The synthetic "Create …" row an <c>OdsCombobox</c> appends for an unmatched query (issue #383 §4).
+    /// Its <see cref="Sub"/> is a disclosure, so it is also part of the row's accessible name.
+    /// </summary>
+    public bool IsCreate { get; init; }
+
+    /// <summary>
+    /// The key of the <see cref="OdsOptionGroup"/> this row is listed under (Odyssey Design System · Combobox
+    /// <c>group</c>, issue #383 v5). Rows without one come first.
+    /// </summary>
+    public string? Group { get; init; }
+
+    /// <summary>
+    /// A group's NOTE rather than a row to pick — a sentence shown in its group even when the group has no rows,
+    /// and read on the status line (Combobox <c>notes</c>: <i>Address search is unavailable — enter the address by
+    /// hand</i>). <c>OdsCombobox</c> never lets it be selected.
+    /// </summary>
+    public bool IsNote { get; init; }
+}
+
+/// <summary>
+/// One labelled group of <see cref="OdsCombobox"/> rows (Odyssey Design System · <c>ComboboxGroup</c>, issue #383
+/// v5): the address picker's <i>Saved places</i> and <i>Addresses from Kartverket</i>.
+/// </summary>
+/// <param name="Key">What an option's <see cref="OdsOption.Group"/> names.</param>
+/// <param name="Label">The visible heading, and the name the group is announced by.</param>
+public sealed record OdsOptionGroup(string Key, string Label);
+
+/// <summary>
+/// The one final row of an <see cref="OdsCombobox"/>, after a rule, present whenever the list is open (Odyssey
+/// Design System · <c>ComboboxFooterOption</c>, issue #383 v5): the address picker's <i>Enter an address by
+/// hand…</i>. It is a real option — reachable with ↓, picked with Enter — and choosing it calls
+/// <see cref="OnSelect"/> with the typed text without changing the value.
+/// </summary>
+public sealed record OdsComboboxFooter(string Label, Func<string, Task> OnSelect)
+{
+    /// <summary>Leading decorative glyph. Default <c>edit</c>.</summary>
+    public string Icon { get; init; } = "edit";
+
+    /// <summary>The full accessible name when the label abbreviates it.</summary>
+    public string? AriaLabel { get; init; }
 }
 
 /// <summary>
@@ -290,6 +339,12 @@ public sealed record OdsCreateKind(string Key, string Label)
 public sealed record OdsRadioOption(string Value, string Label)
 {
     public bool Disabled { get; init; }
+
+    /// <summary>
+    /// A visible second line under the label, wired as that radio's <c>aria-describedby</c> (issue #383 §6.2):
+    /// the consequence of the choice. The radio's accessible NAME stays its short label.
+    /// </summary>
+    public string? Description { get; init; }
 }
 
 /// <summary>One option in a <see cref="OdsSegmentedControl"/>.</summary>
@@ -330,6 +385,13 @@ public sealed class OdsMenuItem
 {
     /// <summary>Visible label. Omitted for dividers / headers.</summary>
     public string? Label { get; set; }
+
+    /// <summary>
+    /// The item's accessible name when the visible label alone would not say which record it acts on
+    /// (Odyssey Design System · ActionMenu, issue #383): <c>Delete Hytta</c>. It must START with the
+    /// visible label (WCAG 2.5.3 label in name).
+    /// </summary>
+    public string? AriaLabel { get; set; }
 
     /// <summary>Leading Material Icons ligature name.</summary>
     public string? Icon { get; set; }

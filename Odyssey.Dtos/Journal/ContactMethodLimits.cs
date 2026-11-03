@@ -7,11 +7,12 @@ namespace Odyssey.Dtos.Journal;
 /// </summary>
 public static class ContactMethodLimits
 {
-    public const int AddressLineMaxLength = 256;
-    public const int CityMaxLength = 128;
-    public const int PostalCodeMaxLength = 32;
-    public const int RegionMaxLength = 128;
-    public const int CountryCodeLength = 2;
+    // A contact address is a link to a location since issue #380, so its widths are the location's.
+    public const int AddressLineMaxLength = LocationRules.AddressLineMaxLength;
+    public const int CityMaxLength = LocationRules.CityMaxLength;
+    public const int PostalCodeMaxLength = LocationRules.PostalCodeMaxLength;
+    public const int RegionMaxLength = LocationRules.RegionMaxLength;
+    public const int CountryCodeLength = LocationRules.CountryCodeLength;
     public const int EmailMaxLength = 256;
     public const int PhoneMaxLength = 32;
 }

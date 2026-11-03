@@ -1,0 +1,147 @@
+@*
+    OdsAddressBlock — what sits around the one Address field of a contact or property (Odyssey Design System ·
+    components/AddressBlock, issue #383 v5 §3.3a). The field itself is OdsLocationSelect in address mode; this
+    draws the two pieces that picker cannot, chosen by Mode:
+
+    Hand    The hand-entry group, opened by the picker's "Enter an address by hand…" row: a fieldset whose legend
+            is "Address", Line 1 … Country (a property has the four fields it carries: Line 1, Postal code, City,
+            Country), and a "Search instead" link back to the picker. Input ids are ‹IdBase›-‹field›, which the
+            error summary links to.
+    Linked  Under a linked address: the usage line (locations.read) and an "Edit address" text button
+            (locations.update — hidden, never disabled, without it) that opens the location dialog for the place.
+
+    The v4 pick-or-type editor — its state table, the "Apply this change to" group, the coordinates warning and
+    the "Also on the saved place" tile — is retired. Everything renders as plain text, never as raw markup.
+*@
+
+@if (Mode == AddressBlockMode.Hand)
+{
+    <fieldset class="@($"odc-addrblock odc-addrblock-hand {Class}".TrimEnd())">
+        <legend class="odc-addrblock-legend">Address<span class="odc-field-req" aria-hidden="true">*</span></legend>
+        @if (Model.Variant == AddressBlockVariant.Property)
+        {
+            <OdsField Label="Line 1" Required="@Required" Value="@Model.Fields.Line1" MaxLength="LocationRules.AddressLineMaxLength"
+                      ValueChanged="@(v => EditAsync(AddressBlockModel.Line1Key, v))" Error="@Err(AddressBlockModel.Line1Key)"
+                      Placeholder="Street name and number" InputId="@FieldId(AddressBlockModel.Line1Key)" />
+            <OdsFormRow Cols="3">
+                <OdsField Label="Postal code" Value="@Model.Fields.PostalCode" MaxLength="LocationRules.PostalCodeMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.PostalCodeKey, v))" Error="@Err(AddressBlockModel.PostalCodeKey)"
+                          InputId="@FieldId(AddressBlockModel.PostalCodeKey)" />
+                <OdsField Label="City" Required="@Required" Value="@Model.Fields.City" MaxLength="LocationRules.CityMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.CityKey, v))" Error="@Err(AddressBlockModel.CityKey)"
+                          InputId="@FieldId(AddressBlockModel.CityKey)" />
+                @Country
+            </OdsFormRow>
+        }
+        else
+        {
+            <OdsFormRow>
+                <OdsField Label="Line 1" Required="@Required" Value="@Model.Fields.Line1" MaxLength="LocationRules.AddressLineMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.Line1Key, v))" Error="@Err(AddressBlockModel.Line1Key)"
+                          Placeholder="Street name and number" InputId="@FieldId(AddressBlockModel.Line1Key)" />
+                <OdsField Label="Line 2" Value="@Model.Fields.Line2" MaxLength="LocationRules.AddressLineMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.Line2Key, v))" Error="@Err(AddressBlockModel.Line2Key)"
+                          Placeholder="Apartment, floor, etc." InputId="@FieldId(AddressBlockModel.Line2Key)" />
+            </OdsFormRow>
+            <OdsFormRow>
+                <OdsField Label="Postal code" Value="@Model.Fields.PostalCode" MaxLength="LocationRules.PostalCodeMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.PostalCodeKey, v))" Error="@Err(AddressBlockModel.PostalCodeKey)"
+                          InputId="@FieldId(AddressBlockModel.PostalCodeKey)" />
+                <OdsField Label="City" Required="@Required" Value="@Model.Fields.City" MaxLength="LocationRules.CityMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.CityKey, v))" Error="@Err(AddressBlockModel.CityKey)"
+                          InputId="@FieldId(AddressBlockModel.CityKey)" />
+            </OdsFormRow>
+            <OdsFormRow>
+                <OdsField Label="Region" Value="@Model.Fields.Region" MaxLength="LocationRules.RegionMaxLength"
+                          ValueChanged="@(v => EditAsync(AddressBlockModel.RegionKey, v))" Error="@Err(AddressBlockModel.RegionKey)"
+                          InputId="@FieldId(AddressBlockModel.RegionKey)" />
+                @Country
+            </OdsFormRow>
+        }
+        @if (Model.Variant == AddressBlockVariant.Property && Model.Stored is not null && Model.Fields.InputsEmpty)
+        {
+            <div class="odc-addrblock-usage">
+                <span class="material-icons" aria-hidden="true">info</span>
+                <span>@AddressBlockModel.ClearedHelp</span>
+            </div>
+        }
+        @if (OnSearchInstead.HasDelegate)
+        {
+            <div>
+                <button type="button" class="odc-addrblock-link" @onclick="OnSearchInstead">Search instead</button>
+            </div>
+        }
+    </fieldset>
+}
+else if (Model.ShowsLinked && (Model.UsageLine is not null || CanEdit))
+{
+    <div class="@($"odc-addrblock odc-addrblock-linked {Class}".TrimEnd())">
+        @if (Model.UsageLine is { } usage)
+        {
+            <div class="odc-addrblock-usage" id="@UsageId">
+                <span class="material-icons" aria-hidden="true">@(Model.UsageIsShared ? "link" : "info")</span>
+                <span>@usage</span>
+            </div>
+        }
+        @if (CanEdit)
+        {
+            <button type="button" id="@EditButtonId" class="odc-addrblock-edit" @onclick="OnEditAddress"
+                    aria-describedby="@(Model.UsageLine is null ? null : UsageId)">
+                <span class="material-icons" aria-hidden="true">edit_location_alt</span>
+                <span>Edit address</span>
+            </button>
+        }
+    </div>
+}
+
+@code {
+    /// <summary>The address field's state — the dialog owns it and reads the request from it on save.</summary>
+    [Parameter, EditorRequired] public AddressBlockModel Model { get; set; } = default!;
+
+    [Parameter] public AddressBlockMode Mode { get; set; } = AddressBlockMode.Hand;
+
+    /// <summary>Raised after every edit, so the dialog can clear stale errors and re-render.</summary>
+    [Parameter] public EventCallback OnChange { get; set; }
+
+    /// <summary>Field errors keyed like the server's: <c>line1</c>, <c>city</c>, <c>countryCode</c>…</summary>
+    [Parameter] public IReadOnlyDictionary<string, string>? Errors { get; set; }
+
+    /// <summary>Hand-entry input ids are <c>‹IdBase›-‹field›</c> — the error summary links to them.</summary>
+    [Parameter] public string IdBase { get; set; } = $"ab-{Guid.NewGuid():N}";
+
+    /// <summary>Hand mode: the <i>Search instead</i> link back to the picker. Without it (no <c>locations.read</c>) there is none.</summary>
+    [Parameter] public EventCallback OnSearchInstead { get; set; }
+
+    /// <summary>Linked mode: opens the location dialog for the place.</summary>
+    [Parameter] public EventCallback OnEditAddress { get; set; }
+
+    /// <summary>The Edit address button's id — where focus returns when the location dialog closes.</summary>
+    [Parameter] public string? EditButtonId { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>The hand-entry inputs id, for <c>‹IdBase›-‹field›</c> (design system · AddressBlock.fieldId).</summary>
+    public static string FieldId(string idBase, string key) => $"{idBase}-{key}";
+
+    private string FieldId(string key) => FieldId(IdBase, key);
+
+    private string UsageId => $"{IdBase}-usage";
+
+    private bool CanEdit => Model.CanEditAddress && OnEditAddress.HasDelegate;
+
+    // Line 1, City and Country are required, except on a property, whose emptied address unlinks it.
+    private bool Required => Model.Variant == AddressBlockVariant.Contact || !Model.Fields.InputsEmpty || Model.Stored is null;
+
+    private string? Err(string key) => Errors is not null && Errors.TryGetValue(key, out var message) ? message : null;
+
+    private Task EditAsync(string key, string? value)
+    {
+        Model.Edit(key, value);
+        return OnChange.InvokeAsync();
+    }
+
+    private RenderFragment Country =>
+        @<OdsField Label="Country" Required="@Required" Value="@Model.Fields.CountryCode" MaxLength="LocationRules.CountryCodeLength"
+                   ValueChanged="@(v => EditAsync(AddressBlockModel.CountryCodeKey, v))" Error="@Err(AddressBlockModel.CountryCodeKey)"
+                   Placeholder="NO" Help="Two letters, e.g. NO" InputId="@FieldId(AddressBlockModel.CountryCodeKey)" />;
+}

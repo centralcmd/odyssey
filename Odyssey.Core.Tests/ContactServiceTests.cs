@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -141,7 +142,7 @@ public class ContactServiceTests
         var created = await service.Create(Org("To Delete"));
         await service.Delete(created.ContactId);
 
-        Assert.Null(await service.Get(created.ContactId));
+        Assert.Null(await service.Get(created.ContactId, claims: LocationClaims.Trusted));
     }
 
     // ── Server-side list contract (issue #277) ────────────────────────────────
@@ -155,7 +156,7 @@ public class ContactServiceTests
         await service.Create(Org("Apple Store"));
         await service.Create(Org("Netflix"));
 
-        var results = (await service.ListAsync(new ContactsQueryParams { Search = "apple" })).Items;
+        var results = (await service.ListAsync(new ContactsQueryParams { Search = "apple" }, claims: LocationClaims.Trusted)).Items;
 
         Assert.Equal("Apple Store", Assert.Single(results).ResolvedDisplayName);
     }
@@ -168,10 +169,10 @@ public class ContactServiceTests
         foreach (var name in new[] { "Bravo", "Alpha", "Charlie" })
             await service.Create(Org(name));
 
-        var asc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Asc });
+        var asc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Asc }, claims: LocationClaims.Trusted);
         Assert.Equal(["Alpha", "Bravo", "Charlie"], asc.Items.Select(c => c.ResolvedDisplayName));
 
-        var desc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Desc });
+        var desc = await service.ListAsync(new ContactsQueryParams { SortBy = ContactSortBy.Name, SortDir = SortDirection.Desc }, claims: LocationClaims.Trusted);
         Assert.Equal(["Charlie", "Bravo", "Alpha"], desc.Items.Select(c => c.ResolvedDisplayName));
     }
 
@@ -183,7 +184,7 @@ public class ContactServiceTests
         await service.Create(Person("Ada", "Lovelace"));
         await service.Create(Org("Corp"));
 
-        var page = await service.ListAsync(new ContactsQueryParams { Types = [ContactType.Organization] });
+        var page = await service.ListAsync(new ContactsQueryParams { Types = [ContactType.Organization] }, claims: LocationClaims.Trusted);
 
         Assert.Equal("Corp", Assert.Single(page.Items).ResolvedDisplayName);
     }
@@ -197,10 +198,10 @@ public class ContactServiceTests
         var created = await service.Create(Org("Electric Co"));
 
         await service.Update(created.ContactId, Org("Electric Co", archived: true));
-        Assert.NotNull((await service.Get(created.ContactId))!.Archived);
+        Assert.NotNull((await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.Archived);
 
         await service.Update(created.ContactId, Org("Electric Co", archived: false));
-        Assert.Null((await service.Get(created.ContactId))!.Archived);
+        Assert.Null((await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.Archived);
     }
 
     // ── Contact sub-resources (issue #325) ────────────────────────────────────
@@ -211,17 +212,17 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var cp = await service.Create(Org("Landlord LLC"));
-        var before = (await service.Get(cp.ContactId))!.UpdatedAt;
+        var before = (await service.Get(cp.ContactId, claims: LocationClaims.Trusted))!.UpdatedAt;
 
         var address = await service.CreateAddress(cp.ContactId, new NewAddress
         {
             Label = AddressLabel.Visiting, Line1 = "Storgata 55", City = "Oslo", CountryCode = "no",
-        });
+        }, claims: LocationClaims.Trusted);
 
         Assert.NotNull(address);
         Assert.True(address!.IsPrimary);
         Assert.Equal("NO", address.CountryCode);
-        Assert.True((await service.Get(cp.ContactId))!.UpdatedAt >= before);
+        Assert.True((await service.Get(cp.ContactId, claims: LocationClaims.Trusted))!.UpdatedAt >= before);
     }
 
     [Fact]
@@ -231,10 +232,10 @@ public class ContactServiceTests
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var cp = await service.Create(Org("Landlord LLC"));
 
-        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
-        var second = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO", IsPrimary = true });
+        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
+        var second = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO", IsPrimary = true }, claims: LocationClaims.Trusted);
 
-        var addresses = await service.GetAddresses(cp.ContactId);
+        var addresses = await service.GetAddresses(cp.ContactId, claims: LocationClaims.Trusted);
         Assert.NotNull(addresses);
         Assert.Single(addresses!, a => a.IsPrimary);
         Assert.True(addresses!.Single(a => a.Id == second!.Id).IsPrimary);
@@ -247,12 +248,12 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var cp = await service.Create(Org("Landlord LLC"));
-        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
-        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" });
+        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
+        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
         Assert.True(await service.DeleteAddress(cp.ContactId, first!.Id));
 
-        var addresses = await service.GetAddresses(cp.ContactId);
+        var addresses = await service.GetAddresses(cp.ContactId, claims: LocationClaims.Trusted);
         Assert.Single(addresses!);
         Assert.True(addresses!.Single().IsPrimary);
     }
@@ -264,10 +265,10 @@ public class ContactServiceTests
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var owner = await service.Create(Org("Owner"));
         var other = await service.Create(Org("Other"));
-        var address = await service.CreateAddress(owner.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
+        var address = await service.CreateAddress(owner.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
         // The address exists, but not under 'other' — must be treated as not found.
-        var updated = await service.UpdateAddress(other.ContactId, address!.Id, new NewAddress { Label = AddressLabel.Registered, Line1 = "Z", City = "Oslo", CountryCode = "NO" });
+        var updated = await service.UpdateAddress(other.ContactId, address!.Id, new NewAddress { Label = AddressLabel.Registered, Line1 = "Z", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
         Assert.False(updated);
     }
@@ -278,7 +279,7 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
 
-        Assert.Null(await service.GetAddresses(Guid.NewGuid()));
+        Assert.Null(await service.GetAddresses(Guid.NewGuid(), claims: LocationClaims.Trusted));
     }
 
     [Fact]
@@ -291,7 +292,7 @@ public class ContactServiceTests
         await service.CreateEmail(cp.ContactId, new NewEmailAddress { Label = EmailLabel.Work, Value = "p.nair@example.org" });
         await service.CreatePhone(cp.ContactId, new NewPhoneNumber { Label = PhoneLabel.Mobile, Value = "+1 650 555 0088" });
 
-        var fetched = await service.Get(cp.ContactId);
+        var fetched = await service.Get(cp.ContactId, claims: LocationClaims.Trusted);
         Assert.Equal("p.nair@example.org", Assert.Single(fetched!.EmailAddresses).Value);
         Assert.Equal("+1 650 555 0088", Assert.Single(fetched.PhoneNumbers).Value);
     }
@@ -304,14 +305,14 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var cp = await service.Create(Org("Landlord LLC"));
-        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
-        var second = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" });
+        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
+        var second = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
         // second starts non-primary; promoting it via UPDATE must clear the previous primary (first).
         Assert.True(await service.UpdateAddress(cp.ContactId, second!.Id,
-            new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO", IsPrimary = true }));
+            new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO", IsPrimary = true }, claims: LocationClaims.Trusted));
 
-        var addresses = await service.GetAddresses(cp.ContactId);
+        var addresses = await service.GetAddresses(cp.ContactId, claims: LocationClaims.Trusted);
         Assert.NotNull(addresses);
         Assert.True(addresses.Single(a => a.Id == second!.Id).IsPrimary);
         Assert.False(addresses.Single(a => a.Id == first!.Id).IsPrimary);
@@ -323,14 +324,14 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard());
         var cp = await service.Create(Org("Landlord LLC"));
-        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
-        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" });
+        var first = await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
+        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Registered, Line1 = "B", City = "Bergen", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
         // Clearing the only primary must not leave the collection with zero primaries.
         Assert.True(await service.UpdateAddress(cp.ContactId, first!.Id,
-            new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO", IsPrimary = false }));
+            new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO", IsPrimary = false }, claims: LocationClaims.Trusted));
 
-        var addresses = await service.GetAddresses(cp.ContactId);
+        var addresses = await service.GetAddresses(cp.ContactId, claims: LocationClaims.Trusted);
         Assert.Single(addresses!, a => a.IsPrimary);
     }
 
@@ -341,12 +342,12 @@ public class ContactServiceTests
         await using var context = TestContextFactory.CreateJournal();
         var service = new ContactService(context, new NoopContactReferenceGuard(), clock);
         var cp = await service.Create(Org("Landlord LLC"));
-        var before = (await service.Get(cp.ContactId))!.UpdatedAt;
+        var before = (await service.Get(cp.ContactId, claims: LocationClaims.Trusted))!.UpdatedAt;
 
         clock.Advance(TimeSpan.FromMinutes(5));
-        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" });
+        await service.CreateAddress(cp.ContactId, new NewAddress { Label = AddressLabel.Visiting, Line1 = "A", City = "Oslo", CountryCode = "NO" }, claims: LocationClaims.Trusted);
 
-        var after = (await service.Get(cp.ContactId))!.UpdatedAt;
+        var after = (await service.Get(cp.ContactId, claims: LocationClaims.Trusted))!.UpdatedAt;
         Assert.True(after > before, $"expected UpdatedAt to advance past {before:o}, got {after:o}");
     }
 

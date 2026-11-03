@@ -54,6 +54,10 @@ public static class CalendarGenerator
                 isAllDay: true, ownerId),
         };
 
+        // Issue #380: an event at a household place — linked, with the text kept as the detail.
+        events.Single(e => e.CalendarEventId == DeterministicGuid.From("calendar-event::family-bbq")).LocationId =
+            LocationGenerator.LocationIdFor(LocationGenerator.Home);
+
         var (pattern, generatedEvents) = BuildTeamSyncSeries(ownerId);
         events.AddRange(generatedEvents);
 

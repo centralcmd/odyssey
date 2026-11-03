@@ -228,16 +228,18 @@ public class LocationsApiTests
     }
 
     [Fact]
-    public async Task Delete_is_405_there_is_no_delete()
+    public async Task Delete_needs_locations_delete_and_removes_an_unused_place()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.LocationsDelete]);
         using var client = factory.CreateClient();
         var cabin = await CreateAsync(client, Cabin());
 
-        var response = await client.DeleteAsync($"{Path}/{cabin.LocationId}");
+        await using var withoutDelete = new ApiFactory(ReadWrite, sharingStoreWith: factory);
+        using var updater = withoutDelete.CreateClient();
+        Assert.Equal(HttpStatusCode.Forbidden, (await updater.DeleteAsync($"{Path}/{cabin.LocationId}")).StatusCode);
 
-        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Path}/{cabin.LocationId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{Path}/{cabin.LocationId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Path}/{cabin.LocationId}")).StatusCode);
     }
 
     [Fact]
@@ -269,7 +271,6 @@ public class LocationsApiTests
         { "SourceReference", Body(source: (int)LocationSource.Manual, sourceReference: "123") },
         { "SourceReference", Body(source: (int)LocationSource.Kartverket, sourceReference: "a/b") },
         { "SourceReference", Body(source: (int)LocationSource.OpenMeteo, sourceReference: "12a") },
-        { "Latitude", Body(includeLatitude: false) },
     };
 
     private static Dictionary<string, object?> Body(

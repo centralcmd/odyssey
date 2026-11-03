@@ -35,6 +35,8 @@ public partial class CalendarPage
     private bool _canDelete;
 
     // Managing calendars (create / rename / delete calendars) needs any one of the write claims.
+    private bool _canReadLocations;
+    private bool _canCreateLocations;
     private bool _canManageCalendars => _canCreate || _canUpdate || _canDelete;
 
     // Import can create OR update rows depending on UID match, so it needs BOTH claims (mirrors the
@@ -148,6 +150,8 @@ public partial class CalendarPage
         _canCreate = user.HasPermission(PermissionClaims.CalendarCreate);
         _canUpdate = user.HasPermission(PermissionClaims.CalendarUpdate);
         _canDelete = user.HasPermission(PermissionClaims.CalendarDelete);
+        _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
+        _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
     }
 
     private async Task LoadCalendarsAsync()
@@ -371,12 +375,19 @@ public partial class CalendarPage
         var term = _search.Trim();
         var filtered = string.IsNullOrEmpty(term)
             ? _events
-            : _events.Where(e =>
-                e.Title.Contains(term, StringComparison.OrdinalIgnoreCase) ||
-                (e.Location?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)).ToList();
+            : _events.Where(e => MatchesSearch(e, term)).ToList();
 
         _viewModels = [.. filtered.Select(ToVm)];
     }
+
+    /// <summary>
+    /// The calendar's text search (issue #383 §3.4): the title, the details text, and the linked place's
+    /// name — after conversion a place name lives only on the link, so searching "Hytta" must still match.
+    /// </summary>
+    internal static bool MatchesSearch(ExistingCalendarEvent e, string term) =>
+        e.Title.Contains(term, StringComparison.OrdinalIgnoreCase)
+        || (e.Location?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false)
+        || (e.LocationRef?.Name.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false);
 
     private CalendarEventVm ToVm(ExistingCalendarEvent e)
     {
@@ -385,7 +396,8 @@ public partial class CalendarPage
         return new CalendarEventVm(
             e.CalendarEventId, e.CalendarId, calendar?.Name ?? "Unknown",
             e.Title, e.StartDateTime, e.EndDateTime, e.IsAllDay,
-            swatch.Hex, swatch.Fg, e.RecurrencePatternId is not null);
+            swatch.Hex, swatch.Fg, e.RecurrencePatternId is not null,
+            e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null);
     }
 
     private void GoToday()
@@ -483,17 +495,7 @@ public partial class CalendarPage
             return;
         }
 
-        var deltaDays = args.ToDate.DayNumber - args.FromDate.DayNumber;
-        var update = new NewCalendarEvent
-        {
-            CalendarId = existing.CalendarId,
-            Title = existing.Title,
-            Description = existing.Description,
-            Location = existing.Location,
-            StartDateTime = existing.StartDateTime.AddDays(deltaDays),
-            EndDateTime = existing.EndDateTime.AddDays(deltaDays),
-            IsAllDay = existing.IsAllDay,
-        };
+        var update = DropUpdate(existing, args.ToDate, args.FromDate);
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
@@ -501,8 +503,22 @@ public partial class CalendarPage
         }
     }
 
+    /// <summary>
+    /// A month-grid drag: the event moved by whole days, everything else — its place included — kept
+    /// (issue #383 §5.2). Static so the rule is tested without the page's JS-driven grid.
+    /// </summary>
+    internal static NewCalendarEvent DropUpdate(ExistingCalendarEvent existing, DateOnly toDate, DateOnly fromDate)
+    {
+        var deltaDays = toDate.DayNumber - fromDate.DayNumber;
+        return CalendarWrites.Retimed(existing, existing.StartDateTime.AddDays(deltaDays), existing.EndDateTime.AddDays(deltaDays));
+    }
+
+    /// <summary>A time-grid drag or resize: an explicit start and end, everything else kept.</summary>
+    internal static NewCalendarEvent ResizeUpdate(ExistingCalendarEvent existing, DateTime newStart, DateTime newEnd) =>
+        CalendarWrites.Retimed(existing, newStart, newEnd);
+
     // Time-grid drag/resize: set explicit start/end, hydrating the rest from the loaded event so
-    // Description/Location/CalendarId survive the PUT (the VM carries none of them).
+    // Description/Location/LocationId/CalendarId survive the PUT (the VM carries none of them).
     private async Task HandleEventChange((Guid Id, DateTime NewStart, DateTime NewEnd) args)
     {
         var existing = _events.FirstOrDefault(e => e.CalendarEventId == args.Id);
@@ -511,16 +527,7 @@ public partial class CalendarPage
             return;
         }
 
-        var update = new NewCalendarEvent
-        {
-            CalendarId = existing.CalendarId,
-            Title = existing.Title,
-            Description = existing.Description,
-            Location = existing.Location,
-            StartDateTime = args.NewStart,
-            EndDateTime = args.NewEnd,
-            IsAllDay = existing.IsAllDay,
-        };
+        var update = ResizeUpdate(existing, args.NewStart, args.NewEnd);
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
