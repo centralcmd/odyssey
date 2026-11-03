@@ -121,9 +121,10 @@ public class TagColorSurfaceTests : IAsyncLifetime
     // ── OdsTagColorPicker ─────────────────────────────────────────────────────
 
     private IRenderedComponent<OdsTagColorPicker> Picker(string? value, Action<string?>? changed = null, Action<bool>? valid = null,
-        bool showErrors = false, bool disabled = false, bool invalid = false) =>
+        bool showErrors = false, bool disabled = false, bool invalid = false, string? error = null) =>
         ctx.Render<OdsTagColorPicker>(p => p
             .Add(c => c.Value, value)
+            .Add(c => c.Error, error)
             .Add(c => c.Id, "tag-color")
             .Add(c => c.ShowErrors, showErrors)
             .Add(c => c.Disabled, disabled)
@@ -237,11 +238,35 @@ public class TagColorSurfaceTests : IAsyncLifetime
     }
 
     [Fact]
+    public void While_saving_the_custom_controls_keep_focus_rather_than_becoming_disabled()
+    {
+        var cut = Picker("#C2185B", disabled: true);
+
+        var hex = cut.Find("#tag-color-hex");
+        Assert.False(hex.HasAttribute("disabled"));
+        Assert.True(hex.HasAttribute("readonly"));
+        Assert.Equal("true", hex.GetAttribute("aria-disabled"));
+        var well = cut.Find("input[type=color]");
+        Assert.False(well.HasAttribute("disabled"));
+        Assert.Equal("true", well.GetAttribute("aria-disabled"));
+    }
+
+    [Fact]
     public void A_server_400_with_a_swatch_selected_marks_the_group_invalid()
     {
         var cut = Picker("#15803D", invalid: true);
 
         Assert.Equal("true", cut.Find(".odc-colorpick-grid").GetAttribute("aria-invalid"));
+    }
+
+    [Fact]
+    public void A_server_400_with_a_swatch_selected_shows_its_message_as_text_and_describes_the_group()
+    {
+        var cut = Picker("#15803D", invalid: true, error: HexColor.InvalidMessage);
+
+        var message = cut.Find("#tag-color-error");
+        Assert.Equal(HexColor.InvalidMessage, message.TextContent.Trim());
+        Assert.Contains("tag-color-error", cut.Find(".odc-colorpick-grid").GetAttribute("aria-describedby")!.Split(' '));
     }
 
     [Fact]

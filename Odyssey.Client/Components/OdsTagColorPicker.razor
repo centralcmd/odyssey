@@ -50,6 +50,11 @@
             </button>
         }
     </div>
+    @if (GroupInvalid && !string.IsNullOrEmpty(Error))
+    {
+        @* The hex field carries the message in Custom; on a swatch or No color the group needs its own. *@
+        <div class="odc-field-help error" id="@GroupErrorId">@Error</div>
+    }
     <span id="@_hintId" class="sr-only">Selecting this shows a hex color field after this group.</span>
     <div class="odc-colorpick-caption" aria-hidden="true">
         @if (CaptionDot is { } dot)
@@ -65,9 +70,11 @@
                                Value="@_draft" ValueChanged="OnHexInputAsync" OnBlur="OnHexBlur"
                                Placeholder="#RRGGBB" Help="6-digit hex, e.g. #0369A1"
                                Error="@FieldError" ErrorIsAlert="@FieldErrorIsAlert"
-                               AutoComplete="off" Disabled="@Disabled" />
+                               AutoComplete="off" readonly="@Disabled"
+                               aria-disabled="@(Disabled ? "true" : null)" />
             <label class="odc-colorpick-well">
-                <input type="color" value="@WellValue" disabled="@Disabled" @onchange="OnWellChangedAsync" />
+                <input type="color" value="@WellValue" aria-disabled="@(Disabled ? "true" : null)"
+                       @onclick:preventDefault="@Disabled" @onchange="OnWellChangedAsync" />
                 <span>Pick on screen</span>
             </label>
         </div>

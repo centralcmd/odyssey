@@ -87,7 +87,11 @@ public partial class OdsTagColorPicker : IAsyncDisposable
 
     private bool GroupInvalid => Invalid && _sel != CustomIndex;
 
-    private string? GroupDescribedBy => string.IsNullOrEmpty(AriaDescribedBy) ? null : AriaDescribedBy;
+    private string GroupErrorId => $"{_groupId}-error";
+
+    private string? GroupDescribedBy =>
+        string.Join(' ', new[] { AriaDescribedBy, GroupInvalid && !string.IsNullOrEmpty(Error) ? GroupErrorId : null }
+            .Where(id => !string.IsNullOrEmpty(id))) is { Length: > 0 } ids ? ids : null;
 
     private string Caption => State switch
     {

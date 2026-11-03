@@ -35,7 +35,7 @@ public partial class ImportCalendarDialog
     private readonly HashSet<string> _openReasons = new(StringComparer.Ordinal);
 
     private IReadOnlyList<OdsOption> _calendarOptions =>
-        [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name) { Icon = "circle", IconColor = c.Color })];
+        [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name) { Icon = "circle", IconColor = Odyssey.Client.Theme.UserColor.Canonical(c.Color) })];
 
     private int SkippedTotal => _result?.Skipped.Sum(g => g.Count) ?? 0;
 

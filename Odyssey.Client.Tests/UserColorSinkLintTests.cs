@@ -68,6 +68,7 @@ public class UserColorSinkLintTests
     [InlineData("<OdsChip Fg=\"@ColorOf(t)\" />")]
     [InlineData("private string S => $\"--x:{row.DisplayColor}\";")]
     [InlineData("var c = tag.Color;\n<span style=\"@($\"color:{c}\")\"></span>")]
+    [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = c.Color }")]
     public void Each_seeded_sink_shape_is_caught(string code) =>
         Assert.NotEmpty(Violations(code));
 
@@ -76,6 +77,7 @@ public class UserColorSinkLintTests
     [InlineData("<OdsAvatar UserColor=\"@ColorOf(t)\" />")]
     [InlineData("<OdsChip UserColorDot=\"@tag.Color\" />")]
     [InlineData("private string? D => UserColor.Dot(tag.Color);")]
+    [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = UserColor.Canonical(c.Color) }")]
     public void The_validated_path_is_not_flagged(string code) =>
         Assert.Empty(Violations(code));
 
@@ -137,6 +139,13 @@ public class UserColorSinkLintTests
         {
             if (IsUserData(attribute.Groups[2].Value))
                 yield return $"{attribute.Groups[1].Value}=\"{attribute.Groups[2].Value}\"";
+        }
+
+        // An option's glyph ink is written into a style by OdsGlyphInk, so the property is a sink too.
+        foreach (Match ink in Regex.Matches(code, @"\bIconColor\s*=\s*([^,}\n;]+)"))
+        {
+            if (IsUserData(ink.Groups[1].Value))
+                yield return ink.Value.Trim();
         }
 
         foreach (Match interpolation in Regex.Matches(code, "\\$\"(?:[^\"\\\\]|\\\\.)*\""))

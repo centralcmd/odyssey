@@ -163,10 +163,10 @@
                                   AriaDescribedBy="@(_draftIconError is null ? "tag-icon-help" : "tag-icon-help tag-icon-help-error")" />
             </OdsFieldShell>
         }
-        <OdsFieldShell Label="Color" HtmlFor="tag-color" Help="@ColorHelp">
+        <OdsFieldShell Label="Color" HtmlFor="tag-color" LabelId="tag-color-label" Help="@ColorHelp">
             <OdsTagColorPicker @ref="_colorPicker" Id="tag-color" Value="@_draftColor"
                                ValueChanged="OnDraftColorChanged" ValidChanged="OnDraftColorValidChanged"
-                               AriaLabel="Color" AriaDescribedBy="tag-color-help"
+                               AriaLabelledBy="tag-color-label" AriaDescribedBy="tag-color-help"
                                Disabled="@_saving" ShowErrors="@_draftColorShowErrors"
                                Invalid="@(_draftColorError is not null)" Error="@_draftColorError" />
         </OdsFieldShell>

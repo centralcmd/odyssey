@@ -357,6 +357,7 @@ public partial class OdsTagAdmin<TRow>
 
         Odyssey.ApiClient.ApiResult result;
         _saving = true;
+        StateHasChanged();
         try
         {
             result = _isEditing

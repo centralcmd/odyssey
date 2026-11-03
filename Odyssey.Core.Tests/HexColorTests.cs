@@ -49,6 +49,29 @@ public class HexColorTests
     public void An_over_long_value_is_left_to_StringLength_so_one_error_is_reported() =>
         Assert.True(new HexColorAttribute().IsValid("#FFFFFFFF"));
 
+    /// <summary>
+    /// <see cref="HexColorAttribute"/> leaves an over-long value to <c>[StringLength]</c>, so it is only
+    /// safe beside one: every property that carries it must carry <c>[StringLength(HexColor.Length)]</c> too.
+    /// </summary>
+    [Fact]
+    public void Every_HexColor_property_is_also_length_bounded()
+    {
+        var properties = typeof(HexColor).Assembly.GetTypes()
+            .SelectMany(type => type.GetProperties())
+            .Where(property => property.IsDefined(typeof(HexColorAttribute), inherit: false))
+            .ToList();
+        Assert.True(properties.Count >= 7, $"Scan set unexpectedly small ({properties.Count}).");
+
+        var unbounded = properties
+            .Where(property => property.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.StringLengthAttribute), false)
+                .Cast<System.ComponentModel.DataAnnotations.StringLengthAttribute>()
+                .All(length => length.MaximumLength != HexColor.Length))
+            .Select(property => $"{property.DeclaringType!.Name}.{property.Name}")
+            .ToList();
+
+        Assert.Empty(unbounded);
+    }
+
     [Fact]
     public void An_empty_string_is_rejected_rather_than_treated_as_no_colour() =>
         Assert.False(new HexColorAttribute().IsValid(string.Empty));
@@ -188,7 +211,7 @@ public class HexColorTests
             // registry colours (contract and property types), never a user-entered one — outside this
             // feature's scope, which is tag and calendar colours only.
             .Where(path => Path.GetFileName(path) is not ("HexColor.cs" or "OdsGlyphInk.cs"))
-            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\[0-9A-Fa-f\]\{6\}|\[0-9a-fA-F\]\{6\}|\[A-Fa-f0-9\]\{6\}"))
+            .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\[0-9A-Fa-f\]\{6\}|\[0-9a-fA-F\]\{6\}|\[A-Fa-f0-9\]\{6\}|\\p\{XDigit\}|IsAsciiHexDigit|IsHexDigit"))
             .Select(path => Path.GetRelativePath(root, path))
             .ToList();
 

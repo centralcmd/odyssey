@@ -127,6 +127,25 @@ public class TagColorApiTests
     }
 
     [Theory]
+    [MemberData(nameof(KindsByInvalidColor))]
+    public async Task An_invalid_color_on_PUT_is_a_400_keyed_on_Color_and_leaves_the_stored_color(Kind kind, string color)
+    {
+        await using var factory = new OdysseyApiFactory(TagAdmin(kind), ActorUserId);
+        var id = await SeedTagAsync(factory, kind, "Holidays", null, "#15803D");
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"{TagPath(kind)}/{id}", new { name = "Holidays", archived = false, color });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        using var body = JsonDocument.Parse(text);
+        var errors = body.RootElement.GetProperty("errors").GetProperty("Color");
+        Assert.Equal(HexColor.InvalidMessage, Assert.Single(errors.EnumerateArray().ToList()).GetString());
+        Assert.DoesNotContain($"\"{JsonEncodedText.Encode(color)}\"", text, StringComparison.Ordinal);
+        Assert.Equal("#15803D", await StoredColorAsync(factory, kind));
+    }
+
+    [Theory]
     [MemberData(nameof(Kinds))]
     public async Task A_stored_corrupt_color_reads_as_null_and_never_500s(Kind kind)
     {

@@ -43,30 +43,30 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var entries = await CountAsync(context => Entries(context).ListAsync(new JournalEntriesQueryParams { Limit = RecordCount }, claims: LocationClaims.Trusted));
             Assert.Equal(RecordCount, entries.Result.Items.Count);
-            Assert.All(entries.Result.Items, entry => Assert.Equal("beach_access", entry.DisplayIcon));
+            Assert.All(entries.Result.Items, entry => Assert.Equal(("beach_access", "#B23B3B"), (entry.DisplayIcon, entry.DisplayColor)));
             Assert.Equal(ListEntryCommands, entries.Commands);
 
             var tasks = await CountAsync(context => Tasks(context).ListAsync(new JournalTasksQueryParams { Limit = RecordCount }));
             Assert.Equal(RecordCount, tasks.Result.Items.Count);
-            Assert.All(tasks.Result.Items, task => Assert.Equal("beach_access", task.DisplayIcon));
+            Assert.All(tasks.Result.Items, task => Assert.Equal(("beach_access", "#B23B3B"), (task.DisplayIcon, task.DisplayColor)));
             Assert.Equal(ListTaskCommands, tasks.Commands);
 
             var photos = await CountAsync(context => Photos(context).ListAsync(new PhotosQueryParams { Limit = RecordCount }));
             Assert.Equal(RecordCount, photos.Result.Items.Count);
-            Assert.All(photos.Result.Items, photo => Assert.Equal("beach_access", photo.DisplayIcon));
+            Assert.All(photos.Result.Items, photo => Assert.Equal(("beach_access", "#B23B3B"), (photo.DisplayIcon, photo.DisplayColor)));
             Assert.Equal(ListPhotoCommands, photos.Commands);
 
             var entry = await CountAsync(context => Entries(context).Get(seeded.EntryId, claims: LocationClaims.Trusted));
-            Assert.Equal("beach_access", entry.Result!.DisplayIcon);
+            Assert.Equal(("beach_access", "#B23B3B"), (entry.Result!.DisplayIcon, entry.Result.DisplayColor));
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
             Assert.InRange(entry.Commands, GetEntryCommandsBefore, GetEntryCommandsBefore + 1);
 
             var task = await CountAsync(context => Tasks(context).Get(seeded.TaskId));
-            Assert.Equal("beach_access", task.Result!.DisplayIcon);
+            Assert.Equal(("beach_access", "#B23B3B"), (task.Result!.DisplayIcon, task.Result.DisplayColor));
             Assert.InRange(task.Commands, GetTaskCommandsBefore, GetTaskCommandsBefore + 1);
 
             var photo = await CountAsync(context => Photos(context).Get(seeded.PhotoId));
-            Assert.Equal("beach_access", photo.Result!.DisplayIcon);
+            Assert.Equal(("beach_access", "#B23B3B"), (photo.Result!.DisplayIcon, photo.Result.DisplayColor));
             Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands);
         }
         finally
@@ -156,6 +156,9 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     // Issue #362: a photo detail read counts its thumbnails in one query — one per read, never one per tag.
     private const int ThumbnailReadinessCommands = 1;
 
+    // The winning tag's lower-case colour must come back normalised; the icon-less "art" tag's must not win.
+    private static string? SeedColor(string name) => name switch { "Trip" => "#b23b3b", "art" => "#15803D", _ => null };
+
     private sealed record Seeded(Guid EntryId, Guid TaskId, Guid PhotoId, Guid Art, Guid Trip, Guid Zoo);
 
     private async Task<Seeded> SeedAsync()
@@ -164,11 +167,11 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         var now = DateTime.UtcNow;
 
         var journal = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new JournalTag { JournalTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new JournalTag { JournalTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         var task = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new JournalTaskTag { JournalTaskTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new JournalTaskTag { JournalTaskTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         var photo = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new PhotoTag { PhotoTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new PhotoTag { PhotoTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         context.JournalTags.AddRange(journal);
         context.JournalTaskTags.AddRange(task);
         context.PhotoTags.AddRange(photo);
