@@ -20,7 +20,7 @@
                 disabled="@Disabled"
                 tabindex="@(index == SelectedIndex ? 0 : -1)"
                 class="@(active ? "odc-swatch selected" : "odc-swatch")"
-                style="@($"--sw:{swatch.Hex};--sw-fg:{swatch.Fg}")"
+                style="@Odyssey.Client.Theme.UserColor.Swatch(swatch.Hex)"
                 @onclick="() => Pick(index)"
                 @onkeydown="e => OnKeyDown(e, index)">
             @if (active)

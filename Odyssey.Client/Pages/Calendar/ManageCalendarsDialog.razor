@@ -20,7 +20,7 @@
                     var editing = _editingId == calendar.CalendarId;
                     <div class="@("cal-mgr-item" + (editing ? " editing" : ""))">
                         <div class="cal-mgr-row">
-                            <span class="cal-mgr-swatch" style="@($"background:{calendar.Color}")" aria-hidden="true"></span>
+                            <span class="cal-mgr-swatch" style="@Odyssey.Client.Theme.UserColor.Background(calendar.Color, Odyssey.Dtos.ColorPalette.CalendarDefault)" aria-hidden="true"></span>
                             <div class="cal-mgr-id">
                                 <div class="cal-mgr-name">@calendar.Name</div>
                                 <div class="cal-mgr-sub">

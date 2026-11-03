@@ -41,7 +41,7 @@ public sealed class RegistryGlyphInkSourceTests
         (P("Pages", "Finance", "TermHistoryTable.razor"), "TermVisuals.ValueColor(term)", "per-theme --finance-* / --trm-fact-ink tokens (fact ink is L 0.50 on light)"),
         (P("Pages", "Finance", "ContractTermsSection.razor"), "valueColor", "TermVisuals.ValueColor: per-theme --finance-* / --trm-fact-ink tokens"),
         (P("Components", "OdsChip.razor"), "Fg", "the atom's own parameter; its callers are linted (OdsChip Fg must be OdsGlyphInk.Text)"),
-        (P("Components", "OdsAvatar.razor"), "Fg", "the atom's own parameter; its callers pass per-theme palette tokens"),
+        (P("Components", "OdsAvatar.razor"), "FillFg", "the atom's own Fg parameter, or HexColor.Foreground of a user colour already rebuilt by UserColor.Fill — never a registry colour (issue #394)"),
         (P("Components", "OdsCalTimeGrid.razor"), "ev.Fg", "a calendar chip's background/foreground PAIR, whose contrast is the swatch's (OdsCalendarSwatches)"),
         (P("Components", "OdsTermHistoryChart.razor"), "x.ToneColor", "chart series — out of scope per the design decision"),
         (P("Components", "OdsLineChart.razor"), "Color", "chart series — out of scope per the design decision"),

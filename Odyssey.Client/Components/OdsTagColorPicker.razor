@@ -1,0 +1,75 @@
+@using Odyssey.Client.Theme
+@using Odyssey.Dtos
+
+@*
+    OdsTagColorPicker — the tag colour chooser (Odyssey Design System · components/TagColorPicker, issue #394).
+
+    No color · the eight ColorPalette swatches (one palette for calendars and tags) · Custom. Any #RRGGBB
+    is a valid tag colour; Custom shows a hex field and the native colour well below the grid, without
+    moving focus. ARIA radiogroup with a roving tab stop; arrows move in two dimensions over the live
+    column count (icon-picker.js), Home/End jump, selection follows focus. Cell names are words from the
+    palette, never a bare hex, and the Custom cell's name never contains typed text.
+
+    A colour reaches a style only through UserColor (UserColorSinkLintTests). Chip text is never drawn
+    on a tag colour; the fill is for cells and avatars only, the glyph in HexColor.Foreground.
+*@
+
+<div class="@RootClass">
+    <div class="odc-colorpick-grid" role="radiogroup" id="@_groupId" @ref="_grid"
+         aria-label="@(AriaLabelledBy is null ? AriaLabel : null)" aria-labelledby="@AriaLabelledBy"
+         aria-describedby="@GroupDescribedBy"
+         aria-invalid="@(GroupInvalid ? "true" : null)"
+         aria-disabled="@(Disabled ? "true" : null)">
+        @for (var i = 0; i < CellCount; i++)
+        {
+            var index = i;
+            var active = index == _sel;
+            <button type="button" role="radio" data-idx="@index"
+                    @key="@CellKey(index)"
+                    @ref="_buttons[index]"
+                    aria-checked="@(active ? "true" : "false")"
+                    aria-label="@CellNameFor(index)"
+                    aria-describedby="@(index == CustomIndex ? _hintId : null)"
+                    tabindex="@(active ? 0 : -1)"
+                    class="@CellClass(index, active)"
+                    style="@CellStyle(index)"
+                    @onclick="() => ChooseAsync(index)"
+                    @onkeydown="e => OnKeyDownAsync(e, index)">
+                @if (index == 0)
+                {
+                    <span class="material-icons odc-colorpick-glyph" aria-hidden="true">format_color_reset</span>
+                }
+                else if (index == CustomIndex && CellStyle(index) is null)
+                {
+                    <span class="material-icons odc-colorpick-glyph" aria-hidden="true">colorize</span>
+                }
+                @if (active)
+                {
+                    <span class="material-icons odc-colorpick-check" aria-hidden="true">check</span>
+                }
+            </button>
+        }
+    </div>
+    <span id="@_hintId" class="sr-only">Selecting this shows a hex color field after this group.</span>
+    <div class="odc-colorpick-caption" aria-hidden="true">
+        @if (CaptionDot is { } dot)
+        {
+            <span class="odc-colorpick-dot" style="@dot"></span>
+        }
+        <span>@Caption</span>
+    </div>
+    @if (_sel == CustomIndex)
+    {
+        <div class="odc-colorpick-custom">
+            <OdsTextInputField @ref="_hexField" Id="@HexId" Label="Hex color" Class="odc-colorpick-hex"
+                               Value="@_draft" ValueChanged="OnHexInputAsync" OnBlur="OnHexBlur"
+                               Placeholder="#RRGGBB" Help="6-digit hex, e.g. #0369A1"
+                               Error="@FieldError" ErrorIsAlert="@FieldErrorIsAlert"
+                               AutoComplete="off" Disabled="@Disabled" />
+            <label class="odc-colorpick-well">
+                <input type="color" value="@WellValue" disabled="@Disabled" @onchange="OnWellChangedAsync" />
+                <span>Pick on screen</span>
+            </label>
+        </div>
+    }
+</div>

@@ -109,6 +109,15 @@
     /// <summary>Custom foreground/icon color paired with <see cref="Bg"/>.</summary>
     [Parameter] public string? Fg { get; set; }
 
+    /// <summary>
+    /// A user-entered colour (a tag's <c>#RRGGBB</c>, issue #394) — the ONLY parameter for user data;
+    /// <see cref="Bg"/>/<see cref="Fg"/> stay for colours from code. Checked through
+    /// <see cref="Odyssey.Client.Theme.UserColor.Fill"/>: valid → the avatar fills with the canonical hex and
+    /// the glyph takes <c>HexColor.Foreground</c>; invalid or null → ignored, as if unset. Wins over
+    /// <see cref="Bg"/>/<see cref="Fg"/>. Not applied to an image.
+    /// </summary>
+    [Parameter] public string? UserColor { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     [Parameter] public string? Class { get; set; }
@@ -133,6 +142,7 @@
             "odc-avatar",
             Square ? "sq" : null,
             IsContained ? "contain" : null,
+            UserFill is null ? null : "user-color",
             Class,
         }.Where(part => !string.IsNullOrEmpty(part)));
 
@@ -145,9 +155,17 @@
 
     // A custom { bg, fg } tone (DS Avatar) overrides the named MudAvatar color via inline style. The
     // contain ground is its own background, so a caller-supplied Bg is not applied over it.
-    private string AvatarStyle => string.IsNullOrEmpty(Bg) && string.IsNullOrEmpty(Fg)
+    private (string Bg, string Fg)? UserFill =>
+        string.IsNullOrEmpty(Src) ? Odyssey.Client.Theme.UserColor.Fill(UserColor) : null;
+
+    // A user colour (already rebuilt by UserColor.Fill) wins; else the code-supplied { bg, fg } tone.
+    private string? FillBg => UserFill?.Bg ?? Bg;
+
+    private string? FillFg => UserFill?.Fg ?? Fg;
+
+    private string AvatarStyle => string.IsNullOrEmpty(FillBg) && string.IsNullOrEmpty(FillFg)
         ? SizeStyle
-        : $"{SizeStyle}{(string.IsNullOrEmpty(Bg) || IsContained ? "" : $"background:{Bg};")}{(string.IsNullOrEmpty(Fg) ? "" : $"color:{Fg};")}";
+        : $"{SizeStyle}{(string.IsNullOrEmpty(FillBg) || IsContained ? "" : $"background:{FillBg};")}{(string.IsNullOrEmpty(FillFg) ? "" : $"color:{FillFg};")}";
 
     private Task OnErrorAsync() => OnError.InvokeAsync();
 }

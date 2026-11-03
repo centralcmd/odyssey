@@ -22,7 +22,10 @@ else
     <span class="odc-tagchips">
         @foreach (var tag in _shown)
         {
-            <span class="odc-chip tag">@tag.Name</span>
+            <span class="odc-chip tag">@if (Odyssey.Client.Theme.UserColor.Dot(tag.Color) is { } dotStyle)
+                {
+                    <span class="odc-chip-colordot" aria-hidden="true" style="@dotStyle"></span>
+                }@tag.Name</span>
         }
         @if (_hidden.Count > 0)
         {

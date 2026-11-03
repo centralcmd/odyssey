@@ -3328,6 +3328,49 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-iconpick-peek { color: var(--mud-palette-text-secondary); }
 .odc-iconpick-peek .material-icons { font-size: var(--icon-sm); }
 
+/* ---- TagColorPicker (tag colour, #394) ------------------------------------
+   No color · 8 calendar swatches · Custom. Every cell: 1px --control-border
+   (3:1). Selection = check glyph + aria-checked, never the border alone. The
+   focus ring is two-tone and OUTSIDE the cell, so its outer tone always sits
+   on the dialog surface whatever the fill. A user colour arrives only as the
+   --sw / --sw-fg / --user-color custom properties, set after HexColor.isValid. */
+.odc-colorpick { display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-colorpick-grid { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: var(--space-2); padding: 4px; }
+.odc-colorpick-cell { appearance: none; position: relative; width: 32px; height: 32px; padding: 0; border-radius: var(--radius-pill); border: 1px solid var(--control-border); background: var(--sw, transparent); color: var(--sw-fg, var(--mud-palette-text-secondary)); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.odc-colorpick-cell.none { border-style: dashed; }
+.odc-colorpick-cell.custom:not(.filled) { border-style: dashed; }
+.odc-colorpick-cell:hover { transform: scale(1.06); }
+.odc-colorpick-glyph { font-size: var(--icon-sm, 18px); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-check { font-size: var(--icon-sm, 18px); font-weight: 700; line-height: 1; color: var(--sw-fg, var(--mud-palette-text-primary)); }
+.odc-colorpick-cell.none.selected .odc-colorpick-glyph,
+.odc-colorpick-cell.custom.selected:not(.filled) .odc-colorpick-glyph { display: none; }
+.odc-colorpick-cell:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 0 0 4px var(--focus-ring, var(--mud-palette-primary)); z-index: 1; }
+.odc-colorpick.disabled .odc-colorpick-cell, .odc-colorpick-grid[aria-disabled="true"] .odc-colorpick-cell { cursor: not-allowed; opacity: 0.6; }
+.odc-colorpick-grid[aria-invalid="true"] { border-radius: var(--radius-md); box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-colorpick-caption { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 20px; font: 500 var(--fs-body2, 14px)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-colorpick-dot, .odc-chip-colordot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--user-color); box-shadow: 0 0 0 1px var(--control-border); }
+.odc-colorpick-dot { width: 12px; height: 12px; }
+.odc-colorpick-custom { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
+.odc-colorpick-hex { display: flex; flex-direction: column; gap: 4px; flex: 1 1 180px; min-width: 0; }
+.odc-colorpick-label { font: 500 var(--fs-caption, 12px)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-input { height: 40px; padding: 0 12px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); color: var(--mud-palette-text-primary); font: 400 var(--fs-body1, 15px)/1 var(--font-mono); }
+.odc-colorpick-input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-colorpick-input[aria-invalid="true"] { border-color: var(--mud-palette-error); }
+.odc-colorpick-help { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-error { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--error-text, var(--mud-palette-error)); }
+.odc-colorpick-well { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: 22px; font: 500 var(--fs-body2, 14px)/1 var(--font-sans); color: var(--mud-palette-text-primary); cursor: pointer; }
+.odc-colorpick-well input { width: 40px; height: 40px; padding: 2px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.odc-colorpick-well input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+@media (max-width: 360px) { .odc-colorpick-custom { flex-direction: column; } .odc-colorpick-well { margin-top: 0; } }
+.odc-chip .odc-chip-colordot { margin-right: 2px; }
+.odc-avatar.user-color { border: 1px solid var(--control-border); }
+@media (forced-colors: active) {
+  .odc-colorpick-cell.filled, .odc-chip-colordot, .odc-colorpick-dot, .odc-avatar.user-color { forced-color-adjust: none; }
+  .odc-colorpick-cell { border-color: CanvasText; }
+  .odc-colorpick-cell:focus-visible { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  .odc-chip-colordot, .odc-colorpick-dot { box-shadow: 0 0 0 1px CanvasText; }
+}
+
 /* The transaction dialog's live "Row icon" preview under Tags (DS kit.css · .atm-rowicon). */
 .odc-rowicon { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .odc-rowicon .material-icons { font-size: var(--icon-sm); color: var(--tag-text); }

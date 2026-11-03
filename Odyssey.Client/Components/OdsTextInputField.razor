@@ -19,7 +19,7 @@
 *@
 
 <OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
-               Help="@Help" Error="@Error" Class="@Class" Aside="@Counter">
+               Help="@Help" Error="@Error" ErrorIsAlert="@ErrorIsAlert" Class="@Class" Aside="@Counter">
     <input id="@FieldId"
            class="odc-input"
            type="@Type"
@@ -36,6 +36,8 @@
            aria-describedby="@DescribedBy"
            aria-labelledby="@AriaLabelledBy"
            @oninput="OnInput"
+           @onblur="OnBlur"
+           @ref="_input"
            @attributes="UserAttributes" />
 </OdsFieldShell>
 
@@ -105,10 +107,20 @@
     /// <summary>An EXTERNAL description id. Appended to the shell's own help/error ids, never replacing them.</summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 
+    /// <summary>See <see cref="OdsFieldShell.ErrorIsAlert"/>.</summary>
+    [Parameter] public bool ErrorIsAlert { get; set; } = true;
+
+    /// <summary>Fires when the input loses focus — for validate-on-blur.</summary>
+    [Parameter] public EventCallback OnBlur { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object?>? UserAttributes { get; set; }
 
     private string FieldId = default!;
+    private ElementReference _input;
+
+    /// <summary>Moves focus to the input — for focus-on-error after a failed save (issue #394).</summary>
+    public ValueTask FocusAsync() => _input.FocusAsync();
 
     protected override void OnInitialized() => FieldId = Id ?? $"odc-text-{Guid.NewGuid():N}";
 

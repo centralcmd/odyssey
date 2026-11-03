@@ -46,7 +46,7 @@ Until then, treat **v9** as the truth.
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 138 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 147 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **A registry `Icon` may be one typographic glyph, not a ligature** — `ContractEventTypes`'
@@ -191,6 +191,14 @@ Until then, treat **v9** as the truth.
 - **`OdsRecordTable` ignores a row click that lands inside an interactive element**, so a switch or
   link in a cell no longer also expands the row. Focus follows expand/collapse and edit start/end,
   and `OdsRecordEditContext.Done()` ends an edit the template saved itself.
+- **A tag or calendar colour reaches a style only through `Theme/UserColor`** (issues #392, #394).
+  It is user data, so `UserColor` re-validates it with `HexColor.IsValid` and rebuilds the CSS from the
+  parsed bytes; `OdsAvatar.UserColor` and `OdsChip.UserColorDot` are the typed entry points. Never put
+  `tag.Color`, `calendar.Color` or `DisplayColor` into `style`, `Bg` or `Fg` directly —
+  `UserColorSinkLintTests` fails on it. Code-constant registry colours (`OdsGlyphInk`, charts) are out
+  of that rule's scope.
+- **`OdsFieldShell.ErrorIsAlert="false"`** keeps an error line out of `role="alert"` when the surface
+  announces it another way (the tag colour picker's submit-time errors, which focus the field instead).
 
 ## Running the client while iterating
 

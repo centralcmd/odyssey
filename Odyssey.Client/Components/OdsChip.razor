@@ -14,6 +14,10 @@
     {
         <span class="odc-chip-dot" aria-hidden="true"></span>
     }
+    @if (UserDotStyle is { } dotStyle)
+    {
+        <span class="odc-chip-colordot" aria-hidden="true" style="@dotStyle"></span>
+    }
     @if (!string.IsNullOrEmpty(Icon))
     {
         <span class="material-icons" aria-hidden="true">@Icon</span>
@@ -52,7 +56,16 @@
     /// </summary>
     [Parameter] public string? Title { get; set; }
 
+    /// <summary>
+    /// A user-entered colour (a tag's <c>#RRGGBB</c>, issue #394) drawn as a decorative leading dot. Checked
+    /// through <see cref="Odyssey.Client.Theme.UserColor.Dot"/>; invalid or null → no dot. The chip's own
+    /// text and ground never change: chip text is never drawn on a user colour.
+    /// </summary>
+    [Parameter] public string? UserColorDot { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private string? UserDotStyle => Odyssey.Client.Theme.UserColor.Dot(UserColorDot);
 
     private string ChipClass => string.Join(' ', new[] { "odc-chip", ToneClass, Class }
         .Where(c => !string.IsNullOrEmpty(c)));

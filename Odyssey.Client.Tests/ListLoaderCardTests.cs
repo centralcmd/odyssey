@@ -219,7 +219,8 @@ public class ListLoaderCardTests
             .Add(c => c.Id, t => t.JournalTagId)
             .Add(c => c.Name, t => t.Name)
             .Add(c => c.Description, t => t.Description)
-            .Add(c => c.Archived, t => t.Archived));
+            .Add(c => c.Archived, t => t.Archived)
+            .Add(c => c.ColorOf, t => t.Color));
         var field = cut.FindComponent<OdsSearchField>().Instance;
 
         await cut.InvokeAsync(() => field.ValueChanged.InvokeAsync("gro"));
