@@ -377,6 +377,9 @@ public sealed class DataExportService
                 Description = tag.Description,
                 Archived = tag.Archived,
                 Icon = tag.Icon,
+                // Issue #392: normalised in the final projection (client-evaluated), so a hand-edited
+                // value exports as null rather than as raw text.
+                Color = HexColor.Normalize(tag.Color),
             });
 
     // File metadata only — the FileBlob.Content payload is never projected, so no blob bytes leave the

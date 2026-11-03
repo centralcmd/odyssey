@@ -21,7 +21,7 @@ public class TagIconProjectionTests
         var trip = Guid.NewGuid();
 
         var record = TagIconProjection.Apply(Photo(),
-            [new TagIconCandidate(trip, "Trip", "beach_access"), new TagIconCandidate(art, "art", null)]);
+            [new TagIconCandidate(trip, "Trip", "beach_access", null), new TagIconCandidate(art, "art", null, null)]);
 
         Assert.Equal([art, trip], record.TagIds);
         Assert.Equal("beach_access", record.DisplayIcon);
@@ -31,7 +31,7 @@ public class TagIconProjectionTests
     public void A_dangling_link_keeps_its_id_sorts_last_by_id_and_adds_no_icon()
     {
         var trip = Guid.NewGuid();
-        var lookup = new Dictionary<Guid, TagIconCandidate> { [trip] = new(trip, "Trip", null) };
+        var lookup = new Dictionary<Guid, TagIconCandidate> { [trip] = new(trip, "Trip", null, null) };
 
         var record = TagIconProjection.Apply(Photo(), [High, trip, Low], lookup);
 
@@ -43,7 +43,7 @@ public class TagIconProjectionTests
     public void A_repeated_id_is_returned_once()
     {
         var trip = Guid.NewGuid();
-        var lookup = new Dictionary<Guid, TagIconCandidate> { [trip] = new(trip, "Trip", "beach_access") };
+        var lookup = new Dictionary<Guid, TagIconCandidate> { [trip] = new(trip, "Trip", "beach_access", null) };
 
         var record = TagIconProjection.Apply(Photo(), [trip, trip], lookup);
 

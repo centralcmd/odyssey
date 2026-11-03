@@ -42,6 +42,7 @@
   <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
+    <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
   </ItemGroup>
 
   <ItemGroup>

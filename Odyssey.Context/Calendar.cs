@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
+using Odyssey.Dtos;
 
 namespace Odyssey.Context;
 
@@ -18,10 +19,10 @@ public class Calendar
     [StringLength(1000)]
     public string? Description { get; set; }
 
-    // Must be one of the curated palette values, not an arbitrary hex — validated in the DTO.
+    // One of the curated ColorPalette swatches (issue #392), validated in CalendarService.
     [StringLength(7)]
     [Required]
-    public string Color { get; set; } = "#0369A1";
+    public string Color { get; set; } = ColorPalette.CalendarDefault;
 
     public string? CreatedByUserId { get; set; }
 

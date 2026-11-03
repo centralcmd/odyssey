@@ -141,7 +141,8 @@ public class PhotoService
                     .Select(t => new TagIconCandidate(
                         t.PhotoTagId,
                         t.PhotoTag == null ? null : t.PhotoTag.Name,
-                        t.PhotoTag == null ? null : t.PhotoTag.Icon))
+                        t.PhotoTag == null ? null : t.PhotoTag.Icon,
+                        t.PhotoTag == null ? null : t.PhotoTag.Color))
                     .ToList(),
             });
 

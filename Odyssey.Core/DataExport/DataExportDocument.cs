@@ -339,6 +339,9 @@ public sealed class TransactionTagExport
     public string? Description { get; init; }
     public DateTime? Archived { get; init; }
     public string? Icon { get; init; }
+
+    /// <summary>The tag colour as normalised <c>#RRGGBB</c>, or <c>null</c> (issue #392).</summary>
+    public string? Color { get; init; }
 }
 
 /// <summary>

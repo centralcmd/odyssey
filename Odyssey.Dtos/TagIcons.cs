@@ -10,7 +10,13 @@ public sealed record TagIconOption(string Key, string Label);
 /// (issue #345). <paramref name="Name"/> is nullable so a link whose tag row is missing — possible on the
 /// FK-free EF InMemory tier — still orders deterministically instead of throwing.
 /// </summary>
-public sealed record TagIconCandidate(Guid Id, string? Name, string? Icon);
+public sealed record TagIconCandidate(Guid Id, string? Name, string? Icon, string? Color);
+
+/// <summary>
+/// What a record shows for its tags (issues #279, #392): the winning tag's icon and that SAME tag's colour,
+/// so the two can never come from different tags. <see cref="Color"/> is already normalised.
+/// </summary>
+public sealed record TagDisplay(string Icon, string? Color);
 
 /// <summary>
 /// The tag icon catalogue and the display-icon rule, shared by transaction, journal, task and photo tags
@@ -210,6 +216,23 @@ public static class TagIcons
     /// </summary>
     public static string Resolve(IEnumerable<TagIconCandidate>? tags) =>
         Order(tags).Select(tag => tag.Icon).FirstOrDefault(IsKnown) ?? Default;
+
+    /// <summary>
+    /// The display rule with colour (issue #392): the winner is the first tag in <see cref="Comparer"/>
+    /// order with a known icon — unchanged from <see cref="Resolve(IEnumerable{TagIconCandidate}?)"/> — and
+    /// its colour comes along, through <see cref="HexColor.Normalize"/>. EF projections hand the raw column
+    /// in (normalisation cannot run inside a <c>Select</c>), so THIS is the normalisation point for every
+    /// record shape. With no winner: <see cref="Default"/> and no colour.
+    /// </summary>
+    public static TagDisplay ResolveDisplay(IEnumerable<TagIconCandidate>? tags)
+    {
+        var winner = Order(tags).FirstOrDefault(tag => IsKnown(tag.Icon));
+        return winner is null ? new TagDisplay(Default, null) : new TagDisplay(winner.Icon!, HexColor.Normalize(winner.Color));
+    }
+
+    /// <summary><see cref="ResolveDisplay(IEnumerable{TagIconCandidate}?)"/> over any tag shape.</summary>
+    public static TagDisplay ResolveDisplay<T>(IEnumerable<T>? tags, Func<T, TagIconCandidate> candidate) =>
+        ResolveDisplay(tags?.Where(tag => tag is not null).Select(candidate));
 
     /// <summary><see cref="Resolve(IEnumerable{TagIconCandidate}?)"/> over any tag shape.</summary>
     public static string Resolve<T>(IEnumerable<T>? tags, Func<T, TagIconCandidate> candidate) =>

@@ -24,6 +24,13 @@ namespace Odyssey.ApiClient.Resources;
 /// thing — <c>PUT</c> is full replacement and both reset the tag to the default — so a writer that knows
 /// the tag's icon must always pass it, or an edit or an archive would silently clear it.
 /// </para>
+///
+/// <para>
+/// <see cref="Color"/> (issue #392) follows the same full-replacement rule, and both it and
+/// <see cref="Icon"/> are positional with <b>no default</b>: every construction site must say what it
+/// sends, so a writer cannot drop either by omission. <see cref="Color"/> is always on the wire, an
+/// explicit <c>null</c> included.
+/// </para>
 /// </remarks>
 public sealed record TagWrite(
     [property: Required]
@@ -34,7 +41,9 @@ public sealed record TagWrite(
     bool Archived,
     [property: StringLength(TagIcons.MaxKeyLength)]
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    string? Icon = null)
+    string? Icon,
+    [property: StringLength(HexColor.Length)]
+    string? Color)
 {
     /// <summary>Matches <c>PhotoLimits.MaxTagNameLength</c> and its journal/task equivalents.</summary>
     public const int MaxNameLength = 64;

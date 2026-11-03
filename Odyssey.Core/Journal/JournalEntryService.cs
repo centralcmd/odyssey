@@ -89,7 +89,8 @@ public class JournalEntryService
                     .Select(t => new TagIconCandidate(
                         t.JournalTagId,
                         t.JournalTag == null ? null : t.JournalTag.Name,
-                        t.JournalTag == null ? null : t.JournalTag.Icon))
+                        t.JournalTag == null ? null : t.JournalTag.Icon,
+                        t.JournalTag == null ? null : t.JournalTag.Color))
                     .ToList(),
                 ContactIds = e.Contacts.Select(c => c.ContactId).ToList(),
                 PhotoLinks = e.Photos

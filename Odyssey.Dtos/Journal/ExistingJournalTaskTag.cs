@@ -20,4 +20,10 @@ public sealed record ExistingJournalTaskTag
     /// catalogue no longer has is projected as <c>null</c>, never echoed.
     /// </summary>
     public string? Icon { get; set; }
+
+    /// <summary>
+    /// The tag's colour as normalised <c>#RRGGBB</c>, or <c>null</c> (issue #392). A stored value that is
+    /// not a valid hex is projected as <c>null</c>, never echoed.
+    /// </summary>
+    public string? Color { get; set; }
 }

@@ -11,9 +11,9 @@ public sealed record NewCalendar
     [StringLength(1000)]
     public string? Description { get; set; }
 
-    // Curated palette membership (CalendarColors.Palette) is enforced in CalendarService, not here —
+    // Curated palette membership (ColorPalette, issue #392) is enforced in CalendarService, not here —
     // see the repo-wide convention of cross-field/business-rule checks living in the service layer.
     [StringLength(7)]
     [Required]
-    public string Color { get; set; } = "#0369A1";
+    public string Color { get; set; } = ColorPalette.CalendarDefault;
 }

@@ -151,7 +151,7 @@ public partial class EditPhotoDialog
             foreach (var name in newNames.Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 // 409 = the tag already exists, which is fine — it is mapped by name below either way.
-                await PhotoTagWrites.CreateAsync(new TagWrite(name, Description: null, Archived: false));
+                await PhotoTagWrites.CreateAsync(new TagWrite(name, Description: null, Archived: false, Icon: null, Color: null));
             }
 
             var all = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");

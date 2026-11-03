@@ -39,10 +39,11 @@ public class BudgetItemTagEmbedExposureTests
     /// <remarks>
     /// <c>Icon</c> was added deliberately by issue #279 (§7.3): a catalogue key, non-personal
     /// presentation data less descriptive than the name the embed already carries, so exposing it under
-    /// <c>budgets.read</c> widens nothing.
+    /// <c>budgets.read</c> widens nothing. <c>Color</c> was added by issue #392 (§7.3) on the same footing:
+    /// a 7-character hex of presentation data, reveals no more about the tag than its icon already does.
     /// </remarks>
     [Fact]
-    public void EmbeddedTag_IsExistingTransactionTag_WithExactlyFiveMembers()
+    public void EmbeddedTag_IsExistingTransactionTag_WithExactlySixMembers()
     {
         var tagProperty = typeof(ExistingBudgetItem).GetProperty(nameof(ExistingBudgetItem.Tag));
 
@@ -50,7 +51,7 @@ public class BudgetItemTagEmbedExposureTests
         Assert.Equal(typeof(ExistingTransactionTag), tagProperty!.PropertyType);
 
         var members = typeof(ExistingTransactionTag).GetProperties().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal);
-        Assert.Equal(["Archived", "Description", "Icon", "Name", "TransactionTagId"], members);
+        Assert.Equal(["Archived", "Color", "Description", "Icon", "Name", "TransactionTagId"], members);
     }
 
     /// <summary>
@@ -72,7 +73,7 @@ public class BudgetItemTagEmbedExposureTests
     /// <summary>
     /// AC 29. A principal holding <c>budgets.read</c> and no tag claim lists budget items and receives
     /// fully populated tags — the crossover working as designed — and the body carries nothing beyond
-    /// the five members.
+    /// the six members.
     /// </summary>
     [Fact]
     public async Task ListBudgetItems_WithoutTagsReadClaim_EmbedsTheWholeTagAndNothingMore()
@@ -88,7 +89,7 @@ public class BudgetItemTagEmbedExposureTests
         var tag = item.GetProperty("tag");
 
         Assert.Equal(
-            ["archived", "description", "icon", "name", "transactionTagId"],
+            ["archived", "color", "description", "icon", "name", "transactionTagId"],
             tag.EnumerateObject().Select(p => p.Name).OrderBy(n => n, StringComparer.Ordinal));
 
         Assert.Equal("Groceries", tag.GetProperty("name").GetString());

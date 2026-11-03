@@ -586,7 +586,7 @@ public partial class FileAnalysisDialog
         var (tempId, name) = pending;
         try
         {
-            var result = await TransactionTags.CreateAsync(new TagWrite(name, null, false));
+            var result = await TransactionTags.CreateAsync(new TagWrite(name, null, false, Icon: null, Color: null));
             if (result.IsSuccess && result.CreatedId is { } id)
             {
                 // The session-wide tag cache is now stale — the next picker must re-fetch.
