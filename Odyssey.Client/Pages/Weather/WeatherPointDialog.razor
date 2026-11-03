@@ -128,7 +128,7 @@
                                 : "The forecast is fetched only when someone opens weather for this point.")
                             @if (Cap is { } cap)
                             {
-                                <span class="wx-muted"> @(UsedElsewhere + (_tracked ? 1 : 0)) of @cap scheduled points in use.</span>
+                                @(" ")<span class="wx-muted">@(UsedElsewhere + (_tracked ? 1 : 0)) of @cap scheduled points in use.</span>
                             }
                         </div>
                         @if (_trackedError is not null)
