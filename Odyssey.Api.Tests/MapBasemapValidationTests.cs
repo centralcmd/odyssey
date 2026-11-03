@@ -85,6 +85,8 @@ public sealed class MapBasemapValidationTests : IDisposable
         { "directory", "must be a regular file" },
         { "symlink", "must be a regular file" },
         { "short", "is truncated" },
+        { "header-minus-one", "is truncated" },
+        { "root-beyond-eof", "is truncated" },
         { "magic", "is not a PMTiles version 3 archive" },
         { "version2", "is not a PMTiles version 3 archive" },
         { "cut-in-tile-data", "is truncated" },
@@ -96,6 +98,10 @@ public sealed class MapBasemapValidationTests : IDisposable
         { "zstd-internal", "cannot decode" },
         { "bounds", "invalid bounding box or zoom range" },
         { "zoom", "invalid bounding box or zoom range" },
+        { "zoom-above-24", "invalid bounding box or zoom range" },
+        { "longitude", "invalid bounding box or zoom range" },
+        { "min-above-max", "invalid bounding box or zoom range" },
+        { "unknown-compression", "cannot decode" },
     };
 
     [Theory]
@@ -117,16 +123,67 @@ public sealed class MapBasemapValidationTests : IDisposable
     [Fact]
     public void An_unreadable_file_fails_as_unreadable()
     {
-        // Self-skipping (this project references no skip package): root reads a 0000 file regardless.
-        if (OperatingSystem.IsWindows() || Environment.UserName == "root")
-            return;
-
+        // An exclusive lock makes the open fail for root too (file modes would not), so this runs in every
+        // environment, a CI container included. .NET enforces FileShare across handles on Unix.
         var path = Write(Archive());
-        File.SetUnixFileMode(path, UnixFileMode.None);
+        using var exclusive = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
         var result = Validate(Options(path: path));
 
+        Assert.False(result.Succeeded);
         Assert.Contains("cannot be read by the API", result.FailureMessage, StringComparison.Ordinal);
+        Assert.DoesNotContain(path, result.FailureMessage, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_committed_fixture_contains_the_cabin_and_not_home()
+    {
+        // TestShared/Basemap/ATTRIBUTION.md's invariant, which the E2E tier's AC 20 depends on.
+        var bytes = File.ReadAllBytes(Path.Combine(RepositoryRoot.Path, "TestShared", "Basemap", "basemap.pmtiles"));
+        var header = PmtilesHeader.Parse(bytes);
+        var locations = Odyssey.TestData.Generators.LocationGenerator.Generate(DateTime.UtcNow);
+
+        bool Inside(string name)
+        {
+            var location = locations.Single(l => l.Name == name);
+            var (lat, lon) = ((double)location.Latitude!, (double)location.Longitude!);
+            return lon >= header.MinLongitude && lon <= header.MaxLongitude && lat >= header.MinLatitude && lat <= header.MaxLatitude;
+        }
+
+        Assert.True(Inside("Cabin"), "The fixture no longer covers the demo Cabin.");
+        Assert.False(Inside("Home"), "The fixture now covers the demo Home; AC 20 needs a location outside it.");
+    }
+
+    [Theory]
+    [InlineData(850511288, true)]   // a whole-world extract: Web Mercator's limit, rounded up in E7
+    [InlineData(850512000, true)]
+    [InlineData(850513000, false)]
+    public void The_latitude_bound_admits_a_whole_world_extract(int maxLatitudeE7, bool valid)
+    {
+        var path = Write(Archive(a =>
+        {
+            BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(106), -maxLatitudeE7);
+            BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(114), maxLatitudeE7);
+            BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(102), -1_800_000_000);
+            BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(110), 1_800_000_000);
+        }));
+
+        Assert.Equal(valid, Validate(Options(path: path)).Succeeded);
+    }
+
+    [Theory]
+    [InlineData(1)] // none
+    [InlineData(2)] // gzip
+    public void Uncompressed_and_gzip_archives_pass(byte compression)
+    {
+        Assert.True(Validate(Options(path: Write(Archive(a => { a[97] = compression; a[98] = compression; })))).Succeeded);
+    }
+
+    [Fact]
+    public void A_file_exactly_as_long_as_its_sections_passes_and_one_byte_short_fails()
+    {
+        Assert.True(Validate(Options(path: Write(Archive()))).Succeeded);
+        Assert.False(Validate(Options(path: Write(Archive()[..^1]))).Succeeded);
     }
 
     [Theory]
@@ -268,6 +325,8 @@ public sealed class MapBasemapValidationTests : IDisposable
                 File.CreateSymbolicLink(link, target);
                 return link;
             case "short": return Write(Archive()[..100]);
+            case "header-minus-one": return Write(Archive()[..126]);
+            case "root-beyond-eof": return Write(Archive(a => U64(a, 16, 2_000)));
             case "magic": return Write(Archive(a => a[0] = (byte)'X'));
             case "version2": return Write(Archive(a => a[7] = 2));
             case "cut-in-tile-data": return Write(Archive()[..400]);
@@ -279,6 +338,10 @@ public sealed class MapBasemapValidationTests : IDisposable
             case "zstd-internal": return Write(Archive(a => a[97] = 4));
             case "bounds": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(114), 890_000_000)));
             case "zoom": return Write(Archive(a => { a[100] = 15; a[101] = 14; }));
+            case "zoom-above-24": return Write(Archive(a => a[101] = 25));
+            case "longitude": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(110), 1_800_000_010)));
+            case "min-above-max": return Write(Archive(a => BinaryPrimitives.WriteInt32LittleEndian(a.AsSpan(102), 103_000_000)));
+            case "unknown-compression": return Write(Archive(a => a[98] = 0));
             default: throw new ArgumentOutOfRangeException(nameof(shape));
         }
     }

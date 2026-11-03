@@ -152,7 +152,9 @@ public sealed class MapOptionsValidator : IValidateOptions<MapOptions>
         return null;
     }
 
-    private const double MaxMercatorLatitude = 85.0511;
+    // Web Mercator's limit is 85.0511287798…; a whole-world archive stores it rounded up in E7
+    // (85.0511288), so the bound sits just above that rather than at the truncated 85.0511.
+    private const double MaxMercatorLatitude = 85.0512;
 
     private static bool BoundsAreValid(PmtilesHeader h) =>
         h.MinZoom <= h.MaxZoom && h.MaxZoom <= 24

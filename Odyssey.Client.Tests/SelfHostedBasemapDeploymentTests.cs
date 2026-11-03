@@ -13,7 +13,9 @@ public class SelfHostedBasemapDeploymentTests
 {
     private static readonly Lazy<string> Template = new(() => Regex.Replace(File.ReadAllText(MapCspTemplateTests.TemplatePath), @"(?m)#.*$", string.Empty));
 
-    private static string Location(string header)
+    private static string Location(string header) => Regex.Replace(RawLocation(header), @"[ \t]+", " ");
+
+    private static string RawLocation(string header)
     {
         var start = Template.Value.IndexOf(header + " {", StringComparison.Ordinal);
         Assert.True(start >= 0, $"No `{header}` block in the template.");
@@ -89,8 +91,8 @@ public class SelfHostedBasemapDeploymentTests
     [Fact]
     public void The_zones_key_on_the_real_client_and_the_cache_lives_under_var_cache_nginx()
     {
-        Assert.Contains("limit_req_zone  $basemap_client zone=basemap:10m rate=30r/s;", Template.Value, StringComparison.Ordinal);
-        Assert.Contains("limit_conn_zone $basemap_client zone=basemap_conn:10m;", Template.Value, StringComparison.Ordinal);
+        Assert.Matches(@"limit_req_zone\s+\$basemap_client\s+zone=basemap:10m\s+rate=30r/s;", Template.Value);
+        Assert.Matches(@"limit_conn_zone\s+\$basemap_client\s+zone=basemap_conn:10m;", Template.Value);
         Assert.Matches(@"proxy_cache_path /var/cache/nginx/basemap_auth \S.*keys_zone=basemap_auth:1m", Template.Value);
         Assert.Matches(@"map \$http_x_forwarded_for \$basemap_client \{", Template.Value);
         Assert.Matches(@"map \$http_cookie \$basemap_no_session \{", Template.Value);
@@ -130,6 +132,7 @@ public class SelfHostedBasemapDeploymentTests
         Assert.Contains("CACHE_PARENT=/var/cache/nginx", script, StringComparison.Ordinal);
         Assert.Contains("FILE=/usr/share/nginx/html/basemap/basemap.pmtiles", script, StringComparison.Ordinal);
         Assert.Contains("basemap-unreadable", script, StringComparison.Ordinal);
+        Assert.Contains("basemap-dir-unsearchable", script, StringComparison.Ordinal);
     }
 
     // ── AC 14: one read-only volume, mounted by api and client and nothing else ─────────────────────────
@@ -144,10 +147,12 @@ public class SelfHostedBasemapDeploymentTests
         Assert.Equal(2, Regex.Matches(compose, @"(?m)^\s+- basemap:").Count);
         Assert.Matches(@"(?m)^  basemap:\s*$", compose);
         Assert.Contains("Map__BasemapFilePath: /var/odyssey/basemap/basemap.pmtiles", compose, StringComparison.Ordinal);
+        // The access-check cache holds complete cookie headers: in memory in the dev stack too.
+        Assert.Contains("- /var/cache/nginx:uid=101,gid=101", Regex.Replace(compose, @"(?m)#.*$", string.Empty), StringComparison.Ordinal);
     }
 
     [Fact]
-    public void The_production_overlay_keeps_both_mounts_read_only_and_the_cache_in_memory()
+    public void The_production_overlay_adds_no_basemap_mount_and_keeps_the_cache_in_memory()
     {
         var prod = Regex.Replace(Read("docker-compose.prod.yml"), @"(?m)#.*$", string.Empty);
 

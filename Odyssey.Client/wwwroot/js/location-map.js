@@ -85,9 +85,11 @@ function loadClassicScript(href) {
 
 // The self-hosted basemap (issue #384): one PMTiles archive the client container serves at exactly
 // /basemap/basemap.pmtiles, behind nginx's auth_request. It is registered under that URL before any style can
-// name it, so the library never builds a default source of its own for it. Registered once per page. 'same-origin' sends the session cookie, and only to the deployment: the file is
-// authorized by nginx's auth_request (#384 §7.2), the one deliberate exception to "map requests carry no
-// cookie". Styles, glyphs and the sprite still go out without one (transformRequest below).
+// name it, so the library never builds a default source of its own for it. Registered once per page.
+//
+// 'same-origin' sends the session cookie, and only to the deployment: the file is authorized by
+// auth_request (#384 §7.2), the one deliberate exception to "map requests carry no cookie". Styles, glyphs
+// and the sprite still go out without one (transformRequest in build()).
 function registerBasemapProtocol(lib) {
     const protocol = new pmtiles.Protocol();
     protocol.add(new pmtiles.PMTiles(new pmtiles.FetchSource('/basemap/basemap.pmtiles', new Headers(), 'same-origin')));

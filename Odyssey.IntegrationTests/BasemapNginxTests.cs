@@ -248,6 +248,7 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
     [InlineData("bytes=-5")]
     [InlineData("items=0-5")]
     [InlineData("bytes=0-1,4-5")]
+    [InlineData("bytes=0-9, 20-29")]
     public async Task Every_range_form_but_one_closed_range_is_a_416_that_never_reaches_the_api(string? range)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -259,6 +260,19 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
         Assert.Equal(HttpStatusCode.RequestedRangeNotSatisfiable, response.StatusCode);
         Assert.NotEqual("multipart/byteranges", response.Content.Headers.ContentType?.MediaType);
         Assert.Equal(before, await fixture.ProbeCallsAsync());
+    }
+
+    [SkippableFact]
+    public async Task A_reversed_range_never_returns_more_than_a_closed_one_could()
+    {
+        // bytes=9-0 matches the allow-list's shape; whatever nginx answers, it must not be a whole-file 200.
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        using var client = Client();
+
+        using var response = await client.SendAsync(Ranged("bytes=9-0", forwardedFor: "198.51.100.9"));
+
+        Assert.NotEqual(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.StatusCode is HttpStatusCode.RequestedRangeNotSatisfiable or HttpStatusCode.PartialContent, response.StatusCode.ToString());
     }
 
     [SkippableFact]
@@ -276,11 +290,13 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         using var client = Client();
 
-        var statuses = new List<HttpStatusCode>();
-        for (var i = 0; i < 160; i++)
-            statuses.Add((await client.SendAsync(Ranged("bytes=0-9", forwardedFor: "203.0.113.7, 192.0.2.10"))).StatusCode);
+        // Concurrent, so a slow runner cannot refill the bucket between requests: 300 at once against a burst of
+        // 120 at 30 r/s, and against 16 connections, must refuse some whatever the timing.
+        var responses = await Task.WhenAll(Enumerable.Range(0, 300).Select(_ => client.SendAsync(Ranged("bytes=0-9", forwardedFor: "203.0.113.7, 192.0.2.10"))));
+        var statuses = responses.Select(r => r.StatusCode).ToList();
 
         Assert.Contains((HttpStatusCode)429, statuses);
+        Assert.Contains(HttpStatusCode.PartialContent, statuses);
         // The last X-Forwarded-For element is the client: a different one is untouched by the first's limit.
         Assert.Equal(HttpStatusCode.PartialContent, (await client.SendAsync(Ranged("bytes=0-9", forwardedFor: "203.0.113.7, 192.0.2.11"))).StatusCode);
     }
@@ -361,11 +377,12 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
 
     [SkippableTheory]
     [InlineData("unreadable")]
+    [InlineData("dir-unsearchable")]
     [InlineData("cache-read-only")]
     public async Task The_start_check_stops_the_container(string shape)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        Skip.If(Environment.UserName != "root" && shape == "unreadable", "Making a file unreadable to UID 101 needs a root-owned file.");
+        Skip.If(Environment.UserName != "root" && shape != "cache-read-only", "Making a path unreadable to UID 101 needs root-owned files.");
         var html = Directory.CreateTempSubdirectory("odyssey-basemap-bad-").FullName;
         var cache = Directory.CreateTempSubdirectory("odyssey-basemap-cache-").FullName;
         try
@@ -375,7 +392,7 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
             var file = Path.Combine(html, "basemap", "basemap.pmtiles");
             System.IO.File.Copy(Path.Combine(fixture.Html, "basemap", "basemap.pmtiles"), file);
             System.IO.File.SetUnixFileMode(html, (UnixFileMode)0b111_101_101);
-            System.IO.File.SetUnixFileMode(Path.Combine(html, "basemap"), (UnixFileMode)0b111_101_101);
+            System.IO.File.SetUnixFileMode(Path.Combine(html, "basemap"), shape == "dir-unsearchable" ? (UnixFileMode)0b111_000_000 : (UnixFileMode)0b111_101_101);
             System.IO.File.SetUnixFileMode(file, shape == "unreadable" ? (UnixFileMode)0b110_000_000 : (UnixFileMode)0b110_100_100);
 
             await using var container = fixture.Client(html, shape == "cache-read-only" ? cache : null)
@@ -387,7 +404,8 @@ public sealed class BasemapNginxTests(BasemapNginxFixture fixture) : IClassFixtu
             var (_, stderr) = await container.GetLogsAsync();
 
             Assert.NotEqual(0, exit);
-            Assert.Contains(shape == "unreadable" ? "basemap-unreadable" : "basemap-cache-unwritable", stderr, StringComparison.Ordinal);
+            var expected = shape switch { "unreadable" => "basemap-unreadable", "dir-unsearchable" => "basemap-dir-unsearchable", _ => "basemap-cache-unwritable" };
+            Assert.Contains(expected, stderr, StringComparison.Ordinal);
         }
         finally
         {

@@ -250,6 +250,10 @@ services:
       # Rendered into the CSP's connect-src and img-src at start (issue #370). Must equal the api's
       # Map__AllowedOrigins above — same variable, same single-dash default.
       MAP_ALLOWED_ORIGINS: ${MAP_ALLOWED_ORIGINS-https://tiles.openfreemap.org}
+    tmpfs:
+      # The self-hosted basemap's access-check cache (issue #384) is keyed on complete cookie headers: keep it
+      # in memory here too, not on the container's writable layer. Owned by nginx so it can create it.
+      - /var/cache/nginx:uid=101,gid=101
     volumes:
       # The self-hosted basemap file (issue #384), served at /basemap/basemap.pmtiles. Read-only here and in
       # the api; the operator fills it with a one-off helper container (docs/deployment.md → Location map).

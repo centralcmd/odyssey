@@ -88,34 +88,56 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         var page = await browserContext!.NewPageAsync();
         var requests = new List<IRequest>();
         var statuses = new List<(string Url, int Status)>();
-        page.Request += (_, r) => requests.Add(r);
-        page.Response += (_, r) => statuses.Add((r.Url, r.Status));
+        // Events keep arriving while the assertions run (tiles in flight), so every read takes a snapshot.
+        var gate = new object();
+        page.Request += (_, r) => { lock (gate) requests.Add(r); };
+        page.Response += (_, r) => { lock (gate) statuses.Add((r.Url, r.Status)); };
+        int StyleRequests() { lock (gate) return requests.Count(r => r.Url.Contains("/maps/self-hosted-", StringComparison.Ordinal)); }
 
         await OpenAsync(page, "Cabin");
-        for (var i = 0; i < 4; i++)
+        // Each zoom step settles before the next (a step rounds from the current zoom), so the map has
+        // requested the deeper tiles by the time the loop ends.
+        var host = page.Locator(".loc-map-host");
+        for (var z = 15; z <= 18; z++)
+        {
             await page.Locator(".loc-map").GetByRole(AriaRole.Button, new() { Name = "Zoom in", Exact = true }).ClickAsync();
-        await page.WaitForTimeoutAsync(1500);
+            await Expect(host).ToHaveAttributeAsync("data-zoom", $"{z}.00");
+        }
+
+        // The theme toggle swaps to the other self-hosted style: wait for that request rather than a fixed time.
+        var otherStyle = page.WaitForRequestAsync(r => r.Url.EndsWith("/maps/self-hosted-light.json", StringComparison.Ordinal)
+            || r.Url.EndsWith("/maps/self-hosted-dark.json", StringComparison.Ordinal), new() { Timeout = 15_000 });
+        var before = StyleRequests();
         await ToggleThemeAsync(page);
+        await otherStyle;
         await Expect(page.Locator(".loc-map-caption")).ToBeVisibleAsync(new() { Timeout = 30_000 });
-        await page.WaitForTimeoutAsync(1500);
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        Assert.True(StyleRequests() > before);
+        IRequest[] seen;
+        (string Url, int Status)[] answered;
+        lock (gate)
+        {
+            seen = [.. requests];
+            answered = [.. statuses];
+        }
 
         var origin = new Uri(fixture.BaseUrl).GetLeftPart(UriPartial.Authority);
-        Assert.All(requests, r => Assert.True(
+        Assert.All(seen, r => Assert.True(
             r.Url.StartsWith(origin, StringComparison.Ordinal) || r.Url.StartsWith("data:", StringComparison.Ordinal) || r.Url.StartsWith("blob:", StringComparison.Ordinal),
             $"Request left the deployment: {r.Url}"));
 
-        Assert.Contains(requests, r => r.Url.EndsWith("/maps/self-hosted-light.json", StringComparison.Ordinal));
-        Assert.Contains(requests, r => r.Url.EndsWith("/maps/self-hosted-dark.json", StringComparison.Ordinal));
-        Assert.Contains(statuses, s => s.Url.EndsWith("/basemap/basemap.pmtiles", StringComparison.Ordinal) && s.Status == 206);
-        Assert.DoesNotContain(statuses, s => s.Status == 429);
-        Assert.DoesNotContain(statuses, s => s.Url.Contains("/basemap/", StringComparison.Ordinal) && s.Status >= 400);
+        Assert.Contains(seen, r => r.Url.EndsWith("/maps/self-hosted-light.json", StringComparison.Ordinal));
+        Assert.Contains(seen, r => r.Url.EndsWith("/maps/self-hosted-dark.json", StringComparison.Ordinal));
+        Assert.Contains(answered, s => s.Url.EndsWith("/basemap/basemap.pmtiles", StringComparison.Ordinal) && s.Status == 206);
+        Assert.DoesNotContain(answered, s => s.Status == 429);
+        Assert.DoesNotContain(answered, s => s.Url.Contains("/basemap/", StringComparison.Ordinal) && s.Status >= 400);
 
         // The archive's range requests are authorized by nginx's auth_request, so every 206 above already
         // proves the session cookie went with it (one without would be a 401). Playwright reports the header
         // only for some requests (it comes from the network layer's extra info), so presence is asserted on
         // at least one, and absence on every style, glyph and sprite request.
         var basemapCookies = 0;
-        foreach (var request in requests)
+        foreach (var request in seen)
         {
             var path = new Uri(request.Url).AbsolutePath;
             var cookie = (await request.AllHeadersAsync()).ContainsKey("cookie");
@@ -157,6 +179,8 @@ public sealed class SelfHostedBasemapTests(StackFixture fixture) : IAsyncLifetim
         SkipUnlessSelfHosted();
         var page = await browserContext!.NewPageAsync();
 
+        // OpenAsync returns only once the caption shows, which is the map's ready state (WaitReadyAsync's signal
+        // in LocationMapRenderTests), so the absent failure state below is asserted after the load, not before.
         await OpenAsync(page, "Home");
 
         await Expect(page.Locator(".loc-map-pin")).ToBeVisibleAsync();

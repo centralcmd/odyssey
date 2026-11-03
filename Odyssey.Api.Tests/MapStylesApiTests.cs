@@ -244,7 +244,7 @@ public class MapStylesApiTests
     }
 
     /// <summary>
-    /// The URLs a style makes the browser fetch: each source's <c>url</c> and <c>tiles</c>, <c>glyphs</c>
+    /// The URLs a style makes the browser fetch: each source's <c>url</c>, <c>tiles</c> and string <c>data</c>, <c>glyphs</c>
     /// and <c>sprite</c>. Provenance links in <c>metadata</c> are not fetched, so they are not counted
     /// (issue #384 AC 9).
     /// </summary>
@@ -258,6 +258,9 @@ public class MapStylesApiTests
             {
                 if (source.Value.TryGetProperty("url", out var url))
                     yield return url.GetString()!;
+                // A GeoJSON source's data may be a URL the browser fetches, or inline JSON it does not.
+                if (source.Value.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.String)
+                    yield return data.GetString()!;
                 if (source.Value.TryGetProperty("tiles", out var tiles))
                     foreach (var tile in tiles.EnumerateArray())
                         yield return tile.GetString()!;

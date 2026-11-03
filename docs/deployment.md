@@ -1162,13 +1162,15 @@ a Protomaps-schema file renders an empty map). The supported route is
 [Planetiler](https://github.com/onthegomap/planetiler) with its default profile, on any machine with Docker:
 
 ```bash
-docker run --rm -e JAVA_TOOL_OPTIONS="-Xmx4g" -v "$PWD/data":/data \
-  ghcr.io/onthegomap/planetiler@sha256:{{ PLANETILER_DIGEST }} \
+# Pin the image: take the digest of the release you choose from its GitHub packages page.
+PLANETILER_IMAGE="ghcr.io/onthegomap/planetiler@sha256:<digest of the chosen release>"
+docker run --rm -e JAVA_TOOL_OPTIONS="-Xmx4g" -v "$PWD/data":/data "$PLANETILER_IMAGE" \
   --download --area=norway --output=/data/basemap.pmtiles
-sha256sum data/basemap.pmtiles
+sha256sum data/basemap.pmtiles | cut -d' ' -f1 > data/basemap.pmtiles.sha256
 ```
 
-Pin the image by digest, and keep the SHA-256 with your deployment notes for step 3. `--download` fetches the
+Replace the `<…>` in `PLANETILER_IMAGE` before running it: an unpinned image is a build step you cannot
+reproduce. Keep `basemap.pmtiles.sha256` with your deployment notes; step 3 checks against it. `--download` fetches the
 Geofabrik extract plus water polygons and Natural Earth once, from the operator's machine. For a smaller area
 pass `--bounds=<minlon>,<minlat>,<maxlon>,<maxlat>`, or cut a national file with the `pmtiles` CLI
 (`pmtiles extract basemap-norway.pmtiles basemap.pmtiles --bbox=…`). Tiles must be gzip-compressed or
@@ -1186,14 +1188,16 @@ container; the checksum is verified before the atomic swap, and a failed check l
 ```bash
 docker run --rm -v odyssey_basemap:/dst -v "$PWD/data":/src:ro alpine:3.22 sh -euc '
   cp /src/basemap.pmtiles /dst/.incoming.pmtiles
-  echo "{{ RECORDED_SHA256 }}  /dst/.incoming.pmtiles" | sha256sum -c -
+  echo "$(cat /src/basemap.pmtiles.sha256)  /dst/.incoming.pmtiles" | sha256sum -c -
+  chmod 0755 /dst
   chmod 0644 /dst/.incoming.pmtiles
   mv /dst/.incoming.pmtiles /dst/basemap.pmtiles'
 docker compose restart api client
 ```
 
 The volume is `<project>_basemap` (`odyssey_basemap` by default). The file must be a **regular file**,
-world-readable (`0644`): the API (`app`) and nginx (UID 101) both read it, and neither follows a symlink.
+world-readable (`0644`) in a world-searchable volume (`0755`): the API (`app`) and nginx (UID 101) both read
+it, and neither follows a symlink.
 Open maps pick up a refreshed file through its ETag.
 
 **4. Select it** (existing variables, nothing new):
