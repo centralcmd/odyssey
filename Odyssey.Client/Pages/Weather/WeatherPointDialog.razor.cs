@@ -290,9 +290,16 @@ public partial class WeatherPointDialog
         await FocusAsync(PickedId);
     }
 
+    /// <summary>
+    /// Focus goes into the search only after an explicit "Search again". Choosing the source card does not move it:
+    /// arrowing through the radio group must not pull focus out of the group (WCAG 3.2.2).
+    /// </summary>
+    private bool _focusSearch;
+
     /// <summary>Back to the search, which takes focus again; the prefilled fields wait until the next pick.</summary>
     private void SearchAgain()
     {
+        _focusSearch = true;
         _candidate = null;
         _errors.Remove("search");
     }

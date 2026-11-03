@@ -91,7 +91,7 @@
                     {
                         <div id="@SearchId" tabindex="-1" class="wx-search">
                             <LocationSearch Region="_region" RegionChanged="@(r => _region = r)" OnPick="OnCandidatePickedAsync"
-                                            AutoFocus="true" DebounceMilliseconds="SearchDebounceMs" />
+                                            AutoFocus="_focusSearch" DebounceMilliseconds="SearchDebounceMs" />
                             @if (Err("search") is { } searchError)
                             {
                                 <div class="wx-search-error"><OdsMIcon Name="error_outline" Size="16" />@searchError</div>

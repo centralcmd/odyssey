@@ -312,11 +312,12 @@ public class WeatherPointsUiTests : IDisposable
 
         await cut.InvokeAsync(() => cut.FindComponent<OdsCardSelect>().Instance.ValueChanged.InvokeAsync(WeatherPointDialog.SearchMode));
 
-        // The location dialog's search, its disclosure line included, takes focus as the mode is chosen.
+        // The location dialog's search, its disclosure line included. Choosing the card does not move focus out
+        // of the radio group (WCAG 3.2.2); only "Search again" puts it in the input.
         var input = cut.Find(".loc-search input[role=combobox]");
         Assert.Contains(LocationSearch.Disclosure, cut.Markup);
-        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
-            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id)));
+        Assert.DoesNotContain(ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id));
         Assert.Empty(cut.FindComponents<OdsCoordinateField>());
 
         // Saving before a pick names what is missing and sends nothing.
