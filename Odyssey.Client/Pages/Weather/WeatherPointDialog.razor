@@ -6,7 +6,9 @@
     Weather.jsx WeatherPointDialog). It replaces WeatherSettingsDialog and absorbs the former Apply-the-new-position
     dialog: moving a point is editing its position, and the old → new comparison shows inline. Creating from a place
     COPIES its position and links nothing; the request carries that place's fingerprint, so a move made while the
-    dialog was open is a 409 rather than a silent snapshot of something nobody reviewed.
+    dialog was open is a 409 rather than a silent snapshot of something nobody reviewed. Searching an address reuses
+    the location dialog's LocationSearch: a pick only prefills the coordinates fields, and the create is the
+    coordinates one — no place is saved and nothing is linked.
     While a save is in flight the dialog cannot be dismissed (OnClose is withheld and a close is refused).
 *@
 
@@ -46,7 +48,7 @@
 
             @if (Creating)
             {
-                @if (CanReadLocations)
+                @if (ModeOptions.Count > 1)
                 {
                     <OdsCardSelect AriaLabel="Where the position comes from" Value="@_mode" ValueChanged="OnModeChanged" Options="ModeOptions" />
                 }
@@ -64,6 +66,37 @@
                         <WeatherSiteCard Title="Weather position" Latitude="lat" Longitude="lng"
                                          AltitudeMeters="_source.AltitudeMeters" TimeZoneId="@(_source.TimeZoneId ?? "")"
                                          Foot="@($"Copied from {_source.Name} now. The point keeps this position; moving the place later changes nothing here.")" />
+                    }
+                }
+                else if (Searching)
+                {
+                    @if (_candidate is { } picked)
+                    {
+                        @* tabindex=-1: where focus lands once the pick removes the search input that had it. *@
+                        <div id="@PickedId" tabindex="-1" class="loc-picked wx-picked" style="@($"--rec:{LocationVisuals.Accent};--rec-soft:{LocationVisuals.AccentSoft}")">
+                            <span class="loc-picked-glyph"><span class="material-icons" aria-hidden="true">@LocationVisuals.KindOf(picked.Candidate.Kind).Icon</span></span>
+                            <div class="loc-picked-text">
+                                <div class="loc-picked-name">@picked.Candidate.Name</div>
+                                <div class="loc-picked-meta">@PickedMeta(picked.Candidate)</div>
+                                <div class="loc-picked-src">
+                                    @($"Coordinates as {LocationVisuals.SourceOf(picked.Candidate.Source).Label} returned them · ")
+                                    <LocationAttributionLink Attribution="picked.Attribution" />
+                                </div>
+                            </div>
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="search" Class="wx-picked-again" OnClick="SearchAgain">Search again</OdsButton>
+                        </div>
+                        @PositionFields
+                    }
+                    else
+                    {
+                        <div id="@SearchId" tabindex="-1" class="wx-search">
+                            <LocationSearch Region="_region" RegionChanged="@(r => _region = r)" OnPick="OnCandidatePickedAsync"
+                                            AutoFocus="true" DebounceMilliseconds="SearchDebounceMs" />
+                            @if (Err("search") is { } searchError)
+                            {
+                                <div class="wx-search-error"><OdsMIcon Name="error_outline" Size="16" />@searchError</div>
+                            }
+                        </div>
                     }
                 }
                 else
@@ -194,7 +227,7 @@
                             Value="_alt" ValueChanged="@(v => { _alt = v; _errors.Remove("altitudeMeters"); })"
                             Error="@Err("altitudeMeters")" Help="Above sea level. Leave empty and MET Norway works it out." />
             <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneId" Required="true"
-                           Help="@(Err("timeZoneId") is null ? "Weather days are dated in this zone." : null)" Error="@Err("timeZoneId")">
+                           Help="@(Err("timeZoneId") is null ? TimeZoneHelp : null)" Error="@Err("timeZoneId")">
                 <OdsCombobox InputId="@TimeZoneId" Value="@_tz" ValueChanged="@(v => { _tz = v; _errors.Remove("timeZoneId"); })"
                              Options="TimeZoneOptions" Placeholder="Search, e.g. Oslo or Lisbon"
                              EmptyText="No time zone matches" Clearable="true" Required="true"

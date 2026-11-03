@@ -28,8 +28,14 @@ public partial class WeatherPointDialog
     /// <summary><c>WeatherMaxTrackedPoints</c> as served by settings — never a client constant. Null when unreadable.</summary>
     [Parameter] public int? Cap { get; set; }
 
-    /// <summary><c>locations.read</c>: the <i>From a location</i> source. Without it only <i>Enter coordinates</i> is offered.</summary>
+    /// <summary><c>locations.read</c>: the <i>From a location</i> source. Without it that source is not offered.</summary>
     [Parameter] public bool CanReadLocations { get; set; }
+
+    /// <summary>
+    /// <c>locations.create</c>, which <c>POST /api/locations/search</c> requires: the <i>Search address</i> source.
+    /// Create only — the settings dialog edits the coordinates in place.
+    /// </summary>
+    [Parameter] public bool CanSearchLocations { get; set; }
 
     [Parameter] public string? ReturnFocusToId { get; set; }
 
@@ -48,15 +54,30 @@ public partial class WeatherPointDialog
     /// <summary>The source picker's debounce; a test passes zero.</summary>
     [Parameter] public int LocationDebounceMs { get; set; } = 250;
 
+    /// <summary>The address search's debounce — the location dialog's 350 ms; a test passes zero.</summary>
+    [Parameter] public int SearchDebounceMs { get; set; } = 350;
+
     internal const string FromLocationMode = "location";
     internal const string CoordinatesMode = "coords";
+    internal const string SearchMode = "search";
 
     private static readonly DateTime HistoryFloor = WeatherRules.HistoryFloor.ToDateTime(TimeOnly.MinValue);
 
-    private static readonly IReadOnlyList<OdsCardSelectOption> ModeOptions =
+    private static readonly OdsCardSelectOption FromLocationOption =
+        new() { Value = FromLocationMode, Icon = "place", Label = "From a location", Sub = "Copy a saved place’s position" };
+
+    private static readonly OdsCardSelectOption CoordinatesOption =
+        new() { Value = CoordinatesMode, Icon = "my_location", Label = "Enter coordinates", Sub = "Type latitude and longitude" };
+
+    private static readonly OdsCardSelectOption SearchOption =
+        new() { Value = SearchMode, Icon = "search", Label = "Search address", Sub = "Find a place with Kartverket" };
+
+    /// <summary>Each source shows only to a caller who can use it; with coordinates alone, no picker is shown.</summary>
+    private IReadOnlyList<OdsCardSelectOption> ModeOptions =>
     [
-        new() { Value = FromLocationMode, Icon = "place", Label = "From a location", Sub = "Copy a saved place’s position" },
-        new() { Value = CoordinatesMode, Icon = "my_location", Label = "Enter coordinates", Sub = "Type latitude and longitude" },
+        .. CanReadLocations ? new[] { FromLocationOption } : [],
+        CoordinatesOption,
+        .. CanSearchLocations ? new[] { SearchOption } : [],
     ];
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
@@ -64,6 +85,8 @@ public partial class WeatherPointDialog
     private string _mode = FromLocationMode;
     private LocationPick? _pick;
     private ExistingLocation? _source;
+    private LocationSearchRegion _region = LocationSearchRegion.Norway;
+    private LocationCandidatePick? _candidate;
     private bool _noEligible;
     private string _name = "";
     private bool _nameTouched;
@@ -89,9 +112,13 @@ public partial class WeatherPointDialog
 
     private bool FromLocation => Creating && CanReadLocations && _mode == FromLocationMode;
 
+    private bool Searching => Creating && CanSearchLocations && _mode == SearchMode;
+
     private string SummaryId => $"wp-sum-{_uid}";
     private string NameId => $"wp-name-{_uid}";
     private string FromId => $"wp-from-{_uid}";
+    private string SearchId => $"wp-search-{_uid}";
+    private string PickedId => $"wp-picked-{_uid}";
     private string CoordsId => $"wp-coords-{_uid}";
     private string AltId => $"wp-alt-{_uid}";
     private string TimeZoneId => $"wp-tz-{_uid}";
@@ -100,12 +127,13 @@ public partial class WeatherPointDialog
     {
         ["name"] = NameId,
         ["fromLocationId"] = FromId,
+        ["search"] = SearchId,
         ["latitude"] = CoordsId,
         ["altitudeMeters"] = AltId,
         ["timeZoneId"] = TimeZoneId,
     };
 
-    private static readonly string[] FieldOrder = ["fromLocationId", "latitude", "altitudeMeters", "timeZoneId", "name", "historyFrom"];
+    private static readonly string[] FieldOrder = ["fromLocationId", "search", "latitude", "altitudeMeters", "timeZoneId", "name", "historyFrom"];
 
     /// <summary>Errors render after the first submit attempt, in field order.</summary>
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors => !_submitted ? [] :
@@ -142,6 +170,14 @@ public partial class WeatherPointDialog
             return options;
         }
     }
+
+    /// <summary>A picked candidate with no time zone leaves the field empty, as Enter coordinates does, and asks for one.</summary>
+    private string TimeZoneHelp => Searching && _candidate is { Candidate.TimeZoneId: null } picked && string.IsNullOrEmpty(_tz)
+        ? $"{LocationVisuals.SourceOf(picked.Candidate.Source).Label} didn’t return a time zone Odyssey recognises. Choose the one this place keeps."
+        : "Weather days are dated in this zone.";
+
+    private static string PickedMeta(LocationCandidate candidate) =>
+        string.Join(" · ", new[] { candidate.Description, LocationVisuals.KindOf(candidate.Kind).Label }.Where(s => !string.IsNullOrEmpty(s)));
 
     private string ForecastHelp =>
         Point is { IsHouseholdDefault: true }
@@ -235,6 +271,32 @@ public partial class WeatherPointDialog
         }
     }
 
+    /// <summary>
+    /// A search result fills the coordinates fields — every one stays editable — and the create is the coordinates
+    /// one. Name follows the pick until the Admin types their own.
+    /// </summary>
+    private async Task OnCandidatePickedAsync(LocationCandidatePick picked)
+    {
+        var c = picked.Candidate;
+        _candidate = picked;
+        if (!_nameTouched)
+            _name = c.Name.Length > WeatherRules.PointNameMaxLength ? c.Name[..WeatherRules.PointNameMaxLength] : c.Name;
+        _lat = WeatherRules.RoundCoordinate(c.Latitude);
+        _lng = WeatherRules.RoundCoordinate(c.Longitude);
+        _alt = c.AltitudeMeters;
+        _tz = c.TimeZoneId;
+        _errors.Clear();
+        _announce = $"{c.Name} picked. Check the position, then create the weather point.";
+        await FocusAsync(PickedId);
+    }
+
+    /// <summary>Back to the search, which takes focus again; the prefilled fields wait until the next pick.</summary>
+    private void SearchAgain()
+    {
+        _candidate = null;
+        _errors.Remove("search");
+    }
+
     internal const string FromLocationUnusable = "This place has no coordinates or time zone. Add them on the Locations page first.";
 
     /// <summary>Client checks mirror the server's (issue #388 §8); every bound is the shared constant, never a literal.</summary>
@@ -254,6 +316,10 @@ public partial class WeatherPointDialog
             else if (!WeatherVisuals.HasPosition(_source))
                 _errors["fromLocationId"] = FromLocationUnusable;
         }
+        else if (Searching && _candidate is null)
+        {
+            _errors["search"] = SearchNotPicked;
+        }
         else
         {
             if (_lat is null || _lng is null)
@@ -267,6 +333,8 @@ public partial class WeatherPointDialog
                 _errors["timeZoneId"] = "Choose the time zone.";
         }
     }
+
+    internal const string SearchNotPicked = "Search for the place, then pick a result.";
 
     private async Task SaveAsync()
     {

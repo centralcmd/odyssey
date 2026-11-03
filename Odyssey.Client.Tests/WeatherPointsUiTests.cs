@@ -251,6 +251,170 @@ public class WeatherPointsUiTests : IDisposable
         cut.WaitForAssertion(() => Assert.Contains("No places have coordinates yet. Add them on the Locations page.", cut.Markup));
     }
 
+    // ── Search address: a third source for New weather point, gated on locations.create ─────────────
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task Search_address_is_offered_only_to_a_holder_of_locations_create(bool canCreateLocations)
+    {
+        var weather = Weather(Point("Oslo", OsloId));
+        await using var ctx = PageContext(weather, canCreateLocations ? [.. AdminClaims, PermissionClaims.LocationsCreate] : AdminClaims);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointsPage>());
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        await page.InvokeAsync(() => page.FindAll("button").First(b => b.TextContent.Contains("New weather point", StringComparison.Ordinal)).Click());
+
+        var dialog = page.FindComponent<WeatherPointDialog>();
+        Assert.Equal(canCreateLocations, dialog.Instance.CanSearchLocations);
+        var sources = page.FindComponent<OdsCardSelect>().Instance.Options.Select(o => o.Value).ToList();
+        Assert.Equal(canCreateLocations
+                ? [WeatherPointDialog.FromLocationMode, WeatherPointDialog.CoordinatesMode, WeatherPointDialog.SearchMode]
+                : [WeatherPointDialog.FromLocationMode, WeatherPointDialog.CoordinatesMode],
+            sources);
+        Assert.Equal(canCreateLocations, page.Markup.Contains("Find a place with Kartverket", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task Search_address_alone_beside_coordinates_still_shows_the_source_picker_and_settings_never_offers_it()
+    {
+        var point = Point("Oslo", OsloId);
+        await using (var ctx = PageContext(Weather(point), AdminClaims))
+        {
+            var create = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+                .Add(x => x.Open, true).Add(x => x.CanSearchLocations, true)));
+            Assert.Equal([WeatherPointDialog.CoordinatesMode, WeatherPointDialog.SearchMode],
+                create.FindComponent<OdsCardSelect>().Instance.Options.Select(o => o.Value));
+        }
+
+        await using var settingsCtx = PageContext(Weather(point), AdminClaims);
+        var settings = settingsCtx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.Point, point).Add(x => x.CanSearchLocations, true)));
+        Assert.Empty(settings.FindComponents<OdsCardSelect>());
+        Assert.Empty(settings.FindComponents<LocationSearch>());
+    }
+
+    [Fact]
+    public async Task A_search_pick_fills_the_coordinate_fields_and_creates_with_those_coordinates_and_no_location()
+    {
+        var weather = Weather();
+        NewWeatherPoint? sent = null;
+        weather.Setup(w => w.CreatePointAsync(It.IsAny<NewWeatherPoint>(), It.IsAny<CancellationToken>()))
+            .Callback((NewWeatherPoint r, CancellationToken _) => sent = r)
+            .ReturnsAsync(Ok(Point("Storgata 3", OsloId)));
+        var locations = UnifiedLocationsTestKit.Locations();
+        UnifiedLocationsTestKit.Answer(locations, UnifiedLocationsTestKit.Candidate() with { AltitudeMeters = 14 });
+        await using var ctx = PageContext(weather, AdminClaims, locations);
+        (ExistingWeatherPoint Point, bool FromLocation)? created = null;
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.CanSearchLocations, true).Add(x => x.SearchDebounceMs, 0)
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<(ExistingWeatherPoint, bool)>(new object(), c => created = c))));
+
+        await cut.InvokeAsync(() => cut.FindComponent<OdsCardSelect>().Instance.ValueChanged.InvokeAsync(WeatherPointDialog.SearchMode));
+
+        // The location dialog's search, its disclosure line included, takes focus as the mode is chosen.
+        var input = cut.Find(".loc-search input[role=combobox]");
+        Assert.Contains(LocationSearch.Disclosure, cut.Markup);
+        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id)));
+        Assert.Empty(cut.FindComponents<OdsCoordinateField>());
+
+        // Saving before a pick names what is missing and sends nothing.
+        await Press(cut, "Create weather point");
+        cut.WaitForAssertion(() => Assert.Contains(WeatherPointDialog.SearchNotPicked, cut.Markup));
+        weather.Verify(w => w.CreatePointAsync(It.IsAny<NewWeatherPoint>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        cut.Find(".loc-search input[role=combobox]").Input("Storgata 3");
+        cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
+        cut.Find("li[role=option]").MouseDown();
+
+        // The pick fills name, rounded coordinates, altitude and time zone, and is announced; focus goes to the card.
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsCoordinateField>()));
+        Assert.Empty(cut.FindAll(".loc-search"));
+        Assert.Equal("Storgata 3, 0155 OSLO", cut.FindComponent<OdsTextInputField>().Instance.Value);
+        var coordinates = cut.FindComponent<OdsCoordinateField>().Instance;
+        Assert.Equal((59.912m, 10.750m), (coordinates.Lat, coordinates.Lng));
+        Assert.Equal(14m, cut.FindComponents<OdsNumberField>().Single(f => f.Instance.Id?.StartsWith("wp-alt", StringComparison.Ordinal) == true).Instance.Value);
+        var zone = cut.FindComponents<OdsCombobox>().Single(c => c.Instance.InputId!.StartsWith("wp-tz", StringComparison.Ordinal));
+        Assert.Equal("Europe/Oslo", zone.Instance.Value);
+        Assert.Contains("Coordinates as Kartverket returned them", cut.Markup);
+        // The search has unmounted, so this is the dialog's own polite region.
+        Assert.Contains(cut.FindComponents<OdsLiveAnnouncer>(),
+            a => a.Instance.Message == "Storgata 3, 0155 OSLO picked. Check the position, then create the weather point.");
+        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && i.Arguments[0] is string id && id.StartsWith("wp-picked-", StringComparison.Ordinal)));
+
+        // Every field stays editable before saving.
+        await cut.InvokeAsync(() => cut.FindComponent<OdsTextInputField>().Instance.ValueChanged.InvokeAsync("Home"));
+        await Press(cut, "Create weather point");
+
+        cut.WaitForAssertion(() => Assert.NotNull(created));
+        Assert.Equal(("Home", 59.912m, 10.750m, (int?)14, "Europe/Oslo"),
+            (sent!.Name, sent.Latitude, sent.Longitude, sent.AltitudeMeters, sent.TimeZoneId));
+        Assert.Null(sent.FromLocationId);
+        Assert.Null(sent.ExpectedLocationFingerprint);
+        Assert.False(created!.Value.FromLocation);
+        locations.Verify(a => a.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_candidate_with_no_time_zone_asks_for_one_and_a_long_name_is_cut_to_the_point_limit()
+    {
+        var weather = Weather();
+        NewWeatherPoint? sent = null;
+        weather.Setup(w => w.CreatePointAsync(It.IsAny<NewWeatherPoint>(), It.IsAny<CancellationToken>()))
+            .Callback((NewWeatherPoint r, CancellationToken _) => sent = r)
+            .ReturnsAsync(Ok(Point("Oslo", OsloId)));
+        var locations = UnifiedLocationsTestKit.Locations();
+        var longName = new string('n', WeatherRules.PointNameMaxLength + 40);
+        UnifiedLocationsTestKit.Answer(locations, UnifiedLocationsTestKit.Candidate(kind: LocationCandidateKind.PlaceName, zone: null) with { Name = longName });
+        await using var ctx = PageContext(weather, AdminClaims, locations);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.CanSearchLocations, true).Add(x => x.SearchDebounceMs, 0)));
+        await cut.InvokeAsync(() => cut.FindComponent<OdsCardSelect>().Instance.ValueChanged.InvokeAsync(WeatherPointDialog.SearchMode));
+        cut.Find(".loc-search input[role=combobox]").Input("Storgata");
+        cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
+        cut.Find("li[role=option]").MouseDown();
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsCoordinateField>()));
+
+        Assert.Equal(longName[..WeatherRules.PointNameMaxLength], cut.FindComponent<OdsTextInputField>().Instance.Value);
+        var zone = cut.FindComponents<OdsCombobox>().Single(c => c.Instance.InputId!.StartsWith("wp-tz", StringComparison.Ordinal));
+        Assert.True(string.IsNullOrEmpty(zone.Instance.Value));
+        Assert.Contains("Kartverket didn’t return a time zone Odyssey recognises. Choose the one this place keeps.", cut.Markup);
+
+        // As with Enter coordinates, the zone is required: nothing is sent until one is chosen.
+        await Press(cut, "Create weather point");
+        cut.WaitForAssertion(() => Assert.Contains("Choose the time zone.", cut.Markup));
+        weather.Verify(w => w.CreatePointAsync(It.IsAny<NewWeatherPoint>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        await cut.InvokeAsync(() => zone.Instance.ValueChanged.InvokeAsync("Europe/Oslo"));
+        await Press(cut, "Create weather point");
+        cut.WaitForAssertion(() => Assert.NotNull(sent));
+        Assert.Equal(("Europe/Oslo", (Guid?)null, WeatherRules.PointNameMaxLength), (sent!.TimeZoneId, sent.FromLocationId, sent.Name!.Length));
+    }
+
+    [Fact]
+    public async Task Search_again_brings_the_search_back_with_focus_in_it()
+    {
+        var locations = UnifiedLocationsTestKit.Locations();
+        UnifiedLocationsTestKit.Answer(locations, UnifiedLocationsTestKit.Candidate());
+        await using var ctx = PageContext(Weather(), AdminClaims, locations);
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.CanSearchLocations, true).Add(x => x.SearchDebounceMs, 0)));
+        await cut.InvokeAsync(() => cut.FindComponent<OdsCardSelect>().Instance.ValueChanged.InvokeAsync(WeatherPointDialog.SearchMode));
+        cut.Find(".loc-search input[role=combobox]").Input("Storgata 3");
+        cut.WaitForElement("li[role=option]", TimeSpan.FromSeconds(3));
+        cut.Find("li[role=option]").MouseDown();
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".loc-search")));
+
+        await Press(cut, "Search again");
+
+        var input = cut.WaitForElement(".loc-search input[role=combobox]");
+        cut.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations,
+            i => i.Identifier == "odsFocusById" && Equals(i.Arguments[0], input.Id)));
+        Assert.Empty(cut.FindComponents<OdsCoordinateField>());
+    }
+
     [Theory]
     [InlineData("duplicate-name", "Another weather point is already called Oslo.")]
     [InlineData("stale", "Someone else changed this weather point. Reload to see their changes.")]

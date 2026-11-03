@@ -76,7 +76,7 @@
                     @if (_canUpdate)
                     {
                         <OdsAddRow Title="New weather point"
-                                   Sub="From a saved place, or by coordinates. Locations link to it afterwards."
+                                   Sub="From a saved place, an address search, or by coordinates. Locations link to it afterwards."
                                    OnClick="NewClicked" />
                     }
                 </Trailing>
@@ -89,7 +89,7 @@
 @if (_dialogKey != Guid.Empty && _dialog == Dialog.Create)
 {
     <WeatherPointDialog @key="_dialogKey" @bind-Open="_dialogOpen" TrackedCount="TrackedCount" Cap="_cap"
-                        CanReadLocations="_canReadLocations" ReturnFocusToId="@PageHeader.HeadingId"
+                        CanReadLocations="_canReadLocations" CanSearchLocations="_canSearchLocations" ReturnFocusToId="@PageHeader.HeadingId"
                         OnCreated="OnCreatedAsync" OnStatus="OnStatusAsync" />
 }
 @if (_dialogKey != Guid.Empty && _dialog == Dialog.Settings && _target is not null)

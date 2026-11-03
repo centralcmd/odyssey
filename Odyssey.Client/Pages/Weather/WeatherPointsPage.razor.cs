@@ -54,6 +54,7 @@ public partial class WeatherPointsPage
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadLocations;
+    private bool _canSearchLocations; // locations.create — New weather point's Search address source (POST /api/locations/search)
     private bool _canOpenSettings;
 
     // ── Persisted page state ─────────────────────────────────────────────────────────────────────────
@@ -108,6 +109,7 @@ public partial class WeatherPointsPage
         _canUpdate = user.HasPermission(PermissionClaims.WeatherPointsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.WeatherPointsDelete);
         _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
+        _canSearchLocations = user.HasPermission(PermissionClaims.LocationsCreate);
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
         if (!_canReadLocations && _sort.Key == "linked")
