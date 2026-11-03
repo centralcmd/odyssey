@@ -461,17 +461,17 @@ public sealed record SystemSettingsUpdate
         "The forecast refresh interval must be between {1} and {2} minutes.")]
     public int? WeatherRefreshIntervalMinutes { get; set; }
 
-    [Range(SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
-        SystemSettingsBounds.WeatherMaxTrackedLocationsMax, ErrorMessage =
+    [Range(SystemSettingsBounds.WeatherMaxTrackedPointsMin,
+        SystemSettingsBounds.WeatherMaxTrackedPointsMax, ErrorMessage =
         "Places on a schedule must be between {1} and {2}.")]
-    public int? WeatherMaxTrackedLocations { get; set; }
+    public int? WeatherMaxTrackedPoints { get; set; }
 
     /// <summary>
     /// A weather location id, or empty for none. Must be selectable — weather on, not archived, not being
     /// purged — which <c>SystemSettingsService</c> checks inside the write's transaction (400 otherwise).
     /// </summary>
     [StringLength(36, ErrorMessage = "Choose a location from the list.")]
-    public string? WeatherDefaultLocationId { get; set; }
+    public string? WeatherDefaultPointId { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Exchange-rate sync (issue #349 §8). Both take the ordinary write claim: nothing here is a

@@ -1,0 +1,78 @@
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject ILocationsApiClient Locations
+@*
+    WeatherPointUnlinkDialog — Unlink weather point (issue #388 flow B step 6; design system · Weather.jsx
+    WeatherPointUnlinkDialog). A confirmation, not a dialog option: nothing is deleted. Focus starts on Cancel.
+*@
+
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_saving ? default : EventCallback.Factory.Create(this, CloseAsync))"
+          Icon="link_off" RequiredLegend="false" InitialFocus="OdsModalInitialFocus.Cancel" DescribedById="@DescId"
+          ReturnFocusToId="@ReturnFocusToId"
+          Title="@(b => b.AddContent(0, "Unlink weather point?"))"
+          Subtitle="@(b => b.AddContent(0, Location.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form">
+            <p class="wx-lede" id="@DescId">@Location.Name will stop showing weather from @PointName. Nothing is deleted, and it can be linked again at any time.</p>
+            @if (_problem is not null)
+            {
+                <OdsProblemAlert Severity="OdsSeverity.Error" Title="The weather point couldn’t be unlinked" Detail="@_problem" />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="link_off" Loading="_saving" AriaDisabled="_saving" OnClick="UnlinkAsync">Unlink</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    [Parameter] public EventCallback<LocationWeatherPointLink> OnUnlinked { get; set; }
+
+    /// <summary>A <c>404</c>, or a <c>422</c> keyed <c>id</c>: the place was merged or removed.</summary>
+    [Parameter] public EventCallback OnGone { get; set; }
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private bool _saving;
+    private string? _problem;
+
+    private string DescId => $"wx-unlink-{_uid}";
+
+    private string PointName => Location.WeatherPoint?.Name ?? "its weather point";
+
+    private async Task UnlinkAsync()
+    {
+        if (_saving)
+            return;
+        _saving = true;
+        _problem = null;
+        var result = await Locations.SetWeatherPointAsync(Location.LocationId, null);
+        _saving = false;
+        if (result.IsSuccess && result.Value is { } link)
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnUnlinked.InvokeAsync(link);
+            return;
+        }
+
+        if (result.Status == System.Net.HttpStatusCode.NotFound
+            || (result.Status == System.Net.HttpStatusCode.UnprocessableEntity && result.Problem?.ErrorFor("id") is not null))
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnGone.InvokeAsync();
+            return;
+        }
+
+        _problem = result.Problem?.Message ?? "Try again.";
+    }
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
+
+    private Task OnOpenChanged(bool open) => open || !_saving ? OpenChanged.InvokeAsync(open) : Task.CompletedTask;
+}

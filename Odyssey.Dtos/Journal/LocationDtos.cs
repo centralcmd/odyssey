@@ -204,6 +204,21 @@ public sealed record ExistingLocation
     /// </summary>
     public LocationUsage? Usage { get; set; }
 
+    /// <summary>
+    /// The weather point this place links to (issue #387 §5 endpoint 11), with the four flags that decide which
+    /// weather sections the record draws. Null when unlinked, and null for a caller without <c>weather.read</c>.
+    /// </summary>
+    public LinkedWeatherPointRef? WeatherPoint { get; set; }
+
+    /// <summary>Whole kilometres to the linked point's current site; null when unlinked, without coordinates or without <c>weather.read</c>.</summary>
+    public int? WeatherPointDistanceKm { get; set; }
+
+    /// <summary>
+    /// Opaque: <c>WeatherRules.Fingerprint</c> of the place's rounded position, altitude and time zone — what a
+    /// weather point copies from it. Sent back as <c>expectedLocationFingerprint</c>; null without coordinates.
+    /// </summary>
+    public string? WeatherFingerprint { get; set; }
+
     public LocationSource Source { get; set; }
 
     public string? SourceReference { get; set; }
@@ -373,8 +388,8 @@ public sealed class LocationsQueryParams : QueryParams<LocationSortBy>
 
     /// <summary>
     /// <c>true</c>: only places something references; <c>false</c>: only unused ones. "Referenced" is any
-    /// reference the delete guard counts — records, weather, a preference, the household default or a merge
-    /// forwarder (issue #380 §5.5, decision 9).
+    /// reference the delete guard counts — records or a merge forwarder (issue #380 §5.5, decision 9). A weather
+    /// link is not a reference (issue #387 §8).
     /// </summary>
     public bool? Referenced { get; set; }
 }
@@ -382,8 +397,8 @@ public sealed class LocationsQueryParams : QueryParams<LocationSortBy>
 /// <summary>
 /// Per-kind use counts of a location (issue #380 §5.5). Each is filled only when the caller holds that
 /// kind's read claim, and is <see langword="null"/> otherwise. A recurring series' generated occurrences
-/// count as calendar events, and the series once more in <see cref="RecurringSeries"/>. Weather rows,
-/// preferences and merge forwarders are not records and are not counted.
+/// count as calendar events, and the series once more in <see cref="RecurringSeries"/>. Merge forwarders are
+/// not records and are not counted; a weather link is not a use at all.
 /// </summary>
 public sealed record LocationUsage
 {

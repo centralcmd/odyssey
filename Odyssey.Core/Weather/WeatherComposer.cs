@@ -14,17 +14,17 @@ namespace Odyssey.Core.Weather;
 public static class WeatherComposer
 {
     /// <summary>
-    /// The effective steps of a location in <c>[fromUtc, toUtc)</c>, picked IN THE DATABASE: a step is kept
+    /// The effective steps of a point in <c>[fromUtc, toUtc)</c>, picked IN THE DATABASE: a step is kept
     /// only when no step at the same instant outranks it by the same total order <see cref="EffectiveSteps"/>
     /// uses. Superseded runs are never pruned (they are history), so selecting every candidate and ranking in
     /// memory would materialise one row per stored run per hour on every read — a cost any reader could
-    /// multiply. The anti-join walks the <c>(LocationId, TimeUtc, SiteVersion, RunProviderUpdatedAt,
+    /// multiply. The anti-join walks the <c>(WeatherPointId, TimeUtc, SiteVersion, RunProviderUpdatedAt,
     /// RunFetchedAtUtc)</c> index, so the result is one row per hour however many runs exist.
     /// </summary>
     public static IQueryable<WeatherForecastStep> EffectiveStepsQuery(
-        IQueryable<WeatherForecastStep> steps, Guid locationId, DateTime fromUtc, DateTime toUtc) =>
-        steps.Where(s => s.LocationId == locationId && s.TimeUtc >= fromUtc && s.TimeUtc < toUtc
-            && !steps.Any(t => t.LocationId == s.LocationId && t.TimeUtc == s.TimeUtc
+        IQueryable<WeatherForecastStep> steps, Guid pointId, DateTime fromUtc, DateTime toUtc) =>
+        steps.Where(s => s.WeatherPointId == pointId && s.TimeUtc >= fromUtc && s.TimeUtc < toUtc
+            && !steps.Any(t => t.WeatherPointId == s.WeatherPointId && t.TimeUtc == s.TimeUtc
                 && (t.SiteVersion > s.SiteVersion
                     || (t.SiteVersion == s.SiteVersion && (t.RunProviderUpdatedAt > s.RunProviderUpdatedAt
                         || (t.RunProviderUpdatedAt == s.RunProviderUpdatedAt && (t.RunFetchedAtUtc > s.RunFetchedAtUtc

@@ -63,8 +63,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         // Weather (issue #348): an empty contact means nothing is fetched until an administrator sets one.
         (SystemSettingsKeys.WeatherUserAgentContact, SystemSettingsDefaults.WeatherUserAgentContact),
         (SystemSettingsKeys.WeatherRefreshIntervalMinutes, $"{SystemSettingsDefaults.WeatherRefreshIntervalMinutes}"),
-        (SystemSettingsKeys.WeatherMaxTrackedLocations, $"{SystemSettingsDefaults.WeatherMaxTrackedLocations}"),
-        (SystemSettingsKeys.WeatherDefaultLocationId, SystemSettingsDefaults.WeatherDefaultLocationId),
+        (SystemSettingsKeys.WeatherMaxTrackedPoints, $"{SystemSettingsDefaults.WeatherMaxTrackedPoints}"),
+        (SystemSettingsKeys.WeatherDefaultPointId, SystemSettingsDefaults.WeatherDefaultPointId),
         (SystemSettingsKeys.ExchangeRateHistoryStartDate, SystemSettingsDefaults.ExchangeRateHistoryStartDate),
         (SystemSettingsKeys.ExchangeRateSyncIntervalHours,
             $"{SystemSettingsDefaults.ExchangeRateSyncIntervalHours}"),

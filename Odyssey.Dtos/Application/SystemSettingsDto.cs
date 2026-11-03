@@ -250,10 +250,10 @@ public sealed record SystemSettingsDto
 
     public int WeatherRefreshIntervalMinutes { get; set; }
 
-    public int WeatherMaxTrackedLocations { get; set; }
+    public int WeatherMaxTrackedPoints { get; set; }
 
     /// <summary>The household default weather location id, or empty for none.</summary>
-    public string WeatherDefaultLocationId { get; set; } = string.Empty;
+    public string WeatherDefaultPointId { get; set; } = string.Empty;
 
     // ── Exchange-rate sync (issue #349) ──────────────────────────────────────────────────────────
 

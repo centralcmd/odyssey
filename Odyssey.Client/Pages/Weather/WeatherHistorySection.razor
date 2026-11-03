@@ -1,37 +1,35 @@
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Journal
 @*
-    LocationWeatherHistorySection — Weather history in a location's record, for every role
-    (issue #348; design system · Weather.jsx LocationWeatherHistorySection, components-weather.md).
+    WeatherHistorySection — the measured history of ONE weather point, for every role (issue #348, #388; design
+    system · Weather.jsx WeatherHistorySection, components-weather.md → Weather history). In a point's record on
+    the Weather points page, and in a linked location's record with its source in the meta (from Oslo · 2 km). The
+    caller decides whether it shows at all (not while a purge is interrupted).
 *@
 
-@if (Row is { PurgeInProgress: true })
-{
-    @* The place leaves the options list during a purge; for an Admin the Weather section's notice owns it. *@
-}
-else if (_bounds is { HasObservationStation: false })
+@if (_bounds is { HasObservationStation: false })
 {
     @* The server sends false only once Frost was asked and found none — never because nobody has asked. *@
-    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="@Meta" Empty="true"
                       EmptyText="@Text(NoStationText)" />
 }
 else if (_bounds is { ObservationsConfigured: false } && !HistoryOff && (Latest is null || Earliest is null))
 {
     @* Nothing stored and nothing can be fetched: say why rather than promise history that will never
        arrive. History stored before the setting was cleared still shows. *@
-    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true" EmptyText="@NotConfiguredText" />
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="@Meta" Empty="true" EmptyText="@NotConfiguredText" />
 }
 else if (_bounds is not null && (Latest is null || Earliest is null))
 {
-    <OdsRecordSection Class="@Cls" Label="Weather history" Empty="true"
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="@Meta" Empty="true"
                       EmptyText="@Text(HistoryOff
-                          ? "Historical data is turned off for this place."
+                          ? $"Historical data is turned off for {PointName}."
                           : "No measured weather yet. Odyssey fetches it from MET Norway on its own — check back later.")" />
 }
 else
 {
-    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="measured · UTC days"
-                      Notice="@(HistoryOff ? Text("Historical data is turned off for this place. This is what was measured until it was turned off; nothing new is added.") : null)"
+    <OdsRecordSection Class="@Cls" Label="Weather history" Meta="@(Meta ?? "measured · UTC days")"
+                      Notice="@(HistoryOff ? Text($"Historical data is turned off for {PointName}. This is what was measured until it was turned off; nothing new is added.") : null)"
                       NoticeIconName="@(HistoryOff ? "history" : null)">
         @* One card, as the contract-terms chart: the Measures picker heads it on the left and the window on the
            right, where the terms card has its axis toggle. Loading and errors render inside it under the same
@@ -89,7 +87,7 @@ else
                     @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.")
                     break;
                 case Phase.Error:
-                    @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.")
+                    @Box("cloud_off", "Weather history couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this record is unaffected.")
                     break;
                 case Phase.Loading:
                     <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hist-skel" />
@@ -108,7 +106,7 @@ else
                                 <div><dt><OdsMIcon Name="@fact.Icon" Size="13" />@fact.Label</dt><dd><b>@fact.Value</b>@(fact.Date is { } on ? $" on {ShortDate(on)}" : fact.After)</dd></div>
                             }
                         </dl>
-                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@Location.Name" Measures="_measures"
+                        <WeatherHistoryChart Days="_response!.Days" From="_from" To="_to" LocationName="@PointName" Measures="_measures"
                                              LegendEnd="Attribution" />
                     }
                     break;
@@ -126,7 +124,7 @@ else
     // has arrived. What the values are is behind the info button in the card's head.
     private RenderFragment Attribution => @<WeatherAttributionLine Attribution="_response?.Attribution" />;
 
-    private string AboutId => $"wx-hist-about-{Location.LocationId:N}";
+    private string AboutId => $"wx-hist-about-{WeatherPointId:N}";
 
     private static RenderFragment Text(string text) => b => b.AddContent(0, text);
 

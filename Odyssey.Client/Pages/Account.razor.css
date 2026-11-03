@@ -52,6 +52,13 @@
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
     gap: 16px;
 }
+/* The three summary cards sit on the panel's darker ground, like the Journal and Photos overview
+   tiles — the elevated surface card is for record bodies, not the header's summary row. MudCard is
+   a child component, so the rule reaches its root through ::deep. */
+.acc-cards ::deep .acc-card {
+    background: var(--mud-palette-background);
+    box-shadow: none;
+}
 .acc-card-head,
 .acc-section ::deep .acc-card-head {
     display: flex;

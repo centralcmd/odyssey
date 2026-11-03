@@ -97,7 +97,7 @@ builder.Services.AddOptions<IdentityOptions>()
 builder.Services.Replace(
     ServiceDescriptor.Scoped<IUserClaimsPrincipalFactory<ApplicationUser>, LegalComplianceClaimsPrincipalFactory>());
 
-// SecurityStampValidator's revalidation (30-minute ValidationInterval, unmodified) is what re-runs the
+// SecurityStampValidator's revalidation (the one-minute ValidationInterval configured above) is what re-runs the
 // claims factory for an already-active session — the mechanism that bounds how long a session can
 // outlive a newly published ToS. Wrapping the configured handler rather than replacing it keeps that
 // behaviour intact and just records the principal being revalidated, which is how the factory tells an
@@ -513,7 +513,8 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
 // fetches only on demand and for the Admin refresh.
 builder.Services.AddWeatherFetching();
 builder.Services.AddScoped<Odyssey.Core.Weather.WeatherReadService>();
-builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLocationService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherPointService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLinkService>();
 
 // The purge (N2): bulk ExecuteDelete on a real engine, tracked RemoveRange on the EF InMemory provider,
 // where ExecuteDelete throws.

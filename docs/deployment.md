@@ -1034,8 +1034,9 @@ and locations are kept until someone overwrites them (next section).
 - **New claim `locations.delete`** (Admin, Owner, User; not Guest). **Every user must sign out and back
   in** to receive it.
 - **Converted places have no coordinates** until someone geocodes them on the Locations page.
-- **An event or entry linked to a geocoded place without weather shows no weather** — the linked place
-  is used as if chosen explicitly, with no fallback to the caller's preference or the household default.
+- **An event or entry at a place linked to a weather point uses that point** (issue #387), with no
+  fallback to the caller's preference or the household default even when the point's forecast is off; a
+  place with no link falls through to the preference and then the household default.
 - **`locations.read` sees every address in the app** (product decision 3), including those that used to
   sit behind `contacts.read` or `properties.read` alone.
 
@@ -1043,13 +1044,12 @@ and locations are kept until someone overwrites them (next section).
 
 Since issue #380 an **unused** location can be deleted outright under `locations.delete` — a real
 `DELETE`, the erasure path. A location something still uses (a contact address, a property, an event,
-a recurring series, a journal entry, weather, a user's weather preference, the household default, or a
-merge forwarder) refuses with a `409`.
+a recurring series, a journal entry, or a merge forwarder) refuses with a `409`. Weather does not: since
+issue #387 a place only *links* to a weather point, and the link goes with the place.
 
-1. As **Admin**, find the row on the Locations page. **If the location has weather** (issue #348), turn
-   **both** its forecast and its historical data off and then **Delete weather history** first — the
-   weather tables hold their own copies of the coordinates (the frozen sites and every forecast run),
-   and an edit of the location does not reach them. See
+1. As **Admin**, find the row on the Locations page. **If a weather point was created from this place**
+   (or converted from its old per-place weather, under the same id), that point holds its own copy of the
+   rounded coordinates and its name may be the place's — erase or rename it as in
    [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
 2. **If it is unused** (the *Not used* filter, `?referenced=false`), **delete** it.
    **Deleting a contact or a property never deletes its address**: the address stays behind as an unused
@@ -1200,8 +1200,9 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 
 ### Release note
 
-- **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included);
-  `weather.locations.read`, `weather.locations.update` and `weather.history.delete` (Admin only).
+- **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included), and
+  three Admin-only management claims — renamed by issue #387 to `weather.points.read`,
+  `weather.points.update` and `weather.points.delete` (see *Weather points* below).
   **Every user must sign out and back in** before the weather widget and the Admin controls appear.
 - **Nothing is fetched until an administrator sets it up.** MET's terms require a contact in the
   `User-Agent`, so set **`/settings` → Weather → Contact for MET Norway** (an email address or an
@@ -1213,7 +1214,8 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 - Four new settings: the contact, the refresh interval (default 1440 min, i.e. once a day; 30–1440), the cap on scheduled
   places (default 5, 1–20) and the household default place. No configuration keys are added or moved.
 - Two new deploy-time limits: `RateLimiting:WeatherRead` (per user, default 120 per 60 s) and
-  `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering apply, refresh and delete).
+  `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering refresh, history purge and
+  point delete).
 - **A new container, `worker`** (image `odyssey-worker`), runs the schedule: once a minute, at most one
   MET request per second. It is where every background job runs from now on; it has no port and serves
   nothing. Every worker replica runs the schedule, and a lease on each place keeps two from fetching the
@@ -1222,35 +1224,61 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
   the second container able to decrypt every stored credential; see
   [Two containers hold the key ring](#two-containers-hold-the-key-ring).
 
+### Weather points (issue #387)
+
+Weather is now kept per **weather point** — a named position fetched once — and any number of places
+**link** to one point, so two streets in one city share one forecast and one history.
+
+- **Back up the database before deploying.** Two migrations, `WeatherPointsExpand` and
+  `WeatherPointsContract`, turn every per-place weather row into a point **under the same id**, re-key
+  every weather table onto it, link each place to its point, delete orphaned weather rows, rename the
+  settings keys `WeatherDefaultLocationId` → `WeatherDefaultPointId` and `WeatherMaxTrackedLocations` →
+  `WeatherMaxTrackedPoints` (values kept) and rewrite each weather preference's field. They are data
+  migrations and **not replay-safe**: `Down()` restores the schema only, and a failure is fixed forward,
+  with the backup as the fallback (see [`migration-history-drift.md`](migration-history-drift.md)).
+- **Stop `api` and `worker` before the migrations job runs** when upgrading a running stack: an old
+  worker against the contracted schema fails every tick. Compose and the AppHost already order a fresh
+  start correctly.
+- **Renamed claims.** The three Admin weather claims are now `weather.points.read`,
+  `weather.points.update` and `weather.points.delete`. `RoleClaimSeeder` adds the new values and removes
+  the old ones; an existing session picks the new values up at its next security-stamp revalidation —
+  within about **one minute**, without signing out — and until then the point endpoints answer `403`.
+- **Linking** a place to a point needs `locations.update` and `weather.read` (Admin, Owner, User). It
+  sends nothing to MET; only an Admin creates or moves a point.
+- `/api/weather/locations` is gone; points are `/api/weather/points`, and a place's link is
+  `PUT /api/locations/{id}/weather-point`.
+
 ### The data flow
 
-Only an **Admin** can cause coordinates to be sent. Turning weather on copies the location's position,
-rounded to **3 decimals (≈ 100 m)**, and its time zone into a frozen *site*; every request uses that
-site. Editing the location later changes nothing until an Admin *applies* the move. A read for a place
-nobody schedules may fetch on demand, but still only for its frozen site.
+Only an **Admin** can cause coordinates to be sent. Creating a weather point — from typed coordinates or
+by copying a reviewed place's position — freezes its position, rounded to **3 decimals (≈ 100 m)**, and
+its time zone into a *site*; every request uses that site. Moving a point starts a new site; moving a
+linked place changes nothing about its point. A read for a point nobody schedules may fetch on demand,
+but still only for its frozen site.
 
 What MET receives: the rounded latitude and longitude, the altitude, the contact address in the
 `User-Agent` and, for Frost, the client id. No user id, place name or address is sent. The outbound
-HTTP clients log nothing, and audit lines carry the location id and the actor — never coordinates.
+HTTP clients log nothing, and audit lines carry point and place ids, counts and the actor — never a
+name or coordinates. Distances shown to users are whole kilometres.
 
 Weather is shown with MET's attribution (*Weather data from MET Norway*, NLOD 2.0 / CC BY 4.0) on
 every surface that displays it.
 
-### Erasing a location's weather
+### Erasing a weather point
 
-1. As **Admin**, on the Locations page, open **Weather settings** for the place and turn **both** the
-   forecast and the historical data off. A household default cannot have its forecast turned off:
-   choose another default in `/settings` first.
-2. Choose **Delete weather history** and type the place's name to confirm. With both halves off this
-   removes every weather row of that place — the sites, every forecast and observation, the day
-   summaries and the schedule — and leaves the location itself untouched. **With the forecast still on
-   it deletes only the measured history** (observations, the measured half of each day, the resolved
-   station); the sites and forecast runs, which hold the coordinates, stay. That is not an erasure.
-3. A large history is deleted in batches. If the request is interrupted, the place shows *deleting* and
-   stays blocked; run **Delete weather history** again to finish it.
-4. Then erase the location itself as in the previous section.
-5. Copies outside the live rows age out with your backup retention. The Admin data export carries only
-   the per-place weather *settings*, never coordinates or history.
+1. As **Admin**, turn **both** the point's forecast and its historical data off. A household default
+   cannot have its forecast turned off, nor be deleted: choose another default in `/settings` first.
+2. **Delete the point** (`DELETE /api/weather/points/{id}`). This removes every weather row of the point
+   — the sites, every forecast and observation, the day summaries, the stations and the schedule — and
+   unlinks every place that used it; the places themselves are untouched. **Deleting only the measured
+   history** (`DELETE /api/weather/points/{id}/history`) keeps the sites and forecast runs, which hold
+   the coordinates. That is not an erasure.
+3. A large history is deleted in batches. If the request is interrupted, the point shows *deleting* and
+   stays blocked; repeat the delete to finish it. An interrupted full delete can only be finished by the
+   full delete.
+4. Then erase the place itself as in the previous section, if the request covers it.
+5. Copies outside the live rows age out with your backup retention. The Admin data export carries the
+   points' names and settings, never coordinates or history.
 ## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
 
 Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).

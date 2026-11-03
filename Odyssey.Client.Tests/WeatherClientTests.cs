@@ -87,60 +87,56 @@ public class WeatherClientTests : IDisposable
     }
 
     [Fact]
-    public void The_fingerprint_and_moved_check_are_the_shared_rule()
+    public void The_fingerprint_is_the_shared_rule()
     {
         var location = Location(59.91273m, 10.75027m);
         Assert.Equal("v1:59.913:10.750:12:Europe/Oslo", WeatherVisuals.Fingerprint(location));
-
-        var row = Row(location);
-        Assert.False(WeatherVisuals.Moved(row, location));
-        Assert.False(WeatherVisuals.Moved(row, Location(59.91301m, 10.75027m)));
-        Assert.True(WeatherVisuals.Moved(row, Location(60.39299m, 10.75027m)));
     }
 
-    // ── Admin menu ─────────────────────────────────────────────────────────────────────────────────
+    // ── Row menus by claim (issue #388 §3) ───────────────────────────────────────────────────────
 
-    private static IReadOnlyList<string?> Labels(ExistingLocation l, ExistingWeatherLocation? row, bool canUpdate = true, bool canPurge = true) =>
-        [.. LocationsPage.BuildWeatherActions(l, row, canUpdate, canPurge, default, default, default, default)
-            .Where(i => !i.Divider).Select(i => i.Label)];
+    private static IReadOnlyList<string?> LinkLabels(ExistingLocation l, bool canLink) =>
+        [.. LocationsPage.BuildWeatherLinkActions(l, canLink, default, default).Select(i => i.Label)];
 
     [Fact]
-    public void A_place_without_weather_offers_turn_on_unless_archived()
+    public void Linking_is_offered_to_a_linker_only_and_never_on_a_merged_away_row()
     {
-        Assert.Equal(["Turn on weather…"], Labels(Location(), null));
-        Assert.Empty(Labels(Location(archived: true), null));
-        Assert.Empty(Labels(Location(), null, canUpdate: false));
+        Assert.Equal(["Link weather point…"], LinkLabels(Location(), canLink: true));
+        Assert.Equal(["Change weather point…", "Unlink weather point"], LinkLabels(Linked(Location()), canLink: true));
+        Assert.Empty(LinkLabels(Location(), canLink: false));
+        Assert.Empty(LinkLabels(Linked(Location()) with { MergedIntoLocationId = Guid.NewGuid() }, canLink: true));
     }
 
     [Fact]
-    public void Weather_on_offers_settings_and_refresh_and_apply_only_when_moved()
+    public void The_link_items_sit_directly_after_copy_id()
     {
-        var l = Location();
-        Assert.Equal(["Weather settings…", "Refresh forecast"], Labels(l, Row(l)));
-        Assert.Equal(["Weather settings…", "Refresh forecast", "Apply new position…"], Labels(Location(60.39299m), Row(l)));
+        var labels = LocationsPage.BuildRowActions(Location(), new LocationsPage.LocationRowClaims(true, true),
+                default, default, default, default, default, default,
+                LocationsPage.BuildWeatherLinkActions(Location(), true, default, default))
+            .Where(i => !i.Divider).Select(i => i.Label).ToList();
+
+        Assert.Equal(labels.IndexOf("Copy ID") + 1, labels.IndexOf("Link weather point…"));
+        Assert.True(labels.IndexOf("Merge into…") > labels.IndexOf("Link weather point…"));
     }
 
-    [Fact]
-    public void Delete_history_is_offered_once_historical_data_is_off_whatever_the_forecast()
-    {
-        var l = Location();
-        var forecastOnly = Row(l) with { HistoryEnabled = false };
-        var bothOff = Row(l) with { ForecastEnabled = false, HistoryEnabled = false };
-        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], Labels(l, forecastOnly));
-        // The household default keeps its forecast on, so its history can still be deleted.
-        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], Labels(l, forecastOnly with { IsHouseholdDefault = true }));
-        Assert.Equal(["Weather settings…", "Delete weather history…"], Labels(l, bothOff));
-        Assert.Equal(["Weather settings…"], Labels(l, bothOff, canPurge: false));
-        Assert.Equal(["Continue deleting weather history…"], Labels(l, bothOff with { PurgeInProgress = true }));
-    }
+    private static IReadOnlyList<string?> PointLabels(ExistingWeatherPoint p, bool canUpdate = true, bool canDelete = true) =>
+        [.. WeatherPointsPage.BuildRowActions(p, canUpdate, canDelete, default, default, default, default).Where(i => !i.Divider).Select(i => i.Label)];
 
     [Fact]
-    public void A_history_only_place_offers_no_forecast_refresh_but_can_still_apply_a_move()
+    public void The_point_menu_follows_state_and_claims()
     {
-        var l = Location();
-        var historyOnly = Row(l) with { ForecastEnabled = false };
-        Assert.Equal(["Weather settings…"], Labels(l, historyOnly));
-        Assert.Equal(["Weather settings…", "Apply new position…"], Labels(Location(60.39299m), historyOnly));
+        var point = Row(Location());
+        Assert.Equal(["Weather settings…", "Refresh forecast"], PointLabels(point));
+        Assert.Equal(["Weather settings…", "Delete weather history…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false, IsHouseholdDefault = true }).Take(2));
+        Assert.Equal(["Weather settings…", "Delete weather history…", "Delete weather point…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }));
+        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], PointLabels(point with { HistoryEnabled = false }));
+        Assert.Equal(["Continue deleting…"], PointLabels(point with { PurgeInProgress = true }));
+        // Absent without the claim, never dimmed (AC 22).
+        Assert.Empty(PointLabels(point, canUpdate: false, canDelete: false));
+        Assert.Equal(["Delete weather history…", "Delete weather point…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }, canUpdate: false));
+        Assert.Equal(["Weather settings…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }, canDelete: false));
+        Assert.All(WeatherPointsPage.BuildRowActions(point, true, true, default, default, default, default).Where(i => !i.Divider),
+            i => Assert.Contains(point.Name, i.AriaLabel, StringComparison.Ordinal));
     }
 
     // ── Dashboard card ───────────────────────────────────────────────────────────────────────────────
@@ -148,7 +144,7 @@ public class WeatherClientTests : IDisposable
     [Fact]
     public void Ok_shows_now_the_days_and_the_attribution_from_the_response()
     {
-        var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
+        var home = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" };
         // The card's own clock, pinned, so a run that straddles midnight cannot disagree with itself.
         WeatherWidget.LocalNow = static () => new DateTime(2026, 10, 23, 12, 0, 0);
         var today = new DateOnly(2026, 10, 23);
@@ -156,14 +152,14 @@ public class WeatherClientTests : IDisposable
         {
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
             {
-                Location = home,
+                Point = home,
                 Status = WeatherStatus.Ok,
                 Step = new WeatherStep { SymbolCode = "rain", AirTemperatureC = -2.6m, WindSpeedMps = 4, WindFromDirectionDeg = 225, IssuedAtUtc = DateTime.UtcNow },
                 Attribution = new WeatherAttribution { Text = "Served attribution", License = "NLOD 2.0 / CC BY 4.0", Url = "https://api.met.no/" },
             }));
             weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherDailyResponse
             {
-                Location = home,
+                Point = home,
                 Status = WeatherStatus.Ok,
                 Days =
                 [
@@ -187,8 +183,8 @@ public class WeatherClientTests : IDisposable
     }
 
     [Theory]
-    [InlineData(WeatherStatus.NoPlace, true, "Go to Locations")]
-    [InlineData(WeatherStatus.NoPlace, false, "An administrator can turn weather on")]
+    [InlineData(WeatherStatus.NoPlace, true, "Go to Weather points")]
+    [InlineData(WeatherStatus.NoPlace, false, "An administrator can create a weather point")]
     [InlineData(WeatherStatus.NotConfigured, true, "Open System settings")]
     [InlineData(WeatherStatus.NotConfigured, false, "Weather isn’t set up yet")]
     public void Each_empty_state_names_its_way_out(WeatherStatus status, bool admin, string expected)
@@ -196,7 +192,7 @@ public class WeatherClientTests : IDisposable
         using var ctx = Context(
             weather => weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Ok(new WeatherCurrentResponse { Status = status })),
-            admin ? [PermissionClaims.WeatherRead, PermissionClaims.WeatherLocationsUpdate, PermissionClaims.SystemSettingsUpdate] : null);
+            admin ? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate, PermissionClaims.SystemSettingsUpdate] : null);
 
         var card = ctx.Render<WeatherWidget>();
 
@@ -206,19 +202,19 @@ public class WeatherClientTests : IDisposable
     [Fact]
     public async Task Choosing_a_place_saves_it_and_keeps_the_picker_mounted_and_enabled()
     {
-        var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
-        var cabin = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Cabin" };
+        var home = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" };
+        var cabin = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Cabin" };
         Mock<IWeatherApiClient>? client = null;
         await using var ctx = Context(weather =>
         {
             client = weather;
-            weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Ok(new WeatherLocationOptions { Locations = [home, cabin], HouseholdDefaultLocationId = home.LocationId }));
+            weather.Setup(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherPointOptions { Points = [Option(home), Option(cabin)], HouseholdDefaultPointId = home.WeatherPointId }));
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
             {
-                Location = home, Status = WeatherStatus.NoData,
+                Point = home, Status = WeatherStatus.NoData,
             }));
-            weather.Setup(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()))
+            weather.Setup(w => w.SetPreferenceAsync(cabin.WeatherPointId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
         });
 
@@ -226,9 +222,9 @@ public class WeatherClientTests : IDisposable
         card.WaitForAssertion(() => Assert.Single(card.FindComponents<Odyssey.Client.Components.OdsSelect>()));
         var picker = card.FindComponent<Odyssey.Client.Components.OdsSelect>();
 
-        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.LocationId.ToString("D")));
+        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.WeatherPointId.ToString("D")));
 
-        card.WaitForAssertion(() => client!.Verify(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()), Times.Once));
+        card.WaitForAssertion(() => client!.Verify(w => w.SetPreferenceAsync(cabin.WeatherPointId, It.IsAny<CancellationToken>()), Times.Once));
         // The same component instance survives the reload, never disabled: focus has nowhere to fall.
         Assert.Same(picker.Instance, card.FindComponent<Odyssey.Client.Components.OdsSelect>().Instance);
         Assert.False(picker.Instance.Disabled);
@@ -238,24 +234,24 @@ public class WeatherClientTests : IDisposable
     [Fact]
     public async Task A_failed_reload_after_a_save_keeps_the_picker_and_says_the_choice_is_saved()
     {
-        var home = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" };
-        var cabin = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Cabin" };
+        var home = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" };
+        var cabin = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Cabin" };
         var currentCalls = 0;
         await using var ctx = Context(weather =>
         {
-            weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>()))
-                .ReturnsAsync(Ok(new WeatherLocationOptions { Locations = [home, cabin], HouseholdDefaultLocationId = home.LocationId }));
+            weather.Setup(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherPointOptions { Points = [Option(home), Option(cabin)], HouseholdDefaultPointId = home.WeatherPointId }));
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(() => ++currentCalls == 1
-                ? Ok(new WeatherCurrentResponse { Location = home, Status = WeatherStatus.NoData })
+                ? Ok(new WeatherCurrentResponse { Point = home, Status = WeatherStatus.NoData })
                 : ApiResult<WeatherCurrentResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
-            weather.Setup(w => w.SetPreferenceAsync(cabin.LocationId, It.IsAny<CancellationToken>()))
+            weather.Setup(w => w.SetPreferenceAsync(cabin.WeatherPointId, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
         });
         var card = ctx.Render<WeatherWidget>();
         card.WaitForAssertion(() => Assert.Single(card.FindComponents<Odyssey.Client.Components.OdsSelect>()));
         var picker = card.FindComponent<Odyssey.Client.Components.OdsSelect>();
 
-        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.LocationId.ToString("D")));
+        await card.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(cabin.WeatherPointId.ToString("D")));
 
         // The picker the viewer is on stays mounted (WCAG 2.4.3); the failure is said beside it.
         card.WaitForAssertion(() => Assert.Contains("Your choice is saved, but the weather couldn’t be reloaded.", card.Markup));
@@ -273,7 +269,7 @@ public class WeatherClientTests : IDisposable
             client = weather;
             weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherCurrentResponse
             {
-                Location = new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Home" }, Status = WeatherStatus.NoData,
+                Point = new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Home" }, Status = WeatherStatus.NoData,
             }));
         }, claims: [PermissionClaims.WeatherRead]);
 
@@ -281,7 +277,7 @@ public class WeatherClientTests : IDisposable
 
         card.WaitForAssertion(() => Assert.Contains("Weather", card.Markup));
         card.WaitForAssertion(() => client!.Verify(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()), Times.Once));
-        client!.Verify(w => w.OptionsAsync(It.IsAny<CancellationToken>()), Times.Never);
+        client!.Verify(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
         client.Verify(w => w.PreferencesAsync(It.IsAny<CancellationToken>()), Times.Never);
         Assert.Single(card.FindAll("h2.wx-ttl"));
     }
@@ -298,19 +294,18 @@ public class WeatherClientTests : IDisposable
         Assert.Contains("Try again", card.Markup);
     }
 
-    [Theory]
-    [InlineData(true, false, "Weather is turned off. Turn it on to see forecasts and historical weather data for this location.")]
-    [InlineData(false, false, "Weather is off for this place.")]
-    [InlineData(true, true, "Weather is off for this place.")]
-    public async Task A_place_without_weather_says_so_and_leaves_turning_it_on_to_the_row_menu(bool canUpdate, bool archived, string expected)
+    [Fact]
+    public void The_set_up_link_needs_read_as_well_as_update()
     {
-        await using var ctx = Context(_ => { });
+        using var ctx = Context(
+            weather => weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherCurrentResponse { Status = WeatherStatus.NoPlace })),
+            [PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsUpdate]);
 
-        var section = ctx.Render<LocationWeatherSection>(p => p
-            .Add(s => s.Location, Location(archived: archived)).Add(s => s.Row, null).Add(s => s.CanUpdate, canUpdate));
+        var card = ctx.Render<WeatherWidget>();
 
-        Assert.Contains(expected, section.Markup);
-        Assert.Empty(section.FindAll("button"));
+        card.WaitForAssertion(() => Assert.Contains("An administrator can create a weather point", card.Markup));
+        Assert.DoesNotContain("Go to Weather points", card.Markup);
     }
 
     // ── Harness ──────────────────────────────────────────────────────────────────────────────────────
@@ -326,14 +321,23 @@ public class WeatherClientTests : IDisposable
         Archived = archived ? DateTime.UtcNow : null,
     };
 
-    private static ExistingWeatherLocation Row(ExistingLocation l) => new()
+    private static ExistingLocation Linked(ExistingLocation l) => l with
     {
-        LocationId = l.LocationId,
+        WeatherPoint = new LinkedWeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Oslo", ForecastEnabled = true, HistoryEnabled = true },
+        WeatherPointDistanceKm = 2,
+    };
+
+    private static WeatherPointOption Option(WeatherPointRef point) =>
+        new() { WeatherPointId = point.WeatherPointId, Name = point.Name, ForecastEnabled = true, HistoryEnabled = true };
+
+    private static ExistingWeatherPoint Row(ExistingLocation l) => new()
+    {
+        WeatherPointId = l.LocationId,
         Name = l.Name,
         ForecastEnabled = true,
         HistoryEnabled = true,
         IsTracked = true,
-        Site = new WeatherLocationSiteDto
+        Site = new WeatherPointSiteDto
         {
             Version = 1,
             Latitude = WeatherRules.RoundCoordinate(l.Latitude!.Value),
@@ -352,14 +356,16 @@ public class WeatherClientTests : IDisposable
         ctx.Services.AddMudServices();
 
         var weather = new Mock<IWeatherApiClient>();
-        weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherLocationOptions()));
+        weather.Setup(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherPointOptions()));
         weather.Setup(w => w.PreferencesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherPreferences()));
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(new WeatherDailyResponse()));
         setup(weather);
 
         ctx.Services.AddSingleton(weather.Object);
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new Claims(claims ?? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]));
+        var auth = new Claims(claims ?? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]);
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
+        ctx.Services.AddSingleton<Odyssey.Client.Services.IWeatherPointOptionsCache>(new Odyssey.Client.Services.WeatherPointOptionsCache(weather.Object, auth));
         WeatherWidget.InteractiveCheck = static () => true;
         return ctx;
     }

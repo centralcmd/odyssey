@@ -6,23 +6,27 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Context;
 
 /// <summary>
-/// Weather for one household <see cref="Location"/> (issue #348), created by an Admin and 1:1 with the
-/// location. The row holds the settings and the <b>current</b> frozen site; the sites themselves are the
-/// append-only <see cref="WeatherLocationSite"/> history, so the time zone that owned a past date is never
-/// lost (B1).
-///
-/// <para>
-/// A move of the location changes nothing here. Weather keeps using the site an Admin last applied until an
-/// Admin applies the move, which is what keeps a non-admin from being able to send coordinates to a third
-/// party or to clear a provider pause (§3 Frozen site).
-/// </para>
+/// A weather point (issue #387): a named position with its own coordinates, fetched once, which any number of
+/// household <see cref="Location"/>s link to through <see cref="Location.WeatherPointId"/>. It owns the settings
+/// and the <b>current</b> frozen site; the sites themselves are the append-only <see cref="WeatherPointSite"/>
+/// history, so the time zone that owned a past date is never lost. A point has no key to a location: archiving,
+/// merging or deleting a place never touches it.
 /// </summary>
-public class WeatherLocation
+/// <remarks>
+/// A point converted from a former per-location weather row keeps that location's GUID. Nothing may resolve a
+/// bare id across <c>Locations</c> and <c>WeatherPoints</c>; every endpoint names which table its id belongs to.
+/// </remarks>
+[Index(nameof(Name), IsUnique = true)]
+public class WeatherPoint
 {
     [Key]
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
-    /// <summary>Forecasts are fetched, and the place is selectable on the dashboard.</summary>
+    [Required]
+    [StringLength(WeatherRules.PointNameMaxLength)]
+    public required string Name { get; set; }
+
+    /// <summary>Forecasts are fetched, and the point is selectable on the dashboard.</summary>
     public bool ForecastEnabled { get; set; }
 
     /// <summary>Measured days are fetched from MET Norway's Frost service.</summary>
@@ -34,17 +38,32 @@ public class WeatherLocation
 
     public DateTime EnabledAt { get; set; }
 
-    /// <summary>The version of the current site. Composite FK to <see cref="WeatherLocationSite"/>, RESTRICT.</summary>
+    /// <summary>
+    /// The version of the current site. Deliberately <b>no</b> foreign key: the site depends on the point, so a key
+    /// back would be a cycle neither InnoDB nor EF can insert or delete. The point service writes the site and the
+    /// point in one <c>SaveChangesAsync</c>; a real-MariaDB test pins that the site always exists.
+    /// </summary>
     public int CurrentSiteVersion { get; set; }
 
-    /// <summary>Set while a purge is running; the location is fenced until the purge's final transaction.</summary>
+    /// <summary>Set while a purge is running; the point is fenced until the purge's final transaction.</summary>
     public DateTime? PurgeStartedAt { get; set; }
 
+    /// <summary>Which purge holds the fence; null exactly when <see cref="PurgeStartedAt"/> is.</summary>
+    public WeatherPurgeMode? PurgeMode { get; set; }
+
     /// <summary>
-    /// When every measure group had been looked up at least once for the current site; null until then. The
-    /// stations themselves are the <see cref="WeatherStation"/> rows.
+    /// When every measure group had been looked up at least once for the current site; null until then. Written by
+    /// the worker, which never rotates <see cref="SettingsVersion"/>.
     /// </summary>
     public DateTime? StationResolvedAtUtc { get; set; }
+
+    /// <summary>
+    /// The Admin's concurrency token, rotated only by Admin writes (create, <c>PUT</c>, purge start). The fetch fence
+    /// is <see cref="WeatherPointSchedule.Version"/>; the two guard different writers, so a background fetch never
+    /// makes an Admin's <c>PUT</c> a spurious <c>409</c>.
+    /// </summary>
+    [ConcurrencyCheck]
+    public Guid SettingsVersion { get; set; }
 
     public string? CreatedByUserId { get; set; }
 
@@ -56,13 +75,13 @@ public class WeatherLocation
 }
 
 /// <summary>
-/// One frozen site of a <see cref="WeatherLocation"/> — the position and time zone weather used from
-/// <see cref="AppliedAt"/>. Append-only: never updated, removed only by the Admin purge.
+/// One frozen site of a <see cref="WeatherPoint"/> — the position and time zone weather used from
+/// <see cref="AppliedAt"/>. Append-only: never updated, removed only by the Admin purge. Cascades with the point.
 /// </summary>
-[PrimaryKey(nameof(LocationId), nameof(SiteVersion))]
-public class WeatherLocationSite
+[PrimaryKey(nameof(WeatherPointId), nameof(SiteVersion))]
+public class WeatherPointSite
 {
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public int SiteVersion { get; set; }
 
@@ -84,15 +103,15 @@ public class WeatherLocationSite
 }
 
 /// <summary>
-/// The scheduler's state for one location (1:1, cascades with <see cref="WeatherLocation"/>). Claiming and
+/// The scheduler's state for one point (1:1, cascades with <see cref="WeatherPoint"/>). Claiming and
 /// write fencing both rest on <see cref="Version"/>: a replica claims a due job by rotating it, and every
 /// ingest saves under the version it claimed with, so disable, apply and purge — which also rotate it — make
 /// an in-flight fetch's save fail rather than land afterwards.
 /// </summary>
-public class WeatherLocationSchedule
+public class WeatherPointSchedule
 {
     [Key]
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     [ConcurrencyCheck]
     public Guid Version { get; set; }
@@ -128,18 +147,16 @@ public class WeatherLocationSchedule
     public WeatherFetchFailureKind? ObservationFailureKind { get; set; }
 
     public int ObservationConsecutiveFailures { get; set; }
-
-    public bool ArchivedSkipLogged { get; set; }
 }
 
 /// <summary>One forecast as MET issued it for one site. Append-only.</summary>
-[Index(nameof(LocationId), nameof(SiteVersion), nameof(ProviderUpdatedAt), IsUnique = true)]
+[Index(nameof(WeatherPointId), nameof(SiteVersion), nameof(ProviderUpdatedAt), IsUnique = true)]
 public class WeatherForecastRun
 {
     [Key]
     public Guid WeatherForecastRunId { get; set; }
 
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public int SiteVersion { get; set; }
 
@@ -167,7 +184,7 @@ public class WeatherForecastRun
 /// "effective step" pick (§3 Day composition) is one index range scan.
 /// </summary>
 [Index(nameof(WeatherForecastRunId), nameof(TimeUtc), IsUnique = true)]
-[Index(nameof(LocationId), nameof(TimeUtc), nameof(SiteVersion), nameof(RunProviderUpdatedAt), nameof(RunFetchedAtUtc))]
+[Index(nameof(WeatherPointId), nameof(TimeUtc), nameof(SiteVersion), nameof(RunProviderUpdatedAt), nameof(RunFetchedAtUtc))]
 public class WeatherForecastStep
 {
     [Key]
@@ -176,7 +193,7 @@ public class WeatherForecastStep
 
     public Guid WeatherForecastRunId { get; set; }
 
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public int SiteVersion { get; set; }
 
@@ -208,15 +225,15 @@ public class WeatherForecastStep
 }
 
 /// <summary>
-/// The Frost station one measure group of a location is measured at, for the current site. Each group has its
+/// The Frost station one measure group of a point is measured at, for the current site. Each group has its
 /// own because the measures differ in how far they hold and in how many stations report them. A row with no
 /// <see cref="StationId"/> is a lookup that found nothing in reach; it is retried at most once per 24 h. The rows
-/// go when the site changes or history is purged, and with the <see cref="WeatherLocation"/> (CASCADE).
+/// go when the site changes or history is purged, and with the <see cref="WeatherPoint"/> (CASCADE).
 /// </summary>
-[PrimaryKey(nameof(LocationId), nameof(Group))]
+[PrimaryKey(nameof(WeatherPointId), nameof(Group))]
 public class WeatherStation
 {
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public WeatherMeasureGroup Group { get; set; }
 
@@ -234,13 +251,13 @@ public class WeatherStation
 }
 
 /// <summary>One measured day from a Frost station. Append-only; a changed value inserts a new row.</summary>
-[Index(nameof(LocationId), nameof(LocalDate), nameof(SiteVersion), nameof(FetchedAtUtc))]
+[Index(nameof(WeatherPointId), nameof(LocalDate), nameof(SiteVersion), nameof(FetchedAtUtc))]
 public class WeatherObservation
 {
     [Key]
     public Guid WeatherObservationId { get; set; }
 
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public int SiteVersion { get; set; }
 
@@ -269,13 +286,13 @@ public class WeatherObservation
 }
 
 /// <summary>
-/// The derived daily summary per location and local date — rebuildable from the append-only tables, so it
+/// The derived daily summary per point and local date — rebuildable from the append-only tables, so it
 /// is upserted rather than appended. The forecast and observed halves are independent.
 /// </summary>
-[PrimaryKey(nameof(LocationId), nameof(LocalDate))]
+[PrimaryKey(nameof(WeatherPointId), nameof(LocalDate))]
 public class WeatherDay
 {
-    public Guid LocationId { get; set; }
+    public Guid WeatherPointId { get; set; }
 
     public DateOnly LocalDate { get; set; }
 

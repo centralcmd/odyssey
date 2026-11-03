@@ -347,7 +347,7 @@ public class UnifiedLocationsDialogTests
 
     [Theory]
     [InlineData(true, "This place is archived and can’t be merged.")]
-    [InlineData(false, "Weather is set up for this place. An admin must turn weather off before it can be merged.")]
+    [InlineData(false, "This place can’t be merged right now. Reload Locations and try again.")]
     public async Task A_422_on_the_source_reloads_it_and_chooses_the_message_from_what_it_is_now(bool archived, string message)
     {
         var reloaded = Storgata() with { Archived = archived ? DateTime.UtcNow : null };
@@ -435,7 +435,7 @@ public class UnifiedLocationsDialogTests
 
         cut.FindAll("button").Last(b => b.TextContent.Contains("Delete", StringComparison.Ordinal)).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains("This place is still used — by a record, weather settings, or a merged place",
+        cut.WaitForAssertion(() => Assert.Contains("This place is still used — by a record or a merged place",
             cut.Find(".loc-dialog-alert[role=alert]").TextContent));
         Assert.Empty(deleted);
 
@@ -610,26 +610,4 @@ public class UnifiedLocationsDialogTests
         Assert.Equal(LocationSource.Manual, creates[0].Source);
     }
 
-    // ── Weather (AC 15) ───────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Weather_setup_for_a_place_without_coordinates_says_add_coordinates_first()
-    {
-        await using var ctx = Context();
-        ctx.Services.AddSingleton(Mock.Of<IWeatherApiClient>());
-        ctx.Services.AddSingleton(Locations().Object);
-        var edits = 0;
-        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherSettingsDialog>(d => d
-            .Add(x => x.Open, true)
-            .Add(x => x.Location, Hytta(coordinates: false))
-            .Add(x => x.Row, null)
-            .Add(x => x.OnEditLocation, EventCallback.Factory.Create(new object(), () => edits++))));
-
-        Assert.Contains("Add coordinates first", cut.Markup);
-        Assert.Empty(cut.FindComponents<WeatherSiteCard>());
-        Assert.True(cut.FindAll("button").Single(b => b.TextContent.Contains("Turn on weather", StringComparison.Ordinal)).HasAttribute("disabled"));
-
-        cut.FindAll("button").Single(b => b.TextContent.Contains("Edit location", StringComparison.Ordinal)).Click();
-        Assert.Equal(1, edits);
-    }
 }

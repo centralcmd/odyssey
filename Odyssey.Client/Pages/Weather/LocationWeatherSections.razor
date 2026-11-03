@@ -1,0 +1,37 @@
+@using Odyssey.Dtos.Journal
+@*
+    The weather sections of a location's record (issue #388 flow E; design system · Locations.jsx): the Weather point
+    section, then — when linked — the point's forecast and its Weather history, each labelled with where the weather
+    comes from. The forecast and history mount with the open record, so a long list makes no weather request, and
+    which of them draw is decided by the link's four flags alone (#387 Draft v4), never an options read.
+*@
+
+<LocationWeatherPointSection Location="Location" CanLink="CanLink" CanOpenPoints="CanOpenPoints" Advisories="Advisories" />
+@if (Location.WeatherPoint is { PurgeInProgress: false } wp)
+{
+    @if (wp.ForecastEnabled)
+    {
+        <LocationWeatherForecastSection @key="@($"f:{wp.WeatherPointId}")" Point="wp" DistanceKm="Location.WeatherPointDistanceKm"
+                                        Reads="Reads" OnAnnounce="OnAnnounce" />
+    }
+    @if (wp.HistoryEnabled || wp.HasStoredHistory)
+    {
+        <WeatherHistorySection @key="@($"h:{wp.WeatherPointId}")" WeatherPointId="wp.WeatherPointId" PointName="@wp.Name"
+                               HistoryOff="@(!wp.HistoryEnabled)" Meta="@WeatherVisuals.SourceLine(wp.Name, Location.WeatherPointDistanceKm)"
+                               CanSetUp="CanSetUp" CanOpenSettings="CanOpenSettings" />
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter] public bool CanLink { get; set; }
+    [Parameter] public bool CanOpenPoints { get; set; }
+    [Parameter] public IReadOnlyList<WeatherAdvisory> Advisories { get; set; } = [];
+    [Parameter, EditorRequired] public WeatherPointReads Reads { get; set; } = default!;
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    /// <summary>weather.points.update — with <see cref="CanOpenSettings"/>, the history section names the missing setting.</summary>
+    [Parameter] public bool CanSetUp { get; set; }
+
+    [Parameter] public bool CanOpenSettings { get; set; }
+}

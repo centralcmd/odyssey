@@ -86,6 +86,13 @@ public class Location
     /// </summary>
     public Guid? MergedIntoLocationId { get; set; }
 
+    /// <summary>
+    /// The weather point this place reads its weather from (issue #387), or null. Many places may share one
+    /// point. <c>SET NULL</c>: deleting a point unlinks its places and never blocks. Written only by
+    /// <c>PUT /api/locations/{id}/weather-point</c> — no other location, contact or property write takes it.
+    /// </summary>
+    public Guid? WeatherPointId { get; set; }
+
     /// <summary>WGS 84, rounded to 5 decimals on write. Null together with <see cref="Longitude"/> and
     /// <see cref="TimeZoneId"/>, never alone.</summary>
     [Precision(7, 5)]

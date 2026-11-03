@@ -312,10 +312,10 @@ public static class SystemSettingsDefaults
     /// <summary>Once a day. A household dashboard needs no fresher forecast than that, and it keeps MET traffic minimal.</summary>
     public const int WeatherRefreshIntervalMinutes = 1440;
 
-    public const int WeatherMaxTrackedLocations = 5;
+    public const int WeatherMaxTrackedPoints = 5;
 
     /// <summary>Empty: no household default weather location.</summary>
-    public const string WeatherDefaultLocationId = "";
+    public const string WeatherDefaultPointId = "";
 
     // ── Exchange-rate sync (issue #349) ─────────────────────────────────────────────────────────
 

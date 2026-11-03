@@ -69,7 +69,8 @@
 
     internal static string Description(string source) =>
         $"Every event, journal entry, contact and property that uses “{source}” will use the target instead. "
-        + $"“{source}” is then archived and stays visible as a merged place. The target’s name, address and coordinates don’t change.";
+        + $"“{source}” is then archived and stays visible as a merged place. The target’s name, address and coordinates don’t change, "
+        + "and it keeps its own weather point — or takes this place’s, if it has none.";
 
     internal const string NoTarget = "Choose the place to merge into.";
 
@@ -79,11 +80,11 @@
 
     /// <summary>
     /// The <c>422 sourceId</c> message, chosen from the RELOADED source (issue #383 §3.8, SEC F8, N3) — never
-    /// from server text: archived → it can't be merged; otherwise it is weather that blocks it.
+    /// from server text. Weather no longer blocks a merge (issue #387 §8): an archived source is the one refusal left.
     /// </summary>
     internal static string SourceRefusal(ExistingLocation reloaded) => reloaded.Archived is not null
         ? "This place is archived and can’t be merged."
-        : "Weather is set up for this place. An admin must turn weather off before it can be merged.";
+        : "This place can’t be merged right now. Reload Locations and try again.";
 
     private void OnTargetChanged(LocationPick? pick)
     {

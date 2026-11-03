@@ -71,8 +71,8 @@ public class AuthorizationPolicyTests
     /// account terms onto contracts and deleted the account-term read/write claim pair. 98 once issue
     /// #167 added the six <c>properties.*</c> claims. 101 once issue #350 added <c>locations.read</c>,
     /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
-    /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
-    /// <c>weather.locations.update</c> and <c>weather.history.delete</c>. 107 once issue #346 added
+    /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.points.read</c>,
+    /// <c>weather.points.update</c> and <c>weather.points.delete</c>. 107 once issue #346 added
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
     /// deliberately left out.
     /// </summary>
@@ -262,7 +262,7 @@ public class AuthorizationPolicyTests
     [Fact]
     public void Only_Admin_holds_the_weather_admin_claims()
     {
-        string[] adminOnly = [PermissionClaims.WeatherHistoryDelete, PermissionClaims.WeatherLocationsRead, PermissionClaims.WeatherLocationsUpdate];
+        string[] adminOnly = [PermissionClaims.WeatherPointsDelete, PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate];
         Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AllClaims));
         Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AdminClaims));
 
@@ -271,6 +271,45 @@ public class AuthorizationPolicyTests
             .Select(role => role.Role)
             .ToList();
         Assert.Equal(["Admin"], holders);
+    }
+
+    /// <summary>The three values issue #387 §7.2 renamed away. Release notes and the changelog name them; nothing else may.</summary>
+    internal static readonly string[] RetiredWeatherClaimValues =
+        ["weather.locations.read", "weather.locations.update", "weather.history.delete"];
+
+    /// <summary>
+    /// Issue #387 AC 9: no role holds a retired weather value, so <c>RoleClaimSeeder</c> — which reconciles
+    /// <c>AspNetRoleClaims</c> to this mapping, removals included — revokes them on its next run.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_a_retired_weather_claim_value()
+    {
+        Assert.All(RetiredWeatherClaimValues, value => Assert.DoesNotContain(value, RolePermissions.AllClaims));
+        Assert.All(MappedRoles(), role => Assert.Empty(role.Claims.Intersect(RetiredWeatherClaimValues, StringComparer.Ordinal)));
+        var constants = typeof(PermissionClaims)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(field => field.IsLiteral)
+            .Select(field => (string)field.GetRawConstantValue()!);
+        Assert.Empty(constants.Intersect(RetiredWeatherClaimValues, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Issue #387 §7.2, AC 10: linking a place to a weather point needs <c>locations.update</c> and
+    /// <c>weather.read</c>; the holders of both are exactly Admin, Owner and User, and Guest lacks the first.
+    /// </summary>
+    [Fact]
+    public void The_weather_link_is_held_by_exactly_Admin_Owner_and_User()
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.LocationsUpdate, StringComparer.Ordinal)
+                && role.Claims.Contains(PermissionClaims.WeatherRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(["Admin", "Owner", "User"], holders);
+        Assert.DoesNotContain(PermissionClaims.LocationsUpdate, RolePermissions.GuestClaims);
+        Assert.Contains(PermissionClaims.WeatherRead, RolePermissions.GuestClaims);
     }
 
     /// <summary>

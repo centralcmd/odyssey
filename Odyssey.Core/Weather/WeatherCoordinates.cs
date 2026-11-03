@@ -13,22 +13,13 @@ public static class WeatherCoordinates
     public static decimal Round(decimal value) => WeatherRules.RoundCoordinate(value);
 
     /// <summary>
-    /// The position fingerprint, or <see cref="NoCoordinatesFingerprint"/> for a place with no coordinates
-    /// (issue #380 made them optional, all-or-none). That value never matches a reviewed position, so the
-    /// fingerprint check refuses rather than turning weather on for a place it cannot locate.
+    /// <c>ExistingLocation.WeatherFingerprint</c> (issue #387 §5 endpoint 11): what a weather point would copy
+    /// from the place, or null for a place with no coordinates.
     /// </summary>
-    public static string Fingerprint(LocationEntity location) =>
+    public static string? FingerprintOrNull(LocationEntity location) =>
         Position(location) is { } position
             ? WeatherRules.Fingerprint(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId)
-            : NoCoordinatesFingerprint;
-
-    /// <summary>A place whose coordinates were removed has moved away from any site weather is using.</summary>
-    public static bool Moved(LocationEntity location, Odyssey.Context.WeatherLocationSite site) =>
-        Position(location) is not { } position
-        || WeatherRules.Moved(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId,
-            site.Latitude, site.Longitude, site.AltitudeMeters, site.TimeZoneId);
-
-    public const string NoCoordinatesFingerprint = WeatherRules.NoCoordinatesFingerprint;
+            : null;
 
     /// <summary>
     /// The location's position, or <see langword="null"/> when it has none. The three columns are

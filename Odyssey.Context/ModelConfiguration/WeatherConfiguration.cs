@@ -3,53 +3,49 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Odyssey.Context.ModelConfiguration;
 
-// Weather (issue #348 §4). Every weather table references Location with RESTRICT: a future hard delete of
-// a location must purge its weather first (the Admin purge), and a raw DELETE is refused by the database
-// rather than silently cascading away a household's measured history.
+// Weather (issue #348 §4; re-keyed onto weather points by issue #387 §4). The settings-shaped tables (sites,
+// schedule, stations) cascade with their point. The three bulk tables (runs, observations, days) reference the
+// point with RESTRICT, so a point delete must go through the batched purger and can never become one unbounded
+// cascade. WeatherForecastSteps carries the point id denormalized and deliberately no key: it is the largest
+// table, and it already cascades with its run.
 
-internal sealed class WeatherLocationConfiguration : IEntityTypeConfiguration<WeatherLocation>
+internal sealed class WeatherPointConfiguration : IEntityTypeConfiguration<WeatherPoint>
 {
-    public void Configure(EntityTypeBuilder<WeatherLocation> entity)
+    public void Configure(EntityTypeBuilder<WeatherPoint> entity)
     {
-        entity.HasOne<Location>()
-            .WithOne()
-            .HasForeignKey<WeatherLocation>(weather => weather.LocationId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        // The current site must exist. RESTRICT (amendment 1): the purge's final transaction deletes the
-        // schedule, then this row, then the current site, so the key never blocks a purge that runs in order.
-        entity.HasOne<WeatherLocationSite>()
-            .WithMany()
-            .HasForeignKey(weather => new { weather.LocationId, weather.CurrentSiteVersion })
-            .HasPrincipalKey(site => new { site.LocationId, site.SiteVersion })
-            .OnDelete(DeleteBehavior.Restrict);
-
-        entity.ToTable(tb => tb.HasCheckConstraint(
-            "CK_WeatherLocations_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1"));
-    }
-}
-
-internal sealed class WeatherLocationSiteConfiguration : IEntityTypeConfiguration<WeatherLocationSite>
-{
-    public void Configure(EntityTypeBuilder<WeatherLocationSite> entity)
-    {
-        entity.HasOne<Location>()
-            .WithMany()
-            .HasForeignKey(site => site.LocationId)
-            .OnDelete(DeleteBehavior.Restrict);
+        // No key to the current site (issue #387 §4, architect finding 1): the site depends on the point, so a
+        // key back would be a cycle. The service writes both in one save; a MariaDB test pins the invariant.
+        entity.Property(point => point.PurgeMode).HasConversion<int?>();
 
         entity.ToTable(tb =>
-            tb.HasCheckConstraint("CK_WeatherLocationSites_VersionPositive", "`SiteVersion` >= 1"));
+        {
+            tb.HasCheckConstraint("CK_WeatherPoints_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1");
+            tb.HasCheckConstraint("CK_WeatherPoints_PurgeModeWithFence", "(`PurgeStartedAt` IS NULL) = (`PurgeMode` IS NULL)");
+        });
     }
 }
 
-internal sealed class WeatherLocationScheduleConfiguration : IEntityTypeConfiguration<WeatherLocationSchedule>
+internal sealed class WeatherPointSiteConfiguration : IEntityTypeConfiguration<WeatherPointSite>
 {
-    public void Configure(EntityTypeBuilder<WeatherLocationSchedule> entity)
+    public void Configure(EntityTypeBuilder<WeatherPointSite> entity)
     {
-        entity.HasOne<WeatherLocation>()
+        entity.HasOne<WeatherPoint>()
+            .WithMany()
+            .HasForeignKey(site => site.WeatherPointId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        entity.ToTable(tb =>
+            tb.HasCheckConstraint("CK_WeatherPointSites_VersionPositive", "`SiteVersion` >= 1"));
+    }
+}
+
+internal sealed class WeatherPointScheduleConfiguration : IEntityTypeConfiguration<WeatherPointSchedule>
+{
+    public void Configure(EntityTypeBuilder<WeatherPointSchedule> entity)
+    {
+        entity.HasOne<WeatherPoint>()
             .WithOne()
-            .HasForeignKey<WeatherLocationSchedule>(schedule => schedule.LocationId)
+            .HasForeignKey<WeatherPointSchedule>(schedule => schedule.WeatherPointId)
             .OnDelete(DeleteBehavior.Cascade);
 
         entity.Property(schedule => schedule.ForecastFailureKind).HasConversion<int?>();
@@ -61,10 +57,10 @@ internal sealed class WeatherStationConfiguration : IEntityTypeConfiguration<Wea
 {
     public void Configure(EntityTypeBuilder<WeatherStation> entity)
     {
-        // A station is a setting of the weather row, not history: it goes with the row.
-        entity.HasOne<WeatherLocation>()
+        // A station is a setting of the point, not history: it goes with the point.
+        entity.HasOne<WeatherPoint>()
             .WithMany()
-            .HasForeignKey(station => station.LocationId)
+            .HasForeignKey(station => station.WeatherPointId)
             .OnDelete(DeleteBehavior.Cascade);
 
         entity.Property(station => station.Group).HasConversion<int>();
@@ -76,9 +72,9 @@ internal sealed class WeatherForecastRunConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<WeatherForecastRun> entity)
     {
-        entity.HasOne<Location>()
+        entity.HasOne<WeatherPoint>()
             .WithMany()
-            .HasForeignKey(run => run.LocationId)
+            .HasForeignKey(run => run.WeatherPointId)
             .OnDelete(DeleteBehavior.Restrict);
 
         entity.HasMany(run => run.Steps)
@@ -95,9 +91,9 @@ internal sealed class WeatherObservationConfiguration : IEntityTypeConfiguration
 {
     public void Configure(EntityTypeBuilder<WeatherObservation> entity)
     {
-        entity.HasOne<Location>()
+        entity.HasOne<WeatherPoint>()
             .WithMany()
-            .HasForeignKey(observation => observation.LocationId)
+            .HasForeignKey(observation => observation.WeatherPointId)
             .OnDelete(DeleteBehavior.Restrict);
 
         entity.Property(observation => observation.Provider).HasConversion<int>();
@@ -108,9 +104,9 @@ internal sealed class WeatherDayConfiguration : IEntityTypeConfiguration<Weather
 {
     public void Configure(EntityTypeBuilder<WeatherDay> entity)
     {
-        entity.HasOne<Location>()
+        entity.HasOne<WeatherPoint>()
             .WithMany()
-            .HasForeignKey(day => day.LocationId)
+            .HasForeignKey(day => day.WeatherPointId)
             .OnDelete(DeleteBehavior.Restrict);
 
         // A derived row exists only to carry one half or the other; an empty one is a rebuild bug.

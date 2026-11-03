@@ -43,7 +43,7 @@ public class LocationUnificationApiTests
         PermissionClaims.PropertiesRead, PermissionClaims.PropertiesCreate, PermissionClaims.PropertiesUpdate, PermissionClaims.PropertiesDelete,
         PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarDelete,
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate, PermissionClaims.JournalDelete,
-        PermissionClaims.WeatherRead, PermissionClaims.WeatherLocationsRead, PermissionClaims.WeatherLocationsUpdate,
+        PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate,
     ];
 
     // ── Locations: wire, validation, filters (AC 17, 23, 24; §5.5) ──────────────────────────────────
@@ -149,15 +149,16 @@ public class LocationUnificationApiTests
     }
 
     [Fact]
-    public async Task Put_clearing_the_coordinates_of_a_weather_place_is_422_keyed_latitude()
+    public async Task Put_clearing_the_coordinates_of_a_place_linked_to_weather_is_allowed()
     {
+        // Issue #387 AC 23: a weather point keeps its own position, so the place's coordinates are its own.
         await using var host = await Host.StartAsync(Everything);
         var id = await host.SeedLocationAsync("Cabin", latitude: 61.5m);
         await host.SeedWeatherAsync(id);
 
         var response = await host.Client.PutAsJsonAsync($"{LocationsPath}/{id}", Update("Cabin", LocationSource.Manual));
 
-        await AssertProblem(response, HttpStatusCode.UnprocessableEntity, "latitude");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -231,8 +232,25 @@ public class LocationUnificationApiTests
         Assert.Equal(0, await host.ReadAsync(c => c.Locations.CountAsync(l => l.LocationId == id)));
     }
 
+    /// <summary>
+    /// Issue #387 §8: a place's weather link, a weather preference and the household default name a weather
+    /// POINT, not a place, so none of them blocks deleting the place; the link simply goes with it.
+    /// </summary>
+    [Fact]
+    public async Task Weather_never_blocks_deleting_a_place()
+    {
+        await using var host = await Host.StartAsync(Everything);
+        var id = await host.SeedLocationAsync("Linked");
+        var point = await host.SeedWeatherAsync(id);
+        await host.SeedPreferenceAsync(point);
+        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultPointId, point.ToString());
+
+        Assert.Equal(HttpStatusCode.NoContent, (await host.Client.DeleteAsync($"{LocationsPath}/{id}")).StatusCode);
+        Assert.Equal(1, await host.ReadAsync(c => c.WeatherPoints.CountAsync(p => p.WeatherPointId == point)));
+    }
+
     private static readonly string[] ReferenceKinds =
-        ["event", "series", "entry", "address", "property", "weather", "preference", "household", "forwarder"];
+        ["event", "series", "entry", "address", "property", "forwarder"];
 
     public static TheoryData<string> References => new(ReferenceKinds);
 
@@ -251,9 +269,6 @@ public class LocationUnificationApiTests
                 await host.PostAddressAsync(await host.PostContactAsync("Acme"), new NewAddress { Label = AddressLabel.Visiting, LocationId = id });
                 break;
             case "property": await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id }); break;
-            case "weather": await host.SeedWeatherAsync(id); break;
-            case "preference": await host.SeedPreferenceAsync(id); break;
-            case "household": await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, id.ToString()); break;
             case "forwarder": await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true); break;
         }
 
@@ -267,12 +282,12 @@ public class LocationUnificationApiTests
     }
 
     /// <summary>
-    /// AC 11 (senior-tester L2): "generic" means the nine refusals are indistinguishable — one body whatever
+    /// AC 11 (senior-tester L2): "generic" means the six refusals are indistinguishable — one body whatever
     /// holds the place, so the 409 is no oracle for WHICH kind of record uses it. Each place is referenced by
     /// exactly one kind; the route id and the trace id are the only parts allowed to differ.
     /// </summary>
     [Fact]
-    public async Task The_nine_delete_refusals_have_one_identical_body()
+    public async Task The_six_delete_refusals_have_one_identical_body()
     {
         await using var host = await Host.StartAsync(Everything);
         var bodies = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -288,9 +303,6 @@ public class LocationUnificationApiTests
                     await host.PostAddressAsync(await host.PostContactAsync("Acme"), new NewAddress { Label = AddressLabel.Visiting, LocationId = id });
                     break;
                 case "property": await host.PostPropertyAsync(new RealEstateDetailsDto { Kind = RealEstateKind.House, LocationId = id }); break;
-                case "weather": await host.SeedWeatherAsync(id); break;
-                case "preference": await host.SeedPreferenceAsync(id); break;
-                case "household": await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, id.ToString()); break;
                 case "forwarder": await host.SeedLocationAsync("Forwarder", mergedInto: id, archived: true); break;
             }
 
@@ -302,7 +314,7 @@ public class LocationUnificationApiTests
             bodies[reference] = problem.ToJsonString().Replace(id.ToString(), "{id}", StringComparison.OrdinalIgnoreCase);
         }
 
-        Assert.Equal(9, bodies.Count);
+        Assert.Equal(6, bodies.Count);
         Assert.Single(bodies.Values.Distinct(StringComparer.Ordinal));
     }
 
@@ -394,9 +406,6 @@ public class LocationUnificationApiTests
         var source = await host.SeedLocationAsync("Source");
         var target = await host.SeedLocationAsync("Target");
         var archived = await host.SeedLocationAsync("Archived", archived: true);
-        var withWeather = await host.SeedLocationAsync("Weather", latitude: 61m);
-        await host.SeedWeatherAsync(withWeather);
-
         Task<HttpResponseMessage> Merge(Guid from, Guid to) =>
             host.Client.PostAsJsonAsync($"{LocationsPath}/{from}/merge", new MergeLocationRequest { TargetLocationId = to });
 
@@ -404,7 +413,6 @@ public class LocationUnificationApiTests
         await AssertProblem(await Merge(source, source), HttpStatusCode.UnprocessableEntity, "targetLocationId");
         await AssertProblem(await Merge(source, archived), HttpStatusCode.UnprocessableEntity, "targetLocationId");
         await AssertProblem(await Merge(archived, target), HttpStatusCode.UnprocessableEntity, "sourceId");
-        await AssertProblem(await Merge(withWeather, target), HttpStatusCode.UnprocessableEntity, "sourceId");
     }
 
     // ── Events, series, entries (§5.2) ──────────────────────────────────────────────────────────────
@@ -966,18 +974,17 @@ public class LocationUnificationApiTests
     [Theory]
     [InlineData("event")]
     [InlineData("entry")]
-    public async Task Record_weather_resolves_explicit_then_linked_with_coordinates_then_preference_then_household(string kind)
+    public async Task Record_weather_resolves_explicit_then_linked_then_preference_then_household(string kind)
     {
         await using var host = await Host.StartAsync(Everything);
         var linkedWithWeather = await host.SeedLocationAsync("Cabin", latitude: 61m);
-        await host.SeedWeatherAsync(linkedWithWeather);
-        var linkedNoWeather = await host.SeedLocationAsync("Shed", latitude: 62m);
-        var linkedNoCoordinates = await host.SeedLocationAsync("Somewhere");
-        var household = await host.SeedLocationAsync("Home", latitude: 59m);
-        await host.SeedWeatherAsync(household);
-        var preferred = await host.SeedLocationAsync("Office", latitude: 58m);
-        await host.SeedWeatherAsync(preferred);
-        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, household.ToString());
+        var cabinPoint = await host.SeedWeatherAsync(linkedWithWeather);
+        var linkedForecastOff = await host.SeedLocationAsync("Shed", latitude: 62m);
+        var shedPoint = await host.SeedWeatherAsync(linkedForecastOff, forecast: false);
+        var unlinked = await host.SeedLocationAsync("Somewhere");
+        var household = await host.SeedWeatherAsync(await host.SeedLocationAsync("Home", latitude: 59m));
+        var preferred = await host.SeedWeatherAsync(await host.SeedLocationAsync("Office", latitude: 58m));
+        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultPointId, household.ToString());
 
         Task<Guid> Seed(Guid? locationId) => kind == "event" ? host.SeedEventAsync(locationId) : host.SeedEntryAsync(locationId);
 
@@ -988,29 +995,32 @@ public class LocationUnificationApiTests
             return JsonDocument.Parse(json).RootElement.Clone();
         }
 
-        static Guid LocationOf(JsonElement weather) => weather.GetProperty("location").GetProperty("locationId").GetGuid();
+        static Guid PointOf(JsonElement weather) => weather.GetProperty("point").GetProperty("weatherPointId").GetGuid();
 
         var withWeather = await Weather(await Seed(linkedWithWeather));
         Assert.Equal("Linked", withWeather.GetProperty("resolvedFrom").GetString());
-        Assert.Equal(linkedWithWeather, LocationOf(withWeather));
+        Assert.Equal(cabinPoint, PointOf(withWeather));
+        Assert.Equal(linkedWithWeather, withWeather.GetProperty("linkedLocation").GetProperty("locationId").GetGuid());
 
-        var noWeather = await Weather(await Seed(linkedNoWeather));
-        Assert.Equal("Linked", noWeather.GetProperty("resolvedFrom").GetString());
-        Assert.Equal("NoData", noWeather.GetProperty("status").GetString());
-        Assert.Equal(linkedNoWeather, LocationOf(noWeather));
+        // A linked point with its forecast off is used anyway, with no fallback (issue #387 §8).
+        var forecastOff = await Weather(await Seed(linkedForecastOff));
+        Assert.Equal("Linked", forecastOff.GetProperty("resolvedFrom").GetString());
+        Assert.Equal("NoData", forecastOff.GetProperty("status").GetString());
+        Assert.Equal(shedPoint, PointOf(forecastOff));
 
-        var noCoordinates = await Seed(linkedNoCoordinates);
-        var fallback = await Weather(noCoordinates);
+        var unlinkedRecord = await Seed(unlinked);
+        var fallback = await Weather(unlinkedRecord);
         Assert.Equal("Household", fallback.GetProperty("resolvedFrom").GetString());
-        Assert.Equal(household, LocationOf(fallback));
-        var explicitly = await Weather(noCoordinates, $"?locationId={preferred}");
+        Assert.Equal(household, PointOf(fallback));
+        Assert.False(fallback.TryGetProperty("linkedLocation", out _));
+        var explicitly = await Weather(unlinkedRecord, $"?weatherPointId={preferred}");
         Assert.Equal("Explicit", explicitly.GetProperty("resolvedFrom").GetString());
-        Assert.Equal(preferred, LocationOf(explicitly));
+        Assert.Equal(preferred, PointOf(explicitly));
 
         await host.SeedPreferenceAsync(preferred);
-        var fromPreference = await Weather(noCoordinates);
+        var fromPreference = await Weather(unlinkedRecord);
         Assert.Equal("Preferred", fromPreference.GetProperty("resolvedFrom").GetString());
-        Assert.Equal(preferred, LocationOf(fromPreference));
+        Assert.Equal(preferred, PointOf(fromPreference));
     }
 
     /// <summary>The hourly and daily reads carry <c>resolvedFrom</c> on the wire too (M2).</summary>
@@ -1018,11 +1028,9 @@ public class LocationUnificationApiTests
     public async Task Hourly_and_daily_weather_carry_resolvedFrom()
     {
         await using var host = await Host.StartAsync(Everything);
-        var household = await host.SeedLocationAsync("Home", latitude: 59m);
-        await host.SeedWeatherAsync(household);
-        var named = await host.SeedLocationAsync("Cabin", latitude: 61m);
-        await host.SeedWeatherAsync(named);
-        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultLocationId, household.ToString());
+        var household = await host.SeedWeatherAsync(await host.SeedLocationAsync("Home", latitude: 59m));
+        var named = await host.SeedWeatherAsync(await host.SeedLocationAsync("Cabin", latitude: 61m));
+        await host.Factory.SetSystemSettingAsync(SystemSettingsKeys.WeatherDefaultPointId, household.ToString());
 
         async Task<string?> ResolvedFrom(string url) =>
             JsonDocument.Parse(await host.Client.GetStringAsync(url)).RootElement.GetProperty("resolvedFrom").GetString();
@@ -1030,9 +1038,9 @@ public class LocationUnificationApiTests
         const string hourly = "/api/weather/hourly?fromUtc=2026-01-01T00:00:00Z&toUtc=2026-01-01T06:00:00Z";
         const string daily = "/api/weather/daily?from=2026-01-01&to=2026-01-05";
         Assert.Equal("Household", await ResolvedFrom(hourly));
-        Assert.Equal("Explicit", await ResolvedFrom($"{hourly}&locationId={named}"));
+        Assert.Equal("Explicit", await ResolvedFrom($"{hourly}&weatherPointId={named}"));
         Assert.Equal("Household", await ResolvedFrom(daily));
-        Assert.Equal("Explicit", await ResolvedFrom($"{daily}&locationId={named}"));
+        Assert.Equal("Explicit", await ResolvedFrom($"{daily}&weatherPointId={named}"));
     }
 
     [Fact]
@@ -1045,21 +1053,6 @@ public class LocationUnificationApiTests
         var nothing = JsonDocument.Parse(json).RootElement;
         Assert.Equal("NoPlace", nothing.GetProperty("status").GetString());
         Assert.False(nothing.TryGetProperty("resolvedFrom", out _));
-    }
-
-    [Fact]
-    public async Task Turning_weather_on_for_a_place_without_coordinates_is_422_keyed_locationId()
-    {
-        await using var host = await Host.StartAsync(Everything);
-        var place = await host.SeedLocationAsync("Somewhere");
-
-        var response = await host.Client.PutAsJsonAsync($"/api/weather/locations/{place}", new UpsertWeatherLocation
-        {
-            ForecastEnabled = true, HistoryEnabled = false, IsTracked = false,
-            ExpectedLocationFingerprint = WeatherRules.NoCoordinatesFingerprint,
-        });
-
-        await AssertProblem(response, HttpStatusCode.UnprocessableEntity, "locationId");
     }
 
     // ── Interop (§8.4, AC 18, 19) ───────────────────────────────────────────────────────────────────
@@ -1670,24 +1663,36 @@ public class LocationUnificationApiTests
                 return row.JournalEntryId;
             });
 
-        public Task SeedWeatherAsync(Guid locationId) =>
+        /// <summary>A weather point (issue #387) at the place's position, with the place linked to it; returns the point id.</summary>
+        public Task<Guid> SeedWeatherAsync(Guid locationId, bool forecast = true) =>
             ReadAsync(async c =>
             {
-                c.WeatherLocations.Add(new WeatherLocation
+                var place = await c.Locations.SingleAsync(l => l.LocationId == locationId);
+                var id = Guid.NewGuid();
+                c.WeatherPoints.Add(new WeatherPoint
                 {
-                    LocationId = locationId,
-                    ForecastEnabled = true,
+                    WeatherPointId = id,
+                    Name = $"Point {id:N}",
+                    ForecastEnabled = forecast,
                     HistoryEnabled = false,
                     HistoryFrom = new DateOnly(2026, 1, 1),
                     EnabledAt = DateTime.UtcNow,
                     CurrentSiteVersion = 1,
+                    SettingsVersion = Guid.NewGuid(),
                     CreatedAt = DateTime.UtcNow,
                     UpdatedAt = DateTime.UtcNow,
                 });
-                return await c.SaveChangesAsync();
+                c.WeatherPointSites.Add(new WeatherPointSite
+                {
+                    WeatherPointId = id, SiteVersion = 1, Latitude = place.Latitude ?? 59.9m, Longitude = place.Longitude ?? 10.7m,
+                    TimeZoneId = place.TimeZoneId ?? "Europe/Oslo", AppliedAt = DateTime.UtcNow,
+                });
+                place.WeatherPointId = id;
+                await c.SaveChangesAsync();
+                return id;
             });
 
-        public Task SeedPreferenceAsync(Guid locationId) =>
+        public Task SeedPreferenceAsync(Guid pointId) =>
             ReadAsync(async c =>
             {
                 c.UserPreferences.Add(new UserPreference
@@ -1695,7 +1700,7 @@ public class LocationUnificationApiTests
                     UserPreferenceId = Guid.NewGuid(),
                     UserId = Actor,
                     Key = "weather-preferences",
-                    PreferencesJson = $"{{\"defaultLocationId\":\"{locationId}\"}}",
+                    PreferencesJson = $"{{\"defaultPointId\":\"{pointId}\"}}",
                     UpdatedAt = DateTime.UtcNow,
                 });
                 return await c.SaveChangesAsync();

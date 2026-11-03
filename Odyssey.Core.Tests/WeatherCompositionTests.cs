@@ -28,7 +28,7 @@ public class WeatherCompositionTests
         SymbolCode = symbol,
     };
 
-    private static WeatherLocationSite Site(int version, DateTime appliedAt, string zone) => new()
+    private static WeatherPointSite Site(int version, DateTime appliedAt, string zone) => new()
     {
         SiteVersion = version,
         AppliedAt = appliedAt,
@@ -222,13 +222,21 @@ public class WeatherCompositionTests
     [Fact]
     public void A_move_below_the_rounding_is_not_a_move_but_a_zone_change_is()
     {
-        var location = new Location { LocationId = Guid.NewGuid(), Name = "Home", Latitude = 59.91273m, Longitude = 10.75027m, AltitudeMeters = 12, TimeZoneId = "Europe/Oslo" };
-        var site = new WeatherLocationSite { Latitude = 59.913m, Longitude = 10.750m, AltitudeMeters = 12, TimeZoneId = "Europe/Oslo" };
+        Assert.False(WeatherRules.Moved(59.91273m, 10.75027m, 12, "Europe/Oslo", 59.913m, 10.750m, 12, "Europe/Oslo"));
+        Assert.False(WeatherRules.Moved(59.91301m, 10.75027m, 12, "Europe/Oslo", 59.913m, 10.750m, 12, "Europe/Oslo"));
+        Assert.True(WeatherRules.Moved(59.91273m, 10.75027m, 12, "Europe/Stockholm", 59.913m, 10.750m, 12, "Europe/Oslo"));
+        Assert.True(WeatherRules.Moved(59.91273m, 10.75027m, null, "Europe/Oslo", 59.913m, 10.750m, 12, "Europe/Oslo"));
+    }
 
-        Assert.False(WeatherCoordinates.Moved(location, site));
-        location.Latitude = 59.91301m;
-        Assert.False(WeatherCoordinates.Moved(location, site));
-        location.TimeZoneId = "Europe/Stockholm";
-        Assert.True(WeatherCoordinates.Moved(location, site));
+    [Theory]
+    [InlineData(59.913, 10.739, 59.913, 10.739, 0)]
+    [InlineData(59.913, 10.739, 60.393, 5.324, 304)]
+    [InlineData(59.913, 10.739, 59.917, 10.739, 0)]
+    [InlineData(59.913, 10.739, 59.918, 10.739, 1)]
+    public void Distance_is_haversine_rounded_to_a_whole_kilometre(double lat1, double lon1, double lat2, double lon2, int expected)
+    {
+        var km = WeatherDistance.Km((decimal)lat1, (decimal)lon1, (decimal)lat2, (decimal)lon2);
+        Assert.Equal(expected, km);
+        Assert.Null(WeatherDistance.KmOrNull(null, 10.7m, 59.9m, 10.7m));
     }
 }
