@@ -154,6 +154,20 @@ public class UnifiedLocationsPlaceSearchTests
     }
 
     [Fact]
+    public async Task The_field_and_its_disclosure_render_as_one_element_so_a_host_grid_keeps_them_together()
+    {
+        // PR #385 round 4 (WCAG 3.3.2): in JournalEntryFields' two-column OdsFormRow a sibling disclosure wrapped
+        // into the next column, under Entry date. One wrapper keeps it in the Place field's own cell.
+        var h = RenderPicker();
+        await using var _ = h.Ctx;
+
+        var wrapper = Assert.Single(h.Cut.Nodes.OfType<AngleSharp.Dom.IElement>());
+        Assert.True(wrapper.ClassList.Contains("odc-locsel-field"));
+        Assert.NotNull(wrapper.QuerySelector(".odc-locsel"));
+        Assert.NotNull(wrapper.QuerySelector(".odc-locsel-disclose"));
+    }
+
+    [Fact]
     public async Task Without_locations_create_there_is_no_Kartverket_group_no_create_row_and_no_disclosure()
     {
         var h = RenderPicker(allowCreate: false);
@@ -275,8 +289,73 @@ public class UnifiedLocationsPlaceSearchTests
         h.Locations.Verify(l => l.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Once);
         h.Locations.Verify(l => l.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateLocation>(), It.IsAny<CancellationToken>()), Times.Never);
         h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == ExistingAddressId), It.IsAny<CancellationToken>()), Times.Once);
-        Assert.Equal(PlaceDraft.AddressKeyOf(Candidate()),
-            LocationAddressKey.Compute(same.CountryCode, same.PostalCode, same.City, same.Line1, null, null));
+    }
+
+    [Fact]
+    public async Task A_409_on_line1_with_no_matching_place_stops_the_save_with_the_picker_error()
+    {
+        // The search returns only a different address, so nothing is linked and the record is not written.
+        var near = new ExistingLocation { LocationId = Guid.NewGuid(), Name = "Storgata 3B", Line1 = "Storgata 3B", PostalCode = "0155", City = "Oslo", CountryCode = "NO" };
+        var h = RenderEventDialog([ConflictOn("line1")], null, near);
+        await using var _ = h.Ctx;
+
+        await TitleAndPickAsync(h.Cut, LocationPick.Address(Candidate()));
+        Click(h.Cut, "Create event");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressAddFailed, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
+        Assert.Equal(["place"], h.Calls);
+        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_409_on_line1_whose_lookup_fails_stops_the_save_with_the_picker_error()
+    {
+        var h = RenderEventDialog([ConflictOn("line1")]);
+        await using var _ = h.Ctx;
+
+        await TitleAndPickAsync(h.Cut, LocationPick.Address(Candidate()));
+        h.Locations.Setup(l => l.ListAsync(It.IsAny<int>(), PlaceDraft.AddressLookupPageSize, "Storgata 3", It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<ExistingLocation>>.Failure(new HttpRequestException("down")));
+        Click(h.Cut, "Create event");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressAddFailed, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
+        Assert.Equal(["place"], h.Calls);
+        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_409_on_line1_whose_match_was_merged_away_links_the_survivor()
+    {
+        // PR #385 round 4: the server's find-or-create forwards a merged-away place to its survivor; so does this.
+        var survivor = Guid.Parse("aaaaaaaa-0000-0000-0000-0000000000f1");
+        var merged = new ExistingLocation { LocationId = ExistingAddressId, Name = "Storgata 3", Line1 = "Storgata 3", PostalCode = "0155",
+            City = "Oslo", CountryCode = "NO", Archived = DateTime.UtcNow, MergedIntoLocationId = survivor };
+        var h = RenderEventDialog([ConflictOn("line1")], null, merged);
+        await using var _ = h.Ctx;
+
+        await TitleAndPickAsync(h.Cut, LocationPick.Address(Candidate()));
+        Click(h.Cut, "Create event");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(["place", "event"], h.Calls));
+        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == survivor), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task A_409_on_line1_whose_only_match_is_archived_names_it_and_does_not_write_the_record()
+    {
+        // A new link to an archived place is refused by the server, so linking it would only move the dead end.
+        var archived = new ExistingLocation { LocationId = ExistingAddressId, Name = "Storgata 3", Line1 = "Storgata 3", PostalCode = "0155",
+            City = "Oslo", CountryCode = "NO", Archived = DateTime.UtcNow };
+        var h = RenderEventDialog([ConflictOn("line1")], null, archived);
+        await using var _ = h.Ctx;
+
+        await TitleAndPickAsync(h.Cut, LocationPick.Address(Candidate()));
+        Click(h.Cut, "Create event");
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressArchived, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
+        Assert.Equal(["place"], h.Calls);
+        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

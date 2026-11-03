@@ -197,6 +197,12 @@ public sealed class PlaceDraft
     /// place, which is found by its address key and linked unchanged — never posted again. A <c>409</c> keyed
     /// <c>name</c> means a different place has the name, so the name is retried with a suffix.
     /// </summary>
+    /// <summary>How many places sharing a street line the lookup reads — far beyond the picker's page of 20.</summary>
+    internal const int AddressLookupPageSize = 500;
+
+    internal const string AddressArchived =
+        "This address is archived on the Locations page — restore it there, or pick another place.";
+
     private async Task<bool> CreateAddressAsync(ILocationsApiClient locations, LocationPick pick, LocationCandidate candidate)
     {
         var baseName = AddressPlaceName(candidate);
@@ -211,10 +217,15 @@ public sealed class PlaceDraft
 
             if (result.Status == HttpStatusCode.Conflict && result.Problem?.ErrorFor("line1") is not null)
             {
-                if (await FindByAddressAsync(locations, candidate) is not { } existing)
-                    break;
-                Resolved(pick, existing);
-                return true;
+                var found = await FindByAddressAsync(locations, candidate);
+                if (found.Id is { } existing)
+                {
+                    Resolved(pick, existing);
+                    return true;
+                }
+
+                Error = found.Error ?? AddressAddFailed;
+                return false;
             }
 
             if (result.Status == HttpStatusCode.Conflict && result.Problem?.ErrorFor("name") is not null)
@@ -289,22 +300,28 @@ public sealed class PlaceDraft
     }
 
     /// <summary>
-    /// The saved place that already has the staged address (§3.2a): <c>GET /api/locations?search=‹line1›</c>, the
-    /// result whose address key equals the candidate's. A place still in use is preferred over an archived or
-    /// merged-away one carrying the same key.
+    /// The saved place that already has the staged address (§3.2a): every place matching
+    /// <c>GET /api/locations?search=‹line1›</c> (one wide page, so a common street name cannot push it past the
+    /// picker's 20), keeping
+    /// the one whose address key equals the candidate's. A live place is linked. A merged-away match forwards
+    /// to its survivor, which is what the server's own find-or-create does. An archived match is a dead end,
+    /// because a new link to an archived place is refused, so it is named rather than linked.
     /// </summary>
-    private static async Task<Guid?> FindByAddressAsync(ILocationsApiClient locations, LocationCandidate candidate)
+    private static async Task<(Guid? Id, string? Error)> FindByAddressAsync(ILocationsApiClient locations, LocationCandidate candidate)
     {
         if (AddressKeyOf(candidate) is not { } key || AddressFieldsOf(candidate).Line1 is not { } line1)
-            return null;
-        var result = await locations.ListAsync(1, OdsLocationSelect.PageSize, line1);
+            return (null, null);
+        var result = await locations.ListAsync(1, AddressLookupPageSize, line1);
         if (!result.IsSuccess || result.Value is null)
-            return null;
-        return result.Value.Items
+            return (null, null);
+        var matches = result.Value.Items
             .Where(l => LocationAddressKey.Compute(l.CountryCode, l.PostalCode, l.City, l.Line1, l.Line2, l.Region) == key)
-            .OrderBy(l => l.Archived is not null || l.MergedIntoLocationId is not null)
-            .Select(l => (Guid?)l.LocationId)
-            .FirstOrDefault();
+            .ToList();
+        if (matches.FirstOrDefault(l => l.Archived is null && l.MergedIntoLocationId is null) is { } live)
+            return (live.LocationId, null);
+        if (matches.FirstOrDefault(l => l.MergedIntoLocationId is not null) is { MergedIntoLocationId: { } survivor })
+            return (survivor, null);
+        return matches.Count > 0 ? (null, AddressArchived) : (null, null);
     }
 }
 

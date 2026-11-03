@@ -44,10 +44,14 @@
 }
 else
 {
-    <OdsFieldShell Label="@EffectiveLabel" HtmlFor="@_inputId" Required="@Required" Help="@Help" Error="@Error" Class="odc-locsel">
-        @Control
-    </OdsFieldShell>
-    @Disclosure
+    @* One element, so a host grid (an OdsFormRow) keeps the disclosure in the field's own cell rather than
+       wrapping it into the next column (PR #385 round 4, WCAG 3.3.2). *@
+    <div class="odc-locsel-field">
+        <OdsFieldShell Label="@EffectiveLabel" HtmlFor="@_inputId" Required="@Required" Help="@Help" Error="@Error" Class="odc-locsel">
+            @Control
+        </OdsFieldShell>
+        @Disclosure
+    </div>
 }
 
 @code {
