@@ -76,20 +76,11 @@ public partial class TasksPage
 
     // ── Computed ─────────────────────────────────────────────────────────────────
     private int Count(JournalTaskStatus s) => _allTasks.Count(t => t.Status == s);
-    private int OpenCount => Count(JournalTaskStatus.Backlog) + Count(JournalTaskStatus.Doing);
 
-    // "By tag" over every task not archived — the same unfiltered basis as the sub-line's counts.
-    private IReadOnlyList<OdsBreakdownRow> TagRows =>
-        [.. _tags.Where(t => t.Archived is null)
-            .Select(t => new OdsBreakdownRow
-            {
-                Key = t.JournalTaskTagId,
-                Icon = JournalTagChips.GlyphFor(t.Icon),
-                IconColor = "var(--tag-text)",
-                Label = t.Name,
-                Count = _allTasks.Count(task => task.Status != JournalTaskStatus.Archived && task.TagIds.Contains(t.JournalTaskTagId)),
-            })
-            .Where(r => (int)r.Count > 0)];
+    // The Overview's figures, over the same unfiltered set as the sub-line. Computed when the tasks or
+    // the tags load — every mutation on this page reloads one or the other — not on every render.
+    private JournalOverviews.TaskOverview _overview = JournalOverviews.TaskOverview.Empty;
+    private void RefreshOverview() => _overview = JournalOverviews.Tasks(_tags, _allTasks);
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _tagFilter.Count > 0 || _statusFilter.Count > 0;
     private bool _showArchived => _statusFilter.Count == 0 || _statusFilter.Contains(nameof(JournalTaskStatus.Archived));
 
@@ -155,6 +146,7 @@ public partial class TasksPage
     {
         _tags = (await TaskTags.ListAllAsync()).ItemsOrToast(Snackbar, "task tags");
         _tagById = _tags.ToDictionary(t => t.JournalTaskTagId);
+        RefreshOverview();
         _tagOptions =
         [
             .. _tags.Where(t => t.Archived is null)
@@ -196,6 +188,7 @@ public partial class TasksPage
         // genuinely empty set and would render the onboarding empty state after a 500.
         var result = await Tasks.ListAsync(statuses: AllStatuses);
         _allTasks = result.ItemsOrToast(Snackbar, "tasks");
+        RefreshOverview();
         _loadError = !result.IsSuccess;
 
         _announce = _loadError ? "Couldn't load tasks."
@@ -250,7 +243,7 @@ public partial class TasksPage
         StateHasChanged();
     }
 
-    private sealed class TasksPageState
+    internal sealed class TasksPageState
     {
         public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;

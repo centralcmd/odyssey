@@ -1,4 +1,5 @@
 @using Odyssey.Dtos.Finance
+@using Odyssey.Client.Pages.Journal
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums
@@ -60,20 +61,7 @@
             Key = a.PhotoAlbumId, Icon = "photo_album", IconColor = "var(--tide-400)", Label = a.Name, Count = a.PhotoCount,
         })];
 
-    private IReadOnlyList<OdsBreakdownRow> TagRows
-    {
-        get
-        {
-            var counts = _stats.TagCounts.ToDictionary(c => c.Key, c => c.Count);
-            return [.. _tags
-                .Select(t => new { t, Count = counts.GetValueOrDefault(t.PhotoTagId) })
-                .Where(x => x.Count > 0)
-                .Select(x => new OdsBreakdownRow
-                {
-                    Key = x.t.PhotoTagId, Icon = JournalTagChips.GlyphFor(x.t.Icon), IconColor = "var(--mud-palette-text-secondary)", Label = x.t.Name, Count = x.Count,
-                })];
-        }
-    }
+    private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.PhotoTagRows(_tags, _stats.TagCounts);
 
     // People limited to resolvable Person contacts, so a since-deleted person never shows (§10.4).
     private IReadOnlyList<OdsBreakdownRow> PeopleRows
