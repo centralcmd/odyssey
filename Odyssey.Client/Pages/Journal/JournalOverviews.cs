@@ -1,0 +1,84 @@
+using Odyssey.Client.Components;
+using Odyssey.Dtos.Journal;
+
+namespace Odyssey.Client.Pages.Journal;
+
+/// <summary>
+/// The Overview figures the journal-module headers render — Journal, Tasks and the Photos/Albums
+/// library panel. A static here rather than private members on each page, so the counting rules and
+/// the per-tag glyph are testable without rendering a page (the <c>OverviewBreakdowns</c> precedent).
+/// </summary>
+/// <remarks>
+/// Every "By tag" row leads with ITS tag's icon through <see cref="JournalTagChips.GlyphFor"/>, the
+/// rule the tag chips use, so a tag without a known icon shows the same generic glyph on both. None of
+/// these tiles takes a total: a record carries several tags, so a sum counts it once per tag.
+/// </remarks>
+public static class JournalOverviews
+{
+    /// <summary>The By tag row colour every journal-module tag family shares.</summary>
+    public const string TagRowColor = "var(--tag-text)";
+
+    /// <summary>
+    /// Journal "By tag": the active tags, each counting the given entries that carry it. Zero-count
+    /// rows are omitted.
+    /// </summary>
+    public static IReadOnlyList<OdsBreakdownRow> JournalTagRows(
+        IEnumerable<ExistingJournalTag> tags, IEnumerable<JournalEntrySummary> entries) =>
+        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTagId, t => t.Name, t => t.Icon,
+            CountByTag(entries.Select(e => e.TagIds)), TagRowColor);
+
+    /// <summary>
+    /// Tasks "By tag": the active tags, each counting the tasks that carry it and are not archived —
+    /// the same basis as the Open and Done tiles. Zero-count rows are omitted.
+    /// </summary>
+    public static IReadOnlyList<OdsBreakdownRow> TaskTagRows(
+        IEnumerable<ExistingJournalTaskTag> tags, IEnumerable<JournalTaskSummary> tasks) =>
+        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTaskTagId, t => t.Name, t => t.Icon,
+            CountByTag(tasks.Where(t => t.Status != JournalTaskStatus.Archived).Select(t => t.TagIds)), TagRowColor);
+
+    /// <summary>
+    /// Photos "By tag", from the server's per-tag counts. Every tag the server counted is listed,
+    /// archived or not, since the count is of active photos; zero-count rows are omitted.
+    /// </summary>
+    public static IReadOnlyList<OdsBreakdownRow> PhotoTagRows(
+        IEnumerable<ExistingPhotoTag> tags, IEnumerable<PhotoCountByKey> counts) =>
+        TagRows(tags, t => t.PhotoTagId, t => t.Name, t => t.Icon,
+            counts.ToDictionary(c => c.Key, c => c.Count), "var(--mud-palette-text-secondary)");
+
+    /// <summary>The Tasks Overview's three figures, computed in one pass over a loaded task set.</summary>
+    public static TaskOverview Tasks(IEnumerable<ExistingJournalTaskTag> tags, IReadOnlyCollection<JournalTaskSummary> tasks) =>
+        new(
+            Open: tasks.Count(t => t.Status is JournalTaskStatus.Backlog or JournalTaskStatus.Doing),
+            Done: tasks.Count(t => t.Status == JournalTaskStatus.Done),
+            TagRows: TaskTagRows(tags, tasks));
+
+    /// <summary>The Tasks Overview: Open (backlog + doing), Done (not archived) and By tag.</summary>
+    public sealed record TaskOverview(int Open, int Done, IReadOnlyList<OdsBreakdownRow> TagRows)
+    {
+        public static readonly TaskOverview Empty = new(0, 0, []);
+    }
+
+    // One pass over the records, so a row costs a lookup rather than a scan of every record.
+    private static Dictionary<Guid, int> CountByTag(IEnumerable<IEnumerable<Guid>> tagIdsPerRecord)
+    {
+        var counts = new Dictionary<Guid, int>();
+        foreach (var id in tagIdsPerRecord.SelectMany(ids => ids.Distinct()))
+            counts[id] = counts.GetValueOrDefault(id) + 1;
+        return counts;
+    }
+
+    private static IReadOnlyList<OdsBreakdownRow> TagRows<TTag>(
+        IEnumerable<TTag> tags, Func<TTag, Guid> id, Func<TTag, string> name, Func<TTag, string?> icon,
+        IReadOnlyDictionary<Guid, int> counts, string iconColor) =>
+        [.. tags
+            .Select(t => (Tag: t, Count: counts.GetValueOrDefault(id(t))))
+            .Where(x => x.Count > 0)
+            .Select(x => new OdsBreakdownRow
+            {
+                Key = id(x.Tag),
+                Icon = JournalTagChips.GlyphFor(icon(x.Tag)),
+                IconColor = iconColor,
+                Label = name(x.Tag),
+                Count = x.Count,
+            })];
+}

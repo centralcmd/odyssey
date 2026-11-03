@@ -119,17 +119,7 @@ public partial class JournalCard
         || _statusFilter.Count > 0 || _contactFilter.Count > 0 || _mediaFilter.Count > 0
         || _from is not null || _to is not null;
 
-    private IReadOnlyList<OdsBreakdownRow> TagRows =>
-        [.. _tags.Where(t => t.Archived is null)
-            .Select(t => new OdsBreakdownRow
-            {
-                Key = t.JournalTagId,
-                Icon = "label",
-                IconColor = "var(--tag-text)",
-                Label = t.Name,
-                Count = _entries.Count(e => e.TagIds.Contains(t.JournalTagId)),
-            })
-            .Where(r => (int)r.Count > 0)];
+    private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.JournalTagRows(_tags, _entries);
 
     private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
         JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon);

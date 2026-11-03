@@ -23,6 +23,7 @@
 
     <PageHeader Title="Tasks"
                 Icon="@Icons.Material.Filled.Checklist"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
                 PrimaryActionText="New task"
                 OnPrimaryAction="AddClicked"
@@ -37,6 +38,23 @@
                 <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImport">Import from iCalendar…</MudMenuItem>
             }
         </ActionMenu>
+        <OverviewContent>
+            <div class="je-overview">
+                <div class="je-stat-tiles">
+                    <OdsInfoTile Icon="radio_button_unchecked" IconColor="var(--sea-400)" Label="Open" ValueVariant="OdsInfoTileVariant.Mono">
+                        <Value>@_overview.Open</Value>
+                        <Foot>backlog · doing</Foot>
+                    </OdsInfoTile>
+                    <OdsInfoTile Icon="check_circle" IconColor="var(--finance-income)" Label="Done" ValueVariant="OdsInfoTileVariant.Mono">
+                        <Value>@_overview.Done</Value>
+                        <Foot>not archived</Foot>
+                    </OdsInfoTile>
+                </div>
+                @* No total: a task carries several tags, so summing the per-tag counts counts one
+                   task once per tag on it. *@
+                <OdsBreakdownTile Label="By tag" Rows="_overview.TagRows" Empty="No tagged tasks." Total="false" />
+            </div>
+        </OverviewContent>
         <SearchContent>
             <div class="ph-filter-bar">
                 <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
