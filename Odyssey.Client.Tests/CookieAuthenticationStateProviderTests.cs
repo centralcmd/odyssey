@@ -290,6 +290,86 @@ public class CookieAuthenticationStateProviderTests
         Assert.Equal([CookieAuthenticationStateProvider.RetryAfterCeiling], delays.Requested);
     }
 
+    // ── TryRefreshAsync: the non-destructive refresh (issue #388 §5, AC 36) ─────────────────────────
+
+    [Fact]
+    public async Task TryRefreshAsync_ADefinitiveSignedInAnswer_ReplacesTheCachedState_AndAnnouncesOnce()
+    {
+        var api = new ScriptedApi();
+        var provider = Provider(api);
+        var before = await provider.GetAuthenticationStateAsync();
+        api.ClaimsBody = """[{"type":"permission","value":"weather.points.read"}]""";
+        var announced = new List<Microsoft.AspNetCore.Components.Authorization.AuthenticationState>();
+        provider.AuthenticationStateChanged += async task => announced.Add(await task);
+
+        Assert.True(await provider.TryRefreshAsync());
+
+        var after = await provider.GetAuthenticationStateAsync();
+        Assert.NotSame(before, after);
+        Assert.Contains(after.User.Claims, c => c.Value == "weather.points.read");
+        Assert.Single(announced);
+        Assert.Same(after, announced[0]);
+    }
+
+    [Fact]
+    public async Task TryRefreshAsync_ADefinitiveSignedOutAnswer_ReplacesTheCachedState_AndAnnouncesOnce()
+    {
+        var api = new ScriptedApi();
+        var provider = Provider(api);
+        await provider.GetAuthenticationStateAsync();
+        api.Info = HttpStatusCode.Unauthorized;
+        var announced = 0;
+        provider.AuthenticationStateChanged += _ => announced++;
+
+        Assert.True(await provider.TryRefreshAsync());
+
+        var state = await provider.GetAuthenticationStateAsync();
+        Assert.False(state.User.Identity?.IsAuthenticated);
+        Assert.False(SessionUnavailable.Is(state.User));
+        Assert.Equal(1, announced);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.InternalServerError)]
+    public async Task TryRefreshAsync_ANonDefinitiveAnswer_KeepsTheCachedState_AndAnnouncesNothing(HttpStatusCode status)
+    {
+        var api = new ScriptedApi();
+        var delays = new ControlledDelays();
+        var provider = Provider(api, delays);
+        var before = await provider.GetAuthenticationStateAsync();
+        api.Info = status;
+        api.RetryAfterSeconds = status == HttpStatusCode.TooManyRequests ? 30 : null;
+        var announced = 0;
+        provider.AuthenticationStateChanged += _ => announced++;
+
+        Assert.False(await provider.TryRefreshAsync());
+
+        var after = await provider.GetAuthenticationStateAsync();
+        Assert.Same(before, after);
+        Assert.False(SessionUnavailable.Is(after.User));
+        Assert.Equal(0, announced);
+        // No recovery loop was started: nothing waits on a background delay.
+        Assert.Empty(delays.Requested);
+    }
+
+    [Fact]
+    public async Task TryRefreshAsync_ANetworkFailure_KeepsTheCachedState_AndAnnouncesNothing()
+    {
+        var api = new ScriptedApi();
+        var provider = Provider(api);
+        var before = await provider.GetAuthenticationStateAsync();
+        api.ThrowNext = true;
+        var announced = 0;
+        provider.AuthenticationStateChanged += _ => announced++;
+
+        Assert.False(await provider.TryRefreshAsync());
+
+        Assert.Same(before, await provider.GetAuthenticationStateAsync());
+        Assert.Equal(0, announced);
+    }
+
     private static readonly TimeSpan[] RetryDelays = [TimeSpan.Zero, TimeSpan.Zero];
 
     // The default never completes, so the background recovery loop sits parked and leaves the probe
@@ -353,6 +433,7 @@ public class CookieAuthenticationStateProviderTests
         public HttpStatusCode Claims { get; set; } = HttpStatusCode.OK;
         public int? RetryAfterSeconds { get; set; }
         public bool ThrowNext { get; set; }
+        public string ClaimsBody { get; set; } = ClaimsJson;
         public int InfoCalls;
         public int ClaimsCalls;
 
@@ -382,7 +463,7 @@ public class CookieAuthenticationStateProviderTests
                     Interlocked.Increment(ref ClaimsCalls);
                     return new HttpResponseMessage(Claims)
                     {
-                        Content = new StringContent(ClaimsJson, Encoding.UTF8, "application/json"),
+                        Content = new StringContent(ClaimsBody, Encoding.UTF8, "application/json"),
                     };
                 default:
                     throw new InvalidOperationException(request.RequestUri.ToString());

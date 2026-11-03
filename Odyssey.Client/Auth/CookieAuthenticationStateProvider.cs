@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 
 using Odyssey.ApiClient.Auth;
 
@@ -17,9 +18,10 @@ namespace Odyssey.Client.Auth;
 /// without one of three things happening: a sign-in or a gate (which call <see cref="RefreshAsync"/>),
 /// a sign-out (which reloads the app), or the cookie expiring — which surfaces as a <c>401</c> on the
 /// next domain call, and <see cref="UnauthorizedHandler"/> turns that into a reload to the sign-in page.
-/// The claims cannot drift either: they are baked into the auth cookie at sign-in, so a fresh probe of
-/// the same cookie would return the same set. A cached answer is therefore never stale in a way a
-/// fresh probe would have caught.
+/// The claims <em>can</em> drift: the server re-issues the cookie with the role's current claims at its
+/// next security-stamp revalidation (one minute), so a role-claim change reaches the cookie without a
+/// sign-in while this cache still holds the old set. <see cref="TryRefreshAsync"/> is the opportunistic,
+/// non-destructive way to pick that up (issue #388 §5); otherwise the next app load does.
 /// </para>
 /// <para>
 /// <b>Only a definitive answer is cached.</b> An <see cref="AuthSessionStatus.Unavailable"/> probe is
@@ -61,6 +63,7 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
     private readonly AuthApiClient authApiClient;
     private readonly IReadOnlyList<TimeSpan> retryDelays;
     private readonly Func<TimeSpan, Task> recoveryDelay;
+    private readonly ILogger<CookieAuthenticationStateProvider>? logger;
     private readonly Lock gate = new();
     private Task<Resolution>? current;
     private Task? recovery;
@@ -69,17 +72,19 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
     // already got an answer and must not be overwritten by an older probe.
     private int definitiveVersion;
 
-    public CookieAuthenticationStateProvider(AuthApiClient authApiClient)
-        : this(authApiClient, DefaultRetryDelays, wait => Task.Delay(wait))
+    public CookieAuthenticationStateProvider(AuthApiClient authApiClient, ILogger<CookieAuthenticationStateProvider>? logger = null)
+        : this(authApiClient, DefaultRetryDelays, wait => Task.Delay(wait), logger)
     {
     }
 
     internal CookieAuthenticationStateProvider(
-        AuthApiClient authApiClient, IReadOnlyList<TimeSpan> retryDelays, Func<TimeSpan, Task> recoveryDelay)
+        AuthApiClient authApiClient, IReadOnlyList<TimeSpan> retryDelays, Func<TimeSpan, Task> recoveryDelay,
+        ILogger<CookieAuthenticationStateProvider>? logger = null)
     {
         this.authApiClient = authApiClient;
         this.retryDelays = retryDelays;
         this.recoveryDelay = recoveryDelay;
+        this.logger = logger;
     }
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
@@ -133,6 +138,47 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
         var state = GetAuthenticationStateAsync();
         NotifyAuthenticationStateChanged(state);
         return state;
+    }
+
+    /// <summary>
+    /// A non-destructive refresh (issue #388 §5): probes the session once into a <em>candidate</em>, and only a
+    /// definitive answer — signed in, with whatever claims, or signed out — replaces the cached state and raises
+    /// <see cref="AuthenticationStateProvider.AuthenticationStateChanged"/>. On a <c>429</c>, a network failure or
+    /// any other non-definitive answer the cached state, the version counter and the recovery loop are left
+    /// exactly as they were and nothing is announced, so the <see cref="SessionUnavailable"/> principal and the
+    /// session-retry panel can never start from this path. Unlike <see cref="RefreshAsync"/>, which discards the
+    /// cache first and announces whatever resolves — right for a sign-in or the Retry button.
+    /// </summary>
+    /// <returns>Whether a definitive answer was cached and announced.</returns>
+    public async Task<bool> TryRefreshAsync()
+    {
+        AuthSession session;
+        try
+        {
+            session = await authApiClient.GetSessionAsync();
+        }
+        catch (Exception exception)
+        {
+            logger?.LogWarning(exception, "An opportunistic session refresh failed; the cached session is kept.");
+            return false;
+        }
+
+        var resolution = ToResolution(session);
+        if (!resolution.Definitive)
+        {
+            logger?.LogInformation("An opportunistic session refresh had no definitive answer; the cached session is kept.");
+            return false;
+        }
+
+        Task<Resolution> settled = Task.FromResult(resolution);
+        lock (gate)
+        {
+            Interlocked.Increment(ref definitiveVersion);
+            current = settled;
+        }
+
+        NotifyAuthenticationStateChanged(Task.FromResult(resolution.State));
+        return true;
     }
 
     private async Task<Resolution> ResolveAsync()
