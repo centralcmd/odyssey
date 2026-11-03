@@ -157,6 +157,41 @@ public class ControlContrastTests
     }
 
     /// <summary>
+    /// The page header's Search region recesses its controls to the Background fill inside the
+    /// Surface card and outlines them with the softer <c>--control-border-quiet</c>. Softer is
+    /// only licensed down to 3:1, against the fill inside the edge and the card outside it.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_quiet_control_border_still_clears_three_to_one_on_both_sides_of_the_edge(Theme theme)
+    {
+        var border = Resolve(AppCss, Declarations(AppCss, "--control-border-quiet")[theme]);
+        var palette = Palette(theme);
+
+        AssertRatio(border, Hex(palette.Surface), NonTextContrastMinimum, $"--control-border-quiet on Surface ({theme})");
+        AssertRatio(border, Hex(palette.Background), NonTextContrastMinimum, $"--control-border-quiet on Background ({theme})");
+        Assert.NotEqual(Hex(palette.TextSecondary), border, StringComparer.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// MudBlazor.min.css loads after the client's sheets and paints the resting outlined-input
+    /// border with the sub-3:1 hairline under <c>.mud-input.mud-input-outlined .mud-input-outlined-border</c>.
+    /// The client's <c>--control-border</c> rule must out-rank that selector or it never applies —
+    /// which it silently didn't, until the search field was seen beside the filter triggers. Its
+    /// border colour is pinned by <see cref="A_named_control_boundary_uses_the_control_border"/>; this
+    /// pins that the selector names the border class twice, the extra class being what out-ranks.
+    /// </summary>
+    [Fact]
+    public void The_outlined_input_border_rule_outranks_MudBlazors_resting_rule()
+    {
+        Assert.Contains(Rules(File.ReadAllText(ComponentsCss)), r =>
+            r.Selector == ".mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border");
+        Assert.DoesNotContain(Rules(File.ReadAllText(ComponentsCss)), r =>
+            r.Selector == ".mud-input.mud-input-outlined .mud-input-outlined-border" && r.Body.Contains("border-color", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// A control's hover steps its border to <c>--mud-palette-text-secondary</c>. If the resting
     /// border were the same colour the hover affordance would silently disappear — which is why the
     /// dark theme uses ink-400 rather than ink-300.
@@ -233,7 +268,7 @@ public class ControlContrastTests
     [InlineData("odyssey-components.css", ".odc-input")]
     [InlineData("odyssey-components.css", ".odc-select-trigger")]
     [InlineData("odyssey-components.css", ".odc-ms-trigger")]
-    [InlineData("odyssey-components.css", ".mud-input.mud-input-outlined .mud-input-outlined-border")]
+    [InlineData("odyssey-components.css", ".mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border")]
     [InlineData("app.css", ".aam-type-trigger")]
     public void A_named_control_boundary_uses_the_control_border(string file, string selector)
     {

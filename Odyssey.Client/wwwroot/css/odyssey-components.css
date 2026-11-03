@@ -803,7 +803,12 @@
 }
 .mud-input-outlined-border { top: 0; background: transparent; }
 .mud-input-outlined-border legend { display: none; }
-.mud-input.mud-input-outlined .mud-input-outlined-border {
+/* The border class is doubled on purpose. MudBlazor.min.css loads AFTER this file and
+   declares the resting colour (--mud-palette-lines-inputs, ~1.9:1) under this exact
+   selector, so at equal specificity it won and no Mud outlined input ever showed
+   --control-border. One more class beats that resting rule only: MudBlazor's hover,
+   focus and disabled rules are as specific or more and load later, so they still win. */
+.mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border {
   border-color: var(--control-border);
   border-radius: var(--radius-sm);
 }
