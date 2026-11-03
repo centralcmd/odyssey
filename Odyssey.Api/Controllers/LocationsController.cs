@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.WebUtilities;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Geocoding;
+using Odyssey.Core.Weather;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
@@ -92,6 +93,34 @@ public sealed class LocationsController : ControllerBase
 
         var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
         return updated is null ? this.NotFoundProblem($"Location ID {id} not found.") : Ok(updated);
+    }
+
+    /// <summary>
+    /// Sets or clears the place's weather point (issue #387 §5 endpoint 10) — the only write of the link. Needs
+    /// <c>locations.update</c> and <c>weather.read</c> (the link names a point). Idempotent. A merged-away place is a
+    /// <c>422</c> keyed <c>id</c>; an unknown, purging or just-deleted point a <c>422</c> keyed <c>weatherPointId</c>.
+    /// </summary>
+    [HttpPut("{id:guid}/weather-point", Name = "PutLocationWeatherPoint")]
+    [Authorize(Policy = PermissionClaims.LocationsUpdate)]
+    [Authorize(Policy = PermissionClaims.WeatherRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(LocationWeatherPointLink))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Link a location to a weather point, or clear the link with null.")]
+    public async Task<IActionResult> PutWeatherPoint(
+        [FromRoute(Name = "id")] Guid id,
+        [FromBody] SetLocationWeatherPoint request,
+        [FromServices] WeatherLinkService links,
+        CancellationToken cancellationToken = default)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var link = await links.SetAsync(id, request.WeatherPointId, userId, cancellationToken);
+        return link is null ? this.NotFoundProblem($"Location ID {id} not found.") : Ok(link);
     }
 
     /// <summary>

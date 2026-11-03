@@ -19,6 +19,7 @@ public static class LocationClaimsPrincipal
         PropertiesRead = user.HasPermission(PermissionClaims.PropertiesRead),
         CalendarRead = user.HasPermission(PermissionClaims.CalendarRead),
         JournalRead = user.HasPermission(PermissionClaims.JournalRead),
+        WeatherRead = user.HasPermission(PermissionClaims.WeatherRead),
         ContactsUpdate = user.HasPermission(PermissionClaims.ContactsUpdate),
         PropertiesUpdate = user.HasPermission(PermissionClaims.PropertiesUpdate),
         CalendarUpdate = user.HasPermission(PermissionClaims.CalendarUpdate),

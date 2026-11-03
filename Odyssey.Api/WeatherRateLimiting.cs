@@ -1,9 +1,9 @@
 namespace Odyssey.Api;
 
 /// <summary>
-/// The two per-user limits on weather (issue #348 §5). Reads can trigger an on-demand MET request for an
-/// untracked location, and the Admin's apply, refresh and purge each start outbound or bulk work, so both
-/// are bounded. Deploy-time configuration for the reason <see cref="ProfileImageRateLimiting"/> gives.
+/// The two per-user limits on weather (issue #348 §5; issue #387). Reads can trigger an on-demand MET request
+/// for an untracked point, and the Admin's refresh, history purge and point delete each start outbound or bulk
+/// work, so both are bounded. Deploy-time configuration for the reason <see cref="ProfileImageRateLimiting"/> gives.
 /// </summary>
 public static class WeatherRateLimiting
 {
@@ -32,7 +32,7 @@ public sealed class WeatherReadRateLimitOptions()
     public const string SectionName = "RateLimiting:WeatherRead";
 }
 
-/// <summary>Bound from <c>RateLimiting:WeatherRefresh</c>: 6 apply/refresh/purge calls per user per 5 minutes.</summary>
+/// <summary>Bound from <c>RateLimiting:WeatherRefresh</c>: 6 refresh/purge/delete calls per user per 5 minutes.</summary>
 public sealed class WeatherRefreshRateLimitOptions()
     : PerUserFixedWindowRateLimitOptions(permitLimit: 6, windowSeconds: 300)
 {

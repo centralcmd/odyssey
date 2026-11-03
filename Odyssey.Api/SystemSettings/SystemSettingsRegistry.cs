@@ -850,33 +850,33 @@ internal static class SystemSettingsRegistry
         },
         new IntSetting
         {
-            Key = SystemSettingsKeys.WeatherMaxTrackedLocations,
-            Min = SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
-            Max = SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
-            FieldName = nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
+            Key = SystemSettingsKeys.WeatherMaxTrackedPoints,
+            Min = SystemSettingsBounds.WeatherMaxTrackedPointsMin,
+            Max = SystemSettingsBounds.WeatherMaxTrackedPointsMax,
+            FieldName = nameof(SystemSettingsUpdate.WeatherMaxTrackedPoints),
             RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.WeatherMaxTrackedLocations),
+            DefaultValue = Int(SystemSettingsDefaults.WeatherMaxTrackedPoints),
             CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
-            Read = r => r.WeatherMaxTrackedLocations,
-            Write = (dto, v) => dto.WeatherMaxTrackedLocations = v,
+            Read = r => r.WeatherMaxTrackedPoints,
+            Write = (dto, v) => dto.WeatherMaxTrackedPoints = v,
         },
-        // GUID shape only here. Selectability (weather on, not archived, not purging) is a question about
-        // other tables, so SystemSettingsService asks IWeatherLocationRules inside the write's
+        // GUID shape only here. Selectability (a point with forecast on, not purging) is a question about
+        // other tables, so SystemSettingsService asks IWeatherPointRules inside the write's
         // transaction — the one key that takes that path, which a guard test pins.
         new StringSetting
         {
-            Key = SystemSettingsKeys.WeatherDefaultLocationId,
-            FieldName = nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
+            Key = SystemSettingsKeys.WeatherDefaultPointId,
+            FieldName = nameof(SystemSettingsUpdate.WeatherDefaultPointId),
             RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = SystemSettingsDefaults.WeatherDefaultLocationId,
+            DefaultValue = SystemSettingsDefaults.WeatherDefaultPointId,
             CacheKeyToEvict = WeatherSettingsLookup.CacheKey,
             MaxLength = 36,
             AllowEmpty = true,
-            Validator = WeatherRules.ValidateDefaultLocationId,
-            ReadValidator = WeatherRules.ValidateDefaultLocationId,
+            Validator = WeatherRules.ValidateDefaultPointId,
+            ReadValidator = WeatherRules.ValidateDefaultPointId,
             Canonicalize = v => Guid.TryParse(v, out var id) ? id.ToString("D") : v,
-            Read = r => r.WeatherDefaultLocationId,
-            Write = (dto, v) => dto.WeatherDefaultLocationId = v,
+            Read = r => r.WeatherDefaultPointId,
+            Write = (dto, v) => dto.WeatherDefaultPointId = v,
         },
 
         // ── Exchange-rate sync (issue #349 §8) ────────────────────────────────────────────────────
