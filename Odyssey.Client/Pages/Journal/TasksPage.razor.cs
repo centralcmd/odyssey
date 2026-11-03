@@ -38,6 +38,7 @@ public partial class TasksPage
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "tasks-page";
+    private bool _overviewOpen = true;
     private bool _searchOpen = true;
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _tagFilter = [];
@@ -75,6 +76,20 @@ public partial class TasksPage
 
     // ── Computed ─────────────────────────────────────────────────────────────────
     private int Count(JournalTaskStatus s) => _allTasks.Count(t => t.Status == s);
+    private int OpenCount => Count(JournalTaskStatus.Backlog) + Count(JournalTaskStatus.Doing);
+
+    // "By tag" over every task not archived — the same unfiltered basis as the sub-line's counts.
+    private IReadOnlyList<OdsBreakdownRow> TagRows =>
+        [.. _tags.Where(t => t.Archived is null)
+            .Select(t => new OdsBreakdownRow
+            {
+                Key = t.JournalTaskTagId,
+                Icon = JournalTagChips.GlyphFor(t.Icon),
+                IconColor = "var(--tag-text)",
+                Label = t.Name,
+                Count = _allTasks.Count(task => task.Status != JournalTaskStatus.Archived && task.TagIds.Contains(t.JournalTaskTagId)),
+            })
+            .Where(r => (int)r.Count > 0)];
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _tagFilter.Count > 0 || _statusFilter.Count > 0;
     private bool _showArchived => _statusFilter.Count == 0 || _statusFilter.Contains(nameof(JournalTaskStatus.Archived));
 
@@ -195,6 +210,7 @@ public partial class TasksPage
 
     private void ApplyPageState(TasksPageState state)
     {
+        _overviewOpen = state.OverviewOpen;
         _searchOpen = state.SearchOpen;
         _search = state.Search ?? string.Empty;
         _tagFilter = state.TagFilter ?? [];
@@ -205,6 +221,7 @@ public partial class TasksPage
 
     private TasksPageState BuildPageState() => new()
     {
+        OverviewOpen = _overviewOpen,
         SearchOpen = _searchOpen,
         Search = _search,
         TagFilter = [.. _tagFilter],
@@ -216,6 +233,7 @@ public partial class TasksPage
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
+    private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); StateHasChanged(); }
     private void OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; PersistPageState(); StateHasChanged(); }
@@ -234,6 +252,7 @@ public partial class TasksPage
 
     private sealed class TasksPageState
     {
+        public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> TagFilter { get; set; } = [];

@@ -3347,6 +3347,9 @@ tr:focus-within > .odc-rowactions.reveal,
    fitting — clipping numbers. Query the region instead. Shared by the Journal (.je-*) and Photos
    (.pl-*) overviews; moved here from their scoped stylesheets so one rule governs both. */
 .ph-region:has(> .je-overview), .ph-region:has(> .pl-overview) { container: ph-overview / inline-size; }
+/* An Overview stat tile sits on the panel's darker ground, like the BreakdownTile beside it —
+   the elevated surface card is for record bodies, not the header's summary row. */
+.je-stat-tiles > .odc-infotile, .pl-stat-tiles > .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .je-overview, .pl-overview { display: grid; grid-template-columns: minmax(220px, 0.8fr) 1.4fr; gap: var(--space-4); align-items: start; }
 .je-stat-tiles, .pl-stat-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 @container ph-overview (max-width: 820px) { .je-overview, .pl-overview { grid-template-columns: 1fr; } }

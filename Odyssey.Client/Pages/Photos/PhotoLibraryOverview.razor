@@ -70,7 +70,7 @@
                 .Where(x => x.Count > 0)
                 .Select(x => new OdsBreakdownRow
                 {
-                    Key = x.t.PhotoTagId, Icon = "sell", IconColor = "var(--mud-palette-text-secondary)", Label = x.t.Name, Count = x.Count,
+                    Key = x.t.PhotoTagId, Icon = JournalTagChips.GlyphFor(x.t.Icon), IconColor = "var(--mud-palette-text-secondary)", Label = x.t.Name, Count = x.Count,
                 })];
         }
     }

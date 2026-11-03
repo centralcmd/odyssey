@@ -124,7 +124,7 @@ public partial class JournalCard
             .Select(t => new OdsBreakdownRow
             {
                 Key = t.JournalTagId,
-                Icon = "label",
+                Icon = JournalTagChips.GlyphFor(t.Icon),
                 IconColor = "var(--tag-text)",
                 Label = t.Name,
                 Count = _entries.Count(e => e.TagIds.Contains(t.JournalTagId)),
