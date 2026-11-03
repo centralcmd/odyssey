@@ -237,7 +237,6 @@ public class WeatherCompositionTests
     {
         var km = WeatherDistance.Km((decimal)lat1, (decimal)lon1, (decimal)lat2, (decimal)lon2);
         Assert.Equal(expected, km);
-        Assert.IsType<int>(km);
         Assert.Null(WeatherDistance.KmOrNull(null, 10.7m, 59.9m, 10.7m));
     }
 }

@@ -132,10 +132,13 @@ public partial class LocationsPage
     /// <summary>The credits line's sources — recomputed when the rows change, not on every render.</summary>
     private IReadOnlyList<LocationAttribution> Credits { get; set; } = [];
 
+    /// <summary>The interactivity check, as a seam for bUnit.</summary>
+    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();

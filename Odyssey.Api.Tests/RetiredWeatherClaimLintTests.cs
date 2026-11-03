@@ -26,9 +26,13 @@ public class RetiredWeatherClaimLintTests
         Assert.NotEmpty(files);
 
         var hits = files
-            .SelectMany(path => AuthorizationPolicyTests.RetiredWeatherClaimValues
-                .Where(value => File.ReadAllText(path).Contains(value, StringComparison.Ordinal))
-                .Select(value => $"{Path.GetRelativePath(root, path)}: {value}"))
+            .SelectMany(path =>
+            {
+                var text = File.ReadAllText(path);
+                return AuthorizationPolicyTests.RetiredWeatherClaimValues
+                    .Where(value => text.Contains(value, StringComparison.Ordinal))
+                    .Select(value => $"{Path.GetRelativePath(root, path)}: {value}");
+            })
             .ToList();
 
         Assert.True(hits.Count == 0, "Retired weather claim values still present:\n" + string.Join("\n", hits));

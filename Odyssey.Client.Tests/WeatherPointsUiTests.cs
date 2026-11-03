@@ -39,7 +39,11 @@ public class WeatherPointsUiTests : IDisposable
         PermissionClaims.SystemSettingsRead,
     ];
 
-    public void Dispose() => WeatherPointsPage.InteractiveCheck = OperatingSystem.IsBrowser;
+    public void Dispose()
+    {
+        WeatherPointsPage.InteractiveCheck = OperatingSystem.IsBrowser;
+        LocationsPage.InteractiveCheck = OperatingSystem.IsBrowser;
+    }
 
     // ── Navigation and the page gate (AC 1, 22) ───────────────────────────────────────────────────
 
@@ -273,6 +277,47 @@ public class WeatherPointsUiTests : IDisposable
 
         // The user's input is kept.
         Assert.Equal("Oslo", cut.FindComponent<OdsTextInputField>().Instance.Value);
+    }
+
+    [Fact]
+    public async Task A_place_moved_while_creating_warns_rereads_the_source_and_sends_the_new_fingerprint()
+    {
+        var weather = Weather();
+        var fingerprints = new List<string?>();
+        weather.Setup(w => w.CreatePointAsync(It.IsAny<NewWeatherPoint>(), It.IsAny<CancellationToken>()))
+            .Callback((NewWeatherPoint r, CancellationToken _) => fingerprints.Add(r.ExpectedLocationFingerprint))
+            .ReturnsAsync(() => fingerprints.Count == 1
+                ? ApiResult<ExistingWeatherPoint>.Failure(HttpStatusCode.Conflict, new ApiProblem { Status = 409, Code = "location-changed" })
+                : Ok(Point("Storgata 1", OsloId)));
+        var place = Place() with { WeatherFingerprint = "v1:before" };
+        var moved = Place() with { Latitude = 60.1m, Longitude = 11.2m, WeatherFingerprint = "v1:after" };
+        var locations = UnifiedLocationsTestKit.Locations(place);
+        // The place moves on the server between the pick and the first create.
+        locations.Setup(a => a.GetAsync(StorgataId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Ok(fingerprints.Count == 0 ? place : moved));
+        await using var ctx = PageContext(weather, AdminClaims, locations);
+        var created = false;
+        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d
+            .Add(x => x.Open, true).Add(x => x.CanReadLocations, true).Add(x => x.LocationDebounceMs, 0)
+            .Add(x => x.OnCreated, EventCallback.Factory.Create<(ExistingWeatherPoint, bool)>(new object(), _ => created = true))));
+        cut.WaitForAssertion(() => Assert.Single(cut.FindComponents<OdsLocationSelect>()));
+        await cut.InvokeAsync(() => cut.FindComponent<OdsLocationSelect>().Instance.ValueChanged.InvokeAsync(LocationPick.Existing(StorgataId)));
+        cut.WaitForAssertion(() => Assert.Contains("59.913, 10.739", cut.Markup));
+
+        await Press(cut, "Create weather point");
+
+        // The warning alert sits above the position card, the card now shows where the place is, and nothing closed.
+        const string warning = "The location’s position changed while this dialog was open. Check the position below, then create the weather point again.";
+        cut.WaitForAssertion(() => Assert.Contains(warning, cut.Markup));
+        Assert.Contains(warning, cut.FindComponents<OdsAlert>().Single(a => a.Instance.Severity == MudBlazor.Severity.Warning).Markup);
+        Assert.Contains("60.100, 11.200", cut.Markup);
+        Assert.DoesNotContain("59.913, 10.739", cut.Markup);
+        Assert.False(created);
+
+        // Re-reviewed: the next create carries the fingerprint of the position the user has now seen.
+        await Press(cut, "Create weather point");
+        cut.WaitForAssertion(() => Assert.True(created));
+        Assert.Equal(["v1:before", "v1:after"], fingerprints);
     }
 
     [Fact]
@@ -659,6 +704,189 @@ public class WeatherPointsUiTests : IDisposable
         Assert.Equal("status", live.Find(".odc-toast").GetAttribute("role"));
     }
 
+    // ── Focus (AC 3, 26, 29; §6.4) ──────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Focus_lands_on_the_new_row_after_create()
+    {
+        var created = Point("Oslo", OsloId);
+        var weather = Weather(Point("Bergen", BergenId), created);
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointsPage>());
+        page.WaitForAssertion(() => Assert.Equal(2, page.FindAll(".odc-record").Count));
+        await page.InvokeAsync(() => page.FindAll("button").First(b => b.TextContent.Contains("New weather point", StringComparison.Ordinal)).Click());
+        var dialog = page.FindComponent<WeatherPointDialog>();
+
+        await page.InvokeAsync(() => dialog.Instance.OnCreated.InvokeAsync((created, false)));
+
+        page.WaitForAssertion(() => Assert.Equal([WeatherPointsPage.CardId(OsloId)], LastFocusChain(ctx)));
+        Assert.Equal("true", page.Find($"#{WeatherPointsPage.CardId(OsloId)} button[aria-expanded]").GetAttribute("aria-expanded"));
+        // The new row's Linked locations section loads as it mounts; its loading and empty lines must not replace this.
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".wx-section"),
+            e => e.TextContent.Contains("No location uses this weather point yet", StringComparison.Ordinal)));
+        Assert.Equal("Weather point Oslo created.", PageAnnouncement(page));
+    }
+
+    [Fact]
+    public async Task A_deep_link_focuses_the_record_header_and_an_unknown_one_the_h1()
+    {
+        await using (var ctx = PageContext(Weather(Point("Bergen", BergenId), Point("Oslo", OsloId)), AdminClaims))
+        {
+            ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"weather-points?open={OsloId}");
+            var page = ctx.Render<WeatherPointsPage>();
+
+            page.WaitForAssertion(() => Assert.Equal([WeatherPointsPage.CardId(OsloId)], LastFocusChain(ctx)));
+            Assert.Equal("true", page.Find($"#{WeatherPointsPage.CardId(OsloId)} button[aria-expanded]").GetAttribute("aria-expanded"));
+            Assert.DoesNotContain("Showing one weather point", page.Markup);
+        }
+
+        var unknown = Weather(Point("Oslo", OsloId));
+        unknown.Setup(w => w.PointAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingWeatherPoint>.Failure(HttpStatusCode.NotFound, new ApiProblem { Status = 404 }));
+        await using (var ctx = PageContext(unknown, AdminClaims))
+        {
+            ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"weather-points?open={Guid.NewGuid()}");
+            var page = ctx.Render<WeatherPointsPage>();
+
+            // An empty chain is the page h1.
+            page.WaitForAssertion(() => Assert.Equal([], LastFocusChain(ctx)));
+            Assert.Contains("That weather point no longer exists.", page.Markup);
+        }
+    }
+
+    [Theory]
+    [InlineData(0, 1)]
+    [InlineData(1, 0)]
+    [InlineData(0, null)]
+    public async Task Deleting_a_point_focuses_the_next_rows_menu_else_the_previous_else_the_h1(int deleted, int? focused)
+    {
+        var rows = focused is null
+            ? new[] { Point("Oslo", OsloId) with { ForecastEnabled = false, HistoryEnabled = false } }
+            : [Point("Oslo", OsloId) with { ForecastEnabled = false, HistoryEnabled = false }, Point("Bergen", BergenId) with { ForecastEnabled = false, HistoryEnabled = false }];
+        var weather = Weather(rows);
+        weather.Setup(w => w.DeletePointAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointsPage>());
+        page.WaitForAssertion(() => Assert.Equal(rows.Length, page.FindAll(".odc-record").Count));
+        var target = rows[deleted];
+
+        await page.InvokeAsync(() => MenuItem(page, $"Delete weather point {target.Name}").OnClick.InvokeAsync());
+        await page.InvokeAsync(() => ConfirmField(page, target.Name).ValueChanged.InvokeAsync(target.Name));
+        await page.InvokeAsync(() => page.Find(".wx-confirm").Click());
+
+        var expected = focused is { } index ? new[] { WeatherPointsPage.MenuId(rows[index].WeatherPointId) } : [];
+        page.WaitForAssertion(() => Assert.Equal(expected, LastFocusChain(ctx)));
+        Assert.Contains($"Weather point {target.Name} deleted.", page.Markup);
+    }
+
+    [Fact]
+    public async Task Deleting_history_returns_focus_to_the_points_own_menu()
+    {
+        var point = Point("Oslo", OsloId) with { HistoryEnabled = false };
+        var weather = Weather(point, Point("Bergen", BergenId));
+        weather.Setup(w => w.PurgePointHistoryAsync(OsloId, It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointsPage>());
+        page.WaitForAssertion(() => Assert.Equal(2, page.FindAll(".odc-record").Count));
+
+        await page.InvokeAsync(() => MenuItem(page, "Delete weather history of Oslo").OnClick.InvokeAsync());
+        await page.InvokeAsync(() => ConfirmField(page, "Oslo").ValueChanged.InvokeAsync("Oslo"));
+        await page.InvokeAsync(() => page.Find(".wx-confirm").Click());
+
+        page.WaitForAssertion(() => Assert.Equal([WeatherPointsPage.MenuId(OsloId)], LastFocusChain(ctx)));
+    }
+
+    // ── The Locations page: link, unlink and its deep link (AC 13, 26, 29) ─────────────────────────────
+
+    [Fact]
+    public async Task Unlinking_confirms_sends_null_announces_and_returns_focus_to_the_rows_menu()
+    {
+        var place = Linked(Place(), OsloId);
+        var locations = LocationsFor(place);
+        Guid? sent = OsloId;
+        locations.Setup(a => a.SetWeatherPointAsync(StorgataId, It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, Guid? id, CancellationToken _) => sent = id)
+            .ReturnsAsync(Ok(new LocationWeatherPointLink { LocationId = StorgataId }));
+        await using var ctx = LocationsPageContext(locations);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationsPage>());
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        await page.InvokeAsync(() => MenuItem(page, "Unlink weather point from Storgata 1").OnClick.InvokeAsync());
+
+        var dialog = page.FindComponent<WeatherPointUnlinkDialog>();
+        Assert.Contains("Unlink weather point?", page.Markup);
+        Assert.Contains("Storgata 1 will stop showing weather from Oslo. Nothing is deleted", page.Markup);
+        Assert.Equal(LocationsPage.MenuId(StorgataId), dialog.FindComponent<OdsModal>().Instance.ReturnFocusToId);
+        locations.Verify(a => a.SetWeatherPointAsync(It.IsAny<Guid>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        await page.InvokeAsync(() => page.FindAll("button").Last(b => b.TextContent.Trim().EndsWith("Unlink", StringComparison.Ordinal)).Click());
+
+        page.WaitForAssertion(() => Assert.Contains("Weather point unlinked from Storgata 1.", page.Markup));
+        Assert.Null(sent);
+        locations.Verify(a => a.SetWeatherPointAsync(StorgataId, null, It.IsAny<CancellationToken>()), Times.Once);
+        page.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations, i =>
+            i.Identifier == "odsRestoreFocusOwner" && i.Arguments.Count == 1 && Equals(i.Arguments[0], LocationsPage.MenuId(StorgataId))));
+    }
+
+    [Fact]
+    public async Task Closing_the_link_dialog_returns_focus_to_the_rows_menu()
+    {
+        var weather = Weather();
+        weather.Setup(w => w.OptionsAsync(StorgataId, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherPointOptions
+        {
+            Points = [new() { WeatherPointId = OsloId, Name = "Oslo", ForecastEnabled = true, HistoryEnabled = true, DistanceKm = 2 }],
+        }));
+        // No coordinates, so the record a link expands draws no map: bUnit has no WebGL, and the map's failure
+        // would speak through the same page region.
+        var locations = LocationsFor(Place() with { Latitude = null, Longitude = null, HasCoordinates = false });
+        locations.Setup(a => a.SetWeatherPointAsync(StorgataId, OsloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new LocationWeatherPointLink
+            {
+                LocationId = StorgataId,
+                WeatherPoint = new WeatherPointRef { WeatherPointId = OsloId, Name = "Oslo" },
+                DistanceKm = 2,
+            }));
+        await using var ctx = LocationsPageContext(locations, weather);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationsPage>());
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        await page.InvokeAsync(() => MenuItem(page, "Link a weather point to Storgata 1").OnClick.InvokeAsync());
+        var dialog = page.FindComponent<WeatherPointLinkDialog>();
+        Assert.Equal(LocationsPage.MenuId(StorgataId), dialog.FindComponent<OdsModal>().Instance.ReturnFocusToId);
+        var picker = page.FindComponent<OdsCombobox>();
+        page.WaitForAssertion(() => Assert.Single(picker.Instance.Options));
+        await page.InvokeAsync(() => picker.Instance.ValueChanged.InvokeAsync(OsloId.ToString("D")));
+
+        await page.InvokeAsync(() => page.FindAll("button").Last(b => b.TextContent.Trim().EndsWith("Link", StringComparison.Ordinal)).Click());
+
+        page.WaitForAssertion(() => Assert.Equal("Storgata 1 now uses weather from Oslo (2 km).",
+            page.FindComponent<LocationsPage>().FindComponents<OdsLiveAnnouncer>()[0].Instance.Message));
+        page.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations, i =>
+            i.Identifier == "odsRestoreFocusOwner" && i.Arguments.Count == 1 && Equals(i.Arguments[0], LocationsPage.MenuId(StorgataId))));
+    }
+
+    [Fact]
+    public async Task A_locations_deep_link_focuses_the_record_header_and_an_unknown_one_the_h1()
+    {
+        await using (var ctx = LocationsPageContext(LocationsFor(Place())))
+        {
+            ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"locations?open={StorgataId}");
+            var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationsPage>());
+
+            page.WaitForAssertion(() => Assert.Equal([$"loc-{StorgataId}"], LastFocusChain(ctx)));
+            Assert.Equal("true", page.Find($"#loc-{StorgataId} button[aria-expanded]").GetAttribute("aria-expanded"));
+        }
+
+        await using (var ctx = LocationsPageContext(LocationsFor(Place())))
+        {
+            ctx.Services.GetRequiredService<NavigationManager>().NavigateTo($"locations?open={Guid.NewGuid()}");
+            var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationsPage>());
+
+            page.WaitForAssertion(() => Assert.Equal([], LastFocusChain(ctx)));
+            Assert.Contains("That place no longer exists.", page.Markup);
+        }
+    }
+
     // ── Source lints (AC 19, 24) ────────────────────────────────────────────────────────────────────
 
     [Fact]
@@ -759,6 +987,42 @@ public class WeatherPointsUiTests : IDisposable
         ctx.Services.AddSingleton<IWeatherPointOptionsCache>(new WeatherPointOptionsCache(weather.Object, auth));
         ctx.Services.AddSingleton<IWeatherClaimsRefresher>(new WeatherClaimsRefresher(auth, () => Task.FromResult(false)));
         WeatherPointsPage.InteractiveCheck = static () => true;
+        return ctx;
+    }
+
+    /// <summary>The ids the page last asked <c>odsFocusChainOrHeading</c> to try; an empty chain is the page h1.</summary>
+    private static string[] LastFocusChain(BunitContext ctx) =>
+        ctx.JSInterop.Invocations.LastOrDefault(i => i.Identifier == "odsFocusChainOrHeading").Arguments?[0] as string[] ?? ["(no focus call)"];
+
+    /// <summary>A row-menu item, by the accessible name that says which record it acts on.</summary>
+    /// <summary>What the page's own polite region says: the first announcer in its tree, ahead of every section's and dialog's.</summary>
+    private static string? PageAnnouncement(IRenderedComponent<ProvidersHost> page) =>
+        page.FindComponent<WeatherPointsPage>().FindComponents<OdsLiveAnnouncer>()[0].Instance.Message;
+
+    /// <summary>The delete dialog's typed confirmation — not the page's search field, which is a text input too.</summary>
+    private static OdsTextInputField ConfirmField(IRenderedComponent<ProvidersHost> page, string name) =>
+        page.FindComponents<OdsTextInputField>().Single(f => f.Instance.Label == $"Type {name} to confirm").Instance;
+
+    private static OdsMenuItem MenuItem<TPage>(IRenderedComponent<TPage> page, string ariaLabel) where TPage : class, IComponent =>
+        page.FindComponents<OdsMenu>().SelectMany(m => m.Instance.Items).Single(i => i.AriaLabel == ariaLabel);
+
+    private static Mock<ILocationsApiClient> LocationsFor(params ExistingLocation[] places)
+    {
+        var locations = UnifiedLocationsTestKit.Locations(places);
+        locations.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(places.ToList()));
+        return locations;
+    }
+
+    /// <summary>The Locations page as a User holding the link claims (<c>locations.update</c> + <c>weather.read</c>).</summary>
+    private static BunitContext LocationsPageContext(Mock<ILocationsApiClient> locations, Mock<IWeatherApiClient>? weather = null)
+    {
+        var ctx = PageContext(weather ?? Weather(), [PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate, PermissionClaims.WeatherRead], locations);
+        ctx.Services.AddSingleton(new Mock<IClipboardService>().Object);
+        ctx.Services.AddSingleton(new Mock<IMapStylesCache>().Object);
+        ctx.Services.AddSingleton(Mock.Of<Odyssey.Client.Theme.IUserPreferenceService>(p => p.Current == new Odyssey.Client.Theme.UserPreferencesPage(true, "NOK", "NOK")));
+        LocationsPage.InteractiveCheck = static () => true;
         return ctx;
     }
 

@@ -251,6 +251,7 @@ public partial class WeatherPointsPage
 
     private void ToggleExpand(Guid id)
     {
+        _quietLinkedId = null;
         if (_expandedId is { } open && open != id)
             _moveNotes.Remove(open);
         if (_expandedId == id)
@@ -302,6 +303,20 @@ public partial class WeatherPointsPage
     {
         _announce = message;
         StateHasChanged();
+    }
+
+    /// <summary>
+    /// The row a create just expanded: its Linked locations section loads as it mounts, and its <i>Loading…</i> and
+    /// <i>No location uses … yet</i> would replace the create announcement in the one polite region. A new point has
+    /// no linked places, so both are dropped until the row is toggled; a failure still speaks through the section's
+    /// own <c>role="alert"</c>.
+    /// </summary>
+    private Guid? _quietLinkedId;
+
+    private void AnnounceLinked(Guid id, string message)
+    {
+        if (_quietLinkedId != id)
+            Announce(message);
     }
 
     /// <summary>A 403 from a point endpoint asks the bounded claims refresher, then redraws from the new claims.</summary>
@@ -436,6 +451,7 @@ public partial class WeatherPointsPage
         OptionsCache.Invalidate();
         await LoadAsync();
         _pinned = null;
+        _quietLinkedId = created.Point.WeatherPointId;
         _expandedId = created.Point.WeatherPointId;
         _revealId = created.Point.WeatherPointId;
         _flashId = created.Point.WeatherPointId;

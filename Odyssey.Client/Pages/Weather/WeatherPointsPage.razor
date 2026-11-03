@@ -147,7 +147,7 @@
                 @if (_canReadLocations)
                 {
                     <WeatherPointLinkedSection @key="p.WeatherPointId" WeatherPointId="p.WeatherPointId" PointName="@p.Name"
-                                               OnAnnounce="Announce" OnStatus="OnStatusAsync" />
+                                               OnAnnounce="@((string m) => AnnounceLinked(p.WeatherPointId, m))" OnStatus="OnStatusAsync" />
                 }
                 @if (!p.PurgeInProgress)
                 {
