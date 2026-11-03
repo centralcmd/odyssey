@@ -48,6 +48,18 @@ public class LocationVisualsTests
         Assert.All(LocationVisuals.TimeZoneIds, id => Assert.True(id == "UTC" || id.Contains('/'), id));
     }
 
+    [Theory]
+    [InlineData("Europe/Oslo")]
+    [InlineData("Europe/Stockholm")]
+    [InlineData("Europe/Copenhagen")]
+    [InlineData("UTC")]
+    public void The_catalogue_carries_zones_a_host_enumeration_can_omit(string id)
+    {
+        // Europe/Oslo is merged into Europe/Berlin in zone1970.tab, so a host-built list can drop it.
+        Assert.Contains(id, IanaZoneCatalogue.Ids);
+        Assert.Contains(id, LocationVisuals.TimeZoneIds);
+    }
+
     [Fact]
     public void Credits_name_each_source_among_the_rows_once_and_none_for_manual_rows()
     {

@@ -537,8 +537,8 @@ public partial class WeatherPointsPage
                 HttpStatusCode.TooManyRequests => "You’ve refreshed weather several times in the last few minutes. Wait a moment, then try again.",
                 _ => result.Problem?.Message ?? $"The forecast for {p.Name} couldn’t be refreshed.",
             };
+            // The snackbar is itself a live region; announcing too would read the message twice.
             Snackbar.Add(message, Severity.Warning);
-            Announce(message);
         }
         finally
         {

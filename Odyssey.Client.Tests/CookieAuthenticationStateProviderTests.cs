@@ -355,6 +355,32 @@ public class CookieAuthenticationStateProviderTests
     }
 
     [Fact]
+    public async Task TryRefreshAsync_SupersededByARefreshWhileInFlight_DiscardsItsOlderAnswer()
+    {
+        var api = new ScriptedApi();
+        var provider = Provider(api);
+        await provider.GetAuthenticationStateAsync();
+        var hold = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        api.HoldNextInfo = hold;
+
+        var probe = provider.TryRefreshAsync();
+        api.ClaimsBody = """[{"type":"permission","value":"weather.points.read"}]""";
+        await provider.RefreshAsync();
+        var refreshed = await provider.GetAuthenticationStateAsync();
+        // The held probe now answers "signed out" — older than the sign-in that already landed.
+        api.InfoSequence.Enqueue(HttpStatusCode.Unauthorized);
+        var announced = 0;
+        provider.AuthenticationStateChanged += _ => announced++;
+        hold.SetResult();
+
+        Assert.False(await probe);
+        var after = await provider.GetAuthenticationStateAsync();
+        Assert.Same(refreshed, after);
+        Assert.Contains(after.User.Claims, c => c.Value == "weather.points.read");
+        Assert.Equal(0, announced);
+    }
+
+    [Fact]
     public async Task TryRefreshAsync_ANetworkFailure_KeepsTheCachedState_AndAnnouncesNothing()
     {
         var api = new ScriptedApi();
@@ -433,6 +459,9 @@ public class CookieAuthenticationStateProviderTests
         public HttpStatusCode Claims { get; set; } = HttpStatusCode.OK;
         public int? RetryAfterSeconds { get; set; }
         public bool ThrowNext { get; set; }
+        /// <summary>When set, the next <c>/manage/info</c> call waits on it (once) before answering.</summary>
+        public TaskCompletionSource? HoldNextInfo { get => holdNextInfo; set => holdNextInfo = value; }
+        private TaskCompletionSource? holdNextInfo;
         public string ClaimsBody { get; set; } = ClaimsJson;
         public int InfoCalls;
         public int ClaimsCalls;
@@ -444,6 +473,11 @@ public class CookieAuthenticationStateProviderTests
             {
                 case "/manage/info":
                     Interlocked.Increment(ref InfoCalls);
+                    if (Interlocked.Exchange(ref holdNextInfo, null) is { } hold)
+                    {
+                        await hold.Task;
+                    }
+
                     if (ThrowNext)
                     {
                         // Not one of the transport failures GetSessionAsync converts to Unavailable.

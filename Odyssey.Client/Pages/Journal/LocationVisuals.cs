@@ -152,13 +152,14 @@ public static partial class LocationVisuals
     private static IReadOnlyList<string>? zoneIds;
 
     /// <summary>
-    /// The IANA ids this browser knows, for the picker. Windows-style ids and bare abbreviations are left
-    /// out: the server accepts only an IANA id with a region, or <c>UTC</c>.
+    /// The IANA ids the picker offers: the tzdata catalogue, plus any further IANA-shaped id this browser
+    /// knows. Windows-style ids and bare abbreviations are left out: the server accepts only an IANA id with a
+    /// region, or <c>UTC</c>.
     /// </summary>
     public static IReadOnlyList<string> TimeZoneIds => zoneIds ??=
     [
-        .. TimeZoneInfo.GetSystemTimeZones()
-            .Select(z => z.Id)
+        .. IanaZoneCatalogue.Ids
+            .Concat(TimeZoneInfo.GetSystemTimeZones().Select(z => z.Id))
             .Where(id => id == "UTC" || (id.Contains('/') && IanaShape().IsMatch(id)))
             .Distinct(StringComparer.Ordinal)
             .Order(StringComparer.Ordinal),

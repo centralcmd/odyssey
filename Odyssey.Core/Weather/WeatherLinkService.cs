@@ -97,7 +97,8 @@ public sealed class WeatherLinkService
         {
             logger.LogInformation(
                 "Location {LocationId} weather point {Operation} by {ActorUserId}: {PreviousWeatherPointId} -> {WeatherPointId}.",
-                locationId, pointId is null ? "cleared" : previous is null ? "set" : "changed", userId, previous, pointId);
+                locationId, pointId is null ? "cleared" : previous is null ? "set" : "changed", userId, previous,
+                pointId is Guid linked ? linked : null);
         }
 
         return await DescribeAsync(locationId, cancellationToken);

@@ -205,7 +205,7 @@ public sealed class WeatherPointService
 
         logger.LogInformation(
             "Weather point {WeatherPointId} created by {ActorUserId}; copied from location {SourceLocationId}.",
-            point.WeatherPointId, userId, request.FromLocationId);
+            point.WeatherPointId, userId, request.FromLocationId is Guid source ? source : null);
         return (await GetAsync(point.WeatherPointId, canReadLocations, cancellationToken))!;
     }
 
@@ -570,7 +570,11 @@ public sealed class WeatherPointService
         var suspended = queue.Skip(configured.MaxTrackedPoints).ToHashSet();
         var ids = points.Select(p => p.WeatherPointId).ToList();
 
-        var sites = await context.WeatherPointSites.AsNoTracking().Where(s => ids.Contains(s.WeatherPointId)).ToListAsync(cancellationToken);
+        // Only each point's current site version: the history of moves is not part of the row.
+        var sites = await context.WeatherPointSites.AsNoTracking()
+            .Where(s => context.WeatherPoints.Any(p =>
+                ids.Contains(p.WeatherPointId) && p.WeatherPointId == s.WeatherPointId && p.CurrentSiteVersion == s.SiteVersion))
+            .ToDictionaryAsync(s => s.WeatherPointId, cancellationToken);
         var schedules = await context.WeatherPointSchedules.AsNoTracking().Where(s => ids.Contains(s.WeatherPointId))
             .ToDictionaryAsync(s => s.WeatherPointId, cancellationToken);
         var stations = (await context.WeatherStations.AsNoTracking().Where(st => ids.Contains(st.WeatherPointId)).ToListAsync(cancellationToken))
@@ -585,7 +589,9 @@ public sealed class WeatherPointService
 
         return points.Select(point =>
         {
-            var site = sites.First(s => s.WeatherPointId == point.WeatherPointId && s.SiteVersion == point.CurrentSiteVersion);
+            // CurrentSiteVersion has no key; the point and its site are written in one save, so a miss is corruption.
+            var site = sites.GetValueOrDefault(point.WeatherPointId)
+                ?? throw new InvalidOperationException($"Weather point {point.WeatherPointId} has no current site row.");
             var schedule = schedules.GetValueOrDefault(point.WeatherPointId);
             var isSuspended = suspended.Contains(point.WeatherPointId);
             var pointStations = stations[point.WeatherPointId].ToList();

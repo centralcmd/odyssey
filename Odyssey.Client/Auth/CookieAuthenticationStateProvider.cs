@@ -152,6 +152,16 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
     /// <returns>Whether a definitive answer was cached and announced.</returns>
     public async Task<bool> TryRefreshAsync()
     {
+        // A definitive answer that lands while this probe is in flight (a sign-in's RefreshAsync, say) is newer
+        // than it, so the probe then yields rather than overwriting it.
+        // A pending RefreshAsync replaces `current` before it resolves, so the cached task is compared as well.
+        var startVersion = Volatile.Read(ref definitiveVersion);
+        Task<Resolution>? startCurrent;
+        lock (gate)
+        {
+            startCurrent = current;
+        }
+
         AuthSession session;
         try
         {
@@ -173,7 +183,13 @@ public sealed class CookieAuthenticationStateProvider : AuthenticationStateProvi
         Task<Resolution> settled = Task.FromResult(resolution);
         lock (gate)
         {
-            Interlocked.Increment(ref definitiveVersion);
+            if (!ReferenceEquals(current, startCurrent)
+                || Interlocked.CompareExchange(ref definitiveVersion, startVersion + 1, startVersion) != startVersion)
+            {
+                logger?.LogInformation("An opportunistic session refresh was superseded by a newer answer; it is discarded.");
+                return false;
+            }
+
             current = settled;
         }
 
