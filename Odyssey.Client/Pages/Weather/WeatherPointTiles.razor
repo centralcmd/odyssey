@@ -1,0 +1,63 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    WeatherPointTiles — a weather point's own facts in its record on the Weather points page (issue #388; design
+    system · Weather.jsx WeatherPointTiles): Forecast, Historical data, Weather position and Household default.
+    Forecast and historical data are separate settings, so each tile says whether its half is on.
+*@
+
+<OdsInfoTileGrid>
+    @* Forecast and historical data are separate settings, so each tile says whether its half is on;
+       there is no single "Weather on" tile. *@
+    <OdsInfoTile Icon="@(Row.ForecastEnabled ? "wb_sunny" : "cloud_off")" Label="Forecast" ValueVariant="OdsInfoTileVariant.Text" Foot="@ForecastFoot">
+        <Value>@ForecastValue</Value>
+    </OdsInfoTile>
+    <OdsInfoTile Icon="history" Label="Historical data"
+                 ValueVariant="@(Row.HistoryEnabled && !Row.PurgeInProgress ? OdsInfoTileVariant.Sm : OdsInfoTileVariant.Text)" Foot="@HistoryFoot">
+        <Value>@HistoryValue</Value>
+    </OdsInfoTile>
+    <OdsInfoTile Icon="my_location" Label="Weather position" ValueVariant="OdsInfoTileVariant.Sm"
+                 Foot="@OdsInfoTile.Caption($"{Row.Site.TimeZoneId}{(Row.Site.AltitudeMeters is { } a ? $" · {a} m" : "")} · since {WeatherVisuals.Date(Row.Site.AppliedAt)}")">
+        <Value>@WeatherVisuals.Pair3(Row.Site.Latitude, Row.Site.Longitude)</Value>
+    </OdsInfoTile>
+    @if (Row.IsHouseholdDefault)
+    {
+        <OdsInfoTile Icon="home" Label="Household default" ValueVariant="OdsInfoTileVariant.Text"
+                     Foot="@OdsInfoTile.Caption("shown to anyone who hasn’t picked a weather point")">
+            <Value>Yes</Value>
+        </OdsInfoTile>
+    }
+</OdsInfoTileGrid>
+
+@code {
+    [Parameter, EditorRequired] public ExistingWeatherPoint Row { get; set; } = default!;
+
+
+    private string ForecastValue =>
+        !Row.ForecastEnabled ? "Off"
+        : Row.TrackingSuspended ? "Paused — schedule full"
+        : Row.IsTracked ? "On a schedule" : "When someone looks";
+
+    private string HistoryValue =>
+        Row.PurgeInProgress ? "Deleting"
+        : Row.HistoryEnabled ? $"From {WeatherVisuals.Date(Row.HistoryFrom)}" : "Off";
+
+    private RenderFragment? ForecastFoot => !Row.ForecastEnabled
+        ? OdsInfoTile.Caption("not fetched; not on the dashboard")
+        : WeatherVisuals.FailureOf(Row.ForecastFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(Row.TrackingSuspended
+            ? "Only the first scheduled points refresh. Raise the limit in System settings."
+            : Row.LastForecastSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private RenderFragment? HistoryFoot => !Row.HistoryEnabled
+        ? OdsInfoTile.Caption("not fetched; stored data kept")
+        : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail
+        ? Failure(fail)
+        : OdsInfoTile.Caption(!Row.HasObservationStation
+            ? "no MET station in reach"
+            : Row.LastObservationSuccessUtc is { } at ? $"last fetched {WeatherVisuals.Stamp(at)}" : "not fetched yet");
+
+    private static RenderFragment Failure(WeatherFailureInfo fail) =>
+        @<span class="wx-fail"><OdsMIcon Name="error_outline" Size="14" />@fail.Label<span class="wx-fail-help">@(string.IsNullOrEmpty(fail.Help) ? null : $" — {fail.Help}")</span></span>;
+}

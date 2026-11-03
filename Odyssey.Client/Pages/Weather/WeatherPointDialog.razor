@@ -1,0 +1,205 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Journal
+@using Odyssey.Dtos.Journal
+@*
+    WeatherPointDialog — New weather point and Weather settings, one shell (issue #388 flows A and C; design system ·
+    Weather.jsx WeatherPointDialog). It replaces WeatherSettingsDialog and absorbs the former Apply-the-new-position
+    dialog: moving a point is editing its position, and the old → new comparison shows inline. Creating from a place
+    COPIES its position and links nothing; the request carries that place's fingerprint, so a move made while the
+    dialog was open is a 409 rather than a silent snapshot of something nobody reviewed.
+    While a save is in flight the dialog cannot be dismissed (OnClose is withheld and a close is refused).
+*@
+
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_saving ? default : EventCallback.Factory.Create(this, CancelAsync))"
+          Icon="wb_sunny" RequiredLegend="false" Class="wx-dialog" ReturnFocusToId="@ReturnFocusToId"
+          Title="@(b => b.AddContent(0, Creating ? "New weather point" : "Weather settings"))"
+          Subtitle="@(b => b.AddContent(0, Creating ? "A place weather is fetched for; locations link to it" : Point!.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form" aria-busy="@(_saving ? "true" : null)">
+            <OdsLiveAnnouncer Message="@_announce" />
+            @if (_purgeBlocked)
+            {
+                <div class="wx-alert-row">
+                    <OdsAlert Severity="Severity.Error">Deleting this point’s history was interrupted. Finish deleting first; nothing else can be saved until it completes.</OdsAlert>
+                    @if (OnContinueDeleting.HasDelegate)
+                    {
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="delete_sweep" OnClick="ContinueDeletingAsync">Continue deleting</OdsButton>
+                    }
+                </div>
+            }
+            @if (_stale)
+            {
+                <div class="wx-alert-row">
+                    <OdsAlert Severity="Severity.Error">Someone else changed this weather point. Reload to see their changes.</OdsAlert>
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" Loading="_reloading" OnClick="ReloadAsync">Reload</OdsButton>
+                </div>
+            }
+            @if (_note is not null)
+            {
+                <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">@_note</OdsAlert>
+            }
+            @if (_conflict is not null)
+            {
+                <OdsAlert Severity="Severity.Warning">@_conflict</OdsAlert>
+            }
+            <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" Links="ErrorLinks" />
+
+            @if (Creating)
+            {
+                @if (CanReadLocations)
+                {
+                    <OdsCardSelect AriaLabel="Where the position comes from" Value="@_mode" ValueChanged="OnModeChanged" Options="ModeOptions" />
+                }
+                @if (FromLocation)
+                {
+                    <div id="@FromId" tabindex="-1">
+                        <OdsLocationSelect Label="Location" Required="true" Value="_pick" ValueChanged="OnPickedAsync"
+                                           Filter="LocationPickFilter.HasCoordinates" AllowCreate="false"
+                                           Help="@(_noEligible ? "No places have coordinates yet. Add them on the Locations page." : "Only places with coordinates are listed.")"
+                                           EmptyText="@(_noEligible ? "No places have coordinates yet. Add them on the Locations page." : null)"
+                                           Error="@Err("fromLocationId")" DebounceMs="LocationDebounceMs" />
+                    </div>
+                    @if (_source is { Latitude: { } lat, Longitude: { } lng })
+                    {
+                        <WeatherSiteCard Title="Weather position" Latitude="lat" Longitude="lng"
+                                         AltitudeMeters="_source.AltitudeMeters" TimeZoneId="@(_source.TimeZoneId ?? "")"
+                                         Foot="@($"Copied from {_source.Name} now. The point keeps this position; moving the place later changes nothing here.")" />
+                    }
+                }
+                else
+                {
+                    @PositionFields
+                }
+                @NameField
+                <WeatherDisclosure />
+            }
+            else
+            {
+                @NameField
+                <OdsSectionDivider Label="Position" />
+                @PositionFields
+                @if (Moved)
+                {
+                    <div class="wx-compare">
+                        <WeatherSiteCard Title="Weather uses now" Latitude="Point!.Site.Latitude" Longitude="Point.Site.Longitude"
+                                         AltitudeMeters="Point.Site.AltitudeMeters" TimeZoneId="@Point.Site.TimeZoneId"
+                                         Foot="@($"Since {WeatherVisuals.Date(Point.Site.AppliedAt)}.")" />
+                        <OdsMIcon Name="arrow_forward" Size="20" Class="wx-compare-arrow" />
+                        <WeatherSiteCard Title="After saving" Latitude="_lat.GetValueOrDefault()" Longitude="_lng.GetValueOrDefault()"
+                                         AltitudeMeters="Altitude" TimeZoneId="@(_tz ?? "")"
+                                         ChangedCoordinates="Changes.Coordinates" ChangedAltitude="Changes.Altitude" ChangedTimeZone="Changes.TimeZone" />
+                    </div>
+                    <ul class="wx-effects">
+                        <li>The next forecast is fetched for the new position.</li>
+                        <li>Measured history continues from the station nearest the new position, from today (@WeatherVisuals.Date(DateOnly.FromDateTime(DateTime.Today))). Earlier days keep what was measured at the old one.</li>
+                        @if (Changes.TimeZone)
+                        {
+                            <li>Days before today keep their own time zone, @Point.Site.TimeZoneId. From today, dates use @_tz.</li>
+                        }
+                        @if (Point.LinkedLocationCount is > 0 and var linked)
+                        {
+                            <li>@(linked == 1 ? "1 linked location uses" : $"{linked} linked locations use") the new position too, and their distances change with it.</li>
+                        }
+                        <li>If MET Norway has paused fetching for this point, the pause still runs out first.</li>
+                    </ul>
+                    <WeatherDisclosure />
+                }
+                <OdsSectionDivider Label="Weather" />
+            }
+
+            @* Two independent settings: forecast and historical data each fetch on their own. *@
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label" id="@($"{_uid}-fc-l")">Forecast</div>
+                    <div class="wx-toggle-help" id="@($"{_uid}-fc-h")">@ForecastHelp</div>
+                </div>
+                <OdsSwitch Checked="_forecast" CheckedChanged="@(v => _forecast = v)" Disabled="@(Point is { IsHouseholdDefault: true })"
+                           AriaLabelledBy="@($"{_uid}-fc-l")" AriaDescribedBy="@($"{_uid}-fc-h")" />
+            </div>
+
+            @if (_forecast)
+            {
+                <div class="wx-toggle wx-toggle-sub @(_trackedError is not null ? "error" : null)">
+                    <div class="wx-toggle-text">
+                        <div class="wx-toggle-label" id="@($"{_uid}-tr-l")">Refresh on a schedule</div>
+                        <div class="wx-toggle-help" id="@($"{_uid}-tr-h")">
+                            @(_tracked
+                                ? "The forecast is refreshed in the background, so the dashboard is current when someone opens it."
+                                : "The forecast is fetched only when someone opens weather for this point.")
+                            @if (Cap is { } cap)
+                            {
+                                <span class="wx-muted"> @(UsedElsewhere + (_tracked ? 1 : 0)) of @cap scheduled points in use.</span>
+                            }
+                        </div>
+                        @if (_trackedError is not null)
+                        {
+                            <div class="wx-toggle-error" id="@($"{_uid}-tr-e")" role="alert"><OdsMIcon Name="error_outline" Size="16" />@_trackedError</div>
+                        }
+                    </div>
+                    <OdsSwitch Checked="_tracked" CheckedChanged="OnTrackedChanged" AriaLabelledBy="@($"{_uid}-tr-l")"
+                               AriaDescribedBy="@(_trackedError is null ? $"{_uid}-tr-h" : $"{_uid}-tr-h {_uid}-tr-e")" />
+                </div>
+                @if (_tracked && AtCap && _trackedError is null)
+                {
+                    <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>All @Cap scheduled points are in use. Saving will be refused unless another point stops refreshing on a schedule.</span></div>
+                }
+            }
+
+            <div class="wx-toggle">
+                <div class="wx-toggle-text">
+                    <div class="wx-toggle-label" id="@($"{_uid}-hs-l")">Historical data</div>
+                    <div class="wx-toggle-help" id="@($"{_uid}-hs-h")">@HistoryToggleHelp</div>
+                </div>
+                <OdsSwitch Checked="_history" CheckedChanged="@(v => _history = v)"
+                           AriaLabelledBy="@($"{_uid}-hs-l")" AriaDescribedBy="@($"{_uid}-hs-h")" />
+            </div>
+
+            @if (_history)
+            {
+                <OdsDateField Label="Keep measured history from" Value="_historyFrom" ValueChanged="@(v => { _historyFrom = v; _errors.Remove("historyFrom"); })"
+                              Min="HistoryFloor" Max="DateTime.Today"
+                              Placeholder="@(Creating ? WeatherVisuals.Date(DefaultFrom) : "Select date")"
+                              Help="@HistoryHelp" Error="@Err("historyFrom")" />
+            }
+
+            @if (NothingToTurnOn)
+            {
+                <div class="wx-note" role="status"><OdsMIcon Name="info" Size="16" /><span>Turn on the forecast, historical data or both.</span></div>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CancelAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "add" : "save")" Loading="_saving"
+                   AriaDisabled="@(_saving || NothingToTurnOn || _stale || _purgeBlocked)" OnClick="SaveAsync">
+            @(Creating ? "Create weather point" : "Save")
+        </OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment NameField => @<OdsTextInputField Id="@NameId" Label="Name" Value="@_name" ValueChanged="OnNameChanged"
+                                                           Required="@(!FromLocation)" MaxLength="WeatherRules.PointNameMaxLength"
+                                                           Error="@Err("name")"
+                                                           Help="Everyone who can see weather sees this name. Use a place name, not a street address." />;
+
+    private RenderFragment PositionFields => @<div class="wx-form">
+        <div id="@CoordsId" tabindex="-1">
+            <OdsCoordinateField Lat="_lat" LatChanged="@(v => { _lat = v; _errors.Remove("latitude"); })"
+                                Lng="_lng" LngChanged="@(v => { _lng = v; _errors.Remove("latitude"); })"
+                                Required="true" Help="Decimal degrees. Weather uses 3 decimals, about 100 m." Error="@Err("latitude")" />
+        </div>
+        <OdsFormRow>
+            <OdsNumberField Id="@AltId" Label="Altitude" Unit="m" Min="LocationRules.AltitudeMin" Max="LocationRules.AltitudeMax" Step="1"
+                            Value="_alt" ValueChanged="@(v => { _alt = v; _errors.Remove("altitudeMeters"); })"
+                            Error="@Err("altitudeMeters")" Help="Above sea level. Leave empty and MET Norway works it out." />
+            <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneId" Required="true"
+                           Help="@(Err("timeZoneId") is null ? "Weather days are dated in this zone." : null)" Error="@Err("timeZoneId")">
+                <OdsCombobox InputId="@TimeZoneId" Value="@_tz" ValueChanged="@(v => { _tz = v; _errors.Remove("timeZoneId"); })"
+                             Options="TimeZoneOptions" Placeholder="Search, e.g. Oslo or Lisbon"
+                             EmptyText="No time zone matches" Clearable="true" Required="true"
+                             Error="@(Err("timeZoneId") is not null)" AriaDescribedBy="@($"{TimeZoneId}-help")" />
+            </OdsFieldShell>
+        </OdsFormRow>
+    </div>;
+}

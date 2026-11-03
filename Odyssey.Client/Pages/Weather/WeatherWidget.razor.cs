@@ -15,11 +15,12 @@ public partial class WeatherWidget
     [Inject] private IWeatherApiClient Weather { get; set; } = default!;
     [Inject] private AuthenticationStateProvider Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private Odyssey.Client.Services.IWeatherPointOptionsCache OptionsCache { get; set; } = default!;
 
     internal enum Phase { Loading, Ready, RateLimited, Error }
 
     /// <summary>Up to nine days from today, as the design shows.</summary>
-    internal const int DaysShown = 9;
+    internal const int DaysShown = WeatherForecastBody.DaysShown;
 
     private Phase _phase = Phase.Loading;
     private WeatherCurrentResponse? _current;
@@ -33,12 +34,6 @@ public partial class WeatherWidget
     private bool _canSetUp;
     private bool _canOpenSettings;
     private bool _canChoose;
-
-    /// <summary>
-    /// The PLACE's today when the response carries it — its local date, which the server computes — else
-    /// the viewer's. They differ whenever the two clocks sit either side of midnight.
-    /// </summary>
-    private DateOnly Today => _current?.Today?.Date ?? ViewerToday;
 
     private static DateOnly ViewerToday => DateOnly.FromDateTime(LocalNow());
 
@@ -54,7 +49,8 @@ public partial class WeatherWidget
             return;
 
         var user = await Auth.GetUserAsync();
-        _canSetUp = user.HasPermission(PermissionClaims.WeatherPointsUpdate);
+        // The set-up link opens /weather-points, which needs read as well as update (issue #388 §5).
+        _canSetUp = user.HasPermission(PermissionClaims.WeatherPointsRead) && user.HasPermission(PermissionClaims.WeatherPointsUpdate);
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canChoose = user.HasPermission(PermissionClaims.WeatherPreferencesUpdate);
         await LoadAsync();
@@ -75,7 +71,7 @@ public partial class WeatherWidget
         StateHasChanged();
 
         // The options and the caller's own place feed only the picker: someone who cannot choose never needs them.
-        var options = _canChoose ? Weather.OptionsAsync() : Task.FromResult(ApiResult<WeatherPointOptions>.Success(new WeatherPointOptions(), HttpStatusCode.OK));
+        var options = _canChoose ? OptionsCache.GetAsync() : Task.FromResult(ApiResult<WeatherPointOptions>.Success(new WeatherPointOptions(), HttpStatusCode.OK));
         var preferences = _canChoose ? Weather.PreferencesAsync() : Task.FromResult(ApiResult<WeatherPreferences>.Success(new WeatherPreferences(), HttpStatusCode.OK));
         var current = Weather.CurrentAsync();
         // Yesterday for the measured line, then the days shown. The dates are the place's own local dates;
@@ -147,7 +143,7 @@ public partial class WeatherWidget
         {
             _saving = false;
             _prefError = result.Status == HttpStatusCode.BadRequest
-                ? "That location no longer has weather. Choose another one."
+                ? "That weather point no longer has a forecast. Choose another one."
                 : "Your choice couldn't be saved. Try again.";
             StateHasChanged();
             return;
@@ -190,13 +186,13 @@ public partial class WeatherWidget
                 ActionButton("settings", "Open System settings", "/settings"))
             : Empty("settings", "Weather isn’t set up yet", "An administrator needs to finish setting up weather for this household.", null),
         WeatherStatus.NoPlace => _canSetUp
-            ? Empty("add_location_alt", "No location has weather yet",
-                "Turn weather on for one of the household’s locations — home, the cabin — and its forecast shows here.",
-                ActionButton("place", "Go to Locations", "/locations"))
-            : Empty("add_location_alt", "No location has weather yet", "An administrator can turn weather on for one of the household’s locations.", null),
+            ? Empty("add_location_alt", "No weather point has a forecast yet",
+                "Create a weather point for the household — home, the cabin — with its forecast on, and it shows here.",
+                ActionButton("wb_sunny", "Go to Weather points", "/weather-points"))
+            : Empty("add_location_alt", "No weather point has a forecast yet", "An administrator can create a weather point for the household.", null),
         WeatherStatus.Ok when _current.Step is not null => Forecast,
-        _ => Empty("cloud_queue", $"No forecast for {_resolved?.Name ?? "this place"} yet",
-            "MET Norway hasn’t answered for this place yet. Odyssey keeps trying on its own — check back in a little while.", null),
+        _ => Empty("cloud_queue", $"No forecast for {_resolved?.Name ?? "this point"} yet",
+            "MET Norway hasn’t answered for this point yet. Odyssey keeps trying on its own — check back in a little while.", null),
     };
 
     private RenderFragment RetryButton => builder =>
@@ -221,15 +217,5 @@ public partial class WeatherWidget
 
     // ── Forecast data ──────────────────────────────────────────────────────────────────────────────
 
-    private WeatherDaySummary? TodaySummary =>
-        _current?.Today ?? _days.FirstOrDefault(d => d.Date == Today && d.Forecast is not null);
-
-    private IReadOnlyList<WeatherDaySummary> Coming =>
-        _days.Where(d => d.Forecast is not null && d.Date >= Today).Take(DaysShown).ToList();
-
-    private WeatherDaySummary? Yesterday =>
-        _days.FirstOrDefault(d => d.Date == Today.AddDays(-1) && d.Observed is not null);
-
-    internal static string DaySentence(WeatherDaySummary day) =>
-        $"{WeatherVisuals.SymbolOf(day.Forecast?.SymbolCode)?.Label ?? "Unknown conditions"}, high {WeatherVisuals.Temp(day.Forecast?.MaxTempC)}, low {WeatherVisuals.Temp(day.Forecast?.MinTempC)}";
+    internal static string DaySentence(WeatherDaySummary day) => WeatherForecastBody.DaySentence(day);
 }

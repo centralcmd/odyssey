@@ -93,19 +93,50 @@ public class WeatherClientTests : IDisposable
         Assert.Equal("v1:59.913:10.750:12:Europe/Oslo", WeatherVisuals.Fingerprint(location));
     }
 
-    // ── Admin menu (interim: the linked point's Refresh forecast only, issue #387) ─────────────────
+    // ── Row menus by claim (issue #388 §3) ───────────────────────────────────────────────────────
 
-    private static IReadOnlyList<string?> Labels(ExistingWeatherPoint? row, bool canUpdate = true) =>
-        [.. LocationsPage.BuildWeatherActions(row, canUpdate, default).Where(i => !i.Divider).Select(i => i.Label)];
+    private static IReadOnlyList<string?> LinkLabels(ExistingLocation l, bool canLink) =>
+        [.. LocationsPage.BuildWeatherLinkActions(l, canLink, default, default).Select(i => i.Label)];
 
     [Fact]
-    public void A_linked_point_with_its_forecast_on_offers_refresh_to_an_updater_only()
+    public void Linking_is_offered_to_a_linker_only_and_never_on_a_merged_away_row()
     {
-        Assert.Equal(["Refresh forecast"], Labels(Row(Location())));
-        Assert.Empty(Labels(Row(Location()), canUpdate: false));
-        Assert.Empty(Labels(null));
-        Assert.Empty(Labels(Row(Location()) with { ForecastEnabled = false }));
-        Assert.Empty(Labels(Row(Location()) with { PurgeInProgress = true }));
+        Assert.Equal(["Link weather point…"], LinkLabels(Location(), canLink: true));
+        Assert.Equal(["Change weather point…", "Unlink weather point"], LinkLabels(Linked(Location()), canLink: true));
+        Assert.Empty(LinkLabels(Location(), canLink: false));
+        Assert.Empty(LinkLabels(Linked(Location()) with { MergedIntoLocationId = Guid.NewGuid() }, canLink: true));
+    }
+
+    [Fact]
+    public void The_link_items_sit_directly_after_copy_id()
+    {
+        var labels = LocationsPage.BuildRowActions(Location(), new LocationsPage.LocationRowClaims(true, true),
+                default, default, default, default, default, default,
+                LocationsPage.BuildWeatherLinkActions(Location(), true, default, default))
+            .Where(i => !i.Divider).Select(i => i.Label).ToList();
+
+        Assert.Equal(labels.IndexOf("Copy ID") + 1, labels.IndexOf("Link weather point…"));
+        Assert.True(labels.IndexOf("Merge into…") > labels.IndexOf("Link weather point…"));
+    }
+
+    private static IReadOnlyList<string?> PointLabels(ExistingWeatherPoint p, bool canUpdate = true, bool canDelete = true) =>
+        [.. WeatherPointsPage.BuildRowActions(p, canUpdate, canDelete, default, default, default, default).Where(i => !i.Divider).Select(i => i.Label)];
+
+    [Fact]
+    public void The_point_menu_follows_state_and_claims()
+    {
+        var point = Row(Location());
+        Assert.Equal(["Weather settings…", "Refresh forecast"], PointLabels(point));
+        Assert.Equal(["Weather settings…", "Delete weather history…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false, IsHouseholdDefault = true }).Take(2));
+        Assert.Equal(["Weather settings…", "Delete weather history…", "Delete weather point…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }));
+        Assert.Equal(["Weather settings…", "Refresh forecast", "Delete weather history…"], PointLabels(point with { HistoryEnabled = false }));
+        Assert.Equal(["Continue deleting…"], PointLabels(point with { PurgeInProgress = true }));
+        // Absent without the claim, never dimmed (AC 22).
+        Assert.Empty(PointLabels(point, canUpdate: false, canDelete: false));
+        Assert.Equal(["Delete weather history…", "Delete weather point…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }, canUpdate: false));
+        Assert.Equal(["Weather settings…"], PointLabels(point with { ForecastEnabled = false, HistoryEnabled = false }, canDelete: false));
+        Assert.All(WeatherPointsPage.BuildRowActions(point, true, true, default, default, default, default).Where(i => !i.Divider),
+            i => Assert.Contains(point.Name, i.AriaLabel, StringComparison.Ordinal));
     }
 
     // ── Dashboard card ───────────────────────────────────────────────────────────────────────────────
@@ -152,8 +183,8 @@ public class WeatherClientTests : IDisposable
     }
 
     [Theory]
-    [InlineData(WeatherStatus.NoPlace, true, "Go to Locations")]
-    [InlineData(WeatherStatus.NoPlace, false, "An administrator can turn weather on")]
+    [InlineData(WeatherStatus.NoPlace, true, "Go to Weather points")]
+    [InlineData(WeatherStatus.NoPlace, false, "An administrator can create a weather point")]
     [InlineData(WeatherStatus.NotConfigured, true, "Open System settings")]
     [InlineData(WeatherStatus.NotConfigured, false, "Weather isn’t set up yet")]
     public void Each_empty_state_names_its_way_out(WeatherStatus status, bool admin, string expected)
@@ -161,7 +192,7 @@ public class WeatherClientTests : IDisposable
         using var ctx = Context(
             weather => weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(Ok(new WeatherCurrentResponse { Status = status })),
-            admin ? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsUpdate, PermissionClaims.SystemSettingsUpdate] : null);
+            admin ? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate, PermissionClaims.SystemSettingsUpdate] : null);
 
         var card = ctx.Render<WeatherWidget>();
 
@@ -264,14 +295,17 @@ public class WeatherClientTests : IDisposable
     }
 
     [Fact]
-    public async Task A_place_with_no_linked_point_says_so_and_offers_nothing()
+    public void The_set_up_link_needs_read_as_well_as_update()
     {
-        await using var ctx = Context(_ => { });
+        using var ctx = Context(
+            weather => weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Ok(new WeatherCurrentResponse { Status = WeatherStatus.NoPlace })),
+            [PermissionClaims.WeatherRead, PermissionClaims.WeatherPointsUpdate]);
 
-        var section = ctx.Render<LocationWeatherSection>(p => p.Add(s => s.Location, Location()).Add(s => s.Row, null));
+        var card = ctx.Render<WeatherWidget>();
 
-        Assert.Contains("This place is not linked to a weather point.", section.Markup);
-        Assert.Empty(section.FindAll("button"));
+        card.WaitForAssertion(() => Assert.Contains("An administrator can create a weather point", card.Markup));
+        Assert.DoesNotContain("Go to Weather points", card.Markup);
     }
 
     // ── Harness ──────────────────────────────────────────────────────────────────────────────────────
@@ -285,6 +319,12 @@ public class WeatherClientTests : IDisposable
         AltitudeMeters = 12,
         TimeZoneId = "Europe/Oslo",
         Archived = archived ? DateTime.UtcNow : null,
+    };
+
+    private static ExistingLocation Linked(ExistingLocation l) => l with
+    {
+        WeatherPoint = new LinkedWeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Oslo", ForecastEnabled = true, HistoryEnabled = true },
+        WeatherPointDistanceKm = 2,
     };
 
     private static WeatherPointOption Option(WeatherPointRef point) =>
@@ -323,7 +363,9 @@ public class WeatherClientTests : IDisposable
         setup(weather);
 
         ctx.Services.AddSingleton(weather.Object);
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new Claims(claims ?? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]));
+        var auth = new Claims(claims ?? [PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]);
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
+        ctx.Services.AddSingleton<Odyssey.Client.Services.IWeatherPointOptionsCache>(new Odyssey.Client.Services.WeatherPointOptionsCache(weather.Object, auth));
         WeatherWidget.InteractiveCheck = static () => true;
         return ctx;
     }

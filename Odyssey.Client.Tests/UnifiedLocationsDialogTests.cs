@@ -347,7 +347,7 @@ public class UnifiedLocationsDialogTests
 
     [Theory]
     [InlineData(true, "This place is archived and can’t be merged.")]
-    [InlineData(false, "Weather is set up for this place. An admin must turn weather off before it can be merged.")]
+    [InlineData(false, "This place can’t be merged right now. Reload Locations and try again.")]
     public async Task A_422_on_the_source_reloads_it_and_chooses_the_message_from_what_it_is_now(bool archived, string message)
     {
         var reloaded = Storgata() with { Archived = archived ? DateTime.UtcNow : null };
@@ -435,7 +435,7 @@ public class UnifiedLocationsDialogTests
 
         cut.FindAll("button").Last(b => b.TextContent.Contains("Delete", StringComparison.Ordinal)).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains("This place is still used — by a record, weather settings, or a merged place",
+        cut.WaitForAssertion(() => Assert.Contains("This place is still used — by a record or a merged place",
             cut.Find(".loc-dialog-alert[role=alert]").TextContent));
         Assert.Empty(deleted);
 

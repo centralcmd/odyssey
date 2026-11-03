@@ -1,0 +1,159 @@
+@page "/weather-points"
+@using Odyssey.Client.Authorization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@attribute [Authorize(Policy = PermissionClaims.WeatherPointsRead)]
+@implements IDisposable
+
+@*
+    /weather-points (issue #388; design system · ui_kits/web/WeatherPoints.jsx, components/PageWeatherPoints). Admin
+    only. Every weather-setup surface the Locations page used to carry: list, create, settings (including moving the
+    position), refresh, delete history, delete point, and each point's linked locations. The Locations page pattern
+    with nothing new in it: PageHeader with search, sort and New weather point; an expandable OdsRecordCard list, one
+    card open at a time; every action in the row ⋯ menu. Every control is absent without its claim, never dimmed.
+    One page-level instance of each dialog, re-targeted per row. Rows are never dimmed: a Weather off point's state
+    is its chip (issue #388 §6.3).
+*@
+
+<PageTitle>Weather points — Odyssey</PageTitle>
+
+<OdsLiveAnnouncer Message="@_announce" />
+
+<div class="wp-page">
+<MudStack Spacing="4">
+    <PageHeader Title="Weather points"
+                Icon="@Icons.Material.Filled.WbSunny"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New weather point"
+                OnPrimaryAction="NewClicked"
+                ShowPrimaryAction="_canUpdate">
+        <SubLine>@SubLineText</SubLine>
+
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="LoadAsync"
+                                Placeholder="Search weather points…"
+                                Class="ph-search" />
+                <OdsSortSelect TRow="ExistingWeatherPoint" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Weather points per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @if (_pinned is not null)
+    {
+        @* A ?open= target outside the loaded batch, or hidden by the saved search (issue #388 §3). *@
+        <div class="acct-list">
+            <div class="wx-sec-empty" role="status">
+                <span>Showing one weather point — </span>
+                <button type="button" class="loc-link" @onclick="ShowAll">Show all</button>
+            </div>
+            @Row(_pinned)
+        </div>
+    }
+    else
+    {
+        <div class="acct-list">
+            <OdsInfiniteList TItem="ExistingWeatherPoint" Items="_points" BatchSize="_batch"
+                             ItemKey="@(p => (object)p.WeatherPointId)" Noun="weather points" RevealKey="_revealId"
+                             Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadAsync"
+                             ErrorDescription="Weather points couldn’t be loaded. Your other data is unaffected."
+                             HasFilters="@(!string.IsNullOrWhiteSpace(_searchString))" OnClearFilters="ClearSearch"
+                             EmptyIcon="wb_sunny"
+                             EmptyTitle="No weather points yet"
+                             EmptyDescription="A weather point is a place weather is fetched for; locations link to it."
+                             FilteredEmptyTitle="No weather points match your search.">
+                <RenderItem Context="p">@Row(p)</RenderItem>
+                <CreateAction>
+                    @if (_canUpdate)
+                    {
+                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="NewClicked">New weather point</OdsButton>
+                    }
+                </CreateAction>
+                <Trailing>
+                    @if (_canUpdate)
+                    {
+                        <OdsAddRow Title="New weather point"
+                                   Sub="From a saved place, or by coordinates. Locations link to it afterwards."
+                                   OnClick="NewClicked" />
+                    }
+                </Trailing>
+            </OdsInfiniteList>
+        </div>
+    }
+</MudStack>
+</div>
+
+@if (_dialogKey != Guid.Empty && _dialog == Dialog.Create)
+{
+    <WeatherPointDialog @key="_dialogKey" @bind-Open="_dialogOpen" TrackedCount="TrackedCount" Cap="_cap"
+                        CanReadLocations="_canReadLocations" ReturnFocusToId="@PageHeader.HeadingId"
+                        OnCreated="OnCreatedAsync" OnStatus="OnStatusAsync" />
+}
+@if (_dialogKey != Guid.Empty && _dialog == Dialog.Settings && _target is not null)
+{
+    <WeatherPointDialog @key="_dialogKey" @bind-Open="_dialogOpen" Point="_target" TrackedCount="TrackedCount" Cap="_cap"
+                        CanReadLocations="_canReadLocations" ReturnFocusToId="@MenuId(_target.WeatherPointId)"
+                        OnUpdated="OnUpdatedAsync" OnContinueDeleting="@(() => OpenPurge(_target, WeatherPurgeMode.Full))"
+                        OnStatus="OnStatusAsync" />
+}
+@if (_dialogKey != Guid.Empty && _dialog == Dialog.Purge && _target is not null)
+{
+    <WeatherPointPurgeDialog @key="_dialogKey" @bind-Open="_dialogOpen" Point="_target" Mode="_purgeMode"
+                             LinkedLocationCount="_target.LinkedLocationCount"
+                             ReturnFocusToId="@PurgeReturnFocus"
+                             OnDone="OnPurgedAsync" OnInterrupted="OnInterruptedAsync" OnStatus="OnStatusAsync" />
+}
+
+@code {
+    private RenderFragment Row(ExistingWeatherPoint p) =>
+        @<OdsRecordCard Id="@CardId(p.WeatherPointId)"
+                        Icon="wb_sunny"
+                        Name="@p.Name"
+                        Meta="MetaFor(p)"
+                        Highlight="@(_flashId == p.WeatherPointId)"
+                        Open="IsExpanded(p.WeatherPointId)"
+                        OnToggle="@(_ => ToggleExpand(p.WeatherPointId))">
+            <Chips>
+                <WeatherPointChip ForecastEnabled="p.ForecastEnabled" HistoryEnabled="p.HistoryEnabled" PurgeInProgress="p.PurgeInProgress" />
+            </Chips>
+            <Alert>
+                @if (p.PurgeInProgress)
+                {
+                    <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">
+                        Deleting this point was interrupted. Weather for it stays paused, and nothing new is stored, until it completes.
+                        @if (_canDelete)
+                        {
+                            <button type="button" class="loc-link" @onclick="() => OpenPurge(p, WeatherPurgeMode.Full, fromNotice: true)">Continue deleting</button>
+                        }
+                    </OdsAlert>
+                }
+            </Alert>
+            <Actions>
+                <span id="@MenuId(p.WeatherPointId)">
+                    <OdsMenu Items="RowActions(p)" AriaLabel="@($"Actions for {p.Name}")" />
+                </span>
+            </Actions>
+            <Details>
+                @if (_moveNotes.TryGetValue(p.WeatherPointId, out var note))
+                {
+                    <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">@note</OdsAlert>
+                }
+                <OdsRecordSection Class="acct-section wx-section" Label="Weather position" Meta="@($"position v{p.Site.Version}")">
+                    <WeatherPointTiles Row="p" />
+                </OdsRecordSection>
+                @if (_canReadLocations)
+                {
+                    <WeatherPointLinkedSection @key="p.WeatherPointId" WeatherPointId="p.WeatherPointId" PointName="@p.Name"
+                                               OnAnnounce="Announce" OnStatus="OnStatusAsync" />
+                }
+                @if (!p.PurgeInProgress)
+                {
+                    <WeatherHistorySection @key="@($"h:{p.WeatherPointId}")" WeatherPointId="p.WeatherPointId" PointName="@p.Name"
+                                           HistoryOff="@(!p.HistoryEnabled)" CanSetUp="_canUpdate" CanOpenSettings="_canOpenSettings" />
+                }
+            </Details>
+        </OdsRecordCard>;
+}

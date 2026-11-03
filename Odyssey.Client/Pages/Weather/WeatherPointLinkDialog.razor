@@ -1,0 +1,207 @@
+@using System.Net
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IWeatherApiClient Weather
+@inject ILocationsApiClient Locations
+@*
+    WeatherPointLinkDialog — Link weather point… / Change weather point… (issue #388 flow B; design system ·
+    Weather.jsx WeatherPointLinkDialog). A composition, no new widget: one OdsCombobox fed by
+    GET /api/weather/points/options?nearLocationId=…, fetched once per open and never cached (a move changes its
+    distances). Saving is PUT /api/locations/{id}/weather-point. A success closes it and the PAGE renders the
+    advisories and announces the outcome; the dialog has no advisory state. Messages raised while it is open go to
+    its own polite region, because the page's sits outside the modal.
+*@
+
+<OdsModal Open="Open" OpenChanged="OnOpenChanged" OnClose="@(_saving ? default : EventCallback.Factory.Create(this, CloseAsync))"
+          Icon="wb_sunny" RequiredLegend="false" ReturnFocusToId="@ReturnFocusToId"
+          Title="@(b => b.AddContent(0, Changing ? "Change weather point" : "Link weather point"))"
+          Subtitle="@(b => b.AddContent(0, Location.Name))">
+    <ChildContent>
+        <div class="ods-modal-body wx-form">
+            <OdsLiveAnnouncer Message="@_announce" />
+            @if (_problem is not null)
+            {
+                <OdsProblemAlert Severity="OdsSeverity.Error" Title="The weather point couldn’t be linked" Detail="@_problem" />
+            }
+            @if (NoPoints)
+            {
+                <div class="wx-nopoints">
+                    <p class="wx-lede">There are no weather points yet.</p>
+                    @if (CanCreatePoints)
+                    {
+                        <p class="wx-lede"><a class="wx-link" href="/weather-points" @onclick="CreatePointAsync" @onclick:preventDefault="true">Create a weather point</a>, then link this place to it.</p>
+                    }
+                    else
+                    {
+                        <p class="wx-lede wx-muted">An administrator creates weather points; ask one to add a point near this place.</p>
+                    }
+                </div>
+            }
+            else
+            {
+                <OdsFieldShell Label="Weather point" HtmlFor="@InputId" Required="true"
+                               Help="@(_error is null ? "Nearest first. This place shows the weather of the point you choose; nothing is fetched for the place itself." : null)"
+                               Error="@_error">
+                    <OdsCombobox InputId="@InputId" Value="@_value" ValueChanged="OnPicked" Options="_options"
+                                 Placeholder="Search weather points" EmptyText="No weather point matches"
+                                 Loading="_loading" Clearable="false" Required="true"
+                                 Error="@(_error is not null)" AriaDescribedBy="@($"{InputId}-help")" />
+                </OdsFieldShell>
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="link" Loading="_saving" AriaDisabled="@(_saving || Blocked)"
+                   OnClick="SaveAsync">Link</OdsButton>
+    </Footer>
+</OdsModal>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+    [Parameter] public EventCallback<bool> OpenChanged { get; set; }
+    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+
+    /// <summary><c>weather.points.read</c> + <c>weather.points.update</c>: the <i>Create a weather point</i> link.</summary>
+    [Parameter] public bool CanCreatePoints { get; set; }
+
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>A <c>200</c>: the page closes nothing more — the dialog has closed — and renders the outcome.</summary>
+    [Parameter] public EventCallback<LocationWeatherPointLink> OnLinked { get; set; }
+
+    /// <summary>A <c>404</c>, or a <c>422</c> keyed <c>id</c>: the place was merged or removed.</summary>
+    [Parameter] public EventCallback OnGone { get; set; }
+
+    /// <summary>The <i>Create a weather point</i> link: the dialog closes first, then the page navigates.</summary>
+    [Parameter] public EventCallback OnCreatePoint { get; set; }
+
+    private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
+    private IReadOnlyList<OdsOption> _options = [];
+    private string? _value;
+    private string? _error;
+    private string? _problem;
+    private string _announce = "";
+    private bool _loading = true;
+    private bool _saving;
+
+    private string InputId => $"wx-link-{_uid}";
+
+    private bool Changing => Location.WeatherPoint is not null;
+
+    private bool NoPoints => !_loading && _options.Count == 0;
+
+    private bool Blocked => _loading || NoPoints || string.IsNullOrEmpty(_value);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _value = Location.WeatherPoint?.WeatherPointId.ToString("D");
+        await LoadOptionsAsync();
+    }
+
+    private async Task LoadOptionsAsync()
+    {
+        _loading = true;
+        _announce = "Loading weather points…";
+        StateHasChanged();
+        var result = await Weather.OptionsAsync(Location.LocationId);
+        _loading = false;
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _problem = result.Problem?.Message ?? "The weather points couldn’t be loaded. Try again.";
+            _announce = "The weather points couldn't be loaded.";
+            return;
+        }
+
+        _options = OptionsFor(result.Value.Points, Location.WeatherPoint?.WeatherPointId);
+        _announce = _options.Count == 0 ? "There are no weather points yet." : "";
+    }
+
+    /// <summary>
+    /// Nearest first, as served. Each option: the name over a muted line in words — <i>2 km away</i>, and
+    /// <i>history only</i> or <i>weather off</i> when its forecast is off — and the current one notes <i>linked now</i>.
+    /// </summary>
+    internal static IReadOnlyList<OdsOption> OptionsFor(IReadOnlyList<WeatherPointOption> points, Guid? current) =>
+    [
+        .. points.Select(o =>
+        {
+            var parts = new List<string> { WeatherVisuals.KmAway(o.DistanceKm) };
+            if (!o.ForecastEnabled)
+                parts.Add(o.HistoryEnabled ? "history only" : "weather off");
+            var linked = o.WeatherPointId == current;
+            return new OdsOption(o.WeatherPointId.ToString("D"), o.Name)
+            {
+                Sub = string.Join(" · ", parts),
+                Note = linked ? "linked now" : null,
+                AriaLabel = $"{o.Name}, {string.Join(", ", parts)}{(linked ? ", linked now" : "")}",
+            };
+        }),
+    ];
+
+    private void OnPicked(string? value)
+    {
+        _value = value;
+        _error = null;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_saving)
+            return;
+        if (Blocked)
+        {
+            if (!_loading && !NoPoints)
+            {
+                _error = "Choose a weather point.";
+                _announce = _error;
+            }
+            return;
+        }
+
+        _saving = true;
+        _error = null;
+        _problem = null;
+        var result = await Locations.SetWeatherPointAsync(Location.LocationId, Guid.Parse(_value!));
+        _saving = false;
+
+        if (result.IsSuccess && result.Value is { } link)
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnLinked.InvokeAsync(link);
+            return;
+        }
+
+        if (result.Status == HttpStatusCode.NotFound
+            || (result.Status == HttpStatusCode.UnprocessableEntity && result.Problem?.ErrorFor("id") is not null))
+        {
+            await OpenChanged.InvokeAsync(false);
+            await OnGone.InvokeAsync();
+            return;
+        }
+
+        if (result.Status == HttpStatusCode.UnprocessableEntity && result.Problem?.ErrorFor("weatherPointId") is not null)
+        {
+            // The point was deleted (or stopped being usable) while the dialog was open: say so on the picker,
+            // keep the selection and reload the options.
+            _error = "That weather point is no longer available. Choose another one.";
+            _announce = _error;
+            await LoadOptionsAsync();
+            if (_options.Any(o => o.Value == _value) is false && _value is not null)
+                _options = [.. _options, new OdsOption(_value, "A weather point that is no longer available")];
+            return;
+        }
+
+        _problem = result.Problem?.Message ?? "The weather point couldn’t be linked. Try again.";
+    }
+
+    private async Task CreatePointAsync()
+    {
+        await OpenChanged.InvokeAsync(false);
+        await OnCreatePoint.InvokeAsync();
+    }
+
+    private Task CloseAsync() => _saving ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
+
+    private Task OnOpenChanged(bool open) => open || !_saving ? OpenChanged.InvokeAsync(open) : Task.CompletedTask;
+}

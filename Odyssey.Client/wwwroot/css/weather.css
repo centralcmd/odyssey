@@ -45,8 +45,8 @@
 .wx-facts dt { display: inline-flex; align-items: center; gap: var(--space-1); font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .wx-facts dd { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans); color: var(--mud-palette-text-primary); }
 
-.wx-days { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--space-16) + var(--space-8)), 1fr); gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
-.wx-day { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); }
+.wx-days { position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--space-16) + var(--space-8)), 1fr); gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
+.wx-day { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-2); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); }
 .wx-day:first-child { border-color: var(--focus-ring); }
 .wx-day-name { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .wx-day-temp { font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-mono); }
@@ -239,3 +239,33 @@
     .wx-hist-range.odc-dpr .mud-input.mud-input-outlined { padding: 0; }
     .wx-hist-nav .mud-icon-button { width: 32px; height: 32px; padding: 4px; }
 }
+
+/* ---------- Weather points (issue #388; design system · ui_kits/web/weather.css) ---------- */
+.wx-sec-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-1); }
+.wx-dialog { width: 720px; max-width: 96vw; }
+/* Linked locations: a name (a ≥ 24 px link target) and its distance in words. */
+.wx-linked { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.wx-linked > li { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px var(--space-4); padding: var(--space-2) 2px; border-bottom: 1px solid var(--mud-palette-divider); }
+.wx-linked > li:last-child { border-bottom: 0; }
+.wx-linked-name { display: inline-flex; align-items: center; min-height: 24px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); }
+.wx-linked-km { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
+.wx-linked-skel { display: flex; flex-direction: column; gap: 10px; padding: 6px 2px; }
+/* "Open Oslo in Weather points" — a text link under the tiles, at least a 24 px target. */
+.wx-open-link { display: inline-flex; align-items: center; min-height: 24px; font: var(--fw-medium) var(--fs-caption)/1.4 var(--font-sans); }
+.wx-advisories { margin: 0; padding-left: 18px; }
+/* The stale alert and its Reload button side by side; Reload wraps under it on a narrow dialog. */
+.wx-alert-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.wx-alert-row > :first-child { flex: 1 1 280px; }
+.wx-nopoints { display: flex; flex-direction: column; gap: 6px; }
+/* Weather points page header at phone width: the title takes the whole first row and the actions wrap onto
+   the next, so the full "New weather point" label stays visible and the page never scrolls sideways. */
+@media (max-width: 640px) {
+  .wp-page .page-head { flex-wrap: wrap; row-gap: var(--space-3); }
+  .wp-page .ph-lead { flex: 1 1 100%; }
+  .wp-page .ph-actions { flex-wrap: wrap; }
+  .wp-page .odc-sortsel { flex-wrap: wrap; max-width: 100%; min-width: 0; }
+  .wp-page .ph-filter-bar > * { max-width: 100%; min-width: 0 !important; }
+}
+/* A loading row on the Weather points page holds the RecordCard's 88 px floor. */
+.wp-skel-row { height: 88px; border-radius: var(--radius-md); }
+.wp-skel-list { display: flex; flex-direction: column; gap: 10px; }

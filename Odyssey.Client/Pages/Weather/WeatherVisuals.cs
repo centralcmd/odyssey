@@ -214,19 +214,58 @@ public static class WeatherVisuals
         string.Create(CultureInfo.InvariantCulture,
             $"{WeatherRules.RoundCoordinate(latitude):0.000}, {WeatherRules.RoundCoordinate(longitude):0.000}");
 
+    /// <summary>A whole-kilometre distance as text — <i>2 km</i>, <i>less than 1 km</i>; never a bar (issue #388 §6.2).</summary>
+    public static string Km(int distanceKm) => distanceKm < 1 ? "less than 1 km" : $"{distanceKm} km";
+
+    /// <summary>A picker option's distance line: <i>2 km away</i>, <i>less than 1 km away</i>, <i>distance unknown</i>.</summary>
+    public static string KmAway(int? distanceKm) => distanceKm is { } km ? $"{Km(km)} away" : "distance unknown";
+
+    /// <summary>Where a linked place's weather comes from: <i>from Oslo · 2 km</i>.</summary>
+    public static string SourceLine(string pointName, int? distanceKm) =>
+        $"from {pointName} · {(distanceKm is { } km ? Km(km) : "distance unknown")}";
+
+    /// <summary>What a point offers, in words, from its two switches.</summary>
+    public static string Offers(bool forecast, bool history) =>
+        forecast && history ? "forecast and history" : forecast ? "forecast only" : history ? "history only" : "weather off";
+
+    /// <summary>
+    /// The advisory text after a link or a move (issue #388 §7). Composed client-side from the code: the server's
+    /// message never names a place, and these do.
+    /// </summary>
+    public static string? AdvisoryText(WeatherAdvisory advisory, string pointName) => advisory.Code switch
+    {
+        WeatherAdvisoryCode.TimeZoneMismatch =>
+            $"{pointName} uses a different time zone from this place, so a journal day may differ by one.",
+        WeatherAdvisoryCode.NoLocationCoordinates =>
+            $"This place has no coordinates, so its distance to {pointName} is unknown.",
+        WeatherAdvisoryCode.PointNotSelectable =>
+            $"{pointName} has no forecast turned on, so only stored history shows for this place.",
+        WeatherAdvisoryCode.LinkedLocationsFollowMove => advisory.Count switch
+        {
+            null => "Its linked locations now use the new position.",
+            1 => "1 linked location now uses the new position.",
+            var n => $"{n} linked locations now use the new position.",
+        },
+        _ => null,
+    };
+
+    /// <summary>
+    /// The settings change compared at the weather scale, as the server rounds it — a fourth decimal is no move.
+    /// </summary>
+    public static (bool Coordinates, bool Altitude, bool TimeZone) Changes(
+        WeatherPointSiteDto site, decimal? latitude, decimal? longitude, int? altitude, string? timeZoneId) =>
+        (latitude is not { } lat || longitude is not { } lng
+            || WeatherRules.RoundCoordinate(lat) != site.Latitude || WeatherRules.RoundCoordinate(lng) != site.Longitude,
+         altitude != site.AltitudeMeters,
+         !string.Equals(timeZoneId ?? "", site.TimeZoneId, StringComparison.Ordinal));
+
     public static string Fingerprint(ExistingLocation location) =>
         location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }
             ? WeatherRules.Fingerprint(latitude, longitude, location.AltitudeMeters, zone)
             : WeatherRules.NoCoordinatesFingerprint;
 
-    /// <summary>
-    /// Weather needs a position: a place without coordinates is not offered weather setup (issue #383 §5.5) —
-    /// the dialogs say <see cref="AddCoordinatesFirst"/> and link to Edit instead.
-    /// </summary>
+
+    /// <summary>A place a weather point can copy its position from: coordinates and a time zone.</summary>
     public static bool HasPosition(ExistingLocation location) =>
         location is { Latitude: not null, Longitude: not null, TimeZoneId: not null };
-
-    public const string AddCoordinatesFirst = "Add coordinates first";
-
-    public const string AddCoordinatesFirstDetail = "Weather needs this place’s coordinates and time zone to know where it is.";
 }

@@ -18,12 +18,12 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The Weather location row on Preferences (design system · Preferences.jsx, components-weather.md →
-/// Preferences → Weather location): the dashboard card's choice, saved through the weather endpoint and
+/// The Weather point row on Preferences (design system · Preferences.jsx, components-weather.md →
+/// Preferences → Weather point): the dashboard card's choice, saved through the weather endpoint and
 /// never in the page's preferences blob.
 /// </summary>
 [Collection(nameof(PreferencesSeam))]
-public class PreferencesWeatherLocationTests : IDisposable
+public class PreferencesWeatherPointTests : IDisposable
 {
     private static readonly WeatherPointRef Home = new() { WeatherPointId = Guid.NewGuid(), Name = "Home" };
     private static readonly WeatherPointRef Cabin = new() { WeatherPointId = Guid.NewGuid(), Name = "Cabin" };
@@ -40,7 +40,7 @@ public class PreferencesWeatherLocationTests : IDisposable
 
         var page = ctx.Render<Preferences>();
 
-        page.WaitForAssertion(() => Assert.Contains("Weather location", page.Markup));
+        page.WaitForAssertion(() => Assert.Contains("Weather point", page.Markup));
         var select = WeatherSelect(page);
         Assert.Equal(["Home (household default)", "Cabin"], select.Instance.Options.Select(o => o.Label));
         Assert.Equal(Cabin.WeatherPointId.ToString("D"), select.Instance.Value);
@@ -66,7 +66,7 @@ public class PreferencesWeatherLocationTests : IDisposable
         var page = ctx.Render<Preferences>();
 
         page.WaitForAssertion(() => Assert.Contains("Main currency", page.Markup));
-        Assert.DoesNotContain("Weather location", page.Markup);
+        Assert.DoesNotContain("Weather point", page.Markup);
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public class PreferencesWeatherLocationTests : IDisposable
         await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.WeatherPointId.ToString("D")));
         await page.InvokeAsync(() => SaveButton(page).Click());
 
-        page.WaitForAssertion(() => Assert.Equal("That location no longer has weather. Choose another one.", WeatherSelect(page).Instance.Error));
+        page.WaitForAssertion(() => Assert.Equal("That weather point no longer has a forecast. Choose another one.", WeatherSelect(page).Instance.Error));
         Assert.False(SaveButton(page).HasAttribute("disabled"));
     }
 
@@ -128,7 +128,7 @@ public class PreferencesWeatherLocationTests : IDisposable
 
         await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.WeatherPointId.ToString("D")));
 
-        var row = page.FindComponents<OdsSettingRow>().Single(r => r.Instance.Title == "Weather location");
+        var row = page.FindComponents<OdsSettingRow>().Single(r => r.Instance.Title == "Weather point");
         var title = row.Find(".odc-setting-ttl");
         Assert.Equal("true", title.QuerySelector(".odc-setting-dot")!.GetAttribute("aria-hidden"));
         Assert.Equal("(unsaved change)", title.QuerySelector(".sr-only")!.TextContent.Trim());
@@ -155,7 +155,7 @@ public class PreferencesWeatherLocationTests : IDisposable
     // ── Harness ──────────────────────────────────────────────────────────────────────────────────────
 
     private static IRenderedComponent<OdsSelect> WeatherSelect(IRenderedComponent<Preferences> page) =>
-        page.FindComponents<OdsSelect>().Single(s => s.Instance.AriaLabel == "Weather location");
+        page.FindComponents<OdsSelect>().Single(s => s.Instance.AriaLabel == "Weather point");
 
     private static AngleSharp.Dom.IElement SaveButton(IRenderedComponent<Preferences> page) =>
         page.FindAll("button").Single(b => b.TextContent.Contains("Save changes") || b.TextContent.Contains("Saved"));
@@ -189,9 +189,11 @@ public class PreferencesWeatherLocationTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton(reference.Object);
         ctx.Services.AddSingleton(weather.Object);
-        ctx.Services.AddSingleton<AuthenticationStateProvider>(new Claims(canChoose
+        var auth = new Claims(canChoose
             ? [PermissionClaims.UserPreferencesRead, PermissionClaims.WeatherRead, PermissionClaims.WeatherPreferencesUpdate]
-            : [PermissionClaims.UserPreferencesRead, PermissionClaims.WeatherRead]));
+            : [PermissionClaims.UserPreferencesRead, PermissionClaims.WeatherRead]);
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
+        ctx.Services.AddSingleton<IWeatherPointOptionsCache>(new WeatherPointOptionsCache(weather.Object, auth));
         Preferences.InteractiveCheck = static () => true;
         return ctx;
     }

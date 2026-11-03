@@ -8,21 +8,30 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Pages.Weather;
 
 /// <summary>
-/// The Weather history section of a location's record, for every role (design system · Weather.jsx
-/// <c>LocationWeatherHistorySection</c>, components-weather.md → Weather history). It reads
-/// <c>GET /api/weather/daily?weatherPointId=…</c> for the place's linked weather point (issue #387) and pages
+/// The Weather history section of one weather point, for every role (design system · Weather.jsx
+/// <c>WeatherHistorySection</c>, components-weather.md → Weather history). It reads
+/// <c>GET /api/weather/daily?weatherPointId=…</c> for one weather point (issue #387) and pages
 /// through its measured days by the response's <c>history</c> bounds, so every role pages the same way. The
-/// link's flags (<c>ExistingLocation.WeatherPoint</c>) add the history-off notice and hide the section during a
+/// caller's <see cref="HistoryOff"/> adds the history-off notice; the caller hides the section during a
 /// purge.
 /// <para>
-/// The window is two dates, the last 365 days by default, and is remembered per user and location with the
+/// The window is two dates, the last 365 days by default, and is remembered per user and weather point with the
 /// measures (<see cref="StateKey"/>). A window ending on the newest measured day is stored with an open end,
 /// so the next visit keeps its From and runs to whatever is newest then.
 /// </para>
 /// </summary>
-public partial class LocationWeatherHistorySection
+public partial class WeatherHistorySection
 {
-    [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
+    [Parameter, EditorRequired] public Guid WeatherPointId { get; set; }
+
+    /// <summary>The point's name, for the chart's accessible names and the history-off notice.</summary>
+    [Parameter, EditorRequired] public string PointName { get; set; } = "";
+
+    /// <summary>The point's historical data is off: the notice over what was measured before.</summary>
+    [Parameter] public bool HistoryOff { get; set; }
+
+    /// <summary>The section meta — on a linked location, where the weather comes from (<i>from Oslo · 2 km</i>).</summary>
+    [Parameter] public string? Meta { get; set; }
 
     /// <summary>weather.points.update — with <see cref="CanOpenSettings"/>, points at the missing setting.</summary>
     [Parameter] public bool CanSetUp { get; set; }
@@ -44,8 +53,8 @@ public partial class LocationWeatherHistorySection
     /// <summary>The viewer's today, as a seam for bUnit. The first window ends the day before it.</summary>
     internal static Func<DateOnly> Today = static () => DateOnly.FromDateTime(DateTime.Now);
 
-    /// <summary>The UI-state key the window and measures are remembered under, one per location.</summary>
-    internal static string StateKey(Guid locationId) => $"weather-history-{locationId}";
+    /// <summary>The UI-state key the window and measures are remembered under, one per weather point.</summary>
+    internal static string StateKey(Guid weatherPointId) => $"weather-history-{weatherPointId}";
 
     /// <summary>
     /// What is remembered for one place. <see cref="To"/> null is an open end: the window runs to the newest
@@ -71,14 +80,14 @@ public partial class LocationWeatherHistorySection
     protected override async Task OnParametersSetAsync()
     {
         // A different place starts over on its remembered window; a re-render of the same place keeps it.
-        if (_loadedFor == Location.LocationId)
+        if (_loadedFor == WeatherPointId)
             return;
-        _loadedFor = Location.LocationId;
+        _loadedFor = WeatherPointId;
         _bounds = null;
         _response = null;
         _phase = Phase.Loading;
-        _saved = await PageState.LoadAsync<SavedWindow>(StateKey(Location.LocationId));
-        if (_loadedFor != Location.LocationId)
+        _saved = await PageState.LoadAsync<SavedWindow>(StateKey(WeatherPointId));
+        if (_loadedFor != WeatherPointId)
             return;
         _measures = RestoreMeasures(_saved?.Measures);
         (_from, _to) = Resolve(_saved, Today().AddDays(-1), null);
@@ -97,7 +106,7 @@ public partial class LocationWeatherHistorySection
         _phase = Phase.Loading;
         StateHasChanged();
 
-        var result = await Weather.DailyAsync(_from, _to, Location.WeatherPoint?.WeatherPointId);
+        var result = await Weather.DailyAsync(_from, _to, WeatherPointId);
         if (seq != _requestSeq)
             return;
         if (!result.IsSuccess || result.Value is not { } response)
@@ -222,7 +231,7 @@ public partial class LocationWeatherHistorySection
             To = Latest is { } latest && _to >= latest ? null : _to,
             Measures = [.. _measures],
         };
-        PageState.QueueSave(StateKey(Location.LocationId), _saved);
+        PageState.QueueSave(StateKey(WeatherPointId), _saved);
     }
 
     /// <summary>
@@ -239,7 +248,7 @@ public partial class LocationWeatherHistorySection
         "A day runs midnight to midnight UTC — precipitation 06:00 to 06:00 UTC, as MET reports it — so it can sit an hour or two off the local date.";
 
     internal const string NoStationText =
-        "No MET Norway station measures this place — none for temperature within 25 km, precipitation within 15 km or wind within 30 km — so there is no weather history. Forecasts are not affected.";
+        "No MET Norway station measures this point — none for temperature within 25 km, precipitation within 15 km or wind within 30 km — so there is no weather history. Forecasts are not affected.";
 
     /// <summary>The tooltip's lead sentence: where the values come from, ending on a colon when station rows follow.</summary>
     internal static string AboutLead(IReadOnlyList<WeatherStationRef> stations) => stations.Count == 0
@@ -341,6 +350,4 @@ public partial class LocationWeatherHistorySection
 
     private static string ShortDate(DateOnly date) => date.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>The linked weather point's history is off: nothing new is measured for this place.</summary>
-    private bool HistoryOff => Location.WeatherPoint is { HistoryEnabled: false };
 }

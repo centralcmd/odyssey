@@ -226,7 +226,7 @@ public partial class Settings
         // uses. Without it the row still shows its stored value, it just offers nothing else to pick.
         if (!(await Auth.GetUserAsync()).HasPermission(PermissionClaims.WeatherRead))
             return;
-        var options = await Weather.OptionsAsync();
+        var options = await WeatherOptions.GetAsync();
         _weatherOptions = options.IsSuccess && options.Value is { } value ? [.. value.Points.Where(p => p.ForecastEnabled)] : [];
     }
 
@@ -679,7 +679,7 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
                 Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
                 Unit: "min"),
-            new("weatherMaxTrackedPoints", "format_list_numbered", "Weather points on a schedule",
+            new("weatherMaxTrackedPoints", "format_list_numbered", "Points on a schedule",
                 "How many weather points may refresh their forecast in the background. Others are fetched only "
                 + "when someone looks. Lowering it pauses the most recently enabled ones first.",
                 SettingClaim.Count, SettingControl.Number,
@@ -2715,6 +2715,8 @@ public partial class Settings
             // the affordance change without a reload. Note this reaches only THIS browser: a user with
             // an open gate is covered server-side by the disclosureVersion check, not by this call.
             Disclosures.Invalidate();
+            // The household default rides on the weather-point picker list (issue #388 §5).
+            WeatherOptions.Invalidate();
             StateHasChanged();
             await Task.Delay(OdsTiming.ConfirmFlashMs);
             _justSaved = false;
