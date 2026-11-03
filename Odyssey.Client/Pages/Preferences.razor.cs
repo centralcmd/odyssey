@@ -37,7 +37,7 @@ public partial class Preferences
     // server-owned user-preferences row, written only through PUT /api/weather/preferences, which
     // checks the place is selectable. "" follows the household default, as on the dashboard card.
     private bool _canChooseWeather;
-    private WeatherLocationOptions _weatherOptions = new();
+    private WeatherPointOptions _weatherOptions = new();
     private string _weatherLocation = WeatherVisuals.FollowHouseholdDefault;
     private string _savedWeatherLocation = WeatherVisuals.FollowHouseholdDefault;
     private string? _weatherError;
@@ -99,7 +99,7 @@ public partial class Preferences
 
     /// <summary>As the dashboard card's picker: the claim, and two or more places to choose between.</summary>
     private bool ShowWeatherLocationCard =>
-        _canChooseWeather && _weatherOptions.Locations.Count > 1
+        _canChooseWeather && WeatherVisuals.Selectable(_weatherOptions).Count() > 1
         && Matches("Weather location", "Place the weather card on your dashboard shows");
 
     private IReadOnlyList<OdsOption> WeatherLocationOptions => WeatherVisuals.PickerOptions(_weatherOptions);
@@ -173,7 +173,7 @@ public partial class Preferences
             return;
 
         _weatherOptions = loaded;
-        _weatherLocation = _savedWeatherLocation = WeatherVisuals.PickerValue(loaded, own.DefaultLocation);
+        _weatherLocation = _savedWeatherLocation = WeatherVisuals.PickerValue(loaded, own.DefaultPoint);
         _canChooseWeather = true;
     }
 

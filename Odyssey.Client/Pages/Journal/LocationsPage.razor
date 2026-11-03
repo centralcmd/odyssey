@@ -84,9 +84,9 @@
                         {
                             <OdsChip Tone="OdsChipTone.Outline" Icon="@LocationVisuals.MergedIcon" Class="sm">@merged</OdsChip>
                         }
-                        @if (ShowWeather && WeatherRow(l) is { } wx)
+                        @if (_canReadWeatherData && l.WeatherPoint is { } wx)
                         {
-                            @WeatherChip(wx, l)
+                            @WeatherChip(wx)
                         }
                     </Chips>
 
@@ -188,14 +188,11 @@
                         }
                         @if (ShowWeather)
                         {
-                            <LocationWeatherSection Location="l" Row="WeatherRow(l)" CanUpdate="_canUpdateWeather"
-                                                    CanPurge="_canPurgeWeather"
-                                                    OnApply="@(() => OpenWeatherApply(l))"
-                                                    OnPurge="@(() => OpenWeatherPurge(l))" />
+                            <LocationWeatherSection Location="l" Row="WeatherRow(l)" />
                         }
                         @if (ShowHistory(l))
                         {
-                            <LocationWeatherHistorySection @key="@($"{l.LocationId}:{_historyEpoch}")" Location="l" Row="@(ShowWeather ? WeatherRow(l) : null)"
+                            <LocationWeatherHistorySection @key="@($"{l.LocationId}:{l.WeatherPoint?.WeatherPointId}")" Location="l"
                                                            CanSetUp="_canUpdateWeather" CanOpenSettings="_canOpenSettings" />
                         }
                     </Details>
@@ -259,33 +256,12 @@
                           ReturnFocusToId="@MenuId(_deleteLocation.LocationId)" ReturnFocusOnDeleted="@DeleteDestination(_deleteNeighbour)" />
 }
 
-@if (_wxSettingsLocation is not null)
-{
-    <WeatherSettingsDialog @key="_wxKey" @bind-Open="_wxSettingsOpen" Location="_wxSettingsLocation"
-                           Row="WeatherRow(_wxSettingsLocation)" TrackedCount="TrackedCount" Cap="_weatherCap"
-                           OnSaved="OnWeatherSaved"
-                           OnEditLocation="@(() => EditClicked(_wxSettingsLocation))" />
-}
-
-@if (_wxApplyLocation is not null && WeatherRow(_wxApplyLocation) is { } applyRow)
-{
-    <WeatherApplyMoveDialog @key="_wxKey" @bind-Open="_wxApplyOpen" Location="_wxApplyLocation" Row="applyRow"
-                            OnApplied="OnWeatherApplied" OnEditLocation="@(() => EditClicked(_wxApplyLocation))" />
-}
-
-@if (_wxPurgeLocation is not null && WeatherRow(_wxPurgeLocation) is { } purgeRow)
-{
-    <WeatherPurgeDialog @key="_wxKey" @bind-Open="_wxPurgeOpen" Location="_wxPurgeLocation" Row="purgeRow"
-                        OnDeleted="OnWeatherPurged" OnInterrupted="OnWeatherPurgeInterrupted" />
-}
-
 @code {
-    // The row chip — Admin only; nobody else can read weather settings. The words are always present, and
-    // they name which half is on: forecast and historical data are separate settings.
-    private static RenderFragment WeatherChip(ExistingWeatherLocation row, ExistingLocation l) =>
+    // The row chip — from the place's weather link (issue #387), so every weather.read holder sees it. The words
+    // are always present, and they name which half of the linked point is on.
+    private static RenderFragment WeatherChip(LinkedWeatherPointRef row) =>
         row.PurgeInProgress ? @<OdsChip Tone="OdsChipTone.Error" Icon="delete_sweep" Class="sm">Weather: deleting</OdsChip>
         : !row.ForecastEnabled && !row.HistoryEnabled ? @<OdsChip Tone="OdsChipTone.Outline" Icon="cloud_off" Class="sm">Weather off</OdsChip>
-        : WeatherVisuals.Moved(row, l) ? @<OdsChip Tone="OdsChipTone.Warning" Icon="wrong_location" Class="sm">Weather: moved</OdsChip>
         : !row.HistoryEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Forecast only</OdsChip>
         : !row.ForecastEnabled ? @<OdsChip Tone="OdsChipTone.Info" Icon="history" Class="sm">History only</OdsChip>
         : @<OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Weather</OdsChip>;

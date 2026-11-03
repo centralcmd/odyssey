@@ -25,8 +25,8 @@ namespace Odyssey.Client.Tests;
 [Collection(nameof(PreferencesSeam))]
 public class PreferencesWeatherLocationTests : IDisposable
 {
-    private static readonly WeatherLocationRef Home = new() { LocationId = Guid.NewGuid(), Name = "Home" };
-    private static readonly WeatherLocationRef Cabin = new() { LocationId = Guid.NewGuid(), Name = "Cabin" };
+    private static readonly WeatherPointRef Home = new() { WeatherPointId = Guid.NewGuid(), Name = "Home" };
+    private static readonly WeatherPointRef Cabin = new() { WeatherPointId = Guid.NewGuid(), Name = "Cabin" };
 
     private readonly Mock<IWeatherApiClient> weather = new();
     private readonly Mock<IUserPreferenceService> preferences = new();
@@ -43,13 +43,13 @@ public class PreferencesWeatherLocationTests : IDisposable
         page.WaitForAssertion(() => Assert.Contains("Weather location", page.Markup));
         var select = WeatherSelect(page);
         Assert.Equal(["Home (household default)", "Cabin"], select.Instance.Options.Select(o => o.Label));
-        Assert.Equal(Cabin.LocationId.ToString("D"), select.Instance.Value);
+        Assert.Equal(Cabin.WeatherPointId.ToString("D"), select.Instance.Value);
     }
 
     [Fact]
     public async Task A_stored_place_that_is_no_longer_selectable_reads_as_the_household_default()
     {
-        await using var ctx = Context(stored: new WeatherLocationRef { LocationId = Guid.NewGuid(), Name = "Old flat" });
+        await using var ctx = Context(stored: new WeatherPointRef { WeatherPointId = Guid.NewGuid(), Name = "Old flat" });
 
         var page = ctx.Render<Preferences>();
 
@@ -72,16 +72,16 @@ public class PreferencesWeatherLocationTests : IDisposable
     [Fact]
     public async Task Saving_a_changed_place_goes_to_the_weather_endpoint_and_not_the_preferences_blob()
     {
-        weather.Setup(w => w.SetPreferenceAsync(Cabin.LocationId, It.IsAny<CancellationToken>()))
+        weather.Setup(w => w.SetPreferenceAsync(Cabin.WeatherPointId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
         await using var ctx = Context();
         var page = ctx.Render<Preferences>();
         page.WaitForAssertion(() => WeatherSelect(page));
 
-        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.LocationId.ToString("D")));
+        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.WeatherPointId.ToString("D")));
         await page.InvokeAsync(() => SaveButton(page).Click());
 
-        page.WaitForAssertion(() => weather.Verify(w => w.SetPreferenceAsync(Cabin.LocationId, It.IsAny<CancellationToken>()), Times.Once));
+        page.WaitForAssertion(() => weather.Verify(w => w.SetPreferenceAsync(Cabin.WeatherPointId, It.IsAny<CancellationToken>()), Times.Once));
         preferences.Verify(p => p.SaveUserPreferencesAsync(It.IsAny<UserPreferencesPage>()), Times.Never);
     }
 
@@ -103,13 +103,13 @@ public class PreferencesWeatherLocationTests : IDisposable
     [Fact]
     public async Task A_400_puts_the_error_on_the_row_and_keeps_it_dirty()
     {
-        weather.Setup(w => w.SetPreferenceAsync(Cabin.LocationId, It.IsAny<CancellationToken>()))
+        weather.Setup(w => w.SetPreferenceAsync(Cabin.WeatherPointId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem { Status = 400 }));
         await using var ctx = Context();
         var page = ctx.Render<Preferences>();
         page.WaitForAssertion(() => WeatherSelect(page));
 
-        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.LocationId.ToString("D")));
+        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.WeatherPointId.ToString("D")));
         await page.InvokeAsync(() => SaveButton(page).Click());
 
         page.WaitForAssertion(() => Assert.Equal("That location no longer has weather. Choose another one.", WeatherSelect(page).Instance.Error));
@@ -126,7 +126,7 @@ public class PreferencesWeatherLocationTests : IDisposable
         page.WaitForAssertion(() => WeatherSelect(page));
         Assert.Empty(page.FindAll(".odc-setting-dot"));
 
-        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.LocationId.ToString("D")));
+        await page.InvokeAsync(() => WeatherSelect(page).Instance.ValueChanged.InvokeAsync(Cabin.WeatherPointId.ToString("D")));
 
         var row = page.FindComponents<OdsSettingRow>().Single(r => r.Instance.Title == "Weather location");
         var title = row.Find(".odc-setting-ttl");
@@ -160,7 +160,7 @@ public class PreferencesWeatherLocationTests : IDisposable
     private static AngleSharp.Dom.IElement SaveButton(IRenderedComponent<Preferences> page) =>
         page.FindAll("button").Single(b => b.TextContent.Contains("Save changes") || b.TextContent.Contains("Saved"));
 
-    private BunitContext Context(WeatherLocationRef? stored = null, WeatherLocationRef[]? locations = null, bool canChoose = true)
+    private BunitContext Context(WeatherPointRef? stored = null, WeatherPointRef[]? locations = null, bool canChoose = true)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -176,10 +176,14 @@ public class PreferencesWeatherLocationTests : IDisposable
         reference.Setup(r => r.ActiveCurrenciesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
         reference.Setup(r => r.CurrencyOptionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
 
-        weather.Setup(w => w.OptionsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult<WeatherLocationOptions>.Success(
-            new WeatherLocationOptions { Locations = locations ?? [Home, Cabin], HouseholdDefaultLocationId = Home.LocationId }, HttpStatusCode.OK));
+        weather.Setup(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult<WeatherPointOptions>.Success(
+            new WeatherPointOptions
+            {
+                Points = [.. (locations ?? [Home, Cabin]).Select(p => new WeatherPointOption { WeatherPointId = p.WeatherPointId, Name = p.Name, ForecastEnabled = true })],
+                HouseholdDefaultPointId = Home.WeatherPointId,
+            }, HttpStatusCode.OK));
         weather.Setup(w => w.PreferencesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(ApiResult<WeatherPreferences>.Success(
-            new WeatherPreferences { DefaultLocation = stored, HouseholdDefaultLocation = Home }, HttpStatusCode.OK));
+            new WeatherPreferences { DefaultPoint = stored, HouseholdDefaultPoint = Home }, HttpStatusCode.OK));
 
         ctx.Services.AddSingleton(preferences.Object);
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);

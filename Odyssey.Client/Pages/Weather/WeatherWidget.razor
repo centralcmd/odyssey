@@ -61,7 +61,7 @@
 
     private RenderFragment Forecast => FocusForecast(_current!.Step!, _resolved!, TodaySummary, Coming, Yesterday);
 
-    private RenderFragment FocusForecast(WeatherStep step, WeatherLocationRef place, WeatherDaySummary? today,
+    private RenderFragment FocusForecast(WeatherStep step, WeatherPointRef place, WeatherDaySummary? today,
         IReadOnlyList<WeatherDaySummary> coming, WeatherDaySummary? yesterday) => @<div class="wx-body">
         <section class="wx-now" aria-label="@($"Now at {place.Name}")">
             <div class="wx-now-main">

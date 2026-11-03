@@ -24,9 +24,9 @@ public partial class WeatherWidget
     private Phase _phase = Phase.Loading;
     private WeatherCurrentResponse? _current;
     private IReadOnlyList<WeatherDaySummary> _days = [];
-    private WeatherLocationOptions _options = new();
+    private WeatherPointOptions _options = new();
     private WeatherPreferences _preferences = new();
-    private WeatherLocationRef? _resolved;
+    private WeatherPointRef? _resolved;
     private bool _saving;
     private string? _prefError;
     private string _announce = "";
@@ -54,7 +54,7 @@ public partial class WeatherWidget
             return;
 
         var user = await Auth.GetUserAsync();
-        _canSetUp = user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
+        _canSetUp = user.HasPermission(PermissionClaims.WeatherPointsUpdate);
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canChoose = user.HasPermission(PermissionClaims.WeatherPreferencesUpdate);
         await LoadAsync();
@@ -75,7 +75,7 @@ public partial class WeatherWidget
         StateHasChanged();
 
         // The options and the caller's own place feed only the picker: someone who cannot choose never needs them.
-        var options = _canChoose ? Weather.OptionsAsync() : Task.FromResult(ApiResult<WeatherLocationOptions>.Success(new WeatherLocationOptions(), HttpStatusCode.OK));
+        var options = _canChoose ? Weather.OptionsAsync() : Task.FromResult(ApiResult<WeatherPointOptions>.Success(new WeatherPointOptions(), HttpStatusCode.OK));
         var preferences = _canChoose ? Weather.PreferencesAsync() : Task.FromResult(ApiResult<WeatherPreferences>.Success(new WeatherPreferences(), HttpStatusCode.OK));
         var current = Weather.CurrentAsync();
         // Yesterday for the measured line, then the days shown. The dates are the place's own local dates;
@@ -103,11 +103,11 @@ public partial class WeatherWidget
         }
 
         _current = currentResult.Value;
-        _resolved = _current.Location;
-        _options = (await options).Value ?? new WeatherLocationOptions();
+        _resolved = _current.Point;
+        _options = (await options).Value ?? new WeatherPointOptions();
         _preferences = (await preferences).Value ?? new WeatherPreferences();
         var dailyResult = await daily;
-        _days = dailyResult.IsSuccess && dailyResult.Value is { } d && d.Location?.LocationId == _resolved?.LocationId ? d.Days : [];
+        _days = dailyResult.IsSuccess && dailyResult.Value is { } d && d.Point?.WeatherPointId == _resolved?.WeatherPointId ? d.Days : [];
         _phase = Phase.Ready;
         _announce = _current.Status == WeatherStatus.Ok && _resolved is { } place
             ? _current.Stale ? $"Weather for {place.Name} is not up to date: MET Norway didn't answer the last refresh." : $"Weather for {place.Name} loaded."
@@ -117,17 +117,17 @@ public partial class WeatherWidget
 
     // ── Picker ─────────────────────────────────────────────────────────────────────────────────────
 
-    private WeatherLocationRef? HouseholdDefault => WeatherVisuals.HouseholdDefault(_options);
+    private WeatherPointOption? HouseholdDefault => WeatherVisuals.HouseholdDefault(_options);
 
     /// <summary>Two or more selectable places, and a state with a forecast to show — otherwise the name rides in the title.</summary>
     private bool ShowPicker =>
-        _canChoose && _phase == Phase.Ready && _options.Locations.Count > 1
+        _canChoose && _phase == Phase.Ready && WeatherVisuals.Selectable(_options).Count() > 1
         && _current?.Status is WeatherStatus.Ok or WeatherStatus.NoData;
 
     /// <summary>With no picker, the place follows the title: "Weather · Home".</summary>
     private string? TitlePlace => _resolved is { } place && !ShowPicker ? $" · {place.Name}" : null;
 
-    private string PickerValue => WeatherVisuals.PickerValue(_options, _preferences.DefaultLocation);
+    private string PickerValue => WeatherVisuals.PickerValue(_options, _preferences.DefaultPoint);
 
     private IReadOnlyList<OdsOption> PickerOptions => WeatherVisuals.PickerOptions(_options);
 
@@ -153,7 +153,7 @@ public partial class WeatherWidget
             return;
         }
 
-        var name = next is { } chosen ? _options.Locations.FirstOrDefault(l => l.LocationId == chosen)?.Name : HouseholdDefault?.Name;
+        var name = next is { } chosen ? WeatherVisuals.Selectable(_options).FirstOrDefault(p => p.WeatherPointId == chosen)?.Name : HouseholdDefault?.Name;
         await LoadAsync(quiet: true);
         _saving = false;
         // A failed reload has already said the choice is saved but not shown; announcing the new place as

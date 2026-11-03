@@ -10,9 +10,10 @@ namespace Odyssey.Client.Pages.Weather;
 /// <summary>
 /// The Weather history section of a location's record, for every role (design system · Weather.jsx
 /// <c>LocationWeatherHistorySection</c>, components-weather.md → Weather history). It reads
-/// <c>GET /api/weather/daily?locationId=…</c> and pages through the place's measured days by the response's
-/// <c>history</c> bounds, never by the Admin row, so every role pages the same way. <see cref="Row"/> is
-/// the Admin row or null; it only adds the weather-off notice and hides the section during a purge.
+/// <c>GET /api/weather/daily?weatherPointId=…</c> for the place's linked weather point (issue #387) and pages
+/// through its measured days by the response's <c>history</c> bounds, so every role pages the same way. The
+/// link's flags (<c>ExistingLocation.WeatherPoint</c>) add the history-off notice and hide the section during a
+/// purge.
 /// <para>
 /// The window is two dates, the last 365 days by default, and is remembered per user and location with the
 /// measures (<see cref="StateKey"/>). A window ending on the newest measured day is stored with an open end,
@@ -22,9 +23,8 @@ namespace Odyssey.Client.Pages.Weather;
 public partial class LocationWeatherHistorySection
 {
     [Parameter, EditorRequired] public ExistingLocation Location { get; set; } = default!;
-    [Parameter] public ExistingWeatherLocation? Row { get; set; }
 
-    /// <summary>weather.locations.update — with <see cref="CanOpenSettings"/>, points at the missing setting.</summary>
+    /// <summary>weather.points.update — with <see cref="CanOpenSettings"/>, points at the missing setting.</summary>
     [Parameter] public bool CanSetUp { get; set; }
 
     /// <summary>system-settings.update — the link to System settings is offered only to someone who can use it.</summary>
@@ -97,7 +97,7 @@ public partial class LocationWeatherHistorySection
         _phase = Phase.Loading;
         StateHasChanged();
 
-        var result = await Weather.DailyAsync(_from, _to, Location.LocationId);
+        var result = await Weather.DailyAsync(_from, _to, Location.WeatherPoint?.WeatherPointId);
         if (seq != _requestSeq)
             return;
         if (!result.IsSuccess || result.Value is not { } response)
@@ -341,6 +341,6 @@ public partial class LocationWeatherHistorySection
 
     private static string ShortDate(DateOnly date) => date.ToString("d MMM", System.Globalization.CultureInfo.InvariantCulture);
 
-    /// <summary>The Admin row says historical data is off: nothing new is measured for this place.</summary>
-    private bool HistoryOff => Row is { HistoryEnabled: false };
+    /// <summary>The linked weather point's history is off: nothing new is measured for this place.</summary>
+    private bool HistoryOff => Location.WeatherPoint is { HistoryEnabled: false };
 }

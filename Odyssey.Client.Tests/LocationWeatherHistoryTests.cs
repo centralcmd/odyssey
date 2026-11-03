@@ -579,14 +579,17 @@ public class LocationWeatherHistoryTests : IDisposable
         TimeZoneId = "Europe/Oslo",
     };
 
-    /// <summary>The Admin row; <paramref name="enabled"/> is historical data — the half this section follows.</summary>
-    private static ExistingWeatherLocation Row(bool enabled) => new()
+    /// <summary>The weather point the cabin links to (issue #387).</summary>
+    private static readonly Guid CabinPoint = Guid.Parse("33333333-3333-3333-3333-333333333333");
+
+    /// <summary>The cabin's link; <paramref name="enabled"/> is historical data — the half this section follows.</summary>
+    private static LinkedWeatherPointRef Row(bool enabled) => new()
     {
-        LocationId = Cabin.LocationId,
-        Name = Cabin.Name,
+        WeatherPointId = CabinPoint,
+        Name = "Cabin point",
         ForecastEnabled = true,
         HistoryEnabled = enabled,
-        Site = new WeatherLocationSiteDto { Version = 1, TimeZoneId = "Europe/Oslo" },
+        HasStoredHistory = true,
     };
 
     private static WeatherDaySummary Day(DateOnly date, decimal mean) => new()
@@ -611,7 +614,7 @@ public class LocationWeatherHistoryTests : IDisposable
     private IReadOnlyList<WeatherStationRef> stations = Stations;
 
     private void Serve(DateOnly? measuredFrom, DateOnly? measuredThrough, bool station = true, bool configured = true) =>
-        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), Cabin.LocationId, It.IsAny<CancellationToken>()))
+        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), CabinPoint, It.IsAny<CancellationToken>()))
             .ReturnsAsync((DateOnly from, DateOnly to, Guid? _, CancellationToken _) =>
             {
                 requests.Add((from, to));
@@ -621,16 +624,17 @@ public class LocationWeatherHistoryTests : IDisposable
                     : [];
                 return ApiResult<WeatherDailyResponse>.Success(new WeatherDailyResponse
                 {
-                    Location = new WeatherLocationRef { LocationId = Cabin.LocationId, Name = Cabin.Name },
+                    Point = new WeatherPointRef { WeatherPointId = CabinPoint, Name = "Cabin point" },
                     Status = days.Count > 0 ? WeatherStatus.Ok : WeatherStatus.NoData,
                     Days = days,
                     History = new WeatherHistoryBounds { MeasuredFrom = measuredFrom, MeasuredThrough = measuredThrough, HasObservationStation = station, ObservationsConfigured = configured, Stations = stations },
                 }, HttpStatusCode.OK);
             });
 
+    /// <summary>The section reads its link from the place itself; with no <paramref name="row"/> the cabin's history is on.</summary>
     private IRenderedComponent<LocationWeatherHistorySection> Render(
-        BunitContext ctx, ExistingWeatherLocation? row = null, bool canSetUp = false, bool canOpenSettings = false) =>
-        ctx.Render<LocationWeatherHistorySection>(p => p.Add(c => c.Location, Cabin).Add(c => c.Row, row)
+        BunitContext ctx, LinkedWeatherPointRef? row = null, bool canSetUp = false, bool canOpenSettings = false) =>
+        ctx.Render<LocationWeatherHistorySection>(p => p.Add(c => c.Location, Cabin with { WeatherPoint = row ?? Row(enabled: true) })
             .Add(c => c.CanSetUp, canSetUp).Add(c => c.CanOpenSettings, canOpenSettings));
 
     private static IRenderedComponent<OdsIconButton> Nav(IRenderedComponent<LocationWeatherHistorySection> section, string direction) =>

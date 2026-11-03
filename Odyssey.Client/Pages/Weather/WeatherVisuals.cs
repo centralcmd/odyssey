@@ -17,32 +17,36 @@ public sealed record WeatherFailureInfo(string Label, string Help);
 /// </summary>
 public static class WeatherVisuals
 {
-    // ── The caller's own weather place (the dashboard picker and the Preferences row) ─────────────
+    // ── The caller's own weather point (the dashboard picker and the Preferences row) ─────────────
 
-    /// <summary>The picker value that follows the household default — sent as <c>defaultLocationId: null</c>.</summary>
+    /// <summary>The picker value that follows the household default — sent as <c>defaultPointId: null</c>.</summary>
     public const string FollowHouseholdDefault = "";
 
-    public static WeatherLocationRef? HouseholdDefault(WeatherLocationOptions options) =>
-        options.Locations.FirstOrDefault(l => l.LocationId == options.HouseholdDefaultLocationId);
+    /// <summary>The points a user can pick for the dashboard: forecast on (issue #387 §5 endpoint 9).</summary>
+    public static IEnumerable<WeatherPointOption> Selectable(WeatherPointOptions options) =>
+        options.Points.Where(p => p.ForecastEnabled);
 
-    /// <summary>The household default first, labelled as such, then every other selectable place.</summary>
-    public static IReadOnlyList<OdsOption> PickerOptions(WeatherLocationOptions options)
+    public static WeatherPointOption? HouseholdDefault(WeatherPointOptions options) =>
+        Selectable(options).FirstOrDefault(p => p.WeatherPointId == options.HouseholdDefaultPointId);
+
+    /// <summary>The household default first, labelled as such, then every other selectable point.</summary>
+    public static IReadOnlyList<OdsOption> PickerOptions(WeatherPointOptions options)
     {
         var household = HouseholdDefault(options);
         var items = new List<OdsOption>
         {
             new(FollowHouseholdDefault, household is not null ? $"{household.Name} (household default)" : "Household default"),
         };
-        items.AddRange(options.Locations
-            .Where(l => household is null || l.LocationId != household.LocationId)
-            .Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
+        items.AddRange(Selectable(options)
+            .Where(p => household is null || p.WeatherPointId != household.WeatherPointId)
+            .Select(p => new OdsOption(p.WeatherPointId.ToString("D"), p.Name)));
         return items;
     }
 
-    /// <summary>The caller's own place, or the household default when it is unset or no longer selectable.</summary>
-    public static string PickerValue(WeatherLocationOptions options, WeatherLocationRef? own) =>
-        own is not null && options.Locations.Any(l => l.LocationId == own.LocationId)
-            ? own.LocationId.ToString("D")
+    /// <summary>The caller's own point, or the household default when it is unset or no longer selectable.</summary>
+    public static string PickerValue(WeatherPointOptions options, WeatherPointRef? own) =>
+        own is not null && Selectable(options).Any(p => p.WeatherPointId == own.WeatherPointId)
+            ? own.WeatherPointId.ToString("D")
             : FollowHouseholdDefault;
 
     private sealed record Symbol(string Base, string Label, string Icon, string Night);
@@ -209,15 +213,6 @@ public static class WeatherVisuals
     public static string Pair3(decimal latitude, decimal longitude) =>
         string.Create(CultureInfo.InvariantCulture,
             $"{WeatherRules.RoundCoordinate(latitude):0.000}, {WeatherRules.RoundCoordinate(longitude):0.000}");
-
-    /// <summary>
-    /// "Moved", derived from the live location the same way the server derives <c>locationMoved</c>, so an
-    /// edit on this page turns the chip and notice on without a re-read.
-    /// </summary>
-    public static bool Moved(ExistingWeatherLocation row, ExistingLocation location) =>
-        location is not { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }
-        || WeatherRules.Moved(latitude, longitude, location.AltitudeMeters, zone,
-            row.Site.Latitude, row.Site.Longitude, row.Site.AltitudeMeters, row.Site.TimeZoneId);
 
     public static string Fingerprint(ExistingLocation location) =>
         location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } zone }

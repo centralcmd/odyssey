@@ -610,26 +610,4 @@ public class UnifiedLocationsDialogTests
         Assert.Equal(LocationSource.Manual, creates[0].Source);
     }
 
-    // ── Weather (AC 15) ───────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Weather_setup_for_a_place_without_coordinates_says_add_coordinates_first()
-    {
-        await using var ctx = Context();
-        ctx.Services.AddSingleton(Mock.Of<IWeatherApiClient>());
-        ctx.Services.AddSingleton(Locations().Object);
-        var edits = 0;
-        var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherSettingsDialog>(d => d
-            .Add(x => x.Open, true)
-            .Add(x => x.Location, Hytta(coordinates: false))
-            .Add(x => x.Row, null)
-            .Add(x => x.OnEditLocation, EventCallback.Factory.Create(new object(), () => edits++))));
-
-        Assert.Contains("Add coordinates first", cut.Markup);
-        Assert.Empty(cut.FindComponents<WeatherSiteCard>());
-        Assert.True(cut.FindAll("button").Single(b => b.TextContent.Contains("Turn on weather", StringComparison.Ordinal)).HasAttribute("disabled"));
-
-        cut.FindAll("button").Single(b => b.TextContent.Contains("Edit location", StringComparison.Ordinal)).Click();
-        Assert.Equal(1, edits);
-    }
 }
