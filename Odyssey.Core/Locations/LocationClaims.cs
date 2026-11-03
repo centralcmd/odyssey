@@ -30,6 +30,9 @@ public sealed record LocationClaims
 
     public bool JournalRead { get; init; }
 
+    /// <summary><c>weather.read</c>: without it <c>ExistingLocation.WeatherPoint</c> and its distance are null (issue #387 §7.3).</summary>
+    public bool WeatherRead { get; init; }
+
     // The merge's per-class claims (§5.6): one per reference class actually present.
     public bool ContactsUpdate { get; init; }
 
@@ -49,6 +52,7 @@ public sealed record LocationClaims
         PropertiesRead = true,
         CalendarRead = true,
         JournalRead = true,
+        WeatherRead = true,
         ContactsUpdate = true,
         PropertiesUpdate = true,
         CalendarUpdate = true,

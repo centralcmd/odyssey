@@ -7,15 +7,15 @@ namespace Odyssey.Core.Weather;
 /// The MET contact, or <see langword="null"/> when it is empty <b>or unusable</b>. Fail closed: a stored
 /// value the shape check rejects must never reach a request header, so it reads exactly like "not set".
 /// </param>
-/// <param name="HouseholdDefaultLocationId">
+/// <param name="HouseholdDefaultPointId">
 /// The household default, or <see langword="null"/> when empty or not a GUID. Selectability is the
-/// caller's question — an archived default is treated as unset on read.
+/// caller's question — a point that is no longer selectable is treated as unset on read.
 /// </param>
 public sealed record WeatherSettings(
     string? Contact,
     int RefreshIntervalMinutes,
-    int MaxTrackedLocations,
-    Guid? HouseholdDefaultLocationId,
+    int MaxTrackedPoints,
+    Guid? HouseholdDefaultPointId,
     bool IsDegraded)
 {
     public bool IsConfigured => Contact is not null;

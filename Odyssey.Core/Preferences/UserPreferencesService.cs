@@ -12,7 +12,7 @@ namespace Odyssey.Core.Preferences;
 public sealed class UserPreferencesService
 {
     /// <summary>
-    /// The caller's weather location (issue #348 §4), as <c>{"defaultLocationId": "…"}</c>. Written only by
+    /// The caller's weather point (issue #348 §4; issue #387), as <c>{"defaultPointId": "…"}</c>. Written only by
     /// <c>PUT /api/weather/preferences</c>, which validates it; the generic endpoint refuses the key.
     /// </summary>
     public const string WeatherKey = "weather-preferences";
