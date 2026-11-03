@@ -166,10 +166,18 @@
 .ph-root ::deep .ph-search-region .odc-input,
 .ph-root ::deep .ph-search-region .odc-ms-trigger:not(.quiet),
 .ph-root ::deep .ph-search-region .odc-sortsel-trigger,
+.ph-root ::deep .ph-search-region .odc-sortsel-static,
 .ph-root ::deep .ph-search-region .odc-sortsel-dir,
 .ph-root ::deep .ph-search-region .odc-rpp-trigger,
 .ph-root ::deep .ph-search-region .odc-dpr {
     background-color: var(--mud-palette-background);
+}
+
+/* The date range's two inner fields are outlined MudInputs too, so the rule above would fill them
+   as well. They are as tall as the range's own box, so an opaque fill paints over its top and bottom
+   border; the range draws the one fill and edge, and its fields stay transparent inside it. */
+.ph-root ::deep .ph-search-region .odc-dpr .mud-input.mud-input-outlined {
+    background-color: transparent;
 }
 
 /* Problem-signal toggle — count badge punched out of the MudButton's tint.

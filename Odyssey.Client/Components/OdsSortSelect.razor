@@ -12,7 +12,9 @@
     "Z → A"; Number → "Low → High" / "High → Low"; Date → "Oldest first" / "Newest first";
     Status → "Defined order" / "Reversed". Changing the field applies its natural default direction;
     the toggle flips it. With ONE field the dropdown is omitted — a static "Sort by <field>" label +
-    the direction toggle render instead (never a one-option dropdown).
+    the direction toggle render instead (never a one-option dropdown). The static label keeps the
+    trigger's bordered box, minus the chevron and the pointer, so it lines up with the filter bar's
+    other controls while reading as fixed.
 
     Direction is always conveyed as TEXT (the typed label + the aria word), never by the arrow alone.
 *@
@@ -24,7 +26,10 @@
     @if (_single)
     {
         <div class="odc-sortsel single @Class">
-            <span class="odc-sortsel-static">@Label <b>@_field.Label</b></span>
+            <span class="odc-sortsel-static">
+                <span class="odc-sortsel-prefix">@Label</span>
+                <span class="odc-sortsel-val">@_field.Label</span>
+            </span>
             @DirectionToggle
         </div>
     }
