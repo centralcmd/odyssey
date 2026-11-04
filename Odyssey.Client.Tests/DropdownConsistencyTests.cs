@@ -75,6 +75,68 @@ public class DropdownConsistencyTests
     public async Task A_quiet_trigger_is_not_widened() => Assert.Equal(0, await GhostCount(3, quiet: true));
 
     [Fact]
+    public async Task An_empty_list_renders_no_ghosts() => Assert.Equal(0, await GhostCount(0));
+
+    [Fact]
+    public async Task Fit_ghosts_mirror_the_option_labels()
+    {
+        await using var ctx = NewContext();
+        var options = OptionsOf(3);
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Status")
+            .Add(c => c.Options, options));
+
+        Assert.Equal(options.Select(o => o.Label),
+            cut.FindAll(".odc-ms-fit-ghost .odc-check-label").Select(e => e.TextContent));
+    }
+
+    [Theory]
+    [InlineData(3)]
+    [InlineData(OdsMultiSelect.FitLimit + 1)]
+    public async Task The_trigger_face_is_the_same_in_fit_and_non_fit_modes(int optionCount)
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Status")
+            .Add(c => c.Icon, "check_circle")
+            .Add(c => c.Options, OptionsOf(optionCount))
+            .Add(c => c.Values, ["v1", "v2"]));
+
+        var trigger = cut.Find("button.odc-ms-trigger");
+        Assert.Equal("Status", trigger.QuerySelector(".odc-ms-label")!.TextContent);
+        Assert.Equal("2", trigger.QuerySelector(".odc-ms-count")!.TextContent);
+        Assert.NotNull(trigger.QuerySelector(".odc-ms-chevron"));
+        Assert.Equal("check_circle", trigger.QuerySelector(".material-icons")!.TextContent);
+        Assert.Equal(optionCount <= OdsMultiSelect.FitLimit, trigger.QuerySelector(".odc-ms-fit-ghost") is not null);
+    }
+
+    /// <summary>Only a fitted panel drops the CSS width floor (<c>.odc-ms-pop:not(.fit)</c>), so the
+    /// <c>fit</c> class must appear exactly when the trigger is sized to its rows.</summary>
+    [Theory]
+    [InlineData(OdsMultiSelect.FitLimit, false, true)]
+    [InlineData(OdsMultiSelect.FitLimit + 1, false, false)]
+    [InlineData(3, true, false)]
+    [InlineData(0, false, false)]
+    public async Task The_panel_is_marked_fit_exactly_when_the_trigger_is_fitted(int optionCount, bool quiet, bool expectFit)
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render(builder =>
+        {
+            builder.OpenComponent<MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<OdsMultiSelect>(1);
+            builder.AddAttribute(2, nameof(OdsMultiSelect.Label), "Status");
+            builder.AddAttribute(3, nameof(OdsMultiSelect.Options), OptionsOf(optionCount));
+            builder.AddAttribute(4, nameof(OdsMultiSelect.Quiet), quiet);
+            builder.CloseComponent();
+        });
+
+        cut.Find("button.odc-ms-trigger").Click();
+
+        Assert.Equal(expectFit, cut.Find(".odc-ms-pop").ClassList.Contains("fit"));
+    }
+
+    [Fact]
     public async Task Fit_ghosts_are_hidden_from_the_accessible_name()
     {
         await using var ctx = NewContext();
