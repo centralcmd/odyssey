@@ -291,6 +291,53 @@ public sealed class RegistryGlyphContrastTests
         Assert.Equal(0.50, LightCap("--glyph-text-l"));
     }
 
+    // ── User colours (tag colours, --user-glyph-l) ───────────────────────────────
+
+    /// <summary>
+    /// A tag colour is a free <c>#RRGGBB</c> with no authored band, so the Overview "By tag" glyph takes
+    /// its own token (<c>UserColor.Glyph</c>): floored on dark, capped on light. Pinned by value here so a
+    /// rename in one place or a drifted number fails, rather than the <c>, l</c> fallback silently
+    /// dropping the floor and the cap.
+    /// </summary>
+    [Fact]
+    public void The_user_glyph_token_floors_dark_and_caps_light()
+    {
+        Assert.Equal(0.62, UserGlyphBound(dark: true));
+        Assert.Equal(0.58, UserGlyphBound(dark: false));
+    }
+
+    /// <summary>
+    /// Every colour a user can store, sampled over the sRGB cube (17-step grid) plus the eight palette
+    /// swatches, painted through the token as declared, clears 3:1 on both themes' page background
+    /// and surface, under both renderings.
+    /// </summary>
+    [Fact]
+    public void Every_user_colour_glyph_clears_non_text_contrast_on_both_themes()
+    {
+        var (floor, cap) = (UserGlyphBound(dark: true), UserGlyphBound(dark: false));
+        var steps = Enumerable.Range(0, 16).Select(i => i * 17).ToArray();
+        var colours = steps.SelectMany(r => steps.SelectMany(g => steps.Select(b => $"#{r:X2}{g:X2}{b:X2}")))
+            .Concat(Odyssey.Dtos.ColorPalette.All.Select(s => s.Hex));
+
+        foreach (var hex in colours)
+        {
+            var value = Convert.ToInt32(hex[1..], 16);
+            var (l, a, b) = OkLab((Linear(((value >> 16) & 0xFF) / 255.0), Linear(((value >> 8) & 0xFF) / 255.0), Linear((value & 0xFF) / 255.0)));
+            var (c, h) = (Math.Sqrt(a * a + b * b), Math.Atan2(b, a) * 180.0 / Math.PI);
+
+            foreach (var dark in new[] { true, false })
+            {
+                var painted = dark ? Math.Max(l, floor) : Math.Min(l, cap);
+                foreach (var (how, rgb) in Renderings(painted, c, h))
+                {
+                    var theme = dark ? "dark" : "light";
+                    AssertRatio("UserColor", hex, $"glyph ({theme}, --user-glyph-l, {how}) on background", rgb, Background(dark), NonTextContrastMinimum);
+                    AssertRatio("UserColor", hex, $"glyph ({theme}, --user-glyph-l, {how}) on surface", rgb, Surface(dark), NonTextContrastMinimum);
+                }
+            }
+        }
+    }
+
     // ── Plumbing ────────────────────────────────────────────────────────────────
 
     private static OdsTypeOption Option(string registry, string key) =>
@@ -324,6 +371,16 @@ public sealed class RegistryGlyphContrastTests
         var cap = Regex.Match(block.Groups["body"].Value, Regex.Escape(token) + @":\s*min\(\s*l\s*,\s*(?<n>[\d.]+)\s*\)\s*;");
         Assert.True(cap.Success, $"{token} is not declared as min(l, N) on the light theme.");
         return double.Parse(cap.Groups["n"].Value, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The <c>max(l, N)</c> (dark) or <c>min(l, N)</c> (light) bound of <c>--user-glyph-l</c> in <c>app.css</c>.</summary>
+    private static double UserGlyphBound(bool dark)
+    {
+        var selector = dark ? @":root,\s*\[data-theme='dark'\]" : @"html:not\(\[data-theme='dark'\]\)";
+        var fn = dark ? "max" : "min";
+        var bound = Regex.Match(AppCss(), selector + @"\s*\{\s*--user-glyph-l:\s*" + fn + @"\(\s*l\s*,\s*(?<n>[\d.]+)\s*\)\s*;\s*\}");
+        Assert.True(bound.Success, $"app.css declares no {fn}(l, N) --user-glyph-l for the {(dark ? "dark" : "light")} theme.");
+        return double.Parse(bound.Groups["n"].Value, CultureInfo.InvariantCulture);
     }
 
     private static (double R, double G, double B) Surface(bool dark)
