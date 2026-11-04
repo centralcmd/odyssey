@@ -51,7 +51,7 @@ public partial class CurrenciesCard
             new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon)),
     ];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OdsBreakdown.Options(StatusDefs);
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered

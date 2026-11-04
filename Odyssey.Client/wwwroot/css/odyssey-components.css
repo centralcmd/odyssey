@@ -947,8 +947,11 @@
    own paper (background / elevation / list padding) so it doesn't double up. */
 .mud-popover.odc-popmenu-paper.odc-ms-pop-paper,
 .mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; border-radius: 0; }
-/* No width floor of its own: the popover is at least as wide as its trigger (Adaptive), and a
-   filter-bar trigger is sized to its widest row (OdsMultiSelect's fit ghosts), so the two match. */
+/* A fitted panel (.fit) takes no floor of its own: it is at least as wide as its trigger (Adaptive),
+   and the trigger is sized to its widest row (OdsMultiSelect's fit ghosts), so the two match. Every
+   other panel — an open-ended list, a quiet chart picker, an empty or loading list — keeps the 224px
+   floor, so it never opens as narrow as a small trigger. */
+.odc-ms-pop:not(.fit) { min-width: 224px; }
 .odc-ms-pop {
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);

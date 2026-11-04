@@ -84,7 +84,7 @@ public partial class ExchangeRatesCard
     private IReadOnlyList<OdsOption> _toOptions => [.. (_summary?.ToCurrencyCodes ?? []).Select(OdsOption.From)];
 
     // Values are the enum names the API binds; labels come from the shared vocabularies.
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OdsBreakdown.Options(StatusDefs);
 
     private static readonly IReadOnlyList<OdsOption> _sourceOptions =

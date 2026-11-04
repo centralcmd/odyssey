@@ -63,7 +63,7 @@ public partial class ContractsCard
     private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         [.. OdsContractStatus.Order.Select(s =>
         {
             // The overview's "By status" glyph and dot colour, so the filter and the tile agree.

@@ -92,7 +92,7 @@ public partial class TransactionsCard
         new("expense", "Money out", "expense", "arrow_upward"),
     ];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OdsBreakdown.Options(StatusDefs);
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<TransactionStatus>(
@@ -107,7 +107,7 @@ public partial class TransactionsCard
     private IReadOnlyList<OdsBreakdownRow> DirectionRows => OdsBreakdown.CountedStatusRows<string>(
         key => key == "income" ? _summary?.IncomeCount ?? 0 : _summary?.ExpenseCount ?? 0,
         DirectionDefs);
-    private static readonly IReadOnlyList<OdsOption> _directionOptions = OdsBreakdown.Options(DirectionDefs);
+    internal static readonly IReadOnlyList<OdsOption> _directionOptions = OdsBreakdown.Options(DirectionDefs);
 
     // Header sub totals — the whole ledger's count and its money in / out. Naive cross-currency sums
     // (the app has no FX on this path), so they are written with NO currency code, like the Accounts

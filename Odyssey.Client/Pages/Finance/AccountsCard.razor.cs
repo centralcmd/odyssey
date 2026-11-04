@@ -73,7 +73,7 @@ public partial class AccountsCard
         [.. AccountTypeVisuals.Selectable.Select(t => new OdsOption(t.ToString(), AccountTypeVisuals.Label(t))
             { Icon = AccountTypeVisuals.MaterialIcon(t), IconColor = AccountTypeVisuals.FgColor(t) })];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OdsBreakdown.Options(AccountsOverview.StatusDefs);
 
     // ── Sort (§6.1) ──────────────────────────────────────────────────────────

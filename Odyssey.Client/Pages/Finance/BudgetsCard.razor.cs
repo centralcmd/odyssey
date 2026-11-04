@@ -57,7 +57,7 @@ public partial class BudgetsCard
     // The list is server-filtered, so an empty result only means "first run" when nothing is filtering it.
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0;
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OverviewBreakdowns.BudgetStatusOptions;
 
     // ── Sort (§6.3) — toolbar OdsSortSelect is the sole sort surface (no headers). ──

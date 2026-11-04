@@ -87,7 +87,7 @@ public partial class ContactsCard
     private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
         OdsBreakdown.Options(StatusDefs);
 
     private int _activeCount => _allContacts.Count(c => c.Archived is null);

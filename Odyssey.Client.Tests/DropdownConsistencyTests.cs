@@ -41,10 +41,13 @@ public class DropdownConsistencyTests
         cut.Find("button.odc-popmenu-trigger").Click();
 
         var paper = cut.Find(".mud-popover.odc-popmenu-paper");
+        Assert.Contains("odc-popmenu-paper", paper.ClassList);
         if (consumerClass is not null)
         {
             Assert.Contains(consumerClass, paper.ClassList);
         }
+        // The rendered popover carries the Adaptive width rule, not just the parameter default.
+        Assert.Contains("mud-popover-adaptive-width", paper.ClassList);
     }
 
     private static IReadOnlyList<OdsOption> OptionsOf(int count) =>
@@ -96,11 +99,49 @@ public class DropdownConsistencyTests
 
     public static TheoryData<string, IReadOnlyList<OdsOption>> FinanceStatusFilters => new()
     {
-        { "Accounts", OdsBreakdown.Options(AccountsOverview.StatusDefs) },
-        { "Budgets", OverviewBreakdowns.BudgetStatusOptions },
-        { "Tax statements", OdsBreakdown.Options(OverviewBreakdowns.TaxStatementStatusDefs) },
+        { "Accounts", AccountsCard._statusOptions },
+        { "Budgets", BudgetsCard._statusOptions },
+        { "Contacts", ContactsCard._statusOptions },
+        { "Contracts", ContractsCard._statusOptions },
+        { "Currencies", CurrenciesCard._statusOptions },
+        { "Exchange rates", ExchangeRatesCard._statusOptions },
         { "Properties", PropertyVisuals.StatusOptions },
+        { "Tax statements", TaxStatementsCard._statusOptions },
+        { "Transactions status", TransactionsCard._statusOptions },
+        { "Transactions direction", TransactionsCard._directionOptions },
     };
+
+    /// <summary>The wire values each filter sends — what the list endpoint binds, unchanged by the move
+    /// to shared definitions.</summary>
+    public static TheoryData<string, IReadOnlyList<OdsOption>, string[]> FinanceFilterWireValues => new()
+    {
+        { "Accounts", AccountsCard._statusOptions, ["Open", "Closed", "Archived"] },
+        { "Budgets", BudgetsCard._statusOptions, ["Active", "Archived"] },
+        { "Contacts", ContactsCard._statusOptions, ["active", "archived"] },
+        { "Contracts", ContractsCard._statusOptions, [.. OdsContractStatus.Order.Select(s => s.ToString())] },
+        { "Currencies", CurrenciesCard._statusOptions, [.. OdsTypeRegistries.CurrencyStatuses.Keys.Select(k => k.ToString())] },
+        { "Exchange rates", ExchangeRatesCard._statusOptions, ["Current", "Upcoming", "Historical"] },
+        { "Tax statements", TaxStatementsCard._statusOptions, Enum.GetNames<TaxStatementStatusFilter>() },
+        // Every TransactionStatus member: the filter was once derived from the enum, so a new member must
+        // be added to StatusDefs or this fails rather than silently vanishing from the filter.
+        { "Transactions status", TransactionsCard._statusOptions, Enum.GetNames<TransactionStatus>() },
+        { "Transactions direction", TransactionsCard._directionOptions, ["income", "expense"] },
+    };
+
+    [Theory]
+    [MemberData(nameof(FinanceFilterWireValues))]
+    public void Every_filter_keeps_the_wire_values_the_list_binds(string page, IReadOnlyList<OdsOption> options, string[] expected) =>
+        Assert.True(expected.SequenceEqual(options.Select(o => o.Value)),
+            $"{page}: expected [{string.Join(", ", expected)}], got [{string.Join(", ", options.Select(o => o.Value))}]");
+
+    [Fact]
+    public void The_contracts_filter_wears_the_overview_tiles_glyph_and_dot_colour() =>
+        Assert.All(OdsContractStatus.Order.Zip(ContractsCard._statusOptions), pair =>
+        {
+            var meta = OdsContractStatus.Meta(pair.First);
+            Assert.Equal(meta.Icon, pair.Second.Icon);
+            Assert.Equal(meta.DotColor, pair.Second.IconColor);
+        });
 
     [Theory]
     [MemberData(nameof(FinanceStatusFilters))]
@@ -114,13 +155,4 @@ public class DropdownConsistencyTests
         });
     }
 
-    [Fact]
-    public void Budget_status_options_keep_the_wire_values_the_list_filters_on() =>
-        Assert.Equal(["Active", "Archived"], OverviewBreakdowns.BudgetStatusOptions.Select(o => o.Value));
-
-    [Fact]
-    public void Tax_statement_status_options_keep_the_enum_names_the_api_binds() =>
-        Assert.Equal(
-            Enum.GetNames<TaxStatementStatusFilter>(),
-            OdsBreakdown.Options(OverviewBreakdowns.TaxStatementStatusDefs).Select(o => o.Value));
 }
