@@ -157,6 +157,27 @@ public class ControlContrastTests
     }
 
     /// <summary>
+    /// The tag colour picker's focus ring (issue #394 AC 14): its outer tone is <c>--mud-palette-primary</c>,
+    /// drawn outside the cell with a surface-coloured gap, so it always sits on the dialog surface whatever
+    /// the cell's fill — and must clear 3:1 there in both themes. Runs on every build, not only at sync time.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_colour_picker_focus_ring_clears_three_to_one_on_the_dialog_surface(Theme theme)
+    {
+        var palette = Palette(theme);
+        var declared = Declarations(AppCss, "--focus-ring")[theme];
+        var ring = declared == "var(--mud-palette-primary)" ? Hex(palette.Primary) : Resolve(AppCss, declared);
+
+        // --focus-ring, not the raw primary: light-theme primary (tide-600) is only ~2.5:1 on white.
+        AssertRatio(ring, Hex(palette.Surface), NonTextContrastMinimum, $"--focus-ring on Surface ({theme})");
+        Assert.Matches(@"\.odc-colorpick-cell:focus-visible \{[^}]*box-shadow:\s*0 0 0 2px var\(--mud-palette-surface\),\s*0 0 0 4px var\(--focus-ring\b",
+            File.ReadAllText(ComponentsCss));
+        Assert.Matches(@"\.odc-colorpick-cell \{[^}]*border: 1px solid var\(--control-border\)", File.ReadAllText(ComponentsCss));
+    }
+
+    /// <summary>
     /// The page header's Search region recesses its controls to the Background fill inside the
     /// Surface card and outlines them with the softer <c>--control-border-quiet</c>. Softer is
     /// only licensed down to 3:1, against the fill inside the edge and the card outside it.

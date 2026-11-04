@@ -53,7 +53,10 @@ public class JournalTaskPhotoTagIconMigrationTests(MariaDbFixture fixture)
 
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Subject);
+                // To the latest schema, not just the subject: the entity read below maps every column the
+                // model has now, including ones later migrations add (issue #392 added tag colours).
+                await context.Database.MigrateAsync();
+                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
 
                 foreach (var table in Tables)
                 {

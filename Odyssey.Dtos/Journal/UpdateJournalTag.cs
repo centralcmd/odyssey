@@ -22,4 +22,13 @@ public sealed record UpdateJournalTag
     [StringLength(TagIcons.MaxKeyLength, ErrorMessage = TagIcons.InvalidIconMessage)]
     [TagIcon]
     public string? Icon { get; set; }
+
+    /// <summary>
+    /// An optional <c>#RRGGBB</c> colour, or <c>null</c> for none (issue #392). Any valid hex is accepted
+    /// and stored upper-case; an empty string is rejected — send <c>null</c>. <c>PUT</c> is full
+    /// replacement, so an omitted colour clears it.
+    /// </summary>
+    [StringLength(HexColor.Length, ErrorMessage = HexColor.InvalidMessage)]
+    [HexColor]
+    public string? Color { get; set; }
 }

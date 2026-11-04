@@ -20,7 +20,7 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
     public Task DisposeAsync() => ctx.DisposeAsync().AsTask();
 
     private static List<JournalTagChips.Tag> Tags(int count) =>
-        [.. Enumerable.Range(0, count).Select(i => new JournalTagChips.Tag($"Tag {(char)('A' + i)}", "flag"))];
+        [.. Enumerable.Range(0, count).Select(i => new JournalTagChips.Tag($"Tag {(char)('A' + i)}", "flag", null))];
 
     private IRenderedComponent<JournalTagChips> Render(IEnumerable<JournalTagChips.Tag> tags, int? max = null) =>
         ctx.Render<JournalTagChips>(p => p.Add(c => c.Tags, tags).Add(c => c.Max, max));
@@ -38,7 +38,7 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
     [Fact]
     public void Each_chip_shows_its_own_icon_decoratively_beside_its_name()
     {
-        var cut = Render([new("Travel", "flight"), new("Misc", null)]);
+        var cut = Render([new("Travel", "flight", null), new("Misc", null, null)]);
 
         var chips = cut.FindAll(".odc-chip.tag");
         Assert.Equal(2, chips.Count);
@@ -96,9 +96,9 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
         var b = Guid.NewGuid();
         var byId = new Dictionary<Guid, (string Name, string? Icon)> { [a] = ("Alpha", "flag"), [b] = ("Beta", null) };
 
-        var tags = JournalTagChips.Tag.For([b, Guid.NewGuid(), a], byId, t => t.Name, t => t.Icon);
+        var tags = JournalTagChips.Tag.For([b, Guid.NewGuid(), a], byId, t => t.Name, t => t.Icon, _ => null);
 
-        Assert.Equal([new JournalTagChips.Tag("Beta", null), new JournalTagChips.Tag("Alpha", "flag")], tags);
+        Assert.Equal([new JournalTagChips.Tag("Beta", null, null), new JournalTagChips.Tag("Alpha", "flag", null)], tags);
     }
 
     [Theory]

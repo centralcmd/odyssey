@@ -84,7 +84,7 @@
                                             @foreach (var vm in AgendaEventsFor(day))
                                             {
                                                 <button type="button" class="odc-cal-daypop-row" style="width:100%;" @onclick="() => OpenEventDialog(vm.Id)">
-                                                    <span class="odc-cal-daypop-swatch" style="@($"background:{vm.Color}")" aria-hidden="true"></span>
+                                                    <span class="odc-cal-daypop-swatch" style="@Odyssey.Client.Theme.UserColor.Background(vm.Color, Odyssey.Dtos.ColorPalette.CalendarDefault)" aria-hidden="true"></span>
                                                     <span class="odc-cal-daypop-time">@(vm.IsAllDay ? "All day" : vm.Start.ToString("HH:mm"))</span>
                                                     <span class="odc-cal-daypop-t">
                                                         @if (vm.Recurring)

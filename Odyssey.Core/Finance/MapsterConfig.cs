@@ -113,7 +113,9 @@ public static class MapsterConfig
             // null. Explicit rather than convention-mapped so the raw column can never leak through.
             TypeAdapterConfig<ContextTransactionTag, DtoExistingTransactionTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                // Issue #392: the same for the colour — a hand-edited value reads as null, never echoed.
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             // Issue #279. The tag order and the display icon are computed after materialisation from the
             // already-projected tags, so every producer of ExistingTransaction (the transaction list and
@@ -125,7 +127,10 @@ public static class MapsterConfig
                 .AfterMapping((_, dest) =>
                 {
                     dest.TransactionTags = TagIcons.Order(dest.TransactionTags, tag => tag.AsIconCandidate());
-                    dest.DisplayIcon = TagIcons.Resolve(dest.TransactionTags, tag => tag.AsIconCandidate());
+                    // Issue #392: icon and colour come from ONE winning tag.
+                    var display = TagIcons.ResolveDisplay(dest.TransactionTags, tag => tag.AsIconCandidate());
+                    dest.DisplayIcon = display.Icon;
+                    dest.DisplayColor = display.Color;
                 });
 
             // (The former Account→ExistingAccount Ignore(Custodian) pin was removed with the Contact

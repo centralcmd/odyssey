@@ -72,7 +72,8 @@ public class JournalTaskService
                 .Select(t => new TagIconCandidate(
                     t.JournalTaskTagId,
                     t.JournalTaskTag == null ? null : t.JournalTaskTag.Name,
-                    t.JournalTaskTag == null ? null : t.JournalTaskTag.Icon))
+                    t.JournalTaskTag == null ? null : t.JournalTaskTag.Icon,
+                    t.JournalTaskTag == null ? null : t.JournalTaskTag.Color))
                 .ToList(),
             AttachmentCount = i.Attachments.Count,
         });

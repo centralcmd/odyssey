@@ -120,6 +120,8 @@
     [Parameter] public Func<Guid, string> TagName { get; set; } = id => id.ToString();
     /// <summary>A tag's stored icon key, or <c>null</c> for none — its chip then shows the generic glyph.</summary>
     [Parameter] public Func<Guid, string?> TagIcon { get; set; } = _ => null;
+    /// <summary>A tag's colour, or <c>null</c> for none — its chip then has no dot (issue #394).</summary>
+    [Parameter] public Func<Guid, string?> TagColor { get; set; } = _ => null;
     [Parameter] public Func<Guid, string> PersonName { get; set; } = id => id.ToString();
     [Parameter] public Func<Guid, string> AlbumName { get; set; } = id => id.ToString();
 
@@ -193,7 +195,7 @@
 
         // Built once per parameter set rather than per render: a host refreshes its tag names by
         // re-rendering us, which is exactly when this runs again.
-        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t)))];
+        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t), TagColor(t)))];
     }
 
     // Focus the stage once the teleported dialog body is in the DOM so ←/→ navigation works without a

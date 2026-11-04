@@ -2799,6 +2799,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
@@ -2916,6 +2920,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)
@@ -3446,6 +3454,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)
@@ -4938,6 +4950,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)

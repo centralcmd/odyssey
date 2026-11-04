@@ -66,19 +66,34 @@ public static class JournalMapsterConfig
             // Issue #345. Every tag read is projected through these, so an unknown stored key (a hand
             // edit, a restore, a key retired from the catalogue) reaches no client as anything but null.
             // Explicit rather than convention-mapped so the raw column can never leak through.
+            // Issue #392: the colour likewise goes through HexColor.Normalize on every tag read.
             TypeAdapterConfig<JournalTag, ExistingJournalTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             TypeAdapterConfig<JournalTaskTag, ExistingJournalTaskTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             TypeAdapterConfig<PhotoTag, ExistingPhotoTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
+
+            // Issue #392: a calendar colour is read through the shared rule too. A stored value that is
+            // not a palette member (a hand edit, a restore) reads as the default rather than reaching a
+            // client style; a lower-case palette member (written before upper-casing) reads upper-case.
+            TypeAdapterConfig<Calendar, ExistingCalendar>
+                .NewConfig()
+                .Map(dest => dest.Color, src => CalendarColorOnRead(src.Color));
 
             configured = true;
         }
     }
+
+    /// <summary>A stored calendar colour as the API returns it (issue #392).</summary>
+    public static string CalendarColorOnRead(string? stored) =>
+        ColorPalette.Find(stored)?.Hex ?? ColorPalette.CalendarDefault;
 }

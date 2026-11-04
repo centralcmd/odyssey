@@ -36,5 +36,13 @@ public class PhotoTag
     [StringLength(64)]
     public string? Icon { get; set; }
 
+    /// <summary>
+    /// An optional <c>#RRGGBB</c> colour stored upper-case, or <c>NULL</c> for none (issue #392). Any valid
+    /// hex is allowed. Every read path projects it through <c>HexColor.Normalize</c>, so a hand-edited value
+    /// reads as <c>null</c> and never reaches a client style.
+    /// </summary>
+    [StringLength(7)]
+    public string? Color { get; set; }
+
     public ICollection<PhotoTagLink> PhotoTags { get; set; } = new List<PhotoTagLink>();
 }

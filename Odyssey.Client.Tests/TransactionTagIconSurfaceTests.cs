@@ -230,9 +230,9 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
     public void A_family_with_icons_always_carries_the_normalised_icon()
     {
         static TagWrite Write(string? icon) =>
-            OdsTagAdmin<ExistingTransactionTag>.WriteFor(hasIcons: true, "Rent", null, archived: true, icon);
+            OdsTagAdmin<ExistingTransactionTag>.WriteFor(hasIcons: true, "Rent", null, archived: true, icon, color: null);
 
-        Assert.Equal(new TagWrite("Rent", null, true, "home"), Write("home"));
+        Assert.Equal(new TagWrite("Rent", null, true, "home", null), Write("home"));
         Assert.Null(Write("retired_key").Icon);
         Assert.Null(Write(TagIcons.Default).Icon);
         Assert.Null(Write(null).Icon);
@@ -241,7 +241,7 @@ public class TransactionTagIconSurfaceTests : IAsyncLifetime
     [Fact]
     public void A_family_without_icons_never_carries_one()
     {
-        Assert.Null(OdsTagAdmin<ExistingJournalTag>.WriteFor(hasIcons: false, "Trip", null, archived: false, "home").Icon);
+        Assert.Null(OdsTagAdmin<ExistingJournalTag>.WriteFor(hasIcons: false, "Trip", null, archived: false, "home", color: null).Icon);
     }
 
     /// <summary>

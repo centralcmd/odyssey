@@ -117,7 +117,7 @@
                         OnDelete="HandleDelete">
             <Leading Context="t">
                 <OdsAvatar Icon="@(IconOf is null ? TagIcons.Default : TagIcons.Glyph(IconOf(t)))"
-                           Bg="var(--tag-soft)" Fg="var(--tag-text)" />
+                           Bg="var(--tag-soft)" Fg="var(--tag-text)" UserColor="@ColorOf(t)" />
             </Leading>
             <CreateAction>
                 @if (_canCreate)
@@ -163,5 +163,12 @@
                                   AriaDescribedBy="@(_draftIconError is null ? "tag-icon-help" : "tag-icon-help tag-icon-help-error")" />
             </OdsFieldShell>
         }
+        <OdsFieldShell Label="Color" HtmlFor="tag-color" LabelId="tag-color-label" Help="@ColorHelp">
+            <OdsTagColorPicker @ref="_colorPicker" Id="tag-color" Value="@_draftColor"
+                               ValueChanged="OnDraftColorChanged" ValidChanged="OnDraftColorValidChanged"
+                               AriaLabelledBy="tag-color-label" AriaDescribedBy="tag-color-help"
+                               Disabled="@_saving" ShowErrors="@_draftColorShowErrors"
+                               Invalid="@(_draftColorError is not null)" Error="@_draftColorError" />
+        </OdsFieldShell>
     </OdsFormDialog>
 }

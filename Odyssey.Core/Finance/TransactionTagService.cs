@@ -65,6 +65,7 @@ public class TransactionTagService
     public async Task<ExistingTransactionTag> Create(NewTransactionTag newTransactionTag, CancellationToken cancellationToken = default)
     {
         TagIconGuard.EnsureKnown(newTransactionTag.Icon);
+        TagColorGuard.EnsureValid(newTransactionTag.Color);
         await EnsureNameIsUnique(newTransactionTag.Name, null, cancellationToken);
 
         var transactionTag = new TransactionTag
@@ -73,6 +74,7 @@ public class TransactionTagService
             Description = newTransactionTag.Description,
             Archived = null,
             Icon = newTransactionTag.Icon,
+            Color = HexColor.Normalize(newTransactionTag.Color),
         };
 
         context.TransactionTags.Add(transactionTag);
@@ -92,12 +94,14 @@ public class TransactionTagService
         }
 
         TagIconGuard.EnsureKnown(putTransactionTag.Icon);
+        TagColorGuard.EnsureValid(putTransactionTag.Color);
         await EnsureNameIsUnique(putTransactionTag.Name, id, cancellationToken);
 
         transactionTag.Name = putTransactionTag.Name;
         transactionTag.Description = putTransactionTag.Description;
         // Full replacement: an omitted or null icon resets the tag to the default.
         transactionTag.Icon = putTransactionTag.Icon;
+        transactionTag.Color = HexColor.Normalize(putTransactionTag.Color);
         ApplyArchiveTransition(transactionTag, putTransactionTag.Archived);
 
         await SaveGuardingDuplicateName(putTransactionTag.Name, cancellationToken);

@@ -46,7 +46,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     {
         var cut = ctx.Render<JournalEntryCard>(p => p
             .Add(c => c.Entry, Entry("beach_access"))
-            .Add(c => c.Tags, [new JournalTagChips.Tag("Travel", "beach_access")]));
+            .Add(c => c.Tags, [new JournalTagChips.Tag("Travel", "beach_access", null)]));
 
         Assert.Empty(cut.FindAll(".jec-head .material-icons"));
     }
@@ -56,7 +56,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     {
         var cut = ctx.Render<JournalEntryCard>(p => p
             .Add(c => c.Entry, Entry("beach_access"))
-            .Add(c => c.Tags, [new JournalTagChips.Tag("Travel", "beach_access"), new JournalTagChips.Tag("Misc", null)]));
+            .Add(c => c.Tags, [new JournalTagChips.Tag("Travel", "beach_access", null), new JournalTagChips.Tag("Misc", null, null)]));
 
         var glyphs = cut.FindAll(".jec-chips .odc-chip.tag .material-icons");
         Assert.Equal(["beach_access", JournalTagChips.FallbackGlyph], glyphs.Select(g => g.TextContent.Trim()));
@@ -71,7 +71,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     {
         var cut = ctx.Render<TaskListRow>(p => p
             .Add(r => r.Task, TaskRow(icon ?? TagIcons.Default))
-            .Add(r => r.Tags, [new JournalTagChips.Tag("Errand", icon)]));
+            .Add(r => r.Tags, [new JournalTagChips.Tag("Errand", icon, null)]));
 
         Assert.Empty(cut.FindAll(".tk-list-top .material-icons"));
         var chip = cut.Find(".tk-list-chips .odc-chip.tag .material-icons");

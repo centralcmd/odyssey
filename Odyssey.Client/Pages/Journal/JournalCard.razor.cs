@@ -56,6 +56,7 @@ public partial class JournalCard
     private bool _photoRefsLoaded;
     private Dictionary<Guid, string> _photoTagNames = [];
     private Dictionary<Guid, string?> _photoTagIcons = [];
+    private Dictionary<Guid, string?> _photoTagColors = [];
     private Dictionary<Guid, string> _photoAlbumNames = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
@@ -122,7 +123,7 @@ public partial class JournalCard
     private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.JournalTagRows(_tags, _entries);
 
     private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
-        JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon);
+        JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon, t => t.Color);
 
     // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
     // renders as "Unavailable" rather than leaking the id into the chip row.
@@ -611,6 +612,8 @@ public partial class JournalCard
 
     internal string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
     internal string? PhotoTagIcon(Guid id) => _photoTagIcons.GetValueOrDefault(id);
+
+    internal string? PhotoTagColor(Guid id) => _photoTagColors.GetValueOrDefault(id);
     private string PhotoAlbumName(Guid id) => _photoAlbumNames.GetValueOrDefault(id, "—");
     private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
 
@@ -630,6 +633,7 @@ public partial class JournalCard
         {
             _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
+            _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
             _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
         }
 

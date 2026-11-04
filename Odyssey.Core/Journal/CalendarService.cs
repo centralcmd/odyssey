@@ -67,7 +67,7 @@ public class CalendarService
         {
             Name = name,
             Description = request.Description,
-            Color = request.Color,
+            Color = HexColor.Normalize(request.Color)!,
             CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -93,7 +93,7 @@ public class CalendarService
 
         calendar.Name = name;
         calendar.Description = request.Description;
-        calendar.Color = request.Color;
+        calendar.Color = HexColor.Normalize(request.Color)!;
         calendar.UpdatedByUserId = userId;
         calendar.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -141,7 +141,7 @@ public class CalendarService
 
     private static void EnsureColorInPalette(string color)
     {
-        if (!CalendarColors.IsValid(color))
+        if (!HexColor.IsValid(color) || !ColorPalette.Contains(color))
         {
             throw new DomainValidationException($"'{color}' is not a supported calendar colour.");
         }

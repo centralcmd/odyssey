@@ -87,7 +87,7 @@ what the designer intended by the change.
 | `icons.css` (the Material Icons face + `.material-icons` base) | `wwwroot/css/fonts.css` |
 | A `components/*.jsx` file, `tokens.css`, `components/bundle.css` or a `ui_kits/web` file renamed, merged or deleted | Besides the `Ods*` wrapper, update the path in the parity tests (`grep -rn "DesignSystemSource.File" Odyssey.Client.Tests`): they fail on a missing file |
 | `components/bundle.js` | Nothing directly. It is compiled from the `.jsx` sources, so the change shows up there |
-| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the 137 existing atoms already covers it |
+| `_ds_manifest.json` gained a component | A new `Ods*` wrapper is owed — confirm none of the existing atoms already covers it |
 
 ```bash
 ls Odyssey.Client/Components/Ods*.razor

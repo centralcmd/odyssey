@@ -88,7 +88,7 @@ public sealed class TagQuickCreate<TTag>(
     {
         try
         {
-            var result = await tags.CreateAsync(new TagWrite(name, null, false));
+            var result = await tags.CreateAsync(new TagWrite(name, null, false, Icon: null, Color: null));
             if (result.IsSuccess && result.CreatedId is { } id)
             {
                 _resolved[tempId] = id.ToString();

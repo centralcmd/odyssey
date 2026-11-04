@@ -235,6 +235,31 @@ public class DataExportApiTests
 
     // ── Rows reference FKs, not nested objects (spec §10.1.8) ─────────────────
 
+    // Issue #392 AC 16: each transaction-tag row carries its colour, normalised — a valid lower-case
+    // value upper-cased, a hand-edited one exported as null rather than as raw text.
+    [Fact]
+    public async Task Export_TransactionTagRows_CarryTheNormalisedColor()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        await SeedFinanceAsync(factory);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            (await context.TransactionTags.SingleAsync()).Color = "#15803d";
+            context.TransactionTags.Add(new TransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Legacy", Color = "red;x:y" });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+        var tags = document.RootElement.GetProperty("databases").GetProperty("finance")
+            .GetProperty("transactionTags").EnumerateArray()
+            .ToDictionary(tag => tag.GetProperty("name").GetString()!, tag => tag.GetProperty("color").GetString());
+
+        Assert.Equal("#15803D", tags["Groceries"]);
+        Assert.Null(tags["Legacy"]);
+    }
+
     [Fact]
     public async Task Export_TransactionRow_ReferencesForeignKeysNotNestedObjects()
     {
