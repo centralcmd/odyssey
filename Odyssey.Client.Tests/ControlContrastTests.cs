@@ -283,6 +283,7 @@ public class ControlContrastTests
     [InlineData(".odc-input")]
     [InlineData(".odc-ms-trigger:not(.quiet)")]
     [InlineData(".odc-sortsel-trigger")]
+    [InlineData(".odc-sortsel-static")]
     [InlineData(".odc-sortsel-dir")]
     [InlineData(".odc-rpp-trigger")]
     [InlineData(".odc-dpr")]
@@ -293,6 +294,19 @@ public class ControlContrastTests
             r => r.Selector.Split(',').Contains(wanted, StringComparer.Ordinal));
 
         Assert.Matches(@"background-color:\s*var\(--mud-palette-background\)\s*;", rule.Body);
+    }
+
+    /// <summary>
+    /// The date range's inner fields are outlined MudInputs, so the recess rule above reaches them too.
+    /// They are as tall as the range's box, so an opaque fill on them paints over its top and bottom
+    /// border; the region must hand them back a transparent fill.
+    /// </summary>
+    [Fact]
+    public void The_date_range_inner_fields_stay_transparent_in_the_search_region()
+    {
+        var body = Rule(PageHeaderCss, ".ph-root ::deep .ph-search-region .odc-dpr .mud-input.mud-input-outlined");
+
+        Assert.Matches(@"background-color:\s*transparent\s*;", body);
     }
 
     // ── MudBlazor stylesheet + specificity ──────────────────────────────────────────────────────
