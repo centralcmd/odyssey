@@ -86,7 +86,11 @@ public partial class TransactionsCard
     private IReadOnlyList<OdsOption> _merchantOptions =>
         // The one contact projection every picker uses: the contact type's glyph and colour (company,
         // person, …) and the deceased / dissolved suffix.
-        [.. _contacts.Select(OdsContactOptions.From)];
+        [.. _contacts.Select(MerchantOption)];
+
+    /// <summary>A merchant row: the shared contact projection — the contact type's glyph and colour, and the
+    /// deceased / dissolved suffix every contact picker shows.</summary>
+    internal static OdsOption MerchantOption(ExistingContact contact) => OdsContactOptions.From(contact);
 
     // One definition for each "By …" tile and its filter, so both wear one glyph and tone.
     private static readonly OdsBreakdownDef<TransactionStatus>[] StatusDefs =

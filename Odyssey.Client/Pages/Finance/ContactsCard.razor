@@ -49,7 +49,7 @@
                 <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="ReloadAsync"
                                 Placeholder="Search name, alias or notes…" Class="ph-search" />
-                <OdsContactTypeMultiSelect Label="Contact type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
+                <OdsContactTypeMultiSelect Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingContact" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Contacts per batch"

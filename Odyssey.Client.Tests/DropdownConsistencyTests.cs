@@ -162,9 +162,10 @@ public class DropdownConsistencyTests
     }
 
     /// <summary>An open-ended list keeps its own trigger width and its popover opens at exactly that
-    /// width (Relative caps it; the panel's CSS asks for more), with each row named in a tooltip.</summary>
+    /// width (Relative caps it; the panel's CSS asks for more). A long row wraps rather than truncating,
+    /// so no row leans on a hover-only tooltip (WCAG 1.4.13).</summary>
     [Fact]
-    public async Task An_open_ended_list_opens_at_the_triggers_width_with_named_rows()
+    public async Task An_open_ended_list_opens_at_the_triggers_width_without_tooltips()
     {
         await using var ctx = NewContext();
         var options = OptionsOf(3);
@@ -184,18 +185,43 @@ public class DropdownConsistencyTests
 
         Assert.Contains("mud-popover-relative-width", cut.Find(".mud-popover.odc-popmenu-paper").ClassList);
         Assert.Contains("open-ended", cut.Find(".odc-ms-pop").ClassList);
-        Assert.Equal(options.Select(o => o.Label), cut.FindAll(".odc-ms-opt .odc-check-label").Select(e => e.GetAttribute("title")));
+        Assert.Equal(options.Select(o => o.Label), cut.FindAll(".odc-ms-opt .odc-check-label").Select(e => e.TextContent.Trim()));
+        Assert.All(cut.FindAll(".odc-ms-opt .odc-check-label"), e => Assert.Null(e.GetAttribute("title")));
     }
 
-    [Fact]
-    public async Task A_fitted_list_is_not_open_ended_and_names_no_rows()
+    /// <summary>Open-ended is opt-in (Fit="false") and does not wait for rows: an account or tag list that
+    /// loads after first render must not widen its trigger when it arrives.</summary>
+    [Theory]
+    [InlineData(false, 0, false, true)]                         // opted in, still loading: already open-ended
+    [InlineData(false, 3, true, false)]                         // opted in but quiet: never
+    [InlineData(null, OdsMultiSelect.FitLimit + 1, false, false)] // a long list nobody opted in: content-sized
+    [InlineData(null, 3, false, false)]                         // a short fitted list
+    [InlineData(true, OdsMultiSelect.FitLimit + 1, false, false)] // a fixed vocabulary past the limit
+    public async Task Open_ended_mode_is_opt_in_and_independent_of_the_row_count(bool? fit, int optionCount, bool quiet, bool expectOpenEnded)
     {
         await using var ctx = NewContext();
         var cut = ctx.Render<OdsMultiSelect>(p => p
-            .Add(c => c.Label, "Status")
-            .Add(c => c.Options, OptionsOf(3)));
+            .Add(c => c.Label, "Merchant")
+            .Add(c => c.Options, OptionsOf(optionCount))
+            .Add(c => c.Fit, fit)
+            .Add(c => c.Quiet, quiet));
 
-        Assert.DoesNotContain("open-ended", cut.Find(".odc-popmenu.odc-ms").ClassList);
+        Assert.Equal(expectOpenEnded, cut.Find(".odc-popmenu.odc-ms").ClassList.Contains("open-ended"));
+    }
+
+    [Theory]
+    [InlineData(true, 3, true, false)]   // Quiet outranks an explicit fit: a heading-like trigger is never widened
+    [InlineData(true, 0, false, false)]  // nothing to fit to
+    public async Task An_explicit_fit_still_needs_rows_and_a_non_quiet_trigger(bool fit, int optionCount, bool quiet, bool expectGhosts)
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Account type")
+            .Add(c => c.Options, OptionsOf(optionCount))
+            .Add(c => c.Fit, fit)
+            .Add(c => c.Quiet, quiet));
+
+        Assert.Equal(expectGhosts, cut.FindAll(".odc-ms-fit-ghost").Count > 0);
     }
 
     [Fact]
@@ -209,30 +235,49 @@ public class DropdownConsistencyTests
         Assert.Null(trigger.QuerySelector(".odc-ms-fit-cur > .material-icons:not(.odc-ms-chevron)"));
     }
 
+    /// <summary>Every finance list page with a filter bar — discovered, not listed, so a new page is
+    /// covered the day it is added.</summary>
+    private static string[] FilterBarPageNames() => [.. Directory
+        .GetFiles(Path.Combine(ClientSource.Root, "Pages", "Finance"), "*Card.razor")
+        .Where(path => File.ReadAllText(path).Contains("<SearchContent>", StringComparison.Ordinal))
+        .Select(path => Path.GetFileName(path))
+        .Order()];
+
+    public static TheoryData<string> FinanceFilterBarPages => [.. FilterBarPageNames()];
+
+    [Fact]
+    public void The_filter_bar_page_discovery_finds_the_nine_finance_lists() =>
+        Assert.True(FilterBarPageNames().Length >= 9, $"Found only {FilterBarPageNames().Length} pages.");
+
     /// <summary>Filter-bar triggers carry their name only; the glyphs are on the rows. A trigger
-    /// <c>Icon=</c> or an "Any …" label in a finance filter bar is the drift this PR removed.</summary>
+    /// <c>Icon=</c> or an "Any …" label in a finance filter bar is the drift this PR removed. The tag
+    /// match steps over quoted attribute values, so a <c>&gt;</c> inside a lambda cannot end it early.</summary>
     [Theory]
-    [InlineData("AccountsCard.razor")]
-    [InlineData("BudgetsCard.razor")]
-    [InlineData("ContactsCard.razor")]
-    [InlineData("ContractsCard.razor")]
-    [InlineData("CurrenciesCard.razor")]
-    [InlineData("ExchangeRatesCard.razor")]
-    [InlineData("PropertiesCard.razor")]
-    [InlineData("TaxStatementsCard.razor")]
-    [InlineData("TransactionsCard.razor")]
+    [MemberData(nameof(FinanceFilterBarPages))]
     public void A_finance_filter_bar_trigger_carries_its_name_only(string page)
     {
         var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", page));
-        var bar = source[source.IndexOf("<SearchContent>", StringComparison.Ordinal)..source.IndexOf("</SearchContent>", StringComparison.Ordinal)];
-        var multiSelects = System.Text.RegularExpressions.Regex.Matches(bar, @"<Ods\w*MultiSelect\b[^>]*>");
+        var start = source.IndexOf("<SearchContent>", StringComparison.Ordinal);
+        var end = source.IndexOf("</SearchContent>", start, StringComparison.Ordinal);
+        Assert.True(start >= 0 && end > start, $"{page}: no complete <SearchContent> block.");
 
-        Assert.NotEmpty(multiSelects);
+        var multiSelects = System.Text.RegularExpressions.Regex.Matches(
+            source[start..end], @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
+
         Assert.All(multiSelects, m =>
         {
             Assert.DoesNotMatch(@"\sIcon=", m.Value);
             Assert.DoesNotContain("Label=\"Any ", m.Value);
         });
+    }
+
+    [Fact]
+    public void The_trigger_match_steps_over_a_lambda_in_an_attribute()
+    {
+        const string markup = """<OdsMultiSelect ValuesChanged="@(v => Set(v))" Icon="flag" />""";
+        var match = System.Text.RegularExpressions.Regex.Match(markup, @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
+
+        Assert.Contains("Icon=", match.Value);
     }
 
     [Fact]
@@ -248,6 +293,37 @@ public class DropdownConsistencyTests
 
         Assert.Equal(AccountTypeVisuals.MaterialIcon(AccountType.CheckingAccount), option.Icon);
         Assert.Equal(AccountTypeVisuals.FgColor(AccountType.CheckingAccount), option.IconColor);
+    }
+
+    [Theory]
+    [InlineData(false, false, "Acme AS")]
+    [InlineData(true, false, "Kari Nordmann · Deceased")]
+    [InlineData(false, true, "Acme AS · Dissolved")]
+    public void A_transactions_merchant_row_wears_its_contact_type_and_state(bool deceasedPerson, bool dissolved, string expectedLabel)
+    {
+        var contact = new Odyssey.Dtos.Journal.ExistingContact
+        {
+            ContactId = Guid.NewGuid(),
+            ResolvedDisplayName = deceasedPerson ? "Kari Nordmann" : "Acme AS",
+            NormalizedName = "x",
+            ExternalUid = "x",
+            Type = deceasedPerson ? Odyssey.Dtos.ContactType.Person : Odyssey.Dtos.ContactType.Organization,
+        };
+        if (deceasedPerson)
+        {
+            contact.PersonDetails = new() { FirstName = "Kari", LastName = "Nordmann", DateOfDeath = new DateTime(2020, 1, 1) };
+        }
+        if (dissolved)
+        {
+            contact.OrganizationDetails = new() { LegalName = "Acme AS", DissolvedDate = new DateTime(2020, 1, 1) };
+        }
+
+        var option = TransactionsCard.MerchantOption(contact);
+        var type = OdsTypeRegistries.ContactTypeOf(contact.Type.ToString());
+
+        Assert.Equal(expectedLabel, option.Label);
+        Assert.Equal(type.Icon, option.Icon);
+        Assert.Equal(type.Color, option.IconColor);
     }
 
     [Theory]
