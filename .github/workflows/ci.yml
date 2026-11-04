@@ -27,6 +27,9 @@ concurrency:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
+    # A green run takes about 25 minutes. Without a ceiling a hung test holds the runner for GitHub's
+    # 6-hour default and every later PR waits behind it (main from fa098ef on).
+    timeout-minutes: 60
     permissions:
       contents: read
 
@@ -49,6 +52,9 @@ jobs:
       - name: Build
         run: dotnet build Odyssey.sln -c Release --no-restore -warnaserror
 
+      # --blame-hang-timeout ends a test that runs 15 minutes (the slowest healthy project takes 20 in
+      # all, its slowest single test seconds) and records which one in the uploaded Sequence file,
+      # instead of a silent stall until timeout-minutes.
       # The MariaDB tier self-skips when Docker is absent. Requiring it turns that skip into a
       # failure, so this job cannot go green having run none of it (issue #257). The E2E tiers
       # have no stack here and stay optional.
@@ -57,6 +63,7 @@ jobs:
           ODYSSEY_REQUIRE_TIER: integration
         run: >-
           dotnet test Odyssey.sln --no-build -c Release
+          --blame-hang-timeout 15m --blame-hang-dump-type none
           --logger "trx;LogFilePrefix=test-results"
           --collect:"XPlat Code Coverage"
           --results-directory ./TestResults
@@ -66,7 +73,10 @@ jobs:
         if: always()
         with:
           name: test-results
-          path: "**/*.trx"
+          # The blame collector's Sequence file names the test that was running when a hang was cut off.
+          path: |
+            **/*.trx
+            **/Sequence_*.xml
           retention-days: 7
 
       - name: Upload coverage reports
