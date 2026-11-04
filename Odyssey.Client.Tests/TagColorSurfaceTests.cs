@@ -41,6 +41,7 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Null(UserColor.Fill(value));
         Assert.Null(UserColor.Dot(value));
         Assert.Null(UserColor.Swatch(value));
+        Assert.Null(UserColor.Glyph(value));
         Assert.Equal("background:#0369A1", UserColor.Background(value, ColorPalette.CalendarDefault));
         Assert.Null(UserColor.Background(value, value));
     }
@@ -52,6 +53,20 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Equal(("#F59E0B", HexColor.DarkForeground), UserColor.Fill("#f59e0b"));
         Assert.Equal("--user-color:#15803D", UserColor.Dot("#15803d"));
         Assert.Equal("--sw:#0369A1;--sw-fg:#FFFFFF", UserColor.Swatch("#0369a1"));
+        Assert.Equal("oklch(from #0369A1 var(--user-glyph-l, l) c h)", UserColor.Glyph("#0369a1"));
+    }
+
+    [Fact]
+    public void A_tag_colour_glyph_survives_the_breakdown_tiles_registry_wrap()
+    {
+        // The tile wraps every IconColor through OdsGlyphInk.Glyph; a user-colour glyph must pass its
+        // shape check (else it paints `inherit` and the tag's colour is lost) and keep its own floor.
+        var cut = ctx.Render<OdsBreakdownTile>(p => p.Add(c => c.Rows,
+            [new OdsBreakdownRow { Icon = "flight", IconColor = UserColor.Glyph("#0369a1"), Label = "Travel", Count = 1 }]));
+
+        Assert.Equal(
+            "color:oklch(from oklch(from #0369A1 var(--user-glyph-l, l) c h) var(--glyph-l, l) c h);",
+            cut.Find(".odc-breakdown-row .material-icons").GetAttribute("style"));
     }
 
     // ── OdsAvatar / OdsChip ───────────────────────────────────────────────────

@@ -40,6 +40,16 @@ public static class UserColor
     /// <summary>The chip-dot custom property, for <c>OdsChip.UserColorDot</c>; <c>null</c> when invalid.</summary>
     public static string? Dot(string? hex) => Canonical(hex) is { } color ? $"--user-color:{color}" : null;
 
+    /// <summary>
+    /// A tag colour drawn as a GLYPH on the page ground — the Overview "By tag" rows. The colour is
+    /// rebuilt canonical, then routed through <c>--user-glyph-l</c> (<c>app.css</c>): a free hex has
+    /// no authored band, so unlike a registry colour it takes a floor on dark (L 0.62) as well as the
+    /// light cap (L 0.58), keeping chroma and hue. <c>null</c> when invalid, so the caller falls back
+    /// to its own ink.
+    /// </summary>
+    public static string? Glyph(string? hex) =>
+        Canonical(hex) is { } color ? $"oklch(from {color} var(--user-glyph-l, l) c h)" : null;
+
     /// <summary>The swatch / picker-cell custom properties; <c>null</c> when invalid.</summary>
     public static string? Swatch(string? hex) =>
         Canonical(hex) is { } color ? $"--sw:{color};--sw-fg:{HexColor.Foreground(color)}" : null;

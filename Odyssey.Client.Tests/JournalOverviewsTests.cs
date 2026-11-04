@@ -179,29 +179,58 @@ public class JournalOverviewsTests
         Assert.Equal(JournalTagChips.FallbackGlyph, Row(rows, "Work").Icon);
     }
 
+    // ── Every family: each row is tinted in its own tag's colour ──────────────
+
+    [Fact]
+    public void Task_tag_rows_take_each_tags_own_colour_else_the_tag_ink() =>
+        AssertColours(JournalOverviews.TaskTagRows(TaskTags(), [Task(JournalTaskStatus.Doing, Travel, Home, Work)]),
+            JournalOverviews.TagRowColor);
+
+    [Fact]
+    public void Journal_tag_rows_take_each_tags_own_colour_else_the_tag_ink() =>
+        AssertColours(JournalOverviews.JournalTagRows(JournalTags(), [Entry(Travel, Home, Work)]),
+            JournalOverviews.TagRowColor);
+
+    [Fact]
+    public void Photo_tag_rows_take_each_tags_own_colour_else_the_panel_ink() =>
+        AssertColours(JournalOverviews.PhotoTagRows(PhotoTags(),
+        [
+            new PhotoCountByKey { Key = Travel, Count = 1 },
+            new PhotoCountByKey { Key = Home, Count = 1 },
+            new PhotoCountByKey { Key = Work, Count = 1 },
+        ]), JournalOverviews.PhotoTagRowColor);
+
+    // Travel carries a colour (stored lower-case, so it must come out rebuilt); Home has none; Work's is corrupt.
+    private static void AssertColours(IReadOnlyList<OdsBreakdownRow> rows, string fallback)
+    {
+        Assert.Equal("oklch(from #0369A1 var(--user-glyph-l, l) c h)", Row(rows, "Travel").IconColor);
+        Assert.Equal(fallback, Row(rows, "Home").IconColor);
+        Assert.Equal(fallback, Row(rows, "Work").IconColor);
+    }
+
     // ── Fixtures ──────────────────────────────────────────────────────────────
 
     private static ExistingJournalTaskTag[] TaskTags() =>
     [
-        new() { JournalTaskTagId = Travel, Name = "Travel", Icon = "flight" },
+        new() { JournalTaskTagId = Travel, Name = "Travel", Icon = "flight", Color = "#0369a1" },
         new() { JournalTaskTagId = Home, Name = "Home", Icon = null },
-        new() { JournalTaskTagId = Work, Name = "Work", Icon = "not_a_known_key" },
+        new() { JournalTaskTagId = Work, Name = "Work", Icon = "not_a_known_key", Color = "#0369A1;x" },
         new() { JournalTaskTagId = Retired, Name = "Retired", Icon = "flight", Archived = DateTime.UtcNow },
     ];
 
     private static ExistingJournalTag[] JournalTags() =>
     [
-        new() { JournalTagId = Travel, Name = "Travel", Icon = "flight" },
+        new() { JournalTagId = Travel, Name = "Travel", Icon = "flight", Color = "#0369a1" },
         new() { JournalTagId = Home, Name = "Home", Icon = null },
-        new() { JournalTagId = Work, Name = "Work", Icon = "not_a_known_key" },
+        new() { JournalTagId = Work, Name = "Work", Icon = "not_a_known_key", Color = "#0369A1;x" },
         new() { JournalTagId = Retired, Name = "Retired", Icon = "flight", Archived = DateTime.UtcNow },
     ];
 
     private static ExistingPhotoTag[] PhotoTags() =>
     [
-        new() { PhotoTagId = Travel, Name = "Travel", Icon = "flight" },
+        new() { PhotoTagId = Travel, Name = "Travel", Icon = "flight", Color = "#0369a1" },
         new() { PhotoTagId = Home, Name = "Home", Icon = null },
-        new() { PhotoTagId = Work, Name = "Work", Icon = "not_a_known_key" },
+        new() { PhotoTagId = Work, Name = "Work", Icon = "not_a_known_key", Color = "#0369A1;x" },
     ];
 
     private static JournalTaskSummary Task(JournalTaskStatus status, params Guid[] tagIds) => new()

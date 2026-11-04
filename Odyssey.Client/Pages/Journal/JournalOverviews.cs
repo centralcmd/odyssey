@@ -1,4 +1,5 @@
 using Odyssey.Client.Components;
+using Odyssey.Client.Theme;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Journal;
@@ -10,13 +11,18 @@ namespace Odyssey.Client.Pages.Journal;
 /// </summary>
 /// <remarks>
 /// Every "By tag" row leads with ITS tag's icon through <see cref="JournalTagChips.GlyphFor"/>, the
-/// rule the tag chips use, so a tag without a known icon shows the same generic glyph on both. None of
-/// these tiles takes a total: a record carries several tags, so a sum counts it once per tag.
+/// rule the tag chips use, so a tag without a known icon shows the same generic glyph on both, and
+/// tints it in ITS tag's colour through <see cref="UserColor.Glyph"/>; a tag without a valid colour keeps
+/// the family's ink. None of these tiles takes a total: a record carries several tags, so a sum counts it
+/// once per tag.
 /// </remarks>
 public static class JournalOverviews
 {
-    /// <summary>The By tag row colour every journal-module tag family shares.</summary>
+    /// <summary>The By tag row colour for a Journal or Tasks tag with no colour of its own.</summary>
     public const string TagRowColor = "var(--tag-text)";
+
+    /// <summary>The By tag row colour for a Photos tag with no colour of its own — the panel's other tiles' ink.</summary>
+    public const string PhotoTagRowColor = "var(--mud-palette-text-secondary)";
 
     /// <summary>
     /// Journal "By tag": the active tags, each counting the given entries that carry it. Zero-count
@@ -24,7 +30,7 @@ public static class JournalOverviews
     /// </summary>
     public static IReadOnlyList<OdsBreakdownRow> JournalTagRows(
         IEnumerable<ExistingJournalTag> tags, IEnumerable<JournalEntrySummary> entries) =>
-        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTagId, t => t.Name, t => t.Icon,
+        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTagId, t => t.Name, t => t.Icon, t => t.Color,
             CountByTag(entries.Select(e => e.TagIds)), TagRowColor);
 
     /// <summary>
@@ -33,7 +39,7 @@ public static class JournalOverviews
     /// </summary>
     public static IReadOnlyList<OdsBreakdownRow> TaskTagRows(
         IEnumerable<ExistingJournalTaskTag> tags, IEnumerable<JournalTaskSummary> tasks) =>
-        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTaskTagId, t => t.Name, t => t.Icon,
+        TagRows(tags.Where(t => t.Archived is null), t => t.JournalTaskTagId, t => t.Name, t => t.Icon, t => t.Color,
             CountByTag(tasks.Where(t => t.Status != JournalTaskStatus.Archived).Select(t => t.TagIds)), TagRowColor);
 
     /// <summary>
@@ -42,8 +48,8 @@ public static class JournalOverviews
     /// </summary>
     public static IReadOnlyList<OdsBreakdownRow> PhotoTagRows(
         IEnumerable<ExistingPhotoTag> tags, IEnumerable<PhotoCountByKey> counts) =>
-        TagRows(tags, t => t.PhotoTagId, t => t.Name, t => t.Icon,
-            counts.ToDictionary(c => c.Key, c => c.Count), "var(--mud-palette-text-secondary)");
+        TagRows(tags, t => t.PhotoTagId, t => t.Name, t => t.Icon, t => t.Color,
+            counts.ToDictionary(c => c.Key, c => c.Count), PhotoTagRowColor);
 
     /// <summary>The Tasks Overview's three figures, computed in one pass over a loaded task set.</summary>
     public static TaskOverview Tasks(IEnumerable<ExistingJournalTaskTag> tags, IReadOnlyCollection<JournalTaskSummary> tasks) =>
@@ -69,7 +75,7 @@ public static class JournalOverviews
 
     private static IReadOnlyList<OdsBreakdownRow> TagRows<TTag>(
         IEnumerable<TTag> tags, Func<TTag, Guid> id, Func<TTag, string> name, Func<TTag, string?> icon,
-        IReadOnlyDictionary<Guid, int> counts, string iconColor) =>
+        Func<TTag, string?> color, IReadOnlyDictionary<Guid, int> counts, string fallbackColor) =>
         [.. tags
             .Select(t => (Tag: t, Count: counts.GetValueOrDefault(id(t))))
             .Where(x => x.Count > 0)
@@ -77,7 +83,7 @@ public static class JournalOverviews
             {
                 Key = id(x.Tag),
                 Icon = JournalTagChips.GlyphFor(icon(x.Tag)),
-                IconColor = iconColor,
+                IconColor = UserColor.Glyph(color(x.Tag)) ?? fallbackColor,
                 Label = name(x.Tag),
                 Count = x.Count,
             })];

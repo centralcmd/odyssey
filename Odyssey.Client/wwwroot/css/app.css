@@ -390,6 +390,13 @@ html:not([data-theme='dark']) .mud-elevation-16{ box-shadow: 0 24px 60px rgba(14
 :root, [data-theme='dark'] { --glyph-l: l; --glyph-text-l: l; }
 html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 0.50); }
 
+/* User-colour glyph lightness (DS colors_and_type.css). A tag colour is a free hex with no authored
+   band, so where it paints a glyph on the page ground (the Overview "By tag" rows) it is floored on
+   dark as well as capped on light: worst case 4.25:1 on #0E1525 and 3.83:1 on #FAFBFD over the
+   sRGB cube (WCAG 1.4.11, 3:1). UserColor.Glyph writes the wrap. */
+:root, [data-theme='dark'] { --user-glyph-l: max(l, 0.62); }
+html:not([data-theme='dark']) { --user-glyph-l: min(l, 0.58); }
+
 /* Tabular monospace utility (design-system .mono) — ledger figures, IDs, sizes. */
 .mono {
   font-family: 'Roboto Mono', monospace;
