@@ -147,6 +147,123 @@ public class DropdownConsistencyTests
         Assert.All(cut.FindAll(".odc-ms-fit-ghost"), g => Assert.Equal("true", g.GetAttribute("aria-hidden")));
     }
 
+    [Theory]
+    [InlineData(OdsMultiSelect.FitLimit + 1, true, true)]
+    [InlineData(3, false, false)]
+    public async Task An_explicit_fit_overrides_the_count(int optionCount, bool fit, bool expectGhosts)
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Account type")
+            .Add(c => c.Options, OptionsOf(optionCount))
+            .Add(c => c.Fit, fit));
+
+        Assert.Equal(expectGhosts, cut.FindAll(".odc-ms-fit-ghost").Count > 0);
+    }
+
+    /// <summary>An open-ended list keeps its own trigger width and its popover opens at exactly that
+    /// width (Relative caps it; the panel's CSS asks for more), with each row named in a tooltip.</summary>
+    [Fact]
+    public async Task An_open_ended_list_opens_at_the_triggers_width_with_named_rows()
+    {
+        await using var ctx = NewContext();
+        var options = OptionsOf(3);
+        var cut = ctx.Render(builder =>
+        {
+            builder.OpenComponent<MudPopoverProvider>(0);
+            builder.CloseComponent();
+            builder.OpenComponent<OdsMultiSelect>(1);
+            builder.AddAttribute(2, nameof(OdsMultiSelect.Label), "Merchant");
+            builder.AddAttribute(3, nameof(OdsMultiSelect.Options), options);
+            builder.AddAttribute(4, nameof(OdsMultiSelect.Fit), (bool?)false);
+            builder.CloseComponent();
+        });
+
+        Assert.Contains("open-ended", cut.Find(".odc-popmenu.odc-ms").ClassList);
+        cut.Find("button.odc-ms-trigger").Click();
+
+        Assert.Contains("mud-popover-relative-width", cut.Find(".mud-popover.odc-popmenu-paper").ClassList);
+        Assert.Contains("open-ended", cut.Find(".odc-ms-pop").ClassList);
+        Assert.Equal(options.Select(o => o.Label), cut.FindAll(".odc-ms-opt .odc-check-label").Select(e => e.GetAttribute("title")));
+    }
+
+    [Fact]
+    public async Task A_fitted_list_is_not_open_ended_and_names_no_rows()
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Status")
+            .Add(c => c.Options, OptionsOf(3)));
+
+        Assert.DoesNotContain("open-ended", cut.Find(".odc-popmenu.odc-ms").ClassList);
+    }
+
+    [Fact]
+    public async Task The_contact_type_filter_trigger_carries_no_glyph()
+    {
+        await using var ctx = NewContext();
+        var cut = ctx.Render<OdsContactTypeMultiSelect>();
+
+        var trigger = cut.Find("button.odc-ms-trigger");
+        Assert.Equal("Contact type", trigger.QuerySelector(".odc-ms-label")!.TextContent);
+        Assert.Null(trigger.QuerySelector(".odc-ms-fit-cur > .material-icons:not(.odc-ms-chevron)"));
+    }
+
+    /// <summary>Filter-bar triggers carry their name only; the glyphs are on the rows. A trigger
+    /// <c>Icon=</c> or an "Any …" label in a finance filter bar is the drift this PR removed.</summary>
+    [Theory]
+    [InlineData("AccountsCard.razor")]
+    [InlineData("BudgetsCard.razor")]
+    [InlineData("ContactsCard.razor")]
+    [InlineData("ContractsCard.razor")]
+    [InlineData("CurrenciesCard.razor")]
+    [InlineData("ExchangeRatesCard.razor")]
+    [InlineData("PropertiesCard.razor")]
+    [InlineData("TaxStatementsCard.razor")]
+    [InlineData("TransactionsCard.razor")]
+    public void A_finance_filter_bar_trigger_carries_its_name_only(string page)
+    {
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", page));
+        var bar = source[source.IndexOf("<SearchContent>", StringComparison.Ordinal)..source.IndexOf("</SearchContent>", StringComparison.Ordinal)];
+        var multiSelects = System.Text.RegularExpressions.Regex.Matches(bar, @"<Ods\w*MultiSelect\b[^>]*>");
+
+        Assert.NotEmpty(multiSelects);
+        Assert.All(multiSelects, m =>
+        {
+            Assert.DoesNotMatch(@"\sIcon=", m.Value);
+            Assert.DoesNotContain("Label=\"Any ", m.Value);
+        });
+    }
+
+    [Fact]
+    public void A_transactions_account_row_wears_its_account_type()
+    {
+        var account = new ExistingAccount
+        {
+            AccountId = Guid.NewGuid(), Name = "Everyday Checking", Description = "", Opened = DateTime.UtcNow,
+            AccountType = AccountType.CheckingAccount,
+        };
+
+        var option = TransactionsCard.AccountOption(account);
+
+        Assert.Equal(AccountTypeVisuals.MaterialIcon(AccountType.CheckingAccount), option.Icon);
+        Assert.Equal(AccountTypeVisuals.FgColor(AccountType.CheckingAccount), option.IconColor);
+    }
+
+    [Theory]
+    [InlineData("#1E88E5", true)]
+    [InlineData(null, false)]
+    [InlineData("red;background:url(x)", false)]
+    public void A_tag_row_wears_its_own_colour_through_the_validated_door(string? color, bool expectColour)
+    {
+        var tag = new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Groceries", Archived = null, Color = color };
+
+        var option = OdsTransactionTagOptions.From(tag);
+
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color), option.IconColor);
+        Assert.Equal(expectColour, option.IconColor is not null);
+    }
+
     [Fact]
     public void A_breakdown_definition_becomes_a_filter_option_with_its_glyph_and_tone()
     {

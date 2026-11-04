@@ -70,13 +70,23 @@ public partial class TransactionsCard
 
     // OdsMultiSelect filter option projections (the picker keys on string values).
     private IReadOnlyList<OdsOption> _accountOptions =>
-        [.. _accounts.Select(account => new OdsOption(account.AccountId.ToString(), account.Name))];
+        [.. _accounts.Select(AccountOption)];
+
+    /// <summary>An account row: its type's glyph and colour, as on its Accounts card and the Account type filter.</summary>
+    internal static OdsOption AccountOption(ExistingAccount account) =>
+        new(account.AccountId.ToString(), account.Name)
+        {
+            Icon = AccountTypeVisuals.MaterialIcon(account.AccountType),
+            IconColor = AccountTypeVisuals.FgColor(account.AccountType),
+        };
     private IReadOnlyList<OdsOption> _tagOptions =>
         [.. _tags.Select(OdsTransactionTagOptions.From)];
     // The merchant picker lists every contact, not just the ones present on the loaded page: the list
     // is server-paged, so "the contacts on these rows" would shrink as the user pages through.
     private IReadOnlyList<OdsOption> _merchantOptions =>
-        [.. _contacts.Select(contact => new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName))];
+        // The one contact projection every picker uses: the contact type's glyph and colour (company,
+        // person, …) and the deceased / dissolved suffix.
+        [.. _contacts.Select(OdsContactOptions.From)];
 
     // One definition for each "By …" tile and its filter, so both wear one glyph and tone.
     private static readonly OdsBreakdownDef<TransactionStatus>[] StatusDefs =

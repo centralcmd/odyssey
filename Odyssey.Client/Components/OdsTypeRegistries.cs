@@ -71,6 +71,9 @@ public static class OdsTransactionTagOptions
         new(tag.TransactionTagId.ToString(), tag.Name)
         {
             Icon = TagIcons.Glyph(tag.Icon),
+            // The tag's own colour, through the one validated door from a user colour to a style;
+            // a tag with no valid colour keeps the row's default ink.
+            IconColor = Odyssey.Client.Theme.UserColor.Glyph(tag.Color),
         };
 }
 

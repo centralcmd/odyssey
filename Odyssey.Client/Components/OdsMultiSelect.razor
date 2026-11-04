@@ -19,7 +19,7 @@
 *@
 
 <OdsPopupMenu @ref="_popup"
-              Class="@($"odc-ms {Class}".TrimEnd())"
+              Class="@($"odc-ms {(OpenEnded ? "open-ended" : null)} {Class}".Trim())"
               TriggerId="@Id"
               TriggerClass="@(Quiet ? "odc-ms-trigger quiet" : "odc-ms-trigger")"
               AriaDescribedBy="@DescribedBy"
@@ -27,6 +27,7 @@
               TransformOrigin="@Transform"
               PanelLabel="@Label"
               PopoverClass="odc-ms-pop-paper"
+              RelativeWidth="@(OpenEnded ? DropdownWidth.Relative : DropdownWidth.Adaptive)"
               ListClass="pa-0"
               @attributes="UserAttributes">
     <TriggerContent>
@@ -56,7 +57,7 @@
         }
     </TriggerContent>
     <ChildContent>
-        <div class="odc-ms-pop @AlignClass @(Fits ? "fit" : null)">
+        <div class="odc-ms-pop @AlignClass @(Fits ? "fit" : OpenEnded ? "open-ended" : null)">
             @foreach (var option in Options)
             {
                 <label class="odc-ms-opt odc-check">
@@ -70,7 +71,7 @@
                     {
                         <span class="material-icons odc-opt-icon" style="@IconStyle(option)" aria-hidden="true">@option.Icon</span>
                     }
-                    <span class="odc-check-label">
+                    <span class="odc-check-label" title="@(OpenEnded ? option.Label : null)">
                         @if (OptionContent is not null)
                         {
                             @OptionContent(option)
@@ -151,7 +152,21 @@
     /// </summary>
     public const int FitLimit = 12;
 
-    private bool Fits => !Quiet && Options.Count is > 0 and <= FitLimit;
+    /// <summary>
+    /// Whether the trigger is sized to its widest row. Left <c>null</c>, a short list (1 to
+    /// <see cref="FitLimit"/> rows) fits and a longer one does not. Set it for a list whose nature the
+    /// count does not tell: <c>true</c> for a fixed vocabulary that runs past the limit (the 13 account
+    /// types), <c>false</c> for user data that happens to be short today (tags, accounts, merchants), so
+    /// the control's width does not change as the data grows.
+    /// </summary>
+    [Parameter] public bool? Fit { get; set; }
+
+    private bool Fits => !Quiet && Options.Count > 0 && (Fit ?? Options.Count <= FitLimit);
+
+    // An open-ended list keeps the trigger's own width (the filter bar's floor) and the popover opens at
+    // exactly that width, with long labels truncated and named in a tooltip — so trigger and menu still
+    // share both edges without the trigger growing to the longest account or merchant name.
+    private bool OpenEnded => !Quiet && !Fits && Options.Count > 0;
 
     private RenderFragment TriggerFace => __builder =>
     {
