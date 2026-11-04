@@ -58,8 +58,8 @@ public partial class TaxStatementsCard
     // The list is server-filtered, so an empty result only means "first run" when nothing is filtering it.
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0;
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("New", "New"), new("Approved", "Approved"), new("Flagged", "Flagged"), new("Archived", "Archived")];
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
+        OdsBreakdown.Options(OverviewBreakdowns.TaxStatementStatusDefs);
 
     // ── Sort (§6.10) — toolbar OdsSortSelect is the sole sort surface (no headers).
     // Default: Fiscal year, most recent first. ──

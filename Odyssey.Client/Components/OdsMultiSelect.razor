@@ -30,23 +30,33 @@
               ListClass="pa-0"
               @attributes="UserAttributes">
     <TriggerContent>
-        @if (!string.IsNullOrEmpty(Glyph))
+        @if (Fits)
         {
-            <span class="odc-ms-glyph" aria-hidden="true">@Glyph</span>
+            @* Fit ghosts: the trigger's content and an invisible copy of every option row stack in one
+               inline-grid cell, so the trigger is as wide as its widest row and the popover (never
+               narrower than its trigger) opens at the trigger's own width. *@
+            <span class="odc-ms-fit">
+                <span class="odc-ms-fit-cur">@TriggerFace</span>
+                @foreach (var option in Options)
+                {
+                    <span class="odc-ms-fit-ghost" aria-hidden="true">
+                        <span class="odc-check-box"></span>
+                        @if (!string.IsNullOrEmpty(option.Icon))
+                        {
+                            <span class="material-icons odc-opt-icon">@option.Icon</span>
+                        }
+                        <span class="odc-check-label">@option.Label</span>
+                    </span>
+                }
+            </span>
         }
-        else if (!string.IsNullOrEmpty(Icon))
+        else
         {
-            <span class="material-icons" aria-hidden="true">@Icon</span>
+            @TriggerFace
         }
-        <span class="odc-ms-label">@Label</span>
-        @if (Values.Count > 0)
-        {
-            <span class="odc-ms-count">@Values.Count</span>
-        }
-        <span class="material-icons odc-ms-chevron" aria-hidden="true">expand_more</span>
     </TriggerContent>
     <ChildContent>
-        <div class="odc-ms-pop @AlignClass">
+        <div class="odc-ms-pop @AlignClass @(Fits ? "fit" : null)">
             @foreach (var option in Options)
             {
                 <label class="odc-ms-opt odc-check">
@@ -133,6 +143,33 @@
     public Dictionary<string, object>? UserAttributes { get; set; }
 
     private OdsPopupMenu _popup = default!;
+
+    /// <summary>
+    /// The longest option list the trigger sizes itself to. A short, fixed vocabulary (a type, a
+    /// status, a direction) gets a trigger exactly as wide as its menu; an open-ended data list (accounts,
+    /// tags, merchants) keeps its floor and lets the popover grow past it instead of widening the bar.
+    /// </summary>
+    public const int FitLimit = 12;
+
+    private bool Fits => !Quiet && Options.Count is > 0 and <= FitLimit;
+
+    private RenderFragment TriggerFace => __builder =>
+    {
+        @if (!string.IsNullOrEmpty(Glyph))
+        {
+            <span class="odc-ms-glyph" aria-hidden="true">@Glyph</span>
+        }
+        else if (!string.IsNullOrEmpty(Icon))
+        {
+            <span class="material-icons" aria-hidden="true">@Icon</span>
+        }
+        <span class="odc-ms-label">@Label</span>
+        @if (Values.Count > 0)
+        {
+            <span class="odc-ms-count">@Values.Count</span>
+        }
+        <span class="material-icons odc-ms-chevron" aria-hidden="true">expand_more</span>
+    };
 
     // Mirror the controlled Values into a local set so toggling a row is a single
     // round-trip through ValuesChanged; OnParametersSet re-syncs to the parent.
