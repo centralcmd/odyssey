@@ -842,6 +842,24 @@
    pickers in the attachments list) stay compact. */
 .aam-field > .odc-popmenu { width: 100%; display: flex; }
 
+/* ---------- Dropdown surface (every OdsPopupMenu popover) ----------
+   ONE surface for every dropdown the app opens from a trigger — the filter bar's
+   Status / Sort by / Load N, a form's type picker, a row's inline select — so they
+   cannot drift apart again (Odyssey Design System · docs/components-data-table-menu-form-controls.md · Dropdowns, the DS
+   .odc-select-pop / .odc-menu-pop chrome). Before this the single-choice menus fell
+   back to MudBlazor's own paper (theme radius, no edge) while the checkbox panels drew
+   a bordered card, so two dropdowns side by side in one filter bar read differently.
+   Width is OdsPopupMenu's DropdownWidth.Adaptive: never narrower than the trigger. */
+.mud-popover.odc-popmenu-paper {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-8);
+}
+/* Single-choice rows sit inset in the card, each row its own rounded hover target. */
+.mud-popover.odc-popmenu-paper .odc-popmenu-panel[role="menu"] { padding: var(--space-1); }
+.odc-popmenu-panel[role="menu"] > .odc-typesel-opt { border-radius: var(--radius-sm); }
+
 /* ---------- Button icon (OdsButton — leading/trailing Material ligature) ----------
    OdsButton renders Icon/IconRight as material-icons spans (DS uses ligatures,
    not SVG constants). Size to the DS 18px and space from the label only when
@@ -883,7 +901,9 @@
   background: var(--mud-palette-surface);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer;
-  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
+  /* body1, the DS MultiSelect value and the size every filter-bar control's text shares (search,
+     sort, Load N) — docs/components-data-table-menu-form-controls.md · Dropdowns. */
+  font: var(--fw-regular) var(--fs-body1)/1 var(--font-sans);
   color: var(--mud-palette-text-primary); white-space: nowrap;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -903,6 +923,18 @@
    to sit in the icon's slot, so a trigger reads the same either way. */
 .odc-ms-glyph { font: var(--fw-medium) var(--fs-h5)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-ms-label { overflow: hidden; text-overflow: ellipsis; }
+/* Fit ghosts (OdsMultiSelect, short option lists): the trigger face and an invisible copy of each
+   option row share one grid cell, so the trigger is as wide as the widest row. The ghost's 2px
+   inline padding is the row's own 6px less the 4px by which the trigger's frame (12px padding + 1px
+   edge per side) outweighs the popover's (8px + 1px), so trigger and popover land on one width. */
+.odc-ms-fit { display: inline-grid; flex: 1; min-width: 0; align-items: center; }
+.odc-ms-fit > * { grid-area: 1 / 1; min-width: 0; }
+.odc-ms-fit-cur { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.odc-ms-fit-ghost {
+  display: flex; align-items: center; gap: 10px; padding-inline: 2px;
+  visibility: hidden; white-space: nowrap; pointer-events: none;
+}
+.odc-ms-fit-ghost .odc-check-label { white-space: nowrap; }
 .odc-ms-chevron { margin-inline-start: auto; }
 .odc-ms-count {
   display: inline-flex; align-items: center; justify-content: center;
@@ -913,9 +945,11 @@
 
 /* The popover surface lives on the inner .odc-ms-pop panel; neutralise MudBlazor's
    own paper (background / elevation / list padding) so it doesn't double up. */
-.mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; }
+.mud-popover.odc-popmenu-paper.odc-ms-pop-paper,
+.mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; border-radius: 0; }
+/* No width floor of its own: the popover is at least as wide as its trigger (Adaptive), and a
+   filter-bar trigger is sized to its widest row (OdsMultiSelect's fit ghosts), so the two match. */
 .odc-ms-pop {
-  min-width: 224px;
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);
   border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
@@ -1446,25 +1480,28 @@
    The 3px surface-colored border insets the thumb into a rounded pill. */
 .ods-modal-content, .odc-scroll,
 .odc-ms-pop, .odc-tagms-pop, .odc-smarttags-pop, .odc-money-list,
-.odc-tagms-list, .odc-ms-list {
+.odc-tagms-list, .odc-ms-list, .mud-popover.odc-popmenu-paper {
   scrollbar-width: thin;
   scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
 .ods-modal-content::-webkit-scrollbar, .odc-scroll::-webkit-scrollbar,
 .odc-ms-pop::-webkit-scrollbar, .odc-tagms-pop::-webkit-scrollbar,
 .odc-smarttags-pop::-webkit-scrollbar, .odc-money-list::-webkit-scrollbar,
-.odc-tagms-list::-webkit-scrollbar, .odc-ms-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.odc-tagms-list::-webkit-scrollbar, .odc-ms-list::-webkit-scrollbar,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar { width: 10px; height: 10px; }
 .ods-modal-content::-webkit-scrollbar-thumb, .odc-scroll::-webkit-scrollbar-thumb,
 .odc-ms-pop::-webkit-scrollbar-thumb, .odc-tagms-pop::-webkit-scrollbar-thumb,
 .odc-smarttags-pop::-webkit-scrollbar-thumb, .odc-money-list::-webkit-scrollbar-thumb,
-.odc-tagms-list::-webkit-scrollbar-thumb, .odc-ms-list::-webkit-scrollbar-thumb {
+.odc-tagms-list::-webkit-scrollbar-thumb, .odc-ms-list::-webkit-scrollbar-thumb,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar-thumb {
   background: var(--mud-palette-lines-default); border-radius: 5px;
   border: 3px solid var(--mud-palette-surface);
 }
 .ods-modal-content::-webkit-scrollbar-track, .odc-scroll::-webkit-scrollbar-track,
 .odc-ms-pop::-webkit-scrollbar-track, .odc-tagms-pop::-webkit-scrollbar-track,
 .odc-smarttags-pop::-webkit-scrollbar-track, .odc-money-list::-webkit-scrollbar-track,
-.odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track { background: transparent; }
+.odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- TypeSelect (shared registry type picker) ----------
    Mirrors the DS .odc-select chrome (components/bundle.css). The trigger is a custom
@@ -3121,7 +3158,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-rpp-prefix { color: var(--mud-palette-text-secondary); }
 .odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
 .odc-rpp-chev { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
-.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; }
+/* The toolbar mirror sits in the filter bar, so it takes the bar's control text size (body1); the
+   footer pager copy stays the compact body2. */
+.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; font-size: var(--fs-body1); }
 /* The menu options are menuitemradio rows styled by the shared .odc-typesel-item (see OdsSortSelect). */
 
 /* ---------- Infinite list (card-list server paging) ----------

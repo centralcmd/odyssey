@@ -47,7 +47,7 @@
         {
             Key = s.Status,
             Icon = s.Icon,
-            IconColor = s.Tone == OdsChipTone.Income ? "var(--finance-income)" : "var(--mud-palette-text-secondary)",
+            IconColor = PropertyVisuals.StatusColor(s),
             Label = s.Label,
             Count = s.Status switch
             {

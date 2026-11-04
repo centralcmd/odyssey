@@ -76,13 +76,19 @@ public partial class ContactsCard
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
         _allContacts, c => c.Archived is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+        StatusDefs);
+
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    private static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        new("active", "Active", "income", "task_alt"),
+        new("archived", "Archived", "outline", "inventory_2"),
+    ];
     private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
 
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+        OdsBreakdown.Options(StatusDefs);
 
     private int _activeCount => _allContacts.Count(c => c.Archived is null);
     private int _archivedCount => _allContacts.Count - _activeCount;

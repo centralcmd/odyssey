@@ -58,7 +58,7 @@ public partial class BudgetsCard
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0;
 
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("Active", "Active"), new("Archived", "Archived")];
+        OverviewBreakdowns.BudgetStatusOptions;
 
     // ── Sort (§6.3) — toolbar OdsSortSelect is the sole sort surface (no headers). ──
     private static readonly OdsTableSort DefaultSort = new("startDate", OdsSortDirection.Desc);

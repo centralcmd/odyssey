@@ -64,7 +64,12 @@ public partial class ContractsCard
     private IReadOnlyCollection<string> _statusFilter = [];
 
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [.. OdsContractStatus.Order.Select(s => new OdsOption(s.ToString(), OdsContractStatus.Meta(s).Label))];
+        [.. OdsContractStatus.Order.Select(s =>
+        {
+            // The overview's "By status" glyph and dot colour, so the filter and the tile agree.
+            var meta = OdsContractStatus.Meta(s);
+            return new OdsOption(s.ToString(), meta.Label) { Icon = meta.Icon, IconColor = meta.DotColor };
+        })];
 
     // ── Sort (§6.8) — toolbar OdsSortSelect is the sole sort surface (no headers). ──
     private static readonly OdsTableSort DefaultSort = new("name", OdsSortDirection.Asc);

@@ -58,9 +58,15 @@ public partial class ExchangeRatesCard
                 ExchangeRateStatus.Upcoming => summary.ByStatus.Upcoming,
                 _ => summary.ByStatus.Historical,
             },
-            StatusDef(ExchangeRateStatus.Current, "income", "bolt"),
-            StatusDef(ExchangeRateStatus.Upcoming, "info", "schedule"),
-            StatusDef(ExchangeRateStatus.Historical, "outline", "history"));
+            StatusDefs);
+
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    private static readonly OdsBreakdownDef<ExchangeRateStatus>[] StatusDefs =
+    [
+        StatusDef(ExchangeRateStatus.Current, "income", "bolt"),
+        StatusDef(ExchangeRateStatus.Upcoming, "info", "schedule"),
+        StatusDef(ExchangeRateStatus.Historical, "outline", "history"),
+    ];
 
     // The row's mark takes its status chip's colour pair (Odyssey Design System · reference-data.md, rate
     // status): Current green, Upcoming blue, Historical the secondary-text grey Archived and Draft wear.
@@ -79,10 +85,7 @@ public partial class ExchangeRatesCard
 
     // Values are the enum names the API binds; labels come from the shared vocabularies.
     private static readonly IReadOnlyList<OdsOption> _statusOptions =
-    [
-        .. new[] { ExchangeRateStatus.Current, ExchangeRateStatus.Upcoming, ExchangeRateStatus.Historical }
-            .Select(s => new OdsOption(s.ToString(), OdsTypeRegistries.ExchangeRateStatusOf(s).Label)),
-    ];
+        OdsBreakdown.Options(StatusDefs);
 
     private static readonly IReadOnlyList<OdsOption> _sourceOptions =
     [

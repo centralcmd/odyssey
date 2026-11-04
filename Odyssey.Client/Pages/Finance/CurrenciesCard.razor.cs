@@ -44,18 +44,22 @@ public partial class CurrenciesCard
     ];
 
     // The one Status filter: the server's CurrencyStatus names, in reading order.
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    private static readonly OdsBreakdownDef<CurrencyStatus>[] StatusDefs =
     [
-        .. OdsTypeRegistries.CurrencyStatuses.Select(entry => new OdsOption(entry.Key.ToString(), entry.Value.Chip.Label)),
+        .. OdsTypeRegistries.CurrencyStatuses.Select(entry =>
+            new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon)),
     ];
+
+    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+        OdsBreakdown.Options(StatusDefs);
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allCurrencies, not the server-filtered display list, so they stay accurate under an active filter.
     // Every status is listed, zero counts included, as the contract breakdown does.
     internal IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
         _allCurrencies.Where(c => c.Status is not null), c => c.Status!.Value,
-        [.. OdsTypeRegistries.CurrencyStatuses.Select(entry =>
-            new OdsBreakdownDef<CurrencyStatus>(entry.Key, entry.Value.Chip.Label, entry.Value.Tone, entry.Value.Icon))]);
+        StatusDefs);
 
     private int _activeCount => _allCurrencies.Count(c => c.Archived is null);
     private int _archivedCount => _allCurrencies.Count - _activeCount;

@@ -75,6 +75,19 @@ public static class OdsBreakdown
             })
             .ToList();
 
+    /// <summary>
+    /// A filter option drawn from the same definition the "By status" tile uses, so the Status filter
+    /// shows the overview's glyph and tone rather than a bare label. The option value is the key's
+    /// string form unless <paramref name="valueOf"/> says otherwise (the wire value the list filters on).
+    /// </summary>
+    public static OdsOption Option<TKey>(OdsBreakdownDef<TKey> def, Func<TKey, string>? valueOf = null) where TKey : notnull =>
+        new(valueOf?.Invoke(def.Key) ?? def.Key.ToString()!, def.Label) { Icon = def.Icon, IconColor = Tone(def.Tone) };
+
+    /// <summary>Filter options for every definition, in order — see <see cref="Option{TKey}"/>.</summary>
+    public static IReadOnlyList<OdsOption> Options<TKey>(IEnumerable<OdsBreakdownDef<TKey>> defs, Func<TKey, string>? valueOf = null)
+        where TKey : notnull =>
+        [.. defs.Select(d => Option(d, valueOf))];
+
     private static Dictionary<TKey, int> Count<T, TKey>(IEnumerable<T> items, Func<T, TKey> keyOf) where TKey : notnull
     {
         var counts = new Dictionary<TKey, int>();
