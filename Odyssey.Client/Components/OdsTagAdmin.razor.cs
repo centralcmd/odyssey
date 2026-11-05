@@ -82,15 +82,20 @@ public partial class OdsTagAdmin<TRow>
         new() { Key = "name", Label = "Name", Type = OdsSortType.Text },
     ];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    // Generic over TRow, so each closed type gets its own copy — harmless for two constant rows.
+    private static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        new("active", "Active", "income", "task_alt"),
+        new("archived", "Archived", "outline", "inventory_2"),
+    ];
+
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions = OdsBreakdown.Options(StatusDefs);
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allTags, not the server-filtered display list.
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _allTags, t => Archived(t) is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+        _allTags, t => Archived(t) is not null ? "archived" : "active", StatusDefs);
 
     private int _activeCount => _allTags.Count(t => Archived(t) is null);
     private int _archivedCount => _allTags.Count - _activeCount;

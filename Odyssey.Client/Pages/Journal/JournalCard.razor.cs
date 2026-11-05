@@ -91,18 +91,15 @@ public partial class JournalCard
     private const string MediaPhotos = "photos";
     private const string MediaFiles = "files";
 
-    private static readonly IReadOnlyList<OdsOption> _mediaOptions =
+    // The glyphs the entry card counts photos and files under.
+    internal static readonly IReadOnlyList<OdsOption> _mediaOptions =
     [
-        new(MediaPhotos, "Has photos"),
-        new(MediaFiles, "Has files"),
+        new(MediaPhotos, "Has photos") { Icon = "photo_library", IconColor = "var(--sea-400)" },
+        new(MediaFiles, "Has files") { Icon = "attach_file", IconColor = "var(--mud-palette-text-secondary)" },
     ];
 
     // Status: single "Active / Archived" multiselect. Empty = hide archived (Active only); both = all.
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-    [
-        new(nameof(ArchivalStatus.Active), "Active"),
-        new(nameof(ArchivalStatus.Archived), "Archived"),
-    ];
+    private static readonly IReadOnlyList<OdsOption> _statusOptions = ArchivalStatusOptions.Options;
 
     // ── Sort (server-side; keys map 1:1 to JournalEntrySortBy) ───────────────────
     private static readonly OdsTableSort DefaultSort = new("entryDate", OdsSortDirection.Desc);
@@ -176,7 +173,7 @@ public partial class JournalCard
         [
             .. _tags.Where(t => t.Archived is null)
                 .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(t => new OdsOption(t.JournalTagId.ToString(), t.Name)),
+                .Select(JournalOverviews.JournalTagOption),
         ];
     }
 

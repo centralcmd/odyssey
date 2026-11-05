@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos.Authorization;
@@ -112,6 +113,7 @@ public partial class PhotosCard
         _libraryTotal = (await Photos.ListAsync(1, 1, status: null))
             .PagedOrToast(Snackbar, "the library count").TotalCount;
 
+    /// <summary>An album row: the album glyph and colour the overview's By album row uses.</summary>
     private async Task LoadOptionsAsync()
     {
         // A failed fetch keeps the lookups already held, so a reload after a save never blanks them.
@@ -119,7 +121,7 @@ public partial class PhotosCard
         var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
         if (tagsResult.IsSuccess)
         {
-            _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _tagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);

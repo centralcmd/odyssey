@@ -112,7 +112,15 @@ public partial class CalendarPage
         [.. _visibleCalendarIds.Select(id => id.ToString())];
 
     private IReadOnlyList<OdsOption> _calendarOptions =>
-        [.. _calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name))];
+        [.. _calendars.Select(CalendarOption)];
+
+    /// <summary>A calendar row: a calendar glyph in the calendar's own colour, through the validated door.</summary>
+    internal static OdsOption CalendarOption(ExistingCalendar calendar) =>
+        new(calendar.CalendarId.ToString(), calendar.Name)
+        {
+            Icon = "calendar_month",
+            IconColor = Odyssey.Client.Theme.UserColor.Glyph(calendar.Color),
+        };
 
     private IReadOnlySet<Guid>? EffectiveVisibleIds => _visibleCalendarIds.Count == 0 ? null : _visibleCalendarIds;
 
@@ -392,11 +400,11 @@ public partial class CalendarPage
     private CalendarEventVm ToVm(ExistingCalendarEvent e)
     {
         var calendar = _calendars.FirstOrDefault(c => c.CalendarId == e.CalendarId);
-        var swatch = OdsCalendarSwatches.SwatchFor(calendar?.Color);
+        var (bg, fg) = OdsCalendarSwatches.PaintFor(calendar?.Color);
         return new CalendarEventVm(
             e.CalendarEventId, e.CalendarId, calendar?.Name ?? "Unknown",
             e.Title, e.StartDateTime, e.EndDateTime, e.IsAllDay,
-            swatch.Hex, swatch.Fg, e.RecurrencePatternId is not null,
+            bg, fg, e.RecurrencePatternId is not null,
             e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null);
     }
 

@@ -4,7 +4,8 @@
 @*
     OdsTagColorPicker — the tag colour chooser (Odyssey Design System · components/TagColorPicker, issue #394).
 
-    No color · the eight ColorPalette swatches (one palette for calendars and tags) · Custom. Any #RRGGBB
+    No color · the eight ColorPalette swatches (one palette for calendars and tags) · Custom. Calendars pass
+    AllowNone="false": a calendar always has a colour, so the No color cell is not rendered. Any #RRGGBB
     is a valid tag colour; Custom shows a hex field and the native colour well below the grid, without
     moving focus. ARIA radiogroup with a roving tab stop; arrows move in two dimensions over the live
     column count (icon-picker.js), Home/End jump, selection follows focus. Cell names are words from the
@@ -20,7 +21,7 @@
          aria-describedby="@GroupDescribedBy"
          aria-invalid="@(GroupInvalid ? "true" : null)"
          aria-disabled="@(Disabled ? "true" : null)">
-        @for (var i = 0; i < CellCount; i++)
+        @for (var i = FirstIndex; i < CellCount; i++)
         {
             var index = i;
             var active = index == _sel;

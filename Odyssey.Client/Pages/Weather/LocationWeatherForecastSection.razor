@@ -1,48 +1,13 @@
-@using System.Net
-@using Odyssey.Client.Components
 @using Odyssey.Dtos.Journal
 @*
-    LocationWeatherForecastSection — a linked location's Weather: the linked point's forecast, the dashboard card's
-    body without its picker (issue #388 flow E; design system · Weather.jsx LocationWeatherForecastSection). It mounts
-    with the open record, so a long Locations list makes no weather request, and its reads go through the page's
-    WeatherPointReads so records sharing a point share one request. A failure here leaves the history section and
-    the record untouched.
+    LocationWeatherForecastSection — a linked location's Weather: the linked point's forecast, labelled with where it
+    comes from ("from Oslo · 2 km"; issue #388 flow E). The section itself is WeatherForecastSection, shared with the
+    Weather points record.
 *@
 
-<OdsRecordSection Class="acct-section wx-section wx-loc-forecast" Label="Weather" Meta="@WeatherVisuals.SourceLine(Point.Name, DistanceKm)">
-    <div aria-busy="@(_phase == Phase.Loading ? "true" : null)">
-        @switch (_phase)
-        {
-            case Phase.Loading:
-                <div class="wx-skel">
-                    <OdsSkeleton Variant="OdsSkeletonVariant.Block" Width="14rem" Height="5.25rem" />
-                    <div class="wx-skel-days">
-                        @for (var i = 0; i < 7; i++)
-                        {
-                            <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="7rem" />
-                        }
-                    </div>
-                </div>
-                break;
-            case Phase.Error:
-                @Box("cloud_off", "The forecast couldn’t be loaded", "Something went wrong reaching Odyssey. The rest of this location is unaffected.", true)
-                break;
-            case Phase.RateLimited:
-                @Box("hourglass_bottom", "Weather is resting for a moment", "Weather has been loaded many times in the last minute. Wait a moment, then try again.", true)
-                break;
-            default:
-                @if (_current is { Status: WeatherStatus.Ok, Step: not null, Point: not null })
-                {
-                    <WeatherForecastBody Current="_current" Days="_days" />
-                }
-                else
-                {
-                    @Box("cloud_queue", $"No forecast for {Point.Name} yet", "MET Norway hasn’t answered for this point yet. Odyssey keeps trying on its own — check back in a little while.", false)
-                }
-                break;
-        }
-    </div>
-</OdsRecordSection>
+<WeatherForecastSection WeatherPointId="Point.WeatherPointId" PointName="@Point.Name" Label="Weather"
+                        Meta="@WeatherVisuals.SourceLine(Point.Name, DistanceKm)" RecordNoun="location" Class="wx-loc-forecast"
+                        Reads="Reads" OnAnnounce="OnAnnounce" />
 
 @code {
     [Parameter, EditorRequired] public LinkedWeatherPointRef Point { get; set; } = default!;
@@ -51,70 +16,5 @@
 
     [Parameter, EditorRequired] public WeatherPointReads Reads { get; set; } = default!;
 
-    /// <summary>The page's polite region: a lazy section announces only an empty or failed outcome (issue #388 §6.5).</summary>
     [Parameter] public EventCallback<string> OnAnnounce { get; set; }
-
-    internal enum Phase { Loading, Ready, RateLimited, Error }
-
-    private Phase _phase = Phase.Loading;
-    private WeatherCurrentResponse? _current;
-    private IReadOnlyList<WeatherDaySummary> _days = [];
-    private Guid _loadedFor;
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (_loadedFor == Point.WeatherPointId)
-            return;
-        _loadedFor = Point.WeatherPointId;
-        await LoadAsync();
-    }
-
-    private async Task LoadAsync()
-    {
-        var id = Point.WeatherPointId;
-        _phase = Phase.Loading;
-        StateHasChanged();
-        var current = Reads.CurrentAsync(id);
-        var daily = Reads.DailyAsync(id);
-        await Task.WhenAll(current, daily);
-        if (id != Point.WeatherPointId)
-            return;
-
-        var result = await current;
-        if (!result.IsSuccess || result.Value is null)
-        {
-            _phase = result.Status == HttpStatusCode.TooManyRequests ? Phase.RateLimited : Phase.Error;
-            await OnAnnounce.InvokeAsync(_phase == Phase.RateLimited ? "Weather is resting for a moment." : $"The forecast for {Point.Name} couldn't be loaded.");
-            StateHasChanged();
-            return;
-        }
-
-        _current = result.Value;
-        var dailyResult = await daily;
-        _days = dailyResult.IsSuccess && dailyResult.Value is { } d && d.Point?.WeatherPointId == id ? d.Days : [];
-        _phase = Phase.Ready;
-        if (_current is not { Status: WeatherStatus.Ok, Step: not null })
-            await OnAnnounce.InvokeAsync($"No forecast for {Point.Name} yet.");
-        StateHasChanged();
-    }
-
-    private Task Retry()
-    {
-        if (_phase == Phase.Loading)
-            return Task.CompletedTask;
-        Reads.Forget(Point.WeatherPointId);
-        return LoadAsync();
-    }
-
-    private RenderFragment Box(string icon, string title, string text, bool retry) => @<div class="wx-empty" role="@(retry ? "alert" : null)">
-        <span class="wx-empty-ic" aria-hidden="true"><OdsMIcon Name="@icon" Size="22" /></span>
-        <div class="wx-empty-text">
-            <div class="wx-empty-title">@title</div>
-            <div>@text</div>
-            @if (retry)
-            {
-                <div class="wx-empty-act"><OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="Retry">Try again</OdsButton></div>
-            }
-        </div>
-    </div>;
 }

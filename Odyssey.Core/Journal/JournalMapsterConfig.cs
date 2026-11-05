@@ -82,9 +82,9 @@ public static class JournalMapsterConfig
                 .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
                 .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
-            // Issue #392: a calendar colour is read through the shared rule too. A stored value that is
-            // not a palette member (a hand edit, a restore) reads as the default rather than reaching a
-            // client style; a lower-case palette member (written before upper-casing) reads upper-case.
+            // Issue #392: a calendar colour is read through the tag rule. Any valid hex reads upper-case; a
+            // stored value that is not one (a hand edit, a restore) reads as the default rather than
+            // reaching a client style.
             TypeAdapterConfig<Calendar, ExistingCalendar>
                 .NewConfig()
                 .Map(dest => dest.Color, src => CalendarColorOnRead(src.Color));
@@ -95,5 +95,5 @@ public static class JournalMapsterConfig
 
     /// <summary>A stored calendar colour as the API returns it (issue #392).</summary>
     public static string CalendarColorOnRead(string? stored) =>
-        ColorPalette.Find(stored)?.Hex ?? ColorPalette.CalendarDefault;
+        HexColor.Normalize(stored) ?? ColorPalette.CalendarDefault;
 }

@@ -235,47 +235,45 @@ public class DropdownConsistencyTests
         Assert.Null(trigger.QuerySelector(".odc-ms-fit-cur > .material-icons:not(.odc-ms-chevron)"));
     }
 
-    /// <summary>Every finance list page with a filter bar — discovered, not listed, so a new page is
-    /// covered the day it is added.</summary>
-    private static string[] FilterBarPageNames() => [.. Directory
-        .GetFiles(Path.Combine(ClientSource.Root, "Pages", "Finance"), "*Card.razor")
-        .Where(path => File.ReadAllText(path).Contains("<SearchContent>", StringComparison.Ordinal))
-        .Select(path => Path.GetFileName(path))
-        .Order()];
+    private const string MultiSelectTag = @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>";
 
-    public static TheoryData<string> FinanceFilterBarPages => [.. FilterBarPageNames()];
+    /// <summary>Every filter-bar multi-select (<c>Class="ph-select"</c>) on any page, as (file, tag).</summary>
+    private static IEnumerable<(string File, string Tag)> FilterBarMultiSelects() =>
+        Directory.GetFiles(Path.Combine(ClientSource.Root, "Pages"), "*.razor", SearchOption.AllDirectories)
+            .SelectMany(path => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path), MultiSelectTag)
+                .Select(m => m.Value)
+                .Where(tag => tag.Contains("ph-select", StringComparison.Ordinal))
+                .Select(tag => (Path.GetRelativePath(ClientSource.Root, path), tag)));
 
     [Fact]
-    public void The_filter_bar_page_discovery_finds_the_nine_finance_lists() =>
-        Assert.True(FilterBarPageNames().Length >= 9, $"Found only {FilterBarPageNames().Length} pages.");
+    public void The_scan_finds_the_filter_bars_of_finance_journal_photos_and_admin_pages()
+    {
+        var files = FilterBarMultiSelects().Select(x => x.File).Distinct().ToList();
+        Assert.True(files.Count >= 15, $"Found filter-bar multi-selects in only {files.Count} files.");
+        Assert.Contains(files, f => f.EndsWith("PhotosCard.razor", StringComparison.Ordinal));
+        Assert.Contains(files, f => f.EndsWith("TransactionsCard.razor", StringComparison.Ordinal));
+    }
 
     /// <summary>Filter-bar triggers carry their name only; the glyphs are on the rows. A trigger
-    /// <c>Icon=</c> or an "Any …" label in a finance filter bar is the drift this PR removed. The tag
+    /// <c>Icon=</c> or an "Any …" label is the drift these changes removed, on every page. The tag
     /// match steps over quoted attribute values, so a <c>&gt;</c> inside a lambda cannot end it early.</summary>
-    [Theory]
-    [MemberData(nameof(FinanceFilterBarPages))]
-    public void A_finance_filter_bar_trigger_carries_its_name_only(string page)
+    [Fact]
+    public void Every_filter_bar_trigger_carries_its_name_only()
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", page));
-        var start = source.IndexOf("<SearchContent>", StringComparison.Ordinal);
-        var end = source.IndexOf("</SearchContent>", start, StringComparison.Ordinal);
-        Assert.True(start >= 0 && end > start, $"{page}: no complete <SearchContent> block.");
+        var offenders = FilterBarMultiSelects()
+            .Where(x => System.Text.RegularExpressions.Regex.IsMatch(x.Tag, @"\sIcon=")
+                || x.Tag.Contains("Label=\"Any", StringComparison.Ordinal))
+            .Select(x => $"{x.File}: {x.Tag}")
+            .ToList();
 
-        var multiSelects = System.Text.RegularExpressions.Regex.Matches(
-            source[start..end], @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
-
-        Assert.All(multiSelects, m =>
-        {
-            Assert.DoesNotMatch(@"\sIcon=", m.Value);
-            Assert.DoesNotContain("Label=\"Any ", m.Value);
-        });
+        Assert.True(offenders.Count == 0, "A filter-bar trigger carries a glyph or an \"Any …\" label:\n" + string.Join('\n', offenders));
     }
 
     [Fact]
     public void The_trigger_match_steps_over_a_lambda_in_an_attribute()
     {
         const string markup = """<OdsMultiSelect ValuesChanged="@(v => Set(v))" Icon="flag" />""";
-        var match = System.Text.RegularExpressions.Regex.Match(markup, @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
+        var match = System.Text.RegularExpressions.Regex.Match(markup, MultiSelectTag);
 
         Assert.Contains("Icon=", match.Value);
     }
@@ -326,6 +324,172 @@ public class DropdownConsistencyTests
         Assert.Equal(type.Color, option.IconColor);
     }
 
+    [Fact]
+    public void A_task_status_row_wears_its_status_chips_glyph_and_tone() =>
+        Assert.All(Odyssey.Client.Pages.Journal.JournalTaskUi.StatusOptions, option =>
+        {
+            var meta = OdsTodoStatusChip.Meta(Enum.Parse<Odyssey.Dtos.Journal.JournalTaskStatus>(option.Value));
+            Assert.Equal(meta.Label, option.Label);
+            Assert.Equal(meta.Icon, option.Icon);
+            Assert.Equal(OdsBreakdown.Tone(meta.Tone), option.IconColor);
+        });
+
+    [Fact]
+    public void The_archival_status_filter_keeps_the_values_the_api_binds_and_wears_glyphs()
+    {
+        Assert.Equal(Enum.GetNames<Odyssey.Dtos.ArchivalStatus>().Order(), ArchivalStatusOptions.Options.Select(o => o.Value).Order());
+        Assert.All(ArchivalStatusOptions.Options, o => Assert.False(string.IsNullOrEmpty(o.Icon)));
+        Assert.Same(ArchivalStatusOptions.Options, Odyssey.Client.Pages.Journal.LocationVisuals.StatusOptions);
+    }
+
+    [Theory]
+    [InlineData("#B23B3B", "beach_access")]
+    [InlineData(null, null)]
+    [InlineData("not-a-colour", "unknown_glyph")]
+    public void A_journal_tag_row_wears_the_same_glyph_and_colour_as_its_by_tag_row(string? color, string? icon)
+    {
+        var option = Odyssey.Client.Pages.Journal.JournalOverviews.TagOption(Guid.NewGuid(), "Trip", icon, color, "var(--tag-text)");
+
+        Assert.Equal(JournalTagChips.GlyphFor(icon), option.Icon);
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
+    }
+
+    /// <summary>Each tag family's filter row against its own By tag row, built by the production code on
+    /// both sides — so the per-family fallback ink (journal and task tags --tag-text, photo tags the
+    /// secondary text colour) is what is compared, not a value the test passes in.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("#B23B3B")]
+    public void Each_tag_familys_filter_row_matches_its_by_tag_row(string? color)
+    {
+        var id = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var journalTag = new Odyssey.Dtos.Journal.ExistingJournalTag { JournalTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        var journalEntry = new Odyssey.Dtos.Journal.JournalEntrySummary
+        {
+            JournalEntryId = Guid.NewGuid(), Title = "t", Content = "c", EntryDate = now, CreatedAt = now, UpdatedAt = now,
+            AttachmentCount = 0, TagIds = [id],
+        };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagRows([journalTag], [journalEntry]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagOption(journalTag));
+
+        var taskTag = new Odyssey.Dtos.Journal.ExistingJournalTaskTag { JournalTaskTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        var task = new Odyssey.Dtos.Journal.JournalTaskSummary
+        {
+            JournalTaskId = Guid.NewGuid(), Title = "t", Status = Odyssey.Dtos.Journal.JournalTaskStatus.Backlog, Position = 0,
+            AttachmentCount = 0, TagIds = [id],
+        };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagRows([taskTag], [task]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagOption(taskTag));
+
+        var photoTag = new Odyssey.Dtos.Journal.ExistingPhotoTag { PhotoTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.PhotoTagRows([photoTag], [new() { Key = id, Count = 1 }]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.PhotoTagOption(photoTag));
+
+        static void AssertSame(OdsBreakdownRow row, OdsOption option)
+        {
+            Assert.Equal(row.Icon, option.Icon);
+            Assert.Equal(row.IconColor, option.IconColor);
+            Assert.Equal(row.Label, option.Label);
+        }
+    }
+
+    public static TheoryData<string, IReadOnlyList<OdsOption>> HandWrittenGlyphOptions => new()
+    {
+        { "Journal attachment", Odyssey.Client.Pages.Journal.JournalCard._mediaOptions },
+        { "Location coordinates", Odyssey.Client.Pages.Journal.LocationVisuals.CoordinatesOptions },
+        { "Location use", Odyssey.Client.Pages.Journal.LocationVisuals.UseOptions },
+    };
+
+    /// <summary>The fixed two-row lists whose glyphs are written by hand: every row carries one, and no two
+    /// rows in a list share it (a filter whose rows look alike reads as one option).</summary>
+    [Theory]
+    [MemberData(nameof(HandWrittenGlyphOptions))]
+    public void Every_hand_written_filter_row_carries_its_own_glyph(string filter, IReadOnlyList<OdsOption> options)
+    {
+        Assert.All(options, o =>
+        {
+            Assert.False(string.IsNullOrEmpty(o.Icon), $"{filter}: {o.Label} has no icon");
+            Assert.False(string.IsNullOrEmpty(o.IconColor), $"{filter}: {o.Label} has no colour");
+        });
+        Assert.Equal(options.Count, options.Select(o => o.Icon).Distinct().Count());
+    }
+
+    [Fact]
+    public void The_no_coordinates_row_wears_the_location_rows_no_coordinates_glyph() =>
+        Assert.Contains(Odyssey.Client.Pages.Journal.LocationVisuals.CoordinatesOptions,
+            o => o.Icon == Odyssey.Client.Pages.Journal.LocationVisuals.NoCoordinatesIcon);
+
+    [Theory]
+    [InlineData("Owner", "verified_user")]
+    [InlineData("Admin", "shield")]
+    [InlineData("User", "how_to_reg")]
+    [InlineData("Guest", "visibility")]
+    [InlineData("Auditor", "person")]
+    public void A_role_row_wears_its_pill_glyph_in_its_avatar_colour(string role, string glyph)
+    {
+        var option = Odyssey.Client.Pages.UserDisplay.RoleOption(role);
+
+        Assert.Equal(role, option.Value);
+        Assert.Equal(glyph, option.Icon);
+        Assert.Equal(Odyssey.Client.Pages.UserDisplay.AvatarFg(role), option.IconColor);
+    }
+
+    /// <summary>The role pill draws an SVG (<c>RoleIcon</c>), the filter row a ligature (<c>RoleGlyph</c>):
+    /// two spellings of one glyph, so they are checked against each other here, not just each on its own.</summary>
+    [Theory]
+    [InlineData("Owner", nameof(MudBlazor.Icons.Material.Filled.VerifiedUser))]
+    [InlineData("Admin", nameof(MudBlazor.Icons.Material.Filled.Shield))]
+    [InlineData("User", nameof(MudBlazor.Icons.Material.Filled.HowToReg))]
+    [InlineData("Guest", nameof(MudBlazor.Icons.Material.Filled.Visibility))]
+    [InlineData("Auditor", nameof(MudBlazor.Icons.Material.Filled.Person))]
+    public void The_role_ligature_names_the_same_glyph_as_the_role_pill(string role, string svgName)
+    {
+        var svg = typeof(MudBlazor.Icons.Material.Filled).GetField(svgName)!.GetValue(null);
+        Assert.Equal(svg, Odyssey.Client.Pages.UserDisplay.RoleIcon(role));
+
+        var ligature = Odyssey.Client.Pages.UserDisplay.RoleGlyph(role);
+        Assert.Equal(svgName, string.Concat(ligature.Split('_').Select(w => char.ToUpperInvariant(w[0]) + w[1..])));
+    }
+
+    [Theory]
+    [InlineData("PDF", "picture_as_pdf")]
+    [InlineData("Image", "image")]
+    [InlineData("File", "insert_drive_file")]
+    public void A_file_type_row_wears_its_by_type_glyph(string kind, string glyph)
+    {
+        var option = Odyssey.Client.Pages.Files.KindOption(kind);
+
+        Assert.Equal(kind, option.Value);
+        Assert.Equal(glyph, option.Icon);
+        Assert.False(string.IsNullOrEmpty(option.IconColor));
+    }
+
+    [Fact]
+    public void An_album_row_wears_the_by_album_glyph_and_colour()
+    {
+        var album = new Odyssey.Dtos.Journal.PhotoAlbumSummary { PhotoAlbumId = Guid.NewGuid(), Name = "Summer", PhotoCount = 0 };
+
+        var option = Odyssey.Client.Pages.Photos.AlbumVisuals.FilterOption(album);
+
+        Assert.Equal(album.PhotoAlbumId.ToString(), option.Value);
+        Assert.Equal("Summer", option.Label);
+        Assert.Equal(Odyssey.Dtos.PhotoAlbumIcons.Default, option.Icon);
+        Assert.Equal(Odyssey.Client.Pages.Photos.AlbumVisuals.OverviewFallback, option.IconColor);
+    }
+
+    [Fact]
+    public void A_calendar_row_wears_its_calendars_colour_through_the_validated_door()
+    {
+        var calendar = new Odyssey.Dtos.Journal.ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Work", Color = "#1E88E5" };
+
+        var option = Odyssey.Client.Pages.Calendar.CalendarPage.CalendarOption(calendar);
+
+        Assert.Equal("calendar_month", option.Icon);
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph("#1E88E5"), option.IconColor);
+    }
+
     [Theory]
     [InlineData("#1E88E5", true)]
     [InlineData(null, false)]
@@ -364,6 +528,12 @@ public class DropdownConsistencyTests
         { "Tax statements", TaxStatementsCard._statusOptions },
         { "Transactions status", TransactionsCard._statusOptions },
         { "Transactions direction", TransactionsCard._directionOptions },
+        { "Transaction tags", OdsTagAdmin<ExistingTransactionTag>._statusOptions },
+        { "Journal tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTag>._statusOptions },
+        { "Task tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTaskTag>._statusOptions },
+        { "Photo tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingPhotoTag>._statusOptions },
+        { "Users status", Odyssey.Client.Pages.Users._statusOptions },
+        { "File analysis outcome", Odyssey.Client.Pages.AnalysisLog._statusOptions },
     };
 
     /// <summary>The wire values each filter sends — what the list endpoint binds, unchanged by the move
@@ -381,6 +551,11 @@ public class DropdownConsistencyTests
         // be added to StatusDefs or this fails rather than silently vanishing from the filter.
         { "Transactions status", TransactionsCard._statusOptions, Enum.GetNames<TransactionStatus>() },
         { "Transactions direction", TransactionsCard._directionOptions, ["income", "expense"] },
+        // The tag pages keep their lower-case values: they are the persisted page-state keys.
+        { "Tag pages", OdsTagAdmin<ExistingTransactionTag>._statusOptions, ["active", "archived"] },
+        { "Users status", Odyssey.Client.Pages.Users._statusOptions, ["enabled", "disabled"] },
+        // FileAnalysisJobStatus names the API binds; Cancelled is listed under Failed, as the rows show it.
+        { "File analysis outcome", Odyssey.Client.Pages.AnalysisLog._statusOptions, ["Completed", "Running", "Failed"] },
     };
 
     [Theory]

@@ -201,11 +201,12 @@
         new() { Key = "status", Label = "Outcome", Type = OdsSortType.Status, SortValue = e => (int)e.Status },
     ];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
+    // Each outcome in the tone its row's avatar takes (income / pending / expense), with a glyph naming it.
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
     [
-        new OdsOption(nameof(FileAnalysisJobStatus.Completed), "Completed"),
-        new OdsOption(nameof(FileAnalysisJobStatus.Running), "In progress"),
-        new OdsOption(nameof(FileAnalysisJobStatus.Failed), "Failed"),
+        new OdsOption(nameof(FileAnalysisJobStatus.Completed), "Completed") { Icon = "check_circle", IconColor = OdsBreakdown.Tone("income") },
+        new OdsOption(nameof(FileAnalysisJobStatus.Running), "In progress") { Icon = "hourglass_top", IconColor = OdsBreakdown.Tone("pending") },
+        new OdsOption(nameof(FileAnalysisJobStatus.Failed), "Failed") { Icon = "error", IconColor = OdsBreakdown.Tone("expense") },
     ];
 
     protected override async Task OnInitializedAsync()

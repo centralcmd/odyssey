@@ -28,7 +28,7 @@ public class UserColorSinkLintTests
     [
         "ExistingTransactionTag", "ExistingJournalTag", "ExistingJournalTaskTag", "ExistingPhotoTag",
         "ExistingCalendar", "JournalTagChips", "OdsTagChips", "OdsTagAdmin", "OdsTagColorPicker",
-        "OdsColorSwatchSelect", "OdsCalendarSwatches", "UserColor",
+        "OdsCalendarSwatches", "UserColor",
         // Album icon colours (issue #406): an album colour is user data on the same footing as a tag's.
         "PhotoAlbumSummary", "ExistingPhotoAlbum", "AlbumVisuals",
     ];
@@ -50,7 +50,7 @@ public class UserColorSinkLintTests
     /// <summary>The files whose every <c>style</c> expression must come from <c>UserColor</c>.</summary>
     private static readonly string[] StrictStyleFiles =
     [
-        "OdsTagColorPicker.razor", "OdsColorSwatchSelect.razor", "ManageCalendarsDialog.razor",
+        "OdsTagColorPicker.razor", "ManageCalendarsDialog.razor",
     ];
 
     [Fact]

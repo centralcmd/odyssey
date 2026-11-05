@@ -168,6 +168,119 @@ public class WeatherPointsUiTests : IDisposable
         Assert.Contains("less than 1 km", page.Markup);
     }
 
+    [Fact]
+    public async Task An_open_point_shows_its_map_at_the_current_position_and_its_forecast_after_the_linked_locations()
+    {
+        var weather = Weather(Point("Oslo", OsloId));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<WeatherPointsPage>();
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        page.Find(".odc-record-trigger").Click();
+
+        page.WaitForAssertion(() => Assert.Single(page.FindComponents<OdsLocationMap>()));
+        var map = page.FindComponent<OdsLocationMap>();
+        Assert.Equal("Oslo", map.Instance.Name);
+        Assert.Equal(59.914m, map.Instance.Latitude);
+        Assert.Equal(10.752m, map.Instance.Longitude);
+
+        var forecast = page.FindComponent<WeatherForecastSection>();
+        Assert.Equal("Forecast", forecast.Instance.Label);
+        Assert.Equal(OsloId, forecast.Instance.WeatherPointId);
+        // Tiles · Map · Linked locations · Forecast · Weather history — the Locations record's order.
+        page.WaitForAssertion(() => Assert.Equal(["Weather position", "Map", "Linked locations", "Forecast", "Weather history"],
+            page.FindAll(".odc-record .odc-sectiondivider-l").Select(e => e.TextContent.Trim()).ToArray()));
+        weather.Verify(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task A_point_with_its_forecast_off_shows_the_map_but_no_forecast_and_reads_none()
+    {
+        var weather = Weather(Point("Oslo", OsloId) with { ForecastEnabled = false });
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<WeatherPointsPage>();
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        page.Find(".odc-record-trigger").Click();
+
+        page.WaitForAssertion(() => Assert.Single(page.FindComponents<OdsLocationMap>()));
+        Assert.Empty(page.FindComponents<WeatherForecastSection>());
+        weather.Verify(w => w.CurrentAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task A_failed_forecast_on_a_point_names_the_weather_point_and_leaves_the_record_alone()
+    {
+        var weather = Weather(Point("Oslo", OsloId));
+        weather.Setup(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<WeatherCurrentResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<WeatherPointsPage>();
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        page.Find(".odc-record-trigger").Click();
+
+        page.WaitForAssertion(() => Assert.Contains("The rest of this weather point is unaffected.", page.Markup));
+        Assert.Single(page.FindComponents<OdsLocationMap>());
+        Assert.Single(page.FindComponents<WeatherHistorySection>());
+    }
+
+    [Fact]
+    public async Task A_point_whose_delete_was_interrupted_shows_the_map_but_no_forecast_and_reads_none()
+    {
+        var weather = Weather(Point("Oslo", OsloId) with { PurgeInProgress = true });
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<WeatherPointsPage>();
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        page.Find(".odc-record-trigger").Click();
+
+        page.WaitForAssertion(() => Assert.Single(page.FindComponents<OdsLocationMap>()));
+        Assert.Empty(page.FindComponents<WeatherForecastSection>());
+        weather.Verify(w => w.CurrentAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true, 2)]
+    [InlineData(false, 1)]
+    public async Task A_refresh_that_fetched_reloads_the_forecast_and_the_map_follows_the_row_without_being_recreated(bool fetched, int currentReads)
+    {
+        var point = Point("Oslo", OsloId);
+        var weather = Weather(point);
+        weather.Setup(w => w.RefreshPointAsync(OsloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new WeatherRefreshResult { Fetched = fetched, IssuedAtUtc = DateTime.UtcNow }));
+        var moved = point with { Site = point.Site with { Version = 2, Latitude = 60.1m, Longitude = 11.2m } };
+        weather.Setup(w => w.PointAsync(OsloId, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(moved));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<WeatherPointsPage>();
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+        page.Find(".odc-record-trigger").Click();
+        page.WaitForAssertion(() => Assert.Single(page.FindComponents<WeatherForecastSection>()));
+        var map = page.FindComponent<OdsLocationMap>().Instance;
+        weather.Verify(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()), Times.Once);
+
+        await page.InvokeAsync(() => MenuItem(page, "Refresh forecast for Oslo").OnClick.InvokeAsync());
+
+        page.WaitForAssertion(() => weather.Verify(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()), Times.Exactly(currentReads)));
+        page.WaitForAssertion(() => Assert.Equal(60.1m, page.FindComponent<OdsLocationMap>().Instance.Latitude));
+        Assert.Same(map, page.FindComponent<OdsLocationMap>().Instance);
+    }
+
+    [Fact]
+    public async Task The_maps_status_speaks_for_an_existing_row_but_not_over_a_just_created_ones_announcement()
+    {
+        // bUnit has no WebGL, so the map settles on WebGlUnavailable and reports it through OnStatus.
+        var weather = Weather(Point("Oslo", OsloId));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointsPage>());
+        page.WaitForAssertion(() => Assert.Single(page.FindAll(".odc-record")));
+
+        page.Find(".odc-record-trigger").Click();
+
+        page.WaitForAssertion(() => Assert.Equal("Map of Oslo can't be shown in this browser.", PageAnnouncement(page)));
+        // The just-created case is Focus_lands_on_the_new_row_after_create: the same map status is dropped there.
+    }
+
     // ── The create / settings dialog (AC 3–7, 30) ───────────────────────────────────────────────────
 
     [Fact]
@@ -755,6 +868,9 @@ public class WeatherPointsUiTests : IDisposable
         var both = Render(Ref() with { HasStoredHistory = true });
         // A failed forecast leaves the history section working (AC 14).
         both.WaitForAssertion(() => Assert.Contains("The forecast couldn’t be loaded", both.Markup));
+        // The Locations wrapper keeps its label, its source meta and its noun.
+        Assert.Contains("The rest of this location is unaffected.", both.Markup);
+        Assert.Equal("Weather", both.FindComponent<WeatherForecastSection>().Instance.Label);
         Assert.Single(both.FindComponents<WeatherHistorySection>());
         Assert.Equal(2, both.FindComponents<OdsRecordSection>().Count(s => s.Instance.Meta == "from Oslo · 2 km"));
 
@@ -1159,6 +1275,9 @@ public class WeatherPointsUiTests : IDisposable
         ctx.Services.AddSingleton(new Mock<IPageStateService>().Object);
         ctx.Services.AddSingleton<IWeatherPointOptionsCache>(new WeatherPointOptionsCache(weather.Object, auth));
         ctx.Services.AddSingleton<IWeatherClaimsRefresher>(new WeatherClaimsRefresher(auth, () => Task.FromResult(false)));
+        // Both pages draw OdsLocationMap in an expanded record.
+        ctx.Services.AddSingleton(new Mock<IMapStylesCache>().Object);
+        ctx.Services.AddSingleton(Mock.Of<Odyssey.Client.Theme.IUserPreferenceService>(p => p.Current == new Odyssey.Client.Theme.UserPreferencesPage(true, "NOK", "NOK")));
         WeatherPointsPage.InteractiveCheck = static () => true;
         return ctx;
     }
@@ -1193,8 +1312,6 @@ public class WeatherPointsUiTests : IDisposable
     {
         var ctx = PageContext(weather ?? Weather(), [PermissionClaims.LocationsRead, PermissionClaims.LocationsUpdate, PermissionClaims.WeatherRead], locations);
         ctx.Services.AddSingleton(new Mock<IClipboardService>().Object);
-        ctx.Services.AddSingleton(new Mock<IMapStylesCache>().Object);
-        ctx.Services.AddSingleton(Mock.Of<Odyssey.Client.Theme.IUserPreferenceService>(p => p.Current == new Odyssey.Client.Theme.UserPreferencesPage(true, "NOK", "NOK")));
         LocationsPage.InteractiveCheck = static () => true;
         return ctx;
     }

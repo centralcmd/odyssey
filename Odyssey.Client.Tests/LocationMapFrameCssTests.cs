@@ -12,9 +12,9 @@ public class LocationMapFrameCssTests
 {
     private static readonly Lazy<string> Frame = new(() =>
     {
-        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Journal", "LocationMap.razor.css"));
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "Components", "OdsLocationMap.razor.css"));
         var block = Regex.Match(css, @"(?m)^\.loc-map-frame\s*\{(?<body>[^}]*)\}");
-        Assert.True(block.Success, "LocationMap.razor.css has no .loc-map-frame rule.");
+        Assert.True(block.Success, "OdsLocationMap.razor.css has no .loc-map-frame rule.");
         return block.Groups["body"].Value;
     });
 

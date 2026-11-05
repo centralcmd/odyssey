@@ -3349,15 +3349,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dpr-clear:hover { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover, rgba(199, 208, 224, 0.08)); }
 .odc-dpr-clear:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 
-/* ColorSwatchSelect — a radiogroup grid of curated colour swatches. */
-.odc-swatchsel { display: flex; flex-wrap: wrap; gap: 10px; }
-.odc-swatch { appearance: none; cursor: pointer; width: 30px; height: 30px; flex: none; border-radius: var(--radius-pill); background: var(--sw); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--mud-palette-divider) inset; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
-.odc-swatch:hover { transform: scale(1.08); }
-.odc-swatch.selected { box-shadow: 0 0 0 2px var(--mud-palette-surface) inset, 0 0 0 4px var(--sw); }
-.odc-swatch-check { font-size: var(--icon-md); line-height: 1; display: block; color: var(--sw-fg); }
-.odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
-.odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
-
 /* TagIconPicker — the tag icon chooser for all four tag types (issues #279, #345): a radiogroup grid
    of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }

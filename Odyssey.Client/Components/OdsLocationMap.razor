@@ -1,11 +1,12 @@
-@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Journal
 @implements IAsyncDisposable
 
 @*
-    LocationMap — one map with one pin, the Map band of an expanded location record (issue #371; design
-    system · components/LocationMap, "Locations → Map band"). Kit-local, promoted to Components/ when a
-    second feature needs a map. MapLibre is driven through wwwroot/js/location-map.js, the only file that
-    touches it; this component owns the state machine, the theme, the caption and the announcements.
+    OdsLocationMap — one map with one pin, the Map band of an expanded record (issue #371; design
+    system · components/LocationMap, "Locations → Map band"). Two features draw it, a location's
+    record and a weather point's (its current position), so it lives in Components/. MapLibre is
+    driven through wwwroot/js/location-map.js, the only file that touches it; this component owns
+    the state machine, the theme, the caption and the announcements.
 *@
 
 <div class="loc-map" style="@RootStyle">
@@ -14,16 +15,16 @@
         <span id="@DescriptionId" class="sr-only">Pin at @LocationVisuals.FormatHemispheres(Latitude, Longitude).</span>
         <span id="@KeysId" class="sr-only">Arrow keys pan, plus and minus zoom.</span>
         <div class="loc-map-frame" tabindex="-1" @ref="_frame"
-             aria-busy="@(_state == LocationMapState.Loading ? "true" : null)">
+             aria-busy="@(_state == OdsLocationMapState.Loading ? "true" : null)">
             <div class="loc-map-host" @ref="_host"></div>
-            @if (_state == LocationMapState.Loading)
+            @if (_state == OdsLocationMapState.Loading)
             {
                 <div class="loc-map-skeleton">
                     <OdsSkeleton Variant="OdsSkeletonVariant.Block" Width="100%" Height="100%" />
                 </div>
             }
         </div>
-        @if (_state == LocationMapState.Degraded)
+        @if (_state == OdsLocationMapState.Degraded)
         {
             <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None" Class="loc-map-alert">
                 Some map tiles didn't load. The tile service may be slow.
