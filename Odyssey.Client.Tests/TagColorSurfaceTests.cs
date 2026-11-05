@@ -325,4 +325,91 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Equal(ColorPalette.All.Select(s => s.Hex), OdsCalendarSwatches.All.Select(s => s.Hex));
         Assert.Equal(ColorPalette.All.Count, OdsCalendarSwatches.TokenByKey.Count);
     }
+
+    // ── Calendars: the tag colour, without No color ─────────────────────────────
+
+    [Fact]
+    public void Text_on_any_custom_calendar_colour_clears_4_5_to_1()
+    {
+        // Every grey plus a coarse sweep of the cube: the worst fill sits near L 0.18, where the better of
+        // white and #0E1525 is only 4.27:1 — which is why TextOn uses pure black.
+        var worst = double.MaxValue;
+        for (var r = 0; r < 256; r += 15)
+        for (var g = 0; g < 256; g += 15)
+        for (var b = 0; b < 256; b += 15)
+        {
+            var hex = $"#{r:X2}{g:X2}{b:X2}";
+            worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+        }
+
+        for (var v = 0; v < 256; v++)
+        {
+            var hex = $"#{v:X2}{v:X2}{v:X2}";
+            worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+        }
+
+        Assert.True(worst >= 4.5, $"worst {worst:F2}:1");
+    }
+
+    private IRenderedComponent<OdsTagColorPicker> CalendarPicker(string? value) =>
+        ctx.Render<OdsTagColorPicker>(p => p
+            .Add(c => c.Value, value)
+            .Add(c => c.Id, "cal-color")
+            .Add(c => c.AllowNone, false));
+
+    [Fact]
+    public void A_calendar_picker_offers_the_palette_and_Custom_but_no_No_color_cell()
+    {
+        var cut = CalendarPicker("#15803D");
+
+        var cells = cut.FindAll("[role=radio]");
+        Assert.Equal([.. ColorPalette.All.Select(s => s.Name), "Custom, no color entered"], cells.Select(c => c.GetAttribute("aria-label")));
+        Assert.Equal("Green", cut.Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_calendar_picker_opens_a_custom_hex_as_Custom_and_a_missing_one_on_the_default()
+    {
+        Assert.Equal("Custom, #C2185B", CalendarPicker("#c2185b").Find("[aria-checked=true]").GetAttribute("aria-label"));
+        Assert.Equal(ColorPalette.All[0].Name, CalendarPicker(null).Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData("Home")]
+    [InlineData("ArrowLeft")]
+    public void Keyboard_never_lands_a_calendar_picker_on_No_color(string key)
+    {
+        var cut = CalendarPicker(ColorPalette.All[0].Hex);
+
+        cut.Find("[aria-checked=true]").KeyDown(new KeyboardEventArgs { Key = key });
+
+        var expected = key == "Home" ? ColorPalette.All[0].Name : "Custom, " + ColorPalette.All[0].Hex;
+        Assert.Equal(expected, cut.Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void Calendar_pages_paint_a_calendar_colour_only_through_PaintFor()
+    {
+        // SwatchFor falls back to the default for any non-palette hex, so a page painting through it
+        // would show a Custom calendar colour as Blue; PaintFor is the one rule that keeps it.
+        var dir = Path.Combine(ClientSource.Root, "Pages", "Calendar");
+        var files = Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(files);
+        Assert.DoesNotContain(files, f => File.ReadAllText(f).Contains("SwatchFor(", StringComparison.Ordinal));
+        Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "CalendarPage.razor.cs")), StringComparison.Ordinal);
+        Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "ImportCalendarDialog.razor.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void An_event_paints_a_palette_colour_with_its_vetted_foreground_and_a_custom_one_with_TextOn()
+    {
+        var palette = ColorPalette.All[0];
+        Assert.Equal((palette.Hex, palette.Foreground), OdsCalendarSwatches.PaintFor(palette.Hex.ToLowerInvariant()));
+        Assert.Equal(("#C2185B", HexColor.LightForeground), OdsCalendarSwatches.PaintFor("#c2185b"));
+        Assert.Equal(("#777777", HexColor.BlackText), OdsCalendarSwatches.PaintFor("#777777"));
+        Assert.Equal((ColorPalette.CalendarDefault, OdsCalendarSwatches.SwatchFor(null).Fg), OdsCalendarSwatches.PaintFor("red;x:y"));
+    }
 }

@@ -19,7 +19,8 @@ public class Calendar
     [StringLength(1000)]
     public string? Description { get; set; }
 
-    // One of the curated ColorPalette swatches (issue #392), validated in CalendarService.
+    // Any #RRGGBB, stored upper-case — the tag colour rule (issue #392), without "no colour": a calendar
+    // always has one. Read through HexColor.Normalize, falling back to ColorPalette.CalendarDefault.
     [StringLength(7)]
     [Required]
     public string Color { get; set; } = ColorPalette.CalendarDefault;

@@ -400,11 +400,11 @@ public partial class CalendarPage
     private CalendarEventVm ToVm(ExistingCalendarEvent e)
     {
         var calendar = _calendars.FirstOrDefault(c => c.CalendarId == e.CalendarId);
-        var swatch = OdsCalendarSwatches.SwatchFor(calendar?.Color);
+        var (bg, fg) = OdsCalendarSwatches.PaintFor(calendar?.Color);
         return new CalendarEventVm(
             e.CalendarEventId, e.CalendarId, calendar?.Name ?? "Unknown",
             e.Title, e.StartDateTime, e.EndDateTime, e.IsAllDay,
-            swatch.Hex, swatch.Fg, e.RecurrencePatternId is not null,
+            bg, fg, e.RecurrencePatternId is not null,
             e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null);
     }
 
