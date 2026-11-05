@@ -99,7 +99,7 @@ public partial class JournalCard
     ];
 
     // Status: single "Active / Archived" multiselect. Empty = hide archived (Active only); both = all.
-    internal static readonly IReadOnlyList<OdsOption> _statusOptions = ArchivalStatusOptions.Options;
+    private static readonly IReadOnlyList<OdsOption> _statusOptions = ArchivalStatusOptions.Options;
 
     // ── Sort (server-side; keys map 1:1 to JournalEntrySortBy) ───────────────────
     private static readonly OdsTableSort DefaultSort = new("entryDate", OdsSortDirection.Desc);

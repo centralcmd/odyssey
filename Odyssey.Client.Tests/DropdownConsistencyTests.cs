@@ -355,6 +355,19 @@ public class DropdownConsistencyTests
     }
 
     [Fact]
+    public void An_album_row_wears_the_by_album_glyph_and_colour()
+    {
+        var album = new Odyssey.Dtos.Journal.PhotoAlbumSummary { PhotoAlbumId = Guid.NewGuid(), Name = "Summer", PhotoCount = 0 };
+
+        var option = Odyssey.Client.Pages.Photos.PhotosCard.AlbumOption(album);
+
+        Assert.Equal(album.PhotoAlbumId.ToString(), option.Value);
+        Assert.Equal("Summer", option.Label);
+        Assert.Equal(Odyssey.Client.Pages.Journal.JournalOverviews.AlbumGlyph, option.Icon);
+        Assert.Equal(Odyssey.Client.Pages.Journal.JournalOverviews.AlbumColor, option.IconColor);
+    }
+
+    [Fact]
     public void A_calendar_row_wears_its_calendars_colour_through_the_validated_door()
     {
         var calendar = new Odyssey.Dtos.Journal.ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Work", Color = "#1E88E5" };
