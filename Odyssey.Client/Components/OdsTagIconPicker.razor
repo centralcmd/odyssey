@@ -11,7 +11,8 @@
     never a client copy.
 
     The first cell is always Default — value null, drawn with the generic tag glyph inside a dashed
-    outline. The API never stores the default key, so the picker emits null for it, and it treats any
+    outline. DefaultIcon / DefaultLabel / DefaultCaption re-dress that cell for another owner of the same
+    catalogue (photo albums, issue #406); their defaults are today's tag strings. The API never stores the default key, so the picker emits null for it, and it treats any
     unknown or stale value as Default, mirroring the server's read-side projection.
 
     ARIA radiogroup with a roving tab stop: arrows move in two dimensions over the live column count,
@@ -42,7 +43,7 @@
                     @key="@(cell.Key ?? "__default")"
                     @ref="_buttons[index]"
                     aria-checked="@(active ? "true" : "false")"
-                    aria-label="@(isDefault ? "Default (tag icon)" : cell.Label)"
+                    aria-label="@(isDefault ? DefaultLabel : cell.Label)"
                     disabled="@Disabled"
                     tabindex="@(active ? 0 : -1)"
                     class="@CellClass(active, isDefault)"
@@ -51,7 +52,7 @@
                     @onmouseenter="() => _peek = index"
                     @onfocus="() => OnCellFocus(index)"
                     @onblur="OnCellBlur">
-                <span class="material-icons" aria-hidden="true">@(cell.Key ?? TagIcons.Default)</span>
+                <span class="material-icons" aria-hidden="true">@(cell.Key ?? DefaultIcon)</span>
                 @if (active)
                 {
                     <span class="odc-iconpick-check" aria-hidden="true"><span class="material-icons">check</span></span>
@@ -61,17 +62,17 @@
     </div>
     <div class="odc-iconpick-caption" aria-hidden="true">
         <span class="odc-iconpick-sel">
-            <span class="material-icons">@(Selected.Key ?? TagIcons.Default)</span>
+            <span class="material-icons">@(Selected.Key ?? DefaultIcon)</span>
             <span>@(Selected.Key is null ? "Default" : Selected.Label)</span>
             @if (Selected.Key is null)
             {
-                <span class="odc-iconpick-sub">the tag icon</span>
+                <span class="odc-iconpick-sub">@DefaultCaption</span>
             }
         </span>
         @if (Peeked is { } peeked)
         {
             <span class="odc-iconpick-peek">
-                <span class="material-icons">@(peeked.Key ?? TagIcons.Default)</span>
+                <span class="material-icons">@(peeked.Key ?? DefaultIcon)</span>
                 <span>@(peeked.Key is null ? "Default" : peeked.Label)</span>
             </span>
         }

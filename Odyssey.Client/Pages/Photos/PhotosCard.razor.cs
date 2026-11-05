@@ -130,7 +130,12 @@ public partial class PhotosCard
         if (albumsResult.IsSuccess)
         {
             _albumSummaries = albums;
-            _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+            // Each option carries its Overview row's glyph and tone (issue #406 surface D1).
+            _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name)
+            {
+                Icon = AlbumVisuals.Glyph(a.Icon),
+                IconColor = AlbumVisuals.Ink(a.Color, AlbumVisuals.OverviewFallback),
+            })];
             _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
         }
 

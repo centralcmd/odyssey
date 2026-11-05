@@ -73,3 +73,14 @@
 .pl-backrow-title { color: var(--mud-palette-text-primary); font: 600 15px/1 var(--font-sans); margin-left: 4px; }
 
 .pl-backrow .material-icons { font-size: 18px; }
+
+/* Album icon + colour (issue #406, design system Photos.jsx). The glyph is decorative (aria-hidden); its
+   ink comes from AlbumVisuals.Ink. With no cover photo the glyph sits on the page ground, the ground
+   --user-glyph-l is calibrated for. Forced colours drop the inline ink to CanvasText. */
+.pl-albglyph { font-size: var(--icon-lg); line-height: 1; flex: none; }
+.pl-albname-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.pl-albname-row .pl-albname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-albcover-empty { display: flex; align-items: center; justify-content: center; background: var(--mud-palette-background); }
+.pl-albcover-empty .pl-albglyph-xl { font-size: var(--icon-2xl); }
+.pl-backrow .pl-albglyph { font-size: var(--icon-lg); margin-left: var(--space-1); }
+.pl-backrow .pl-albglyph + .pl-backrow-title { margin-left: 0; }

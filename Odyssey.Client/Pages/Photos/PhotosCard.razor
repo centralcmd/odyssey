@@ -1,5 +1,6 @@
 @page "/photos"
 @attribute [Authorize(Policy = PermissionClaims.PhotosRead)]
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @implements IDisposable
 @inject IPhotosApiClient Photos
@@ -44,7 +45,7 @@
             @if (_canManageAlbums)
             {
                 <button type="button" class="pl-selact" @onclick="OpenAddToAlbum">
-                    <span class="material-icons" aria-hidden="true">photo_album</span><span>Add to album</span>
+                    <span class="material-icons" aria-hidden="true">@PhotoAlbumIcons.Default</span><span>Add to album</span>
                 </button>
             }
             @if (_canUpdate && !_archivedView)
@@ -167,7 +168,7 @@
                             DebounceInterval="300" OnSearch="OnSearchSubmitted"
                             Placeholder="Search title, caption, location…" AriaLabel="Search photos" />
             <OdsMultiSelect Class="ph-select" Label="Any album" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
-                            Options="_albumOptions" Icon="photo_album" />
+                            Options="_albumOptions" Icon="@PhotoAlbumIcons.Default" />
             <OdsMultiSelect Class="ph-select" Label="Any tag" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
                             Options="_tagOptions" Icon="sell" />
             <OdsMultiSelect Class="ph-select" Label="Anyone" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"

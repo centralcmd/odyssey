@@ -187,14 +187,11 @@ public partial class AlbumsPage
         }
 
         var removed = _selected.Count;
-        var ok = (await Albums.UpdateAsync(album.PhotoAlbumId, new UpdatePhotoAlbum
-        {
-            Name = album.Name,
-            Description = album.Description,
-            PhotoIds = [.. album.PhotoIds.Where(id => !_selected.Contains(id))],
-            CoverPhotoId = album.CoverPhotoId is { } c && _selected.Contains(c) ? null : album.CoverPhotoId,
-            Archived = album.Archived is not null,
-        })).Toast(Snackbar, "Remove failed", $"{removed} photo{(removed == 1 ? "" : "s")} removed from the album.");
+        // Full replacement: start from the loaded album so its icon and colour survive (issue #406 §3.4).
+        var update = AlbumWrites.From(album);
+        update.PhotoIds = [.. album.PhotoIds.Where(id => !_selected.Contains(id))];
+        update.CoverPhotoId = album.CoverPhotoId is { } c && _selected.Contains(c) ? null : album.CoverPhotoId;
+        var ok = (await Albums.UpdateAsync(album.PhotoAlbumId, update)).Toast(Snackbar, "Remove failed", $"{removed} photo{(removed == 1 ? "" : "s")} removed from the album.");
 
         if (ok)
         {

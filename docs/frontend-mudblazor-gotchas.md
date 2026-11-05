@@ -197,6 +197,12 @@ Until then, treat **v9** as the truth.
   `tag.Color`, `calendar.Color` or `DisplayColor` into `style`, `Bg` or `Fg` directly —
   `UserColorSinkLintTests` fails on it. Code-constant registry colours (`OdsGlyphInk`, charts) are out
   of that rule's scope.
+- **An album's icon and colour are drawn only through `Pages/Photos/AlbumVisuals`** (issue #406):
+  `Glyph(icon)` for the glyph (an unknown key falls back to `PhotoAlbumIcons.Default`) and
+  `Ink` / `GlyphStyle` for its ink, which go through `UserColor.Glyph`. Never spell the album glyph as a
+  `"photo_album"` literal, and never build an `UpdatePhotoAlbum` by hand outside the album form — start a
+  partial edit from `AlbumWrites.From(album)`, because the album `PUT` is full replacement and a missing
+  icon or colour is cleared. `AlbumSourceLintTests` and `UserColorSinkLintTests` enforce all three.
 - **`OdsFieldShell.ErrorIsAlert="false"`** keeps an error line out of `role="alert"` when the surface
   announces it another way (the tag colour picker's submit-time errors, which focus the field instead).
 

@@ -29,7 +29,18 @@ public class UserColorSinkLintTests
         "ExistingTransactionTag", "ExistingJournalTag", "ExistingJournalTaskTag", "ExistingPhotoTag",
         "ExistingCalendar", "JournalTagChips", "OdsTagChips", "OdsTagAdmin", "OdsTagColorPicker",
         "OdsColorSwatchSelect", "OdsCalendarSwatches", "UserColor",
+        // Album icon colours (issue #406): an album colour is user data on the same footing as a tag's.
+        "PhotoAlbumSummary", "ExistingPhotoAlbum", "AlbumVisuals",
     ];
+
+    /// <summary>The album surfaces that must stay in the scan set (issue #406 AC 9).</summary>
+    private static readonly string[] AlbumFiles =
+    [
+        "AlbumsPage.razor", "AlbumFormDialog.razor", "AddToAlbumDialog.razor", "PhotoLibraryOverview.razor", "PhotosCard.razor.cs",
+    ];
+
+    /// <summary>The only client files that may read an album's <c>Color</c> outside an <c>AlbumVisuals</c> call (issue #406 §4).</summary>
+    private static readonly string[] AlbumColorReaders = ["AlbumVisuals.cs", "AlbumFormDialog.razor.cs", "AlbumWrites.cs"];
 
     private static readonly string[] TagPages =
     [
@@ -49,6 +60,10 @@ public class UserColorSinkLintTests
         Assert.True(files.Count >= 20, $"Scan set unexpectedly small ({files.Count}).");
         Assert.Contains(files, path => path.EndsWith("OdsAvatar.razor", StringComparison.Ordinal));
         Assert.Contains(files, path => path.EndsWith("ManageCalendarsDialog.razor", StringComparison.Ordinal));
+        foreach (var album in AlbumFiles)
+        {
+            Assert.Contains(files, path => Path.GetFileName(path) == album);
+        }
 
         var violations = files
             .SelectMany(path => Violations(File.ReadAllText(path)).Select(v => $"{Path.GetRelativePath(ClientSource.Root, path)}: {v}"))
@@ -69,6 +84,8 @@ public class UserColorSinkLintTests
     [InlineData("private string S => $\"--x:{row.DisplayColor}\";")]
     [InlineData("var c = tag.Color;\n<span style=\"@($\"color:{c}\")\"></span>")]
     [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = c.Color }")]
+    [InlineData("new OdsOption(id, name) { Icon = AlbumVisuals.Glyph(a.Icon), IconColor = a.Color }")]
+    [InlineData("<span style=\"color:@a.Color\"></span>")]
     public void Each_seeded_sink_shape_is_caught(string code) =>
         Assert.NotEmpty(Violations(code));
 
@@ -78,6 +95,8 @@ public class UserColorSinkLintTests
     [InlineData("<OdsChip UserColorDot=\"@tag.Color\" />")]
     [InlineData("private string? D => UserColor.Dot(tag.Color);")]
     [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = UserColor.Canonical(c.Color) }")]
+    [InlineData("<span style=\"@AlbumVisuals.GlyphStyle(a.Color, AlbumVisuals.SurfaceFallback)\"></span>")]
+    [InlineData("new OdsOption(id, name) { IconColor = AlbumVisuals.Ink(a.Color, AlbumVisuals.OverviewFallback) }")]
     public void The_validated_path_is_not_flagged(string code) =>
         Assert.Empty(Violations(code));
 
@@ -131,9 +150,11 @@ public class UserColorSinkLintTests
         }
 
         // OdsGlyphInk paints code-constant registry colours (issue #164) — never a tag or calendar colour.
+        // AlbumVisuals routes an album colour through UserColor.Glyph (pinned below), so it is the validated path too.
         bool IsUserData(string text) => tokens.Any(t => Regex.IsMatch(text, t))
             && !text.Contains("UserColor.", StringComparison.Ordinal)
-            && !text.Contains("OdsGlyphInk.", StringComparison.Ordinal);
+            && !text.Contains("OdsGlyphInk.", StringComparison.Ordinal)
+            && !text.Contains("AlbumVisuals.", StringComparison.Ordinal);
 
         foreach (Match attribute in Regex.Matches(code, "\\b(style|Style|Bg|Fg)=\"((?:[^\"\\\\]|\\\\.|\"[^\"]*\")*?)\"(?=[\\s/>])"))
         {
@@ -157,6 +178,61 @@ public class UserColorSinkLintTests
             }
         }
     }
+
+    /// <summary>AlbumVisuals is only exempt because it re-validates through UserColor; pin that.</summary>
+    [Fact]
+    public void AlbumVisuals_routes_every_album_colour_through_UserColor()
+    {
+        var source = File.ReadAllText(SourceFile("AlbumVisuals.cs"));
+        Assert.Matches(@"\bInk\([^)]*\)\s*=>\s*UserColor\.Glyph\(", source);
+        Assert.Matches(@"\bGlyphStyle\([^)]*\)\s*=>[^;]*\bInk\(", source);
+    }
+
+    /// <summary>
+    /// <c>AlbumVisuals</c> is the only path from an album's <c>Color</c> to ink (issue #406 §4): in every
+    /// other client file an album's colour (<c>a.Color</c>, <c>album.Color</c>, or a local copied from one)
+    /// is read only as an argument of an <c>AlbumVisuals.</c> call. The form (picker seeding) and the save
+    /// mapper read it without rendering it.
+    /// </summary>
+    [Fact]
+    public void Only_AlbumVisuals_turns_an_album_colour_into_ink()
+    {
+        var files = Directory.EnumerateFiles(ClientSource.Root, "*.*", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path) && (path.EndsWith(".razor", StringComparison.Ordinal) || path.EndsWith(".cs", StringComparison.Ordinal)))
+            .Where(path => !AlbumColorReaders.Contains(Path.GetFileName(path)))
+            .ToList();
+        Assert.Contains(files, path => Path.GetFileName(path) == "AlbumsPage.razor");
+
+        var problems = files.SelectMany(path => AlbumColorReads(File.ReadAllText(path)).Select(line => $"{Path.GetRelativePath(ClientSource.Root, path)}: {line}")).ToList();
+        Assert.True(problems.Count == 0, "An album colour is read outside AlbumVisuals:\n" + string.Join('\n', problems));
+    }
+
+    [Theory]
+    [InlineData("var c = album.Color;")]
+    [InlineData("IconColor = a.Color,")]
+    [InlineData("var c = a.Color; var s = AlbumVisuals.Ink(c);")]
+    public void Each_seeded_album_colour_read_is_caught(string code) => Assert.NotEmpty(AlbumColorReads(code));
+
+    [Fact]
+    public void An_album_colour_passed_to_AlbumVisuals_is_not_flagged() =>
+        Assert.Empty(AlbumColorReads("IconColor = AlbumVisuals.Ink(a.Color, AlbumVisuals.OverviewFallback),"));
+
+    private static IEnumerable<string> AlbumColorReads(string code)
+    {
+        foreach (var line in code.Split('\n'))
+        {
+            foreach (Match read in Regex.Matches(line, @"\b(?:a|album)\.Color\b"))
+            {
+                var before = line[..read.Index];
+                var insideAlbumVisuals = Regex.IsMatch(before, @"\bAlbumVisuals\.\w+\([^)]*$");
+                if (!insideAlbumVisuals)
+                    yield return line.Trim();
+            }
+        }
+    }
+
+    private static string SourceFile(string name) =>
+        Directory.EnumerateFiles(ClientSource.Root, name, SearchOption.AllDirectories).Single(path => !IsBuildOutput(path));
 
     private static bool IsInsideUserColorCall(string code, int index)
     {
