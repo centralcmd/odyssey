@@ -54,6 +54,11 @@ public partial class WeatherPointsPage
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadLocations;
+
+    // The open record's forecast reads, shared the way the Locations page shares them; a refresh forgets the point's
+    // reads and bumps its generation, which re-keys the section so it loads the new issue.
+    private WeatherPointReads _weatherReads = default!;
+    private readonly Dictionary<Guid, int> _forecastGeneration = [];
     private bool _canSearchLocations; // locations.create — New weather point's Search address source (POST /api/locations/search)
     private bool _canOpenSettings;
 
@@ -97,6 +102,7 @@ public partial class WeatherPointsPage
         if (!InteractiveCheck())
             return;
 
+        _weatherReads = new WeatherPointReads(Weather);
         await ReadClaimsAsync();
         await PageState.RestoreOrSeedAsync<WeatherPointsPageState>(PageStateKey, ApplyPageState, BuildPageState);
         await Task.WhenAll(LoadAsync(), LoadCapAsync());
@@ -308,10 +314,11 @@ public partial class WeatherPointsPage
     }
 
     /// <summary>
-    /// The row a create just expanded: its Linked locations section loads as it mounts, and its <i>Loading…</i> and
-    /// <i>No location uses … yet</i> would replace the create announcement in the one polite region. A new point has
-    /// no linked places, so both are dropped until the row is toggled; a failure still speaks through the section's
-    /// own <c>role="alert"</c>.
+    /// The row a create just expanded: its Map, Linked locations and Forecast sections load as they mount, and their
+    /// status lines (<i>Loading…</i>, <i>No location uses … yet</i>, <i>No forecast … yet</i>, a map that could not
+    /// draw) would replace the create announcement in the one polite region. Those are dropped until the row is
+    /// toggled; the sections still show them, and a list or forecast failure speaks through its own
+    /// <c>role="alert"</c>.
     /// </summary>
     private Guid? _quietLinkedId;
 
@@ -538,6 +545,12 @@ public partial class WeatherPointsPage
                         : refreshed.ForecastFailureKind is { } kind
                             ? $"The forecast for {p.Name} couldn’t be refreshed: {WeatherVisuals.FailureOf(kind)!.Label.ToLowerInvariant()}."
                             : $"MET Norway has nothing newer for {p.Name} yet. It will be checked again on schedule.");
+                if (refreshed.Fetched)
+                {
+                    _weatherReads.Forget(p.WeatherPointId);
+                    _forecastGeneration[p.WeatherPointId] = _forecastGeneration.GetValueOrDefault(p.WeatherPointId) + 1;
+                }
+
                 await RefreshRowAsync(p.WeatherPointId);
                 return;
             }

@@ -144,10 +144,25 @@
                 <OdsRecordSection Class="acct-section wx-section" Label="Weather position" Meta="@($"position v{p.Site.Version}")">
                     <WeatherPointTiles Row="p" />
                 </OdsRecordSection>
+                @* The Map band — the Locations record's map, pinned at the point's current position (design system ·
+                   Weather → The record). One card is open at a time, so the page holds at most one map. Keyed on the
+                   point alone: a moved position moves the pin and keeps the viewer's zoom (OdsLocationMap). *@
+                <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
+                    <OdsLocationMap @key="@($"m:{p.WeatherPointId}")" Latitude="p.Site.Latitude" Longitude="p.Site.Longitude"
+                                    Name="@p.Name" OnStatus="@((string m) => AnnounceLinked(p.WeatherPointId, m))" />
+                </OdsRecordSection>
                 @if (_canReadLocations)
                 {
                     <WeatherPointLinkedSection @key="p.WeatherPointId" WeatherPointId="p.WeatherPointId" PointName="@p.Name"
                                                OnAnnounce="@((string m) => AnnounceLinked(p.WeatherPointId, m))" OnStatus="OnStatusAsync" />
+                }
+                @* The point's forecast — the section a linked location shows, labelled Forecast; only while the forecast
+                   is on. Refresh forecast re-keys it so it reads the new issue. *@
+                @if (p.ForecastEnabled && !p.PurgeInProgress)
+                {
+                    <WeatherForecastSection @key="@($"f:{p.WeatherPointId}:{_forecastGeneration.GetValueOrDefault(p.WeatherPointId)}")"
+                                            WeatherPointId="p.WeatherPointId" PointName="@p.Name" Label="Forecast" RecordNoun="weather point"
+                                            Reads="_weatherReads" OnAnnounce="@((string m) => AnnounceLinked(p.WeatherPointId, m))" />
                 }
                 @if (!p.PurgeInProgress)
                 {

@@ -17,7 +17,7 @@ public class LocationMapSourceLintTests
     private static IReadOnlyList<string> ScanSet()
     {
         var files = new List<string> { Path.Combine(ClientSource.Root, "wwwroot", "js", "location-map.js") };
-        files.AddRange(Directory.EnumerateFiles(Path.Combine(ClientSource.Root, "Pages", "Journal"), "LocationMap.*"));
+        files.AddRange(Directory.EnumerateFiles(Path.Combine(ClientSource.Root, "Components"), "OdsLocationMap.*"));
         return files;
     }
 
@@ -27,8 +27,8 @@ public class LocationMapSourceLintTests
         var names = ScanSet().Where(File.Exists).Select(Path.GetFileName).ToList();
 
         Assert.Contains("location-map.js", names);
-        Assert.Contains("LocationMap.razor", names);
-        Assert.Contains("LocationMap.razor.cs", names);
+        Assert.Contains("OdsLocationMap.razor", names);
+        Assert.Contains("OdsLocationMap.razor.cs", names);
     }
 
     [Fact]

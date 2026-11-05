@@ -2,6 +2,7 @@ using Bunit;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor.Services;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
@@ -11,7 +12,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// <see cref="LocationMap"/>'s state machine and lifecycle (issue #371 AC 8, 9, 10, 14, 20). MapLibre is
+/// <see cref="OdsLocationMap"/>'s state machine and lifecycle (issue #371 AC 8, 9, 10, 14, 20). MapLibre is
 /// behind <c>location-map.js</c>, which bUnit fakes here; what runs in a real browser is the E2E tier's.
 /// </summary>
 public class LocationMapTests : IAsyncLifetime
@@ -41,7 +42,7 @@ public class LocationMapTests : IAsyncLifetime
         ctx.Services.AddSingleton(preferences.Object);
         ctx.Services.AddSingleton<IMapStylesCache>(cache);
 
-        module = ctx.JSInterop.SetupModule(LocationMap.ModulePath);
+        module = ctx.JSInterop.SetupModule(OdsLocationMap.ModulePath);
         module.Setup<bool>("isSupported").SetResult(true);
         // Setup(identifier) with no matcher only matches a call with NO arguments, so every one that
         // takes a handle gets an explicit catch-all.
@@ -54,8 +55,8 @@ public class LocationMapTests : IAsyncLifetime
 
     public async Task DisposeAsync() => await ctx.DisposeAsync();
 
-    private IRenderedComponent<LocationMap> Render(decimal lat = 61.52914m, decimal lng = 10.13802m, string name = "Cabin") =>
-        ctx.Render<LocationMap>(p => p
+    private IRenderedComponent<OdsLocationMap> Render(decimal lat = 61.52914m, decimal lng = 10.13802m, string name = "Cabin") =>
+        ctx.Render<OdsLocationMap>(p => p
             .Add(c => c.Latitude, lat)
             .Add(c => c.Longitude, lng)
             .Add(c => c.Name, name)
@@ -79,7 +80,7 @@ public class LocationMapTests : IAsyncLifetime
 
         var cut = Render(lat: 91m);
 
-        Assert.Equal(LocationMapState.InvalidCoordinates, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.InvalidCoordinates, cut.Instance.State);
         Assert.Contains("This location has no usable coordinates.", cut.Markup);
         Assert.Empty(module.Invocations["isSupported"]);
         Assert.Empty(module.Invocations["create"]);
@@ -96,7 +97,7 @@ public class LocationMapTests : IAsyncLifetime
 
         var cut = Render();
 
-        cut.WaitForAssertion(() => Assert.Equal(LocationMapState.WebGlUnavailable, cut.Instance.State));
+        cut.WaitForAssertion(() => Assert.Equal(OdsLocationMapState.WebGlUnavailable, cut.Instance.State));
         Assert.Contains("This browser can't draw maps (WebGL is off or unavailable).", cut.Markup);
         Assert.Empty(module.Invocations["create"]);
         Assert.Equal(["Map of Cabin can't be shown in this browser."], announced);
@@ -113,7 +114,7 @@ public class LocationMapTests : IAsyncLifetime
         SetupCreate();
 
         var cut = Render();
-        cut.WaitForAssertion(() => Assert.Equal(LocationMapState.ConfigUnavailable, cut.Instance.State));
+        cut.WaitForAssertion(() => Assert.Equal(OdsLocationMapState.ConfigUnavailable, cut.Instance.State));
         Assert.Contains("The map couldn't load its settings.", cut.Markup);
         Assert.Equal(["Map of Cabin couldn't load its settings."], announced);
         Assert.Empty(cut.FindAll(".loc-map-caption"));
@@ -160,10 +161,10 @@ public class LocationMapTests : IAsyncLifetime
 
         var options = module.Invocations["create"][0].Arguments[1]!;
         Assert.Equal(Dark, Read<string>(options, "styleUrl"));
-        Assert.Equal(LocationMap.StartZoom, Read<int>(options, "zoom"));
-        Assert.Equal(LocationMap.MaxZoom, Read<int>(options, "maxZoom"));
+        Assert.Equal(OdsLocationMap.StartZoom, Read<int>(options, "zoom"));
+        Assert.Equal(OdsLocationMap.MaxZoom, Read<int>(options, "maxZoom"));
         // MapLibre documents maxZoom as 0–24; a value past its range is not a supported configuration.
-        Assert.Equal(24, LocationMap.MaxZoom);
+        Assert.Equal(24, OdsLocationMap.MaxZoom);
         Assert.Equal("Cabin", Read<string>(options, "name"));
 
         var describedBy = Read<string>(options, "describedBy").Split(' ');
@@ -180,7 +181,7 @@ public class LocationMapTests : IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Single(module.Invocations["create"]));
 
         await cut.InvokeAsync(() => cut.Instance.OnFailed(cut.Instance.Generation, "tiles"));
-        Assert.Equal(LocationMapState.TilesFailed, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.TilesFailed, cut.Instance.State);
         Assert.Contains("The map for Cabin couldn't load. The tile service may be down.", cut.Markup);
         Assert.Equal(["Map of Cabin couldn't load."], announced);
 
@@ -188,7 +189,7 @@ public class LocationMapTests : IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["create"].Count));
         await cut.InvokeAsync(() => cut.Instance.OnReady(cut.Instance.Generation));
 
-        Assert.Equal(LocationMapState.Ready, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.Ready, cut.Instance.State);
         Assert.Equal("Map of Cabin loaded.", announced[^1]);
         Assert.Single(module.Invocations["focusSurface"]);
     }
@@ -214,7 +215,7 @@ public class LocationMapTests : IAsyncLifetime
         await cut.InvokeAsync(() => cut.Instance.OnDegraded(first));
         await cut.InvokeAsync(() => cut.Instance.OnContextLost(first));
 
-        Assert.Equal(LocationMapState.Ready, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.Ready, cut.Instance.State);
         Assert.Empty(announced);
     }
 
@@ -342,7 +343,7 @@ public class LocationMapTests : IAsyncLifetime
 
         var cut = Render();
 
-        cut.WaitForAssertion(() => Assert.Equal(LocationMapState.WebGlUnavailable, cut.Instance.State));
+        cut.WaitForAssertion(() => Assert.Equal(OdsLocationMapState.WebGlUnavailable, cut.Instance.State));
         Assert.Equal(["Map of Cabin can't be shown in this browser."], announced);
         Assert.Empty(module.Invocations["dispose"]);
     }
@@ -381,7 +382,7 @@ public class LocationMapTests : IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Equal(focusBefore + 1, FocusCalls()));
         await cut.InvokeAsync(() => cut.Instance.OnFailed(cut.Instance.Generation, "tiles"));
 
-        Assert.Equal(LocationMapState.TilesFailed, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.TilesFailed, cut.Instance.State);
         cut.WaitForAssertion(() => Assert.Equal(focusBefore + 2, FocusCalls()));
         Assert.Empty(module.Invocations["focusSurface"]);
     }
@@ -400,7 +401,7 @@ public class LocationMapTests : IAsyncLifetime
         cut.WaitForAssertion(() => Assert.Equal(2, module.Invocations["create"].Count));
         await cut.InvokeAsync(() => cut.Instance.OnReady(cut.Instance.Generation));
 
-        Assert.Equal(LocationMapState.Ready, cut.Instance.State);
+        Assert.Equal(OdsLocationMapState.Ready, cut.Instance.State);
         Assert.Single(module.Invocations["dispose"]);
         cut.WaitForAssertion(() => Assert.Single(module.Invocations["focusSurface"]));
         Assert.Empty(announced);

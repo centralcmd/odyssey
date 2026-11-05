@@ -1,5 +1,5 @@
 /*
-    LocationMap's Blazor-rendered parts (issue #371; design system · components/LocationMap): the frame,
+    OdsLocationMap's Blazor-rendered parts (issue #371; design system · components/LocationMap): the frame,
     the loading skeleton, the state box and the caption. The MapLibre-built parts — the pin, the controls,
     the popup and the gesture hint — are created in JS and styled by wwwroot/css/location-map.css.
     Tokens only.
