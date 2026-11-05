@@ -4,7 +4,7 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The Journal page's "Any attachment" picker → <c>hasPhotos</c>/<c>hasFiles</c> translation.
+/// The Journal page's "Attachment" filter → <c>hasPhotos</c>/<c>hasFiles</c> translation.
 ///
 /// <para>
 /// The API and ApiClient tiers both pin that <c>false</c> is a real filter ("entries with NO photos")

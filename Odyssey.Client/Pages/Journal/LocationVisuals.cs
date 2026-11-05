@@ -65,7 +65,8 @@ public static partial class LocationVisuals
         new(LocationCandidateKind.Locality, "Town or area", "location_city"),
     ];
 
-    /// <summary>The "Any status" filter — the shared <see cref="ArchivalStatus"/>, defaulting to Active.</summary>
+    /// <summary>The "Status" filter — the shared <see cref="ArchivalStatusOptions"/> (Active / Archived with
+    /// their glyphs), defaulting to Active.</summary>
     public static readonly IReadOnlyList<OdsOption> StatusOptions = ArchivalStatusOptions.Options;
 
     public static readonly IReadOnlyList<string> DefaultStatusFilter = [nameof(ArchivalStatus.Active)];

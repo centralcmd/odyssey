@@ -7,8 +7,10 @@ namespace Odyssey.Client.Pages.Journal;
 /// declared once for both the tasks page filter and the create/edit dialog's status select).</summary>
 public static class JournalTaskUi
 {
-    /// <summary>The kanban lifecycle statuses as picker options (values are the enum names).</summary>
-    // The status chip's glyph and tone, so a filter row reads the same as the chip on the task.
+    /// <summary>
+    /// The kanban lifecycle statuses as picker options (values are the enum names), each with the status
+    /// chip's glyph and tone, so a filter row reads the same as the chip on the task.
+    /// </summary>
     public static readonly IReadOnlyList<OdsOption> StatusOptions =
     [
         .. new[] { JournalTaskStatus.Backlog, JournalTaskStatus.Doing, JournalTaskStatus.Done, JournalTaskStatus.Archived }
