@@ -151,7 +151,7 @@ public partial class TasksPage
         [
             .. _tags.Where(t => t.Archived is null)
                 .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(t => new OdsOption(t.JournalTaskTagId.ToString(), t.Name)),
+                .Select(t => JournalOverviews.TagOption(t.JournalTaskTagId, t.Name, t.Icon, t.Color, JournalOverviews.TagRowColor)),
         ];
     }
 

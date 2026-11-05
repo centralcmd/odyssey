@@ -73,6 +73,22 @@ public static class JournalOverviews
         return counts;
     }
 
+    /// <summary>An album's glyph and colour — the By album row and the Album filter row.</summary>
+    public const string AlbumGlyph = "photo_album";
+
+    public const string AlbumColor = "var(--tide-400)";
+
+    /// <summary>
+    /// A tag as a filter row: its icon in its own colour, by the same rule as its By tag row, so the
+    /// filter and the overview show one tag the same way.
+    /// </summary>
+    public static OdsOption TagOption(Guid id, string name, string? icon, string? color, string fallbackColor) =>
+        new(id.ToString(), name)
+        {
+            Icon = JournalTagChips.GlyphFor(icon),
+            IconColor = UserColor.Glyph(color) ?? fallbackColor,
+        };
+
     private static IReadOnlyList<OdsBreakdownRow> TagRows<TTag>(
         IEnumerable<TTag> tags, Func<TTag, Guid> id, Func<TTag, string> name, Func<TTag, string?> icon,
         Func<TTag, string?> color, IReadOnlyDictionary<Guid, int> counts, string fallbackColor) =>

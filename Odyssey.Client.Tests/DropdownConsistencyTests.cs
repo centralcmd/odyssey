@@ -235,47 +235,45 @@ public class DropdownConsistencyTests
         Assert.Null(trigger.QuerySelector(".odc-ms-fit-cur > .material-icons:not(.odc-ms-chevron)"));
     }
 
-    /// <summary>Every finance list page with a filter bar — discovered, not listed, so a new page is
-    /// covered the day it is added.</summary>
-    private static string[] FilterBarPageNames() => [.. Directory
-        .GetFiles(Path.Combine(ClientSource.Root, "Pages", "Finance"), "*Card.razor")
-        .Where(path => File.ReadAllText(path).Contains("<SearchContent>", StringComparison.Ordinal))
-        .Select(path => Path.GetFileName(path))
-        .Order()];
+    private const string MultiSelectTag = @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>";
 
-    public static TheoryData<string> FinanceFilterBarPages => [.. FilterBarPageNames()];
+    /// <summary>Every filter-bar multi-select (<c>Class="ph-select"</c>) on any page, as (file, tag).</summary>
+    private static IEnumerable<(string File, string Tag)> FilterBarMultiSelects() =>
+        Directory.GetFiles(Path.Combine(ClientSource.Root, "Pages"), "*.razor", SearchOption.AllDirectories)
+            .SelectMany(path => System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(path), MultiSelectTag)
+                .Select(m => m.Value)
+                .Where(tag => tag.Contains("ph-select", StringComparison.Ordinal))
+                .Select(tag => (Path.GetRelativePath(ClientSource.Root, path), tag)));
 
     [Fact]
-    public void The_filter_bar_page_discovery_finds_the_nine_finance_lists() =>
-        Assert.True(FilterBarPageNames().Length >= 9, $"Found only {FilterBarPageNames().Length} pages.");
+    public void The_scan_finds_the_filter_bars_of_finance_journal_photos_and_admin_pages()
+    {
+        var files = FilterBarMultiSelects().Select(x => x.File).Distinct().ToList();
+        Assert.True(files.Count >= 15, $"Found filter-bar multi-selects in only {files.Count} files.");
+        Assert.Contains(files, f => f.EndsWith("PhotosCard.razor", StringComparison.Ordinal));
+        Assert.Contains(files, f => f.EndsWith("TransactionsCard.razor", StringComparison.Ordinal));
+    }
 
     /// <summary>Filter-bar triggers carry their name only; the glyphs are on the rows. A trigger
-    /// <c>Icon=</c> or an "Any …" label in a finance filter bar is the drift this PR removed. The tag
+    /// <c>Icon=</c> or an "Any …" label is the drift these changes removed, on every page. The tag
     /// match steps over quoted attribute values, so a <c>&gt;</c> inside a lambda cannot end it early.</summary>
-    [Theory]
-    [MemberData(nameof(FinanceFilterBarPages))]
-    public void A_finance_filter_bar_trigger_carries_its_name_only(string page)
+    [Fact]
+    public void Every_filter_bar_trigger_carries_its_name_only()
     {
-        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", page));
-        var start = source.IndexOf("<SearchContent>", StringComparison.Ordinal);
-        var end = source.IndexOf("</SearchContent>", start, StringComparison.Ordinal);
-        Assert.True(start >= 0 && end > start, $"{page}: no complete <SearchContent> block.");
+        var offenders = FilterBarMultiSelects()
+            .Where(x => System.Text.RegularExpressions.Regex.IsMatch(x.Tag, @"\sIcon=")
+                || x.Tag.Contains("Label=\"Any", StringComparison.Ordinal))
+            .Select(x => $"{x.File}: {x.Tag}")
+            .ToList();
 
-        var multiSelects = System.Text.RegularExpressions.Regex.Matches(
-            source[start..end], @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
-
-        Assert.All(multiSelects, m =>
-        {
-            Assert.DoesNotMatch(@"\sIcon=", m.Value);
-            Assert.DoesNotContain("Label=\"Any ", m.Value);
-        });
+        Assert.True(offenders.Count == 0, "A filter-bar trigger carries a glyph or an \"Any …\" label:\n" + string.Join('\n', offenders));
     }
 
     [Fact]
     public void The_trigger_match_steps_over_a_lambda_in_an_attribute()
     {
         const string markup = """<OdsMultiSelect ValuesChanged="@(v => Set(v))" Icon="flag" />""";
-        var match = System.Text.RegularExpressions.Regex.Match(markup, @"<Ods\w*MultiSelect\b(?:[^>""]|""[^""]*"")*>");
+        var match = System.Text.RegularExpressions.Regex.Match(markup, MultiSelectTag);
 
         Assert.Contains("Icon=", match.Value);
     }
@@ -324,6 +322,47 @@ public class DropdownConsistencyTests
         Assert.Equal(expectedLabel, option.Label);
         Assert.Equal(type.Icon, option.Icon);
         Assert.Equal(type.Color, option.IconColor);
+    }
+
+    [Fact]
+    public void A_task_status_row_wears_its_status_chips_glyph_and_tone() =>
+        Assert.All(Odyssey.Client.Pages.Journal.JournalTaskUi.StatusOptions, option =>
+        {
+            var meta = OdsTodoStatusChip.Meta(Enum.Parse<Odyssey.Dtos.Journal.JournalTaskStatus>(option.Value));
+            Assert.Equal(meta.Label, option.Label);
+            Assert.Equal(meta.Icon, option.Icon);
+            Assert.Equal(OdsBreakdown.Tone(meta.Tone), option.IconColor);
+        });
+
+    [Fact]
+    public void The_archival_status_filter_keeps_the_values_the_api_binds_and_wears_glyphs()
+    {
+        Assert.Equal(Enum.GetNames<Odyssey.Dtos.ArchivalStatus>().Order(), ArchivalStatusOptions.Options.Select(o => o.Value).Order());
+        Assert.All(ArchivalStatusOptions.Options, o => Assert.False(string.IsNullOrEmpty(o.Icon)));
+        Assert.Same(ArchivalStatusOptions.Options, Odyssey.Client.Pages.Journal.LocationVisuals.StatusOptions);
+    }
+
+    [Theory]
+    [InlineData("#B23B3B", "beach_access")]
+    [InlineData(null, null)]
+    [InlineData("not-a-colour", "unknown_glyph")]
+    public void A_journal_tag_row_wears_the_same_glyph_and_colour_as_its_by_tag_row(string? color, string? icon)
+    {
+        var option = Odyssey.Client.Pages.Journal.JournalOverviews.TagOption(Guid.NewGuid(), "Trip", icon, color, "var(--tag-text)");
+
+        Assert.Equal(JournalTagChips.GlyphFor(icon), option.Icon);
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
+    }
+
+    [Fact]
+    public void A_calendar_row_wears_its_calendars_colour_through_the_validated_door()
+    {
+        var calendar = new Odyssey.Dtos.Journal.ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Work", Color = "#1E88E5" };
+
+        var option = Odyssey.Client.Pages.Calendar.CalendarPage.CalendarOption(calendar);
+
+        Assert.Equal("calendar_month", option.Icon);
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph("#1E88E5"), option.IconColor);
     }
 
     [Theory]

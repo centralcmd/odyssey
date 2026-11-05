@@ -35,12 +35,12 @@
                                 DebounceInterval="300" OnSearch="LoadLocations"
                                 Placeholder="Search name, address or description…"
                                 Class="ph-search" />
-                <OdsMultiSelect Label="Any status" Icon="check_circle" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="LocationVisuals.StatusOptions" Class="ph-select" />
                 @* Issue #383 §3.6: two SEPARATE filters, ANDed with status, persisted in locations-page. *@
-                <OdsMultiSelect Label="Coordinates" Icon="my_location" Values="_coordinatesFilter" ValuesChanged="OnCoordinatesFilterChanged"
+                <OdsMultiSelect Label="Coordinates" Values="_coordinatesFilter" ValuesChanged="OnCoordinatesFilterChanged"
                                 Options="LocationVisuals.CoordinatesOptions" Class="ph-select" />
-                <OdsMultiSelect Label="Use" Icon="link" Values="_useFilter" ValuesChanged="OnUseFilterChanged"
+                <OdsMultiSelect Label="Use" Values="_useFilter" ValuesChanged="OnUseFilterChanged"
                                 Options="LocationVisuals.UseOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingLocation" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Locations per batch"

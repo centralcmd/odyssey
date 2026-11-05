@@ -60,21 +60,21 @@
                 <OdsSearchField Value="@_searchString" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="LoadEntries"
                                 Placeholder="Search title, content, location…" Class="ph-search" />
-                <OdsMultiSelect Label="Any tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                <OdsMultiSelect Label="Tag" Fit="false" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
                                 Options="_tagOptions" Class="ph-select" />
                 @* The contact filter is only offered to a caller who can read contacts: without
                    contacts.read the option list is empty, and an always-empty picker is a dead control. *@
                 @if (_canReadContacts)
                 {
-                    <OdsMultiSelect Label="Any contact" Values="_contactFilter" ValuesChanged="OnContactFilterChanged"
+                    <OdsMultiSelect Label="Contact" Fit="false" Values="_contactFilter" ValuesChanged="OnContactFilterChanged"
                                     Options="_contactOptions" Class="ph-select" />
                 }
-                <OdsMultiSelect Label="Any attachment" Values="_mediaFilter" ValuesChanged="OnMediaFilterChanged"
+                <OdsMultiSelect Label="Attachment" Values="_mediaFilter" ValuesChanged="OnMediaFilterChanged"
                                 Options="_mediaOptions" Class="ph-select" />
                 <OdsDateRangePicker Label="Entry date" Icon="event" AriaLabel="Filter by entry date"
                                     From="_from" FromChanged="OnFromChanged"
                                     To="_to" ToChanged="OnToChanged" />
-                <OdsMultiSelect Label="Active" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="JournalEntrySummary" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Entries per batch"

@@ -66,11 +66,7 @@ public static partial class LocationVisuals
     ];
 
     /// <summary>The "Any status" filter — the shared <see cref="ArchivalStatus"/>, defaulting to Active.</summary>
-    public static readonly IReadOnlyList<OdsOption> StatusOptions =
-    [
-        new(nameof(ArchivalStatus.Active), "Active"),
-        new(nameof(ArchivalStatus.Archived), "Archived"),
-    ];
+    public static readonly IReadOnlyList<OdsOption> StatusOptions = ArchivalStatusOptions.Options;
 
     public static readonly IReadOnlyList<string> DefaultStatusFilter = [nameof(ArchivalStatus.Active)];
 
@@ -83,16 +79,17 @@ public static partial class LocationVisuals
     public const string UsedKey = "Used";
     public const string NotUsedKey = "NotUsed";
 
+    // The glyphs the location row uses for a pinned place and one with no coordinates.
     public static readonly IReadOnlyList<OdsOption> CoordinatesOptions =
     [
-        new(HasCoordinatesKey, "Has coordinates"),
-        new(NeedsCoordinatesKey, "Needs coordinates"),
+        new(HasCoordinatesKey, "Has coordinates") { Icon = "place", IconColor = "var(--finance-income)" },
+        new(NeedsCoordinatesKey, "Needs coordinates") { Icon = NoCoordinatesIcon, IconColor = "var(--mud-palette-warning)" },
     ];
 
     public static readonly IReadOnlyList<OdsOption> UseOptions =
     [
-        new(UsedKey, "Used"),
-        new(NotUsedKey, "Not used"),
+        new(UsedKey, "Used") { Icon = "link", IconColor = "var(--finance-income)" },
+        new(NotUsedKey, "Not used") { Icon = "link_off", IconColor = "var(--mud-palette-text-secondary)" },
     ];
 
     /// <summary>

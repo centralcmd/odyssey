@@ -8,11 +8,14 @@ namespace Odyssey.Client.Pages.Journal;
 public static class JournalTaskUi
 {
     /// <summary>The kanban lifecycle statuses as picker options (values are the enum names).</summary>
+    // The status chip's glyph and tone, so a filter row reads the same as the chip on the task.
     public static readonly IReadOnlyList<OdsOption> StatusOptions =
     [
-        new(nameof(JournalTaskStatus.Backlog), "Backlog"),
-        new(nameof(JournalTaskStatus.Doing), "Doing"),
-        new(nameof(JournalTaskStatus.Done), "Done"),
-        new(nameof(JournalTaskStatus.Archived), "Archived"),
+        .. new[] { JournalTaskStatus.Backlog, JournalTaskStatus.Doing, JournalTaskStatus.Done, JournalTaskStatus.Archived }
+            .Select(status =>
+            {
+                var meta = OdsTodoStatusChip.Meta(status);
+                return new OdsOption(status.ToString(), meta.Label) { Icon = meta.Icon, IconColor = OdsBreakdown.Tone(meta.Tone) };
+            }),
     ];
 }

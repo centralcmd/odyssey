@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos.Authorization;
@@ -112,6 +113,10 @@ public partial class PhotosCard
         _libraryTotal = (await Photos.ListAsync(1, 1, status: null))
             .PagedOrToast(Snackbar, "the library count").TotalCount;
 
+    /// <summary>An album row: the album glyph and colour the overview's By album row uses.</summary>
+    internal static OdsOption AlbumOption(PhotoAlbumSummary album) =>
+        new(album.PhotoAlbumId.ToString(), album.Name) { Icon = JournalOverviews.AlbumGlyph, IconColor = JournalOverviews.AlbumColor };
+
     private async Task LoadOptionsAsync()
     {
         // A failed fetch keeps the lookups already held, so a reload after a save never blanks them.
@@ -119,7 +124,7 @@ public partial class PhotosCard
         var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
         if (tagsResult.IsSuccess)
         {
-            _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _tagOptions = [.. tags.Select(t => JournalOverviews.TagOption(t.PhotoTagId, t.Name, t.Icon, t.Color, JournalOverviews.PhotoTagRowColor))];
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
@@ -130,7 +135,7 @@ public partial class PhotosCard
         if (albumsResult.IsSuccess)
         {
             _albumSummaries = albums;
-            _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+            _albumOptions = [.. _albumSummaries.Select(AlbumOption)];
             _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
         }
 
