@@ -43,8 +43,9 @@ public static class OdsCalendarSwatches
 
     /// <summary>
     /// The fill and text colour an event chip paints with. A palette member keeps its vetted foreground;
-    /// any other valid hex (a Custom calendar colour) takes <see cref="HexColor.Foreground"/> through
-    /// <see cref="Odyssey.Client.Theme.UserColor.Fill"/>; an invalid one falls back to the default swatch.
+    /// any other valid hex (a Custom calendar colour) takes <see cref="HexColor.TextOn"/> — white or pure
+    /// black, never below 4.58:1, because the all-day chip draws TEXT on it (<see cref="HexColor.Foreground"/>
+    /// can fall to 4.27:1). An invalid one falls back to the default swatch.
     /// </summary>
     public static (string Bg, string Fg) PaintFor(string? hex)
     {
@@ -54,9 +55,9 @@ public static class OdsCalendarSwatches
             return (swatch.Hex, swatch.Fg);
         }
 
-        if (Odyssey.Client.Theme.UserColor.Fill(canonical) is { } fill)
+        if (canonical is not null)
         {
-            return fill;
+            return (canonical, HexColor.TextOn(canonical));
         }
 
         var fallback = SwatchFor(DefaultColor);

@@ -328,6 +328,29 @@ public class TagColorSurfaceTests : IAsyncLifetime
 
     // ── Calendars: the tag colour, without No color ─────────────────────────────
 
+    [Fact]
+    public void Text_on_any_custom_calendar_colour_clears_4_5_to_1()
+    {
+        // Every grey plus a coarse sweep of the cube: the worst fill sits near L 0.18, where the better of
+        // white and #0E1525 is only 4.27:1 — which is why TextOn uses pure black.
+        var worst = double.MaxValue;
+        for (var r = 0; r < 256; r += 15)
+        for (var g = 0; g < 256; g += 15)
+        for (var b = 0; b < 256; b += 15)
+        {
+            var hex = $"#{r:X2}{g:X2}{b:X2}";
+            worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+        }
+
+        for (var v = 0; v < 256; v++)
+        {
+            var hex = $"#{v:X2}{v:X2}{v:X2}";
+            worst = Math.Min(worst, HexColor.ContrastRatio(hex, HexColor.TextOn(hex)));
+        }
+
+        Assert.True(worst >= 4.5, $"worst {worst:F2}:1");
+    }
+
     private IRenderedComponent<OdsTagColorPicker> CalendarPicker(string? value) =>
         ctx.Render<OdsTagColorPicker>(p => p
             .Add(c => c.Value, value)
@@ -365,11 +388,12 @@ public class TagColorSurfaceTests : IAsyncLifetime
     }
 
     [Fact]
-    public void An_event_paints_a_palette_colour_with_its_vetted_foreground_and_a_custom_one_through_UserColor()
+    public void An_event_paints_a_palette_colour_with_its_vetted_foreground_and_a_custom_one_with_TextOn()
     {
         var palette = ColorPalette.All[0];
         Assert.Equal((palette.Hex, palette.Foreground), OdsCalendarSwatches.PaintFor(palette.Hex.ToLowerInvariant()));
-        Assert.Equal(UserColor.Fill("#c2185b")!.Value, OdsCalendarSwatches.PaintFor("#c2185b"));
+        Assert.Equal(("#C2185B", HexColor.LightForeground), OdsCalendarSwatches.PaintFor("#c2185b"));
+        Assert.Equal(("#777777", HexColor.BlackText), OdsCalendarSwatches.PaintFor("#777777"));
         Assert.Equal((ColorPalette.CalendarDefault, OdsCalendarSwatches.SwatchFor(null).Fg), OdsCalendarSwatches.PaintFor("red;x:y"));
     }
 }
