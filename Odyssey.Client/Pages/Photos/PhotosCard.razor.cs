@@ -124,7 +124,7 @@ public partial class PhotosCard
         var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
         if (tagsResult.IsSuccess)
         {
-            _tagOptions = [.. tags.Select(t => JournalOverviews.TagOption(t.PhotoTagId, t.Name, t.Icon, t.Color, JournalOverviews.PhotoTagRowColor))];
+            _tagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);

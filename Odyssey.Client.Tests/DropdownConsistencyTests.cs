@@ -354,6 +354,73 @@ public class DropdownConsistencyTests
         Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
     }
 
+    /// <summary>Each tag family's filter row against its own By tag row, built by the production code on
+    /// both sides — so the per-family fallback ink (journal and task tags --tag-text, photo tags the
+    /// secondary text colour) is what is compared, not a value the test passes in.</summary>
+    [Theory]
+    [InlineData(null)]
+    [InlineData("#B23B3B")]
+    public void Each_tag_familys_filter_row_matches_its_by_tag_row(string? color)
+    {
+        var id = Guid.NewGuid();
+        var now = DateTime.UtcNow;
+
+        var journalTag = new Odyssey.Dtos.Journal.ExistingJournalTag { JournalTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        var journalEntry = new Odyssey.Dtos.Journal.JournalEntrySummary
+        {
+            JournalEntryId = Guid.NewGuid(), Title = "t", Content = "c", EntryDate = now, CreatedAt = now, UpdatedAt = now,
+            AttachmentCount = 0, TagIds = [id],
+        };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagRows([journalTag], [journalEntry]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.JournalTagOption(journalTag));
+
+        var taskTag = new Odyssey.Dtos.Journal.ExistingJournalTaskTag { JournalTaskTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        var task = new Odyssey.Dtos.Journal.JournalTaskSummary
+        {
+            JournalTaskId = Guid.NewGuid(), Title = "t", Status = Odyssey.Dtos.Journal.JournalTaskStatus.Backlog, Position = 0,
+            AttachmentCount = 0, TagIds = [id],
+        };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagRows([taskTag], [task]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.TaskTagOption(taskTag));
+
+        var photoTag = new Odyssey.Dtos.Journal.ExistingPhotoTag { PhotoTagId = id, Name = "Trip", Icon = "beach_access", Color = color };
+        AssertSame(Odyssey.Client.Pages.Journal.JournalOverviews.PhotoTagRows([photoTag], [new() { Key = id, Count = 1 }]).Single(),
+            Odyssey.Client.Pages.Journal.JournalOverviews.PhotoTagOption(photoTag));
+
+        static void AssertSame(OdsBreakdownRow row, OdsOption option)
+        {
+            Assert.Equal(row.Icon, option.Icon);
+            Assert.Equal(row.IconColor, option.IconColor);
+            Assert.Equal(row.Label, option.Label);
+        }
+    }
+
+    public static TheoryData<string, IReadOnlyList<OdsOption>> HandWrittenGlyphOptions => new()
+    {
+        { "Journal attachment", Odyssey.Client.Pages.Journal.JournalCard._mediaOptions },
+        { "Location coordinates", Odyssey.Client.Pages.Journal.LocationVisuals.CoordinatesOptions },
+        { "Location use", Odyssey.Client.Pages.Journal.LocationVisuals.UseOptions },
+    };
+
+    /// <summary>The fixed two-row lists whose glyphs are written by hand: every row carries one, and no two
+    /// rows in a list share it (a filter whose rows look alike reads as one option).</summary>
+    [Theory]
+    [MemberData(nameof(HandWrittenGlyphOptions))]
+    public void Every_hand_written_filter_row_carries_its_own_glyph(string filter, IReadOnlyList<OdsOption> options)
+    {
+        Assert.All(options, o =>
+        {
+            Assert.False(string.IsNullOrEmpty(o.Icon), $"{filter}: {o.Label} has no icon");
+            Assert.False(string.IsNullOrEmpty(o.IconColor), $"{filter}: {o.Label} has no colour");
+        });
+        Assert.Equal(options.Count, options.Select(o => o.Icon).Distinct().Count());
+    }
+
+    [Fact]
+    public void The_no_coordinates_row_wears_the_location_rows_no_coordinates_glyph() =>
+        Assert.Contains(Odyssey.Client.Pages.Journal.LocationVisuals.CoordinatesOptions,
+            o => o.Icon == Odyssey.Client.Pages.Journal.LocationVisuals.NoCoordinatesIcon);
+
     [Fact]
     public void An_album_row_wears_the_by_album_glyph_and_colour()
     {

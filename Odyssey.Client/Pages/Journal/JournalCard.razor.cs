@@ -92,7 +92,7 @@ public partial class JournalCard
     private const string MediaFiles = "files";
 
     // The glyphs the entry card counts photos and files under.
-    private static readonly IReadOnlyList<OdsOption> _mediaOptions =
+    internal static readonly IReadOnlyList<OdsOption> _mediaOptions =
     [
         new(MediaPhotos, "Has photos") { Icon = "photo_library", IconColor = "var(--sea-400)" },
         new(MediaFiles, "Has files") { Icon = "attach_file", IconColor = "var(--mud-palette-text-secondary)" },
@@ -173,7 +173,7 @@ public partial class JournalCard
         [
             .. _tags.Where(t => t.Archived is null)
                 .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(t => JournalOverviews.TagOption(t.JournalTagId, t.Name, t.Icon, t.Color, JournalOverviews.TagRowColor)),
+                .Select(JournalOverviews.JournalTagOption),
         ];
     }
 

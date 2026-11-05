@@ -89,6 +89,18 @@ public static class JournalOverviews
             IconColor = UserColor.Glyph(color) ?? fallbackColor,
         };
 
+    /// <summary>A journal tag's filter row, with the fallback ink its By tag row uses.</summary>
+    public static OdsOption JournalTagOption(ExistingJournalTag tag) =>
+        TagOption(tag.JournalTagId, tag.Name, tag.Icon, tag.Color, TagRowColor);
+
+    /// <summary>A task tag's filter row, with the fallback ink its By tag row uses.</summary>
+    public static OdsOption TaskTagOption(ExistingJournalTaskTag tag) =>
+        TagOption(tag.JournalTaskTagId, tag.Name, tag.Icon, tag.Color, TagRowColor);
+
+    /// <summary>A photo tag's filter row, with the fallback ink its By tag row uses.</summary>
+    public static OdsOption PhotoTagOption(ExistingPhotoTag tag) =>
+        TagOption(tag.PhotoTagId, tag.Name, tag.Icon, tag.Color, PhotoTagRowColor);
+
     private static IReadOnlyList<OdsBreakdownRow> TagRows<TTag>(
         IEnumerable<TTag> tags, Func<TTag, Guid> id, Func<TTag, string> name, Func<TTag, string?> icon,
         Func<TTag, string?> color, IReadOnlyDictionary<Guid, int> counts, string fallbackColor) =>
