@@ -59,7 +59,7 @@ public class CalendarService
     public async Task<ExistingCalendar> Create(NewCalendar request, string userId, CancellationToken cancellationToken = default)
     {
         var name = request.Name.Trim();
-        EnsureColorInPalette(request.Color);
+        EnsureValidColor(request.Color);
         await EnsureNameAvailable(name, null, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -88,7 +88,7 @@ public class CalendarService
         }
 
         var name = request.Name.Trim();
-        EnsureColorInPalette(request.Color);
+        EnsureValidColor(request.Color);
         await EnsureNameAvailable(name, id, cancellationToken);
 
         calendar.Name = name;
@@ -139,11 +139,14 @@ public class CalendarService
         }
     }
 
-    private static void EnsureColorInPalette(string color)
+    // The tag rule (TagColorGuard), plus "required": a calendar has no "no colour" state.
+    private static void EnsureValidColor(string? color)
     {
-        if (!HexColor.IsValid(color) || !ColorPalette.Contains(color))
+        if (color is null)
         {
-            throw new DomainValidationException($"'{color}' is not a supported calendar colour.");
+            throw new DomainValidationException(HexColor.InvalidMessage, code: null, "Color");
         }
+
+        TagColorGuard.EnsureValid(color);
     }
 }

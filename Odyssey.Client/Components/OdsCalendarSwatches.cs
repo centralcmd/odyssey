@@ -41,6 +41,28 @@ public static class OdsCalendarSwatches
     /// <summary>The default swatch hex (Blue).</summary>
     public const string DefaultColor = ColorPalette.CalendarDefault;
 
+    /// <summary>
+    /// The fill and text colour an event chip paints with. A palette member keeps its vetted foreground;
+    /// any other valid hex (a Custom calendar colour) takes <see cref="HexColor.Foreground"/> through
+    /// <see cref="Odyssey.Client.Theme.UserColor.Fill"/>; an invalid one falls back to the default swatch.
+    /// </summary>
+    public static (string Bg, string Fg) PaintFor(string? hex)
+    {
+        var canonical = Odyssey.Client.Theme.UserColor.Canonical(hex);
+        if (canonical is not null && All.FirstOrDefault(s => s.Hex == canonical) is { } swatch)
+        {
+            return (swatch.Hex, swatch.Fg);
+        }
+
+        if (Odyssey.Client.Theme.UserColor.Fill(canonical) is { } fill)
+        {
+            return fill;
+        }
+
+        var fallback = SwatchFor(DefaultColor);
+        return (fallback.Hex, fallback.Fg);
+    }
+
     /// <summary>Look a swatch up by its stored hex; falls back to the default so a legacy/unknown
     /// value still renders a legible chip.</summary>
     public static OdsCalendarSwatch SwatchFor(string? hex)

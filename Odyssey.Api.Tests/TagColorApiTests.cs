@@ -263,7 +263,7 @@ public class TagColorApiTests
     // ── Calendars ──────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task A_calendar_reads_through_the_shared_palette()
+    public async Task A_calendar_colour_follows_the_tag_rule_but_is_required()
     {
         await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
         var lower = await SeedCalendarAsync(factory, "Lower", "#b23b3b");
@@ -282,9 +282,21 @@ public class TagColorApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.Equal("#B23B3B", (await context.Calendars.SingleAsync(c => c.CalendarId == lower)).Color);
 
-        // A colour outside the palette is still refused.
-        var refused = await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color = "#123456" });
-        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        // Any hex is accepted, as on a tag, and stored upper-case.
+        var custom = await client.PostAsJsonAsync("/api/calendars", new { name = "Custom", color = "#c2185b" });
+        Assert.Equal(HttpStatusCode.Created, custom.StatusCode);
+        Assert.Equal("#C2185B", await ColorOf(custom));
+
+        // An invalid colour is refused keyed on color, never echoed; unlike a tag, null is refused too.
+        foreach (var bad in new[] { "red;x:y", "#12345", "", null })
+        {
+            var refused = await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color = bad });
+            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+            var body = await refused.Content.ReadAsStringAsync();
+            Assert.Contains("\"Color\"", body, StringComparison.OrdinalIgnoreCase);
+            if (!string.IsNullOrEmpty(bad))
+                Assert.DoesNotContain(bad, body, StringComparison.Ordinal);
+        }
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

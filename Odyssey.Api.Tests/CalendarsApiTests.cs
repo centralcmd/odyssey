@@ -71,12 +71,23 @@ public class CalendarsApiTests
     }
 
     [Fact]
-    public async Task Create_ColorOutsidePalette_ReturnsBadRequest()
+    public async Task Create_ColorOutsidePalette_IsAccepted()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Custom", Color = "#123456" });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_InvalidColor_ReturnsBadRequest()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Custom", Color = "#12345" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }

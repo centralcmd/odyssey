@@ -124,7 +124,7 @@ public partial class ImportCalendarDialog
 
             var calendar = Calendars.FirstOrDefault(c => c.CalendarId == calendarId);
             _targetName = calendar?.Name ?? "calendar";
-            _targetColor = OdsCalendarSwatches.SwatchFor(calendar?.Color).Hex;
+            _targetColor = OdsCalendarSwatches.PaintFor(calendar?.Color).Bg;
             _result = outcome.Value;
 
             if (_result!.ImportedCount > 0 || _result.UpdatedCount > 0)

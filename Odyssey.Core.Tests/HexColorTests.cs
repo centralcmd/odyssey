@@ -126,9 +126,11 @@ public class HexColorTests
     [InlineData("#0369a1", "#0369A1")]
     [InlineData("#B23B3B", "#B23B3B")]
     [InlineData("red;x:y", ColorPalette.CalendarDefault)]
-    [InlineData("#123456", ColorPalette.CalendarDefault)]
+    [InlineData("#123456", "#123456")]
+    [InlineData("#c2185b", "#C2185B")]
+    [InlineData("#12345", ColorPalette.CalendarDefault)]
     [InlineData(null, ColorPalette.CalendarDefault)]
-    public void A_stored_calendar_colour_reads_as_its_palette_member_or_the_default(string? stored, string expected) =>
+    public void A_stored_calendar_colour_reads_as_any_valid_hex_or_the_default(string? stored, string expected) =>
         Assert.Equal(expected, JournalMapsterConfig.CalendarColorOnRead(stored));
 
     [Fact]

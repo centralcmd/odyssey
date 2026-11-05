@@ -325,4 +325,51 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Equal(ColorPalette.All.Select(s => s.Hex), OdsCalendarSwatches.All.Select(s => s.Hex));
         Assert.Equal(ColorPalette.All.Count, OdsCalendarSwatches.TokenByKey.Count);
     }
+
+    // ── Calendars: the tag colour, without No color ─────────────────────────────
+
+    private IRenderedComponent<OdsTagColorPicker> CalendarPicker(string? value) =>
+        ctx.Render<OdsTagColorPicker>(p => p
+            .Add(c => c.Value, value)
+            .Add(c => c.Id, "cal-color")
+            .Add(c => c.AllowNone, false));
+
+    [Fact]
+    public void A_calendar_picker_offers_the_palette_and_Custom_but_no_No_color_cell()
+    {
+        var cut = CalendarPicker("#15803D");
+
+        var cells = cut.FindAll("[role=radio]");
+        Assert.Equal([.. ColorPalette.All.Select(s => s.Name), "Custom, no color entered"], cells.Select(c => c.GetAttribute("aria-label")));
+        Assert.Equal("Green", cut.Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void A_calendar_picker_opens_a_custom_hex_as_Custom_and_a_missing_one_on_the_default()
+    {
+        Assert.Equal("Custom, #C2185B", CalendarPicker("#c2185b").Find("[aria-checked=true]").GetAttribute("aria-label"));
+        Assert.Equal(ColorPalette.All[0].Name, CalendarPicker(null).Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Theory]
+    [InlineData("Home")]
+    [InlineData("ArrowLeft")]
+    public void Keyboard_never_lands_a_calendar_picker_on_No_color(string key)
+    {
+        var cut = CalendarPicker(ColorPalette.All[0].Hex);
+
+        cut.Find("[aria-checked=true]").KeyDown(new KeyboardEventArgs { Key = key });
+
+        var expected = key == "Home" ? ColorPalette.All[0].Name : "Custom, " + ColorPalette.All[0].Hex;
+        Assert.Equal(expected, cut.Find("[aria-checked=true]").GetAttribute("aria-label"));
+    }
+
+    [Fact]
+    public void An_event_paints_a_palette_colour_with_its_vetted_foreground_and_a_custom_one_through_UserColor()
+    {
+        var palette = ColorPalette.All[0];
+        Assert.Equal((palette.Hex, palette.Foreground), OdsCalendarSwatches.PaintFor(palette.Hex.ToLowerInvariant()));
+        Assert.Equal(UserColor.Fill("#c2185b")!.Value, OdsCalendarSwatches.PaintFor("#c2185b"));
+        Assert.Equal((ColorPalette.CalendarDefault, OdsCalendarSwatches.SwatchFor(null).Fg), OdsCalendarSwatches.PaintFor("red;x:y"));
+    }
 }
