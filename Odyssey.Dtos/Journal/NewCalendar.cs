@@ -11,9 +11,12 @@ public sealed record NewCalendar
     [StringLength(1000)]
     public string? Description { get; set; }
 
-    // Curated palette membership (ColorPalette, issue #392) is enforced in CalendarService, not here —
-    // see the repo-wide convention of cross-field/business-rule checks living in the service layer.
-    [StringLength(7)]
+    /// <summary>
+    /// Any <c>#RRGGBB</c> colour, validated exactly as a tag colour (issue #392) and stored upper-case. Unlike
+    /// a tag's, it is required: a calendar always paints its events in a colour.
+    /// </summary>
+    [StringLength(HexColor.Length, ErrorMessage = HexColor.InvalidMessage)]
+    [HexColor]
     [Required]
     public string Color { get; set; } = ColorPalette.CalendarDefault;
 }

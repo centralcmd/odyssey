@@ -76,6 +76,29 @@ public static class HexColor
         return onLight > onDark ? LightForeground : DarkForeground;
     }
 
+    /// <summary>Text drawn on a free colour that must reach 4.5:1 — pure black, not <see cref="DarkForeground"/>.</summary>
+    public const string BlackText = "#000000";
+
+    /// <summary>
+    /// TEXT on a free colour — the all-day calendar chip: <see cref="LightForeground"/> or <see cref="BlackText"/>,
+    /// whichever has the higher WCAG 2.x contrast; a tie goes to <see cref="BlackText"/>. Unlike
+    /// <see cref="Foreground"/>, the winner is never below 4.58:1 for any fill, so it clears WCAG 1.4.3.
+    /// Mirrors <c>HexColor.textOn</c> in the design system.
+    /// </summary>
+    /// <exception cref="ArgumentException"><paramref name="hex"/> is not <see cref="IsValid"/>.</exception>
+    public static string TextOn(string hex)
+    {
+        if (!IsValid(hex))
+        {
+            throw new ArgumentException(InvalidMessage, nameof(hex));
+        }
+
+        var luminance = RelativeLuminance(hex);
+        var onLight = ContrastRatio(luminance, RelativeLuminance(LightForeground));
+        var onBlack = ContrastRatio(luminance, 0d);
+        return onLight > onBlack ? LightForeground : BlackText;
+    }
+
     /// <summary>WCAG 2.x contrast ratio between two valid hex colours.</summary>
     public static double ContrastRatio(string first, string second) =>
         ContrastRatio(RelativeLuminance(first), RelativeLuminance(second));

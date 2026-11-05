@@ -45,11 +45,18 @@ public partial class OdsTagColorPicker : IAsyncDisposable
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// False for a colour that is required (a calendar's): the No color cell is not rendered, and a missing
+    /// or invalid <see cref="Value"/> opens on the first swatch, the calendar default.
+    /// </summary>
+    [Parameter] public bool AllowNone { get; set; } = true;
+
     internal const int FallbackColumns = 10;
 
     private static readonly IReadOnlyList<ColorSwatch> Swatches = ColorPalette.All;
     private static int CellCount => Swatches.Count + 2;
     private static int CustomIndex => Swatches.Count + 1;
+    private int FirstIndex => AllowNone ? 0 : 1;
 
     private readonly ElementReference[] _buttons = new ElementReference[CellCount];
     private ElementReference _grid;
@@ -115,7 +122,7 @@ public partial class OdsTagColorPicker : IAsyncDisposable
     {
         _groupId = Id ?? $"odc-colorpick-{Guid.NewGuid():N}";
         _hintId = $"{_groupId}-custom-hint";
-        _stored = UserColor.Canonical(Value);
+        _stored = UserColor.Canonical(Value) ?? (AllowNone ? null : Swatches[0].Hex);
         var swatchIndex = _stored is null ? -1 : Swatches.ToList().FindIndex(s => s.Hex == _stored);
         if (_stored is null)
         {
@@ -282,14 +289,16 @@ public partial class OdsTagColorPicker : IAsyncDisposable
 
     private async Task OnKeyDownAsync(KeyboardEventArgs e, int index)
     {
+        var first = FirstIndex;
         var last = CellCount - 1;
+        var count = CellCount - first;
         int? target = e.Key switch
         {
-            "ArrowRight" => (index + 1) % CellCount,
-            "ArrowLeft" => (index - 1 + CellCount) % CellCount,
+            "ArrowRight" => first + (index - first + 1) % count,
+            "ArrowLeft" => first + (index - first - 1 + count) % count,
             "ArrowDown" => Math.Min(last, index + await ColumnsAsync()),
-            "ArrowUp" => Math.Max(0, index - await ColumnsAsync()),
-            "Home" => 0,
+            "ArrowUp" => Math.Max(first, index - await ColumnsAsync()),
+            "Home" => first,
             "End" => last,
             _ => null,
         };
