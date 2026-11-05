@@ -15,9 +15,14 @@ public partial class Users
     private const string EnabledValue = "enabled";
     private const string DisabledValue = "disabled";
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new(EnabledValue, "Enabled"), new(DisabledValue, "Disabled")];
-    private IReadOnlyList<OdsOption> RoleOptions => [.. _roles.Select(r => new OdsOption(r.Name, r.Name))];
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
+    [
+        // The status badge's own glyphs: a green mark for an enabled account, the amber lock it draws on
+        // a disabled one.
+        new(EnabledValue, "Enabled") { Icon = "check_circle", IconColor = "var(--status-active)" },
+        new(DisabledValue, "Disabled") { Icon = "lock", IconColor = "var(--status-closed)" },
+    ];
+    private IReadOnlyList<OdsOption> RoleOptions => [.. _roles.Select(r => UserDisplay.RoleOption(r.Name))];
     // Rows per page (OdsPager); OdsPageSizes.All shows every filtered row. Client-side over the
     // fetched set — Role/Status are client-side multi-selects, so the pager pages FilteredUsers.
     private int _pageSize = OdsPageSizes.Default[0];
