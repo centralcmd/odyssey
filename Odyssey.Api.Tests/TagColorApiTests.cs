@@ -286,7 +286,6 @@ public class TagColorApiTests
         var custom = await client.PostAsJsonAsync("/api/calendars", new { name = "Custom", color = "#c2185b" });
         Assert.Equal(HttpStatusCode.Created, custom.StatusCode);
         Assert.Equal("#C2185B", await ColorOf(custom));
-
     }
 
     public static TheoryData<string> NonEmptyInvalidColors() =>

@@ -130,8 +130,8 @@ public class HexColorTests
     [Fact]
     public void TextOn_never_falls_below_4_58_to_1_for_any_fill()
     {
-        // Every 8-bit fill: the worst case is the crossover near L 0.179, where white and black both sit
-        // at about 4.58:1. The better of white and #0E1525 (Foreground) falls to 4.27:1 at the same fill.
+        // A sweep in steps of 3 per channel, plus every grey: the worst case is the crossover near L 0.179,
+        // where white and black both sit at about 4.58:1 (sqrt(21), so no fill can go lower). The better of white and #0E1525 (Foreground) falls to 4.27:1 at the same fill.
         var worst = double.MaxValue;
         var worstFill = string.Empty;
         for (var r = 0; r < 256; r += 3)
