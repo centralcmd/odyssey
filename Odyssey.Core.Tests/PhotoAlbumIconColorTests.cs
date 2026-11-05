@@ -87,6 +87,21 @@ public class PhotoAlbumIconColorTests
     }
 
     [Fact]
+    public async Task Update_assigns_the_icon_and_stores_the_colour_upper_case()
+    {
+        await using var context = TestContextFactory.Create();
+        var service = new PhotoAlbumService(context, new ClientDateHandlingTests.StubJournalLimits());
+        var created = await service.Create(new NewPhotoAlbum { Name = "A" }, "user");
+
+        var updated = await service.Update(created.PhotoAlbumId, new UpdatePhotoAlbum { Name = "A", Icon = "yard", Color = "#15803d" }, "user");
+        Assert.Equal("yard", updated!.Icon);
+        Assert.Equal("#15803D", updated.Color);
+        var stored = Assert.Single(context.PhotoAlbums);
+        Assert.Equal("yard", stored.Icon);
+        Assert.Equal("#15803D", stored.Color);
+    }
+
+    [Fact]
     public async Task Writes_store_the_colour_upper_case_and_reads_normalise_stale_values()
     {
         await using var context = TestContextFactory.Create();

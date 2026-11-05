@@ -179,11 +179,16 @@ public partial class AlbumFormDialog
         await LoadSummariesAsync();
     }
 
+    // Retry removes the alert, and with it the focused button, so focus is placed again once the load
+    // settles: on the album name when it loaded, back on Retry when it failed again (WCAG 2.4.3, 4.1.3).
     private async Task RetryLoadAsync()
     {
         _loadFailed = false;
+        _announce = "Loading the album.";
         StateHasChanged();
         await LoadAlbumAsync();
+        _announce = _seeded ? "Album loaded." : "Couldn't load this album.";
+        _focusAfter = _seeded ? [$"#pl-albform-{_uid} input"] : [$"#pl-albform-{_uid} button"];
     }
 
     private void OnIconChanged(string? icon)

@@ -186,6 +186,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
         }
         catch (JSException)
         {
+            // The circuit's JS is gone (teardown); there is nothing left to focus.
         }
     }
 

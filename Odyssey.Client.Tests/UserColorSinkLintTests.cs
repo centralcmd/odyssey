@@ -86,6 +86,7 @@ public class UserColorSinkLintTests
     [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = c.Color }")]
     [InlineData("new OdsOption(id, name) { Icon = AlbumVisuals.Glyph(a.Icon), IconColor = a.Color }")]
     [InlineData("<span style=\"color:@a.Color\"></span>")]
+    [InlineData("<span style=\"@AlbumVisuals.GlyphStyle(a.Color, f);background:@a.Color\"></span>")]
     public void Each_seeded_sink_shape_is_caught(string code) =>
         Assert.NotEmpty(Violations(code));
 
@@ -150,11 +151,16 @@ public class UserColorSinkLintTests
         }
 
         // OdsGlyphInk paints code-constant registry colours (issue #164) — never a tag or calendar colour.
-        // AlbumVisuals routes an album colour through UserColor.Glyph (pinned below), so it is the validated path too.
-        bool IsUserData(string text) => tokens.Any(t => Regex.IsMatch(text, t))
-            && !text.Contains("UserColor.", StringComparison.Ordinal)
-            && !text.Contains("OdsGlyphInk.", StringComparison.Ordinal)
-            && !text.Contains("AlbumVisuals.", StringComparison.Ordinal);
+        // AlbumVisuals routes an album colour through UserColor.Glyph (pinned below), so a colour passed INTO an
+        // AlbumVisuals call is on the validated path. Only the call's own arguments are exempt: the call is cut
+        // out before the check, so a second, raw colour beside it in the same attribute is still caught.
+        bool IsUserData(string text)
+        {
+            var rest = WithoutAlbumVisualsCalls(text);
+            return tokens.Any(t => Regex.IsMatch(rest, t))
+                && !rest.Contains("UserColor.", StringComparison.Ordinal)
+                && !rest.Contains("OdsGlyphInk.", StringComparison.Ordinal);
+        }
 
         foreach (Match attribute in Regex.Matches(code, "\\b(style|Style|Bg|Fg)=\"((?:[^\"\\\\]|\\\\.|\"[^\"]*\")*?)\"(?=[\\s/>])"))
         {
@@ -211,6 +217,8 @@ public class UserColorSinkLintTests
     [InlineData("var c = album.Color;")]
     [InlineData("IconColor = a.Color,")]
     [InlineData("var c = a.Color; var s = AlbumVisuals.Ink(c);")]
+    [InlineData("var c = _openAlbum.Color;")]
+    [InlineData("IconColor = coverAlbum.Color,")]
     public void Each_seeded_album_colour_read_is_caught(string code) => Assert.NotEmpty(AlbumColorReads(code));
 
     [Fact]
@@ -221,7 +229,8 @@ public class UserColorSinkLintTests
     {
         foreach (var line in code.Split('\n'))
         {
-            foreach (Match read in Regex.Matches(line, @"\b(?:a|album)\.Color\b"))
+            // Any receiver named for an album (album, coverAlbum, _openAlbum, albums[i]…) or the conventional `a`.
+            foreach (Match read in Regex.Matches(line, @"\b(?:a|\w*[Aa]lbum\w*(?:\[[^\]]*\])?)\.Color\b"))
             {
                 var before = line[..read.Index];
                 var insideAlbumVisuals = Regex.IsMatch(before, @"\bAlbumVisuals\.\w+\([^)]*$");
@@ -230,6 +239,12 @@ public class UserColorSinkLintTests
             }
         }
     }
+
+    /// <summary>The text with every <c>AlbumVisuals.X(…)</c> call (arguments included, one nesting level) removed.</summary>
+    internal static string WithoutAlbumVisualsCalls(string text) =>
+        // A sink regex can cut an argument list at its first comma, leaving an unclosed call: strip that tail too.
+        Regex.Replace(Regex.Replace(text, @"\bAlbumVisuals\.\w+\((?:[^()]|\([^()]*\))*\)", "AlbumVisualsCall"),
+            @"\bAlbumVisuals\.\w+\([^()]*$", "AlbumVisualsCall");
 
     private static string SourceFile(string name) =>
         Directory.EnumerateFiles(ClientSource.Root, name, SearchOption.AllDirectories).Single(path => !IsBuildOutput(path));

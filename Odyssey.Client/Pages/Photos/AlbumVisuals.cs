@@ -1,5 +1,7 @@
+using Odyssey.Client.Components;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Photos;
 
@@ -28,6 +30,23 @@ public static class AlbumVisuals
 
     /// <summary>The <c>style</c> value for an album glyph: <c>color:</c> its <see cref="Ink"/>.</summary>
     public static string GlyphStyle(string? color, string fallback) => $"color:{Ink(color, fallback)}";
+
+    /// <summary>An album's Overview "By album" row (surface B).</summary>
+    public static OdsBreakdownRow OverviewRow(PhotoAlbumSummary album) => new()
+    {
+        Key = album.PhotoAlbumId,
+        Icon = Glyph(album.Icon),
+        IconColor = Ink(album.Color, OverviewFallback),
+        Label = album.Name,
+        Count = album.PhotoCount,
+    };
+
+    /// <summary>An album's filter option (surface D1): the same glyph and tone as its Overview row.</summary>
+    public static OdsOption FilterOption(PhotoAlbumSummary album) => new(album.PhotoAlbumId.ToString(), album.Name)
+    {
+        Icon = Glyph(album.Icon),
+        IconColor = Ink(album.Color, OverviewFallback),
+    };
 
     /// <summary>The fallback ink on the album cards, the open-album header and the add-to-album rows.</summary>
     public const string SurfaceFallback = "var(--mud-palette-text-secondary)";

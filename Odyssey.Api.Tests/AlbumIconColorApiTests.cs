@@ -50,6 +50,25 @@ public class AlbumIconColorApiTests
     }
 
     [Fact]
+    public async Task Put_sets_a_new_icon_and_upper_cases_a_new_colour()
+    {
+        await using var factory = new OdysseyApiFactory(Claims, ActorUserId);
+        using var client = factory.CreateClient();
+        var album = await CreateAlbum(client, new NewPhotoAlbum { Name = "A" });
+
+        var put = await client.PutAsJsonAsync($"{Path}/{album.PhotoAlbumId}",
+            new UpdatePhotoAlbum { Name = "A", Icon = "yard", Color = "#15803d" });
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
+        var updated = (await put.Content.ReadFromJsonAsync<ExistingPhotoAlbum>())!;
+        Assert.Equal("yard", updated.Icon);
+        Assert.Equal("#15803D", updated.Color);
+
+        var reread = await client.GetFromJsonAsync<ExistingPhotoAlbum>($"{Path}/{album.PhotoAlbumId}");
+        Assert.Equal("yard", reread!.Icon);
+        Assert.Equal("#15803D", reread.Color);
+    }
+
+    [Fact]
     public async Task Put_with_null_or_omitted_icon_and_colour_clears_both()
     {
         await using var factory = new OdysseyApiFactory(Claims, ActorUserId);

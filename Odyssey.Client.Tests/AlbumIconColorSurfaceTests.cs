@@ -29,9 +29,14 @@ public class AlbumIconColorSurfaceTests
 
     private const string Teal = "#006B5A";
 
-    private static Mock<IAlbumsApiClient> Clients(BunitContext ctx)
+    private static Mock<IAlbumsApiClient> Clients(BunitContext ctx) => Clients(ctx, out _);
+
+    private static Mock<IAlbumsApiClient> Clients(BunitContext ctx, out Mock<IPhotosApiClient> photosMock)
     {
         var photos = new Mock<IPhotosApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
+        photosMock = photos;
+        ctx.Services.AddSingleton(new Mock<IPhotoTagsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() }.Object);
+        ctx.Services.AddSingleton(new Mock<IContactsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() }.Object);
         var files = new Mock<IFilesApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
         var albums = new Mock<IAlbumsApiClient> { DefaultValueProvider = new PageTestContext.EmptySuccess() };
         ctx.Services.AddSingleton(photos.Object);
@@ -94,6 +99,7 @@ public class AlbumIconColorSurfaceTests
         var cards = cut.FindAll(".pl-albcard");
         Assert.Single(cards[1].QuerySelectorAll(".pl-albcover-empty .pl-albglyph-xl"));
         Assert.Empty(cards[1].QuerySelectorAll("[class*=odc-photoimg]"));
+        // An album WITH a cover keeps OdsPhotoImage even when no image source resolves (its placeholder path).
         Assert.NotEmpty(cards[0].QuerySelectorAll(".pl-albcover-cell [class*=odc-photoimg]"));
         Assert.Empty(cards[0].QuerySelectorAll(".pl-albcover-empty"));
 
@@ -135,6 +141,123 @@ public class AlbumIconColorSurfaceTests
         Assert.Equal(AlbumVisuals.OverviewFallback, AlbumVisuals.Ink(null, AlbumVisuals.OverviewFallback));
         Assert.Equal(AlbumVisuals.OverviewFallback, AlbumVisuals.Ink("#12345Z", AlbumVisuals.OverviewFallback));
         Assert.StartsWith("oklch(from #ABCDEF", AlbumVisuals.Ink("#abcdef", AlbumVisuals.OverviewFallback), StringComparison.Ordinal);
+    }
+
+
+    // ── Overview rows (B), filter options (D1), open-album header (D2) ─────────
+
+    [Fact]
+    public void A_filter_option_carries_its_overview_rows_glyph_and_tone()
+    {
+        foreach (var album in new[] { Summary("Lofoten", "landscape", Teal, null), Summary("Plain", null, null, null) })
+        {
+            var row = AlbumVisuals.OverviewRow(album);
+            var option = AlbumVisuals.FilterOption(album);
+            Assert.Equal(row.Icon, option.Icon);
+            Assert.Equal(row.IconColor, option.IconColor);
+            Assert.Equal(album.Name, option.Label);
+        }
+
+        Assert.Equal(AlbumVisuals.OverviewFallback, AlbumVisuals.OverviewRow(Summary("Plain", null, null, null)).IconColor);
+        Assert.Equal(PhotoAlbumIcons.Default, AlbumVisuals.FilterOption(Summary("Plain", null, null, null)).Icon);
+    }
+
+    [Fact]
+    public async Task The_overview_album_rows_draw_each_albums_glyph_in_its_ink()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx);
+        albums.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<PhotoAlbumSummary>>.Success(
+                [Summary("Lofoten", "landscape", Teal, null), Summary("Plain", null, null, null)], HttpStatusCode.OK));
+
+        var cut = ctx.Render<PhotoLibraryOverview>();
+        cut.WaitForState(() => cut.Markup.Contains("Lofoten", StringComparison.Ordinal));
+
+        var glyphs = cut.FindAll("span.material-icons[aria-hidden=true]");
+        var lofoten = glyphs.Single(g => g.TextContent == "landscape");
+        Assert.Contains("#006B5A", lofoten.GetAttribute("style"), StringComparison.Ordinal);
+        var plain = glyphs.Single(g => g.TextContent == PhotoAlbumIcons.Default);
+        Assert.Contains("--tide-400", plain.GetAttribute("style"), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task The_open_album_header_leads_with_the_glyph_and_removing_photos_keeps_icon_and_colour()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx, out var photos);
+        var albumId = Guid.NewGuid();
+        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), Title = "Beach", PersonCount = 0, AlbumCount = 1 };
+        var existing = Existing(albumId) with { PhotoIds = [photo.PhotoId] };
+        albums.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<PhotoAlbumSummary>>.Success([Summary("Lofoten", "landscape", Teal, null) with { PhotoAlbumId = albumId }], HttpStatusCode.OK));
+        albums.Setup(a => a.GetAsync(albumId, It.IsAny<CancellationToken>())).ReturnsAsync(existing);
+        photos.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
+                It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(), It.IsAny<IReadOnlyCollection<string>?>(),
+                It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<PhotoSummary>>.Success(
+                new PagedResult<PhotoSummary> { Items = [photo], TotalCount = 1, Offset = 0, Limit = 96 }, HttpStatusCode.OK));
+        UpdatePhotoAlbum? sent = null;
+        albums.Setup(a => a.UpdateAsync(albumId, It.IsAny<UpdatePhotoAlbum>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, UpdatePhotoAlbum body, CancellationToken _) => sent = body)
+            .ReturnsAsync(Ok());
+
+        ctx.Render<MudPopoverProvider>();
+        var cut = ctx.Render<AlbumsPage>();
+        cut.WaitForState(() => cut.FindAll("button.pl-albcard-hit").Count == 1);
+        cut.Find("button.pl-albcard-hit").Click();
+        cut.WaitForState(() => cut.FindAll(".pl-backrow .pl-albglyph").Count == 1);
+
+        var header = cut.Find(".pl-backrow .pl-albglyph");
+        Assert.Equal("landscape", header.TextContent);
+        Assert.Equal("true", header.GetAttribute("aria-hidden"));
+        Assert.Contains("#006B5A", header.GetAttribute("style"), StringComparison.Ordinal);
+
+        cut.WaitForState(() => cut.FindAll("button.pl-check").Count == 1);
+        cut.Find("button.pl-check").Click();
+        cut.FindAll("button").Single(b => b.TextContent.Contains("Remove from album", StringComparison.Ordinal)).Click();
+        cut.WaitForState(() => sent is not null);
+
+        Assert.Empty(sent!.PhotoIds);
+        Assert.Equal("landscape", sent.Icon);
+        Assert.Equal(Teal, sent.Color);
+        Assert.Equal(existing.Name, sent.Name);
+    }
+
+    [Fact]
+    public void AlbumWrites_keeps_an_unarchived_album_unarchived()
+    {
+        var update = AlbumWrites.From(Existing(Guid.NewGuid(), icon: null, color: null));
+        Assert.False(update.Archived);
+        Assert.Null(update.Icon);
+        Assert.Null(update.Color);
+    }
+
+    [Fact]
+    public async Task The_quick_create_in_add_to_album_sends_no_icon_and_no_colour_and_shows_neither_field()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx);
+        NewPhotoAlbum? sent = null;
+        albums.Setup(a => a.CreateAsync(It.IsAny<NewPhotoAlbum>(), It.IsAny<CancellationToken>()))
+            .Callback((NewPhotoAlbum body, CancellationToken _) => sent = body)
+            .ReturnsAsync(Ok());
+
+        var cut = InDialogHost<AddToAlbumDialog>(ctx, b =>
+        {
+            b.AddComponentParameter(1, nameof(AddToAlbumDialog.Open), true);
+            b.AddComponentParameter(2, nameof(AddToAlbumDialog.PhotoIds), (IReadOnlyCollection<Guid>)[Guid.NewGuid()]);
+        });
+        cut.Find("button.pl-albadd").Click();
+        Assert.Empty(cut.FindAll("[role=radiogroup]"));
+        cut.Find(".pl-albcreate input").Input("Recipes");
+        cut.FindAll(".pl-albcreate button").Single(b => b.TextContent.Contains("Create", StringComparison.Ordinal)).Click();
+        cut.WaitForState(() => sent is not null);
+
+        Assert.Equal("Recipes", sent!.Name);
+        Assert.Null(sent.Icon);
+        Assert.Null(sent.Color);
     }
 
     // ── Partial edits keep icon and colour (AC 10) ────────────────────────────
@@ -226,6 +349,60 @@ public class AlbumIconColorSurfaceTests
     }
 
     [Fact]
+    public void A_tag_pickers_markup_is_unchanged_by_the_new_parameters()
+    {
+        using var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        var implicitDefaults = ctx.Render<OdsTagIconPicker>(p => p.Add(x => x.Id, "tag-icon"));
+        var explicitTagStrings = ctx.Render<OdsTagIconPicker>(p => p
+            .Add(x => x.Id, "tag-icon")
+            .Add(x => x.DefaultIcon, "local_offer")
+            .Add(x => x.DefaultLabel, "Default (tag icon)")
+            .Add(x => x.DefaultCaption, "the tag icon"));
+
+        implicitDefaults.MarkupMatches(explicitTagStrings.Markup);
+        Assert.Contains("aria-label=\"Default (tag icon)\"", implicitDefaults.Markup, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Reopening_the_form_for_another_album_shows_none_of_the_previous_albums_state()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx);
+        var first = Summary("First", "landscape", Teal, null);
+        var second = Summary("Second", null, null, null);
+        albums.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<List<PhotoAlbumSummary>>.Success([first, second], HttpStatusCode.OK));
+        albums.Setup(a => a.GetAsync(first.PhotoAlbumId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Existing(first.PhotoAlbumId, "landscape", Teal) with { Name = "First" });
+        albums.Setup(a => a.GetAsync(second.PhotoAlbumId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Existing(second.PhotoAlbumId, null, null) with { Name = "Second" });
+
+        var cut = ctx.Render(b =>
+        {
+            b.OpenComponent<MudDialogProvider>(0);
+            b.CloseComponent();
+            b.OpenComponent<MudPopoverProvider>(10);
+            b.CloseComponent();
+            b.OpenComponent<AlbumsPage>(20);
+            b.CloseComponent();
+        });
+        cut.WaitForState(() => cut.FindAll("button.pl-albedit").Count == 2);
+
+        cut.FindAll("button.pl-albedit")[0].Click();
+        cut.WaitForState(() => cut.FindAll("#album-icon [role=radio][aria-checked=true]").Count == 1);
+        Assert.Equal("Landscape", cut.Find("#album-icon [role=radio][aria-checked=true]").GetAttribute("aria-label"));
+        cut.FindAll("button").First(b => b.TextContent.Trim() == "Cancel").Click();
+
+        cut.WaitForState(() => cut.FindAll("button.pl-albedit").Count == 2);
+        cut.FindAll("button.pl-albedit")[1].Click();
+        cut.WaitForState(() => cut.FindAll("#album-icon [role=radio][aria-checked=true]").Count == 1
+            && cut.Find("#album-icon [role=radio][aria-checked=true]").GetAttribute("aria-label") == "Default (album icon)");
+        Assert.Equal("No color", cut.Find("#album-color [role=radio][aria-checked=true]").GetAttribute("aria-label"));
+        Assert.Single(cut.FindAll("#album-icon"));
+    }
+
+    [Fact]
     public async Task Editing_seeds_both_pickers_and_saving_sends_the_same_icon_and_colour_back()
     {
         await using var ctx = PageTestContext.Create(Claims);
@@ -279,6 +456,30 @@ public class AlbumIconColorSurfaceTests
         Assert.False(SaveButton(cut, "Save").HasAttribute("disabled"));
     }
 
+    /// <summary>AC 13: Name → Description → Icon (one stop) → Color (one stop) → Photos, by DOM order and tabindex.</summary>
+    [Fact]
+    public async Task The_form_tab_order_is_name_description_icon_colour_then_photos()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        Clients(ctx);
+        var cut = Form(ctx, null);
+        cut.WaitForState(() => cut.FindAll("#album-color [role=radio]").Count > 1);
+
+        var body = cut.Find(".pl-albform");
+        var stops = body.QuerySelectorAll("input, textarea, button, [tabindex]")
+            .Where(e => e.GetAttribute("tabindex") != "-1" && !e.HasAttribute("disabled") && e.GetAttribute("type") != "hidden")
+            .ToList();
+        string Kind(AngleSharp.Dom.IElement e) =>
+            e.Closest("#album-icon") is not null ? "icon"
+            : e.Closest("#album-color") is not null ? "color"
+            : e.TagName == "TEXTAREA" ? "description"
+            : e.TagName == "INPUT" ? "name"
+            : e.TextContent.Contains("Add photos", StringComparison.Ordinal) ? "photos" : "other";
+        var order = stops.Select(Kind).Where(k => k != "other").ToList();
+
+        Assert.Equal(["name", "description", "icon", "color", "photos"], order);
+    }
+
     [Fact]
     public async Task An_empty_custom_colour_blocks_create_and_sends_nothing()
     {
@@ -293,6 +494,66 @@ public class AlbumIconColorSurfaceTests
 
         cut.WaitForState(() => cut.Markup.Contains("Enter a 6-digit hex color", StringComparison.Ordinal));
         albums.Verify(a => a.CreateAsync(It.IsAny<NewPhotoAlbum>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task An_invalid_custom_hex_blocks_create_with_the_hex_message_and_sends_nothing()
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx);
+        var cut = Form(ctx, null);
+        cut.WaitForState(() => cut.FindAll("#album-color [role=radio]").Count > 1);
+
+        cut.Find("input[placeholder='e.g. Summer 2026']").Input("Trip");
+        cut.FindAll("#album-color [role=radio]").Last().Click();
+        cut.WaitForState(() => cut.FindAll("#album-color-hex, input[placeholder='#RRGGBB']").Count == 1);
+        cut.Find("input[placeholder='#RRGGBB']").Input("#12");
+        SaveButton(cut, "Create").Click();
+
+        cut.WaitForState(() => cut.Markup.Contains(HexColor.InvalidMessage, StringComparison.Ordinal));
+        Assert.Equal("true", cut.Find("input[placeholder='#RRGGBB']").GetAttribute("aria-invalid"));
+        albums.Verify(a => a.CreateAsync(It.IsAny<NewPhotoAlbum>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static TheoryData<string> ColorSelections => new() { "swatch", "none", "custom" };
+
+    [Theory]
+    [MemberData(nameof(ColorSelections))]
+    public async Task A_server_colour_error_marks_the_picker_invalid_whatever_the_selection(string selection)
+    {
+        await using var ctx = PageTestContext.Create(Claims);
+        var albums = Clients(ctx);
+        albums.Setup(a => a.CreateAsync(It.IsAny<NewPhotoAlbum>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Failure(HttpStatusCode.BadRequest, new ApiProblem
+            {
+                Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { ["Color"] = [HexColor.InvalidMessage] },
+            }));
+
+        var cut = Form(ctx, null);
+        cut.WaitForState(() => cut.FindAll("#album-color [role=radio]").Count > 1);
+        cut.Find("input[placeholder='e.g. Summer 2026']").Input("Trip");
+        var cells = cut.FindAll("#album-color [role=radio]");
+        switch (selection)
+        {
+            case "swatch": cells[1].Click(); break;
+            case "custom":
+                cells.Last().Click();
+                cut.WaitForState(() => cut.FindAll("input[placeholder='#RRGGBB']").Count == 1);
+                cut.Find("input[placeholder='#RRGGBB']").Input("#77AA33");
+                break;
+        }
+
+        SaveButton(cut, "Create").Click();
+        cut.WaitForState(() => cut.Markup.Contains(HexColor.InvalidMessage, StringComparison.Ordinal));
+
+        Assert.Equal(1, CountOf(cut.Markup, HexColor.InvalidMessage));
+        var invalid = selection == "custom"
+            ? cut.Find("input[placeholder='#RRGGBB']").GetAttribute("aria-invalid")
+            : cut.Find("#album-color").GetAttribute("aria-invalid");
+        Assert.Equal("true", invalid);
+        Assert.Empty(ctx.Services.GetRequiredService<ISnackbar>().ShownSnackbars);
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -324,7 +585,9 @@ public class AlbumIconColorSurfaceTests
         Assert.Equal(TagIcons.InvalidIconMessage, cut.Find("#album-icon-help-error").TextContent.Trim());
         Assert.Contains("album-icon-help-error", cut.Find("#album-icon").GetAttribute("aria-describedby"), StringComparison.Ordinal);
         Assert.Equal("true", cut.Find("#album-icon").GetAttribute("aria-invalid"));
-        Assert.Empty(cut.FindAll(".mud-snackbar"));
+        Assert.Empty(ctx.Services.GetRequiredService<ISnackbar>().ShownSnackbars);
+        // Focus moves into the form (the icon cell when both fail, first in DOM order).
+        Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
         // The dialog stays open with the typed name intact.
         Assert.Equal("Trip", cut.Find("input[placeholder='e.g. Summer 2026']").GetAttribute("value"));
     }
