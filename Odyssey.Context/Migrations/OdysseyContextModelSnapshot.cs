@@ -3357,6 +3357,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
                     b.Property<Guid?>("CoverPhotoId")
                         .HasColumnType("char(36)");
 
@@ -3369,6 +3373,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Name")
                         .IsRequired()

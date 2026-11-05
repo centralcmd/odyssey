@@ -20,7 +20,8 @@ public sealed record TagDisplay(string Icon, string? Color);
 
 /// <summary>
 /// The tag icon catalogue and the display-icon rule, shared by transaction, journal, task and photo tags
-/// (issues #279, #345).
+/// (issues #279, #345). Photo albums pick from the same catalogue, with their own default
+/// (<see cref="PhotoAlbumIcons"/>, issue #404).
 /// </summary>
 /// <remarks>
 /// <b>This is the single declaration, not a server rule the client re-implements.</b> It lives in
@@ -29,7 +30,7 @@ public sealed record TagDisplay(string Icon, string? Color);
 /// client picker all name one symbol — the <c>ContractPartyRoleMatrix</c> precedent.
 ///
 /// <para>
-/// <b>A key is a wire contract.</b> It is persisted in the four tag tables' <c>Icon</c> columns, so a key
+/// <b>A key is a wire contract.</b> It is persisted in the four tag tables' <c>Icon</c> columns and in <c>PhotoAlbums.Icon</c> (issue #404), so a key
 /// may be <em>removed</em> (rows still holding it project as <c>null</c>, the default, and no read fails)
 /// but a removed key is never re-assigned to a different meaning — that would silently re-label old rows.
 /// Treat a retired key as a permanent hole, the same convention enum ordinals follow. Every key must be a
