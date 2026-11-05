@@ -35,7 +35,10 @@
 
     [Parameter] public string? Class { get; set; }
 
-    private (string Tone, string Icon, string Label) _meta => Status switch
+    private (string Tone, string Icon, string Label) _meta => Meta(Status);
+
+    /// <summary>The status's tone, glyph and label — one table for this chip and the Tasks Status filter.</summary>
+    public static (string Tone, string Icon, string Label) Meta(JournalTaskStatus status) => status switch
     {
         JournalTaskStatus.Doing => ("info", "timelapse", "Doing"),
         JournalTaskStatus.Done => ("income", "check_circle", "Done"),

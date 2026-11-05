@@ -166,12 +166,12 @@
             <OdsSearchField Class="ph-search" Value="@_search" ValueChanged="OnSearchChanged"
                             DebounceInterval="300" OnSearch="OnSearchSubmitted"
                             Placeholder="Search title, caption, location…" AriaLabel="Search photos" />
-            <OdsMultiSelect Class="ph-select" Label="Any album" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
-                            Options="_albumOptions" Icon="photo_album" />
-            <OdsMultiSelect Class="ph-select" Label="Any tag" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
-                            Options="_tagOptions" Icon="sell" />
-            <OdsMultiSelect Class="ph-select" Label="Anyone" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"
-                            Options="_peopleOptions" Icon="person" />
+            <OdsMultiSelect Class="ph-select" Label="Album" Fit="false" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
+                            Options="_albumOptions" />
+            <OdsMultiSelect Class="ph-select" Label="Tag" Fit="false" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
+                            Options="_tagOptions" />
+            <OdsMultiSelect Class="ph-select" Label="Person" Fit="false" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"
+                            Options="_peopleOptions" />
             <OdsDateRangePicker Label="Taken" AriaLabel="Filter by date taken"
                                 From="_from" FromChanged="v => ApplyFilter(() => _from = v)"
                                 To="_to" ToChanged="v => ApplyFilter(() => _to = v)" />
