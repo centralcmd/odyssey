@@ -483,6 +483,10 @@ public class DropdownConsistencyTests
         { "Tax statements", TaxStatementsCard._statusOptions },
         { "Transactions status", TransactionsCard._statusOptions },
         { "Transactions direction", TransactionsCard._directionOptions },
+        { "Transaction tags", OdsTagAdmin<ExistingTransactionTag>._statusOptions },
+        { "Journal tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTag>._statusOptions },
+        { "Task tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTaskTag>._statusOptions },
+        { "Photo tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingPhotoTag>._statusOptions },
     };
 
     /// <summary>The wire values each filter sends — what the list endpoint binds, unchanged by the move
@@ -500,6 +504,8 @@ public class DropdownConsistencyTests
         // be added to StatusDefs or this fails rather than silently vanishing from the filter.
         { "Transactions status", TransactionsCard._statusOptions, Enum.GetNames<TransactionStatus>() },
         { "Transactions direction", TransactionsCard._directionOptions, ["income", "expense"] },
+        // The tag pages keep their lower-case values: they are the persisted page-state keys.
+        { "Tag pages", OdsTagAdmin<ExistingTransactionTag>._statusOptions, ["active", "archived"] },
     };
 
     [Theory]
