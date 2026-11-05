@@ -388,6 +388,22 @@ public class TagColorSurfaceTests : IAsyncLifetime
     }
 
     [Fact]
+    public void Calendar_pages_paint_a_calendar_colour_only_through_PaintFor()
+    {
+        // SwatchFor falls back to the default for any non-palette hex, so a page painting through it
+        // would show a Custom calendar colour as Blue; PaintFor is the one rule that keeps it.
+        var dir = Path.Combine(ClientSource.Root, "Pages", "Calendar");
+        var files = Directory.EnumerateFiles(dir, "*.*", SearchOption.AllDirectories)
+            .Where(f => f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal))
+            .ToList();
+
+        Assert.NotEmpty(files);
+        Assert.DoesNotContain(files, f => File.ReadAllText(f).Contains("SwatchFor(", StringComparison.Ordinal));
+        Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "CalendarPage.razor.cs")), StringComparison.Ordinal);
+        Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "ImportCalendarDialog.razor.cs")), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_event_paints_a_palette_colour_with_its_vetted_foreground_and_a_custom_one_with_TextOn()
     {
         var palette = ColorPalette.All[0];

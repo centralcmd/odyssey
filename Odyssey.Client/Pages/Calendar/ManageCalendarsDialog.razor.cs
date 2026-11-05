@@ -114,6 +114,7 @@ public partial class ManageCalendarsDialog
     {
         _editingId = null;
         _editError = null;
+        ResetColorState();
     }
 
     private async Task SaveEditAsync()

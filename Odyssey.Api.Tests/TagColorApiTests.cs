@@ -287,16 +287,52 @@ public class TagColorApiTests
         Assert.Equal(HttpStatusCode.Created, custom.StatusCode);
         Assert.Equal("#C2185B", await ColorOf(custom));
 
-        // An invalid colour is refused keyed on color, never echoed; unlike a tag, null is refused too.
-        foreach (var bad in new[] { "red;x:y", "#12345", "", null })
+    }
+
+    public static TheoryData<string> NonEmptyInvalidColors() =>
+        [.. HexColorNegativeCorpus.All.Where(color => color.Length > 0)];
+
+    [Theory]
+    [MemberData(nameof(NonEmptyInvalidColors))]
+    public async Task An_invalid_calendar_color_is_a_400_keyed_on_Color_that_echoes_nothing_on_post_and_put(string color)
+    {
+        await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate, PermissionClaims.CalendarCreate]);
+        var existing = await SeedCalendarAsync(factory, "Existing", "#15803D");
+        using var client = factory.CreateClient();
+
+        foreach (var response in new[]
         {
-            var refused = await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color = bad });
-            Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
-            var body = await refused.Content.ReadAsStringAsync();
-            Assert.Contains("\"Color\"", body, StringComparison.OrdinalIgnoreCase);
-            if (!string.IsNullOrEmpty(bad))
-                Assert.DoesNotContain(bad, body, StringComparison.Ordinal);
+            await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color }),
+            await client.PutAsJsonAsync($"/api/calendars/{existing}", new { name = "Existing", color }),
+        })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var text = await response.Content.ReadAsStringAsync();
+            using var body = JsonDocument.Parse(text);
+            var errors = body.RootElement.GetProperty("errors").GetProperty("Color");
+            Assert.Equal(HexColor.InvalidMessage, Assert.Single(errors.EnumerateArray().ToList()).GetString());
+            Assert.DoesNotContain($"\"{JsonEncodedText.Encode(color)}\"", text, StringComparison.Ordinal);
         }
+
+        await using var scope = factory.Services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal("#15803D", (await context.Calendars.SingleAsync(c => c.CalendarId == existing)).Color);
+        Assert.False(await context.Calendars.AnyAsync(c => c.Name == "Odd"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task A_calendar_color_is_required_unlike_a_tag_color(string? color)
+    {
+        await using var factory = new OdysseyApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate]);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync("/api/calendars", new { name = "Odd", color });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.True(body.RootElement.GetProperty("errors").TryGetProperty("Color", out _));
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────

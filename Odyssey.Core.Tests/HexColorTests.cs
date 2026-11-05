@@ -114,6 +114,60 @@ public class HexColorTests
     public void Foreground_refuses_an_invalid_value() =>
         Assert.Throws<ArgumentException>(() => HexColor.Foreground("red"));
 
+    // ── TextOn: text on a free calendar colour ─────────────────────────────────
+
+    [Theory]
+    [InlineData("#FFFFFF", HexColor.BlackText)]
+    [InlineData("#000000", HexColor.LightForeground)]
+    [InlineData("#c2185b", HexColor.LightForeground)]
+    [InlineData("#7DD3FC", HexColor.BlackText)]
+    // The crossover sits between these two greys: L 0.1779 is still white's, L 0.1812 is black's.
+    [InlineData("#757575", HexColor.LightForeground)]
+    [InlineData("#767676", HexColor.BlackText)]
+    public void TextOn_picks_the_higher_contrast_of_white_and_pure_black(string fill, string expected) =>
+        Assert.Equal(expected, HexColor.TextOn(fill));
+
+    [Fact]
+    public void TextOn_never_falls_below_4_58_to_1_for_any_fill()
+    {
+        // Every 8-bit fill: the worst case is the crossover near L 0.179, where white and black both sit
+        // at about 4.58:1. The better of white and #0E1525 (Foreground) falls to 4.27:1 at the same fill.
+        var worst = double.MaxValue;
+        var worstFill = string.Empty;
+        for (var r = 0; r < 256; r += 3)
+        for (var g = 0; g < 256; g += 3)
+        for (var b = 0; b < 256; b += 3)
+        {
+            var fill = $"#{r:X2}{g:X2}{b:X2}";
+            var ratio = HexColor.ContrastRatio(fill, HexColor.TextOn(fill));
+            if (ratio < worst)
+            {
+                (worst, worstFill) = (ratio, fill);
+            }
+        }
+
+        for (var v = 0; v < 256; v++)
+        {
+            var fill = $"#{v:X2}{v:X2}{v:X2}";
+            worst = Math.Min(worst, HexColor.ContrastRatio(fill, HexColor.TextOn(fill)));
+        }
+
+        Assert.True(worst >= 4.58, $"worst {worst:F3}:1 at {worstFill}");
+    }
+
+    [Fact]
+    public void TextOn_beats_Foreground_where_Foreground_falls_below_AA()
+    {
+        // #7A7A7A (L 0.195) sits near Foreground's own crossover: white 4.29:1, #0E1525 4.23:1.
+        Assert.True(HexColor.ContrastRatio("#7A7A7A", HexColor.Foreground("#7A7A7A")) < 4.5);
+        Assert.True(HexColor.ContrastRatio("#7A7A7A", HexColor.TextOn("#7A7A7A")) >= 4.5);
+    }
+
+    [Theory]
+    [MemberData(nameof(HexColorNegativeCorpus.TheoryData), MemberType = typeof(HexColorNegativeCorpus))]
+    public void TextOn_refuses_an_invalid_fill(string fill) =>
+        Assert.Throws<ArgumentException>(() => HexColor.TextOn(fill));
+
     [Theory]
     [InlineData("#0369A1", true)]
     [InlineData("#0369a1", true)]
