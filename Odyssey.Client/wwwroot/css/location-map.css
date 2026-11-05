@@ -1,11 +1,11 @@
 /*
     The location map's MapLibre-built parts (issue #371; design system · components/LocationMap, the
     `loc-map-*` rules). Loaded by js/location-map.js with the map, never at app start. The frame, the state
-    box and the caption are Blazor markup and live in Pages/Journal/LocationMap.razor.css instead — these
+    box and the caption are Blazor markup and live in Components/OdsLocationMap.razor.css instead — these
     nodes are created in JS, where scoped CSS cannot reach.
 
     Every panel is OPAQUE (--mud-palette-surface), never translucent, so the token pair is the real
-    contrast. --loc-accent and the sizing custom properties are published by LocationMap.razor's root.
+    contrast. --loc-accent and the sizing custom properties are published by OdsLocationMap.razor's root.
 */
 
 .loc-map-host.maplibregl-map {

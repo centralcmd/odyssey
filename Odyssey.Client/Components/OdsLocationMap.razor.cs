@@ -1,14 +1,15 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Client.Theme;
 using Odyssey.Dtos.Journal;
 
-namespace Odyssey.Client.Pages.Journal;
+namespace Odyssey.Client.Components;
 
 /// <summary>Where the location map is (issue #371 §3). Only <see cref="Loading"/>, <see cref="Ready"/> and
 /// <see cref="Degraded"/> show the frame; the rest replace it with the state box.</summary>
-public enum LocationMapState
+public enum OdsLocationMapState
 {
     Loading,
     Ready,
@@ -19,7 +20,7 @@ public enum LocationMapState
     InvalidCoordinates,
 }
 
-public partial class LocationMap
+public partial class OdsLocationMap
 {
     /// <summary>Centre zoom on create (§3). The camera keeps the user's zoom on a later move.</summary>
     public const int StartZoom = 14;
@@ -50,11 +51,11 @@ public partial class LocationMap
 
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
     private readonly CancellationTokenSource _cts = new();
-    private LocationMapState _state = LocationMapState.Loading;
+    private OdsLocationMapState _state = OdsLocationMapState.Loading;
     private MapStyles? _styles;
     private IJSObjectReference? _module;
     private int? _handle;
-    private DotNetObjectReference<LocationMap>? _selfRef;
+    private DotNetObjectReference<OdsLocationMap>? _selfRef;
     private ElementReference _host;
     private ElementReference _frame;
     private ElementReference _stateBox;
@@ -74,7 +75,7 @@ public partial class LocationMap
 
     private enum FocusTarget { None, Frame, StateBox, Surface }
 
-    internal LocationMapState State => _state;
+    internal OdsLocationMapState State => _state;
 
     /// <summary>The style URL applied after the latest theme change completed; <see langword="null"/> before any.</summary>
     internal string? AppliedStyleUrl => _appliedStyleUrl;
@@ -87,18 +88,18 @@ public partial class LocationMap
 
     private string RootStyle => $"--loc-accent: {LocationVisuals.Accent}";
 
-    private bool ShowsFrame => _state is LocationMapState.Loading or LocationMapState.Ready or LocationMapState.Degraded;
+    private bool ShowsFrame => _state is OdsLocationMapState.Loading or OdsLocationMapState.Ready or OdsLocationMapState.Degraded;
 
-    private bool ShowsCaption => _state is LocationMapState.Ready or LocationMapState.Degraded;
+    private bool ShowsCaption => _state is OdsLocationMapState.Ready or OdsLocationMapState.Degraded;
 
-    private bool CanRetry => _state is LocationMapState.TilesFailed or LocationMapState.ConfigUnavailable;
+    private bool CanRetry => _state is OdsLocationMapState.TilesFailed or OdsLocationMapState.ConfigUnavailable;
 
     private string StateText => _state switch
     {
-        LocationMapState.TilesFailed => $"The map for {Name} couldn't load. The tile service may be down.",
-        LocationMapState.WebGlUnavailable =>
+        OdsLocationMapState.TilesFailed => $"The map for {Name} couldn't load. The tile service may be down.",
+        OdsLocationMapState.WebGlUnavailable =>
             "This browser can't draw maps (WebGL is off or unavailable). This place's coordinates are listed in this record.",
-        LocationMapState.ConfigUnavailable => "The map couldn't load its settings.",
+        OdsLocationMapState.ConfigUnavailable => "The map couldn't load its settings.",
         _ => "This location has no usable coordinates.",
     };
 
@@ -124,13 +125,13 @@ public partial class LocationMap
         if (!AreUsable(Latitude, Longitude))
         {
             await DisposeMapAsync();
-            _state = LocationMapState.InvalidCoordinates;
+            _state = OdsLocationMapState.InvalidCoordinates;
             return;
         }
 
-        if (_state == LocationMapState.InvalidCoordinates && moved)
+        if (_state == OdsLocationMapState.InvalidCoordinates && moved)
         {
-            _state = LocationMapState.Loading;
+            _state = OdsLocationMapState.Loading;
             _ = CreateAsync();
             return;
         }
@@ -178,7 +179,7 @@ public partial class LocationMap
 
         if (!AreUsable(Latitude, Longitude))
         {
-            _state = LocationMapState.InvalidCoordinates;
+            _state = OdsLocationMapState.InvalidCoordinates;
             StateHasChanged();
             return;
         }
@@ -191,7 +192,7 @@ public partial class LocationMap
 
             if (!await _module.InvokeAsync<bool>("isSupported", token))
             {
-                await FailAsync(generation, LocationMapState.WebGlUnavailable);
+                await FailAsync(generation, OdsLocationMapState.WebGlUnavailable);
                 return;
             }
 
@@ -201,13 +202,13 @@ public partial class LocationMap
 
             if (_styles is null)
             {
-                await FailAsync(generation, LocationMapState.ConfigUnavailable);
+                await FailAsync(generation, OdsLocationMapState.ConfigUnavailable);
                 return;
             }
 
-            if (_state != LocationMapState.Loading)
+            if (_state != OdsLocationMapState.Loading)
             {
-                _state = LocationMapState.Loading;
+                _state = OdsLocationMapState.Loading;
                 StateHasChanged();
                 await Task.Yield();
             }
@@ -249,7 +250,7 @@ public partial class LocationMap
             // 0: MapLibre could not create a GPU context — the browser can't draw maps.
             if (handle == 0)
             {
-                await FailAsync(generation, LocationMapState.WebGlUnavailable);
+                await FailAsync(generation, OdsLocationMapState.WebGlUnavailable);
                 return;
             }
 
@@ -275,7 +276,7 @@ public partial class LocationMap
         catch (JSException)
         {
             // MapLibre or the module could not be loaded: the map can't draw, the same as a failed style.
-            await FailAsync(generation, LocationMapState.TilesFailed);
+            await FailAsync(generation, OdsLocationMapState.TilesFailed);
         }
     }
 
@@ -283,7 +284,7 @@ public partial class LocationMap
 
     private string StyleUrlFor(bool dark) => dark ? _styles!.DarkStyleUrl : _styles!.LightStyleUrl;
 
-    private async Task FailAsync(int generation, LocationMapState state)
+    private async Task FailAsync(int generation, OdsLocationMapState state)
     {
         if (IsStale(generation))
             return;
@@ -299,8 +300,8 @@ public partial class LocationMap
         StateHasChanged();
         await AnnounceAsync(state switch
         {
-            LocationMapState.WebGlUnavailable => $"Map of {Name} can't be shown in this browser.",
-            LocationMapState.ConfigUnavailable => $"Map of {Name} couldn't load its settings.",
+            OdsLocationMapState.WebGlUnavailable => $"Map of {Name} can't be shown in this browser.",
+            OdsLocationMapState.ConfigUnavailable => $"Map of {Name} couldn't load its settings.",
             _ => $"Map of {Name} couldn't load.",
         });
     }
@@ -311,7 +312,7 @@ public partial class LocationMap
         await DisposeMapAsync();
         _announceReady = true;
         _focusOutcome = true;
-        _state = LocationMapState.Loading;
+        _state = OdsLocationMapState.Loading;
         _focusAfterRender = FocusTarget.Frame;
         StateHasChanged();
         await Task.Yield();
@@ -323,10 +324,10 @@ public partial class LocationMap
     [JSInvokable]
     public async Task OnReady(int generation)
     {
-        if (IsStale(generation) || _state != LocationMapState.Loading)
+        if (IsStale(generation) || _state != OdsLocationMapState.Loading)
             return;
 
-        _state = LocationMapState.Ready;
+        _state = OdsLocationMapState.Ready;
         var announce = _announceReady;
         _announceReady = false;
         if (_focusOutcome)
@@ -341,15 +342,15 @@ public partial class LocationMap
     }
 
     [JSInvokable]
-    public Task OnFailed(int generation, string kind) => FailAsync(generation, LocationMapState.TilesFailed);
+    public Task OnFailed(int generation, string kind) => FailAsync(generation, OdsLocationMapState.TilesFailed);
 
     [JSInvokable]
     public async Task OnDegraded(int generation)
     {
-        if (IsStale(generation) || _state != LocationMapState.Ready)
+        if (IsStale(generation) || _state != OdsLocationMapState.Ready)
             return;
 
-        _state = LocationMapState.Degraded;
+        _state = OdsLocationMapState.Degraded;
         StateHasChanged();
         await AnnounceAsync($"Map of {Name}: some tiles didn't load.");
     }
@@ -358,9 +359,9 @@ public partial class LocationMap
     [JSInvokable]
     public Task OnRecovered(int generation)
     {
-        if (!IsStale(generation) && _state == LocationMapState.Degraded)
+        if (!IsStale(generation) && _state == OdsLocationMapState.Degraded)
         {
-            _state = LocationMapState.Ready;
+            _state = OdsLocationMapState.Ready;
             StateHasChanged();
         }
 
@@ -369,7 +370,7 @@ public partial class LocationMap
 
     /// <summary>The WebGL context was lost and not restored within 3 s.</summary>
     [JSInvokable]
-    public Task OnContextLost(int generation) => FailAsync(generation, LocationMapState.WebGlUnavailable);
+    public Task OnContextLost(int generation) => FailAsync(generation, OdsLocationMapState.WebGlUnavailable);
 
     /// <summary>Restored within the window: the map is recreated silently (F4).</summary>
     [JSInvokable]
@@ -393,7 +394,7 @@ public partial class LocationMap
         }
 
         await DisposeMapAsync();
-        _state = LocationMapState.Loading;
+        _state = OdsLocationMapState.Loading;
         if (hadFocus)
         {
             _focusOutcome = true;

@@ -1,4 +1,4 @@
-// The location map's interop seam (issue #371 §4): the ONE place that touches MapLibre. LocationMap.razor
+// The location map's interop seam (issue #371 §4): the ONE place that touches MapLibre. OdsLocationMap.razor
 // drives it through create / update / setStyle / dispose and hears back through [JSInvokable] callbacks,
 // each carrying the generation it was created under so a late callback from a disposed map is ignored.
 //

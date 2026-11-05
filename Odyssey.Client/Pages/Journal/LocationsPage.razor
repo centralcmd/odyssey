@@ -274,8 +274,8 @@
                 @if (l.Latitude is { } lat && l.Longitude is { } lng)
                 {
                     <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
-                        <LocationMap @key="l.LocationId" Latitude="lat" Longitude="lng" Name="@l.Name"
-                                     OnStatus="Announce" />
+                        <OdsLocationMap @key="l.LocationId" Latitude="lat" Longitude="lng" Name="@l.Name"
+                                        OnStatus="Announce" />
                     </OdsRecordSection>
                 }
                 @* Weather (issue #388 flow E): every weather.read holder, never on a merged-away row. *@
