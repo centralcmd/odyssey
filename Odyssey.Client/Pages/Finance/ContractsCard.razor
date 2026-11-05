@@ -55,9 +55,9 @@
                                 DebounceInterval="300" OnSearch="LoadContracts"
                                 Placeholder="Search name, reference, party…"
                                 Class="ph-search" />
-                <OdsMultiSelect Label="Any type" Icon="handshake" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                <OdsMultiSelect Label="Contract type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
                                 Options="OdsTypeRegistries.ContractOptions" Class="ph-select" />
-                <OdsMultiSelect Label="Any status" Icon="event_available" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                 Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ContractListItem" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Contracts per batch"

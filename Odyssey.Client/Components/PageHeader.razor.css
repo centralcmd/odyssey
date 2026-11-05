@@ -151,6 +151,13 @@
     min-width: 170px;
 }
 
+/* An open-ended filter (accounts, merchants, tags) is as wide as its menu, which is its own width —
+   so it takes a wider floor than a fitted one, enough for a typical name beside its checkbox and glyph
+   before the row truncates. */
+.ph-root ::deep .ph-select.open-ended {
+    min-width: 240px;
+}
+
 /* The Search region's controls are recessed: the page-background fill the overview's
    breakdown tiles use, with the softer --control-border-quiet outline (still 3:1 on
    both the fill and the card's surface, WCAG 1.4.11). Redefining the token on the

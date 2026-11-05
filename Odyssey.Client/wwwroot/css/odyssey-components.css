@@ -951,7 +951,17 @@
    and the trigger is sized to its widest row (OdsMultiSelect's fit ghosts), so the two match. Every
    other panel — an open-ended list, a quiet chart picker, an empty or loading list — keeps the 224px
    floor, so it never opens as narrow as a small trigger. */
-.odc-ms-pop:not(.fit) { min-width: 224px; }
+.odc-ms-pop:not(.fit):not(.open-ended) { min-width: 224px; }
+/* Open-ended lists (accounts, merchants, tags): the popover is capped at the trigger's width
+   (DropdownWidth.Relative) and this panel asks for more than that, so the two land on exactly the
+   trigger's width. A row too long for it WRAPS onto a second line rather than truncating: a hover-only
+   tooltip is unreachable by keyboard, touch and magnification, so the whole name stays on screen
+   (WCAG 1.4.4, 1.4.10, 1.4.13). The checkbox and glyph keep the first line's top edge. */
+.odc-ms-pop.open-ended { width: 100vw; max-width: 100%; box-sizing: border-box; }
+.odc-ms-pop.open-ended .odc-ms-opt { min-width: 0; align-items: flex-start; }
+.odc-ms-pop.open-ended .odc-check-label {
+  flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere;
+}
 .odc-ms-pop {
   background: var(--mud-palette-surface);
   border: 1px solid var(--mud-palette-divider);
