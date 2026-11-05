@@ -1,12 +1,12 @@
-@using Odyssey.Client.Components
 @using Odyssey.Client.Pages.Journal
 @implements IAsyncDisposable
 
 @*
-    OdsLocationMap — one map with one pin, the Map band of an expanded record (issue #371; design system ·
-    components/LocationMap, "Locations → Map band"). Two features draw it: a location's record and a weather
-    point's (the point's current position), so it lives in Components/ rather than beside the Locations page. MapLibre is driven through wwwroot/js/location-map.js, the only file that
-    touches it; this component owns the state machine, the theme, the caption and the announcements.
+    OdsLocationMap — one map with one pin, the Map band of an expanded record (issue #371; design
+    system · components/LocationMap, "Locations → Map band"). Two features draw it, a location's
+    record and a weather point's (its current position), so it lives in Components/. MapLibre is
+    driven through wwwroot/js/location-map.js, the only file that touches it; this component owns
+    the state machine, the theme, the caption and the announcements.
 *@
 
 <div class="loc-map" style="@RootStyle">

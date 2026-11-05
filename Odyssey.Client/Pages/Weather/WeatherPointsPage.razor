@@ -145,9 +145,10 @@
                     <WeatherPointTiles Row="p" />
                 </OdsRecordSection>
                 @* The Map band — the Locations record's map, pinned at the point's current position (design system ·
-                   Weather → The record). One card is open at a time, so the page holds at most one map. *@
+                   Weather → The record). One card is open at a time, so the page holds at most one map. Keyed on the
+                   point alone: a moved position moves the pin and keeps the viewer's zoom (OdsLocationMap). *@
                 <OdsRecordSection Class="acct-section loc-map-section" Label="Map">
-                    <OdsLocationMap @key="@($"m:{p.WeatherPointId}:{p.Site.Version}")" Latitude="p.Site.Latitude" Longitude="p.Site.Longitude"
+                    <OdsLocationMap @key="@($"m:{p.WeatherPointId}")" Latitude="p.Site.Latitude" Longitude="p.Site.Longitude"
                                     Name="@p.Name" OnStatus="@((string m) => AnnounceLinked(p.WeatherPointId, m))" />
                 </OdsRecordSection>
                 @if (_canReadLocations)
