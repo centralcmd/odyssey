@@ -421,6 +421,51 @@ public class DropdownConsistencyTests
         Assert.Contains(Odyssey.Client.Pages.Journal.LocationVisuals.CoordinatesOptions,
             o => o.Icon == Odyssey.Client.Pages.Journal.LocationVisuals.NoCoordinatesIcon);
 
+    [Theory]
+    [InlineData("Owner", "verified_user")]
+    [InlineData("Admin", "shield")]
+    [InlineData("User", "how_to_reg")]
+    [InlineData("Guest", "visibility")]
+    [InlineData("Auditor", "person")]
+    public void A_role_row_wears_its_pill_glyph_in_its_avatar_colour(string role, string glyph)
+    {
+        var option = Odyssey.Client.Pages.UserDisplay.RoleOption(role);
+
+        Assert.Equal(role, option.Value);
+        Assert.Equal(glyph, option.Icon);
+        Assert.Equal(Odyssey.Client.Pages.UserDisplay.AvatarFg(role), option.IconColor);
+    }
+
+    /// <summary>The role pill draws an SVG (<c>RoleIcon</c>), the filter row a ligature (<c>RoleGlyph</c>):
+    /// two spellings of one glyph, so they are checked against each other here, not just each on its own.</summary>
+    [Theory]
+    [InlineData("Owner", nameof(MudBlazor.Icons.Material.Filled.VerifiedUser))]
+    [InlineData("Admin", nameof(MudBlazor.Icons.Material.Filled.Shield))]
+    [InlineData("User", nameof(MudBlazor.Icons.Material.Filled.HowToReg))]
+    [InlineData("Guest", nameof(MudBlazor.Icons.Material.Filled.Visibility))]
+    [InlineData("Auditor", nameof(MudBlazor.Icons.Material.Filled.Person))]
+    public void The_role_ligature_names_the_same_glyph_as_the_role_pill(string role, string svgName)
+    {
+        var svg = typeof(MudBlazor.Icons.Material.Filled).GetField(svgName)!.GetValue(null);
+        Assert.Equal(svg, Odyssey.Client.Pages.UserDisplay.RoleIcon(role));
+
+        var ligature = Odyssey.Client.Pages.UserDisplay.RoleGlyph(role);
+        Assert.Equal(svgName, string.Concat(ligature.Split('_').Select(w => char.ToUpperInvariant(w[0]) + w[1..])));
+    }
+
+    [Theory]
+    [InlineData("PDF", "picture_as_pdf")]
+    [InlineData("Image", "image")]
+    [InlineData("File", "insert_drive_file")]
+    public void A_file_type_row_wears_its_by_type_glyph(string kind, string glyph)
+    {
+        var option = Odyssey.Client.Pages.Files.KindOption(kind);
+
+        Assert.Equal(kind, option.Value);
+        Assert.Equal(glyph, option.Icon);
+        Assert.False(string.IsNullOrEmpty(option.IconColor));
+    }
+
     [Fact]
     public void An_album_row_wears_the_by_album_glyph_and_colour()
     {
@@ -487,6 +532,8 @@ public class DropdownConsistencyTests
         { "Journal tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTag>._statusOptions },
         { "Task tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingJournalTaskTag>._statusOptions },
         { "Photo tags", OdsTagAdmin<Odyssey.Dtos.Journal.ExistingPhotoTag>._statusOptions },
+        { "Users status", Odyssey.Client.Pages.Users._statusOptions },
+        { "File analysis outcome", Odyssey.Client.Pages.AnalysisLog._statusOptions },
     };
 
     /// <summary>The wire values each filter sends — what the list endpoint binds, unchanged by the move
@@ -506,6 +553,9 @@ public class DropdownConsistencyTests
         { "Transactions direction", TransactionsCard._directionOptions, ["income", "expense"] },
         // The tag pages keep their lower-case values: they are the persisted page-state keys.
         { "Tag pages", OdsTagAdmin<ExistingTransactionTag>._statusOptions, ["active", "archived"] },
+        { "Users status", Odyssey.Client.Pages.Users._statusOptions, ["enabled", "disabled"] },
+        // FileAnalysisJobStatus names the API binds; Cancelled is listed under Failed, as the rows show it.
+        { "File analysis outcome", Odyssey.Client.Pages.AnalysisLog._statusOptions, ["Completed", "Running", "Failed"] },
     };
 
     [Theory]
