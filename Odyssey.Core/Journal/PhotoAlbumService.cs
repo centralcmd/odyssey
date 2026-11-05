@@ -58,14 +58,18 @@ public class PhotoAlbumService
             _ => ascending ? q.OrderBy(a => a.Name) : q.OrderByDescending(a => a.Name),
         };
 
+        // Icon and Color are projected RAW and normalised after materialisation (ToSummary): neither
+        // Normalize call translates to SQL, and the EF InMemory tier then runs the same code (issue #404 §8).
         var rows = sorted
             .ThenBy(a => a.PhotoAlbumId)
-            .Select(a => new PhotoAlbumSummary
+            .Select(a => new AlbumListRow
             {
                 PhotoAlbumId = a.PhotoAlbumId,
                 Name = a.Name,
                 Description = a.Description,
                 CoverPhotoId = a.CoverPhotoId,
+                Icon = a.Icon,
+                Color = a.Color,
                 // Resolve the cover's backing file id in the same query so the list can show a thumbnail
                 // without a per-photo round trip.
                 CoverFileId = context.Photos
@@ -79,8 +83,39 @@ public class PhotoAlbumService
                 PhotoCount = a.Items.Count,
             });
 
-        return await rows.ToPagedResultAsync(query.Offset, query.Limit, cancellationToken);
+        return await rows.ToPagedResultAsync(query.Offset, query.Limit, ToSummary, cancellationToken);
     }
+
+    /// <summary>The list query's SQL shape: <see cref="PhotoAlbumSummary"/> with the raw icon and colour.</summary>
+    private sealed record AlbumListRow
+    {
+        public required Guid PhotoAlbumId { get; init; }
+        public required string Name { get; init; }
+        public string? Description { get; init; }
+        public Guid? CoverPhotoId { get; init; }
+        public string? Icon { get; init; }
+        public string? Color { get; init; }
+        public Guid? CoverFileId { get; init; }
+        public bool CoverThumbnailsReady { get; init; }
+        public DateTime? Archived { get; init; }
+        public string? CreatedByUserId { get; init; }
+        public required int PhotoCount { get; init; }
+    }
+
+    private static PhotoAlbumSummary ToSummary(AlbumListRow row) => new()
+    {
+        PhotoAlbumId = row.PhotoAlbumId,
+        Name = row.Name,
+        Description = row.Description,
+        CoverPhotoId = row.CoverPhotoId,
+        Icon = TagIcons.Normalize(row.Icon),
+        Color = HexColor.Normalize(row.Color),
+        CoverFileId = row.CoverFileId,
+        CoverThumbnailsReady = row.CoverThumbnailsReady,
+        Archived = row.Archived,
+        CreatedByUserId = row.CreatedByUserId,
+        PhotoCount = row.PhotoCount,
+    };
 
     public async Task<ExistingPhotoAlbum?> Get(Guid id, CancellationToken cancellationToken = default)
     {
@@ -90,6 +125,11 @@ public class PhotoAlbumService
 
     public async Task<ExistingPhotoAlbum> Create(NewPhotoAlbum request, string userId, CancellationToken cancellationToken = default)
     {
+        // Icon and colour are checked before any query (issue #404 §3): a request invalid in several ways
+        // gets the field-keyed 400, never the photo/cover 422, and nothing is persisted.
+        TagIconGuard.EnsureKnown(request.Icon);
+        TagColorGuard.EnsureValid(request.Color);
+
         var name = request.Name.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -112,6 +152,8 @@ public class PhotoAlbumService
             Name = name,
             Description = request.Description,
             CoverPhotoId = request.CoverPhotoId,
+            Icon = request.Icon,
+            Color = HexColor.Normalize(request.Color),
             CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -131,6 +173,10 @@ public class PhotoAlbumService
 
     public async Task<ExistingPhotoAlbum?> Update(Guid id, UpdatePhotoAlbum request, string userId, CancellationToken cancellationToken = default)
     {
+        // Before any query, including the album load (issue #404 §3).
+        TagIconGuard.EnsureKnown(request.Icon);
+        TagColorGuard.EnsureValid(request.Color);
+
         var album = await LoadWithItemsForUpdate(id, cancellationToken);
         if (album is null)
         {
@@ -153,6 +199,8 @@ public class PhotoAlbumService
         var now = timeProvider.GetUtcNow().UtcDateTime;
         album.Name = name;
         album.Description = request.Description;
+        album.Icon = request.Icon;
+        album.Color = HexColor.Normalize(request.Color);
         album.UpdatedByUserId = userId;
         album.UpdatedAt = now;
         ApplyArchiveTransition(album, request.Archived);
@@ -305,6 +353,8 @@ public class PhotoAlbumService
         Name = album.Name,
         Description = album.Description,
         CoverPhotoId = album.CoverPhotoId,
+        Icon = TagIcons.Normalize(album.Icon),
+        Color = HexColor.Normalize(album.Color),
         Archived = album.Archived,
         CreatedByUserId = album.CreatedByUserId,
         UpdatedByUserId = album.UpdatedByUserId,

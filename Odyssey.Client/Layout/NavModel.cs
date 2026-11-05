@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
 using Odyssey.Client.Authorization;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Client.Layout;
@@ -79,7 +80,7 @@ public static class NavModel
                 new("journal", "Journal", "book", "journal", PermissionClaims.JournalRead),
                 new("calendar", "Calendar", "calendar_month", "calendar", PermissionClaims.CalendarRead),
                 new("photos", "Photos", "photo_library", "photos", PermissionClaims.PhotosRead),
-                new("albums", "Albums", "photo_album", "albums", PermissionClaims.PhotoAlbumsRead),
+                new("albums", "Albums", PhotoAlbumIcons.Default, "albums", PermissionClaims.PhotoAlbumsRead),
                 new("tasks", "Tasks", "checklist", "tasks", PermissionClaims.TasksRead),
                 new("contacts", "Contacts", "groups", "contacts", PermissionClaims.ContactsRead),
                 new("locations", "Locations", "place", "locations", PermissionClaims.LocationsRead),

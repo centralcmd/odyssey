@@ -32,6 +32,22 @@ public partial class AlbumFormDialog
     private List<Guid> _members = [];
     private Guid? _cover;
     private DateTime? _archived;
+
+    // Icon and colour (issue #406). The pickers own them in both modes; a server field error lands on its
+    // field, never in a toast.
+    private string? _icon;
+    private string? _color;
+    private string? _iconError;
+    private string? _colorError;
+    private bool _colorValid = true;
+    private bool _colorShowErrors;
+    private OdsTagIconPicker? _iconPicker;
+    private OdsTagColorPicker? _colorPicker;
+
+    // Edit's load gate (§3.5): set only after GET /api/albums/{id} succeeds. Until then nothing is
+    // editable and Save is disabled, so a full-replacement PUT is never built from empty state.
+    private bool _seeded;
+    private bool _loadFailed;
     private Dictionary<Guid, PhotoSummary> _summaries = [];
 
     // Create mode's picks, in pick order; edit mode appends straight onto _members.
@@ -116,25 +132,83 @@ public partial class AlbumFormDialog
             _archived = null;
             _newIds = [];
             _pickedInfo.Clear();
+            _icon = null;
+            _color = null;
+            _iconError = null;
+            _colorError = null;
+            _colorValid = true;
+            _colorShowErrors = false;
+            _seeded = false;
+            _loadFailed = false;
 
-            if (AlbumId is { } id)
+            if (AlbumId is not null)
             {
-                var album = await Albums.GetAsync(id);
-                if (album is { } a)
-                {
-                    _name = a.Name;
-                    _desc = a.Description ?? string.Empty;
-                    _members = [.. a.PhotoIds];
-                    _cover = a.CoverPhotoId;
-                    _archived = a.Archived;
-                }
-
-                await LoadSummariesAsync();
+                await LoadAlbumAsync();
             }
         }
         else if (!Open)
         {
             _loaded = false;
+        }
+    }
+
+    private async Task LoadAlbumAsync()
+    {
+        if (AlbumId is not { } id)
+        {
+            return;
+        }
+
+        var album = await Albums.GetAsync(id);
+        if (album is not { } a)
+        {
+            _loadFailed = true;
+            return;
+        }
+
+        _name = a.Name;
+        _desc = a.Description ?? string.Empty;
+        _members = [.. a.PhotoIds];
+        _cover = a.CoverPhotoId;
+        _archived = a.Archived;
+        _icon = a.Icon;
+        _color = a.Color;
+        _loadFailed = false;
+        _seeded = true;
+
+        await LoadSummariesAsync();
+    }
+
+    // Retry removes the alert, and with it the focused button, so focus is placed again once the load
+    // settles: on the album name when it loaded, back on Retry when it failed again (WCAG 2.4.3, 4.1.3).
+    private async Task RetryLoadAsync()
+    {
+        _loadFailed = false;
+        _announce = "Loading the album.";
+        StateHasChanged();
+        await LoadAlbumAsync();
+        _announce = _seeded ? "Album loaded." : "Couldn't load this album.";
+        _focusAfter = _seeded ? [$"#pl-albform-{_uid} input"] : [$"#pl-albform-{_uid} button"];
+    }
+
+    private void OnIconChanged(string? icon)
+    {
+        _icon = icon;
+        _iconError = null;
+    }
+
+    private void OnColorChanged(string? color)
+    {
+        _color = color;
+        _colorError = null;
+    }
+
+    private void OnColorValidChanged(bool valid)
+    {
+        _colorValid = valid;
+        if (valid)
+        {
+            _colorShowErrors = false;
         }
     }
 
@@ -214,41 +288,90 @@ public partial class AlbumFormDialog
 
     private async Task SaveAsync()
     {
-        if (string.IsNullOrWhiteSpace(_name))
+        if (string.IsNullOrWhiteSpace(_name) || (IsEdit && !_seeded))
         {
             return;
         }
 
-        _busy = true;
+        // An empty or invalid Custom colour blocks the save; the picker says why and takes focus (§8).
+        if (!_colorValid)
+        {
+            _colorShowErrors = true;
+            StateHasChanged();
+            if (_colorPicker is not null)
+            {
+                await _colorPicker.FocusErrorAsync();
+            }
 
-        bool ok;
+            return;
+        }
+
+        _busy = true;
+        _iconError = null;
+        _colorError = null;
+
+        ApiResult result;
         if (AlbumId is { } id)
         {
-            ok = (await Albums.UpdateAsync(id, new UpdatePhotoAlbum
+            // The form owns every field, so it builds the full-replacement body itself (§3.4).
+            result = await Albums.UpdateAsync(id, new UpdatePhotoAlbum
             {
                 Name = _name.Trim(),
                 Description = string.IsNullOrWhiteSpace(_desc) ? null : _desc.Trim(),
                 PhotoIds = [.. _members],
                 CoverPhotoId = _cover,
                 Archived = _archived is not null,
-            })).Toast(Snackbar, "Save failed", "Album updated.");
+                Icon = _icon,
+                Color = _color,
+            });
         }
         else
         {
-            ok = (await Albums.CreateAsync(new NewPhotoAlbum
+            result = await Albums.CreateAsync(new NewPhotoAlbum
             {
                 Name = _name.Trim(),
                 Description = string.IsNullOrWhiteSpace(_desc) ? null : _desc.Trim(),
                 PhotoIds = [.. _newIds],
-            })).Toast(Snackbar, "Create failed", "Album created.");
+                Icon = _icon,
+                Color = _color,
+            });
         }
 
         _busy = false;
+        var ok = await ShowFieldErrorsAsync(result)
+            ? false
+            : result.Toast(Snackbar, IsEdit ? "Save failed" : "Create failed", IsEdit ? "Album updated." : "Album created.");
         if (ok)
         {
             await OnSaved.InvokeAsync();
             await Close();
         }
+    }
+
+    /// <summary>
+    /// Puts a server <c>400</c> on icon or colour onto its field and moves focus there (§7). Returns true
+    /// when it did, so the caller shows no toast. Icon wins focus when both fail (first in DOM order).
+    /// </summary>
+    private async Task<bool> ShowFieldErrorsAsync(ApiResult result)
+    {
+        _iconError = result.Problem?.ErrorFor("icon");
+        _colorError = result.Problem?.ErrorFor("color");
+        if (_iconError is null && _colorError is null)
+        {
+            return false;
+        }
+
+        StateHasChanged();
+        if (_iconError is not null && _iconPicker is not null)
+        {
+            await _iconPicker.FocusSelectedAsync();
+        }
+        else if (_colorPicker is not null)
+        {
+            await _colorPicker.FocusErrorAsync();
+        }
+
+        return true;
     }
 
     private async Task DeleteAsync()

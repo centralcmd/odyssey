@@ -56,10 +56,7 @@
     }
 
     private IReadOnlyList<OdsBreakdownRow> AlbumRows =>
-        [.. _albums.Select(a => new OdsBreakdownRow
-        {
-            Key = a.PhotoAlbumId, Icon = JournalOverviews.AlbumGlyph, IconColor = JournalOverviews.AlbumColor, Label = a.Name, Count = a.PhotoCount,
-        })];
+        [.. _albums.Select(AlbumVisuals.OverviewRow)];
 
     private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.PhotoTagRows(_tags, _stats.TagCounts);
 

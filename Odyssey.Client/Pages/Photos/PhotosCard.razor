@@ -1,5 +1,6 @@
 @page "/photos"
 @attribute [Authorize(Policy = PermissionClaims.PhotosRead)]
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @implements IDisposable
 @inject IPhotosApiClient Photos
@@ -44,7 +45,7 @@
             @if (_canManageAlbums)
             {
                 <button type="button" class="pl-selact" @onclick="OpenAddToAlbum">
-                    <span class="material-icons" aria-hidden="true">photo_album</span><span>Add to album</span>
+                    <span class="material-icons" aria-hidden="true">@PhotoAlbumIcons.Default</span><span>Add to album</span>
                 </button>
             }
             @if (_canUpdate && !_archivedView)

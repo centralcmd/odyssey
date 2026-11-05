@@ -54,7 +54,7 @@
                 }
                 @if (d.AlbumIds.Count > 0)
                 {
-                    @Row("photo_album", string.Join(", ", d.AlbumIds.Select(AlbumName)))
+                    @Row(PhotoAlbumIcons.Default, string.Join(", ", d.AlbumIds.Select(AlbumName)))
                 }
                 @if (!string.IsNullOrWhiteSpace(d.LocationName))
                 {

@@ -73,11 +73,6 @@ public static class JournalOverviews
         return counts;
     }
 
-    /// <summary>An album's glyph and colour — the By album row and the Album filter row.</summary>
-    public const string AlbumGlyph = "photo_album";
-
-    public const string AlbumColor = "var(--tide-400)";
-
     /// <summary>
     /// A tag as a filter row: its icon in its own colour, by the same rule as its By tag row, so the
     /// filter and the overview show one tag the same way.

@@ -31,6 +31,18 @@ public partial class OdsTagIconPicker : IAsyncDisposable
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// The glyph of the Default cell, its caption and peek (issue #406). Rendered only as text inside a
+    /// <c>material-icons</c> span. An album passes <see cref="PhotoAlbumIcons.Default"/>.
+    /// </summary>
+    [Parameter] public string DefaultIcon { get; set; } = TagIcons.Default;
+
+    /// <summary>The Default cell's accessible name. An album passes "Default (album icon)".</summary>
+    [Parameter] public string DefaultLabel { get; set; } = "Default (tag icon)";
+
+    /// <summary>The caption sub-label beside "Default" (the caption is aria-hidden). An album passes "the album icon".</summary>
+    [Parameter] public string DefaultCaption { get; set; } = "the tag icon";
+
     /// <summary>Used when the live column count cannot be read (prerender, a failed import).</summary>
     internal const int FallbackColumns = 8;
 
@@ -158,6 +170,23 @@ public partial class OdsTagIconPicker : IAsyncDisposable
         catch (JSException)
         {
             return FallbackColumns;
+        }
+    }
+
+    /// <summary>Moves focus to the selected cell — the target of a server error on this field (issue #406 §7).</summary>
+    public async Task FocusSelectedAsync()
+    {
+        try
+        {
+            await _buttons[SelectedIndex].FocusAsync();
+        }
+        catch (InvalidOperationException)
+        {
+            // Not rendered yet; nothing to focus.
+        }
+        catch (JSException)
+        {
+            // The circuit's JS is gone (teardown); there is nothing left to focus.
         }
     }
 

@@ -50,15 +50,8 @@ public static class PhotoMapsterConfig
                 .Ignore(dest => dest.People)
                 .Ignore(dest => dest.Albums);
 
-            TypeAdapterConfig<NewPhotoAlbum, PhotoAlbum>
-                .NewConfig()
-                .Ignore(dest => dest.Items)
-                .Ignore(dest => dest.CoverPhoto);
-
-            TypeAdapterConfig<UpdatePhotoAlbum, PhotoAlbum>
-                .NewConfig()
-                .Ignore(dest => dest.Items)
-                .Ignore(dest => dest.CoverPhoto);
+            // No album maps: PhotoAlbumService builds and updates albums by hand, so an Adapt path would only
+            // be a second, unnormalised way to write an album's colour (issue #404 §8).
 
             configured = true;
         }

@@ -21,98 +21,134 @@
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close"
           Icon="@(IsEdit ? "edit" : "add_photo_alternate")" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
-        <div class="ods-modal-body pl-albform">
+        <div class="ods-modal-body pl-albform" id="@($"pl-albform-{_uid}")">
             <OdsLiveAnnouncer Message="@_announce" />
-            <OdsField Label="Album name" @bind-Value="_name" Icon="photo_album" Placeholder="e.g. Summer 2026" Required="true" />
-            <OdsField Label="Description" @bind-Value="_desc" Multiline="true" Rows="2" MaxLength="1024"
-                      Placeholder="What’s this album about?" />
-
-            @if (IsEdit)
+            @if (IsEdit && !_seeded)
             {
+                @* Load gate (issue #406 §3.5): nothing editable, and no Save, until the album has loaded. A
+                   full-replacement PUT built from empty state would wipe the album. *@
+                @if (_loadFailed)
+                {
+                    <OdsProblemAlert Severity="OdsSeverity.Error" Title="Couldn't load this album."
+                                     Detail="Check your connection and try again."
+                                     ActionLabel="Retry" ActionIcon="refresh" OnAction="RetryLoadAsync" />
+                }
+                else
+                {
+                    <OdsSkeleton Lines="1" Height="var(--control-h)" />
+                    <OdsSkeleton Lines="1" Height="calc(var(--control-h) * 2)" />
+                    <OdsSkeleton Lines="1" Height="calc(var(--space-12) * 4)" />
+                }
+            }
+            else
+            {
+                <OdsField Label="Album name" @bind-Value="_name" Icon="@PhotoAlbumIcons.Default" Placeholder="e.g. Summer 2026" Required="true" />
+                <OdsField Label="Description" @bind-Value="_desc" Multiline="true" Rows="2" MaxLength="1024"
+                          Placeholder="What’s this album about?" />
+
+                <OdsFieldShell Label="Icon" HtmlFor="album-icon" LabelId="album-icon-label" Error="@_iconError" ErrorIsAlert="false"
+                               Help="Shown on the album card and wherever albums are listed.">
+                    <OdsTagIconPicker @ref="_iconPicker" Id="album-icon" Value="@_icon" ValueChanged="OnIconChanged"
+                                      AriaLabelledBy="album-icon-label" Invalid="@(_iconError is not null)" Disabled="@_busy"
+                                      AriaDescribedBy="@(_iconError is null ? "album-icon-help" : "album-icon-help album-icon-help-error")"
+                                      DefaultIcon="@PhotoAlbumIcons.Default" DefaultLabel="Default (album icon)"
+                                      DefaultCaption="the album icon" />
+                </OdsFieldShell>
+                <OdsFieldShell Label="Color" HtmlFor="album-color" LabelId="album-color-label" Help="Colors the album icon on every album surface. No color keeps each surface's own ink.">
+                    <OdsTagColorPicker @ref="_colorPicker" Id="album-color" Value="@_color"
+                                       ValueChanged="OnColorChanged" ValidChanged="OnColorValidChanged"
+                                       AriaLabelledBy="album-color-label" AriaDescribedBy="album-color-help"
+                                       Disabled="@_busy" ShowErrors="@_colorShowErrors"
+                                       Invalid="@(_colorError is not null)" Error="@_colorError" />
+                </OdsFieldShell>
+
+                @if (IsEdit)
+                {
+                    <div class="odc-field">
+                        <label class="odc-field-label">Photos in this album — order &amp; cover</label>
+                        @if (_members.Count == 0)
+                        {
+                            <div class="pl-drop-hint">No photos yet — add some below.</div>
+                        }
+                        else
+                        {
+                            <ul class="pl-memlist">
+                                @for (var i = 0; i < _members.Count; i++)
+                                {
+                                    var idx = i;
+                                    var id = _members[idx];
+                                    var s = Summary(id);
+                                    var label = Label(s);
+                                    var isCover = _cover == id;
+                                    <li class="pl-memrow" @key="id">
+                                        <span class="pl-memthumb"><OdsPhotoImage Source="Thumb(s)" Alt="" Fill="true" /></span>
+                                        <span class="pl-memname">@label</span>
+                                        <span class="pl-mempos mono" aria-hidden="true">#@(idx + 1)</span>
+                                        <button type="button" class="pl-memcover @(isCover ? "on" : null)"
+                                                aria-pressed="@(isCover ? "true" : "false")"
+                                                aria-label="@(isCover ? $"{label} is the cover" : $"Set {label} as cover")"
+                                                @onclick="() => _cover = id">
+                                            <span class="material-icons" aria-hidden="true">@(isCover ? "star" : "star_border")</span>
+                                        </button>
+                                        <button type="button" class="pl-membtn" aria-label="@($"Move {label} up")"
+                                                disabled="@(idx == 0)" @onclick="() => Move(idx, -1)">
+                                            <span class="material-icons" aria-hidden="true">arrow_upward</span>
+                                        </button>
+                                        <button type="button" class="pl-membtn" aria-label="@($"Move {label} down")"
+                                                disabled="@(idx == _members.Count - 1)" @onclick="() => Move(idx, 1)">
+                                            <span class="material-icons" aria-hidden="true">arrow_downward</span>
+                                        </button>
+                                        <button type="button" class="pl-membtn" aria-label="@($"Remove {label} from album")"
+                                                @onclick="() => Remove(id)">
+                                            <span class="material-icons" aria-hidden="true">close</span>
+                                        </button>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                    </div>
+                }
+
                 <div class="odc-field">
-                    <label class="odc-field-label">Photos in this album — order &amp; cover</label>
-                    @if (_members.Count == 0)
+                    <label class="odc-field-label">Photos</label>
+                    @if (!IsEdit && _newIds.Count > 0)
                     {
-                        <div class="pl-drop-hint">No photos yet — add some below.</div>
-                    }
-                    else
-                    {
-                        <ul class="pl-memlist">
-                            @for (var i = 0; i < _members.Count; i++)
+                        <ul class="pl-newgrid">
+                            @foreach (var id in _newIds)
                             {
-                                var idx = i;
-                                var id = _members[idx];
-                                var s = Summary(id);
-                                var label = Label(s);
-                                var isCover = _cover == id;
-                                <li class="pl-memrow" @key="id">
-                                    <span class="pl-memthumb"><OdsPhotoImage Source="Thumb(s)" Alt="" Fill="true" /></span>
-                                    <span class="pl-memname">@label</span>
-                                    <span class="pl-mempos mono" aria-hidden="true">#@(idx + 1)</span>
-                                    <button type="button" class="pl-memcover @(isCover ? "on" : null)"
-                                            aria-pressed="@(isCover ? "true" : "false")"
-                                            aria-label="@(isCover ? $"{label} is the cover" : $"Set {label} as cover")"
-                                            @onclick="() => _cover = id">
-                                        <span class="material-icons" aria-hidden="true">@(isCover ? "star" : "star_border")</span>
-                                    </button>
-                                    <button type="button" class="pl-membtn" aria-label="@($"Move {label} up")"
-                                            disabled="@(idx == 0)" @onclick="() => Move(idx, -1)">
-                                        <span class="material-icons" aria-hidden="true">arrow_upward</span>
-                                    </button>
-                                    <button type="button" class="pl-membtn" aria-label="@($"Move {label} down")"
-                                            disabled="@(idx == _members.Count - 1)" @onclick="() => Move(idx, 1)">
-                                        <span class="material-icons" aria-hidden="true">arrow_downward</span>
-                                    </button>
-                                    <button type="button" class="pl-membtn" aria-label="@($"Remove {label} from album")"
-                                            @onclick="() => Remove(id)">
-                                        <span class="material-icons" aria-hidden="true">close</span>
+                                var label = LabelFor(id);
+                                <li class="pl-newthumb" title="@label" @key="id">
+                                    <OdsPhotoImage Source="ThumbFor(id)" Alt="" Fill="true" />
+                                    <button type="button" class="pl-newremove" id="@NewRemoveId(id)" aria-label="@($"Remove {label}")"
+                                            @onclick="() => RemoveNew(id)">
+                                        <OdsMIcon Name="close" Size="14" />
                                     </button>
                                 </li>
                             }
                         </ul>
                     }
+                    <div class="pl-addrow" id="@($"pl-addrow-{_uid}")">
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="OpenPicker">Add photos</OdsButton>
+                        @if (PhotoCount > 0)
+                        {
+                            <span class="pl-drop-hint pl-addcount">@PhotoCount photo@(PhotoCount == 1 ? "" : "s") in this album</span>
+                        }
+                    </div>
                 </div>
             }
-
-            <div class="odc-field">
-                <label class="odc-field-label">Photos</label>
-                @if (!IsEdit && _newIds.Count > 0)
-                {
-                    <ul class="pl-newgrid">
-                        @foreach (var id in _newIds)
-                        {
-                            var label = LabelFor(id);
-                            <li class="pl-newthumb" title="@label" @key="id">
-                                <OdsPhotoImage Source="ThumbFor(id)" Alt="" Fill="true" />
-                                <button type="button" class="pl-newremove" id="@NewRemoveId(id)" aria-label="@($"Remove {label}")"
-                                        @onclick="() => RemoveNew(id)">
-                                    <OdsMIcon Name="close" Size="14" />
-                                </button>
-                            </li>
-                        }
-                    </ul>
-                }
-                <div class="pl-addrow" id="@($"pl-addrow-{_uid}")">
-                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" OnClick="OpenPicker">Add photos</OdsButton>
-                    @if (PhotoCount > 0)
-                    {
-                        <span class="pl-drop-hint pl-addcount">@PhotoCount photo@(PhotoCount == 1 ? "" : "s") in this album</span>
-                    }
-                </div>
-            </div>
         </div>
     </ChildContent>
     <Footer>
         @if (IsEdit)
         {
-            <button type="button" class="pl-danger-link" @onclick="DeleteAsync">
+            <button type="button" class="pl-danger-link" @onclick="DeleteAsync" disabled="@(!_seeded || _busy)">
                 <span class="material-icons" aria-hidden="true">delete</span>Delete album
             </button>
             <span style="flex:1"></span>
         }
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="Close">Cancel</OdsButton>
         <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_busy" OnClick="SaveAsync"
-                   Disabled="@(_busy || string.IsNullOrWhiteSpace(_name))">
+                   Disabled="@(_busy || (IsEdit && !_seeded) || string.IsNullOrWhiteSpace(_name))">
             @(IsEdit ? "Save" : "Create")
         </OdsButton>
     </Footer>

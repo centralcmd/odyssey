@@ -471,12 +471,12 @@ public class DropdownConsistencyTests
     {
         var album = new Odyssey.Dtos.Journal.PhotoAlbumSummary { PhotoAlbumId = Guid.NewGuid(), Name = "Summer", PhotoCount = 0 };
 
-        var option = Odyssey.Client.Pages.Photos.PhotosCard.AlbumOption(album);
+        var option = Odyssey.Client.Pages.Photos.AlbumVisuals.FilterOption(album);
 
         Assert.Equal(album.PhotoAlbumId.ToString(), option.Value);
         Assert.Equal("Summer", option.Label);
-        Assert.Equal(Odyssey.Client.Pages.Journal.JournalOverviews.AlbumGlyph, option.Icon);
-        Assert.Equal(Odyssey.Client.Pages.Journal.JournalOverviews.AlbumColor, option.IconColor);
+        Assert.Equal(Odyssey.Dtos.PhotoAlbumIcons.Default, option.Icon);
+        Assert.Equal(Odyssey.Client.Pages.Photos.AlbumVisuals.OverviewFallback, option.IconColor);
     }
 
     [Fact]

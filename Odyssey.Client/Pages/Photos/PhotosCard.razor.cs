@@ -114,9 +114,6 @@ public partial class PhotosCard
             .PagedOrToast(Snackbar, "the library count").TotalCount;
 
     /// <summary>An album row: the album glyph and colour the overview's By album row uses.</summary>
-    internal static OdsOption AlbumOption(PhotoAlbumSummary album) =>
-        new(album.PhotoAlbumId.ToString(), album.Name) { Icon = JournalOverviews.AlbumGlyph, IconColor = JournalOverviews.AlbumColor };
-
     private async Task LoadOptionsAsync()
     {
         // A failed fetch keeps the lookups already held, so a reload after a save never blanks them.
@@ -135,7 +132,8 @@ public partial class PhotosCard
         if (albumsResult.IsSuccess)
         {
             _albumSummaries = albums;
-            _albumOptions = [.. _albumSummaries.Select(AlbumOption)];
+            // Each option carries its Overview row's glyph and tone (issue #406 surface D1).
+            _albumOptions = [.. _albumSummaries.Select(AlbumVisuals.FilterOption)];
             _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
         }
 
