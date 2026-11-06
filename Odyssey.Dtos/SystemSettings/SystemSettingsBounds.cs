@@ -289,4 +289,12 @@ public static class SystemSettingsBounds
     public const int FileStorageDeletionGraceHoursMin = 1;
 
     public const int FileStorageDeletionGraceHoursMax = 168;
+
+    /// <summary>
+    /// One week to two years (issue #409 §8). A degraded read resolves to the larger value — never prune more on a
+    /// fault — so the floor bounds how much a hand-edited row can make the worker delete.
+    /// </summary>
+    public const int JobRunRetentionDaysMin = 7;
+
+    public const int JobRunRetentionDaysMax = 730;
 }

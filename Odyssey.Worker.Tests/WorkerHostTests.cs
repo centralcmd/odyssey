@@ -87,6 +87,34 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     /// <summary>
+    /// Issue #409 AC 22: every periodic job the worker hosts has exactly one run-log catalogue entry, and every entry a
+    /// hosted job — except the run log's own upkeep, declared infrastructure. A job added without an entry would run
+    /// invisibly; an entry without a job would read NotTicking forever.
+    /// </summary>
+    [Fact]
+    public void Every_hosted_job_has_exactly_one_catalogue_entry_and_every_entry_a_hosted_job()
+    {
+        using var provider = Build();
+
+        var hosted = provider.GetServices<IHostedService>()
+            .Select(service => service.GetType())
+            .Where(type => type.IsGenericType && type.GetGenericTypeDefinition() == typeof(PeriodicJobService<>))
+            .Select(type => type.GetGenericArguments()[0])
+            .ToList();
+        var catalogued = Core.Jobs.JobCatalogue.Entries.Select(entry => entry.JobClass).ToList();
+
+        Assert.Equal(hosted.Count, hosted.Distinct().Count());
+        Assert.Equal(catalogued.Count, catalogued.Distinct().Count());
+        Assert.Equal(
+            catalogued.Concat(Core.Jobs.JobCatalogue.Infrastructure).OrderBy(type => type.FullName),
+            hosted.OrderBy(type => type.FullName));
+        Assert.Contains(typeof(Core.Jobs.JobRunMaintenanceJob), hosted);
+        Assert.NotNull(provider.GetRequiredService<Core.Jobs.JobRunRecorder>());
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Core.Jobs.JobRunSweeper>());
+    }
+
+    /// <summary>
     /// The maintenance job verifies the volumes itself, so a failing verdict holds that job alone; the host verifies
     /// nothing before it runs, which used to stop weather and exchange-rate sync along with it (A3.2 as amended).
     /// </summary>

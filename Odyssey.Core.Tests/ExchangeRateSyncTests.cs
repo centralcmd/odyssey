@@ -10,7 +10,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -198,7 +200,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunManualAsync();
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+        Assert.Equal(JobRunStatus.Succeeded, run.Status);
         Assert.Null(run.ErrorKind);
         // 2026-10-19 … 2026-10-23 is five business days, two rows each.
         Assert.Equal(10, run.RowsInserted);
@@ -245,7 +247,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunManualAsync();
 
-        Assert.Equal(ExchangeRateSyncRunStatus.PartiallySucceeded, run.Status);
+        Assert.Equal(JobRunStatus.PartiallySucceeded, run.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.UnsupportedCurrency, run.ErrorKind);
         Assert.DoesNotContain(harness.Provider.DataRequests, uri => uri.Contains("RUB"));
         Assert.Equal(["RUB"], (await harness.Sync.GetStatusAsync()).UnsupportedEnabledCodes);
@@ -260,7 +262,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunManualAsync();
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(JobRunStatus.Failed, run.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.ProviderUnavailable, run.ErrorKind);
         Assert.Null((await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync()).BackfilledFrom);
     }
@@ -273,7 +275,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunManualAsync();
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+        Assert.Equal(JobRunStatus.Succeeded, run.Status);
         var spans = harness.Provider.DataRequests.Select(Span).ToList();
         Assert.Equal(new DateOnly(2026, 10, 23), spans[0].To);
         for (var i = 1; i < spans.Count; i++)
@@ -324,7 +326,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.Sync.StartManualAsync("admin");
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Skipped, run.Status);
+        Assert.Equal(JobRunStatus.Skipped, run.Status);
         Assert.Equal(ExchangeRateSyncState.Idle, (await harness.Sync.GetStatusAsync()).State);
     }
 
@@ -337,9 +339,9 @@ public class ExchangeRateSyncTests
         var manual = await harness.Sync.StartManualAsync("admin");
         Assert.Null(manual.ClaimedAtUtc);
 
-        Assert.Equal(manual.ExchangeRateSyncRunId, await harness.Sync.ClaimRequestedRunAsync());
+        Assert.Equal(manual.JobRunId, await harness.Sync.ClaimRequestedRunAsync());
         Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
-        await harness.Sync.ExecuteAsync(manual.ExchangeRateSyncRunId);
+        await harness.Sync.ExecuteAsync(manual.JobRunId);
 
         var scheduled = (await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null))!;
         Assert.Equal(Now, scheduled.ClaimedAtUtc);
@@ -367,7 +369,7 @@ public class ExchangeRateSyncTests
         harness.Clock.Advance(TimeSpan.FromMinutes(2 * ExchangeRateSyncConstants.RunTimeoutMinutes + 1));
 
         Assert.Null(await harness.Sync.ClaimRequestedRunAsync());
-        var abandoned = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId);
+        var abandoned = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == manual.JobRunId);
         Assert.Equal(ExchangeRateSyncErrorKind.Abandoned, abandoned.ErrorKind);
     }
 
@@ -379,16 +381,17 @@ public class ExchangeRateSyncTests
         var manual = await harness.Sync.StartManualAsync("admin");
         var services = new ServiceCollection()
             .AddScoped(_ => harness.Sync)
+            .AddJobRunRecordingOver(harness.Context, harness.Clock)
             .BuildServiceProvider();
 
         await new ExchangeRateSyncJob(services.GetRequiredService<IServiceScopeFactory>())
             .RunOnceAsync(CancellationToken.None);
 
-        var runs = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync();
+        var runs = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().ToListAsync();
         var only = Assert.Single(runs);
-        Assert.Equal(manual.ExchangeRateSyncRunId, only.ExchangeRateSyncRunId);
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, only.Status);
-        Assert.Equal(ExchangeRateSyncTrigger.Manual, only.Trigger);
+        Assert.Equal(manual.JobRunId, only.JobRunId);
+        Assert.Equal(JobRunStatus.Succeeded, only.Status);
+        Assert.Equal(JobRunTrigger.Manual, only.Trigger);
     }
 
     [Fact]
@@ -396,13 +399,13 @@ public class ExchangeRateSyncTests
     {
         await using var harness = await Harness.CreateAsync();
         await harness.EnableAsync("USD");
-        var services = new ServiceCollection().AddScoped(_ => harness.Sync).BuildServiceProvider();
+        var services = new ServiceCollection().AddScoped(_ => harness.Sync).AddJobRunRecordingOver(harness.Context, harness.Clock).BuildServiceProvider();
 
         await new ExchangeRateSyncJob(services.GetRequiredService<IServiceScopeFactory>()).RunOnceAsync(CancellationToken.None);
 
-        var only = Assert.Single(await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync());
-        Assert.Equal(ExchangeRateSyncTrigger.Scheduled, only.Trigger);
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, only.Status);
+        var only = Assert.Single(await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().ToListAsync());
+        Assert.Equal(JobRunTrigger.Scheduled, only.Trigger);
+        Assert.Equal(JobRunStatus.Succeeded, only.Status);
         Assert.NotNull(only.ClaimedAtUtc);
     }
 
@@ -423,14 +426,14 @@ public class ExchangeRateSyncTests
         Guid runId;
         await using (var seed = new OdysseyContext(Options()))
         {
-            var run = new ExchangeRateSyncRun
+            var run = new ExchangeRateSyncJobRun
             {
-                Trigger = ExchangeRateSyncTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = ExchangeRateSyncRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running, StartedAtUtc = Now,
             };
-            seed.ExchangeRateSyncRuns.Add(run);
+            seed.Set<ExchangeRateSyncJobRun>().Add(run);
             await seed.SaveChangesAsync();
-            runId = run.ExchangeRateSyncRunId;
+            runId = run.JobRunId;
         }
 
         await using var context = new OdysseyContext(Options(rival));
@@ -439,14 +442,14 @@ public class ExchangeRateSyncTests
         var sync = new ExchangeRateSyncService(
             context, client,
             new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), clock, NullLogger<ExchangeRateSupportedList>.Instance),
-            new FakeSettings(), ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
+            new FakeSettings(), ExchangeRateSyncPacing.None, new JobWorkerIdentity(), clock, NullLogger<ExchangeRateSyncService>.Instance);
 
         Assert.Null(await sync.ClaimRequestedRunAsync());
 
         Assert.True(rival.Claimed);
-        Assert.Empty(context.ChangeTracker.Entries<ExchangeRateSyncRun>());
+        Assert.Empty(context.ChangeTracker.Entries<ExchangeRateSyncJobRun>());
         await using var verify = new OdysseyContext(Options());
-        Assert.Equal(rivalAt, (await verify.ExchangeRateSyncRuns.SingleAsync(r => r.ExchangeRateSyncRunId == runId)).ClaimedAtUtc);
+        Assert.Equal(rivalAt, (await verify.Set<ExchangeRateSyncJobRun>().SingleAsync(r => r.JobRunId == runId)).ClaimedAtUtc);
     }
 
     /// <summary>
@@ -464,10 +467,10 @@ public class ExchangeRateSyncTests
 
         await using (var seed = new OdysseyContext(Options()))
         {
-            seed.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+            seed.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = ExchangeRateSyncTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
-                Status = ExchangeRateSyncRunStatus.Running, StartedAtUtc = Now,
+                Trigger = JobRunTrigger.Manual, Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Running, StartedAtUtc = Now,
             });
             await seed.SaveChangesAsync();
         }
@@ -478,14 +481,14 @@ public class ExchangeRateSyncTests
         var sync = new ExchangeRateSyncService(
             context, client,
             new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), clock, NullLogger<ExchangeRateSupportedList>.Instance),
-            new FakeSettings(), ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
+            new FakeSettings(), ExchangeRateSyncPacing.None, new JobWorkerIdentity(), clock, NullLogger<ExchangeRateSyncService>.Instance);
 
         Assert.Null(await sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
 
         Assert.True(rival.Claimed);
         await using var verify = new OdysseyContext(Options());
-        var run = await verify.ExchangeRateSyncRuns.SingleAsync();
-        Assert.Equal(ExchangeRateSyncRunStatus.Running, run.Status);
+        var run = await verify.Set<ExchangeRateSyncJobRun>().SingleAsync();
+        Assert.Equal(JobRunStatus.Running, run.Status);
         Assert.Equal(claimedAt, run.ClaimedAtUtc);
     }
 
@@ -503,7 +506,7 @@ public class ExchangeRateSyncTests
             {
                 Claimed = true;
                 await using var other = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(store).Options);
-                var run = await other.ExchangeRateSyncRuns.SingleAsync(cancellationToken);
+                var run = await other.Set<ExchangeRateSyncJobRun>().SingleAsync(cancellationToken);
                 run.ClaimedAtUtc = claimedAt;
                 await other.SaveChangesAsync(cancellationToken);
             }
@@ -524,7 +527,7 @@ public class ExchangeRateSyncTests
 
         harness.Clock.Advance(TimeSpan.FromSeconds(2));
         Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
-        var abandoned = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId);
+        var abandoned = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == manual.JobRunId);
         Assert.Equal(ExchangeRateSyncErrorKind.Abandoned, abandoned.ErrorKind);
         Assert.Equal(manual.StartedAtUtc + ExchangeRateSyncConstants.UnclaimedRequestTimeout, abandoned.FinishedAtUtc);
     }
@@ -540,8 +543,8 @@ public class ExchangeRateSyncTests
         harness.Clock.Advance(TimeSpan.FromMinutes(2 * ExchangeRateSyncConstants.RunTimeoutMinutes - 1));
 
         Assert.Null(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
-        Assert.Equal(ExchangeRateSyncRunStatus.Running,
-            (await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == manual.ExchangeRateSyncRunId)).Status);
+        Assert.Equal(JobRunStatus.Running,
+            (await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == manual.JobRunId)).Status);
     }
 
     [Fact]
@@ -550,7 +553,7 @@ public class ExchangeRateSyncTests
         await using var harness = await Harness.CreateAsync();
 
         Assert.Null(await harness.Sync.RunScheduledIfDueAsync());
-        Assert.Empty(await harness.Context.ExchangeRateSyncRuns.ToListAsync());
+        Assert.Empty(await harness.Context.Set<ExchangeRateSyncJobRun>().ToListAsync());
     }
 
     [Fact]
@@ -572,14 +575,14 @@ public class ExchangeRateSyncTests
         var held = await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null);
         Assert.NotNull(held);
         Assert.Null(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, null));
-        Assert.Equal(held!.ExchangeRateSyncRunId, (await harness.Sync.GetStatusAsync()).CurrentRun?.Id);
+        Assert.Equal(held!.JobRunId, (await harness.Sync.GetStatusAsync()).CurrentRun?.Id);
 
         harness.Clock.Advance(TimeSpan.FromMinutes(2 * ExchangeRateSyncConstants.RunTimeoutMinutes + 1));
         var next = await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null);
 
         Assert.NotNull(next);
-        var abandoned = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == held.ExchangeRateSyncRunId);
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, abandoned.Status);
+        var abandoned = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == held.JobRunId);
+        Assert.Equal(JobRunStatus.Failed, abandoned.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.Abandoned, abandoned.ErrorKind);
     }
 
@@ -606,16 +609,16 @@ public class ExchangeRateSyncTests
     }
 
     [Fact]
-    public async Task The_run_log_is_pruned_to_its_retention()
+    public async Task Finishing_a_run_no_longer_prunes_the_log_the_retention_setting_does()
     {
         await using var harness = await Harness.CreateAsync();
         for (var i = 0; i < ExchangeRateSyncConstants.RunRetention + 5; i++)
         {
-            harness.Context.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+            harness.Context.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = ExchangeRateSyncTrigger.Scheduled,
+                Trigger = JobRunTrigger.Scheduled,
                 Provider = ExchangeRateProvider.NorgesBank,
-                Status = ExchangeRateSyncRunStatus.Succeeded,
+                Status = JobRunStatus.Succeeded,
                 StartedAtUtc = Now.AddDays(-1).AddMinutes(i),
                 FinishedAtUtc = Now.AddDays(-1).AddMinutes(i),
             });
@@ -624,7 +627,8 @@ public class ExchangeRateSyncTests
         await harness.Context.SaveChangesAsync();
         await harness.Sync.StartManualAsync("admin");
 
-        Assert.Equal(ExchangeRateSyncConstants.RunRetention, await harness.Context.ExchangeRateSyncRuns.CountAsync());
+        // Issue #409 §3.6: the newest-500 rule is gone; JobRunMaintenanceJob prunes by JobRunRetentionDays instead.
+        Assert.Equal(ExchangeRateSyncConstants.RunRetention + 6, await harness.Context.Set<ExchangeRateSyncJobRun>().CountAsync());
     }
 
     // ── Configuration and purge ───────────────────────────────────────────────────────────────────
@@ -858,8 +862,8 @@ public class ExchangeRateSyncTests
         var left = Assert.Single(await harness.Context.ExchangeRates.AsNoTracking().ToListAsync());
         Assert.Null(left.Provider);
         Assert.Null((await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync()).BackfilledFrom);
-        var purge = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.Trigger == ExchangeRateSyncTrigger.Purge);
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, purge.Status);
+        var purge = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.Trigger == JobRunTrigger.Purge);
+        Assert.Equal(JobRunStatus.Succeeded, purge.Status);
         Assert.Equal(4, purge.RowsDeleted);
     }
 
@@ -879,11 +883,11 @@ public class ExchangeRateSyncTests
     {
         await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
         await harness.EnableAsync("USD");
-        harness.Context.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+        harness.Context.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
         {
-            Trigger = ExchangeRateSyncTrigger.Scheduled,
+            Trigger = JobRunTrigger.Scheduled,
             Provider = ExchangeRateProvider.NorgesBank,
-            Status = ExchangeRateSyncRunStatus.Running,
+            Status = JobRunStatus.Running,
             StartedAtUtc = Now.AddMinutes(-(2 * ExchangeRateSyncConstants.RunTimeoutMinutes) - 1),
         });
         await harness.Context.SaveChangesAsync();
@@ -892,9 +896,9 @@ public class ExchangeRateSyncTests
         var ran = await harness.Sync.RunScheduledIfDueAsync();
 
         Assert.NotNull(ran);
-        var runs = await harness.Context.ExchangeRateSyncRuns.AsNoTracking().ToListAsync();
-        Assert.Contains(runs, run => run.ErrorKind == ExchangeRateSyncErrorKind.Abandoned && run.Status == ExchangeRateSyncRunStatus.Failed);
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, runs.Single(run => run.ExchangeRateSyncRunId == ran).Status);
+        var runs = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().ToListAsync();
+        Assert.Contains(runs, run => run.ErrorKind == ExchangeRateSyncErrorKind.Abandoned && run.Status == JobRunStatus.Failed);
+        Assert.Equal(JobRunStatus.Succeeded, runs.Single(run => run.JobRunId == ran).Status);
     }
 
     [Fact]
@@ -916,7 +920,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(JobRunStatus.Failed, run.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.Internal, run.ErrorKind);
         Assert.NotNull(run.FinishedAtUtc);
         Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null));
@@ -931,7 +935,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(JobRunStatus.Failed, run.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.SettingsUnusable, run.ErrorKind);
         Assert.Empty(harness.Provider.DataRequests);
     }
@@ -946,7 +950,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled, stopping.Token);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
+        Assert.Equal(JobRunStatus.Failed, run.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.Cancelled, run.ErrorKind);
         Assert.NotNull(await harness.Sync.TryStartAsync(ExchangeRateSyncTrigger.Scheduled, null));
     }
@@ -960,7 +964,7 @@ public class ExchangeRateSyncTests
 
         var first = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.PartiallySucceeded, first.Status);
+        Assert.Equal(JobRunStatus.PartiallySucceeded, first.Status);
         Assert.Equal(ExchangeRateSyncErrorKind.ProviderUnavailable, first.ErrorKind);
         Assert.Equal(new DateOnly(2025, 10, 24), await WatermarkAsync(harness, "USD"));
         // The chunk after the failed one was never asked for: the watermark cannot jump a hole.
@@ -970,7 +974,7 @@ public class ExchangeRateSyncTests
         harness.Provider.DataRequests.Clear();
         var second = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, second.Status);
+        Assert.Equal(JobRunStatus.Succeeded, second.Status);
         Assert.Equal(new DateOnly(2025, 10, 23), Span(harness.Provider.DataRequests[0]).To);
         Assert.Equal(new DateOnly(2024, 1, 1), await WatermarkAsync(harness, "USD"));
     }
@@ -983,7 +987,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+        Assert.Equal(JobRunStatus.Succeeded, run.Status);
         Assert.Equal(ExchangeRateSyncConstants.RequestsPerRun, harness.Provider.DataRequests.Count);
         var today = new DateOnly(2026, 10, 23);
         Assert.Equal(today.AddDays(-(ExchangeRateSyncConstants.RequestsPerRun * ExchangeRateSyncConstants.DaysPerRequest) + 1),
@@ -1031,16 +1035,16 @@ public class ExchangeRateSyncTests
 
         // The newest fetched date is 20 days behind and the last run found nothing: an outage, not a
         // capped forward fill, so the ordinary interval applies.
-        harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(ExchangeRateSyncRunStatus.Succeeded, finished));
+        harness.Context.Set<ExchangeRateSyncJobRun>().Add(FinishedRun(JobRunStatus.Succeeded, finished));
         await harness.Context.SaveChangesAsync();
         var outage = await harness.Sync.GetStatusAsync();
         Assert.Equal(ExchangeRateSyncState.Scheduled, outage.State);
         Assert.Equal(finished.AddHours(24), outage.NextRunAtUtc);
 
         // The same gap after a run that DID insert rows is a capped forward fill: catch up in 5 minutes.
-        var capped = FinishedRun(ExchangeRateSyncRunStatus.Succeeded, finished.AddSeconds(30));
+        var capped = FinishedRun(JobRunStatus.Succeeded, finished.AddSeconds(30));
         capped.RowsInserted = 10;
-        harness.Context.ExchangeRateSyncRuns.Add(capped);
+        harness.Context.Set<ExchangeRateSyncJobRun>().Add(capped);
         await harness.Context.SaveChangesAsync();
         Assert.Equal(ExchangeRateSyncState.CatchingUp, (await harness.Sync.GetStatusAsync()).State);
     }
@@ -1055,7 +1059,7 @@ public class ExchangeRateSyncTests
 
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
-        Assert.Equal(ExchangeRateSyncRunStatus.PartiallySucceeded, run.Status);
+        Assert.Equal(JobRunStatus.PartiallySucceeded, run.Status);
         Assert.Equal(new DateOnly(2026, 10, 19), await WatermarkAsync(harness, "USD"));
         Assert.Null(await WatermarkAsync(harness, "EUR"));
         Assert.Equal(10, run.RowsInserted);
@@ -1117,7 +1121,7 @@ public class ExchangeRateSyncTests
         var finished = Now.AddHours(-1);
         for (var i = 0; i < failures; i++)
         {
-            harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(ExchangeRateSyncRunStatus.Failed, finished.AddMinutes(-i)));
+            harness.Context.Set<ExchangeRateSyncJobRun>().Add(FinishedRun(JobRunStatus.Failed, finished.AddMinutes(-i)));
         }
 
         await harness.Context.SaveChangesAsync();
@@ -1134,14 +1138,14 @@ public class ExchangeRateSyncTests
     {
         await using var harness = await CaughtUpAsync();
         var at = Now.AddHours(-1);
-        harness.Context.ExchangeRateSyncRuns.AddRange(
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at),
-            FinishedRun(ExchangeRateSyncRunStatus.Skipped, at.AddMinutes(-1)),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-2), ExchangeRateSyncTrigger.Purge),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-3)),
-            FinishedRun(ExchangeRateSyncRunStatus.PartiallySucceeded, at.AddMinutes(-4)),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-5)),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-6)));
+        harness.Context.Set<ExchangeRateSyncJobRun>().AddRange(
+            FinishedRun(JobRunStatus.Failed, at),
+            FinishedRun(JobRunStatus.Skipped, at.AddMinutes(-1)),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-2), JobRunTrigger.Purge),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-3)),
+            FinishedRun(JobRunStatus.PartiallySucceeded, at.AddMinutes(-4)),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-5)),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-6)));
         await harness.Context.SaveChangesAsync();
 
         Assert.Equal(2, (await harness.Sync.GetStatusAsync()).ConsecutiveFailures);
@@ -1152,14 +1156,14 @@ public class ExchangeRateSyncTests
     {
         await using var harness = await CaughtUpAsync();
         var at = Now.AddHours(-1);
-        harness.Context.ExchangeRateSyncRuns.AddRange(
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at, errorKind: ExchangeRateSyncErrorKind.Abandoned),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-1), errorKind: ExchangeRateSyncErrorKind.Abandoned),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-2), errorKind: ExchangeRateSyncErrorKind.Cancelled),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-3), errorKind: ExchangeRateSyncErrorKind.ProviderUnavailable),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-4), errorKind: ExchangeRateSyncErrorKind.Abandoned),
-            FinishedRun(ExchangeRateSyncRunStatus.Failed, at.AddMinutes(-5), errorKind: ExchangeRateSyncErrorKind.Internal),
-            FinishedRun(ExchangeRateSyncRunStatus.Succeeded, at.AddMinutes(-6)));
+        harness.Context.Set<ExchangeRateSyncJobRun>().AddRange(
+            FinishedRun(JobRunStatus.Failed, at, errorKind: ExchangeRateSyncErrorKind.Abandoned),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-1), errorKind: ExchangeRateSyncErrorKind.Abandoned),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-2), errorKind: ExchangeRateSyncErrorKind.Cancelled),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-3), errorKind: ExchangeRateSyncErrorKind.ProviderUnavailable),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-4), errorKind: ExchangeRateSyncErrorKind.Abandoned),
+            FinishedRun(JobRunStatus.Failed, at.AddMinutes(-5), errorKind: ExchangeRateSyncErrorKind.Internal),
+            FinishedRun(JobRunStatus.Succeeded, at.AddMinutes(-6)));
         await harness.Context.SaveChangesAsync();
 
         var status = await harness.Sync.GetStatusAsync();
@@ -1174,8 +1178,8 @@ public class ExchangeRateSyncTests
         await using var harness = await Harness.CreateAsync();
         for (var i = 0; i < 150; i++)
         {
-            harness.Context.ExchangeRateSyncRuns.Add(FinishedRun(
-                i % 3 == 0 ? ExchangeRateSyncRunStatus.Failed : ExchangeRateSyncRunStatus.Succeeded, Now.AddMinutes(-i)));
+            harness.Context.Set<ExchangeRateSyncJobRun>().Add(FinishedRun(
+                i % 3 == 0 ? JobRunStatus.Failed : JobRunStatus.Succeeded, Now.AddMinutes(-i)));
         }
 
         await harness.Context.SaveChangesAsync();
@@ -1332,10 +1336,10 @@ public class ExchangeRateSyncTests
         return harness;
     }
 
-    private static ExchangeRateSyncRun FinishedRun(
-        ExchangeRateSyncRunStatus status,
+    private static ExchangeRateSyncJobRun FinishedRun(
+        JobRunStatus status,
         DateTime finished,
-        ExchangeRateSyncTrigger trigger = ExchangeRateSyncTrigger.Scheduled,
+        JobRunTrigger trigger = JobRunTrigger.Scheduled,
         ExchangeRateSyncErrorKind? errorKind = null) => new()
     {
         Trigger = trigger,
@@ -1484,7 +1488,7 @@ public class ExchangeRateSyncTests
                 new HttpClient(provider) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
             SupportedList = new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), clock, NullLogger<ExchangeRateSupportedList>.Instance);
             Sync = new ExchangeRateSyncService(
-                context, client, SupportedList, settings, ExchangeRateSyncPacing.None, clock, NullLogger<ExchangeRateSyncService>.Instance);
+                context, client, SupportedList, settings, ExchangeRateSyncPacing.None, new JobWorkerIdentity(), clock, NullLogger<ExchangeRateSyncService>.Instance);
             Currencies = new ExchangeRateSyncCurrencyService(context, SupportedList, settings, Sync, clock, NullLoggerFactory.Instance);
         }
 
@@ -1523,18 +1527,18 @@ public class ExchangeRateSyncTests
             Context.ChangeTracker.Clear();
         }
 
-        public async Task<ExchangeRateSyncRun> RunManualAsync()
+        public async Task<ExchangeRateSyncJobRun> RunManualAsync()
         {
             var run = await Sync.StartManualAsync("admin");
-            await Sync.ExecuteAsync(run.ExchangeRateSyncRunId);
-            return await Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == run.ExchangeRateSyncRunId);
+            await Sync.ExecuteAsync(run.JobRunId);
+            return await Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == run.JobRunId);
         }
 
-        public async Task<ExchangeRateSyncRun> RunAsync(ExchangeRateSyncTrigger trigger, CancellationToken cancellationToken = default)
+        public async Task<ExchangeRateSyncJobRun> RunAsync(ExchangeRateSyncTrigger trigger, CancellationToken cancellationToken = default)
         {
             var run = (await Sync.TryStartAsync(trigger, null))!;
-            await Sync.ExecuteAsync(run.ExchangeRateSyncRunId, cancellationToken);
-            return await Context.ExchangeRateSyncRuns.AsNoTracking().SingleAsync(r => r.ExchangeRateSyncRunId == run.ExchangeRateSyncRunId);
+            await Sync.ExecuteAsync(run.JobRunId, cancellationToken);
+            return await Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.JobRunId == run.JobRunId);
         }
 
         public ValueTask DisposeAsync() => Context.DisposeAsync();

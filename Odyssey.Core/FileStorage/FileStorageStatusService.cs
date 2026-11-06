@@ -27,7 +27,7 @@ public sealed class FileStorageStatusService(
     /// A pending delete still present this long after its erase time is overdue: two maintenance intervals, so a
     /// file that fell due just after a pass began is never counted.
     /// </summary>
-    public static readonly TimeSpan OverdueAfter = 2 * FileStorageMaintenanceJob.Tick;
+    public static readonly TimeSpan OverdueAfter = 2 * FileStorageMaintenanceJob.PassInterval;
 
     public async Task<IReadOnlyList<FileStorageVolumeStatus>> GetVolumesAsync(CancellationToken cancellationToken)
     {

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Jobs;
 
 namespace Odyssey.Core.Journal.Thumbnails;
 
@@ -23,6 +24,7 @@ public static class PhotoThumbnailServiceCollectionExtensions
         services.TryAddScoped<IImageContentReader, ImageContentReader>();
         services.TryAddScoped<PhotoThumbnailService>();
         services.AddScoped<IFileRenameObserver, PhotoThumbnailRenameObserver>();
+        services.AddJobRunRecording();
         return services;
     }
 }

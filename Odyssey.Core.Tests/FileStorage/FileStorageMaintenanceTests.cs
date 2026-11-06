@@ -13,12 +13,14 @@ namespace Odyssey.Core.Tests.FileStorage;
 public class FileStorageMaintenanceTests : FileStorageTestBase
 {
     [Fact]
-    public async Task The_job_runs_hourly_and_does_nothing_while_the_store_is_not_set_up()
+    public async Task The_job_polls_every_30_seconds_passes_hourly_and_does_nothing_while_the_store_is_not_set_up()
     {
         var host = await NewHostAsync(new Dictionary<string, string>(), new Dictionary<string, string>(), features: []);
         var job = host.Services.GetRequiredService<FileStorageMaintenanceJob>();
 
-        Assert.Equal(TimeSpan.FromHours(1), ((IPeriodicJob)job).Interval);
+        // Issue #409 §3.1: the tick is the manual-request poll; a scheduled pass still runs once an hour.
+        Assert.Equal(TimeSpan.FromSeconds(30), ((IPeriodicJob)job).Interval);
+        Assert.Equal(TimeSpan.FromHours(1), FileStorageMaintenanceJob.PassInterval);
         await job.RunOnceAsync(default);
 
         await using var scope = host.Scope();

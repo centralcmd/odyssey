@@ -57,9 +57,14 @@ public sealed class FileStorageSweeper(
 
     private Func<CancellationToken, Task> keepAlive = _ => Task.CompletedTask;
 
-    /// <summary>One maintenance pass. <paramref name="keepAlive"/> renews the job's lease; it is called between objects.</summary>
-    public async Task RunAsync(Func<CancellationToken, Task>? keepAlive, CancellationToken cancellationToken)
+    /// <summary>
+    /// One maintenance pass. <paramref name="keepAlive"/> renews the job's lease; it is called between objects. Returns
+    /// the pass's counts for the run log (issue #409 §4.2) — counts only, never a name or a path.
+    /// </summary>
+    public async Task<FileStorageSweepResult> RunAsync(Func<CancellationToken, Task>? keepAlive, CancellationToken cancellationToken)
     {
+        integrityFaultsFound = 0;
+        orphansFound = 0;
         this.keepAlive = keepAlive ?? (_ => Task.CompletedTask);
 
         foreach (var volume in volumes.Volumes.Where(v => v.Degraded))
@@ -70,12 +75,16 @@ public sealed class FileStorageSweeper(
         await LogUnknownFeaturesAsync(cancellationToken);
         var graceHours = await ResolveGraceHoursAsync(cancellationToken);
 
-        await SweepAbandonedWritesAsync(cancellationToken);
-        await SweepDeferredDeletesAsync(graceHours, cancellationToken);
+        var swept = await SweepAbandonedWritesAsync(cancellationToken);
+        var erased = await SweepDeferredDeletesAsync(graceHours, cancellationToken);
         await SweepUnreferencedAsync(cancellationToken);
-        await ScrubAsync(cancellationToken);
+        var scrubbed = await ScrubAsync(cancellationToken);
         await ReconcileAsync(cancellationToken);
+        return new FileStorageSweepResult(erased, swept, scrubbed, integrityFaultsFound, orphansFound);
     }
+
+    private int integrityFaultsFound;
+    private int orphansFound;
 
     /// <summary>
     /// The grace in hours. The sweeper maps the resolver's outcome itself: the resolver's degraded value and its
@@ -403,6 +412,11 @@ public sealed class FileStorageSweeper(
                     }
 
                     matches = Matches(row, second.Value);
+                }
+
+                if (!matches)
+                {
+                    integrityFaultsFound++;
                 }
 
                 if (!matches && row.IntegrityFaultAtUtc is null)
@@ -859,6 +873,7 @@ public sealed class FileStorageSweeper(
         var orphans = await context.FileStorageOrphanSightings.CountAsync(s => s.VolumeId == volume.Id && s.LastSeenPass == pass, cancellationToken);
         var live = await context.StoredObjects.CountAsync(o => o.VolumeId == volume.Id && o.State != StoredObjectState.Pending, cancellationToken);
         var threshold = Math.Max(BreakerFloor, live / 100);
+        orphansFound += orphans;
 
         if (orphans > threshold)
         {
@@ -1001,3 +1016,7 @@ public sealed class FileStorageSweeper(
 
     private DateTime Now => time.GetUtcNow().UtcDateTime;
 }
+
+/// <summary>What one maintenance pass did (issue #409 §4.2): counts only.</summary>
+public sealed record FileStorageSweepResult(
+    int FilesErased, int AbandonedWritesSwept, int ObjectsScrubbed, int IntegrityFailures, int OrphansFound);

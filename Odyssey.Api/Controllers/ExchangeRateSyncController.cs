@@ -110,12 +110,12 @@ public sealed class ExchangeRateSyncController(
         }
 
         var run = await sync.StartManualAsync(userId, cancellationToken);
-        if (run.Status == ExchangeRateSyncRunStatus.Running)
+        if (run.SyncStatus == ExchangeRateSyncRunStatus.Running)
         {
             // Not the request's token: the run must not die with the HTTP connection.
-            await dispatcher.DispatchAsync(run.ExchangeRateSyncRunId, CancellationToken.None);
+            await dispatcher.DispatchAsync(run.JobRunId, CancellationToken.None);
         }
 
-        return Accepted(new ExchangeRateSyncRunStarted { RunId = run.ExchangeRateSyncRunId });
+        return Accepted(new ExchangeRateSyncRunStarted { RunId = run.JobRunId });
     }
 }

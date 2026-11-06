@@ -495,4 +495,11 @@ public sealed record SystemSettingsUpdate
 
     [Range(SystemSettingsBounds.FileStorageDeletionGraceHoursMin, SystemSettingsBounds.FileStorageDeletionGraceHoursMax)]
     public int? FileStorageDeletionGraceHours { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Background jobs (issue #409 §8): how long a finished run stays in the shared run log.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.JobRunRetentionDaysMin, SystemSettingsBounds.JobRunRetentionDaysMax)]
+    public int? JobRunRetentionDays { get; set; }
 }
