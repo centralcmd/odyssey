@@ -1,50 +1,244 @@
 @page "/background-jobs"
-@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@using Odyssey.Client.Pages.JobRuns
+@using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
 @attribute [Authorize(Policy = PermissionClaims.SystemSettingsRead)]
+@implements IDisposable
 
 <PageTitle>Background jobs</PageTitle>
 
 @*
-    Background jobs — what the server runs on its own, and how each run went (Odyssey Design System ·
-    ui_kits/web/BackgroundJobs.jsx; docs/components-exchange-rate-sync.md, "Background jobs"). Gated on
-    system-settings.read, like the jobs' settings.
+    Background jobs — every job Odyssey.Worker runs (exchange-rate sync, weather, file-storage maintenance, photo
+    thumbnails) and every run of each, from ONE shared run log (issue #410, over #409; Odyssey Design System ·
+    docs/components-background-jobs.md, ui_kits/web/BackgroundJobs.jsx). Gated on system-settings.read.
 
-    One section per job, headed by its name. It starts with the exchange-rate sync's run history, moved
-    here from Currencies as it was; a job added later gets its own section. A job's controls stay with
-    what it works on: the sync's status, Run now and Refresh are on Currencies, whose header menu links
-    here.
+    PageHeader carries the three regions — Attention (only while a job is Failing, Not ticking, Held or Overdue),
+    Overview (job tiles, totals, what is running, worker health) and Search (the run log's filters) — and the header
+    menu: one "Run {job}" item per job, built from the presentation map so they exist while the overview loads or has
+    failed, then Refresh. Below, the Run history: the follow list and one server-paged OdsRecordTable.
 
-    The page's one action is the header menu's "Refresh runs": it re-reads every section's runs, each
-    keeping its page, and announces it politely, so a Running row can be seen to finish without a reload.
-    Nothing polls.
+    Two earlier rules are retired here: "a job's controls stay with what it works on" (every job's Run now is in this
+    menu) and "nothing polls" (a run started here is FOLLOWED — bounded, single-flight, with a Stop button). There is
+    still no general polling.
+
+    Copy is the client's own, keyed by enum name and the 409 code; nothing the server writes is rendered. Two
+    announcers speak, through one policy (JobRunAnnouncements); toasts are visual only.
 *@
 
-<OdsLiveAnnouncer @ref="_announcer" />
+<div class="bgj-page">
+    <MudStack Spacing="6">
+        <PageHeader Title="Background jobs" Icon="@Icons.Material.Filled.Update"
+                    Problems="Problems" ProblemsLabel="Attention"
+                    OverviewOpenByDefault="true" SearchOpenByDefault="true">
+            <SubLine>What the server runs on its own, and how each run went</SubLine>
+            <OverviewContent>
+                <section class="bgj-region bgj-overview" aria-label="Overview" aria-busy="@(_overviewLoading ? "true" : null)">
+                    @if (_overviewError)
+                    {
+                        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.None">
+                            <span class="bgj-inline-alert">
+                                Couldn’t load the job overview.
+                                <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="RetryOverviewAsync">Retry</OdsButton>
+                            </span>
+                        </OdsAlert>
+                    }
+                    <h2 class="bgj-h2">Jobs</h2>
+                    <div class="bgj-tiles">
+                        @if (_overviewLoading && _overview is null)
+                        {
+                            @foreach (var job in Jobs)
+                            {
+                                <OdsCard Outlined="true" Class="bgj-tile-card" @key="job"><OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="168px" /></OdsCard>
+                            }
+                        }
+                        else if (_overview is { } overview)
+                        {
+                            @foreach (var job in overview.Jobs)
+                            {
+                                <BackgroundJobTile @key="job.JobType" Job="job" GeneratedAtUtc="GeneratedAt"
+                                                   Starting="_inFlight.Contains(job.JobType)" OnShowRuns="ShowRunsAsync" />
+                            }
+                        }
+                    </div>
+                    @if (_overview is { } loaded)
+                    {
+                        <h2 class="bgj-h2">Totals</h2>
+                        <div class="bgj-stats">
+                            @StatTile("Runs · 24 h", Count(loaded.Totals.Last24h.Runs))
+                            @StatTile("Failed · 24 h", Count(loaded.Totals.Last24h.Failed))
+                            @StatTile("Success · 24 h", SuccessRate(loaded.Totals.Last24h))
+                            @StatTile("Runs · 7 d", Count(loaded.Totals.Last7d.Runs))
+                            @StatTile("Failed · 7 d", Count(loaded.Totals.Last7d.Failed))
+                            @StatTile("Success · 7 d", SuccessRate(loaded.Totals.Last7d))
+                        </div>
+                        <h2 class="bgj-h2">Running now</h2>
+                        @if (loaded.Running.Count > 0)
+                        {
+                            <ul class="bgj-running">
+                                @foreach (var running in loaded.Running)
+                                {
+                                    <li @key="running.Id">
+                                        <OdsChip Tone="OdsChipTone.Info" Icon="sync">@JobOf(running.JobType).Name</OdsChip>
+                                        <span>@($"{TriggerOf(running.Trigger)} · started {RunTime.Clock(running.StartedAtUtc)} ({RunTime.Relative(running.StartedAtUtc, GeneratedAt)})")</span>
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        else
+                        {
+                            <OdsEmptyLine Text="Nothing running." Pad="OdsSize.Sm" />
+                        }
+                        @if (WorkerHealthLines(loaded.WorkerHealth) is { Count: > 0 } lines)
+                        {
+                            <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">
+                                @foreach (var line in lines)
+                                {
+                                    <div>@line</div>
+                                }
+                            </OdsAlert>
+                        }
+                    }
+                </section>
+            </OverviewContent>
+            <SearchContent>
+                <section class="bgj-region bgj-search" aria-label="Search">
+                    <div class="ph-filter-bar bgj-filter-bar">
+                        <OdsMultiSelect Id="@FirstFilterId" Label="Job" Values="_filters.Jobs"
+                                        ValuesChanged="OnJobsChanged" Options="JobOptions" Class="ph-select" />
+                        <OdsMultiSelect Label="Status" Values="_filters.Statuses"
+                                        ValuesChanged="OnStatusesChanged" Options="StatusOptions" Class="ph-select" />
+                        <OdsMultiSelect Label="Trigger" Values="_filters.Triggers"
+                                        ValuesChanged="OnTriggersChanged" Options="TriggerOptions" Class="ph-select" />
+                        <div class="bgj-dates">
+                            @* The picker as it is (#410 F-N1): its group takes the name "Started"; its inputs take no
+                               per-input name of their own, so the placeholders carry the format. *@
+                            <OdsDateRangePicker Label="Started" AriaLabel="Started" FromPlaceholder="yyyy-mm-dd" ToPlaceholder="yyyy-mm-dd"
+                                                From="ToDateTime(_filters.StartedFrom)" FromChanged="OnStartedFromChanged"
+                                                To="ToDateTime(_filters.StartedTo)" ToChanged="OnStartedToChanged" />
+                            <p class="bgj-caption" id="bgj-dates-caption">@DateCaption</p>
+                        </div>
+                        <OdsSortSelect TRow="ExistingJobRun" Fields="JobRunFilters.SortFields" Sort="_filters.Sort" SortChanged="OnSortChanged" />
+                        <OdsPageSizeSelect Label="Runs per page" Value="_filters.PageSize" ValueChanged="OnPageSizeChanged" Options="OdsPageSizes.Batch" />
+                        @if (!_filters.IsDefault)
+                        {
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="filter_alt_off" OnClick="ResetFiltersAsync">Reset filters</OdsButton>
+                        }
+                    </div>
+                </section>
+            </SearchContent>
+            <ActionMenu>
+                @foreach (var item in RunItems)
+                {
+                    @* The one place this app shows an unavailable menu item rather than omitting it: in cooldown or in
+                       flight the item's own words say when, which is what the user needs (#410 §3.5, artifact open point). *@
+                    <MudMenuItem @key="item.Job" Icon="@item.MenuIcon" Disabled="item.Disabled"
+                                 OnClick="@(() => Detach(() => RunNowAsync(item.Job)))">@item.Label</MudMenuItem>
+                }
+                @if (RunItems.Count > 0)
+                {
+                    <MudDivider />
+                }
+                <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="@(() => Detach(RefreshAsync))">Refresh</MudMenuItem>
+            </ActionMenu>
+        </PageHeader>
 
-<MudStack Spacing="6">
-    <PageHeader Title="Background jobs" Icon="@Icons.Material.Filled.Update">
-        <SubLine>What the server runs on its own, and how each run went</SubLine>
-        <ActionMenu>
-            <MudMenuItem Icon="@Icons.Material.Filled.Refresh" OnClick="RefreshAsync">Refresh runs</MudMenuItem>
-        </ActionMenu>
-    </PageHeader>
+        <section class="bgj-history" aria-labelledby="@HistoryHeadingId">
+            <h2 class="bgj-h2 bgj-history-h" id="@HistoryHeadingId" tabindex="-1">Run history</h2>
+            @if (_follows.Count > 0)
+            {
+                @* A plain group, not a live region: start, finish and stop are spoken by the announcers only (A4). *@
+                <div class="bgj-follows" role="group" aria-label="Followed runs">
+                    @foreach (var follow in _follows)
+                    {
+                        <div class="bgj-follow" @key="follow.RunId">
+                            <span class="material-icons bgj-follow-ic" aria-hidden="true">sync</span>
+                            <span>Following @JobOf(follow.Job).Lower run</span>
+                            <OdsButton Variant="OdsButtonVariant.Text" Icon="close" id="@follow.StopId"
+                                       OnClick="@(() => StopFollowingAsync(follow))">Stop following @JobOf(follow.Job).Lower run</OdsButton>
+                        </div>
+                    }
+                </div>
+            }
+            <OdsCard Outlined="true" Flush="true" Class="bgj-runs-card">
+                <div class="bgj-runs @(_runsRefetching ? "refetching" : null)">
+                    <OdsRecordTable TRow="ExistingJobRun"
+                                    AriaLabel="Run history"
+                                    Rows="_runs"
+                                    RowKey="@(r => (object)r.Id)"
+                                    RowLabel="RowLabel"
+                                    Columns="Columns"
+                                    ServerSort="true"
+                                    Sort="_filters.Sort"
+                                    SortChanged="OnSortChanged"
+                                    MultiOpen="true"
+                                    RenderDetail="RunDetail"
+                                    Loading="_runsLoading"
+                                    Refetching="_runsRefetching"
+                                    Error="_runsError"
+                                    OnRetry="RetryRunsAsync"
+                                    Noun="the run history"
+                                    Empty="RunsEmpty" />
+                </div>
+                @if (!_runsLoading && !_runsError && _total > _filters.PageSize)
+                {
+                    <OdsPager Page="_page" PageChanged="OnPageChanged" PageSize="_filters.PageSize" TotalCount="_total"
+                              ShowPageSize="false" Loading="_runsRefetching" Label="Run history pages" />
+                }
+            </OdsCard>
+        </section>
+    </MudStack>
 
-    <section class="bgj-section" aria-labelledby="bgj-xrs-h">
-        <h2 class="bgj-h" id="bgj-xrs-h">Exchange-rate sync</h2>
-        <ExchangeRateSyncRunHistory @ref="_exchangeRateSyncRuns" />
-    </section>
-</MudStack>
+    <BackgroundJobToastHost @ref="_toasts" />
+    <OdsLiveAnnouncer @ref="_polite" />
+    <OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
+</div>
 
 @code {
-    private OdsLiveAnnouncer? _announcer;
-    private ExchangeRateSyncRunHistory? _exchangeRateSyncRuns;
+    private RenderFragment StatTile(string overline, string? value) =>
+        @<OdsStatTile Overline="@Text(overline)">
+            <Value>
+                @if (value is not null)
+                {
+                    @value
+                }
+                else
+                {
+                    @* 0 runs has no rate: a visible dash, "No runs" as its text (#410 X15, F15). *@
+                    <span aria-hidden="true">—</span><span class="sr-only">No runs</span>
+                }
+            </Value>
+        </OdsStatTile>;
 
-    // Every section's runs, each re-read on the page it shows.
-    private async Task RefreshAsync()
+    private RenderFragment RunsEmpty => _runsBadFilters
+        ? @<div class="bgj-empty">
+              <OdsEmptyLine Text="These filters couldn’t be applied." />
+              <OdsButton Variant="OdsButtonVariant.Text" Icon="filter_alt_off" OnClick="ResetFiltersAsync">Reset filters</OdsButton>
+          </div>
+        : _filters.Narrows
+            ? @<div class="bgj-empty">
+                  <OdsEmptyLine Text="No runs match these filters." />
+                  <OdsButton Variant="OdsButtonVariant.Text" Icon="filter_alt_off" OnClick="ResetFiltersAsync">Reset filters</OdsButton>
+              </div>
+            : @<OdsEmptyLine Text="No runs yet. Jobs record a run when they do work." Pad="OdsSize.Lg" Align="OdsEmptyLineAlign.Center" />;
+
+    private RenderFragment StartedCell(ExistingJobRun r, OdsRecordCellContext ctx) =>
+        @<span class="bgj-started">
+            <span class="bgj-mono">@RunTime.Full(r.StartedAtUtc)</span>
+            <span class="bgj-muted">@RunTime.Relative(r.StartedAtUtc, GeneratedAt)</span>
+        </span>;
+
+    private RenderFragment StatusCell(ExistingJobRun r, OdsRecordCellContext ctx)
     {
-        if (_exchangeRateSyncRuns is not null)
-            await _exchangeRateSyncRuns.ReloadAsync();
-        if (_announcer is not null)
-            await _announcer.Announce("Runs refreshed");
+        var chip = StatusOf(r.Status);
+        var open = r.Status == JobRunStatus.Held && r.FinishedAtUtc is null;
+        return @<OdsChip Tone="@chip.Tone" Icon="@chip.Icon">@(open ? "Held · ongoing" : chip.Label)</OdsChip>;
     }
+
+    private RenderFragment CountCell(ExistingJobRun r, int? value) => value is { } v
+        ? @<text>@Count(v)</text>
+        : @<span class="bgj-muted">@(NotShown(r) ? "Not shown" : "Not recorded")</span>;
+
+    private RenderFragment RunDetail(ExistingJobRun r) =>
+        @<JobRunDetailPanel Run="r" State="DetailStateOf(r.Id)" CanReadDetail="!NotShown(r)" OnLoad="EnsureDetailAsync" />;
+
+    private static RenderFragment Text(string value) => builder => builder.AddContent(0, value);
 }
