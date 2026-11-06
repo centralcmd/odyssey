@@ -522,6 +522,66 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
         Assert.Contains(left, r => r.Status == JobRunStatus.Held && r.FinishedAtUtc is null);
     }
 
+    /// <summary>
+    /// Architect review on PR #418: a batch that fails on a concurrency conflict ends the pass. Re-reading would
+    /// find the same rows, so a replica that kept losing would spin; the next hourly pass picks up the rest.
+    /// </summary>
+    [Fact]
+    public async Task A_prune_batch_that_loses_a_concurrency_race_ends_the_pass()
+    {
+        var name = Guid.NewGuid().ToString();
+        var conflicts = new AlwaysConflicts();
+        await using (var seed = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(name).Options))
+        {
+            var old = Now.AddDays(-SystemSettingsDefaults.JobRunRetentionDays - 1);
+            for (var i = 0; i < JobRunSweeper.PruneBatchSize + 5; i++)
+            {
+                var run = new WeatherJobRun { JobRunId = Guid.NewGuid(), StartedAtUtc = old.AddSeconds(i), LastActivityAtUtc = old };
+                run.Finish(JobRunStatus.Succeeded, null, old.AddSeconds(i + 1));
+                seed.JobRuns.Add(run);
+            }
+
+            await seed.SaveChangesAsync();
+        }
+
+        await using var context = new OdysseyContext(
+            new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase(name).AddInterceptors(conflicts).Options);
+        var sweeper = new JobRunSweeper(context, new MemoryCache(new MemoryCacheOptions()), clock, NullLogger<JobRunSweeper>.Instance);
+
+        var pruned = await sweeper.PruneAsync(default).WaitAsync(TimeSpan.FromSeconds(30));
+
+        Assert.Equal(0, pruned);
+        Assert.Equal(1, conflicts.Attempts);
+    }
+
+    private sealed class AlwaysConflicts : Microsoft.EntityFrameworkCore.Diagnostics.SaveChangesInterceptor
+    {
+        public int Attempts { get; private set; }
+
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int>> SavingChangesAsync(
+            Microsoft.EntityFrameworkCore.Diagnostics.DbContextEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+        {
+            Attempts++;
+            throw new DbUpdateConcurrencyException("Another replica pruned these rows.");
+        }
+    }
+
+    /// <summary>
+    /// The retention floor keeps the exchange-rate sync's schedule anchor: the sync reads its next run and its failure
+    /// streak from its newest finished rows, so the shortest retention must outlast two of its longest gaps.
+    /// </summary>
+    [Fact]
+    public void The_retention_floor_outlasts_two_of_the_syncs_longest_gaps()
+    {
+        var longestGapHours = Math.Max(SystemSettingsBounds.ExchangeRateSyncIntervalHoursMax, ExchangeRateSyncConstants.MaxBackoffHours);
+
+        Assert.Equal(14, SystemSettingsBounds.JobRunRetentionDaysMin);
+        Assert.True(SystemSettingsBounds.JobRunRetentionDaysMin * 24 >= 2 * longestGapHours);
+        Assert.InRange(SystemSettingsDefaults.JobRunRetentionDays, SystemSettingsBounds.JobRunRetentionDaysMin, SystemSettingsBounds.JobRunRetentionDaysMax);
+    }
+
     /// <summary>A18: a degraded read never prunes more — it keeps the larger value.</summary>
     [Theory]
     [InlineData(null, SystemSettingsDefaults.JobRunRetentionDays)]

@@ -1639,7 +1639,7 @@ return, so an idle, unconfigured or held job is never mistaken for a dead one. A
 `JobRunMaintenanceJob` (worker, every 5 minutes) abandons a run whose process has gone (after its job's stale
 window — it never touches a file-storage pass while the maintenance lease is live), closes a held period whose
 process has stopped heartbeating, and once an hour deletes finished runs older than **`JobRunRetentionDays`**
-(`/settings` → Data, 7–730 days; a degraded read keeps the larger value — never prunes more on a fault).
+(`/settings` → Data, 14–730 days; a degraded read keeps the larger value — never prunes more on a fault).
 `Running` rows and open held periods are never pruned. The newest-500 rule of the old sync log is gone.
 
 ### Manual runs
