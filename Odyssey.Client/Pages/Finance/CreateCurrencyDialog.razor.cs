@@ -44,7 +44,7 @@ public partial class CreateCurrencyDialog
 
     private string SyncStartPlaceholder =>
         (EditedSync?.EffectiveHistoryStartDate ?? DefaultSyncStart) is { } effective
-            ? $"Default ({Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncTime.Date(effective)})"
+            ? $"Default ({Odyssey.Client.Services.RunTime.Date(effective)})"
             : "Default";
 
     private static DateTime HistoryFloor => ExchangeRateHistoryStartDateRule.Floor.ToDateTime(TimeOnly.MinValue);

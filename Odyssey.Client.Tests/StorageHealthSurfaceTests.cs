@@ -228,7 +228,7 @@ public class StorageHealthSurfaceTests : IDisposable
         var issue = Assert.Single(StorageHealth.Issues([Volume()], Now, stats));
 
         Assert.StartsWith("It resumes on its own at ", issue.Text, StringComparison.Ordinal);
-        Assert.Contains(Odyssey.Client.Pages.Finance.ExchangeRateSync.ExchangeRateSyncTime.Absolute(stats.ThumbnailWorkerResumesAtUtc.Value), issue.Text, StringComparison.Ordinal);
+        Assert.Contains(Odyssey.Client.Services.RunTime.Absolute(stats.ThumbnailWorkerResumesAtUtc.Value), issue.Text, StringComparison.Ordinal);
     }
 
     [Theory]

@@ -253,18 +253,18 @@
             @if (!s.Locked)
             {
                 <OdsInfoTile Icon="date_range" Label="Coverage" ValueVariant="OdsInfoTileVariant.Sm"
-                             Foot="@OdsInfoTile.Caption(s.NewestFetchedDate is { } newest ? $"to {ExchangeRateSyncTime.Date(newest)}" : null)">
-                    <Value>@(s.OldestFetchedDate is { } oldest ? ExchangeRateSyncTime.Date(oldest) : "Not fetched yet")</Value>
+                             Foot="@OdsInfoTile.Caption(s.NewestFetchedDate is { } newest ? $"to {RunTime.Date(newest)}" : null)">
+                    <Value>@(s.OldestFetchedDate is { } oldest ? RunTime.Date(oldest) : "Not fetched yet")</Value>
                 </OdsInfoTile>
                 <OdsInfoTile Icon="event" Label="Start date" ValueVariant="OdsInfoTileVariant.Sm"
                              Foot="@OdsInfoTile.Caption(s.HistoryStartDate is null ? "the instance default" : "this currency’s own date")">
-                    <Value>@ExchangeRateSyncTime.Date(s.EffectiveHistoryStartDate)</Value>
+                    <Value>@RunTime.Date(s.EffectiveHistoryStartDate)</Value>
                 </OdsInfoTile>
             }
             @* The earliest day the provider has a rate for this currency — the floor for a useful start date. *@
             <OdsInfoTile Icon="history" Label="Earliest rate" ValueVariant="OdsInfoTileVariant.Sm"
                          Foot="@OdsInfoTile.Caption(s.Locked ? $"every {ProviderName} rate is quoted against {s.CurrencyCode}" : $"first day {ProviderName} publishes")">
-                <Value>@(s.Locked ? "—" : s.FirstAvailableDate is { } first ? ExchangeRateSyncTime.Date(first) : "Not published")</Value>
+                <Value>@(s.Locked ? "—" : s.FirstAvailableDate is { } first ? RunTime.Date(first) : "Not published")</Value>
             </OdsInfoTile>
         </text>;
 }

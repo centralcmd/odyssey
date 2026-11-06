@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Client.Pages.Finance.ExchangeRateSync;
@@ -132,7 +133,7 @@ public partial class ExchangeRateSyncStatusPanel
     {
         { CurrentRun: not null } => "A run is in progress",
         { ManualRunAvailableAtUtc: { } at } when at > utcNow =>
-            $"You can start another run at {ExchangeRateSyncTime.Clock(at)}",
+            $"You can start another run at {RunTime.Clock(at)}",
         _ => null,
     };
 
@@ -163,7 +164,7 @@ public partial class ExchangeRateSyncStatusPanel
             case HttpStatusCode.TooManyRequests:
                 await ReadStatusAsync(announce: false);
                 var at = _status?.ManualRunAvailableAtUtc;
-                Snackbar.Add(at is { } time ? $"You can start another run at {ExchangeRateSyncTime.Clock(time)}" : "Wait a moment before starting another run", Severity.Warning);
+                Snackbar.Add(at is { } time ? $"You can start another run at {RunTime.Clock(time)}" : "Wait a moment before starting another run", Severity.Warning);
                 break;
             case HttpStatusCode.Forbidden:
                 Snackbar.Add(PermissionMessage, Severity.Error);
@@ -344,9 +345,9 @@ public partial class ExchangeRateSyncStatusPanel
         _ => string.Empty,
     };
 
-    private string Moment(DateTime utc) => $"{ExchangeRateSyncTime.Absolute(utc)} ({Relative(utc)})";
+    private string Moment(DateTime utc) => $"{RunTime.Absolute(utc)} ({Relative(utc)})";
 
-    private string Relative(DateTime utc) => ExchangeRateSyncTime.Relative(utc, Time.GetUtcNow());
+    private string Relative(DateTime utc) => RunTime.Relative(utc, Time.GetUtcNow());
 
     private static string StaleText(StaleReason reason) => reason == StaleReason.Errors
         ? "Couldn’t refresh status"

@@ -1,5 +1,5 @@
 using System.Globalization;
-using Odyssey.Client.Pages.Finance.ExchangeRateSync;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Journal;
 
@@ -128,7 +128,7 @@ public static class StorageHealth
         if (maintenance is { MaintenanceHaltedCheck: { } check })
         {
             var at = maintenance.MaintenanceHaltedAtUtc is { } failed
-                ? $" {ExchangeRateSyncTime.Absolute(failed)} ({ExchangeRateSyncTime.Relative(failed, now)})"
+                ? $" {RunTime.Absolute(failed)} ({RunTime.Relative(failed, now)})"
                 : string.Empty;
             var workers = maintenance.MaintenanceHaltedWorkerCount;
             var recheck = $"it re-checks every {Count(maintenance.VerificationRetryMinutes)} minutes and resumes on its own.";
@@ -165,7 +165,7 @@ public static class StorageHealth
                 break;
             case ThumbnailWorkerState.Tripped:
                 var resumes = worker.ThumbnailWorkerResumesAtUtc is { } at
-                    ? $"It resumes on its own at {ExchangeRateSyncTime.Absolute(at)}."
+                    ? $"It resumes on its own at {RunTime.Absolute(at)}."
                     : "It resumes on its own an hour after the latest crash.";
                 issues.Add(new("w-trip", StorageIssueSeverity.Error, "Thumbnail creation stopped after repeated crashes.",
                     $"{resumes} Photos still show their originals, and the rest of the worker keeps running."));
