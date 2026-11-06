@@ -8,7 +8,10 @@
 # without a public domain, set ODYSSEY_DOMAIN=localhost and Caddy issues an internal cert.
 
 {$ODYSSEY_DOMAIN} {
-	encode zstd gzip
+	# Never re-encode the self-hosted basemap (issue #384): the pmtiles library reads it with byte ranges, and a
+	# compressed 206 would break every read. Stated explicitly rather than relying on encode's default type list.
+	@compressible not path /basemap/*
+	encode @compressible zstd gzip
 
 	# Allow file uploads up to the API's 64 MB transport ceiling plus multipart envelope headroom.
 	# Caddy's default is unlimited, but set it explicitly so this outermost hop stays aligned with

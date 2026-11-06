@@ -32,6 +32,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     private static IPlaywright? playwright;
     private static IBrowser? browser;
     private static IBrowserContext? browserContext;
+    private static string? selfHostedStack;
 
     private static readonly object TestStyle = new
     {
@@ -85,6 +86,12 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
             await page.GotoAsync("/login", new PageGotoOptions { Timeout = 120_000 });
             var admin = DemoUsers.All.First(user => user.Role == "Admin");
             await E2ESignIn.SignInAsync(page, admin.Email, admin.Password);
+            // A stack serving the self-hosted basemap (issue #384) admits no tile host in its CSP, so the
+            // routed test style below could never load there; SelfHostedBasemapTests covers that stack.
+            var light = await page.EvaluateAsync<string?>(
+                "async () => { const r = await fetch('/api/api/map-styles', { credentials: 'include' }); return r.ok ? (await r.json()).lightStyleUrl : null; }");
+            if (light == "/maps/self-hosted-light.json")
+                selfHostedStack = "The stack serves the self-hosted basemap; this class needs the default tile host (SelfHostedBasemapTests covers it).";
             await page.CloseAsync();
         }
         finally
@@ -101,6 +108,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Maplibre_loads_on_the_first_map_only_and_the_map_draws_with_its_caption()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await NewPageAsync();
         var requested = new List<string>();
         page.Request += (_, r) => requested.Add(r.Url);
@@ -139,6 +147,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Keyboard_reaches_every_part_in_order_and_the_popup_returns_focus_to_the_pin()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
 
         await page.Locator(".loc-map canvas").FocusAsync();
@@ -171,6 +180,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task The_controls_move_the_map_and_zoom_in_stops_at_24()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
         var pin = page.Locator(".loc-map-pin");
 
@@ -212,6 +222,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task At_320_px_every_target_is_at_least_24_px_inside_the_frame_and_the_caption_shows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync(width: 320);
 
         await AssertFrameShapeAsync(page);
@@ -226,6 +237,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_plain_wheel_over_the_map_shows_the_apps_gesture_hint()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
         var frame = page.Locator(".loc-map-frame");
         await frame.ScrollIntoViewIfNeededAsync();
@@ -250,6 +262,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_hostile_style_attribution_never_renders()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var dialogs = 0;
         var page = await NewPageAsync(styleAttribution: "<img src=x onerror=\"window.__pwned=1\">");
         page.Dialog += (_, d) => { dialogs++; _ = d.DismissAsync(); };
@@ -271,6 +284,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_blocked_tile_host_fails_in_place_and_try_again_recovers_and_announces()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var blocked = true;
         var page = await NewPageAsync(isBlocked: () => blocked);
 
@@ -297,6 +311,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Collapsing_the_card_removes_the_map()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
 
         await CollapseAsync(page);
@@ -311,6 +326,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_markup_location_name_is_shown_literally_and_runs_nothing()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         const string hostile = "<img src=x onerror=\"window.__pwned=1\">Cabin";
         var dialogs = 0;
         var page = await NewPageAsync(renameCabinTo: hostile);
@@ -337,6 +353,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Every_pan_and_zoom_input_moves_the_map()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
         var host = page.Locator(".loc-map-host");
         var pin = page.Locator(".loc-map-pin");
@@ -407,6 +424,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Tile_errors_before_ready_fail_the_map_in_place()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await NewPageAsync(tilesFail: () => true);
 
         await GoToLocationsAsync(page);
@@ -421,6 +439,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Tile_errors_after_ready_degrade_once_and_clear_after_30_seconds()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var failing = false;
         var page = await NewPageAsync(tilesFail: () => failing);
         await GoToLocationsAsync(page);
@@ -451,6 +470,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task No_load_within_15_seconds_is_a_timeout_failure()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await NewPageAsync(styleDelay: TimeSpan.FromSeconds(20));
 
         await GoToLocationsAsync(page);
@@ -464,6 +484,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_lost_context_not_restored_within_3_seconds_shows_webgl_unavailable()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
 
         await LoseContextAsync(page);
@@ -477,6 +498,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task A_context_restored_in_time_recreates_the_map_and_keeps_focus_on_it()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await OpenMapAsync();
         await page.Locator(".loc-map canvas").FocusAsync();
 
@@ -495,6 +517,7 @@ public sealed class LocationMapRenderTests(StackFixture fixture) : IAsyncLifetim
     public async Task Try_again_that_fails_again_moves_focus_to_the_state_box()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        Skip.If(selfHostedStack is not null, selfHostedStack);
         var page = await NewPageAsync(isBlocked: () => true);
         await GoToLocationsAsync(page);
         await ExpandAsync(page);
