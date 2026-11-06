@@ -188,7 +188,7 @@ public class WeatherPointsUiTests : IDisposable
         Assert.Equal("Forecast", forecast.Instance.Label);
         Assert.Equal(OsloId, forecast.Instance.WeatherPointId);
         // Tiles · Map · Linked locations · Forecast · Weather history — the Locations record's order.
-        page.WaitForAssertion(() => Assert.Equal(["Weather position", "Map", "Linked locations", "Forecast", "Weather history"],
+        page.WaitForAssertion(() => Assert.Equal(["Weather", "Map", "Linked locations", "Forecast", "Weather history"],
             page.FindAll(".odc-record .odc-sectiondivider-l").Select(e => e.TextContent.Trim()).ToArray()));
         weather.Verify(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -1172,7 +1172,7 @@ public class WeatherPointsUiTests : IDisposable
             var page = ctx.Render<ProvidersHost>(p => p.AddChildContent<LocationsPage>());
 
             page.WaitForAssertion(() => Assert.Equal([], LastFocusChain(ctx)));
-            Assert.Contains("That place no longer exists.", page.Markup);
+            Assert.Contains("That location no longer exists.", page.Markup);
         }
     }
 

@@ -504,6 +504,19 @@ public class DropdownConsistencyTests
         Assert.Equal(expectColour, option.IconColor is not null);
     }
 
+    [Theory]
+    [InlineData("#1E88E5")]
+    [InlineData(null)]
+    [InlineData("red;background:url(x)")]
+    public void The_transactions_tag_filter_falls_back_to_the_tag_ink_for_a_colourless_tag(string? color)
+    {
+        var tag = new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Groceries", Archived = null, Color = color };
+
+        var option = TransactionsCard.TagFilterOption(tag);
+
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
+    }
+
     [Fact]
     public void A_breakdown_definition_becomes_a_filter_option_with_its_glyph_and_tone()
     {

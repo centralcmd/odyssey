@@ -845,7 +845,7 @@ public partial class LocationsPage
             var result = await Locations.GetAsync(id);
             if (result.Value is not { } place)
             {
-                Announce("That place no longer exists.");
+                Announce("That location no longer exists.");
                 FocusRowOrHeading(null);
                 return;
             }

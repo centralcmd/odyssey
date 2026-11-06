@@ -32,6 +32,12 @@
 </div>
 
 @code {
+    /// <summary>A person's glyph on the People row and on the Person filter row alike.</summary>
+    public const string PersonGlyph = "person";
+
+    /// <summary>That glyph's ink: muted, not the contact type's colour.</summary>
+    public const string PersonInk = "var(--mud-palette-text-secondary)";
+
     private PhotoLibraryStats _stats = new();
     private IReadOnlyList<PhotoAlbumSummary> _albums = [];
     private IReadOnlyList<ExistingPhotoTag> _tags = [];
@@ -71,7 +77,7 @@
                 .Where(x => x.Count > 0)
                 .Select(x => new OdsBreakdownRow
                 {
-                    Key = x.c.ContactId, Icon = "person", IconColor = "var(--mud-palette-text-secondary)", Label = x.c.ResolvedDisplayName, Count = x.Count,
+                    Key = x.c.ContactId, Icon = PersonGlyph, IconColor = PersonInk, Label = x.c.ResolvedDisplayName, Count = x.Count,
                 })];
         }
     }
