@@ -41,26 +41,43 @@
 
         @if (coming.Count > 0)
         {
-            @* tabindex: the strip scrolls sideways on narrow screens, so it must be reachable by keyboard. *@
-            <ol class="wx-days" role="list" tabindex="0" aria-label="@($"Forecast for {point.Name}, next {coming.Count} days")">
+            @* Each card is a disclosure button for the ONE hours panel below the strip (issue #415 §6.1). The buttons
+               are the tab stops, so the strip itself is no longer focusable; the browser scrolls a focused card into view. *@
+            <ol class="wx-days" role="list" aria-label="@($"Forecast for {point.Name}, next {coming.Count} days")">
                 @foreach (var day in coming)
                 {
                     var f = day.Forecast!;
+                    var date = day.Date;
+                    var selected = _selected == date;
                     <li class="wx-day">
-                        <span class="wx-day-name" title="@WeatherVisuals.DayLong(day.Date)">@WeatherVisuals.DayShort(day.Date, Today)</span>
-                        <span aria-hidden="true"><WeatherGlyph Code="@f.SymbolCode" Size="28" /></span>
-                        <span class="wx-day-temp">
-                            <span class="wx-hi" aria-hidden="true">@WeatherVisuals.Temp(f.MaxTempC)</span><span class="wx-lo" aria-hidden="true"> / @WeatherVisuals.Temp(f.MinTempC)</span>
-                            <span class="sr-only">@DaySentence(day)</span>
-                        </span>
-                        <span class="wx-day-precip @(f.PrecipitationMm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="14" />@WeatherVisuals.Mm(f.PrecipitationMm)</span>
-                        @if (f.CoverageHours < 24)
-                        {
-                            <span class="wx-day-partial">@f.CoverageHours h of forecast</span>
-                        }
+                        <button type="button" class="@($"wx-day-btn{(date == Today ? " today" : null)}")" aria-expanded="@(selected ? "true" : "false")"
+                                aria-controls="@PanelId" @ref="_cards[date]" @onclick="() => ToggleAsync(date)">
+                            <span class="wx-day-name">@WeatherVisuals.DayShort(date, Today)<span class="sr-only">, @WeatherVisuals.DayLong(date)</span></span>
+                            <span aria-hidden="true"><WeatherGlyph Code="@f.SymbolCode" Size="28" /></span>
+                            <span class="wx-day-temp">
+                                <span class="wx-hi" aria-hidden="true">@WeatherVisuals.Temp(f.MaxTempC)</span><span class="wx-lo" aria-hidden="true"> / @WeatherVisuals.Temp(f.MinTempC)</span>
+                                <span class="sr-only">@DaySentence(day)</span>
+                            </span>
+                            <span class="wx-day-precip @(f.PrecipitationMm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="14" />@WeatherVisuals.Mm(f.PrecipitationMm)</span>
+                            @if (f.CoverageHours < 24)
+                            {
+                                <span class="wx-day-partial">@f.CoverageHours h of forecast</span>
+                            }
+                            <span class="wx-day-chev" aria-hidden="true"><OdsMIcon Name="expand_more" Size="18" /></span>
+                        </button>
                     </li>
                 }
             </ol>
+
+            @* Always mounted, so every card's aria-controls resolves; empty and hidden while closed. *@
+            <div id="@PanelId" class="wx-hours-host" hidden="@(_selected is null)" @ref="_panel">
+                @if (_selected is { } open)
+                {
+                    <WeatherDayHours Date="open" Response="_response" Phase="_phase" PointName="@point.Name" HeadingId="@HeadingId"
+                                     HeadingLevel="HeadingLevel" RetryEnabled="RetryEnabled" BodyStale="Current.Stale" OnRetry="RetryAsync" />
+                }
+            </div>
+            <OdsLiveAnnouncer @ref="_announcer" />
         }
 
         @if (yesterday?.Observed is { } o)

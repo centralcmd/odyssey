@@ -59,6 +59,8 @@ var apiBaseAddress = shouldUseRelativeBase
 // UnauthorizedHandler is the third of the kind (issue #250): a 401 on a domain call means the cookie has
 // expired or been revoked, and without it every page fails with a Retry that can never succeed. It too
 // signals a singleton notifier; SessionExpiryRedirect (App.razor) reloads to the sign-in page.
+// The weather hours cache expires answers by the clock (issue #415); one seam, so tests can move it.
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddTransient<BrowserCredentialsHandler>();
 builder.Services.AddTransient<LegalComplianceHandler>();
 builder.Services.AddSingleton<PasswordChangeRequiredNotifier>();

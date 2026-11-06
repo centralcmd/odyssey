@@ -16,6 +16,10 @@ public partial class WeatherWidget
     [Inject] private AuthenticationStateProvider Auth { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
     [Inject] private Odyssey.Client.Services.IWeatherPointOptionsCache OptionsCache { get; set; } = default!;
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    /// <summary>The card's own cache for the hours of a day (issue #415); the card reads current and daily itself.</summary>
+    private WeatherPointReads _hoursReads = default!;
 
     internal enum Phase { Loading, Ready, RateLimited, Error }
 
@@ -45,6 +49,7 @@ public partial class WeatherWidget
 
     protected override async Task OnInitializedAsync()
     {
+        _hoursReads = new WeatherPointReads(Weather, Services.GetService(typeof(TimeProvider)) as TimeProvider);
         if (!InteractiveCheck())
             return;
 
