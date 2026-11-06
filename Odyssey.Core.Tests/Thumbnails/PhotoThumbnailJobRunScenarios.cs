@@ -105,6 +105,29 @@ public abstract partial class PhotoThumbnailJobScenarios
         Assert.Equal(0, ((PhotoThumbnailJobRun)(await RunLogAsync(host)).Single(r => r.JobRunId == second)).PhotosRequeued);
     }
 
+    /// <summary>
+    /// Architect review on PR #418: a manual run cut short by shutdown is recorded Failed / Cancelled, as the weather
+    /// and file-storage runs record it — never Failed / Internal, which would file a deploy restart as an error.
+    /// </summary>
+    [SkippableFact]
+    public async Task A_manual_run_cut_short_by_shutdown_is_recorded_cancelled()
+    {
+        var host = await NewThumbnailHostAsync();
+        await AddPhotoAsync(host, ThumbnailFixtures.Jpeg(400, 300));
+        var runId = await RequestManualRunAsync(host);
+        using var stopping = new CancellationTokenSource();
+        Renderer.Behaviour = _ =>
+        {
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Job(host).RunOnceAsync(stopping.Token));
+
+        var manual = (await RunLogAsync(host)).Single(r => r.JobRunId == runId);
+        Assert.Equal((JobRunStatus.Failed, JobFailureCategory.Cancelled), (manual.Status, manual.FailureCategory));
+    }
+
     private static Task<List<JobRun>> RunLogAsync(FileStorageTestHost host) =>
         WithContextAsync(host, c => c.JobRuns.AsNoTracking().OrderBy(r => r.StartedAtUtc).ToListAsync());
 
