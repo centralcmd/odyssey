@@ -274,7 +274,7 @@ public sealed partial class ExchangeRateSyncCurrencyService(
 
         var run = await sync.TryStartAsync(ExchangeRateSyncTrigger.Purge, userId, cancellationToken)
             ?? throw new DomainConflictException("An exchange-rate sync run or purge is already in progress.");
-        var runId = run.ExchangeRateSyncRunId;
+        var runId = run.JobRunId;
         run.CurrencyCodes = code;
 
         // Read again under the guard: the check above is a fast refusal that leaves no run row, but a sync
@@ -329,14 +329,14 @@ public sealed partial class ExchangeRateSyncCurrencyService(
         catch
         {
             context.ChangeTracker.Clear();
-            var failed = await context.ExchangeRateSyncRuns.FirstAsync(value => value.ExchangeRateSyncRunId == runId, CancellationToken.None);
+            var failed = await context.Set<ExchangeRateSyncJobRun>().FirstAsync(value => value.JobRunId == runId, CancellationToken.None);
             failed.CurrencyCodes = code;
             await sync.FinishAsync(failed, ExchangeRateSyncRunStatus.Failed, null, CancellationToken.None);
             throw;
         }
 
         context.ChangeTracker.Clear();
-        var finished = await context.ExchangeRateSyncRuns.FirstAsync(value => value.ExchangeRateSyncRunId == runId, CancellationToken.None);
+        var finished = await context.Set<ExchangeRateSyncJobRun>().FirstAsync(value => value.JobRunId == runId, CancellationToken.None);
         finished.CurrencyCodes = code;
         finished.RowsDeleted = deleted;
         await sync.FinishAsync(finished, ExchangeRateSyncRunStatus.Succeeded, null, CancellationToken.None);

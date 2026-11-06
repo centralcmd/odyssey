@@ -335,7 +335,8 @@ public sealed class WeatherFetchService
     /// of the last seven days or one year of backfill — one request per call, so the scheduler stays at or
     /// below 1 request/s. Returns the secret's state so the scheduler can log an unreadable one.
     /// </summary>
-    public async Task<SecretReadState> FetchObservationsAsync(Guid pointId, CancellationToken cancellationToken)
+    public async Task<SecretReadState> FetchObservationsAsync(
+        Guid pointId, CancellationToken cancellationToken, WeatherObservationTally? tally = null)
     {
         var configured = await settings.GetAsync(cancellationToken);
         var secret = await secrets.GetAsync(SecretSettingKeys.WeatherFrostClientId, cancellationToken);
@@ -407,8 +408,10 @@ public sealed class WeatherFetchService
             var lookup = await observations.FindStationAsync(
                 new WeatherSiteQuery(site.Latitude, site.Longitude, site.AltitudeMeters), group, contact, clientId, cancellationToken);
             now = Now;
+            tally?.Attempt();
             if (!lookup.Succeeded)
             {
+                tally?.Fail(lookup.FailureKind ?? WeatherFetchFailureKind.ProviderError);
                 RecordObservationFailure(schedule, lookup.FailureKind ?? WeatherFetchFailureKind.ProviderError, lookup.RetryAfter, now);
                 await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
                 return secret.State;
@@ -482,14 +485,17 @@ public sealed class WeatherFetchService
             var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
             var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
             now = Now;
+            tally?.Attempt();
             if (!fetched.Succeeded)
             {
+                tally?.Fail(fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError);
                 RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
                 await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
                 return secret.State;
             }
 
             inserted = await StageObservationsAsync(pointId, site.SiteVersion, chosen, Compose(chosen, fetched.Days), now, cancellationToken);
+            tally?.Store(inserted.Count);
         }
 
         // Markers advance even on an empty result, so an empty range is never re-requested (AC 16).
@@ -795,4 +801,29 @@ public sealed class WeatherFetchService
     }
 
     private static DateOnly Max(DateOnly left, DateOnly right) => left > right ? left : right;
+}
+
+/// <summary>
+/// What one observation fetch did, for the run log (issue #409 §4.2): requests sent, requests failed and the days
+/// stored. Counts only — never a point, a station or a place.
+/// </summary>
+public sealed class WeatherObservationTally
+{
+    public int Attempted { get; private set; }
+
+    public int Failed { get; private set; }
+
+    public int DaysStored { get; private set; }
+
+    public WeatherFetchFailureKind? FailureKind { get; private set; }
+
+    internal void Attempt() => Attempted++;
+
+    internal void Fail(WeatherFetchFailureKind kind)
+    {
+        Failed++;
+        FailureKind = kind;
+    }
+
+    internal void Store(int days) => DaysStored += days;
 }

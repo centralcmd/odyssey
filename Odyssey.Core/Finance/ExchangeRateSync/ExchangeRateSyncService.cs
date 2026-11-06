@@ -3,8 +3,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Core.Finance.ExchangeRateSync;
@@ -34,6 +36,7 @@ public sealed class ExchangeRateSyncService(
     ExchangeRateSupportedList supportedList,
     IExchangeRateSyncSettingsLookup settingsLookup,
     ExchangeRateSyncPacing pacing,
+    JobWorkerIdentity worker,
     TimeProvider timeProvider,
     ILogger<ExchangeRateSyncService> logger)
 {
@@ -45,6 +48,9 @@ public sealed class ExchangeRateSyncService(
 
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 
+    /// <summary>The sync's rows of the shared run log (issue #409): its runs and purges, ids kept from #349.</summary>
+    private DbSet<ExchangeRateSyncJobRun> Runs => context.Set<ExchangeRateSyncJobRun>();
+
     // ── Starting a run ────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -52,11 +58,11 @@ public sealed class ExchangeRateSyncService(
     /// <c>409</c> while the guard is held. With nothing enabled the run is recorded as <c>Skipped</c> and
     /// finished at once, so the caller dispatches only a run that is still <c>Running</c>.
     /// </summary>
-    public async Task<ExchangeRateSyncRun> StartManualAsync(string? userId, CancellationToken cancellationToken = default)
+    public async Task<ExchangeRateSyncJobRun> StartManualAsync(string? userId, CancellationToken cancellationToken = default)
     {
         var now = Now;
-        var lastManual = await context.ExchangeRateSyncRuns.AsNoTracking()
-            .Where(run => run.Trigger == ExchangeRateSyncTrigger.Manual)
+        var lastManual = await Runs.AsNoTracking()
+            .Where(run => run.Trigger == JobRunTrigger.Manual)
             .MaxAsync(run => (DateTime?)run.StartedAtUtc, cancellationToken);
         if (lastManual is { } last && last.AddSeconds(ExchangeRateSyncConstants.ManualRunCooldownSeconds) > now)
         {
@@ -71,7 +77,7 @@ public sealed class ExchangeRateSyncService(
             ?? throw new DomainConflictException("An exchange-rate sync run or purge is already in progress.");
 
         logger.LogInformation(
-            "Exchange-rate sync run {RunId} started manually by user {UserId}.", run.ExchangeRateSyncRunId, userId);
+            "Exchange-rate sync run {RunId} started manually by user {UserId}.", run.JobRunId, userId);
 
         if (nothingEnabled)
         {
@@ -85,32 +91,37 @@ public sealed class ExchangeRateSyncService(
     /// Inserts a <c>Running</c> row for <paramref name="trigger"/>, or returns null while another run or
     /// purge holds the guard. Stale <c>Running</c> rows are abandoned first.
     /// </summary>
-    public Task<ExchangeRateSyncRun?> TryStartAsync(
+    public Task<ExchangeRateSyncJobRun?> TryStartAsync(
         ExchangeRateSyncTrigger trigger, string? userId, CancellationToken cancellationToken = default) =>
         TryStartAsync(trigger, userId, claimNow: trigger != ExchangeRateSyncTrigger.Manual, cancellationToken);
 
-    private async Task<ExchangeRateSyncRun?> TryStartAsync(
+    private async Task<ExchangeRateSyncJobRun?> TryStartAsync(
         ExchangeRateSyncTrigger trigger, string? userId, bool claimNow, CancellationToken cancellationToken)
     {
         await AbandonStaleAsync(cancellationToken);
 
-        if (await context.ExchangeRateSyncRuns.AnyAsync(run => run.Status == ExchangeRateSyncRunStatus.Running, cancellationToken))
+        if (await Runs.AnyAsync(run => run.Status == JobRunStatus.Running, cancellationToken))
         {
             return null;
         }
 
-        var run = new ExchangeRateSyncRun
+        var now = Now;
+        var run = new ExchangeRateSyncJobRun
         {
-            Trigger = trigger,
+            JobRunId = Guid.NewGuid(),
+            Trigger = (JobRunTrigger)trigger,
             RequestedByUserId = userId,
             Provider = ExchangeRateProvider.NorgesBank,
-            Status = ExchangeRateSyncRunStatus.Running,
-            StartedAtUtc = Now,
+            Status = JobRunStatus.Running,
+            StartedAtUtc = now,
+            LastActivityAtUtc = now,
             // A manual run is started by the API and executed by the worker, which claims it; every other
-            // run is executed by the process that starts it.
-            ClaimedAtUtc = claimNow ? Now : null,
+            // run is executed by the process that starts it. A purge runs in the API, which heartbeats nothing,
+            // so it names no worker (issue #409 §3.4).
+            ClaimedAtUtc = claimNow ? now : null,
+            WorkerId = claimNow && trigger != ExchangeRateSyncTrigger.Purge ? worker.WorkerId : null,
         };
-        context.ExchangeRateSyncRuns.Add(run);
+        Runs.Add(run);
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -155,13 +166,13 @@ public sealed class ExchangeRateSyncService(
             return null;
         }
 
-        await ExecuteAsync(run.ExchangeRateSyncRunId, cancellationToken);
-        return run.ExchangeRateSyncRunId;
+        await ExecuteAsync(run.JobRunId, cancellationToken);
+        return run.JobRunId;
     }
 
     /// <summary>
     /// Claims the oldest manual run no process has taken yet, or returns null. Every worker replica asks;
-    /// the <see cref="ExchangeRateSyncRun.ClaimedAtUtc"/> concurrency token lets exactly one save succeed.
+    /// the run's <see cref="JobRun.Generation"/> concurrency token lets exactly one save succeed.
     /// Stale runs are abandoned first, so a request no worker took within
     /// <see cref="ExchangeRateSyncConstants.UnclaimedRequestTimeout"/> is never executed late.
     /// </summary>
@@ -169,9 +180,9 @@ public sealed class ExchangeRateSyncService(
     {
         await AbandonStaleAsync(cancellationToken);
 
-        var run = await context.ExchangeRateSyncRuns
-            .Where(value => value.Status == ExchangeRateSyncRunStatus.Running
-                && value.Trigger == ExchangeRateSyncTrigger.Manual
+        var run = await Runs
+            .Where(value => value.Status == JobRunStatus.Running
+                && value.Trigger == JobRunTrigger.Manual
                 && value.ClaimedAtUtc == null)
             .OrderBy(value => value.StartedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -181,6 +192,8 @@ public sealed class ExchangeRateSyncService(
         }
 
         run.ClaimedAtUtc = Now;
+        run.LastActivityAtUtc = run.ClaimedAtUtc.Value;
+        run.WorkerId = worker.WorkerId;
         try
         {
             await context.SaveChangesAsync(cancellationToken);
@@ -192,7 +205,7 @@ public sealed class ExchangeRateSyncService(
             return null;
         }
 
-        return run.ExchangeRateSyncRunId;
+        return run.JobRunId;
     }
 
     // ── Executing a run ───────────────────────────────────────────────────────────────────────────
@@ -203,9 +216,9 @@ public sealed class ExchangeRateSyncService(
     /// </summary>
     public async Task ExecuteAsync(Guid runId, CancellationToken cancellationToken = default)
     {
-        var run = await context.ExchangeRateSyncRuns.FirstOrDefaultAsync(
-            value => value.ExchangeRateSyncRunId == runId, cancellationToken);
-        if (run is null || run.Status != ExchangeRateSyncRunStatus.Running)
+        var run = await Runs.FirstOrDefaultAsync(
+            value => value.JobRunId == runId, cancellationToken);
+        if (run is null || run.Status != JobRunStatus.Running)
         {
             return;
         }
@@ -235,8 +248,8 @@ public sealed class ExchangeRateSyncService(
         context.ChangeTracker.Clear();
         // A run row deleted under the run (a hand edit, a restore) leaves nothing to finish; it holds no
         // guard any more either, so log it and stop rather than throw out of the job.
-        var tracked = await context.ExchangeRateSyncRuns.FirstOrDefaultAsync(
-            value => value.ExchangeRateSyncRunId == runId, CancellationToken.None);
+        var tracked = await Runs.FirstOrDefaultAsync(
+            value => value.JobRunId == runId, CancellationToken.None);
         if (tracked is null)
         {
             logger.LogWarning("Exchange-rate sync run {RunId} was removed before it finished; its outcome is not recorded.", runId);
@@ -249,14 +262,23 @@ public sealed class ExchangeRateSyncService(
         tracked.SpanFrom = outcome.SpanFrom;
         tracked.SpanTo = outcome.SpanTo;
         tracked.CurrencyCodes = Truncate(string.Join(',', outcome.Codes.Order(StringComparer.Ordinal)));
-        await FinishAsync(tracked, outcome.Status, outcome.ErrorKind, CancellationToken.None);
+        try
+        {
+            await FinishAsync(tracked, outcome.Status, outcome.ErrorKind, CancellationToken.None);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // The stale-run sweep finished the row first (issue #409 §3.4): its write wins and this one is dropped.
+            logger.LogWarning("Exchange-rate sync run {RunId} was finished by the stale-run sweep first; its outcome is dropped.", runId);
+            return;
+        }
 
         logger.LogInformation(
             "Exchange-rate sync run {RunId} finished {Status} ({ErrorKind}): {Inserted} inserted, {Skipped} skipped, {Rejected} rejected.",
             runId, tracked.Status, tracked.ErrorKind, outcome.RowsInserted, outcome.RowsSkipped, outcome.RowsRejected);
     }
 
-    private async Task ExecuteCoreAsync(ExchangeRateSyncRun run, RunOutcome outcome, CancellationToken cancellationToken)
+    private async Task ExecuteCoreAsync(ExchangeRateSyncJobRun run, RunOutcome outcome, CancellationToken cancellationToken)
     {
         // Resolved per run, never at startup: a host without zone data still starts, and the status names it.
         if (ExchangeRateSyncClock.Oslo is not { } oslo)
@@ -299,7 +321,7 @@ public sealed class ExchangeRateSyncService(
             outcome.Unsupported = true;
             logger.LogWarning(
                 "Exchange-rate sync run {RunId}: enabled currencies no longer published were skipped: {Codes}.",
-                run.ExchangeRateSyncRunId, string.Join(',', unsupported));
+                run.JobRunId, string.Join(',', unsupported));
         }
 
         var extents = await FetchedExtentsAsync(oslo, enabled.Keys.ToList(), cancellationToken);
@@ -585,29 +607,30 @@ public sealed class ExchangeRateSyncService(
             }
         }
 
-        var runs = context.ExchangeRateSyncRuns.AsNoTracking();
-        var current = await runs
-            .Where(run => run.Status == ExchangeRateSyncRunStatus.Running)
+        var runs = Runs.AsNoTracking();
+        var currentRow = await runs
+            .Where(run => run.Status == JobRunStatus.Running)
             .OrderByDescending(run => run.StartedAtUtc)
-            .Select(run => new ExchangeRateSyncCurrentRun
-            {
-                Id = run.ExchangeRateSyncRunId,
-                Trigger = run.Trigger,
-                StartedAtUtc = run.StartedAtUtc,
-            })
+            .Select(run => new { run.JobRunId, run.Trigger, run.StartedAtUtc })
             .FirstOrDefaultAsync(cancellationToken);
+        var current = currentRow is null ? null : new ExchangeRateSyncCurrentRun
+        {
+            Id = currentRow.JobRunId,
+            Trigger = (ExchangeRateSyncTrigger)currentRow.Trigger,
+            StartedAtUtc = currentRow.StartedAtUtc,
+        };
         var last = await runs
-            .Where(run => run.Status != ExchangeRateSyncRunStatus.Running)
+            .Where(run => run.Status != JobRunStatus.Running)
             .OrderByDescending(run => run.FinishedAtUtc)
             .ThenByDescending(run => run.StartedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
         var lastManual = await runs
-            .Where(run => run.Trigger == ExchangeRateSyncTrigger.Manual)
+            .Where(run => run.Trigger == JobRunTrigger.Manual)
             .MaxAsync(run => (DateTime?)run.StartedAtUtc, cancellationToken);
 
         // The sync history only: purges never count towards the backoff or the schedule.
         var recentSync = await runs
-            .Where(run => run.Trigger != ExchangeRateSyncTrigger.Purge && run.Status != ExchangeRateSyncRunStatus.Running)
+            .Where(run => run.Trigger != JobRunTrigger.Purge && run.Status != JobRunStatus.Running)
             .OrderByDescending(run => run.StartedAtUtc)
             .Take(ExchangeRateSyncConstants.RunRetention)
             .Select(run => new { run.Status, run.ErrorKind, run.FinishedAtUtc, run.RowsInserted })
@@ -616,9 +639,9 @@ public sealed class ExchangeRateSyncService(
         // (Abandoned) or a run stopped by a shutdown or its timeout (Cancelled) says nothing about the
         // provider, so — like a skipped run — it neither counts nor breaks the streak.
         var failures = recentSync
-            .Where(run => run.Status != ExchangeRateSyncRunStatus.Skipped
+            .Where(run => run.Status != JobRunStatus.Skipped
                 && run.ErrorKind is not (ExchangeRateSyncErrorKind.Abandoned or ExchangeRateSyncErrorKind.Cancelled))
-            .TakeWhile(run => run.Status == ExchangeRateSyncRunStatus.Failed)
+            .TakeWhile(run => run.Status == JobRunStatus.Failed)
             .Count();
         var lastFinished = recentSync.FirstOrDefault()?.FinishedAtUtc;
 
@@ -674,16 +697,17 @@ public sealed class ExchangeRateSyncService(
     public async Task<PagedResult<ExistingExchangeRateSyncRun>> ListRunsAsync(
         ExchangeRateSyncRunsQueryParams query, CancellationToken cancellationToken = default)
     {
-        var runs = context.ExchangeRateSyncRuns.AsNoTracking();
+        var runs = Runs.AsNoTracking();
         if (query.Status is { } status)
         {
-            runs = runs.Where(run => run.Status == status);
+            var wanted = (JobRunStatus)status;
+            runs = runs.Where(run => run.Status == wanted);
         }
 
         var ascending = query.SortDir == SortDirection.Asc;
         var ordered = ascending
-            ? runs.OrderBy(run => run.StartedAtUtc).ThenBy(run => run.ExchangeRateSyncRunId)
-            : runs.OrderByDescending(run => run.StartedAtUtc).ThenBy(run => run.ExchangeRateSyncRunId);
+            ? runs.OrderBy(run => run.StartedAtUtc).ThenBy(run => run.JobRunId)
+            : runs.OrderByDescending(run => run.StartedAtUtc).ThenBy(run => run.JobRunId);
 
         var total = await ordered.CountAsync(cancellationToken);
         var offset = Math.Max(0, query.Offset);
@@ -726,11 +750,11 @@ public sealed class ExchangeRateSyncService(
         return (int)Math.Min(hours, ExchangeRateSyncConstants.MaxBackoffHours);
     }
 
-    internal static ExistingExchangeRateSyncRun ToDto(ExchangeRateSyncRun run) => new()
+    internal static ExistingExchangeRateSyncRun ToDto(ExchangeRateSyncJobRun run) => new()
     {
-        Id = run.ExchangeRateSyncRunId,
-        Trigger = run.Trigger,
-        Status = run.Status,
+        Id = run.JobRunId,
+        Trigger = run.SyncTrigger,
+        Status = run.SyncStatus,
         ErrorKind = run.ErrorKind,
         StartedAtUtc = run.StartedAtUtc,
         FinishedAtUtc = run.FinishedAtUtc,
@@ -794,8 +818,8 @@ public sealed class ExchangeRateSyncService(
         // A manual request no worker took (none running, or all down) would otherwise hold the guard for
         // the whole stale window, refusing every Run now and purge; it is given up much sooner.
         var unclaimedCutoff = Now - ExchangeRateSyncConstants.UnclaimedRequestTimeout;
-        var stale = await context.ExchangeRateSyncRuns
-            .Where(run => run.Status == ExchangeRateSyncRunStatus.Running
+        var stale = await Runs
+            .Where(run => run.Status == JobRunStatus.Running
                 && (run.StartedAtUtc < cutoff || (run.ClaimedAtUtc == null && run.StartedAtUtc < unclaimedCutoff)))
             .ToListAsync(cancellationToken);
         if (stale.Count == 0)
@@ -805,21 +829,22 @@ public sealed class ExchangeRateSyncService(
 
         foreach (var run in stale)
         {
-            run.Status = ExchangeRateSyncRunStatus.Failed;
             run.ErrorKind = ExchangeRateSyncErrorKind.Abandoned;
             if (run.ClaimedAtUtc is null)
             {
-                run.FinishedAtUtc = run.StartedAtUtc + ExchangeRateSyncConstants.UnclaimedRequestTimeout;
+                run.Finish(JobRunStatus.Failed, JobFailureCategory.Abandoned,
+                    run.StartedAtUtc + ExchangeRateSyncConstants.UnclaimedRequestTimeout);
                 logger.LogWarning(
                     "Exchange-rate sync run {RunId} was requested but no worker took it; it is marked failed. Is Odyssey.Worker running?",
-                    run.ExchangeRateSyncRunId);
+                    run.JobRunId);
                 continue;
             }
 
             // Stamped at the latest it can have been alive (the hard timeout), not at discovery: "now"
             // would read as a run that just finished and push the next one back a whole delay again.
-            run.FinishedAtUtc = run.StartedAtUtc.AddMinutes(ExchangeRateSyncConstants.RunTimeoutMinutes);
-            logger.LogWarning("Exchange-rate sync run {RunId} was abandoned mid-run and is marked failed.", run.ExchangeRateSyncRunId);
+            run.Finish(JobRunStatus.Failed, JobFailureCategory.Abandoned,
+                run.StartedAtUtc.AddMinutes(ExchangeRateSyncConstants.RunTimeoutMinutes));
+            logger.LogWarning("Exchange-rate sync run {RunId} was abandoned mid-run and is marked failed.", run.JobRunId);
         }
 
         try
@@ -828,7 +853,7 @@ public sealed class ExchangeRateSyncService(
         }
         catch (DbUpdateConcurrencyException)
         {
-            // A worker claimed an unclaimed request in the same instant (ClaimedAtUtc is a concurrency
+            // A worker claimed an unclaimed request in the same instant (Generation is the concurrency
             // token): it is live after all, so the abandonment is dropped and the caller sees it Running.
             foreach (var run in stale)
             {
@@ -837,25 +862,17 @@ public sealed class ExchangeRateSyncService(
         }
     }
 
-    /// <summary>Finishes a run row and prunes the log to the newest 500 by tracked <c>RemoveRange</c>.</summary>
+    /// <summary>
+    /// Finishes a run row. Its <see cref="JobRun.FailureCategory"/> is its error kind — the ordinals are equal by
+    /// design (issue #409 §4.1.1). Pruning is the run log's retention setting, applied by the worker's
+    /// <c>JobRunMaintenanceJob</c>; the newest-500 rule this replaced is gone.
+    /// </summary>
     internal async Task FinishAsync(
-        ExchangeRateSyncRun run, ExchangeRateSyncRunStatus status, ExchangeRateSyncErrorKind? errorKind, CancellationToken cancellationToken)
+        ExchangeRateSyncJobRun run, ExchangeRateSyncRunStatus status, ExchangeRateSyncErrorKind? errorKind, CancellationToken cancellationToken)
     {
-        run.Status = status;
         run.ErrorKind = errorKind;
-        run.FinishedAtUtc = Now;
+        run.Finish((JobRunStatus)status, (JobFailureCategory?)errorKind, Now);
         await context.SaveChangesAsync(cancellationToken);
-
-        var surplus = await context.ExchangeRateSyncRuns
-            .Where(value => value.Status != ExchangeRateSyncRunStatus.Running)
-            .OrderByDescending(value => value.StartedAtUtc)
-            .Skip(ExchangeRateSyncConstants.RunRetention)
-            .ToListAsync(cancellationToken);
-        if (surplus.Count > 0)
-        {
-            context.ExchangeRateSyncRuns.RemoveRange(surplus);
-            await context.SaveChangesAsync(cancellationToken);
-        }
     }
 
     private static string Truncate(string value) => value.Length <= 256 ? value : value[..256];

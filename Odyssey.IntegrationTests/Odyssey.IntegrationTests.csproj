@@ -40,6 +40,7 @@
     <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailTestBase.cs" Link="CoreScenarios\PhotoThumbnailTestBase.cs" />
     <Compile Include="..\Odyssey.Core.Tests\Thumbnails\ThumbnailFixtures.cs" Link="CoreScenarios\ThumbnailFixtures.cs" />
     <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailJobScenarios.cs" Link="CoreScenarios\PhotoThumbnailJobScenarios.cs" />
+    <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailJobRunScenarios.cs" Link="CoreScenarios\PhotoThumbnailJobRunScenarios.cs" />
     <Compile Include="..\Odyssey.Core.Tests\Thumbnails\PhotoThumbnailRenameScenarios.cs" Link="CoreScenarios\PhotoThumbnailRenameScenarios.cs" />
   </ItemGroup>
 

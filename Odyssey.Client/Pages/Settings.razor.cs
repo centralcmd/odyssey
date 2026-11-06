@@ -651,6 +651,15 @@ public partial class Settings
             new("data-export", "download_for_offline", "Export database JSON",
                 "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
                 SettingClaim.None, SettingControl.Export),
+            // Background jobs (issue #409 §3.6): the worker prunes finished runs older than this once an hour.
+            new("jobRunRetentionDays", "history", "Background job history",
+                "How long a finished background-job run is kept in the run log before it is removed.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.JobRunRetentionDaysMin, Max: SystemSettingsBounds.JobRunRetentionDaysMax,
+                Field: nameof(SystemSettingsUpdate.JobRunRetentionDays),
+                Load: (p, dto) => p.SetIntLoaded("jobRunRetentionDays", dto.JobRunRetentionDays),
+                Write: (p, req) => req.JobRunRetentionDays = p.IntRequest("jobRunRetentionDays"),
+                Unit: "days"),
         ]),
         // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
         // every client for one, and it travels in the User-Agent of every request. The Frost client id

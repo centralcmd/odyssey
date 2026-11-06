@@ -267,6 +267,11 @@ public sealed record SystemSettingsDto
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>
     public int FileStorageDeletionGraceHours { get; set; }
 
+    // ── Background jobs (issue #409) ─────────────────────────────────────────────────────────────
+
+    /// <summary>Days a finished background-job run stays in the run log.</summary>
+    public int JobRunRetentionDays { get; set; }
+
     // ── The six bound projections (issue #434 §6) ────────────────────────────────────────────────
     //
     // These stay even though the server-side ceiling VALIDATORS for these keys were deleted (§9 —

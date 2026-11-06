@@ -8,7 +8,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using MySqlConnector;
 using Odyssey.Context;
 using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -90,24 +92,24 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            context.ExchangeRateSyncRuns.Add(Run(ExchangeRateSyncRunStatus.Running));
+            context.Set<ExchangeRateSyncJobRun>().Add(Run(JobRunStatus.Running));
             await context.SaveChangesAsync();
         }
 
         await using (var context = NewContext())
         {
-            context.ExchangeRateSyncRuns.Add(Run(ExchangeRateSyncRunStatus.Running));
+            context.Set<ExchangeRateSyncJobRun>().Add(Run(JobRunStatus.Running));
             var ex = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
             Assert.Equal(1062, (ex.GetBaseException() as MySqlException)?.Number);
         }
 
         await using (var context = NewContext())
         {
-            var running = await context.ExchangeRateSyncRuns.SingleAsync();
-            running.Status = ExchangeRateSyncRunStatus.Succeeded;
-            context.ExchangeRateSyncRuns.Add(Run(ExchangeRateSyncRunStatus.Succeeded));
+            var running = await context.Set<ExchangeRateSyncJobRun>().SingleAsync();
+            running.Finish(JobRunStatus.Succeeded, null, DateTime.UtcNow);
+            context.Set<ExchangeRateSyncJobRun>().Add(Run(JobRunStatus.Succeeded));
             await context.SaveChangesAsync();
-            context.ExchangeRateSyncRuns.Add(Run(ExchangeRateSyncRunStatus.Running));
+            context.Set<ExchangeRateSyncJobRun>().Add(Run(JobRunStatus.Running));
             await context.SaveChangesAsync();
         }
     }
@@ -170,7 +172,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         await using var verify = NewContext();
         Assert.Null((await verify.ExchangeRates.SingleAsync()).Provider);
         Assert.Null((await verify.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom);
-        Assert.Null(await verify.ExchangeRateSyncRuns.Select(run => run.RunningGuard).SingleAsync());
+        Assert.Null(await verify.Set<ExchangeRateSyncJobRun>().Select(run => run.ExclusiveGuard).SingleAsync());
     }
 
     [SkippableFact]
@@ -198,9 +200,9 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         await using var verify = NewContext();
         Assert.Equal(ExchangeRateProvider.NorgesBank, (await verify.ExchangeRates.SingleAsync()).Provider);
         Assert.Equal(new DateOnly(2026, 1, 1), (await verify.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom);
-        var run = await verify.ExchangeRateSyncRuns.SingleAsync();
-        Assert.Equal(ExchangeRateSyncRunStatus.Failed, run.Status);
-        Assert.Null(run.RunningGuard);
+        var run = await verify.Set<ExchangeRateSyncJobRun>().SingleAsync();
+        Assert.Equal(JobRunStatus.Failed, run.Status);
+        Assert.Null(run.ExclusiveGuard);
     }
 
     /// <summary>AC16 on the real engine: two runs racing for the guard — exactly one wins.</summary>
@@ -222,8 +224,8 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
             Assert.Single(started, run => run is not null);
 
             await using var cleanup = NewContext();
-            var running = await cleanup.ExchangeRateSyncRuns.SingleAsync(run => run.Status == ExchangeRateSyncRunStatus.Running);
-            running.Status = ExchangeRateSyncRunStatus.Succeeded;
+            var running = await cleanup.Set<ExchangeRateSyncJobRun>().SingleAsync(run => run.Status == JobRunStatus.Running);
+            running.Finish(JobRunStatus.Succeeded, null, DateTime.UtcNow);
             await cleanup.SaveChangesAsync();
         }
     }
@@ -244,7 +246,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
             await using (var start = NewContext())
             {
                 var (sync, _) = Services(start);
-                runId = (await sync.TryStartAsync(ExchangeRateSyncTrigger.Manual, null))!.ExchangeRateSyncRunId;
+                runId = (await sync.TryStartAsync(ExchangeRateSyncTrigger.Manual, null))!.JobRunId;
             }
 
             var claimed = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
@@ -257,9 +259,9 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
             Assert.Equal(runId, Assert.Single(claimed, id => id is not null));
 
             await using var cleanup = NewContext();
-            var running = await cleanup.ExchangeRateSyncRuns.SingleAsync(run => run.ExchangeRateSyncRunId == runId);
+            var running = await cleanup.Set<ExchangeRateSyncJobRun>().SingleAsync(run => run.JobRunId == runId);
             Assert.NotNull(running.ClaimedAtUtc);
-            running.Status = ExchangeRateSyncRunStatus.Succeeded;
+            running.Finish(JobRunStatus.Succeeded, null, DateTime.UtcNow);
             await cleanup.SaveChangesAsync();
         }
     }
@@ -285,10 +287,10 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
                 new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 10.5m, AsOf = now.AddDays(-1), CreatedAt = now, Provider = ExchangeRateProvider.NorgesBank },
                 new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = "EUR", Rate = 0.1m, AsOf = now.AddDays(-1), CreatedAt = now, Provider = ExchangeRateProvider.NorgesBank });
             seed.ExchangeRateSyncCurrencies.Add(new ExchangeRateSyncCurrency { CurrencyCode = "USD", Enabled = true, UpdatedAtUtc = now });
-            seed.ExchangeRateSyncRuns.Add(new ExchangeRateSyncRun
+            seed.Set<ExchangeRateSyncJobRun>().Add(new ExchangeRateSyncJobRun
             {
-                Trigger = ExchangeRateSyncTrigger.Scheduled, Provider = ExchangeRateProvider.NorgesBank,
-                Status = ExchangeRateSyncRunStatus.Succeeded, StartedAtUtc = now.AddHours(-1), FinishedAtUtc = now.AddHours(-1),
+                Trigger = JobRunTrigger.Scheduled, Provider = ExchangeRateProvider.NorgesBank,
+                Status = JobRunStatus.Succeeded, StartedAtUtc = now.AddHours(-1), FinishedAtUtc = now.AddHours(-1),
                 CurrencyCodes = "USD",
             });
             await seed.SaveChangesAsync();
@@ -342,7 +344,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
         var list = new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), TimeProvider.System, NullLogger<ExchangeRateSupportedList>.Instance);
         var settings = new FixedSettings();
         var sync = new ExchangeRateSyncService(
-            context, client, list, settings, ExchangeRateSyncPacing.None, TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
+            context, client, list, settings, ExchangeRateSyncPacing.None, new JobWorkerIdentity(), TimeProvider.System, NullLogger<ExchangeRateSyncService>.Instance);
         return (sync, new ExchangeRateSyncCurrencyService(context, list, settings, sync, TimeProvider.System, NullLoggerFactory.Instance));
     }
 
@@ -376,12 +378,14 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
             Task.FromResult(new ExchangeRateSyncSettings(null, 24));
     }
 
-    private static ExchangeRateSyncRun Run(ExchangeRateSyncRunStatus status) => new()
+    private static ExchangeRateSyncJobRun Run(JobRunStatus status) => new()
     {
-        Trigger = ExchangeRateSyncTrigger.Scheduled,
+        Trigger = JobRunTrigger.Scheduled,
         Provider = ExchangeRateProvider.NorgesBank,
         Status = status,
         StartedAtUtc = DateTime.UtcNow,
+        LastActivityAtUtc = DateTime.UtcNow,
+        FinishedAtUtc = status == JobRunStatus.Running ? null : DateTime.UtcNow,
     };
 
     private static ExchangeRate Rate(ExchangeRateProvider? provider) => new()
