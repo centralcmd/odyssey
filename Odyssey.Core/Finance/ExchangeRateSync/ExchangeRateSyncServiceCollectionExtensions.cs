@@ -1,6 +1,7 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Core.Finance.ExchangeRateSync.Providers;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.SystemSettings;
 
 namespace Odyssey.Core.Finance.ExchangeRateSync;
@@ -45,6 +46,7 @@ public static class ExchangeRateSyncServiceCollectionExtensions
         services.AddScoped<ExchangeRateSupportedList>();
         services.AddScoped<IExchangeRateSyncSettingsLookup, ExchangeRateSyncSettingsLookup>();
         services.AddScoped<ExchangeRateSyncService>();
+        services.AddJobRunRecording();
         return services;
     }
 }

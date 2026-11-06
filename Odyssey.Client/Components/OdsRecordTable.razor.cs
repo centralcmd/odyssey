@@ -124,6 +124,15 @@ public partial class OdsRecordTable<TRow>
     /// so assistive tech can announce what the table contains.</summary>
     [Parameter] public string? AriaLabel { get; set; }
 
+    /// <summary>
+    /// Names the row for its expand toggle (Odyssey Design System · RecordTable <c>rowLabel</c>). When given, the
+    /// toggle reads "Show details for {label}" / "Hide details for {label}" instead of "Expand row" /
+    /// "Collapse row", and its <c>aria-controls</c> points at a <c>role="group"</c> labelled
+    /// "Details for {label}" inside the detail panel. Use it wherever several rows would otherwise share one
+    /// toggle name. Omit it and the toggle and panel are exactly as before.
+    /// </summary>
+    [Parameter] public Func<TRow, string>? RowLabel { get; set; }
+
     private OdsTableSort? _sort;
     private readonly HashSet<object> _openIds = [];
 
@@ -242,6 +251,10 @@ public partial class OdsRecordTable<TRow>
 
     /// <summary>The rows actually rendered — none while loading or after a failed fetch.</summary>
     private IEnumerable<TRow> VisibleRows => Loading || Error ? [] : Sorted;
+
+    private static string ExpandLabel(bool expanded, string? label) => label is null
+        ? expanded ? "Collapse row" : "Expand row"
+        : $"{(expanded ? "Hide" : "Show")} details for {label}";
 
     private RenderFragment HeaderFor(OdsRecordColumn<TRow> col) =>
         col.Header ?? (b => b.AddContent(0, col.HeaderText));

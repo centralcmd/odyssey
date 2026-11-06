@@ -2128,86 +2128,6 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("ExchangeRateSyncCurrencies");
                 });
 
-            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
-                {
-                    b.Property<Guid>("ExchangeRateSyncRunId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime?>("ClaimedAtUtc")
-                        .IsConcurrencyToken()
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("CurrencyCodes")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<int?>("ErrorKind")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("FinishedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Provider")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RequestedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<int>("RowsDeleted")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsInserted")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsRejected")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsSkipped")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("RunningGuard")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("int")
-                        .HasComputedColumnSql("IF(`Status` = 0, 1, NULL)", false);
-
-                    b.Property<DateOnly?>("SpanFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("SpanTo")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("StartedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Trigger")
-                        .HasColumnType("int");
-
-                    b.HasKey("ExchangeRateSyncRunId");
-
-                    b.HasIndex("RequestedByUserId");
-
-                    b.HasIndex("RunningGuard")
-                        .IsUnique();
-
-                    b.HasIndex("StartedAtUtc");
-
-                    b.ToTable("ExchangeRateSyncRuns", t =>
-                        {
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Status", "`Status` IN (0, 1, 2, 3, 4)");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Trigger", "`Trigger` IN (0, 1, 2)");
-                        });
-                });
-
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>
                 {
                     b.Property<Guid>("CandidateTransactionId")
@@ -2628,6 +2548,136 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("LastReportedAtUtc");
 
                     b.ToTable("FileStorageWorkerVerdicts");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobHeartbeat", b =>
+                {
+                    b.Property<byte>("JobType")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid>("WorkerId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("LastTickAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("JobType", "WorkerId");
+
+                    b.ToTable("JobHeartbeats", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobRun", b =>
+                {
+                    b.Property<Guid>("JobRunId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ClaimedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ExclusiveGuard")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("IF(`Status` = 0 AND (`JobType` IN (1, 3) OR `Trigger` = 1), `JobType`, NULL)", false);
+
+                    b.Property<byte?>("FailureCategory")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Generation")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte?>("HeldReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int?>("ItemsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemsProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("JobType")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("LastActivityAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("OpenHeldGuard")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("IF(`Status` = 5 AND `FinishedAtUtc` IS NULL, 1, NULL)", false);
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<byte>("Trigger")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid?>("WorkerId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("JobRunId");
+
+                    b.HasIndex("DurationMs");
+
+                    b.HasIndex("ExclusiveGuard")
+                        .IsUnique();
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.HasIndex("JobType", "StartedAtUtc");
+
+                    b.HasIndex("Status", "StartedAtUtc");
+
+                    b.HasIndex("JobType", "WorkerId", "OpenHeldGuard")
+                        .IsUnique();
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator<byte>("JobType").IsComplete(true);
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
@@ -3649,6 +3699,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("LeaseUntilUtc")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<byte>("ManualRequeues")
+                        .HasColumnType("tinyint unsigned");
+
                     b.Property<DateTime>("NextAttemptAtUtc")
                         .HasColumnType("datetime(6)");
 
@@ -3686,6 +3739,8 @@ namespace Odyssey.Context.Migrations
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseExpiriesNonNegative", "`LeaseExpiries` >= 0");
 
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseWhenRunning", "`State` <> 1 OR `LeaseUntilUtc` IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_ManualRequeuesRange", "`ManualRequeues` IN (0, 1)");
 
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_PriorityRange", "`Priority` IN (0, 1)");
 
@@ -4557,6 +4612,12 @@ namespace Odyssey.Context.Migrations
                             Key = "FileStorageDeletionGraceHours",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "24"
+                        },
+                        new
+                        {
+                            Key = "JobRunRetentionDays",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "90"
                         });
                 });
 
@@ -5659,6 +5720,215 @@ namespace Odyssey.Context.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<string>("CurrencyCodes")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("ErrorKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsRejected")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsSkipped")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("SpanFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("SpanTo")
+                        .HasColumnType("date");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)1);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageMaintenanceJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("AbandonedWritesSwept")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FilesErased")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HeldByCheck")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("IntegrityFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObjectsScrubbed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrphansFound")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)3);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("Crashes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Hangs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosRendered")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosRequeued")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)4);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int?>("FailureKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ForecastsStored")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObservationDaysStored")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsAttempted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsSkippedNotExpired")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)2);
+                });
+
             modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
                 {
                     b.HasBaseType("Odyssey.Context.OwnedEvent");
@@ -6076,14 +6346,6 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
-                {
-                    b.HasOne("Odyssey.Context.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("RequestedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>
                 {
                     b.HasOne("Odyssey.Context.FileAnalysisCandidateTransaction", "CandidateTransaction")
@@ -6163,6 +6425,14 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("VolumeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobRun", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>

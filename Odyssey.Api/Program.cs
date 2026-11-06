@@ -320,6 +320,8 @@ builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
 // The weather read and Admin-action limits (issue #348). Same composition rules.
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
+// The background-jobs manual run's per-user limit (issue #409 §3.5). Same composition rules.
+builder.Services.AddBackgroundJobsRateLimiter(builder.Configuration);
 
 // The location map's basemap (issue #370): deploy-time, validated at start-up, served by MapStylesController.
 builder.Services.AddMapStyles(builder.Configuration);
@@ -553,6 +555,10 @@ builder.Services.AddFileStorage();
 builder.Services.AddPhotoThumbnails();
 
 builder.Services.AddScoped<AdminFileExportService>();
+
+// The background-jobs page (issue #409): the run log's read model and the manual run of every job. The recording
+// services are registered by each job's own registration above; the API runs no job and no sweep on a timer.
+builder.Services.AddScoped<Odyssey.Core.Jobs.BackgroundJobsService>();
 
 builder.Services.Configure<FileAnalysisOptions>(
     builder.Configuration.GetSection(FileAnalysisOptions.SectionName));

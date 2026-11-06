@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Core.Jobs;
+using Odyssey.Dtos.Application;
 
 namespace Odyssey.Core.Finance.ExchangeRateSync;
 
@@ -11,7 +12,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Every worker replica runs it.</b> The run guard (the <c>RunningGuard</c> unique index) keeps two
+/// <b>Every worker replica runs it.</b> The run guard (the <c>JobRuns.ExclusiveGuard</c> unique index) keeps two
 /// scheduled runs from starting, and the <c>ClaimedAtUtc</c> concurrency token keeps two replicas from
 /// executing one manual run.
 /// </para>
@@ -34,6 +35,8 @@ public sealed class ExchangeRateSyncJob(IServiceScopeFactory scopes) : IPeriodic
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
+        // The heartbeat first, before any early return (issue #409 §3.3 step 1): an idle sync is alive.
+        await scope.ServiceProvider.GetRequiredService<JobRunRecorder>().HeartbeatAsync(JobType.ExchangeRateSync, cancellationToken);
         var sync = scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>();
         if (await sync.ClaimRequestedRunAsync(cancellationToken) is { } runId)
         {

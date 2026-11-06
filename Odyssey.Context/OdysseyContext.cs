@@ -38,14 +38,33 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        RotateJobRunGenerations();
         ApplyNewUserDefaults();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        RotateJobRunGenerations();
         await ApplyNewUserDefaultsAsync(cancellationToken);
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Every write to a <see cref="JobRun"/> bumps its <see cref="JobRun.Generation"/> (issue #409 §3.3 step 2), here
+    /// rather than at each call site so no writer can forget: the save is then conditional on the value the writer
+    /// read, and a second writer of the same row loses instead of overwriting.
+    /// </summary>
+    private void RotateJobRunGenerations()
+    {
+        foreach (var entry in ChangeTracker.Entries<JobRun>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Generation == Guid.Empty
+                || entry.State == EntityState.Modified && !entry.Property(run => run.Generation).IsModified)
+            {
+                entry.Entity.Generation = Guid.NewGuid();
+            }
+        }
     }
 
     // The require-admin-approval rule (issue #349) moved from static config (RegistrationOptions,
@@ -349,7 +368,9 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         // Exchange-rate sync (issue #349): who last changed a currency's sync, and who started a run.
         DeclareUserAttribution<ExchangeRateSyncCurrency>(modelBuilder, nameof(ExchangeRateSyncCurrency.UpdatedByUserId));
-        DeclareUserAttribution<ExchangeRateSyncRun>(modelBuilder, nameof(ExchangeRateSyncRun.RequestedByUserId));
+
+        // Background-job runs (issue #409 §4.4): who asked for a manual run — the exchange-rate sync's declaration, moved.
+        DeclareUserAttribution<JobRun>(modelBuilder, nameof(JobRun.RequestedByUserId));
     }
 
     /// <summary>
@@ -407,7 +428,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<Currency> Currencies { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
     public DbSet<ExchangeRateSyncCurrency> ExchangeRateSyncCurrencies { get; set; }
-    public DbSet<ExchangeRateSyncRun> ExchangeRateSyncRuns { get; set; }
     public DbSet<ExchangeRateProviderSeries> ExchangeRateProviderSeries { get; set; }
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
@@ -537,6 +557,16 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     /// <inheritdoc cref="PhotoThumbnails" />
     public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
+
+    /// <summary>
+    /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and
+    /// each process's last tick per job. Operational, out of scope for every export. Reach a job's own rows with
+    /// <c>Set&lt;TRun&gt;()</c>.
+    /// </summary>
+    public DbSet<JobRun> JobRuns => Set<JobRun>();
+
+    /// <inheritdoc cref="JobRuns" />
+    public DbSet<JobHeartbeat> JobHeartbeats => Set<JobHeartbeat>();
 
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from

@@ -19,7 +19,6 @@
     Headings sit one level below the section card's h2: h3 for the panel and for each tile, as the
     design system has them (the tiles are siblings of the panel heading, not children of it).
 *@
-@using Odyssey.Client.Pages.Finance.ExchangeRateSync
 @using Odyssey.Dtos.Application
 @inject TimeProvider Time
 
@@ -32,7 +31,7 @@
             <span class="sth-checked">
                 @if (CheckedAt is { } checkedAt)
                 {
-                    <span>Checked @ExchangeRateSyncTime.Absolute(checkedAt)</span>
+                    <span>Checked @RunTime.Absolute(checkedAt)</span>
                 }
                 @* Never disabled while a refresh runs: a native-disabled button that holds focus drops it to
                    <body> (WCAG 2.4.3). The host ignores a click that lands while one is in flight. *@
@@ -76,7 +75,7 @@
         {
             <div class="sth-note warning" role="status">
                 <span class="material-icons" aria-hidden="true">cloud_off</span>
-                <div class="sth-note-body"><strong>Couldn’t refresh storage health.</strong> Showing what was read at @ExchangeRateSyncTime.Absolute(shownAt).</div>
+                <div class="sth-note-body"><strong>Couldn’t refresh storage health.</strong> Showing what was read at @RunTime.Absolute(shownAt).</div>
             </div>
         }
         var issues = StorageHealth.Issues(Volumes, Time.GetUtcNow(), Worker);
@@ -169,7 +168,7 @@
             ? @<span>check <span class="mono">@check</span> failed</span>
             : maintenance.MaintenanceLastCompletedAtUtc is { } completed
                 ? builder => builder.AddContent(0,
-                    $"last completed {ExchangeRateSyncTime.Absolute(completed)} ({ExchangeRateSyncTime.Relative(completed, Time.GetUtcNow())})")
+                    $"last completed {RunTime.Absolute(completed)} ({RunTime.Relative(completed, Time.GetUtcNow())})")
                 : null;
 
     private static string SeverityClass(StorageIssueSeverity severity) => severity switch

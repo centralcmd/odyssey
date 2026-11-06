@@ -1325,8 +1325,9 @@ compile-time constant, redirects are not followed, responses are capped at 10 MB
 most 10 requests at least 1 s apart. Rates are published under NLOD 2.0; Odyssey shows the credit
 *Source: Norges Bank (NLOD 2.0)* wherever fetched rates appear.
 
-The run log (`ExchangeRateSyncRuns`, newest 500 kept) records each run's trigger, status, error kind,
-span, currencies and row counts. Per-currency changes and purges are also written to the application
+The run log — since issue #409 the exchange-rate sync's rows of the shared `JobRuns` table (see
+[Background jobs: the run log](#background-jobs-the-run-log)), kept for `JobRunRetentionDays` — records each
+run's trigger, status, error kind, span, currencies and row counts. Per-currency changes and purges are also written to the application
 log under the System settings audit category (`Odyssey.Api.SystemSettings.SystemSettingsService`), and
 manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
 user's id.
@@ -1592,6 +1593,72 @@ any state** (the panel's per-feature counts show when).
 The deployment model is **one API container**. Worker replicas are safe: the maintenance lease and the
 features' own row claims coordinate them. Each process keeps its own *Degraded* flag; the panel shows the
 API's view, and a volume degraded only in the worker shows in the worker's log.
+
+## Background jobs: the run log
+
+Issue #409 records the runs of all four worker jobs — exchange-rate sync, weather, file-storage maintenance and
+photo thumbnails — in one table, `JobRuns`, and each worker process's last tick per job in `JobHeartbeats`.
+**`/background-jobs`** reads both; everything there is under `system-settings.read` (Admin), and a job's own
+counters additionally need that job's read claim (`weather.points.read`, `file-storage.read`, `photos.read`).
+
+### Release note: the exchange-rate sync's run log moved (data migration)
+
+Two migrations run in order, both automatically before the API starts:
+
+1. **`AddJobRuns`** validates every `ExchangeRateSyncRuns` row against the new table's constraints first — a
+   row that cannot be copied aborts the migration *naming its id*, with nothing created — then creates
+   `JobRuns`, `JobHeartbeats`, the `PhotoThumbnailJobs.ManualRequeues` column and the `JobRunRetentionDays`
+   setting (90 days), and copies every row across **with its id** (`INSERT … WHERE NOT EXISTS`, so a replay
+   after an interruption copies nothing twice).
+2. **`DropExchangeRateSyncRuns`** checks that every legacy row is in `JobRuns` with an equal status, trigger,
+   timestamps and row counters, aborts (dropping nothing) if one is not, and only then drops the old table.
+
+Because MariaDB DDL is not atomic, they are two migrations on purpose: an interruption in the first leaves the
+source intact. If either aborts, follow [`migration-history-drift.md`](migration-history-drift.md).
+
+**Rollback is a backup restore.** `Down()` restores schema, not rows: rolling back past
+`DropExchangeRateSyncRuns` recreates an *empty* `ExchangeRateSyncRuns`. Take the usual pre-upgrade database
+dump. The existing exchange-rate sync endpoints and the Currencies page keep their wire shape.
+
+**Deploy order: migrations, then the worker and the API together.** A worker from before this release would
+write into a table that no longer exists, and an API from before it would read one; both images come from the
+same release tag, so the normal `pull` + `up -d` does this.
+
+### What the worker records
+
+| Job | One run row per | Held rows |
+|---|---|---|
+| Exchange-rate sync | run or purge (unchanged) | — |
+| File-storage maintenance | pass — scheduled hourly, or manual, picked up by a **30 s request poll** | while *this* worker's storage checks fail (`HeldByCheck` names the check, never a path) |
+| Weather, photo thumbnails | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable |
+
+Every job writes its heartbeat first on every tick (at most once a minute per process), before any early
+return, so an idle, unconfigured or held job is never mistaken for a dead one. A job with no heartbeat for
+5 minutes reads **Not ticking** on the page.
+
+`JobRunMaintenanceJob` (worker, every 5 minutes) abandons a run whose process has gone (after its job's stale
+window — it never touches a file-storage pass while the maintenance lease is live), closes a held period whose
+process has stopped heartbeating, and once an hour deletes finished runs older than **`JobRunRetentionDays`**
+(`/settings` → Data, 14–730 days; a degraded read keeps the larger value — never prunes more on a fault).
+`Running` rows and open held periods are never pruned. The newest-500 rule of the old sync log is gone.
+
+### Manual runs
+
+`POST /api/background-jobs/{job}/runs` needs `system-settings.update` **and** the job's own claim
+(`weather.points.update`, `file-storage.read`, `photos.update`; the sync needs none beyond the first). The
+file-storage manual pass is gated on `file-storage.read` by decision — no file-storage write claim exists — and
+uses the same deletion grace and lease as a scheduled pass. A thumbnail manual run drains pending jobs and
+re-queues each `Failed` job **once in its lifetime** (`ManualRequeues`); `Unsupported` jobs, crashes and
+timeouts included, are never re-queued.
+
+Each job has a 60 s cooldown, and a per-user limiter sits in front of all four:
+`RateLimiting:BackgroundJobsRun` (default 5 requests per user per minute). Every accepted manual run is written
+to the application log at Information under the System settings audit category
+(`Odyssey.Api.SystemSettings.SystemSettingsService`) with the acting user's id, the job and the run id —
+independent of the row, which is pruned and whose requester is nulled when the account is deleted.
+
+Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync executes a manual run inline; the other three
+stay unclaimed (no test may call MET or load ImageMagick).
 
 ## Photo thumbnails
 

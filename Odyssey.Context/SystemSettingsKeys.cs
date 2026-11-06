@@ -225,6 +225,13 @@ public static class SystemSettingsKeys
 
     public const string FileStorageDeletionGraceHours = "FileStorageDeletionGraceHours";
 
+    // ---------------------------------------------------------------------------------------------
+    // Background jobs (issue #409). How long a finished run stays in the shared run log before the
+    // worker's maintenance job prunes it.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string JobRunRetentionDays = "JobRunRetentionDays";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -299,6 +306,7 @@ public static class SystemSettingsKeys
         ExchangeRateHistoryStartDate,
         ExchangeRateSyncIntervalHours,
         FileStorageDeletionGraceHours,
+        JobRunRetentionDays,
     ];
 
     /// <summary>

@@ -9,6 +9,7 @@ using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Jobs;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Journal.Thumbnails;
@@ -69,6 +70,8 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     private long ticks;
     private string? lastUploader;
     private ThumbnailWorkerState lastState = ThumbnailWorkerState.Running;
+    private ThumbnailTickTally tally = new();
+    private Guid? manualRunId;
 
     public PhotoThumbnailJob(
         IServiceScopeFactory scopes,
@@ -121,6 +124,10 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
         ticks++;
+        var recorder = Recorder();
+        // The run log's heartbeat first (issue #409 §3.3 step 1): keyed by the per-process WorkerId the run rows carry,
+        // while PhotoThumbnailWorkerHeartbeats keeps its worker-state role (S-N2).
+        await recorder.HeartbeatAsync(JobType.PhotoThumbnails, cancellationToken);
         if (selfTestResult is null)
         {
             selfTestResult = RunSelfTest();
@@ -129,20 +136,84 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
 
         var state = PresentState();
         await HeartbeatAsync(state, cancellationToken);
+        tally = new ThumbnailTickTally();
+        manualRunId = null;
+        JobFailureCategory? failure = null;
         try
         {
             state = await RunGatedAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            // A run cut short by shutdown is Cancelled, as the weather and file-storage runs record it — a deploy
+            // restart is not an internal error (architect review on PR #418).
+            failure = ex is OperationCanceledException ? JobFailureCategory.Cancelled : JobFailureCategory.Internal;
+            throw;
         }
         finally
         {
             lastState = state;
             await HeartbeatAsync(state, CancellationToken.None);
+            await RecordTickAsync(recorder, state, failure);
             if (ticks % PhotoThumbnailTiming.CleanupEveryNthTick == 0)
             {
                 await CleanUpAsync();
             }
         }
     }
+
+    private JobRunRecorder Recorder()
+    {
+        using var scope = scopes.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<JobRunRecorder>();
+    }
+
+    /// <summary>
+    /// The tick into the run log (issue #409 §3.2–§3.3): a held state opens (or keeps) this process's held period with
+    /// its reason; otherwise a manual run is finished with the tick's counts, a tick that did work extends the burst,
+    /// and an idle tick closes it.
+    /// </summary>
+    private async Task RecordTickAsync(JobRunRecorder recorder, ThumbnailWorkerState state, JobFailureCategory? failure)
+    {
+        var counts = tally;
+        if (manualRunId is { } runId)
+        {
+            await recorder.FinishAsync<PhotoThumbnailJobRun>(JobType.PhotoThumbnails, runId, counts.AddTo,
+                failure is { } category ? (JobRunStatus.Failed, category) : null, CancellationToken.None);
+        }
+        else if (counts.HasWork)
+        {
+            // Work done before a gate held the tick (a reclaimed crash, say) still lands in the burst it belongs to.
+            await recorder.ExtendBurstAsync<PhotoThumbnailJobRun>(JobType.PhotoThumbnails, counts.AddTo, CancellationToken.None);
+        }
+
+        var held = HeldReasonOf(state);
+        if (held is null && (counts.HasWork || manualRunId is not null))
+        {
+            await recorder.ReleaseHoldAsync(JobType.PhotoThumbnails, CancellationToken.None);
+            return;
+        }
+
+        await recorder.CloseBurstAsync(JobType.PhotoThumbnails, CancellationToken.None);
+        if (held is { } reason)
+        {
+            await recorder.HoldAsync<PhotoThumbnailJobRun>(JobType.PhotoThumbnails, reason, null, CancellationToken.None);
+        }
+        else
+        {
+            await recorder.ReleaseHoldAsync(JobType.PhotoThumbnails, CancellationToken.None);
+        }
+    }
+
+    /// <summary>The held reason of a worker state (A6); <c>null</c> for a running worker.</summary>
+    public static JobHeldReason? HeldReasonOf(ThumbnailWorkerState state) => state switch
+    {
+        ThumbnailWorkerState.Paused => JobHeldReason.DecoderPaused,
+        ThumbnailWorkerState.Tripped => JobHeldReason.BreakerTripped,
+        ThumbnailWorkerState.PolicyFailed => JobHeldReason.DecoderPolicyFailed,
+        ThumbnailWorkerState.StorageUnavailable => JobHeldReason.StorageUnavailable,
+        _ => null,
+    };
 
     private async Task<ThumbnailWorkerState> RunGatedAsync(CancellationToken cancellationToken)
     {
@@ -176,6 +247,10 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
             return ThumbnailWorkerState.Paused;
         }
 
+        // A manual run the API requested (issue #409 §3.5) is claimed only by a worker that is not held: it drains
+        // what is due into its own row, then re-queues each Failed job once.
+        manualRunId = await Recorder().ClaimManualAsync(JobType.PhotoThumbnails, cancellationToken);
+
         var started = time.GetUtcNow();
         while (!cancellationToken.IsCancellationRequested && time.GetUtcNow() - started < PhotoThumbnailTiming.RunBudget)
         {
@@ -191,7 +266,68 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
             }
         }
 
+        if (manualRunId is not null)
+        {
+            tally.Requeued += await RequeueFailedAsync(cancellationToken);
+        }
+
         return ThumbnailWorkerState.Running;
+    }
+
+    /// <summary>
+    /// The manual run's re-queue (issue #409 §3.5, A-N2, S-N1): every <c>Failed</c> job never re-queued by hand goes
+    /// back to <c>Pending</c> with its attempts reset, once — <see cref="PhotoThumbnailJobEntry.ManualRequeues"/> is
+    /// never reset, and an <c>Unsupported</c> job (a crash or a timeout included) is never touched. One conditional
+    /// save per row on its <see cref="PhotoThumbnailJobEntry.Generation"/>, so it cannot race a reclaim or a rename.
+    /// </summary>
+    internal async Task<int> RequeueFailedAsync(CancellationToken cancellationToken)
+    {
+        List<Guid> ids;
+        await using (var scope = scopes.CreateAsyncScope())
+        {
+            ids = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().PhotoThumbnailJobs
+                .Where(j => j.State == PhotoThumbnailJobState.Failed && j.ManualRequeues == 0)
+                .OrderBy(j => j.UpdatedAtUtc)
+                .Select(j => j.PhotoId)
+                .Take(PhotoThumbnailTiming.DiscoveryBatch)
+                .ToListAsync(cancellationToken);
+        }
+
+        var requeued = 0;
+        foreach (var photoId in ids)
+        {
+            await using var scope = scopes.CreateAsyncScope();
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var job = await context.PhotoThumbnailJobs.FirstOrDefaultAsync(j => j.PhotoId == photoId, cancellationToken);
+            if (job is not { State: PhotoThumbnailJobState.Failed, ManualRequeues: 0 })
+            {
+                continue;
+            }
+
+            var now = Now;
+            job.State = PhotoThumbnailJobState.Pending;
+            job.Attempts = 0;
+            job.ManualRequeues = 1;
+            job.FailureCode = null;
+            job.NextAttemptAtUtc = now;
+            Touch(job, now);
+            try
+            {
+                await context.SaveChangesAsync(cancellationToken);
+                requeued++;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Another write moved it first; it is left as that write made it.
+            }
+        }
+
+        if (requeued > 0)
+        {
+            logger.LogInformation("A manual thumbnail run re-queued {Count} failed jobs.", requeued);
+        }
+
+        return requeued;
     }
 
     private ThumbnailWorkerState PresentState() =>
@@ -384,6 +520,7 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+                tally.Crashes++;
                 logger.LogWarning(
                     "Thumbnail job for photo {PhotoId} lost its lease (expiry {Expiries}); its worker most likely died mid-decode.",
                     photoId, job.LeaseExpiries);
@@ -831,6 +968,11 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
+                if (job is { State: PhotoThumbnailJobState.Done })
+                {
+                    tally.Rendered++;
+                }
+
                 return;
             }
             catch (DbUpdateConcurrencyException ex)
@@ -965,15 +1107,21 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         }
     }
 
-    private Task<bool> UnsupportedAsync(Claimed claimed, string code)
+    private async Task<bool> UnsupportedAsync(Claimed claimed, string code)
     {
         logger.LogWarning("Thumbnail job for photo {PhotoId} is unsupported ({Code}).", claimed.PhotoId, code);
-        return WriteRunAsync(claimed, (job, now) =>
+        var landed = await WriteRunAsync(claimed, (job, now) =>
         {
             job.State = PhotoThumbnailJobState.Unsupported;
             job.FailureCode = code;
             EndRun(job, now);
         });
+        if (landed)
+        {
+            tally.Failed++;
+        }
+
+        return landed;
     }
 
     /// <summary>A storage or database outage is not the image's fault: the attempt is given back (§3.3 step 5).</summary>
@@ -985,7 +1133,18 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         EndRun(job, now);
     });
 
-    private Task<bool> CountedFailureAsync(Claimed claimed) => WriteRunAsync(claimed, (job, now) =>
+    private async Task<bool> CountedFailureAsync(Claimed claimed)
+    {
+        var landed = await CountedFailureWriteAsync(claimed);
+        if (landed)
+        {
+            tally.Failed++;
+        }
+
+        return landed;
+    }
+
+    private Task<bool> CountedFailureWriteAsync(Claimed claimed) => WriteRunAsync(claimed, (job, now) =>
     {
         if (job.Attempts >= PhotoThumbnailTiming.MaxCountedAttempts)
         {
@@ -1037,6 +1196,7 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         });
         if (landed)
         {
+            tally.Hangs++;
             await using var scope = scopes.CreateAsyncScope();
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             context.PhotoThumbnailIncidents.Add(new PhotoThumbnailIncident { Kind = PhotoThumbnailIncidentKind.Timeout, OccurredAtUtc = Now });
@@ -1196,18 +1356,22 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// </summary>
     private async Task<(bool Finished, ThumbnailRenderResult? Result)> RenderUnderWatchdogAsync(ThumbnailRenderRequest request)
     {
+        // The watchdog is armed BEFORE the thread starts: arming it after would let the clock move between the
+        // renderer starting and the timer existing, and a timer armed late measures from the wrong instant (with a
+        // fake clock it never fires at all).
+        using var watchdogCancel = new CancellationTokenSource();
+        var watchdog = Task.Delay(PhotoThumbnailTiming.Watchdog, time, watchdogCancel.Token);
         var decode = RunOnThread(() => SafeRender(request));
-        try
+        if (await Task.WhenAny(decode, watchdog) == decode)
         {
-            return (true, await decode.WaitAsync(PhotoThumbnailTiming.Watchdog, time));
+            await watchdogCancel.CancelAsync();
+            return (true, await decode);
         }
-        catch (TimeoutException)
-        {
-            abandonedDecode = decode;
-            abandonedAtUtc = Now;
-            restartRequested = false;
-            return (false, null);
-        }
+
+        abandonedDecode = decode;
+        abandonedAtUtc = Now;
+        restartRequested = false;
+        return (false, null);
     }
 
     /// <summary>A decoder exception is <c>decode</c>; only its type is ever logged, never its message (§7.8).</summary>
@@ -1230,6 +1394,9 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// </summary>
     private async Task<int> ReadOrientationAsync(byte[] original)
     {
+        // Armed before the thread starts, as the render watchdog is.
+        using var watchdogCancel = new CancellationTokenSource();
+        var watchdog = Task.Delay(PhotoThumbnailTiming.OrientationWatchdog, time, watchdogCancel.Token);
         var read = RunOnThread(() =>
         {
             try
@@ -1241,15 +1408,14 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
                 return 1;
             }
         });
-        try
-        {
-            var orientation = await read.WaitAsync(PhotoThumbnailTiming.OrientationWatchdog, time);
-            return orientation is >= 1 and <= 8 ? orientation : 1;
-        }
-        catch (TimeoutException)
+        if (await Task.WhenAny(read, watchdog) != read)
         {
             return 1;
         }
+
+        await watchdogCancel.CancelAsync();
+        var orientation = await read;
+        return orientation is >= 1 and <= 8 ? orientation : 1;
     }
 
     private static Task<T> RunOnThread<T>(Func<T> work)
@@ -1303,4 +1469,30 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// <summary>50–500 ms between conflicting writes: real time, so a test clock never stalls a retry.</summary>
     private static Task JitterAsync(CancellationToken cancellationToken) =>
         Task.Delay(Random.Shared.Next(50, 501), cancellationToken);
+}
+
+/// <summary>One tick's thumbnail counts, folded into its run row (issue #409 §4.2). Counts only — never a photo id.</summary>
+internal sealed class ThumbnailTickTally
+{
+    public int Rendered { get; set; }
+
+    public int Failed { get; set; }
+
+    public int Requeued { get; set; }
+
+    public int Crashes { get; set; }
+
+    public int Hangs { get; set; }
+
+    /// <summary>A tick that rendered, failed, re-queued or reclaimed something; anything else is idle.</summary>
+    public bool HasWork => Rendered + Failed + Requeued + Crashes + Hangs > 0;
+
+    public void AddTo(PhotoThumbnailJobRun run)
+    {
+        run.PhotosRendered += Rendered;
+        run.PhotosFailed += Failed;
+        run.PhotosRequeued += Requeued;
+        run.Crashes += Crashes;
+        run.Hangs += Hangs;
+    }
 }

@@ -620,7 +620,7 @@ fetched one; there is no separate source column. Four rules are easy to get back
   `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
 - **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
   date; the bounded lookups keep their exclusive `AsOf < bound`.
-- **The run guard is the `RunningGuard` generated column's unique index**, real MariaDB only; a purge
+- **The run guard is the `JobRuns.ExclusiveGuard` generated column's unique index**, real MariaDB only; a purge
   takes it too, through a `Purge` run row. Runs execute in `Odyssey.Worker` (`ExchangeRateSyncJob`), which
   keeps no schedule in memory. The API only *starts* a manual run: it inserts the `Running` row unclaimed,
   and the first worker replica to set `ClaimedAtUtc` — a concurrency token — executes it. A scheduled run
@@ -658,7 +658,7 @@ is gone, and with it the one `__EFMigrationsHistory` table shared between two co
 job is an `Odyssey.Core.Jobs.IPeriodicJob`, written and tested in `Odyssey.Core` like any other business
 service, and registered with one `services.AddPeriodicJob<TJob>()` line in `Odyssey.Worker/WorkerHost.cs`.
 `PeriodicJobService` owns the loop — first run at once, one run per interval, a failed run logged and the
-next one going ahead, runs never overlapping. Four rules:
+next one going ahead, runs never overlapping. Five rules:
 
 - **Every replica runs every job.** A job that must not run twice at once coordinates through the rows it
   works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherPointSchedule.Version`
@@ -672,8 +672,16 @@ next one going ahead, runs never overlapping. Four rules:
   the keys volume is mounted `:ro` and automatic key generation is off, so the API stays the only key
   writer. Holding the ring means the worker can decrypt every stored credential — see
   `docs/deployment.md` → *Two containers hold the key ring*. The migrations job still holds none.
-- **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (hourly)
-  erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
+- **Every catalogued job records into one shared run log** (issues #409/#410). `JobRuns` (TPH by `JobType`)
+  holds every run, burst and held period, and `JobHeartbeats` one row per process and job; `JobCatalogue`
+  (`Odyssey.Core/Jobs/`) declares each recorded job once, and `JobRunRecorder` is the only writer a job calls.
+  `Generation` is rotated on every save, so the worker, the stale sweep and the API lose a race cleanly; the
+  `ExclusiveGuard`/`OpenHeldGuard` generated unique indexes are the real guards on MariaDB. `JobRunMaintenanceJob`
+  sweeps stale rows every 5 minutes and prunes past `JobRunRetentionDays` hourly. The Admin page is
+  `/background-jobs` over `GET/POST /api/background-jobs/...`, gated on `system-settings.read`/`.update` plus
+  each job's own claims, which never leave the server.
+- **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (ticking
+  every 30 s, one pass per 1 h `PassInterval`) erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
   by the single-row `FileStorageMaintenanceLeases` lease. **The job runs the worker's storage checks itself**
   (`FileStorageWorkerVerification`, the API's checks in verify-only mode, waiting up to 2 minutes for the API to
   initialise a new volume), so **a failing volume verdict holds that job alone** — weather and exchange-rate

@@ -16,7 +16,7 @@ namespace Odyssey.Core.Tests.Thumbnails;
 /// The thumbnail job on EF InMemory with a fake renderer (issue #362 test tiers, "Job logic"): the pipeline, the
 /// failure codes, the lanes, the watchdog, the crash rule, the breaker, the outage and the heartbeat.
 /// </summary>
-public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
+public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
 {
     // ── Pipeline (AC 1, 2, 3, 6) ───────────────────────────────────────────────────────────────────────
 

@@ -55,6 +55,7 @@ internal sealed class PhotoThumbnailJobConfiguration : IEntityTypeConfiguration<
             tb.HasCheckConstraint("CK_PhotoThumbnailJobs_PriorityRange", "`Priority` IN (0, 1)");
             tb.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseExpiriesNonNegative", "`LeaseExpiries` >= 0");
             tb.HasCheckConstraint("CK_PhotoThumbnailJobs_AttemptsNonNegative", "`Attempts` >= 0");
+            tb.HasCheckConstraint("CK_PhotoThumbnailJobs_ManualRequeuesRange", "`ManualRequeues` IN (0, 1)");
             // Every exit from Running clears the run identity and a pending re-run.
             tb.HasCheckConstraint(
                 "CK_PhotoThumbnailJobs_RunOnlyWhenRunning", "`State` = 1 OR (`RunId` IS NULL AND `RerunRequested` = 0)");

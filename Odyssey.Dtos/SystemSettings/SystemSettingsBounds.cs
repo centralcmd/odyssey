@@ -289,4 +289,15 @@ public static class SystemSettingsBounds
     public const int FileStorageDeletionGraceHoursMin = 1;
 
     public const int FileStorageDeletionGraceHoursMax = 168;
+
+    /// <summary>
+    /// Two weeks to two years (issue #409 §8). A degraded read resolves to the larger value — never prune more on a
+    /// fault — so the floor bounds how much a hand-edited row can make the worker delete. The floor is also twice the
+    /// longest exchange-rate sync gap (a 168 h interval, or the 168 h backoff cap): the sync derives its next run and
+    /// its failure streak from its newest finished rows in this log, and a floor of one week pruned that anchor row
+    /// exactly when it was needed (architect review on PR #418).
+    /// </summary>
+    public const int JobRunRetentionDaysMin = 14;
+
+    public const int JobRunRetentionDaysMax = 730;
 }

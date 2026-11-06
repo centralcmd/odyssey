@@ -327,7 +327,7 @@ public class ExchangeRateSyncApiTests
         using (var scope = factory.Services.CreateScope())
         {
             runId = (await scope.ServiceProvider.GetRequiredService<ExchangeRateSyncService>()
-                .StartManualAsync("admin")).ExchangeRateSyncRunId;
+                .StartManualAsync("admin")).JobRunId;
         }
 
         await new ExchangeRateSyncJob(factory.Services.GetRequiredService<IServiceScopeFactory>())
@@ -335,9 +335,9 @@ public class ExchangeRateSyncApiTests
 
         using (var scope = factory.Services.CreateScope())
         {
-            var run = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().ExchangeRateSyncRuns
-                .AsNoTracking().SingleAsync(value => value.ExchangeRateSyncRunId == runId);
-            Assert.Equal(ExchangeRateSyncRunStatus.Succeeded, run.Status);
+            var run = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Set<ExchangeRateSyncJobRun>()
+                .AsNoTracking().SingleAsync(value => value.JobRunId == runId);
+            Assert.Equal(JobRunStatus.Succeeded, run.Status);
             Assert.NotNull(run.ClaimedAtUtc);
             Assert.True(run.RowsInserted > 0);
 
