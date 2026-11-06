@@ -20,7 +20,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// <remarks>
 /// <para>
 /// <b>The guard.</b> A run starts by inserting its <c>Running</c> row, which the generated
-/// <c>RunningGuard</c> column's unique index makes exclusive on MariaDB; the pre-check here is what the EF
+/// <c>JobRuns.ExclusiveGuard</c> column's unique index makes exclusive on MariaDB; the pre-check here is what the EF
 /// InMemory tiers see. A <c>Running</c> row older than twice the hard timeout is marked
 /// <c>Failed / Abandoned</c> before the next run takes the guard.
 /// </para>
@@ -128,7 +128,7 @@ public sealed class ExchangeRateSyncService(
         }
         catch (DbUpdateException exception) when (DbErrors.IsDuplicateKey(exception))
         {
-            // The unique RunningGuard index: another instance took the guard between the check and here.
+            // The unique JobRuns.ExclusiveGuard index: another instance took the guard between the check and here.
             // Only that error means "in progress"; any other write fault propagates as itself.
             context.Entry(run).State = EntityState.Detached;
             return null;
