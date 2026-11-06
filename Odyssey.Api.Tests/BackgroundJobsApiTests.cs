@@ -81,11 +81,16 @@ public class BackgroundJobsApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await client.PostAsync($"{Base}/PhotoThumbnails/runs", null)).StatusCode);
     }
 
-    /// <summary>A14: an unknown job, a number or the Unknown sentinel is a 404.</summary>
+    /// <summary>
+    /// A14: an unknown job, a number, the Unknown sentinel or a comma-composed list is a 404. The last one parses to
+    /// another job's ordinal (1 | 2 = 3), so without the exact-name check it would run file-storage maintenance.
+    /// </summary>
     [Theory]
     [InlineData("Nope")]
     [InlineData("2")]
     [InlineData("Unknown")]
+    [InlineData("ExchangeRateSync,Weather")]
+    [InlineData("ExchangeRateSync, Weather")]
     public async Task An_unknown_job_is_not_found(string jobType)
     {
         await using var factory = new ApiFactory(Admin);

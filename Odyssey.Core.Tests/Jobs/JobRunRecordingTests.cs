@@ -103,13 +103,15 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
         Assert.DoesNotContain(typeof(JobRunMaintenanceJob), JobCatalogue.Entries.Select(entry => entry.JobClass));
     }
 
-    /// <summary>A14: only a catalogued member's NAME resolves — never a number, never the Unknown sentinel.</summary>
+    /// <summary>A14: only a catalogued member's exact NAME resolves — never a number, a composed list or the Unknown sentinel.</summary>
     [Theory]
     [InlineData("Weather", true)]
     [InlineData("photoThumbnails", true)]
     [InlineData("FILESTORAGEMAINTENANCE", true)]
     [InlineData("2", false)]
     [InlineData("Unknown", false)]
+    [InlineData("ExchangeRateSync,Weather", false)]
+    [InlineData(" Weather", false)]
     [InlineData("Nope", false)]
     [InlineData("", false)]
     public void A_route_segment_resolves_only_to_a_catalogued_job_name(string value, bool resolves)
