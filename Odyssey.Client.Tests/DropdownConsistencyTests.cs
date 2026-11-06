@@ -505,16 +505,17 @@ public class DropdownConsistencyTests
     }
 
     [Theory]
-    [InlineData("#1E88E5")]
-    [InlineData(null)]
-    [InlineData("red;background:url(x)")]
-    public void The_transactions_tag_filter_falls_back_to_the_tag_ink_for_a_colourless_tag(string? color)
+    [InlineData(null, "var(--tag-text)")]
+    [InlineData("red;background:url(x)", "var(--tag-text)")]
+    [InlineData("#1E88E5", "oklch(from #1E88E5 var(--user-glyph-l, l) c h)")]
+    [InlineData("#1e88e5", "oklch(from #1E88E5 var(--user-glyph-l, l) c h)")]
+    public void The_transactions_tag_filter_falls_back_to_the_tag_ink_for_a_colourless_tag(string? color, string expected)
     {
         var tag = new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Groceries", Archived = null, Color = color };
 
         var option = TransactionsCard.TagFilterOption(tag);
 
-        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
+        Assert.Equal(expected, option.IconColor);
     }
 
     [Fact]

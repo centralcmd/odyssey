@@ -139,50 +139,76 @@
             // the search field enters the list); Enter toggles the focused row. Capturing on the panel
             // runs before OdsPopupMenu's Tab sentinels and any wrapping modal's Tab trap. Wired once per
             // panel element; Esc is left to OdsPopupMenu.
-            const panel = document.getElementById(panelId);
-            if (!panel || panel.dataset.odsCheckListKeys) return;
-            panel.dataset.odsCheckListKeys = '1';
-            const reveal = (el) => {
-                const row = el && el.closest('.odc-ms-opt');
-                const list = panel.querySelector('.odc-ms-list');
-                if (!row || !list) return;
-                const r = row.getBoundingClientRect();
-                const l = list.getBoundingClientRect();
-                if (r.top < l.top) list.scrollTop -= (l.top - r.top) + 4;
-                else if (r.bottom > l.bottom) list.scrollTop += (r.bottom - l.bottom) + 4;
+            // The panel is portaled through MudBlazor's popover provider and may not be in the DOM on
+            // the first after-render, so wait for it (up to ~30 frames), as odsFocusInPopover does.
+            let frames = 0;
+            const attach = () => {
+                const panel = document.getElementById(panelId);
+                if (!panel) { if (frames++ < 30) requestAnimationFrame(attach); return; }
+                if (panel.dataset.odsCheckListKeys) return;
+                panel.dataset.odsCheckListKeys = '1';
+                wire(panel);
             };
-            panel.addEventListener('keydown', (ev) => {
-                const els = Array.from(panel.querySelectorAll('.odc-ms-search input, .odc-ms-opt input[type="checkbox"], .odc-ms-foot .odc-btn:not([disabled])'));
-                if (!els.length) return;
-                const i = els.indexOf(document.activeElement);
-                if (ev.key === 'Tab') {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    const n = els.length;
-                    const next = ev.shiftKey ? (i <= 0 ? n - 1 : i - 1) : (i < 0 || i === n - 1 ? 0 : i + 1);
-                    els[next].focus();
-                    reveal(els[next]);
-                    return;
-                }
-                if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
-                    const boxes = els.filter((x) => x.type === 'checkbox');
-                    if (!boxes.length) return;
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    const bi = boxes.indexOf(document.activeElement);
-                    const down = ev.key === 'ArrowDown';
-                    const target = bi < 0
-                        ? boxes[down ? 0 : boxes.length - 1]
-                        : boxes[Math.min(Math.max(bi + (down ? 1 : -1), 0), boxes.length - 1)];
-                    target.focus();
-                    reveal(target);
-                    return;
-                }
-                if (ev.key === 'Enter') {
-                    const el = document.activeElement;
-                    if (el && el.type === 'checkbox') { ev.preventDefault(); ev.stopPropagation(); el.click(); }
-                }
-            }, true);
+            const wire = (panel) => {
+                const reveal = (el) => {
+                    const row = el && el.closest('.odc-ms-opt');
+                    const list = panel.querySelector('.odc-ms-list');
+                    if (!row || !list) return;
+                    const r = row.getBoundingClientRect();
+                    const l = list.getBoundingClientRect();
+                    if (r.top < l.top) list.scrollTop -= (l.top - r.top) + 4;
+                    else if (r.bottom > l.bottom) list.scrollTop += (r.bottom - l.bottom) + 4;
+                };
+                panel.addEventListener('keydown', (ev) => {
+                    const els = Array.from(panel.querySelectorAll('.odc-ms-search input, .odc-ms-opt input[type="checkbox"], .odc-ms-foot .odc-btn:not([disabled])'));
+                    if (!els.length) return;
+                    const i = els.indexOf(document.activeElement);
+                    if (ev.key === 'Tab') {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        const n = els.length;
+                        const next = ev.shiftKey ? (i <= 0 ? n - 1 : i - 1) : (i < 0 || i === n - 1 ? 0 : i + 1);
+                        els[next].focus();
+                        reveal(els[next]);
+                        return;
+                    }
+                    if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                        const boxes = els.filter((x) => x.type === 'checkbox');
+                        if (!boxes.length) return;
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        const bi = boxes.indexOf(document.activeElement);
+                        const down = ev.key === 'ArrowDown';
+                        const target = bi < 0
+                            ? boxes[down ? 0 : boxes.length - 1]
+                            : boxes[Math.min(Math.max(bi + (down ? 1 : -1), 0), boxes.length - 1)];
+                        target.focus();
+                        reveal(target);
+                        return;
+                    }
+                    if (ev.key === 'Enter') {
+                        const el = document.activeElement;
+                        if (el && el.type === 'checkbox') { ev.preventDefault(); ev.stopPropagation(); el.click(); }
+                    }
+                }, true);
+                // Clear disables itself once nothing is selected, and a disabled button drops focus to
+                // <body>, where the panel's keys no longer reach. Once the re-render lands, put focus back
+                // on the search field, else the first row (WCAG 2.4.3).
+                panel.addEventListener('click', (ev) => {
+                    const clear = ev.target.closest && ev.target.closest('.odc-ms-foot .odc-btn');
+                    if (!clear || clear !== panel.querySelector('.odc-ms-foot .odc-btn')) return;
+                    let tries = 0;
+                    const restore = () => {
+                        const lost = document.activeElement === document.body || document.activeElement === clear;
+                        if (!clear.disabled && tries++ < 30) { requestAnimationFrame(restore); return; }
+                        if (!lost && document.activeElement !== clear) return;
+                        const target = panel.querySelector('.odc-ms-search input') || panel.querySelector('.odc-ms-opt input[type="checkbox"]');
+                        if (target) target.focus();
+                    };
+                    requestAnimationFrame(restore);
+                });
+            };
+            requestAnimationFrame(attach);
         };
         window.odsFocusIfLost = function (triggerId, panelId) {
             // OdsPopupMenu's click-away close (issue #255). The overlay is modeless, so the click

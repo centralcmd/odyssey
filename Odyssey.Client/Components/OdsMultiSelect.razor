@@ -65,7 +65,12 @@
         }
     </TriggerContent>
     <ChildContent>
+        @{ var filtered = Filtered.ToList(); }
         <div class="odc-ms-pop @AlignClass @(Fits ? "fit" : OpenEnded ? "open-ended" : null)">
+            @* Always rendered, so a change of its text is announced: the result count while a search
+               narrows the list, "No matches", or "Loading…" (WCAG 4.1.3). A row inserted already
+               holding its text is not reliably read. *@
+            <div class="odc-sr-only odc-ms-status" role="status" aria-live="polite">@StatusText(filtered.Count)</div>
             @if (SearchOn)
             {
                 <div class="odc-ms-search">
@@ -80,16 +85,16 @@
             <div class="odc-ms-list">
                 @if (Loading)
                 {
-                    @* Announced, and visually distinct from "no match": options that arrive
-                       asynchronously must never read as an empty list. *@
-                    <div class="odc-ms-loading" role="status">
+                    @* Visually distinct from "no match", and announced through the status line above:
+                       options that arrive asynchronously must never read as an empty list. *@
+                    <div class="odc-ms-loading">
                         <span class="material-icons" aria-hidden="true">hourglass_top</span>
                         <span>@LoadingText</span>
                     </div>
                 }
                 else
                 {
-                    @foreach (var option in Filtered)
+                    @foreach (var option in filtered)
                     {
                         <label class="odc-ms-opt odc-check">
                             <input type="checkbox"
@@ -114,7 +119,7 @@
                             </span>
                         </label>
                     }
-                    @if (!Filtered.Any())
+                    @if (filtered.Count == 0)
                     {
                         <div class="odc-tagms-empty">@EmptyText</div>
                     }

@@ -10,6 +10,16 @@ namespace Odyssey.Client.Components;
 /// </summary>
 public partial class OdsMultiSelect
 {
+    /// <summary>The option count above which the search field turns on by default.</summary>
+    public const int SearchLimit = 8;
+
+    /// <summary>
+    /// The longest option list the trigger sizes itself to. A short, fixed vocabulary (a type, a
+    /// status, a direction) gets a trigger exactly as wide as its menu; an open-ended data list (accounts,
+    /// tags, merchants) keeps its floor and lets the popover grow past it instead of widening the bar.
+    /// </summary>
+    public const int FitLimit = 12;
+
     [Inject] private IJSRuntime Js { get; set; } = default!;
 
     /// <summary>Trigger label (the filter's name, e.g. "Status").</summary>
@@ -78,13 +88,21 @@ public partial class OdsMultiSelect
 
     [Parameter] public string? Class { get; set; }
 
+    /// <summary>
+    /// Whether the trigger is sized to its widest row. Left <c>null</c>, a short list (1 to
+    /// <see cref="FitLimit"/> rows) fits and a longer one does not. Set it for a list whose nature the
+    /// count does not tell: <c>true</c> for a fixed vocabulary that runs past the limit (the 13 account
+    /// types), <c>false</c> for user data that happens to be short today (tags, accounts, merchants), so
+    /// the control's width does not change as the data grows. <c>false</c> is also what turns on the
+    /// open-ended mode (a fixed-width trigger whose popover opens at exactly its width); leaving it
+    /// <c>null</c> on a long list keeps the popover sized to its content.
+    /// </summary>
+    [Parameter] public bool? Fit { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
     private OdsPopupMenu _popup = default!;
-
-    /// <summary>The option count above which the search field turns on by default.</summary>
-    public const int SearchLimit = 8;
 
     private string _query = string.Empty;
     private bool _open;
@@ -106,6 +124,17 @@ public partial class OdsMultiSelect
     private string EffectiveSearchLabel =>
         !string.IsNullOrWhiteSpace(SearchLabel) ? SearchLabel : $"Search {(Label ?? string.Empty).ToLowerInvariant()}".TrimEnd();
 
+    /// <summary>
+    /// The popover's polite status line: loading, then the outcome of a search (a count, or
+    /// <see cref="EmptyText"/>). Empty while nothing is searched, so opening the list says nothing extra.
+    /// </summary>
+    private string StatusText(int shown) =>
+        Loading ? LoadingText
+        : _query.Trim().Length == 0 ? string.Empty
+        : shown == 0 ? EmptyText
+        : shown == 1 ? "1 result"
+        : $"{shown} results";
+
     private IEnumerable<OdsOption> Filtered
     {
         get
@@ -117,24 +146,6 @@ public partial class OdsMultiSelect
         }
     }
 
-    /// <summary>
-    /// The longest option list the trigger sizes itself to. A short, fixed vocabulary (a type, a
-    /// status, a direction) gets a trigger exactly as wide as its menu; an open-ended data list (accounts,
-    /// tags, merchants) keeps its floor and lets the popover grow past it instead of widening the bar.
-    /// </summary>
-    public const int FitLimit = 12;
-
-    /// <summary>
-    /// Whether the trigger is sized to its widest row. Left <c>null</c>, a short list (1 to
-    /// <see cref="FitLimit"/> rows) fits and a longer one does not. Set it for a list whose nature the
-    /// count does not tell: <c>true</c> for a fixed vocabulary that runs past the limit (the 13 account
-    /// types), <c>false</c> for user data that happens to be short today (tags, accounts, merchants), so
-    /// the control's width does not change as the data grows. <c>false</c> is also what turns on the
-    /// open-ended mode (a fixed-width trigger whose popover opens at exactly its width); leaving it
-    /// <c>null</c> on a long list keeps the popover sized to its content.
-    /// </summary>
-    [Parameter] public bool? Fit { get; set; }
-
     private bool Fits => !Quiet && Options.Count > 0 && (Fit ?? Options.Count <= FitLimit);
 
     // An open-ended list keeps the trigger's own width (the filter bar's floor) and the popover opens at
@@ -145,7 +156,6 @@ public partial class OdsMultiSelect
     // capped at a trigger that was never sized for it. It holds with no options too: accounts, merchants and
     // tags load after first render, and a mode that waited for rows would widen the trigger when they arrive.
     private bool OpenEnded => Fit == false && !Quiet;
-
 
     // Mirror the controlled Values into a local set so toggling a row is a single
     // round-trip through ValuesChanged; OnParametersSet re-syncs to the parent.
