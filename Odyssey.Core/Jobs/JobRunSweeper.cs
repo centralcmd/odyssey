@@ -224,6 +224,7 @@ public sealed class JobRunSweeper(OdysseyContext context, IMemoryCache cache, Ti
             }
 
             context.JobRuns.RemoveRange(batch);
+            var conflicted = false;
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
@@ -231,14 +232,16 @@ public sealed class JobRunSweeper(OdysseyContext context, IMemoryCache cache, Ti
             }
             catch (DbUpdateConcurrencyException)
             {
-                // Another replica pruned some of them; the next batch reads afresh.
+                // Another replica is pruning the same rows. Stop here rather than re-read: if every batch kept
+                // conflicting the loop would spin on the same rows, and the next hourly pass continues anyway.
+                conflicted = true;
             }
             finally
             {
                 context.ChangeTracker.Clear();
             }
 
-            if (batch.Count < PruneBatchSize)
+            if (conflicted || batch.Count < PruneBatchSize)
             {
                 break;
             }
