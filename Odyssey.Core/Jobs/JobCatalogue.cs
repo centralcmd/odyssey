@@ -100,12 +100,16 @@ public static class JobCatalogue
     /// <summary>
     /// Resolves a route segment to a job: a member NAME (any case) of a catalogued job, never a number and never the
     /// <c>Unknown</c> sentinel — anything else is an unknown job, which the endpoint answers <c>404</c> (A14).
+    /// <see cref="Enum.TryParse{TEnum}(string?, bool, out TEnum)"/> also accepts a comma-composed list and ORs the
+    /// members (<c>ExchangeRateSync,Weather</c> is <c>3</c>, another job), so the parsed value must round-trip to the
+    /// exact name that was sent.
     /// </summary>
     public static bool TryResolve(string? value, out JobCatalogueEntry entry)
     {
         entry = null!;
         if (string.IsNullOrEmpty(value) || !char.IsLetter(value[0])
             || !Enum.TryParse<JobType>(value, ignoreCase: true, out var jobType)
+            || !string.Equals(jobType.ToString(), value, StringComparison.OrdinalIgnoreCase)
             || !ByType.TryGetValue(jobType, out var found))
         {
             return false;
