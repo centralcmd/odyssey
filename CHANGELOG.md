@@ -5,6 +5,42 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.43.0](https://github.com/centralcmd/odyssey/compare/v0.42.0...v0.43.0) (2026-11-06)
+
+
+### Features
+
+* album icon and colour ([#412](https://github.com/centralcmd/odyssey/issues/412)) ([f967fc7](https://github.com/centralcmd/odyssey/commit/f967fc72321de99e8c907a9c1aafd473488fecfc))
+* calendar colors work like tag colors ([#405](https://github.com/centralcmd/odyssey/issues/405)) ([1f0f727](https://github.com/centralcmd/odyssey/commit/1f0f7271e3787a82c015035243b3cc21fe35feb5))
+* **client:** show tag icons on tag chips instead of card titles ([10ad433](https://github.com/centralcmd/odyssey/commit/10ad433f2d593d1292495f80d3c78869694e3c15))
+* **client:** show the map and forecast in an open weather point ([#411](https://github.com/centralcmd/odyssey/issues/411)) ([4d01f8f](https://github.com/centralcmd/odyssey/commit/4d01f8fd31d6fff34ddb3f5ca0f6d8655152ba79))
+* **client:** sync the client to design-system artifact version 1793913330-b7a8 ([#416](https://github.com/centralcmd/odyssey/issues/416)) ([01a12f3](https://github.com/centralcmd/odyssey/commit/01a12f39dff767585a8dc311410d2240d5bc871e))
+* **client:** tag icons and darker tiles in journal module overviews ([379debf](https://github.com/centralcmd/odyssey/commit/379debfd9666e012f591276ca4158ac4eb53070b))
+* **client:** tint overview by-tag rows in each tag's colour ([86a1ae5](https://github.com/centralcmd/odyssey/commit/86a1ae572eddab0ec53bba0eb770b8b75045a850))
+* **client:** widen the tag icon catalogue and enlarge the picker ([#391](https://github.com/centralcmd/odyssey/issues/391)) ([83a5f93](https://github.com/centralcmd/odyssey/commit/83a5f9365d31801e93834315eb0e195d97321574))
+* location map with one pin ([9c2868e](https://github.com/centralcmd/odyssey/commit/9c2868e51712974a4179f4f078b31510c11951a6))
+* sync the client to design-system artifact ([df065c4](https://github.com/centralcmd/odyssey/commit/df065c41e82c1e45a733eb34182e6f7a6a8c6946))
+* tag colors on every tag type ([fa098ef](https://github.com/centralcmd/odyssey/commit/fa098ef5144ed06e45178bf0ed2a7f81ca02ce0e))
+* unified locations ([3b340c2](https://github.com/centralcmd/odyssey/commit/3b340c228c72ad0877cbd2a0e256d3c5bd0ad4ee))
+* weather points shared by many locations ([3aeab0d](https://github.com/centralcmd/odyssey/commit/3aeab0ddc28ee959df795c84200890c0e4e84e71))
+
+
+### Bug Fixes
+
+* **client:** bring the journal, tasks, photos, locations and calendar filters in line ([4506dbf](https://github.com/centralcmd/odyssey/commit/4506dbf0b736ceeb63cd8a15c9dd256ee42538bf))
+* **client:** give the files, users and analysis log filters their glyphs ([#408](https://github.com/centralcmd/odyssey/issues/408)) ([1acfe7c](https://github.com/centralcmd/odyssey/commit/1acfe7c62f2c67bbe96412e2a61392ee28503cd4))
+* **client:** give the tag pages' Status filter its glyphs ([8ac2ae8](https://github.com/centralcmd/odyssey/commit/8ac2ae8f32a7b8d58a0e2c911c6d9cc3b34fad81))
+* **client:** recess the account overview cards like the journal tiles ([#396](https://github.com/centralcmd/odyssey/issues/396)) ([a78d345](https://github.com/centralcmd/odyssey/commit/a78d345dd3d18ff19281c8386a6fc07a666197fb))
+* **client:** repair the search-region date range and single sort label ([#397](https://github.com/centralcmd/odyssey/issues/397)) ([57d60ba](https://github.com/centralcmd/odyssey/commit/57d60ba05f76702d1df714c97b77ddee61eaea13))
+* **client:** size and label the remaining finance filter dropdowns ([274c567](https://github.com/centralcmd/odyssey/commit/274c567e10dec7c4ef35a5cd7c8591e574296341))
+* **client:** standardize the finance filter-bar dropdowns ([a6c6ec6](https://github.com/centralcmd/odyssey/commit/a6c6ec6c96dc447dd8a68d322cba7d9e8e6b30eb))
+* **client:** unify search-region control borders and recess their fill ([109a78b](https://github.com/centralcmd/odyssey/commit/109a78b2c00e16688d02ac98a7b578ad1230775c))
+
+
+### CI/CD
+
+* bound the integration tier's startup and the test job ([#402](https://github.com/centralcmd/odyssey/issues/402)) ([1cb54ea](https://github.com/centralcmd/odyssey/commit/1cb54eaeb9466bd0f034edd18f2e9288cb5a84e0))
+
 ## [0.42.0](https://github.com/centralcmd/odyssey/compare/v0.41.0...v0.42.0) (2026-11-01)
 
 
