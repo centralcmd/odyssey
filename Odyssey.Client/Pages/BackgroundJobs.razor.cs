@@ -626,6 +626,12 @@ public partial class BackgroundJobs
 
     internal IReadOnlyList<FollowedRun> Follows => _follows;
 
+    /// <summary>Test seam: the page's announcement policy, whose <c>Requested</c> log a page test reads.</summary>
+    internal JobRunAnnouncements Announcements => _announce;
+
+    /// <summary>The follower's wait between reads; <c>null</c> in the app. A page test steps follows through it.</summary>
+    internal Func<TimeSpan, CancellationToken, Task>? FollowDelay { get; set; }
+
     private void StartFollowing(JobType job, Guid runId)
     {
         if (_follows.Any(f => f.RunId == runId))
@@ -638,7 +644,7 @@ public partial class BackgroundJobs
 
     private async Task FollowAsync(FollowedRun follow)
     {
-        var result = await JobRunFollower.FollowAsync(Api, follow.RunId, Time, detail => InvokeAsync(() => ApplyTick(detail)), follow.Cancellation.Token);
+        var result = await JobRunFollower.FollowAsync(Api, follow.RunId, Time, detail => InvokeAsync(() => ApplyTick(detail)), follow.Cancellation.Token, FollowDelay);
         if (result.End == FollowEnd.Stopped || _lifetime.IsCancellationRequested)
             return;
 

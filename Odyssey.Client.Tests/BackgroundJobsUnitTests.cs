@@ -182,12 +182,17 @@ public class BackgroundJobsUnitTests
     private static ApiResult<JobRunDetail> Read(HttpStatusCode status) =>
         ApiResult<JobRunDetail>.Failure(status, new ApiProblem { Status = (int)status });
 
-    /// <summary>Drives a follow by advancing the fake clock one interval at a time until it ends.</summary>
-    private static async Task<(FollowResult Result, int Requests)> Follow(
+    /// <summary>
+    /// Drives a follow through the follower's delay seam: each wait advances the fake clock by the interval and
+    /// completes at once, so the whole follow runs synchronously to its end — no timer continuation to poll for, and
+    /// nothing that depends on how fast the runner is. A guard bounds the waits so a regression cannot loop forever.
+    /// </summary>
+    private static async Task<(FollowResult Result, int Requests, int Waits)> Follow(
         Func<int, ApiResult<JobRunDetail>> respond, CancellationToken ct = default, Action<int, CancellationTokenSource>? onRequest = null)
     {
         var time = new FakeTimeProvider(Now);
         var requests = 0;
+        var waits = 0;
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(ct);
         var api = new Mock<IBackgroundJobsApiClient>();
         api.Setup(a => a.GetRunAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(() =>
@@ -197,27 +202,23 @@ public class BackgroundJobsUnitTests
             return respond(requests);
         });
 
-        var follow = JobRunFollower.FollowAsync(api.Object, Guid.NewGuid(), time, _ => Task.CompletedTask, stop.Token);
-        for (var i = 0; i < 100 && !follow.IsCompleted; i++)
+        Task Step(TimeSpan span, CancellationToken token)
         {
-            var before = requests;
-            time.Advance(JobRunFollower.Interval);
-            await WaitUntil(() => follow.IsCompleted || requests > before);
+            token.ThrowIfCancellationRequested();
+            Assert.True(++waits <= 100, "The follow never ended.");
+            time.Advance(span);
+            return Task.CompletedTask;
         }
 
-        return (await follow, requests);
-    }
-
-    private static async Task WaitUntil(Func<bool> condition)
-    {
-        for (var i = 0; i < 200 && !condition(); i++)
-            await Task.Delay(5);
+        var follow = JobRunFollower.FollowAsync(api.Object, Guid.NewGuid(), time, _ => Task.CompletedTask, stop.Token, Step);
+        Assert.True(follow.IsCompleted, "The follow should run synchronously through the seam.");
+        return (await follow, requests, waits);
     }
 
     [Fact]
     public async Task A_follow_ends_when_the_run_leaves_running()
     {
-        var (result, requests) = await Follow(n => ApiResult<JobRunDetail>.Success(Detail(n < 3 ? JobRunStatus.Running : JobRunStatus.Succeeded), HttpStatusCode.OK));
+        var (result, requests, _) = await Follow(n => ApiResult<JobRunDetail>.Success(Detail(n < 3 ? JobRunStatus.Running : JobRunStatus.Succeeded), HttpStatusCode.OK));
 
         Assert.Equal(FollowEnd.Finished, result.End);
         Assert.Equal(JobRunStatus.Succeeded, result.Last?.Status);
@@ -231,7 +232,7 @@ public class BackgroundJobsUnitTests
     [InlineData(HttpStatusCode.TooManyRequests, FollowEnd.RateLimited)]
     public async Task A_follow_stops_at_once_on_a_terminal_refusal(HttpStatusCode status, FollowEnd expected)
     {
-        var (result, requests) = await Follow(_ => Read(status));
+        var (result, requests, _) = await Follow(_ => Read(status));
 
         Assert.Equal(expected, result.End);
         Assert.Equal(1, requests);
@@ -240,7 +241,7 @@ public class BackgroundJobsUnitTests
     [Fact]
     public async Task A_follow_stops_after_three_consecutive_errors_and_a_success_resets_the_count()
     {
-        var (result, requests) = await Follow(n => n == 3
+        var (result, requests, _) = await Follow(n => n == 3
             ? ApiResult<JobRunDetail>.Success(Detail(JobRunStatus.Running), HttpStatusCode.OK)
             : n == 1 || n == 2 ? Read(HttpStatusCode.InternalServerError) : ApiResult<JobRunDetail>.Failure(new HttpRequestException("offline")));
 
@@ -251,16 +252,17 @@ public class BackgroundJobsUnitTests
     [Fact]
     public async Task A_follow_is_capped_at_three_minutes_or_36_requests()
     {
-        var (result, requests) = await Follow(_ => ApiResult<JobRunDetail>.Success(Detail(JobRunStatus.Running), HttpStatusCode.OK));
+        var (result, requests, waits) = await Follow(_ => ApiResult<JobRunDetail>.Success(Detail(JobRunStatus.Running), HttpStatusCode.OK));
 
         Assert.Equal(FollowEnd.Cap, result.End);
         Assert.Equal(36, requests);
+        Assert.Equal(36, waits);
     }
 
     [Fact]
     public async Task Stop_following_ends_the_follow_without_another_request()
     {
-        var (result, requests) = await Follow(
+        var (result, requests, _) = await Follow(
             _ => ApiResult<JobRunDetail>.Success(Detail(JobRunStatus.Running), HttpStatusCode.OK),
             onRequest: (n, stop) => { if (n == 2) stop.Cancel(); });
 

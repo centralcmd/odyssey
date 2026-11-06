@@ -26,11 +26,21 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
 
     private readonly object gate = new();
     private readonly List<(string Text, AnnouncementKind Kind)> queue = [];
+    private readonly List<string> requested = [];
     private ITimer? gap;
     private ITimer? countHold;
     private string? heldCount;
     private bool speaking;
     private bool disposed;
+
+    /// <summary>
+    /// Test seam: every message the page asked to speak, in order, whatever the policy later did with it — what a
+    /// page test asserts, while this class's own tests cover the pacing.
+    /// </summary>
+    internal IReadOnlyList<string> Requested
+    {
+        get { lock (gate) return [.. requested]; }
+    }
 
     /// <summary>Test seam: the polite messages waiting, oldest first (a held count is not yet one).</summary>
     internal IReadOnlyList<string> Pending
@@ -44,6 +54,7 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         {
             if (disposed)
                 return;
+            requested.Add(text);
             queue.Add((text, kind));
         }
 
@@ -57,6 +68,7 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         {
             if (disposed)
                 return;
+            requested.Add(text);
             heldCount = text;
             countHold?.Dispose();
             countHold = time.CreateTimer(_ => ReleaseCount(), null, Spacing, Timeout.InfiniteTimeSpan);
@@ -70,6 +82,7 @@ public sealed class JobRunAnnouncements(Func<string, Task> polite, Func<string, 
         {
             if (disposed)
                 return;
+            requested.Add(text);
             heldCount = null;
             countHold?.Dispose();
             countHold = null;
