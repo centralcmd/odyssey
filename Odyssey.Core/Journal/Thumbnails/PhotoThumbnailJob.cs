@@ -1356,18 +1356,22 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// </summary>
     private async Task<(bool Finished, ThumbnailRenderResult? Result)> RenderUnderWatchdogAsync(ThumbnailRenderRequest request)
     {
+        // The watchdog is armed BEFORE the thread starts: arming it after would let the clock move between the
+        // renderer starting and the timer existing, and a timer armed late measures from the wrong instant (with a
+        // fake clock it never fires at all).
+        using var watchdogCancel = new CancellationTokenSource();
+        var watchdog = Task.Delay(PhotoThumbnailTiming.Watchdog, time, watchdogCancel.Token);
         var decode = RunOnThread(() => SafeRender(request));
-        try
+        if (await Task.WhenAny(decode, watchdog) == decode)
         {
-            return (true, await decode.WaitAsync(PhotoThumbnailTiming.Watchdog, time));
+            await watchdogCancel.CancelAsync();
+            return (true, await decode);
         }
-        catch (TimeoutException)
-        {
-            abandonedDecode = decode;
-            abandonedAtUtc = Now;
-            restartRequested = false;
-            return (false, null);
-        }
+
+        abandonedDecode = decode;
+        abandonedAtUtc = Now;
+        restartRequested = false;
+        return (false, null);
     }
 
     /// <summary>A decoder exception is <c>decode</c>; only its type is ever logged, never its message (§7.8).</summary>
@@ -1390,6 +1394,9 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// </summary>
     private async Task<int> ReadOrientationAsync(byte[] original)
     {
+        // Armed before the thread starts, as the render watchdog is.
+        using var watchdogCancel = new CancellationTokenSource();
+        var watchdog = Task.Delay(PhotoThumbnailTiming.OrientationWatchdog, time, watchdogCancel.Token);
         var read = RunOnThread(() =>
         {
             try
@@ -1401,15 +1408,14 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
                 return 1;
             }
         });
-        try
-        {
-            var orientation = await read.WaitAsync(PhotoThumbnailTiming.OrientationWatchdog, time);
-            return orientation is >= 1 and <= 8 ? orientation : 1;
-        }
-        catch (TimeoutException)
+        if (await Task.WhenAny(read, watchdog) != read)
         {
             return 1;
         }
+
+        await watchdogCancel.CancelAsync();
+        var orientation = await read;
+        return orientation is >= 1 and <= 8 ? orientation : 1;
     }
 
     private static Task<T> RunOnThread<T>(Func<T> work)
