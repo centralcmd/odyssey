@@ -142,7 +142,9 @@ public partial class PhotosCard
         var people = peopleResult.ItemsOrToast(Snackbar, "people");
         if (peopleResult.IsSuccess)
         {
-            _peopleOptions = OdsContactOptions.Active(people);
+            // A Person filter row wears its People Overview row's muted person glyph, not the contact
+            // type's colour, so filter and Overview read alike (DS Photos peopleOpts).
+            _peopleOptions = [.. OdsContactOptions.Active(people).Select(o => o with { Icon = PhotoLibraryOverview.PersonGlyph, IconColor = PhotoLibraryOverview.PersonInk })];
             _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
         }
     }

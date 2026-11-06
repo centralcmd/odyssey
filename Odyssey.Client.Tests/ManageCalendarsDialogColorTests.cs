@@ -86,6 +86,29 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
         calendars.Verify(c => c.CreateCalendarAsync(It.IsAny<NewCalendar>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData("#0369A1", "Blue")]
+    [InlineData("#0369a1", "Blue")]
+    [InlineData("#c2185b", "Custom #C2185B")]
+    [InlineData("not a colour", "Blue")]
+    [InlineData(null, "Blue")]
+    public void A_row_names_its_colour_by_swatch_or_as_a_custom_hex(string? stored, string expected) =>
+        Assert.Equal(expected, ManageCalendarsDialog.ColorName(stored));
+
+    [Fact]
+    public void The_new_calendar_affordance_is_the_add_row_and_its_name_field_shows_the_example()
+    {
+        var cut = ctx.Render<DialogHost>();
+
+        var add = cut.Find("button.odc-add-row");
+        Assert.Contains("New calendar", add.TextContent);
+        Assert.Contains("Name, an optional description, and a colour.", add.TextContent);
+
+        add.Click();
+        Assert.Equal("e.g. Personal", cut.Find(".cal-mgr-editor-grid input").GetAttribute("placeholder"));
+        Assert.NotNull(cut.Find(".cal-mgr-add-open > .cal-mgr-editor-actions"));
+    }
+
     public sealed class DialogHost : ComponentBase
     {
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)

@@ -671,7 +671,7 @@ public partial class Settings
                 AllowEmpty: true,
                 Rule: WeatherRules.ValidateContact),
             new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
-                "How often a place set to refresh on a schedule asks MET Norway for a newer forecast. MET's own "
+                "How often a weather point set to refresh on a schedule asks MET Norway for a newer forecast. MET's own "
                 + "Expires header can stretch it; nothing shortens it.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,

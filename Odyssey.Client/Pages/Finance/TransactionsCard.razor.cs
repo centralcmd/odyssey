@@ -79,8 +79,17 @@ public partial class TransactionsCard
             Icon = AccountTypeVisuals.MaterialIcon(account.AccountType),
             IconColor = AccountTypeVisuals.FgColor(account.AccountType),
         };
+    /// <summary>The Tag filter glyph's ink for a tag with no valid colour of its own (DS Transactions).</summary>
+    internal const string TagFilterFallbackInk = "var(--tag-text)";
+
+    internal static OdsOption TagFilterOption(ExistingTransactionTag tag)
+    {
+        var option = OdsTransactionTagOptions.From(tag);
+        return option with { IconColor = option.IconColor ?? TagFilterFallbackInk };
+    }
+
     private IReadOnlyList<OdsOption> _tagOptions =>
-        [.. _tags.Select(OdsTransactionTagOptions.From)];
+        [.. _tags.Select(TagFilterOption)];
     // The merchant picker lists every contact, not just the ones present on the loaded page: the list
     // is server-paged, so "the contacts on these rows" would shrink as the user pages through.
     private IReadOnlyList<OdsOption> _merchantOptions =>

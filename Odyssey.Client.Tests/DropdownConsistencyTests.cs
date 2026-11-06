@@ -504,6 +504,20 @@ public class DropdownConsistencyTests
         Assert.Equal(expectColour, option.IconColor is not null);
     }
 
+    [Theory]
+    [InlineData(null, "var(--tag-text)")]
+    [InlineData("red;background:url(x)", "var(--tag-text)")]
+    [InlineData("#1E88E5", "oklch(from #1E88E5 var(--user-glyph-l, l) c h)")]
+    [InlineData("#1e88e5", "oklch(from #1E88E5 var(--user-glyph-l, l) c h)")]
+    public void The_transactions_tag_filter_falls_back_to_the_tag_ink_for_a_colourless_tag(string? color, string expected)
+    {
+        var tag = new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Groceries", Archived = null, Color = color };
+
+        var option = TransactionsCard.TagFilterOption(tag);
+
+        Assert.Equal(expected, option.IconColor);
+    }
+
     [Fact]
     public void A_breakdown_definition_becomes_a_filter_option_with_its_glyph_and_tone()
     {
