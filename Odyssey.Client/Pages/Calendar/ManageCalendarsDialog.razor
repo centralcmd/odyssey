@@ -8,10 +8,10 @@
     standard error toast. Duplicate-name (409) on create/save is shown inline next to that row.
 *@
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="settings" Title="@TitleContent">
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="calendar_month" Title="@TitleContent">
     <ChildContent>
-        <div class="ods-modal-body">
-            <MudStack Spacing="2">
+        <div class="ods-modal-body cal-mgr-body">
+            <div class="cal-mgr-list">
                 @foreach (var calendar in Calendars)
                 {
                     var editing = _editingId == calendar.CalendarId;
@@ -21,7 +21,16 @@
                             <div class="cal-mgr-id">
                                 <div class="cal-mgr-name">@calendar.Name</div>
                                 <div class="cal-mgr-sub">
-                                    @(string.IsNullOrWhiteSpace(calendar.Description) ? "No description" : calendar.Description)
+                                    @if (string.IsNullOrWhiteSpace(calendar.Description))
+                                    {
+                                        <span class="muted">No description</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@calendar.Description</span>
+                                    }
+                                    <span class="cal-mgr-dot" aria-hidden="true">·</span>
+                                    <span class="cal-mgr-swname">@ColorName(calendar.Color)</span>
                                 </div>
                             </div>
                             <div class="cal-mgr-actions">
@@ -41,49 +50,49 @@
                         @if (editing)
                         {
                             <div class="cal-mgr-editor">
-                                <OdsFormRow>
+                                <div class="cal-mgr-editor-grid">
                                     <OdsField Label="Name" Required="true" Value="@_editDraft.Name" MaxLength="150" AutoFocus="true"
-                                              ValueChanged="@(v => _editDraft.Name = v)" Error="@_editError" />
+                                              ValueChanged="@(v => _editDraft.Name = v)" Error="@_editError" Placeholder="e.g. Personal" />
                                     <OdsField Label="Description" Value="@_editDraft.Description" MaxLength="1000"
                                               ValueChanged="@(v => _editDraft.Description = v)" Placeholder="What this calendar holds" />
-                                </OdsFormRow>
+                                </div>
                                 @ColorField(_editDraft, $"cal-color-{calendar.CalendarId:N}")
-                                <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-2">
-                                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelEdit">Cancel</OdsButton>
-                                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveEditAsync">Save</OdsButton>
-                                </MudStack>
+                            </div>
+                            <div class="cal-mgr-editor-actions">
+                                <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelEdit">Cancel</OdsButton>
+                                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveEditAsync">Save</OdsButton>
                             </div>
                         }
                     </div>
                 }
-            </MudStack>
+            </div>
 
             @if (_adding)
             {
-                <div class="cal-mgr-item editing mt-2">
+                <div class="cal-mgr-item editing cal-mgr-add-open">
                     <div class="cal-mgr-add-head">
                         <span class="material-icons" aria-hidden="true">add</span>
                         <span>New calendar</span>
                     </div>
                     <div class="cal-mgr-editor">
-                        <OdsFormRow>
+                        <div class="cal-mgr-editor-grid">
                             <OdsField Label="Name" Required="true" Value="@_newDraft.Name" MaxLength="150" AutoFocus="true"
-                                      ValueChanged="@(v => _newDraft.Name = v)" Error="@_addError" />
+                                      ValueChanged="@(v => _newDraft.Name = v)" Error="@_addError" Placeholder="e.g. Personal" />
                             <OdsField Label="Description" Value="@_newDraft.Description" MaxLength="1000"
                                       ValueChanged="@(v => _newDraft.Description = v)" Placeholder="What this calendar holds" />
-                        </OdsFormRow>
+                        </div>
                         @ColorField(_newDraft, "cal-color-new")
-                        <MudStack Row="true" Justify="Justify.FlexEnd" Spacing="2" Class="mt-2">
-                            <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _adding = false)">Cancel</OdsButton>
-                            <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveNewAsync">Create calendar</OdsButton>
-                        </MudStack>
+                    </div>
+                    <div class="cal-mgr-editor-actions">
+                        <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _adding = false)">Cancel</OdsButton>
+                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SaveNewAsync">Create calendar</OdsButton>
                     </div>
                 </div>
             }
             else
             {
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Add" Class="mt-2"
-                           OnClick="@(() => { _adding = true; _editingId = null; ResetColorState(); })">New calendar</MudButton>
+                <OdsAddRow Title="New calendar" Sub="Name, an optional description, and a colour."
+                           OnClick="@(() => { _adding = true; _editingId = null; ResetColorState(); })" />
             }
         </div>
     </ChildContent>

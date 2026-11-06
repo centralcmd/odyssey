@@ -25,6 +25,17 @@ public partial class ManageCalendarsDialog
     /// <summary>The Color field's help line.</summary>
     public const string ColorHelp = "Shown on this calendar's events.";
 
+    /// <summary>
+    /// A calendar colour as the row's sub-line names it: a palette swatch by its name, any other valid
+    /// hex as "Custom #RRGGBB" (DS ManageCalendarsModal). An unusable stored value names the default
+    /// swatch, which is what the row's swatch paints.
+    /// </summary>
+    public static string ColorName(string? hex)
+    {
+        var canonical = Odyssey.Client.Theme.UserColor.Canonical(hex) ?? OdsCalendarSwatches.DefaultColor;
+        return OdsCalendarSwatches.All.FirstOrDefault(s => s.Hex == canonical)?.Name ?? $"Custom {canonical}";
+    }
+
     private OdsTagColorPicker? _colorPicker;
     private bool _colorValid = true;
     private bool _colorShowErrors;
