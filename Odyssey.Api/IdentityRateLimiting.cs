@@ -287,6 +287,14 @@ public static class IdentityRateLimiting
                     : RejectionMessage,
         };
 
+        // The background-jobs manual run (issue #409 §5.4): its 429 carries the instant it is available again, the same
+        // extension the per-job cooldown's 429 carries, so the client treats both alike.
+        if (string.Equals(policy, BackgroundJobsRateLimiting.RunPolicy, StringComparison.Ordinal)
+            && context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var runRetryAfter))
+        {
+            problem.Extensions["retryAfterUtc"] = DateTime.UtcNow.Add(runRetryAfter);
+        }
+
         return new ValueTask(response.WriteAsJsonAsync(
             problem, options: null, contentType: "application/problem+json", cancellationToken));
     }
