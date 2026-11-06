@@ -1,7 +1,10 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
+using Odyssey.Core;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Jobs;
@@ -117,6 +120,24 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
     public void A_route_segment_resolves_only_to_a_catalogued_job_name(string value, bool resolves)
     {
         Assert.Equal(resolves, JobCatalogue.TryResolve(value, out _));
+    }
+
+    /// <summary>
+    /// Security review on PR #418: a direct caller that skips model validation still gets a validation error keyed
+    /// on the date, never the conversion's ArgumentOutOfRangeException (a 500).
+    /// </summary>
+    [Theory]
+    [InlineData(9999, 12, 31, true, "startedTo")]
+    [InlineData(1, 1, 1, false, "startedFrom")]
+    public void An_out_of_range_date_bound_is_a_validation_error(int year, int month, int day, bool nextDay, string field)
+    {
+        var zone = TimeZoneInfo.FindSystemTimeZoneById("Pacific/Kiritimati");
+
+        var error = Assert.Throws<DomainValidationException>(
+            () => BackgroundJobsService.BoundUtc(new DateOnly(year, month, day), zone, field, nextDay));
+
+        Assert.Equal(400, error.StatusCode);
+        Assert.True(error.Errors!.ContainsKey(field));
     }
 
     // ── Heartbeats ─────────────────────────────────────────────────────────────────────────────────────────
