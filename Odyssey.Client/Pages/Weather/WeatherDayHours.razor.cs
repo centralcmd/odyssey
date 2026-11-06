@@ -170,15 +170,42 @@ public partial class WeatherDayHours
             ? Hour(End(last))
             : null;
 
-    internal static string VisibleTime(WeatherStep step) =>
-        step.PeriodHours > 1 ? $"{TwoDigitHour(Start(step))}–{TwoDigitHour(End(step))}" : Hour(Start(step));
+    // ── A row's span within the day ───────────────────────────────────────────────────────────────
+    // A row never shows time outside the day it is listed under: a block that starts before the day's midnight is
+    // shown from 00, one that runs past the next midnight is shown to 24, both in the point's own clock. Only the
+    // label is cut; the row's values stay MET's, and a cut block's precipitation is its whole-block total.
 
-    internal static string SpokenTime(WeatherStep step, bool now) =>
-        $"{(now ? "Now, " : "")}{Hour(Start(step))} to {Hour(End(step))}";
+    internal static bool CutsStart(WeatherStep step, WeatherHourlyDay? day) =>
+        day?.FromUtc is { } dayStart && Utc(step.TimeUtc) < Utc(dayStart);
 
-    internal static string SpokenPrecipitation(WeatherStep step) =>
-        $"{(step.PrecipitationMm is null ? "precipitation not available" : WeatherVisuals.Mm(step.PrecipitationMm))}, "
+    internal static bool CutsEnd(WeatherStep step, WeatherHourlyDay? day) =>
+        day?.ToUtc is { } dayEnd && Utc(step.TimeUtc).AddHours(step.PeriodHours) > Utc(dayEnd);
+
+    internal static bool IsCut(WeatherStep step, WeatherHourlyDay? day) => CutsStart(step, day) || CutsEnd(step, day);
+
+    private static string StartLabel(WeatherStep step, WeatherHourlyDay? day) => CutsStart(step, day) ? "00:00" : Hour(Start(step));
+
+    private static string EndLabel(WeatherStep step, WeatherHourlyDay? day) => CutsEnd(step, day) ? "24:00" : Hour(End(step));
+
+    /// <summary>"14:00" for a whole hour; "19–24" for a block or a cut row; minutes kept where the zone has them.</summary>
+    internal static string VisibleTime(WeatherStep step, WeatherHourlyDay? day) =>
+        step.PeriodHours > 1 || IsCut(step, day)
+            ? $"{Short(StartLabel(step, day))}–{Short(EndLabel(step, day))}"
+            : Hour(Start(step));
+
+    internal static string SpokenTime(WeatherStep step, WeatherHourlyDay? day, bool now) =>
+        $"{(now ? "Now, " : "")}{StartLabel(step, day)} to {EndLabel(step, day)}";
+
+    /// <summary>The whole block a cut row came from, in the point's clock: "19–01".</summary>
+    internal static string BlockSpan(WeatherStep step) => $"{Short(Hour(Start(step)))}–{Short(Hour(End(step)))}";
+
+    internal static string SpokenPrecipitation(WeatherStep step, WeatherHourlyDay? day) =>
+        $"{(step.PrecipitationMm is null ? "precipitation not available" : WeatherVisuals.Mm(step.PrecipitationMm))}"
+        + $"{(IsCut(step, day) && step.PrecipitationMm is not null ? $" over {Hour(Start(step))} to {Hour(End(step))}" : "")}, "
         + $"{(step.PrecipitationProbabilityPct is null ? "chance not available" : $"{WeatherVisuals.Pct(step.PrecipitationProbabilityPct)} chance")}";
+
+    /// <summary>"19:00" → "19"; "05:30" stays "05:30" in a half-hour zone.</summary>
+    private static string Short(string hhmm) => hhmm.EndsWith(":00", StringComparison.Ordinal) ? hhmm[..2] : hhmm;
 
     /// <summary>
     /// True when any row's own offset (the point's clock) differs from the viewer's at that instant. Compared per row,
@@ -199,8 +226,6 @@ public partial class WeatherDayHours
         step.LocalEnd ?? new DateTimeOffset(Utc(step.TimeUtc).AddHours(step.PeriodHours)).ToOffset(ViewerOffset(Utc(step.TimeUtc).AddHours(step.PeriodHours)));
 
     private static string Hour(DateTimeOffset local) => local.ToString("HH:mm", CultureInfo.InvariantCulture);
-
-    private static string TwoDigitHour(DateTimeOffset local) => local.ToString("HH", CultureInfo.InvariantCulture);
 
     private static DateTime Utc(DateTime value) => value.Kind switch
     {

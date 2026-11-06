@@ -60,6 +60,10 @@
                 {
                     <p class="wx-hours-note">Hour-by-hour isn’t available this far ahead — some rows are 6-hour blocks.</p>
                 }
+                @if (r.Steps.Any(s => IsCut(s, r.Day)))
+                {
+                    <p class="wx-hours-note">Blocks are cut at midnight; a cut block’s precipitation is MET’s total for the whole block.</p>
+                }
                 @if (r.Stale && !BodyStale)
                 {
                     <p class="wx-hours-note wx-stale"><OdsMIcon Name="cloud_off" Size="16" />Not up to date — showing the last forecast MET Norway sent.</p>
@@ -85,14 +89,18 @@
                                         <span aria-hidden="true">@if (now)
                                             {
                                                 <b class="wx-hours-now">Now · </b>
-                                            }@VisibleTime(step)</span>
-                                        <span class="sr-only">@SpokenTime(step, now)</span>
+                                            }@VisibleTime(step, r.Day)</span>
+                                        <span class="sr-only">@SpokenTime(step, r.Day, now)</span>
                                     </th>
                                     <td><span class="wx-hours-cond"><span aria-hidden="true"><OdsMIcon Name="@(symbol?.Icon ?? "cloud")" Size="20" /></span>@(symbol?.Label ?? "Unknown conditions")</span></td>
                                     <td class="wx-hours-num">@Measure(step.AirTemperatureC, WeatherVisuals.Temp)</td>
                                     <td>
                                         <span aria-hidden="true">@WeatherVisuals.Mm(step.PrecipitationMm)<span class="wx-muted"> · </span>@WeatherVisuals.Pct(step.PrecipitationProbabilityPct)</span>
-                                        <span class="sr-only">@SpokenPrecipitation(step)</span>
+                                        @if (IsCut(step, r.Day) && step.PrecipitationMm is not null)
+                                        {
+                                            <span class="wx-hours-whole" aria-hidden="true">over @BlockSpan(step)</span>
+                                        }
+                                        <span class="sr-only">@SpokenPrecipitation(step, r.Day)</span>
                                     </td>
                                     <td>
                                         @if (step.WindSpeedMps is null)

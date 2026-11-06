@@ -214,6 +214,40 @@ public class WeatherDayHoursTests : IDisposable
     }
 
     [Fact]
+    public void Blocks_are_cut_at_the_days_midnights_in_the_points_clock_and_keep_their_whole_block_precipitation()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var date = Today.AddDays(3);
+        var start = DayStartUtc(date);
+        // MET's 6-hour grid in Oslo summer time (+2) runs 20–02, 02–08, …: the first block starts the evening before and
+        // the last one runs past the next midnight.
+        var steps = new[] { -4, 2, 8, 14, 20 }.Select(h => Step(start.AddHours(h), period: 6));
+        Setup(weather, date, Ok(Hours(date, steps)));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        body.InvokeAsync(() => Cards(body)[3].Click());
+        body.WaitForAssertion(() => Assert.Equal(5, body.FindAll(".wx-hours-scroll tbody tr").Count));
+
+        var times = body.FindAll(".wx-hours-table tbody th").Select(th => th.Children[0].TextContent).ToList();
+        Assert.Equal(["00–02", "02–08", "08–14", "14–20", "20–24"], times);
+        Assert.Equal("00:00 to 02:00", body.FindAll(".wx-hours-table tbody th")[0].QuerySelector(".sr-only")!.TextContent);
+        Assert.Equal("20:00 to 24:00", body.FindAll(".wx-hours-table tbody th")[4].QuerySelector(".sr-only")!.TextContent);
+
+        // Only the two cut rows name the whole block their precipitation total belongs to.
+        var whole = body.FindAll(".wx-hours-whole").Select(e => e.TextContent).ToList();
+        Assert.Equal(["over 20–02", "over 20–02"], whole);
+        Assert.Equal("0.8 mm over 20:00 to 02:00, 70 % chance",
+            body.FindAll(".wx-hours-table tbody tr")[0].QuerySelectorAll("td")[2].QuerySelector(".sr-only")!.TextContent);
+        Assert.Equal("0.8 mm, 70 % chance",
+            body.FindAll(".wx-hours-table tbody tr")[1].QuerySelectorAll("td")[2].QuerySelector(".sr-only")!.TextContent);
+        Assert.Contains(body.FindAll(".wx-hours-note"), n => n.TextContent.Contains("cut at midnight", StringComparison.Ordinal));
+        // A day cut at both ends is not "partial": no leading gap and no "Forecast ends" line.
+        Assert.Empty(body.FindAll(".wx-hours-gap"));
+        Assert.Empty(body.FindAll(".wx-hours-end"));
+    }
+
+    [Fact]
     public void A_null_measure_is_a_dash_read_as_not_available()
     {
         var (ctx, weather) = Context();
