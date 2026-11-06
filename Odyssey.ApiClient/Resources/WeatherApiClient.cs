@@ -24,6 +24,12 @@ public interface IWeatherApiClient
     Task<ApiResult<WeatherHourlyResponse>> HourlyAsync(DateTime fromUtc, DateTime toUtc, Guid? weatherPointId = null, CancellationToken ct = default);
 
     /// <summary>
+    /// The hourly read's day mode (issue #414): the rows of one POINT-LOCAL <paramref name="date"/>, with each row's
+    /// start and end in the point's clock. The server owns the day's bounds, so the caller never needs the point's zone.
+    /// </summary>
+    Task<ApiResult<WeatherHourlyResponse>> HourlyForDayAsync(DateOnly date, Guid? weatherPointId = null, CancellationToken ct = default);
+
+    /// <summary>
     /// The picker. Without <paramref name="nearLocationId"/> by name; with it nearest first, each entry carrying
     /// <c>distanceKm</c> (needs <c>locations.read</c>). Never cache the near variant: a move changes its distances.
     /// </summary>
@@ -80,6 +86,12 @@ public sealed class WeatherApiClient(IOdysseyApi api) : IWeatherApiClient
         api.GetAsync<WeatherHourlyResponse>(PagedQuery.For($"{Base}/hourly")
             .Add("fromUtc", fromUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture))
             .Add("toUtc", toUtc.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ", System.Globalization.CultureInfo.InvariantCulture))
+            .Add("weatherPointId", weatherPointId?.ToString())
+            .Build(), ct);
+
+    public Task<ApiResult<WeatherHourlyResponse>> HourlyForDayAsync(DateOnly date, Guid? weatherPointId = null, CancellationToken ct = default) =>
+        api.GetAsync<WeatherHourlyResponse>(PagedQuery.For($"{Base}/hourly")
+            .Add("date", date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
             .Add("weatherPointId", weatherPointId?.ToString())
             .Build(), ct);
 
