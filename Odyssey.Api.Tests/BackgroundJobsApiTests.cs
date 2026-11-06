@@ -654,6 +654,49 @@ public class BackgroundJobsApiTests
         Assert.Empty(await scope.Context.JobRuns.ToListAsync());
     }
 
+    /// <summary>
+    /// Architect review on PR #418: when every live worker's file-storage pass is held on a failed storage check, a
+    /// manual pass is refused 409 held with no row — no worker would claim it, and a 202 would only end Abandoned
+    /// with a warning that blames a missing worker. One unheld live worker is enough for the run to proceed.
+    /// </summary>
+    [Fact]
+    public async Task A_file_storage_run_while_every_live_worker_is_held_is_a_409_held()
+    {
+        await using var factory = new ApiFactory(Admin);
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        await factory.SeedAsync(context =>
+        {
+            context.JobHeartbeats.AddRange(Beat(JobType.FileStorageMaintenance, first), Beat(JobType.FileStorageMaintenance, second));
+            context.JobRuns.AddRange(
+                Held<FileStorageMaintenanceJobRun>(first, JobHeldReason.StorageCheckFailed),
+                Held<FileStorageMaintenanceJobRun>(second, JobHeldReason.StorageCheckFailed));
+        });
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync($"{Base}/FileStorageMaintenance/runs", null);
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(JobRunConflictCodes.Held, problem.GetProperty("code").GetString());
+        Assert.Equal("StorageCheckFailed", problem.GetProperty("heldReason").GetString());
+        await using (var scope = factory.Scope())
+        {
+            Assert.Equal(2, await scope.Context.JobRuns.CountAsync());
+        }
+
+        await using var partly = new ApiFactory(Admin);
+        await partly.SeedAsync(context =>
+        {
+            context.JobHeartbeats.AddRange(Beat(JobType.FileStorageMaintenance, first), Beat(JobType.FileStorageMaintenance, second));
+            context.JobRuns.Add(Held<FileStorageMaintenanceJobRun>(first, JobHeldReason.StorageCheckFailed));
+        });
+
+        var proceeds = await partly.CreateClient().PostAsync($"{Base}/FileStorageMaintenance/runs", null);
+
+        Assert.NotEqual(HttpStatusCode.Conflict, proceeds.StatusCode);
+    }
+
     /// <summary>AC 15: the sixth manual-run request in a minute from one user is refused by the limiter.</summary>
     [Fact]
     public async Task The_sixth_request_in_a_minute_is_rate_limited()

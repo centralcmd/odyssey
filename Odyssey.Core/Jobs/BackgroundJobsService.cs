@@ -518,7 +518,8 @@ public sealed class BackgroundJobsService(
 
     /// <summary>
     /// Starts a manual run of <paramref name="entry"/>'s job. The caller has already passed every claim the job
-    /// lists. In order: the job's cooldown, its held state (thumbnails), the inline sweep of its stale rows, nothing
+    /// lists. In order: the job's cooldown, its held state (thumbnails, and file storage when every live worker is
+    /// held), the inline sweep of its stale rows, nothing
     /// to do (a finished <c>Skipped</c> row), the guard, and the unclaimed <c>Running</c> row a worker picks up.
     /// </summary>
     public async Task<ManualRunOutcome> StartManualAsync(
@@ -550,6 +551,14 @@ public sealed class BackgroundJobsService(
                     : null;
                 return new ManualRunOutcome.Held(reason, canReadDetail ? resumes : null);
             }
+        }
+
+        if (jobType == JobType.FileStorageMaintenance
+            && await EveryLiveWorkerHeldAsync(entry, now, cancellationToken) is { } storageHeld)
+        {
+            // A held file-storage worker never claims the request, so a 202 would only end as an Abandoned row that
+            // blames a missing worker (architect review on PR #418). Refuse it the way a held thumbnail run is.
+            return new ManualRunOutcome.Held(storageHeld, null);
         }
 
         // A dead run must never block a manual run for longer than its stale window (§3.4).
@@ -607,6 +616,38 @@ public sealed class BackgroundJobsService(
         return run.Status == JobRunStatus.Running
             ? new ManualRunOutcome.Accepted(run.JobRunId)
             : new ManualRunOutcome.Skipped(ToExisting(run, canRead: true));
+    }
+
+    /// <summary>
+    /// The held reason when at least one worker is live for <paramref name="entry"/>'s job and every live worker has an
+    /// open held period — no worker would claim a manual request. <c>null</c> when any live worker could take it, or
+    /// when none is live (the request then ends Abandoned, which is the right diagnosis for a missing worker).
+    /// </summary>
+    private async Task<JobHeldReason?> EveryLiveWorkerHeldAsync(JobCatalogueEntry entry, DateTime now, CancellationToken cancellationToken)
+    {
+        var jobType = entry.JobType;
+        var since = now - TimeSpan.FromSeconds(entry.NotTickingAfterSeconds);
+        var live = await context.JobHeartbeats.AsNoTracking()
+            .Where(h => h.JobType == jobType && h.LastTickAtUtc >= since)
+            .Select(h => h.WorkerId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        if (live.Count == 0)
+        {
+            return null;
+        }
+
+        var held = await context.JobRuns.AsNoTracking()
+            .Where(r => r.JobType == jobType && r.Status == JobRunStatus.Held && r.FinishedAtUtc == null
+                && r.WorkerId != null && live.Contains(r.WorkerId.Value))
+            .Select(r => new { WorkerId = r.WorkerId!.Value, r.HeldReason })
+            .ToListAsync(cancellationToken);
+        if (live.Any(worker => held.All(row => row.WorkerId != worker)))
+        {
+            return null;
+        }
+
+        return held.Select(row => row.HeldReason).FirstOrDefault(reason => reason is not null) ?? JobHeldReason.StorageCheckFailed;
     }
 
     /// <summary>Whether a manual run would find anything to do; one that would not is finished <c>Skipped</c> at once.</summary>
