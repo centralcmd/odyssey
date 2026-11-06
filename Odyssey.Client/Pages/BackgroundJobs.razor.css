@@ -42,8 +42,9 @@
 .bgj-runs ::deep tr,
 .bgj-runs ::deep button,
 .bgj-follows ::deep button { scroll-margin-top: var(--bgj-sticky-offset); }
-.bgj-history-h:focus { outline: none; }
-.bgj-history-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.bgj-history-h:focus, .bgj-focus-h:focus { outline: none; }
+.bgj-history-h:focus-visible, .bgj-focus-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.bgj-focus-h { scroll-margin-top: var(--bgj-sticky-offset); }
 .bgj-follows { display: flex; flex-direction: column; gap: var(--space-1); }
 .bgj-follow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .bgj-follow-ic { font-size: var(--icon-md); color: var(--info-text); animation: bgj-spin 1.6s linear 3; }
