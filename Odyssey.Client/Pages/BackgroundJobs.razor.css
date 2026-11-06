@@ -1,3 +1,62 @@
-/* One section per job (Odyssey Design System · ui_kits/web/exchange-rate-sync.css, .xrs-section / .xrs-h). */
-.bgj-section { display: flex; flex-direction: column; gap: var(--space-3); }
-.bgj-h { margin: 0; font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+/* Background jobs (Odyssey Design System · ui_kits/web/background-jobs.css, #410). Existing tokens only: every tone
+   comes from the Chip / Alert atoms; this sheet sets layout, the muted lines and the focus-target scroll margin. */
+
+.bgj-page { --bgj-sticky-offset: var(--space-16); /* the app bar's height */ }
+.bgj-h2 { margin: 0; font: var(--fw-medium) var(--fs-h6)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-muted { color: var(--mud-palette-text-secondary); }
+.bgj-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* Regions */
+.bgj-region { display: flex; flex-direction: column; gap: var(--space-3); }
+.bgj-overview > .bgj-h2:not(:first-child) { margin-top: var(--space-2); }
+.bgj-inline-alert { display: inline-flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Job tiles */
+.bgj-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: var(--space-3); }
+.bgj-tiles ::deep .bgj-tile-card { height: 100%; min-width: 0; }
+
+/* Totals */
+.bgj-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: var(--space-3); }
+
+/* Running now */
+.bgj-running { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.bgj-running li { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* Search: the bar wraps to one control per line at narrow widths. */
+.bgj-filter-bar { flex-wrap: wrap; align-items: flex-start; }
+.bgj-dates { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.bgj-caption { margin: 0; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+@media (max-width: 600px) {
+    .bgj-dates { flex: 1 1 100%; }
+    .bgj-filter-bar ::deep .odc-popmenu, .bgj-filter-bar ::deep .odc-sortsel, .bgj-dates ::deep .odc-dpr { flex: 1 1 100%; max-width: 100%; min-width: 0; }
+    /* Each control is the row's full width here, so a multi-select's fit ghosts (an invisible, unwrapped copy of
+       its longest option, "File-storage maintenance") have nothing to size and would only push the page sideways. */
+    .bgj-filter-bar ::deep .odc-ms-fit-ghost { display: none; }
+    /* The two date inputs stack rather than run past the region at 320 CSS px (X17). */
+    .bgj-dates ::deep .odc-dpr { flex-wrap: wrap; height: auto; }
+}
+
+/* Run history */
+.bgj-history { display: flex; flex-direction: column; gap: var(--space-3); }
+.bgj-history-h,
+.bgj-runs ::deep tr,
+.bgj-runs ::deep button,
+.bgj-follows ::deep button { scroll-margin-top: var(--bgj-sticky-offset); }
+.bgj-history-h:focus { outline: none; }
+.bgj-history-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.bgj-follows { display: flex; flex-direction: column; gap: var(--space-1); }
+.bgj-follow { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.bgj-follow-ic { font-size: var(--icon-md); color: var(--info-text); animation: bgj-spin 1.6s linear 3; }
+@keyframes bgj-spin { to { transform: rotate(360deg); } }
+.bgj-runs.refetching { opacity: 0.72; transition: opacity var(--duration-base) var(--ease-standard); }
+.bgj-started { display: inline-flex; flex-direction: column; gap: var(--space-1); }
+.bgj-started .bgj-muted { font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); }
+.bgj-empty { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-2) var(--space-4); }
+
+/* A long job name wraps inside its button rather than spilling the row. */
+.bgj-follow ::deep .odc-btn { white-space: normal; max-width: 100%; height: auto; min-height: var(--control-h); line-height: 1.3; text-align: start; }
+
+@media (prefers-reduced-motion: reduce) {
+    .bgj-follow-ic { animation: none; }
+    .bgj-runs.refetching { transition: none; }
+}

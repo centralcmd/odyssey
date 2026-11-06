@@ -228,7 +228,7 @@ public partial class ExchangeRateSyncSurfaceTests
         OpenHeaderMenu(cut);
 
         var link = _popover!.FindAll("a").Single(a => a.TextContent.Contains("View exchange-rate sync runs"));
-        Assert.EndsWith("background-jobs", link.GetAttribute("href"));
+        Assert.EndsWith("background-jobs?job=ExchangeRateSync", link.GetAttribute("href"));
     }
 
     [Fact]
@@ -272,43 +272,7 @@ public partial class ExchangeRateSyncSurfaceTests
         cut.WaitForAssertion(() => sync.Verify(c => c.RunNowAsync(It.IsAny<CancellationToken>()), Times.Once));
     }
 
-    // ── Background jobs: the run history's page ────────────────────────────────────────────────
-
-    [Fact]
-    public async Task Background_jobs_lists_the_syncs_runs_under_its_name()
-    {
-        var sync = ExchangeRateSyncFakes.Client(Scheduled());
-        var (ctx, _) = NewContext(sync.Object);
-        await using var __ = ctx;
-        ctx.Render<MudPopoverProvider>();
-
-        var cut = ctx.Render<Odyssey.Client.Pages.BackgroundJobs>();
-
-        Assert.Equal("Exchange-rate sync", cut.Find("section h2").TextContent);
-        Assert.Single(cut.FindComponents<ExchangeRateSyncRunHistory>());
-        cut.WaitForAssertion(() => sync.Verify(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once));
-    }
-
-    [Fact]
-    public async Task Refresh_runs_rereads_the_runs_on_their_page_and_says_so()
-    {
-        var sync = ExchangeRateSyncFakes.Client(Scheduled());
-        var (ctx, _) = NewContext(sync.Object);
-        await using var __ = ctx;
-        var popover = ctx.Render<MudPopoverProvider>();
-        var cut = ctx.Render<Odyssey.Client.Pages.BackgroundJobs>();
-        cut.WaitForAssertion(() => sync.Verify(c => c.ListRunsAsync(1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Once));
-
-        cut.Find("button[aria-label='More actions']").Click();
-        popover.WaitForAssertion(() => Assert.Contains("Refresh runs", popover.Markup));
-        popover.FindAll(".mud-menu-item, [role=menuitem]").First(i => i.TextContent.Contains("Refresh runs")).Click();
-
-        cut.WaitForAssertion(() =>
-        {
-            sync.Verify(c => c.ListRunsAsync(1, It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-            Assert.Contains("Runs refreshed", cut.FindComponent<OdsLiveAnnouncer>().Markup);
-        });
-    }
+    // ── Background jobs: the run history's page (the unified log itself: BackgroundJobsPageTests) ──────────────────────────────────────────────────────────
 
     [Fact]
     public void Background_jobs_is_read_under_system_settings_read() =>
@@ -354,51 +318,6 @@ public partial class ExchangeRateSyncSurfaceTests
         ClickRowAction(cut, "USD", "Delete");
         cut.WaitForAssertion(() => Assert.All(cut.FindComponents<ConfirmDeleteDialog>(),
             dialog => Assert.Equal("cur-USD-menu", dialog.Instance.ReturnFocusToId)));
-    }
-
-    [Theory]
-    [InlineData(false, "unfold_more", "View details")]
-    [InlineData(true, "unfold_less", "Hide details")]
-    public async Task A_runs_details_item_follows_whether_it_is_open(bool expanded, string icon, string label)
-    {
-        var (ctx, _) = NewContext(ExchangeRateSyncFakes.Client(Scheduled()).Object);
-        await using var __ = ctx;
-        var cut = ctx.Render<ExchangeRateSyncRunHistory>();
-
-        var item = cut.Instance.RunActions(new ExistingExchangeRateSyncRun { Status = ExchangeRateSyncRunStatus.Running },
-            new OdsRecordActionContext { Expanded = expanded, Toggle = () => { }, StartEdit = () => { }, Remove = () => { } }).Single();
-
-        Assert.Equal((icon, label), (item.Icon, item.Label));
-    }
-
-    [Fact]
-    public async Task A_retried_run_history_clears_its_error_and_shows_the_runs()
-    {
-        var sync = ExchangeRateSyncFakes.Client(Scheduled());
-        var fail = true;
-        sync.Setup(c => c.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>())).ReturnsAsync(() => fail
-            ? ApiResult<PagedResult<ExistingExchangeRateSyncRun>>.Failure(HttpStatusCode.ServiceUnavailable, new ApiProblem { Title = "down" })
-            : ApiResult<PagedResult<ExistingExchangeRateSyncRun>>.Success(new PagedResult<ExistingExchangeRateSyncRun>
-            {
-                Items = [new ExistingExchangeRateSyncRun { Id = Guid.NewGuid(), Status = ExchangeRateSyncRunStatus.Succeeded, StartedAtUtc = Now.UtcDateTime, RowsInserted = 4 }],
-                TotalCount = 1,
-            }, HttpStatusCode.OK));
-        var (ctx, _) = NewContext(sync.Object);
-        await using var __ = ctx;
-        ctx.Render<MudSnackbarProvider>();
-        var cut = ctx.Render<ExchangeRateSyncRunHistory>();
-        var table = cut.FindComponent<OdsRecordTable<ExistingExchangeRateSyncRun>>();
-        cut.WaitForAssertion(() => Assert.True(table.Instance.Error));
-
-        fail = false;
-        await cut.InvokeAsync(() => table.Instance.OnRetry.InvokeAsync());
-
-        cut.WaitForAssertion(() =>
-        {
-            Assert.False(table.Instance.Error);
-            Assert.False(table.Instance.Loading);
-            Assert.Contains("Succeeded", cut.Markup);
-        });
     }
 
     [Fact]

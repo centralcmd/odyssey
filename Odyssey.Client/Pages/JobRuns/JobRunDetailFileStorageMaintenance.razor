@@ -1,0 +1,19 @@
+@*
+    A file-storage maintenance run's detail (issue #410 §3.6): what it erased, swept, scrubbed and found, and the
+    check that held it (a check name, never a path).
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Files erased")">@N(Maintenance.FilesErased)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Abandoned writes swept")">@N(Maintenance.AbandonedWritesSwept)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Objects scrubbed")">@N(Maintenance.ObjectsScrubbed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Integrity failures")">@N(Maintenance.IntegrityFailures)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Orphans found")">@N(Maintenance.OrphansFound)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Held check")">@Words(string.IsNullOrWhiteSpace(Maintenance.HeldByCheck) ? null : Maintenance.HeldByCheck)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private FileStorageMaintenanceJobRunDetail Maintenance => (FileStorageMaintenanceJobRunDetail)Run;
+}
