@@ -132,6 +132,58 @@
             };
             requestAnimationFrame(attempt);
         };
+        window.odsCheckListKeys = function (panelId) {
+            // OdsMultiSelect's popover keyboard (DS MultiSelect). The panel is portaled to <body>, so
+            // the browser's own Tab order would walk out of it: Tab and Shift+Tab CYCLE through the
+            // search field, the checkbox rows and the enabled footer buttons; ↑/↓ rove the rows (↓ from
+            // the search field enters the list); Enter toggles the focused row. Capturing on the panel
+            // runs before OdsPopupMenu's Tab sentinels and any wrapping modal's Tab trap. Wired once per
+            // panel element; Esc is left to OdsPopupMenu.
+            const panel = document.getElementById(panelId);
+            if (!panel || panel.dataset.odsCheckListKeys) return;
+            panel.dataset.odsCheckListKeys = '1';
+            const reveal = (el) => {
+                const row = el && el.closest('.odc-ms-opt');
+                const list = panel.querySelector('.odc-ms-list');
+                if (!row || !list) return;
+                const r = row.getBoundingClientRect();
+                const l = list.getBoundingClientRect();
+                if (r.top < l.top) list.scrollTop -= (l.top - r.top) + 4;
+                else if (r.bottom > l.bottom) list.scrollTop += (r.bottom - l.bottom) + 4;
+            };
+            panel.addEventListener('keydown', (ev) => {
+                const els = Array.from(panel.querySelectorAll('.odc-ms-search input, .odc-ms-opt input[type="checkbox"], .odc-ms-foot .odc-btn:not([disabled])'));
+                if (!els.length) return;
+                const i = els.indexOf(document.activeElement);
+                if (ev.key === 'Tab') {
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const n = els.length;
+                    const next = ev.shiftKey ? (i <= 0 ? n - 1 : i - 1) : (i < 0 || i === n - 1 ? 0 : i + 1);
+                    els[next].focus();
+                    reveal(els[next]);
+                    return;
+                }
+                if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') {
+                    const boxes = els.filter((x) => x.type === 'checkbox');
+                    if (!boxes.length) return;
+                    ev.preventDefault();
+                    ev.stopPropagation();
+                    const bi = boxes.indexOf(document.activeElement);
+                    const down = ev.key === 'ArrowDown';
+                    const target = bi < 0
+                        ? boxes[down ? 0 : boxes.length - 1]
+                        : boxes[Math.min(Math.max(bi + (down ? 1 : -1), 0), boxes.length - 1)];
+                    target.focus();
+                    reveal(target);
+                    return;
+                }
+                if (ev.key === 'Enter') {
+                    const el = document.activeElement;
+                    if (el && el.type === 'checkbox') { ev.preventDefault(); ev.stopPropagation(); el.click(); }
+                }
+            }, true);
+        };
         window.odsFocusIfLost = function (triggerId, panelId) {
             // OdsPopupMenu's click-away close (issue #255). The overlay is modeless, so the click
             // also lands on what was clicked; if that was a control, it has focus and must keep it.
