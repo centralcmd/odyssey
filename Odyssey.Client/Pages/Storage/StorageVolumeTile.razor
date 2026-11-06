@@ -3,7 +3,6 @@
     integrity and the disk check (Odyssey Design System · StorageHealth.jsx, STH_VolumeTile). Every state is
     a word; the tone only colours it.
 *@
-@using Odyssey.Client.Pages.Finance.ExchangeRateSync
 @using Odyssey.Dtos.Application
 @inject TimeProvider Time
 
@@ -105,5 +104,5 @@
         _ => state.ToString(),
     };
 
-    private string When(DateTime utc) => $"{ExchangeRateSyncTime.Absolute(utc)} ({ExchangeRateSyncTime.Relative(utc, Time.GetUtcNow())})";
+    private string When(DateTime utc) => $"{RunTime.Absolute(utc)} ({RunTime.Relative(utc, Time.GetUtcNow())})";
 }
