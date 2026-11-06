@@ -47,11 +47,11 @@
 
 .wx-days { position: relative; list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(calc(var(--space-16) + var(--space-8)), 1fr); gap: var(--space-2); overflow-x: auto; scrollbar-width: thin; }
 /* A day card is a disclosure button (design system · weather.css, issue #415): the button IS the card, so its padding
-   is clickable; the li is unstyled. Every card carries a top border of the focus-ring width — the divider colour until
-   selected, then --brand-text — so selecting never shifts the content. The focus ring is inset three ring widths,
+   is clickable; the li is unstyled. Every card carries a top border of the focus-ring width — the --control-border colour (the card is a control,
+   so its edge clears 3:1, WCAG 1.4.11) until selected, then --brand-text — so selecting never shifts the content. The focus ring is inset three ring widths,
    leaving a one-band gap under the bar: both are teal, and the gap keeps them two marks. */
 .wx-day { display: flex; }
-.wx-day-btn { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-2) var(--space-1); border: 1px solid var(--mud-palette-divider); border-top: var(--focus-ring-width) solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); width: 100%; font: inherit; color: inherit; cursor: pointer; scroll-margin: var(--space-2); }
+.wx-day-btn { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--space-2); padding: var(--space-3) var(--space-2) var(--space-1); border: 1px solid var(--control-border); border-top: var(--focus-ring-width) solid var(--control-border); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; min-height: var(--space-12); width: 100%; font: inherit; color: inherit; cursor: pointer; scroll-margin: var(--space-2); }
 .wx-day-btn:hover { background: var(--mud-palette-action-default-hover); }
 .wx-day-btn[aria-expanded="true"] { border-top-color: var(--brand-text); background: var(--mud-palette-action-default-hover); }
 .wx-day-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: calc(-3 * var(--focus-ring-width)); }
@@ -60,7 +60,7 @@
 .wx-day-btn[aria-expanded="true"] .wx-day-chev { transform: rotate(180deg); color: var(--brand-text); }
 @media (forced-colors: active) {
   .wx-day-btn { border-top-color: CanvasText; }
-  .wx-day-btn[aria-expanded="true"] { border-top-color: Highlight; border-top-width: calc(2 * var(--focus-ring-width)); }
+  .wx-day-btn[aria-expanded="true"] { border-top-color: Highlight; }
 }
 .wx-day-name { font: var(--fw-medium) var(--fs-caption)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .wx-day-temp { font: var(--fw-regular) var(--fs-body2)/1.2 var(--font-mono); }

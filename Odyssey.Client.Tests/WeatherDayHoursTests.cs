@@ -1,11 +1,15 @@
 using System.Net;
+using System.Security.Claims;
 using Bunit;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Weather;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
 using Xunit;
 
@@ -34,6 +38,8 @@ public class WeatherDayHoursTests : IDisposable
     {
         WeatherDayHours.ViewerOffset = static utc => TimeZoneInfo.Local.GetUtcOffset(utc);
         WeatherForecastBody.RetryCoolDown = TimeSpan.FromSeconds(10);
+        WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
+        WeatherWidget.LocalNow = static () => DateTime.Now;
     }
 
     // ── Fixtures ──────────────────────────────────────────────────────────────────────────────────
@@ -293,29 +299,42 @@ public class WeatherDayHoursTests : IDisposable
     // ── Stale-response guard ──────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void An_answer_that_lands_after_a_newer_selection_is_discarded_and_a_close_during_loading_renders_nothing()
+    public async Task An_answer_that_lands_after_a_newer_selection_is_discarded_and_a_close_during_loading_renders_nothing()
     {
         var (ctx, weather) = Context();
         using var _ = ctx;
-        var thursday = Today.AddDays(1);
-        var friday = Today.AddDays(2);
+        var saturday = Today.AddDays(1);
+        var sunday = Today.AddDays(2);
         var slow = new TaskCompletionSource<ApiResult<WeatherHourlyResponse>>();
-        weather.Setup(w => w.HourlyForDayAsync(thursday, PointId, It.IsAny<CancellationToken>())).Returns(slow.Task);
-        Setup(weather, friday, Ok(FullDay(friday)));
+        weather.Setup(w => w.HourlyForDayAsync(saturday, PointId, It.IsAny<CancellationToken>())).Returns(slow.Task);
+        Setup(weather, sunday, Ok(FullDay(sunday)));
         var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
 
-        body.InvokeAsync(() => Cards(body)[1].Click());
-        body.InvokeAsync(() => Cards(body)[2].Click());
-        body.WaitForAssertion(() => Assert.Contains("Sunday 25 Oct", body.Find(".wx-hours-h").TextContent));
-        body.InvokeAsync(() => slow.SetResult(Ok(FullDay(thursday))));
-        body.WaitForAssertion(() => Assert.Contains("Sunday 25 Oct", body.Find(".wx-hours-h").TextContent));
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        await body.InvokeAsync(() => Cards(body)[2].Click());
+        body.WaitForAssertion(() => Assert.Equal(24, body.FindAll(".wx-hours-scroll tbody tr").Count));
 
+        // Saturday's answer lands last, with three rows: it must not replace Sunday's twenty-four.
+        await body.InvokeAsync(() => slow.SetResult(Ok(Hours(saturday, Enumerable.Range(0, 3).Select(h => Step(DayStartUtc(saturday).AddHours(h)))))));
+        // The late answer's continuation runs on the renderer after SetResult returns: let it run before asserting.
+        await Task.Delay(200);
+        // Re-render, so the assertion reads the body's state rather than only the last frame it chose to draw.
+        body.Render();
+        Assert.Contains("Sunday 25 Oct", body.Find(".wx-hours-h").TextContent);
+        Assert.Equal(24, body.FindAll(".wx-hours-scroll tbody tr").Count);
+        Assert.Equal("true", Cards(body)[2].GetAttribute("aria-expanded"));
+
+        // Open a day whose answer is still in flight, close it, then let the answer land: nothing renders.
         var never = new TaskCompletionSource<ApiResult<WeatherHourlyResponse>>();
         weather.Setup(w => w.HourlyForDayAsync(Today.AddDays(3), PointId, It.IsAny<CancellationToken>())).Returns(never.Task);
-        body.InvokeAsync(() => Cards(body)[3].Click());
-        body.InvokeAsync(() => Cards(body)[3].Click());
-        body.InvokeAsync(() => never.SetResult(Ok(FullDay(Today.AddDays(3)))));
+        await body.InvokeAsync(() => Cards(body)[3].Click());
+        Assert.NotEmpty(body.FindAll(".wx-hours"));
+        await body.InvokeAsync(() => Cards(body)[3].Click());
+        await body.InvokeAsync(() => never.SetResult(Ok(FullDay(Today.AddDays(3)))));
+        await Task.Delay(200);
+        body.Render();
         Assert.Empty(body.FindAll(".wx-hours"));
+        Assert.True(body.Find(".wx-hours-host").HasAttribute("hidden"));
     }
 
     [Fact]
@@ -351,6 +370,200 @@ public class WeatherDayHoursTests : IDisposable
         first.WaitForAssertion(() => Assert.NotEmpty(first.FindAll(".wx-hours")));
         Assert.Empty(second.FindAll(".wx-hours"));
         Assert.All(Cards(second), c => Assert.Equal(second.Find(".wx-hours-host").Id, c.GetAttribute("aria-controls")));
+    }
+
+    // ── Focus and Escape ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Escape_closes_the_panel_and_returns_focus_to_the_card_that_opened_it()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var module = ctx.JSInterop.SetupModule("./js/weather-hours.js");
+        module.Mode = JSRuntimeMode.Loose;
+        var date = Today.AddDays(1);
+        Setup(weather, date, Ok(FullDay(date)));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        body.WaitForAssertion(() => Assert.NotEmpty(body.FindAll(".wx-hours-scroll")));
+        // The panel's Escape listener is attached in the browser; it calls back into the body.
+        body.WaitForAssertion(() => module.VerifyInvoke("attachEscape"));
+
+        await body.InvokeAsync(() => body.Instance.CloseFromEscape());
+
+        Assert.True(body.Find(".wx-hours-host").HasAttribute("hidden"));
+        Assert.All(Cards(body), c => Assert.Equal("false", c.GetAttribute("aria-expanded")));
+        body.WaitForAssertion(() => Assert.Contains(ctx.JSInterop.Invocations, i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)));
+        module.VerifyInvoke("detachEscape");
+    }
+
+    [Fact]
+    public async Task Try_again_moves_focus_to_the_panel_heading_before_the_skeleton_replaces_the_error()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var module = ctx.JSInterop.SetupModule("./js/weather-hours.js");
+        module.Mode = JSRuntimeMode.Loose;
+        var date = Today.AddDays(1);
+        var second = new TaskCompletionSource<ApiResult<WeatherHourlyResponse>>();
+        weather.SetupSequence(w => w.HourlyForDayAsync(date, PointId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem()))
+            .Returns(second.Task);
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        body.WaitForAssertion(() => Assert.NotNull(body.Find(".wx-hours-msg button")));
+        await body.InvokeAsync(() => body.Find(".wx-hours-msg button").Click());
+
+        var headingId = body.Find(".wx-hours-h").Id!;
+        body.WaitForAssertion(() => Assert.Equal(headingId, module.VerifyInvoke("focusById").Arguments[0]));
+        Assert.Equal("true", body.Find(".wx-hours").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public async Task A_vanished_day_with_focus_in_the_panel_sends_focus_to_the_first_card()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var module = ctx.JSInterop.SetupModule("./js/weather-hours.js");
+        module.Mode = JSRuntimeMode.Loose;
+        module.Setup<bool>("containsFocus", _ => true).SetResult(true);
+        var date = Today.AddDays(3);
+        Setup(weather, date, Ok(FullDay(date)));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[3].Click());
+        body.WaitForAssertion(() => Assert.NotEmpty(body.FindAll(".wx-hours-scroll")));
+        var focusCallsBefore = ctx.JSInterop.Invocations.Count(i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
+
+        body.Render(p => p.Add(b => b.Days, Days(2)));
+
+        module.VerifyInvoke("containsFocus");
+        body.WaitForAssertion(() => Assert.True(
+            ctx.JSInterop.Invocations.Count(i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase)) > focusCallsBefore));
+        Assert.True(body.Find(".wx-hours-host").HasAttribute("hidden"));
+    }
+
+    [Fact]
+    public async Task A_failure_speaks_through_its_alert_alone_and_never_the_polite_region()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var date = Today.AddDays(1);
+        Setup(weather, date, ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem()));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        body.WaitForAssertion(() => Assert.Equal("alert", body.Find(".wx-hours-msg").GetAttribute("role")));
+        await Task.Delay(300);
+
+        Assert.Equal("", body.Find("[role=status]").TextContent);
+    }
+
+    // ── The 429 cool-down ─────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task After_a_429_Try_again_stays_focusable_but_unavailable_until_the_cool_down_ends()
+    {
+        WeatherForecastBody.RetryCoolDown = TimeSpan.FromMilliseconds(200);
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var date = Today.AddDays(1);
+        Setup(weather, date, ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.TooManyRequests, new ApiProblem()));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        body.WaitForAssertion(() => Assert.Equal("true", body.Find(".wx-hours-msg button").GetAttribute("aria-disabled")));
+        Assert.False(body.Find(".wx-hours-msg button").HasAttribute("disabled"));
+
+        // A click during the cool-down asks nothing.
+        await body.InvokeAsync(() => body.Find(".wx-hours-msg button").Click());
+        weather.Verify(w => w.HourlyForDayAsync(date, PointId, It.IsAny<CancellationToken>()), Times.Once);
+
+        body.WaitForAssertion(() => Assert.Null(body.Find(".wx-hours-msg button").GetAttribute("aria-disabled")), TimeSpan.FromSeconds(3));
+    }
+
+    [Fact]
+    public async Task Switching_day_or_closing_cancels_a_running_cool_down()
+    {
+        WeatherForecastBody.RetryCoolDown = TimeSpan.FromMinutes(5);
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var limited = Today.AddDays(1);
+        var other = Today.AddDays(2);
+        Setup(weather, limited, ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.TooManyRequests, new ApiProblem()));
+        Setup(weather, other, ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem()));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+        body.WaitForAssertion(() => Assert.Equal("true", body.Find(".wx-hours-msg button").GetAttribute("aria-disabled")));
+
+        // Another day's error offers Try again at once: the five-minute pause belonged to the day that was refused.
+        await body.InvokeAsync(() => Cards(body)[2].Click());
+        body.WaitForAssertion(() => Assert.Contains("couldn’t be loaded", body.Find(".wx-hours-msg").TextContent));
+        Assert.Null(body.Find(".wx-hours-msg button").GetAttribute("aria-disabled"));
+    }
+
+    // ── Hosts ─────────────────────────────────────────────────────────────────────────────────────
+
+    private sealed class Claims(IReadOnlyList<string> permissions) : AuthenticationStateProvider
+    {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync() =>
+            Task.FromResult(new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(
+                [.. permissions.Select(p => new Claim(PermissionClaims.Type, p))], "test"))));
+    }
+
+    [Fact]
+    public void On_the_dashboard_card_the_panel_heading_sits_one_level_below_the_cards_h2()
+    {
+        WeatherWidget.InteractiveCheck = static () => true;
+        WeatherWidget.LocalNow = static () => new DateTime(2026, 10, 23, 10, 0, 0);
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        weather.Setup(w => w.CurrentAsync(null, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Current()));
+        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new WeatherDailyResponse { Point = Point, Status = WeatherStatus.Ok, Days = Days() }));
+        weather.Setup(w => w.OptionsAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherPointOptions()));
+        weather.Setup(w => w.PreferencesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new WeatherPreferences()));
+        var date = Today.AddDays(1);
+        Setup(weather, date, Ok(FullDay(date)));
+        var auth = new Claims([PermissionClaims.WeatherRead]);
+        ctx.Services.AddSingleton(weather.Object);
+        ctx.Services.AddSingleton<AuthenticationStateProvider>(auth);
+        ctx.Services.AddSingleton<Odyssey.Client.Services.IWeatherPointOptionsCache>(new Odyssey.Client.Services.WeatherPointOptionsCache(weather.Object, auth));
+
+        var card = ctx.Render<WeatherWidget>();
+        card.WaitForAssertion(() => Assert.NotEmpty(card.FindAll("button.wx-day-btn")));
+        card.InvokeAsync(() => card.FindAll("button.wx-day-btn")[1].Click());
+
+        card.WaitForAssertion(() => Assert.Equal(24, card.FindAll(".wx-hours-scroll tbody tr").Count));
+        Assert.NotNull(card.Find("h2.wx-ttl"));
+        Assert.Equal("3", card.Find(".wx-hours-h").GetAttribute("aria-level"));
+        weather.Verify(w => w.HourlyForDayAsync(date, PointId, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public void In_a_record_section_the_panel_heading_sits_one_level_below_the_sections_label()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        weather.Setup(w => w.CurrentAsync(PointId, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(Current()));
+        weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), PointId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new WeatherDailyResponse { Point = Point, Status = WeatherStatus.Ok, Days = Days() }));
+        var date = Today.AddDays(1);
+        Setup(weather, date, Ok(FullDay(date)));
+        var reads = new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero)));
+
+        var section = ctx.Render<WeatherForecastSection>(p => p
+            .Add(s => s.WeatherPointId, PointId).Add(s => s.PointName, "Oslo").Add(s => s.Reads, reads));
+        section.WaitForAssertion(() => Assert.NotEmpty(section.FindAll("button.wx-day-btn")));
+        section.InvokeAsync(() => section.FindAll("button.wx-day-btn")[1].Click());
+
+        section.WaitForAssertion(() => Assert.Equal(24, section.FindAll(".wx-hours-scroll tbody tr").Count));
+        var label = section.Find("[role=heading]:not(.wx-hours-h)");
+        Assert.Equal("3", label.GetAttribute("aria-level"));
+        Assert.Equal("4", section.Find(".wx-hours-h").GetAttribute("aria-level"));
     }
 
     // ── Announcements ─────────────────────────────────────────────────────────────────────────────
@@ -396,6 +609,8 @@ public class WeatherDayHoursTests : IDisposable
         await reads.HourlyForDayAsync(PointId, tomorrow);
         weather.Verify(w => w.HourlyForDayAsync(tomorrow, PointId, It.IsAny<CancellationToken>()), Times.Exactly(2));
 
+        // Today, inside its first row (12:00–13:00 Oslo is 10:00–11:00Z), so only the ten minutes bind.
+        time.Now = new DateTimeOffset(2026, 10, 23, 10, 5, 0, TimeSpan.Zero);
         await reads.HourlyForDayAsync(PointId, Today);
         time.Now += TimeSpan.FromMinutes(9);
         await reads.HourlyForDayAsync(PointId, Today);
@@ -426,6 +641,7 @@ public class WeatherDayHoursTests : IDisposable
     [InlineData("429")]
     [InlineData("nodata")]
     [InlineData("stale")]
+    [InlineData("empty")]
     [InlineData("wrong-date")]
     public async Task Only_a_fresh_Ok_answer_for_the_asked_day_is_held(string kind)
     {
@@ -437,6 +653,7 @@ public class WeatherDayHoursTests : IDisposable
             "429" => ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.TooManyRequests, new ApiProblem()),
             "nodata" => Ok(Hours(date, [], status: WeatherStatus.NoData)),
             "stale" => Ok(FullDay(date) with { Stale = true }),
+            "empty" => Ok(Hours(date, [])),
             _ => Ok(FullDay(date.AddDays(1))),
         });
         var reads = new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero)));
@@ -445,6 +662,22 @@ public class WeatherDayHoursTests : IDisposable
         await reads.HourlyForDayAsync(PointId, date);
 
         weather.Verify(w => w.HourlyForDayAsync(date, PointId, It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Todays_answer_expires_when_its_Now_row_ends_even_inside_the_ten_minutes()
+    {
+        var weather = new Mock<IWeatherApiClient>();
+        // Today's first row runs 12:00–13:00 Oslo (10:00–11:00Z); the answer arrives at 10:55Z.
+        Setup(weather, Today, Ok(FullDay(Today, isToday: true)));
+        var time = new FakeTime(new DateTimeOffset(2026, 10, 23, 10, 55, 0, TimeSpan.Zero));
+        var reads = new WeatherPointReads(weather.Object, time);
+
+        await reads.HourlyForDayAsync(PointId, Today);
+        time.Now = new DateTimeOffset(2026, 10, 23, 11, 1, 0, TimeSpan.Zero);
+        await reads.HourlyForDayAsync(PointId, Today);
+
+        weather.Verify(w => w.HourlyForDayAsync(Today, PointId, It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]

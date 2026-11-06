@@ -10,15 +10,44 @@ namespace Odyssey.ApiClient.Tests;
 /// <summary><see cref="WeatherApiClient.HourlyForDayAsync"/>: the day-mode route and its wire shape (issue #414).</summary>
 public class WeatherApiClientDayModeTests
 {
-    private sealed class StubHandler(string body) : HttpMessageHandler
+    private sealed class StubHandler(string body, HttpStatusCode status = HttpStatusCode.OK, string mediaType = "application/json") : HttpMessageHandler
     {
         public HttpRequestMessage? LastRequest { get; private set; }
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             LastRequest = request;
-            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") });
+            return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, mediaType) });
         }
+    }
+
+    private static WeatherApiClient Client(StubHandler handler) =>
+        new(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+
+    [Fact]
+    public async Task Without_a_point_it_sends_no_weatherPointId_so_the_server_resolves_the_callers_own()
+    {
+        var handler = new StubHandler(Body);
+
+        await Client(handler).HourlyForDayAsync(new DateOnly(2026, 10, 25));
+
+        Assert.DoesNotContain("weatherPointId", handler.LastRequest!.RequestUri!.Query, StringComparison.Ordinal);
+        Assert.Contains("date=2026-10-25", handler.LastRequest.RequestUri.Query, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task A_failure_is_a_failure_carrying_its_status_and_no_value(HttpStatusCode status)
+    {
+        var handler = new StubHandler("{\"title\":\"Refused\"}", status, "application/problem+json");
+
+        var result = await Client(handler).HourlyForDayAsync(new DateOnly(2026, 10, 25), Guid.NewGuid());
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(status, result.Status);
+        Assert.Null(result.Value);
     }
 
     private const string Body = """

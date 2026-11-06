@@ -51,7 +51,7 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
     /// <summary>
     /// The hours of one point-local <paramref name="date"/> (issue #415 §4). One request per (point, date) is shared
     /// while in flight. Only an <c>Ok</c>, not-stale answer that names the requested point and date is kept, and only
-    /// until the earliest of: ten minutes for today, the start of the day for a future day (so "tomorrow" fetched
+    /// until the earliest of: ten minutes for today (and no later than the end of its "Now" row), the start of the day for a future day (so "tomorrow" fetched
     /// before midnight never becomes today's panel after it), and an hour for anything.
     /// </summary>
     public async Task<ApiResult<WeatherHourlyResponse>> HourlyForDayAsync(Guid weatherPointId, DateOnly date)
@@ -72,7 +72,9 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
 
         var slot = held;
         var result = await slot.Task;
-        var keep = result.IsSuccess && result.Value is { Status: WeatherStatus.Ok, Stale: false, Day: { } day } value
+        // An Ok answer with no rows ("no hourly forecast yet") is not held: the panel offers no Try again there, so a held
+        // one would hide the data for as long as it lived once MET answered.
+        var keep = result.IsSuccess && result.Value is { Status: WeatherStatus.Ok, Stale: false, Day: { } day, Steps.Count: > 0 } value
             && value.Point?.WeatherPointId == weatherPointId && day.Date == date;
         if (!keep)
         {
@@ -86,7 +88,12 @@ public sealed class WeatherPointReads(IWeatherApiClient weather, TimeProvider? t
             var arrived = clock.GetUtcNow();
             var expiry = arrived + MaxLifetime;
             if (result.Value!.Day!.IsToday)
-                expiry = Min(expiry, arrived + TodayLifetime);
+            {
+                // Today's first row is labelled "Now": once it ends, the held answer would name a past hour as now.
+                var first = result.Value.Steps[0];
+                var firstEnds = new DateTimeOffset(DateTime.SpecifyKind(first.TimeUtc, DateTimeKind.Utc).AddHours(first.PeriodHours));
+                expiry = Min(expiry, Min(arrived + TodayLifetime, firstEnds));
+            }
             else if (result.Value.Day.FromUtc is { } dayStart)
                 expiry = Min(expiry, new DateTimeOffset(DateTime.SpecifyKind(dayStart, DateTimeKind.Utc)));
             slot.ExpiresAt = expiry;

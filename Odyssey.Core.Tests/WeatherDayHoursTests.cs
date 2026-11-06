@@ -61,6 +61,21 @@ public class WeatherDayHoursTests
     }
 
     [Fact]
+    public void A_chain_of_finer_steps_drops_each_coarser_one_whatever_the_order()
+    {
+        var start = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
+        // An hour inside a 6-hour block inside a 12-hour block: overlap is judged against the whole set, so the 6-hour
+        // block is dropped for the hour even though it is itself what drops the 12-hour one (issue #414 R3-2).
+        WeatherForecastStep[] chain = [Step(start, 12), Step(start.AddHours(6), 6), Step(start.AddHours(8), 1)];
+
+        foreach (var order in new[] { chain, chain.Reverse().ToArray(), [chain[1], chain[2], chain[0]] })
+        {
+            var rows = WeatherComposer.DayRows(order, start, start.AddDays(1));
+            Assert.Equal(start.AddHours(8), Assert.Single(rows).TimeUtc);
+        }
+    }
+
+    [Fact]
     public void Rows_never_overlap_for_any_mix_of_one_six_and_twelve_hour_steps()
     {
         var start = new DateTime(2026, 10, 24, 0, 0, 0, DateTimeKind.Utc);
@@ -78,6 +93,16 @@ public class WeatherDayHoursTests
 
             AssertNoOverlap(rows);
             Assert.All(rows, r => Assert.True(r.TimeUtc < start.AddDays(1) && r.TimeUtc.AddHours(r.PeriodHours) > start));
+
+            // The oracle: a step that reaches into the window with no finer step over it is a row, unless an earlier
+            // row already covers its start. Nothing else is dropped.
+            var overlapping = effective.Where(s => s.TimeUtc < start.AddDays(1) && s.TimeUtc.AddHours(s.PeriodHours) > start).ToList();
+            foreach (var step in overlapping.Where(s => !overlapping.Any(f => f.PeriodHours < s.PeriodHours
+                && f.TimeUtc < s.TimeUtc.AddHours(s.PeriodHours) && s.TimeUtc < f.TimeUtc.AddHours(f.PeriodHours))))
+            {
+                Assert.True(rows.Contains(step) || rows.Any(r => r.TimeUtc < step.TimeUtc && r.TimeUtc.AddHours(r.PeriodHours) > step.TimeUtc),
+                    $"{step.TimeUtc:O} +{step.PeriodHours} h was dropped with nothing finer over it");
+            }
         }
     }
 
@@ -233,16 +258,21 @@ public class WeatherDayHoursTests
         Assert.Equal(calls, h.Forecasts.Calls);
     }
 
-    [Fact]
-    public async Task A_half_hour_dst_shift_gives_a_23_and_a_half_hour_day()
+    [Theory]
+    // Oslo springs forward on the last Sunday of March. Lord Howe Island moves 30 minutes: forward on the first Sunday
+    // of October, back on the first Sunday of April.
+    [InlineData("Europe/Oslo", 2026, 3, 25, "2026-03-29", 23)]
+    [InlineData("Australia/Lord_Howe", 2026, 10, 1, "2026-10-04", 23.5)]
+    [InlineData("Australia/Lord_Howe", 2026, 4, 1, "2026-04-05", 24.5)]
+    public async Task A_day_with_a_dst_change_has_its_true_length(string zone, int year, int month, int day, string date, double hours)
     {
-        // Lord Howe Island moves its clocks 30 minutes forward on the first Sunday of October.
-        using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 1, 12, 0, 0, TimeSpan.Zero));
-        var point = await h.EnableAsync(zone: "Australia/Lord_Howe");
+        using var h = new WeatherTestHarness(new DateTimeOffset(year, month, day, 12, 0, 0, TimeSpan.Zero));
+        var point = await h.EnableAsync(zone: zone);
 
-        var response = await h.Read(h.NewContext()).HourlyAsync(Day(point.Id, new DateOnly(2026, 10, 4)), "u1", CancellationToken.None);
+        var response = await h.Read(h.NewContext()).HourlyAsync(
+            Day(point.Id, DateOnly.ParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture)), "u1", CancellationToken.None);
 
-        Assert.Equal(23.5m, response.Day!.LengthHours);
+        Assert.Equal((decimal)hours, response.Day!.LengthHours);
     }
 
     [Fact]

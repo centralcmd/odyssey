@@ -104,6 +104,7 @@ public partial class WeatherForecastBody : IAsyncDisposable
             return;
         }
 
+        StopCoolDown();
         _selected = date;
         await LoadAsync(date);
     }
@@ -174,7 +175,7 @@ public partial class WeatherForecastBody : IAsyncDisposable
 
     private void StartCoolDown()
     {
-        _coolDown?.Cancel();
+        StopCoolDown();
         var coolDown = new CancellationTokenSource();
         _coolDown = coolDown;
         _ = EndCoolDownAsync(coolDown);
@@ -188,22 +189,26 @@ public partial class WeatherForecastBody : IAsyncDisposable
         }
         catch (TaskCanceledException)
         {
+            // Stopped (a close, a day switch, a new 429): StopCoolDown disposed it.
             return;
         }
 
         if (ReferenceEquals(_coolDown, coolDown))
         {
             _coolDown = null;
+            coolDown.Dispose();
             await InvokeAsync(StateHasChanged);
         }
-
-        coolDown.Dispose();
     }
 
     private void StopCoolDown()
     {
-        _coolDown?.Cancel();
+        var coolDown = _coolDown;
         _coolDown = null;
+        if (coolDown is null)
+            return;
+        coolDown.Cancel();
+        coolDown.Dispose();
     }
 
     private async Task CloseAsync(FocusTarget focus)

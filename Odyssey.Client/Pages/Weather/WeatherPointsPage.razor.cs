@@ -25,6 +25,9 @@ public partial class WeatherPointsPage
     [Inject] private IWeatherClaimsRefresher ClaimsRefresher { get; set; } = default!;
     [Inject] private IServiceProvider Services { get; set; } = default!;
 
+    /// <summary>The registered clock, if any: the weather reads fall back to the system clock in a host that registers none.</summary>
+    private TimeProvider? ClockOrNull => Services.GetService(typeof(TimeProvider)) as TimeProvider;
+
     /// <summary><c>?open=&lt;weatherPointId&gt;</c>: expand, scroll to and focus that record (issue #388 §3).</summary>
     [SupplyParameterFromQuery(Name = "open")] public Guid? OpenId { get; set; }
 
@@ -103,7 +106,7 @@ public partial class WeatherPointsPage
         if (!InteractiveCheck())
             return;
 
-        _weatherReads = new WeatherPointReads(Weather, Services.GetService(typeof(TimeProvider)) as TimeProvider);
+        _weatherReads = new WeatherPointReads(Weather, ClockOrNull);
         await ReadClaimsAsync();
         await PageState.RestoreOrSeedAsync<WeatherPointsPageState>(PageStateKey, ApplyPageState, BuildPageState);
         await Task.WhenAll(LoadAsync(), LoadCapAsync());

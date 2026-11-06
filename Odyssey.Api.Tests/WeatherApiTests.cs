@@ -973,8 +973,21 @@ public class WeatherApiTests
 
     // ── Hours of one day (issue #414) ─────────────────────────────────────────────────────────────
 
-    private static DateOnly OsloToday() =>
-        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo")));
+    /// <summary>The point's today as the SERVER computes it, so a run that straddles Oslo midnight cannot disagree with it.</summary>
+    private static async Task<DateOnly> PointTodayAsync(HttpClient client, Guid pointId)
+    {
+        // The UTC date is the point's today or one day either side; the day block's isToday says which.
+        var utc = DateOnly.FromDateTime(DateTime.UtcNow);
+        foreach (var candidate in new[] { utc, utc.AddDays(1), utc.AddDays(-1) })
+        {
+            var response = await client.GetFromJsonAsync<WeatherHourlyResponse>(
+                $"/api/weather/hourly?weatherPointId={pointId}&date={candidate:yyyy-MM-dd}", Json);
+            if (response!.Day!.IsToday)
+                return candidate;
+        }
+
+        throw new InvalidOperationException("No date within a day of UTC is the point's today.");
+    }
 
     [Theory]
     [InlineData("/api/weather/hourly?date=2026-10-23&fromUtc=2026-10-23T00:00:00Z", "date")]
@@ -1001,7 +1014,7 @@ public class WeatherApiTests
         await using var factory = new WeatherFactory(Admin);
         using var client = factory.CreateClient();
         var point = await CreatePointAsync(client);
-        var tomorrow = OsloToday().AddDays(1);
+        var tomorrow = (await PointTodayAsync(client, point.WeatherPointId)).AddDays(1);
 
         using var raw = JsonDocument.Parse(await client.GetStringAsync(
             $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&date={tomorrow:yyyy-MM-dd}"));
@@ -1034,6 +1047,9 @@ public class WeatherApiTests
         {
             Assert.DoesNotContain($"\"{hidden}\"", text, StringComparison.OrdinalIgnoreCase);
         }
+
+        Assert.DoesNotContain("Europe/Oslo", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("59.91", text, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -1042,7 +1058,8 @@ public class WeatherApiTests
         await using var factory = new WeatherFactory(Admin);
         using var client = factory.CreateClient();
         var point = await CreatePointAsync(client);
-        var today = OsloToday();
+        var today = await PointTodayAsync(client, point.WeatherPointId);
+        var callsBefore = factory.Forecasts.Calls;
 
         foreach (var date in new[] { today.AddDays(-1), today.AddDays(WeatherRules.DayModeMaxDaysAhead + 1), DateOnly.MinValue, DateOnly.MaxValue })
         {
@@ -1055,7 +1072,7 @@ public class WeatherApiTests
             Assert.Empty(response.Steps);
         }
 
-        Assert.Equal(0, factory.Forecasts.Calls);
+        Assert.Equal(callsBefore, factory.Forecasts.Calls);
 
         var last = await client.GetFromJsonAsync<WeatherHourlyResponse>(
             $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&date={today.AddDays(WeatherRules.DayModeMaxDaysAhead):yyyy-MM-dd}", Json);
@@ -1098,17 +1115,48 @@ public class WeatherApiTests
             Assert.NotEmpty(doc.RootElement.GetProperty("steps").EnumerateArray());
         }
 
-        foreach (var body in new[]
+        // (body, carries steps): the journal-entry read carries a day summary and no step, so for it the absence of the
+        // local times is trivially true; for the others it is a fact about a real step.
+        foreach (var (body, carriesSteps) in new[]
         {
-            range,
-            await client.GetStringAsync($"/api/weather/current?weatherPointId={point.WeatherPointId}"),
-            await client.GetStringAsync($"/api/calendar-events/{eventId}/weather"),
-            await client.GetStringAsync($"/api/journal-entries/{entryId}/weather"),
+            (range, true),
+            (await client.GetStringAsync($"/api/weather/current?weatherPointId={point.WeatherPointId}"), true),
+            (await client.GetStringAsync($"/api/calendar-events/{eventId}/weather"), true),
+            (await client.GetStringAsync($"/api/journal-entries/{entryId}/weather"), false),
         })
         {
+            if (carriesSteps)
+                Assert.Contains("\"timeUtc\"", body, StringComparison.Ordinal);
             Assert.DoesNotContain("\"localStart\"", body, StringComparison.Ordinal);
             Assert.DoesNotContain("\"localEnd\"", body, StringComparison.Ordinal);
         }
+    }
+
+    [Fact]
+    public async Task Day_mode_shares_the_weather_read_limit()
+    {
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:WeatherRead:PermitLimit"] = "1",
+            ["RateLimiting:WeatherRead:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/hourly?date=2026-10-23")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync("/api/weather/hourly?date=2026-10-24")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_openapi_document_lists_the_hourly_parameters_and_requires_none()
+    {
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+        using var document = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/swagger/v1/swagger.json"));
+
+        var parameters = document.RootElement.GetProperty("paths").GetProperty("/api/weather/hourly").GetProperty("get")
+            .GetProperty("parameters").EnumerateArray().ToList();
+        Assert.Equal(["date", "fromutc", "toutc", "weatherpointid"],
+            parameters.Select(p => p.GetProperty("name").GetString()!.ToLowerInvariant()).Order(StringComparer.Ordinal).ToList());
+        Assert.All(parameters, p => Assert.False(p.TryGetProperty("required", out var required) && required.GetBoolean()));
     }
 
     private sealed class WeatherFactory : OdysseyApiFactory

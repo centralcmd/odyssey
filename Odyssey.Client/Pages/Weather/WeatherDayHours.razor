@@ -78,7 +78,7 @@
                                     <tr class="wx-hours-gap"><td colspan="5">@row.Gap</td></tr>
                                     continue;
                                 }
-                                var now = r.Day!.IsToday && row.First;
+                                var now = r.Day is { IsToday: true } && row.First;
                                 var symbol = WeatherVisuals.SymbolOf(step.SymbolCode);
                                 <tr class="@(now ? "now" : null)">
                                     <th scope="row">

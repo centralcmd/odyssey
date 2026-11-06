@@ -41,7 +41,7 @@ public sealed class WeatherController(WeatherReadService service) : ControllerBa
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherHourlyResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "The effective forecast steps in a window of at most 10 days.")]
+    [SwaggerOperation(Summary = "The effective forecast steps in a window of at most 10 days (fromUtc/toUtc), or of one point-local day (date).")]
     public async Task<IActionResult> Hourly([FromQuery] WeatherHourlyQuery query, CancellationToken cancellationToken = default)
     {
         if (User.ActingUserId() is not { } userId)

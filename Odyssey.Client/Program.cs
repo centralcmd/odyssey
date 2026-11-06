@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Auth;
 using Odyssey.Client;
@@ -39,6 +40,10 @@ var apiBaseAddress = shouldUseRelativeBase
     ? localDebugApiBaseAddress ?? new Uri(new Uri(builder.HostEnvironment.BaseAddress), "api/").ToString()
     : configuredApiBaseAddress;
 
+// The clock (issue #415): the weather hours cache expires answers by it, and ContractDetailView injects it.
+// One registration, so a test host can substitute its own.
+builder.Services.TryAddSingleton(TimeProvider.System);
+
 // The request pipeline is browser-specific only at its outermost layer: BrowserCredentialsHandler
 // opts fetch into sending the auth cookie cross-origin, then hands off to the library's portable
 // antiforgery handler. A non-browser consumer swaps the outer handler for an HttpClientHandler with
@@ -59,8 +64,6 @@ var apiBaseAddress = shouldUseRelativeBase
 // UnauthorizedHandler is the third of the kind (issue #250): a 401 on a domain call means the cookie has
 // expired or been revoked, and without it every page fails with a Retry that can never succeed. It too
 // signals a singleton notifier; SessionExpiryRedirect (App.razor) reloads to the sign-in page.
-// The weather hours cache expires answers by the clock (issue #415); one seam, so tests can move it.
-builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddTransient<BrowserCredentialsHandler>();
 builder.Services.AddTransient<LegalComplianceHandler>();
 builder.Services.AddSingleton<PasswordChangeRequiredNotifier>();
