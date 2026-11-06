@@ -46,16 +46,23 @@ public static class JobRunFollower
     public const int MaxConsecutiveErrors = 3;
 
     /// <param name="onTick">Each successful read — the page refreshes that run's detail entry and table row.</param>
+    /// <param name="delay">
+    /// The wait between reads; <c>null</c> is <see cref="Task.Delay(TimeSpan, TimeProvider, CancellationToken)"/> on
+    /// <paramref name="time"/>. A test passes its own to step the follow one read at a time, deterministically, instead
+    /// of polling for a timer continuation.
+    /// </param>
     public static async Task<FollowResult> FollowAsync(
-        IBackgroundJobsApiClient jobs, Guid runId, TimeProvider time, Func<JobRunDetail, Task> onTick, CancellationToken ct)
+        IBackgroundJobsApiClient jobs, Guid runId, TimeProvider time, Func<JobRunDetail, Task> onTick, CancellationToken ct,
+        Func<TimeSpan, CancellationToken, Task>? delay = null)
     {
+        delay ??= (span, token) => Task.Delay(span, time, token);
         var started = time.GetUtcNow();
         var errors = 0;
         while (true)
         {
             try
             {
-                await Task.Delay(Interval, time, ct);
+                await delay(Interval, ct);
             }
             catch (OperationCanceledException)
             {

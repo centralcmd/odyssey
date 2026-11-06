@@ -439,4 +439,441 @@ public class BackgroundJobsPageTests
         Assert.DoesNotContain("SERVER-DETAIL", cut.Markup);
         Assert.Empty(cut.Instance.Follows);
     }
+
+    // ── Shared helpers for the review-round tests (PR #418) ──────────────────────────────────────
+
+    /// <summary>
+    /// Steps a follow one read at a time through the page's follower seam: each wait blocks until the test releases
+    /// it, so a test decides exactly when a tick happens instead of racing a timer. With <see cref="Time"/> set, each
+    /// released wait also advances the fake clock by the interval (the 3-minute cap needs it).
+    /// </summary>
+    private sealed class FollowSteps
+    {
+        private readonly SemaphoreSlim gate = new(0);
+
+        public FakeTimeProvider? Time { get; init; }
+
+        public async Task Delay(TimeSpan span, CancellationToken ct)
+        {
+            await gate.WaitAsync(ct);
+            Time?.Advance(span);
+        }
+
+        public void Step(int count = 1) => gate.Release(count);
+    }
+
+    /// <summary>
+    /// Waits for the renderer's current work item to finish. A follow's end removes its line (a render, which is what
+    /// WaitForAssertion re-checks on) and THEN announces, in the same work item, so the announcement is asserted only
+    /// once that item has run — not on a render that happened before it.
+    /// </summary>
+    private static Task Settled(IRenderedComponent<BackgroundJobs> cut) => cut.InvokeAsync(() => { });
+
+    private static List<string?> FocusCalls(Fixture f) =>
+        [.. f.Ctx.JSInterop.Invocations.Where(i => i.Identifier == "odsFocusById").Select(i => i.Arguments[0] as string)];
+
+    private static void Starts(Fixture f, JobType job, Guid runId) =>
+        f.Api.Setup(a => a.RunNowAsync(job, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<JobRunStarted>.Success(new JobRunStarted { Id = runId }, HttpStatusCode.Accepted));
+
+    private static ApiResult<JobRunDetail> Detail(Guid id, JobType job, JobRunStatus status, int processed = 4) =>
+        ApiResult<JobRunDetail>.Success(new WeatherJobRunDetail
+        {
+            Id = id, JobType = job, Status = status, StartedAtUtc = Now.UtcDateTime.AddMinutes(-30),
+            ItemsProcessed = processed, PointsAttempted = processed,
+        }, HttpStatusCode.OK);
+
+    private static async Task<IRenderedComponent<BackgroundJobs>> RenderLoaded(Fixture f, FollowSteps? steps = null)
+    {
+        var cut = Render(f);
+        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        if (steps is not null)
+            await cut.InvokeAsync(() => cut.Instance.FollowDelay = steps.Delay);
+        return cut;
+    }
+
+    // ── Sort (AC 6) ──────────────────────────────────────────────────────────────────────────────
+
+    private static AngleSharp.Dom.IElement Header(IRenderedComponent<BackgroundJobs> cut, string text) =>
+        cut.FindAll("thead th[aria-sort]").Single(th => th.QuerySelector("button > span")!.TextContent.Trim() == text);
+
+    [Fact]
+    public async Task The_header_sort_and_the_sort_select_share_one_state_and_re_query()
+    {
+        await using var f = NewFixture();
+        var cut = await RenderLoaded(f);
+        var select = cut.FindComponent<OdsSortSelect<ExistingJobRun>>();
+        Assert.Equal("descending", Header(cut, "Started").GetAttribute("aria-sort"));
+        Assert.Equal("none", Header(cut, "Duration").GetAttribute("aria-sort"));
+        Assert.Equal((JobRunSortBy?)JobRunSortBy.StartedAt, f.Requests[0]!.SortBy);
+
+        Header(cut, "Duration").QuerySelector("button")!.Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(2, f.Requests.Count));
+        var byHeader = select.Instance.Sort!;
+        Assert.Equal(nameof(JobRunSortBy.Duration), byHeader.Key);
+        var word = byHeader.Dir == OdsSortDirection.Asc ? "ascending" : "descending";
+        Assert.Equal(word, Header(cut, "Duration").GetAttribute("aria-sort"));
+        Assert.Equal("none", Header(cut, "Started").GetAttribute("aria-sort"));
+        Assert.Equal((JobRunSortBy?)JobRunSortBy.Duration, f.Requests[^1]!.SortBy);
+        Assert.Equal(byHeader.Dir == OdsSortDirection.Asc, f.Requests[^1]!.Ascending);
+
+        await cut.InvokeAsync(() => select.Instance.SortChanged.InvokeAsync(new OdsTableSort(nameof(JobRunSortBy.Status), OdsSortDirection.Asc)));
+
+        cut.WaitForAssertion(() => Assert.Equal(3, f.Requests.Count));
+        Assert.Equal("ascending", Header(cut, "Status").GetAttribute("aria-sort"));
+        Assert.Equal("none", Header(cut, "Duration").GetAttribute("aria-sort"));
+        Assert.Equal((JobRunSortBy?)JobRunSortBy.Status, f.Requests[^1]!.SortBy);
+        Assert.True(f.Requests[^1]!.Ascending);
+        f.State.Verify(s => s.QueueSave(BackgroundJobs.PageKey, It.Is<BackgroundJobsPageState>(st =>
+            st.SortKey == nameof(JobRunSortBy.Status) && st.SortDir == "asc")), Times.Once);
+    }
+
+    // ── Follow ticks (AC 11) ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// A follow tick re-reads only the followed run and updates its row and detail in place. The page deliberately
+    /// does not defer the update to focusout: a tick re-renders the row, but the toggle keeps its element, id and
+    /// expanded state and nothing moves focus, so a keyboard user on it stays there.
+    /// </summary>
+    [Fact]
+    public async Task A_follow_tick_refreshes_only_the_followed_run_and_keeps_focus_on_an_expanded_rows_toggle()
+    {
+        var followed = Run(JobType.Weather, JobRunStatus.Running);
+        var other = Run(JobType.ExchangeRateSync);
+        await using var f = NewFixture(runs: [followed, other]);
+        var processed = 4;
+        f.Api.Setup(a => a.GetRunAsync(followed.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Detail(followed.Id, JobType.Weather, JobRunStatus.Running, processed));
+        Starts(f, JobType.Weather, followed.Id);
+        var steps = new FollowSteps();
+        var cut = await RenderLoaded(f, steps);
+        var label = BackgroundJobs.RowLabel(followed);
+        cut.WaitForElement($"button[aria-label='Show details for {label}']").Click();
+        cut.WaitForAssertion(() => Assert.Contains("Details loaded", cut.Find(".bgj-detail [role=status]").TextContent));
+        var toggleId = cut.Find($"button[aria-label='Hide details for {label}']").Id;
+
+        await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.Weather));
+        cut.WaitForAssertion(() => Assert.Single(cut.Instance.Follows));
+        var listRequests = f.Requests.Count;
+        var focusCalls = FocusCalls(f).Count;
+        f.Api.Invocations.Clear();
+
+        processed = 9;
+        steps.Step();
+
+        cut.WaitForAssertion(() => Assert.Equal("9", cut.FindAll("tbody tr:not(.odc-rec-detail-row)")[0].Children[5].TextContent.Trim()));
+        var toggle = cut.Find($"button[aria-label='Hide details for {label}']");
+        Assert.Equal(toggleId, toggle.Id);
+        Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
+        Assert.Contains("Details loaded", cut.Find(".bgj-detail [role=status]").TextContent);
+        f.Api.Verify(a => a.GetRunAsync(followed.Id, It.IsAny<CancellationToken>()), Times.Once);
+        f.Api.Verify(a => a.GetRunAsync(other.Id, It.IsAny<CancellationToken>()), Times.Never);
+        f.Api.Verify(a => a.GetOverviewAsync(It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(listRequests, f.Requests.Count);
+        Assert.Equal(focusCalls, FocusCalls(f).Count);
+    }
+
+    // ── Follow removal and its announcements (AC 14) ─────────────────────────────────────────────
+
+    [Fact]
+    public async Task Removing_a_focused_follow_line_moves_focus_to_the_next_stop_button_then_the_heading()
+    {
+        var weather = Guid.NewGuid();
+        var photos = Guid.NewGuid();
+        await using var f = NewFixture();
+        Starts(f, JobType.Weather, weather);
+        Starts(f, JobType.PhotoThumbnails, photos);
+        var cut = await RenderLoaded(f, new FollowSteps());
+        await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.Weather));
+        await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.PhotoThumbnails));
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll(".bgj-follow").Count));
+        var (first, second) = (cut.Instance.Follows[0].StopId, cut.Instance.Follows[1].StopId);
+        var active = first;
+        f.Ctx.JSInterop.Setup<string?>("odsActiveElementId").SetResult(active);
+
+        cut.Find($"#{first}").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(second, FocusCalls(f).LastOrDefault()));
+        await Settled(cut);
+        Assert.Single(cut.FindAll(".bgj-follow"));
+        Assert.Contains("Stopped following weather run.", cut.Instance.Announcements.Requested);
+
+        f.Ctx.JSInterop.Setup<string?>("odsActiveElementId").SetResult(second);
+        cut.Find($"#{second}").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobs.HistoryHeadingId, FocusCalls(f).LastOrDefault()));
+        Assert.Empty(cut.FindAll(".bgj-follow"));
+    }
+
+    [Fact]
+    public async Task A_follow_stopped_by_errors_says_to_refresh()
+    {
+        var runId = Guid.NewGuid();
+        await using var f = NewFixture();
+        Starts(f, JobType.Weather, runId);
+        f.Api.Setup(a => a.GetRunAsync(runId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<JobRunDetail>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+        var steps = new FollowSteps();
+        var cut = await RenderLoaded(f, steps);
+        await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.Weather));
+        cut.WaitForAssertion(() => Assert.Single(cut.Instance.Follows));
+
+        steps.Step(JobRunFollower.MaxConsecutiveErrors);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.Instance.Follows));
+        await Settled(cut);
+        Assert.Contains("Stopped following weather run. Select Refresh to check again.", cut.Instance.Announcements.Requested);
+        f.Api.Verify(a => a.GetRunAsync(runId, It.IsAny<CancellationToken>()), Times.Exactly(JobRunFollower.MaxConsecutiveErrors));
+    }
+
+    [Fact]
+    public async Task A_follow_that_reaches_its_cap_says_the_run_is_still_running()
+    {
+        var runId = Guid.NewGuid();
+        await using var f = NewFixture();
+        Starts(f, JobType.Weather, runId);
+        f.Api.Setup(a => a.GetRunAsync(runId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Detail(runId, JobType.Weather, JobRunStatus.Running));
+        var steps = new FollowSteps { Time = f.Time };
+        var cut = await RenderLoaded(f, steps);
+        await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.Weather));
+        cut.WaitForAssertion(() => Assert.Single(cut.Instance.Follows));
+
+        steps.Step(36);
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.Instance.Follows));
+        await Settled(cut);
+        Assert.Contains("Weather is still running. Select Refresh to check again.", cut.Instance.Announcements.Requested);
+        f.Api.Verify(a => a.GetRunAsync(runId, It.IsAny<CancellationToken>()), Times.Exactly(36));
+    }
+
+    // ── Show {job} runs (AC 15) ──────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Show_job_runs_filters_to_that_job_and_focuses_the_run_history_heading()
+    {
+        await using var f = NewFixture();
+        var cut = await RenderLoaded(f);
+
+        cut.FindAll(".bgj-tile-foot button").Single(b => b.TextContent.Contains("Show weather runs")).Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobs.HistoryHeadingId, FocusCalls(f).LastOrDefault()));
+        Assert.Equal([JobType.Weather], f.Requests[^1]!.JobTypes);
+        Assert.Equal(["Weather"], cut.FindComponents<OdsMultiSelect>()[0].Instance.Values);
+        Assert.Equal("-1", cut.Find($"#{BackgroundJobs.HistoryHeadingId}").GetAttribute("tabindex"));
+    }
+
+    // ── Refresh announcements (AC 16) ────────────────────────────────────────────────────────────
+
+    private static async Task Refresh(Fixture f, IRenderedComponent<BackgroundJobs> cut, int overviewReads)
+    {
+        OpenMenu(f, cut).Single(i => i.TextContent.Trim() == "Refresh").Click();
+        await Task.Yield();
+        cut.WaitForAssertion(() => f.Api.Verify(a => a.GetOverviewAsync(It.IsAny<CancellationToken>()), Times.Exactly(overviewReads)));
+    }
+
+    [Fact]
+    public async Task Refresh_announces_when_attention_and_worker_health_change_and_when_they_clear()
+    {
+        var healthy = Overview();
+        var failing = Overview(
+            Job(JobType.ExchangeRateSync, j => j.Health = JobHealth.Failing),
+            Job(JobType.Weather), Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails));
+        failing.WorkerHealth = new BackgroundJobsWorkerHealth { FileStorage = new FileStorageWorkerHealth { FailingWorkers = 1, FailingChecks = ["V3"] } };
+        var current = healthy;
+        await using var f = NewFixture();
+        f.Api.Setup(a => a.GetOverviewAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ApiResult<BackgroundJobsOverview>.Success(current, HttpStatusCode.OK));
+        var cut = await RenderLoaded(f);
+        var workerLine = Assert.Single(BackgroundJobs.WorkerHealthLines(failing.WorkerHealth));
+
+        current = failing;
+        await Refresh(f, cut, 2);
+
+        cut.WaitForAssertion(() => Assert.Contains("1 job needs attention", cut.Instance.Announcements.Requested));
+        Assert.Contains(workerLine, cut.Instance.Announcements.Requested);
+
+        current = healthy;
+        await Refresh(f, cut, 3);
+
+        cut.WaitForAssertion(() => Assert.Contains("No jobs need attention", cut.Instance.Announcements.Requested));
+        Assert.Contains("Worker health is back to normal", cut.Instance.Announcements.Requested);
+        Assert.Equal(2, cut.Instance.Announcements.Requested.Count(t => t == "Background jobs refreshed"));
+    }
+
+    // ── Reset (AC 7) ─────────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task Reset_clears_the_stored_state_announces_focuses_the_first_filter_and_sends_no_zone()
+    {
+        await using var f = NewFixture(stored: new BackgroundJobsPageState { Jobs = ["Weather"], Statuses = ["Failed"], SortKey = "Duration", SortDir = "asc", PageSize = 50 });
+        var cut = await RenderLoaded(f);
+        await PickTo(cut, new DateTime(2026, 11, 5));
+        cut.WaitForAssertion(() => Assert.Equal("Europe/Oslo", f.Requests[^1]!.TimeZone));
+        f.State.Invocations.Clear();
+
+        cut.FindAll(".bgj-filter-bar button").Single(b => b.TextContent.Contains("Reset filters")).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Filters reset. 2 runs", cut.Instance.Announcements.Requested));
+        var defaults = JobRunFilters.Default.ToState();
+        f.State.Verify(s => s.QueueSave(BackgroundJobs.PageKey, It.Is<BackgroundJobsPageState>(st => st.Fingerprint == defaults.Fingerprint)), Times.Once);
+        Assert.Equal(BackgroundJobs.FirstFilterId, FocusCalls(f).LastOrDefault());
+        var last = f.Requests[^1]!;
+        Assert.Null(last.TimeZone);
+        Assert.Null(last.StartedFrom);
+        Assert.Null(last.StartedTo);
+        Assert.True(last.JobTypes is null or { Count: 0 });
+        Assert.Equal((JobRunSortBy?)JobRunSortBy.StartedAt, last.SortBy);
+        Assert.DoesNotContain("Reset filters", cut.Find(".bgj-filter-bar").TextContent);
+    }
+
+    // ── Detail loading and retry (AC 10; accessibility review, finding 2) ─────────────────────────
+
+    [Fact]
+    public async Task A_pending_detail_is_busy_and_says_loading_details_until_it_arrives()
+    {
+        var run = Run(JobType.Weather);
+        await using var f = NewFixture(runs: [run]);
+        var pending = new TaskCompletionSource<ApiResult<JobRunDetail>>();
+        f.Api.Setup(a => a.GetRunAsync(run.Id, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        var cut = await RenderLoaded(f);
+
+        cut.WaitForElement("button.odc-rec-expand").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("true", cut.Find(".bgj-detail").GetAttribute("aria-busy")));
+        Assert.Equal("Loading details", cut.Find(".bgj-detail [role=status]").TextContent.Trim());
+
+        await cut.InvokeAsync(() => pending.SetResult(Detail(run.Id, JobType.Weather, JobRunStatus.Succeeded)));
+
+        cut.WaitForAssertion(() => Assert.Equal("Details loaded", cut.Find(".bgj-detail [role=status]").TextContent.Trim()));
+        Assert.Null(cut.Find(".bgj-detail").GetAttribute("aria-busy"));
+    }
+
+    [Fact]
+    public async Task Retrying_a_failed_detail_refetches_and_moves_focus_to_the_detail_body()
+    {
+        var run = Run(JobType.Weather);
+        await using var f = NewFixture(runs: [run]);
+        var fail = true;
+        f.Api.Setup(a => a.GetRunAsync(run.Id, It.IsAny<CancellationToken>())).ReturnsAsync(() => fail
+            ? ApiResult<JobRunDetail>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 })
+            : Detail(run.Id, JobType.Weather, JobRunStatus.Succeeded));
+        var cut = await RenderLoaded(f);
+        cut.WaitForElement("button.odc-rec-expand").Click();
+        cut.WaitForAssertion(() => Assert.Equal("Couldn’t load details", cut.Find(".bgj-detail [role=status]").TextContent.Trim()));
+        var body = cut.Find(".bgj-detail");
+        Assert.Equal("-1", body.GetAttribute("tabindex"));
+
+        fail = false;
+        cut.Find($"#bgj-detail-retry-{run.Id:N}").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal("Details loaded", cut.Find(".bgj-detail [role=status]").TextContent.Trim()));
+        Assert.Equal(body.Id, FocusCalls(f).LastOrDefault());
+        f.Api.Verify(a => a.GetRunAsync(run.Id, It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task Retrying_the_overview_moves_focus_to_the_jobs_heading()
+    {
+        await using var f = NewFixture();
+        var fail = true;
+        f.Api.Setup(a => a.GetOverviewAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => fail
+            ? ApiResult<BackgroundJobsOverview>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 })
+            : ApiResult<BackgroundJobsOverview>.Success(Overview(), HttpStatusCode.OK));
+        var cut = Render(f);
+        cut.WaitForAssertion(() => Assert.Contains("Couldn’t load the job overview.", cut.Markup));
+
+        fail = false;
+        cut.Find("#bgj-overview-retry").Click();
+
+        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        Assert.Equal(BackgroundJobs.JobsHeadingId, FocusCalls(f).LastOrDefault());
+        Assert.Equal("-1", cut.Find($"#{BackgroundJobs.JobsHeadingId}").GetAttribute("tabindex"));
+    }
+
+    // ── Frontend and accessibility review fixes (PR #418) ────────────────────────────────────────
+
+    [Fact]
+    public async Task Each_date_input_has_its_own_name_and_is_described_by_the_caption()
+    {
+        await using var f = NewFixture();
+        var cut = await RenderLoaded(f);
+
+        var pickers = cut.FindComponent<OdsDateRangePicker>().FindComponents<OdsDatePicker>();
+
+        Assert.Equal(["Started from", "Started to"], pickers.Select(p => p.Instance.AriaLabel));
+        Assert.All(pickers, p => Assert.Equal(BackgroundJobs.DatesCaptionId, p.Instance.AriaDescribedBy));
+        Assert.NotNull(cut.Find($"p#{BackgroundJobs.DatesCaptionId}"));
+    }
+
+    [Fact]
+    public async Task A_run_item_in_cooldown_comes_back_on_its_own_when_the_cooldown_passes()
+    {
+        var available = Now.UtcDateTime.AddMinutes(1);
+        await using var f = NewFixture(Overview(
+            Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
+            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails)));
+        var cut = await RenderLoaded(f);
+        Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);
+
+        await cut.InvokeAsync(() => f.Time.Advance(TimeSpan.FromMinutes(1)));
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && !i.Disabled && i.Label == "Run weather"));
+        var items = OpenMenu(f, cut);
+        Assert.Contains(items, i => i.TextContent.Trim() == "Run weather");
+    }
+
+    [Fact]
+    public async Task A_page_past_the_end_of_a_shrunken_log_is_re_read_as_the_last_page()
+    {
+        await using var f = NewFixture();
+        var pages = new List<int>();
+        var rows = Enumerable.Range(0, 25).Select(_ => Run(JobType.Weather)).ToArray();
+        f.Api.Setup(a => a.ListRunsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<JobRunsFilter?>(), It.IsAny<CancellationToken>()))
+            .Returns((int page, int _, JobRunsFilter? filter, CancellationToken _) =>
+            {
+                pages.Add(page);
+                f.Requests.Add(filter);
+                var paged = pages.Count == 1
+                    ? new PagedResult<ExistingJobRun> { Items = rows, TotalCount = 30 }
+                    : page == 2
+                        ? new PagedResult<ExistingJobRun> { Items = [], TotalCount = 20 }
+                        : new PagedResult<ExistingJobRun> { Items = rows[..20], TotalCount = 20 };
+                return Task.FromResult(ApiResult<PagedResult<ExistingJobRun>>.Success(paged, HttpStatusCode.OK));
+            });
+        var cut = await RenderLoaded(f);
+
+        await cut.InvokeAsync(() => cut.FindComponent<OdsPager>().Instance.PageChanged.InvokeAsync(2));
+
+        cut.WaitForAssertion(() => Assert.Equal([1, 2, 1], pages));
+        Assert.Equal(20, cut.FindAll("tbody tr:not(.odc-rec-detail-row)").Count);
+        Assert.DoesNotContain("No runs yet", cut.Markup);
+    }
+
+    [Fact]
+    public async Task A_job_link_followed_while_the_page_is_open_is_applied()
+    {
+        await using var f = NewFixture();
+        var cut = await RenderLoaded(f);
+        Assert.Null(f.Requests[^1]!.JobTypes);
+
+        await cut.InvokeAsync(() => f.Ctx.Services.GetRequiredService<NavigationManager>().NavigateTo("/background-jobs?job=PhotoThumbnails"));
+
+        cut.WaitForAssertion(() => Assert.Equal([JobType.PhotoThumbnails], f.Requests[^1]!.JobTypes));
+        Assert.Equal(["PhotoThumbnails"], cut.FindComponents<OdsMultiSelect>()[0].Instance.Values);
+    }
+
+    [Fact]
+    public async Task Two_runs_of_one_job_in_the_same_minute_have_distinct_row_names()
+    {
+        var first = Run(JobType.Weather) with { StartedAtUtc = Now.UtcDateTime.AddMinutes(-5) };
+        var second = Run(JobType.Weather) with { StartedAtUtc = Now.UtcDateTime.AddMinutes(-5).AddSeconds(20), Trigger = JobRunTrigger.Manual };
+        await using var f = NewFixture(runs: [first, second]);
+        var cut = await RenderLoaded(f);
+
+        var names = cut.FindAll("button.odc-rec-expand").Select(b => b.GetAttribute("aria-label")).ToList();
+
+        Assert.Equal(2, names.Distinct().Count());
+    }
 }
