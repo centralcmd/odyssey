@@ -37,11 +37,12 @@
                         <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.None">
                             <span class="bgj-inline-alert">
                                 Couldn’t load the job overview.
-                                <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="RetryOverviewAsync">Retry</OdsButton>
+                                <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" id="bgj-overview-retry" OnClick="RetryOverviewAsync">Retry</OdsButton>
                             </span>
                         </OdsAlert>
                     }
-                    <h2 class="bgj-h2">Jobs</h2>
+                    @* The focus target after Retry: the alert and its button leave the DOM on activation. *@
+                    <h2 class="bgj-h2 bgj-focus-h" id="@JobsHeadingId" tabindex="-1">Jobs</h2>
                     <div class="bgj-tiles">
                         @if (_overviewLoading && _overview is null)
                         {
@@ -109,12 +110,15 @@
                         <OdsMultiSelect Label="Trigger" Values="_filters.Triggers"
                                         ValuesChanged="OnTriggersChanged" Options="TriggerOptions" Class="ph-select" />
                         <div class="bgj-dates">
-                            @* The picker as it is (#410 F-N1): its group takes the name "Started"; its inputs take no
-                               per-input name of their own, so the placeholders carry the format. *@
+                            @* The group is named "Started" and each input has its own name, so the two are told apart
+                               once a value replaces the placeholder; both are described by the caption, which says
+                               the format and whose days they are (accessibility review on PR #418). *@
                             <OdsDateRangePicker Label="Started" AriaLabel="Started" FromPlaceholder="yyyy-mm-dd" ToPlaceholder="yyyy-mm-dd"
+                                                FromAriaLabel="Started from" ToAriaLabel="Started to"
+                                                FromDescribedBy="@DatesCaptionId" ToDescribedBy="@DatesCaptionId"
                                                 From="ToDateTime(_filters.StartedFrom)" FromChanged="OnStartedFromChanged"
                                                 To="ToDateTime(_filters.StartedTo)" ToChanged="OnStartedToChanged" />
-                            <p class="bgj-caption" id="bgj-dates-caption">@DateCaption</p>
+                            <p class="bgj-caption" id="@DatesCaptionId">@DateCaption</p>
                         </div>
                         <OdsSortSelect TRow="ExistingJobRun" Fields="JobRunFilters.SortFields" Sort="_filters.Sort" SortChanged="OnSortChanged" />
                         <OdsPageSizeSelect Label="Runs per page" Value="_filters.PageSize" ValueChanged="OnPageSizeChanged" Options="OdsPageSizes.Batch" />

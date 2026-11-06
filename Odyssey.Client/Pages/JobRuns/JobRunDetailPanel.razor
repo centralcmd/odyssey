@@ -6,10 +6,12 @@
 
     While loading the body is aria-busy with a skeleton, and a visually hidden status line says "Loading details", then
     "Details loaded" (or the failure). Focus stays on the row's toggle throughout: OdsRecordTable's chevron never moves
-    it, and nothing here takes it.
+    it. The one exception is Retry: its alert leaves the DOM on activation, so focus moves to this body (tabindex -1)
+    rather than falling back to the page (accessibility review on PR #418, WCAG 2.4.3).
 *@
+@inject IJSRuntime Js
 
-<div class="bgj-detail" aria-busy="@(Loading ? "true" : null)">
+<div class="bgj-detail" id="@DetailId" tabindex="-1" aria-busy="@(Loading ? "true" : null)">
     <span class="sr-only" role="status">@StatusText</span>
     @switch (State?.Status)
     {
@@ -23,7 +25,7 @@
             <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.None">
                 <span class="bgj-inline-alert">
                     Couldn’t load these details.
-                    <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="Retry">Retry</OdsButton>
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" id="@RetryId" OnClick="Retry">Retry</OdsButton>
                 </span>
             </OdsAlert>
             break;
@@ -54,13 +56,52 @@
         _ => "Loading details",
     };
 
+    private bool _focusSelf;
+
+    /// <summary>The body's id: the focus target after Retry.</summary>
+    public string DetailId => $"bgj-detail-{Run.Id:N}";
+
+    private string RetryId => $"bgj-detail-retry-{Run.Id:N}";
+
     protected override void OnParametersSet()
     {
         if (State is null)
-            _ = OnLoad(Run.Id);
+            _ = ObserveAsync(OnLoad(Run.Id));
     }
 
-    private Task Retry() => OnLoad(Run.Id);
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusSelf)
+            return;
+        _focusSelf = false;
+        try
+        {
+            await Js.InvokeVoidAsync("odsFocusById", DetailId);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private Task Retry()
+    {
+        _focusSelf = true;
+        return OnLoad(Run.Id);
+    }
+
+    // The load is started from OnParametersSet, which cannot await it; a fault is routed to the renderer rather than
+    // lost, the page's Detach/ObserveAsync pattern (frontend review on PR #418).
+    private async Task ObserveAsync(Task load)
+    {
+        try
+        {
+            await load;
+        }
+        catch (Exception ex)
+        {
+            await DispatchExceptionAsync(ex);
+        }
+    }
 
     private Dictionary<string, object> BodyParameters(JobRunDetail detail) => new()
     {

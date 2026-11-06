@@ -362,7 +362,8 @@ public class BackgroundJobsPageTests
         var run = Run(JobType.Weather);
         await using var f = NewFixture(runs: [run]);
         var cut = Render(f);
-        var name = $"Weather run started {RunTime.Full(run.StartedAtUtc)}";
+        var name = BackgroundJobs.RowLabel(run);
+        Assert.Equal($"Weather run started {RunTime.Precise(run.StartedAtUtc)}", name);
 
         var toggle = cut.WaitForElement($"button[aria-label='Show details for {name}']");
         toggle.Click();

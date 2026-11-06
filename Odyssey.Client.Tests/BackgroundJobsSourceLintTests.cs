@@ -75,6 +75,27 @@ public class BackgroundJobsSourceLintTests
         Assert.DoesNotContain(Forbidden, f => f.Pattern.IsMatch("Severity=\"Severity.Error\" Tone=\"OdsChipTone.Error\""));
     }
 
+    /// <summary>
+    /// Frontend review on PR #418: the detail panel used page classes (<c>bgj-muted</c>, <c>bgj-inline-alert</c>)
+    /// whose rules live in <c>BackgroundJobs.razor.css</c>, which Blazor scopes to the page, so they never applied.
+    /// Every <c>bgj-</c> class the panel and its per-kind bodies use must be defined in the panel's own sheet.
+    /// </summary>
+    [Fact]
+    public void Every_class_the_detail_panel_uses_is_defined_in_its_own_sheet()
+    {
+        var folder = Path.Combine(ClientSource.Root, "Pages", "JobRuns");
+        var sheet = File.ReadAllText(Path.Combine(folder, "JobRunDetailPanel.razor.css"));
+        var used = Directory.EnumerateFiles(folder, "JobRunDetail*.razor")
+            .SelectMany(file => Regex.Matches(ClientSource.WithoutComments(File.ReadAllText(file)), @"class=""([^""]*)""")
+                .SelectMany(m => Regex.Matches(m.Groups[1].Value, @"\bbgj-[a-z-]+\b").Select(token => token.Value)))
+            .Distinct()
+            .ToList();
+
+        Assert.Contains("bgj-detail", used);
+        Assert.Contains("bgj-detail-grid", used);
+        Assert.All(used, name => Assert.Matches($@"\.{Regex.Escape(name)}\b", sheet));
+    }
+
     private static bool IsComment(string line)
     {
         var trimmed = line.TrimStart();

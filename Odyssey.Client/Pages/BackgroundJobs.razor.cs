@@ -25,6 +25,10 @@ public partial class BackgroundJobs
 
     public const string FirstFilterId = "bgj-filter-job";
 
+    public const string DatesCaptionId = "bgj-dates-caption";
+
+    public const string JobsHeadingId = "bgj-jobs-h";
+
     /// <summary>A burst of multi-select toggles is one request (X11).</summary>
     public static readonly TimeSpan FilterDebounce = TimeSpan.FromMilliseconds(300);
 
@@ -59,6 +63,7 @@ public partial class BackgroundJobs
     private bool _overviewError;
     private int? _problemCount;
     private string _workerHealthKey = string.Empty;
+    private ITimer? _cooldownTimer;
 
     // ── Filters and the run log ────────────────────────────────────────────────────────────────────
     private JobRunFilters _filters = JobRunFilters.Default;
@@ -77,6 +82,7 @@ public partial class BackgroundJobs
     private readonly List<FollowedRun> _follows = [];
     private readonly Dictionary<Guid, JobRunDetailState> _details = [];
     private string? _focusAfterRender;
+    private string _appliedJobQuery = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -114,6 +120,7 @@ public partial class BackgroundJobs
     {
         var stored = await PageState.LoadAsync<BackgroundJobsPageState>(PageKey);
         var filters = JobRunFilters.FromState(stored);
+        _appliedJobQuery = JobQueryKey;
         if (JobQuery is { Length: > 0 } query)
         {
             var linked = JobRunAllowList.Clean(query, BackgroundJobPresentation.Jobs);
@@ -124,6 +131,28 @@ public partial class BackgroundJobs
         _filters = filters;
         if (stored is null || stored.Fingerprint != filters.ToState().Fingerprint)
             PageState.QueueSave(PageKey, filters.ToState());
+    }
+
+    private string JobQueryKey => JobQuery is { Length: > 0 } query ? string.Join('\n', query) : string.Empty;
+
+    /// <summary>
+    /// A navigation to <c>/background-jobs?job=…</c> while the page is already showing reuses this component, so the
+    /// link is applied here as well as on first load: the Job filter becomes the linked jobs, persisted like any
+    /// choice (frontend review on PR #418). A link whose every value fails the allow-list changes nothing.
+    /// </summary>
+    protected override async Task OnParametersSetAsync()
+    {
+        var key = JobQueryKey;
+        if (key == _appliedJobQuery)
+            return;
+
+        _appliedJobQuery = key;
+        if (JobQuery is not { Length: > 0 } query)
+            return;
+
+        var linked = JobRunAllowList.Clean(query, BackgroundJobPresentation.Jobs);
+        if (linked.Count > 0 && !linked.SequenceEqual(_filters.Jobs))
+            await ApplyAsync(_filters with { Jobs = linked });
     }
 
     // ── Overview ───────────────────────────────────────────────────────────────────────────────────
@@ -156,6 +185,7 @@ public partial class BackgroundJobs
 
             _problemCount = problems;
             _workerHealthKey = workerHealth;
+            ArmCooldownTimer();
         }
         else
         {
@@ -165,10 +195,42 @@ public partial class BackgroundJobs
         StateHasChanged();
     }
 
+    /// <summary>
+    /// A Run item in cooldown says "available HH:mm" and is disabled until then. One timer, aimed at the earliest of
+    /// the overview's cooldown ends, re-renders the menu when it passes, so the item comes back on its own rather than
+    /// waiting for Refresh (frontend review on PR #418). It is re-armed for the next one and disposed with the page.
+    /// </summary>
+    private void ArmCooldownTimer()
+    {
+        _cooldownTimer?.Dispose();
+        _cooldownTimer = null;
+        var now = Time.GetUtcNow().UtcDateTime;
+        var next = _overview?.Jobs
+            .Select(j => j.ManualRunAvailableAtUtc)
+            .OfType<DateTime>()
+            .Select(at => DateTime.SpecifyKind(at, DateTimeKind.Utc))
+            .Where(at => at > now)
+            .DefaultIfEmpty()
+            .Min();
+        if (next is not { } at || at == default)
+            return;
+
+        _cooldownTimer = Time.CreateTimer(_ => _ = InvokeAsync(() =>
+        {
+            if (_lifetime.IsCancellationRequested)
+                return;
+            ArmCooldownTimer();
+            StateHasChanged();
+        }), null, at - now, Timeout.InfiniteTimeSpan);
+    }
+
+    // Retry's button leaves the DOM with its alert, so focus moves to the Jobs heading the reload fills in rather than
+    // falling back to the body (accessibility review on PR #418, WCAG 2.4.3).
     private Task RetryOverviewAsync()
     {
         _overviewError = false;
         _overviewLoading = true;
+        _focusAfterRender = JobsHeadingId;
         return LoadOverviewAsync();
     }
 
@@ -352,6 +414,17 @@ public partial class BackgroundJobs
         _runsRefetching = false;
         if (result.IsSuccess && result.Value is { } paged)
         {
+            // Retention pruning (or another tab) can shrink the log under the page being shown: a page past the last
+            // one is re-read as the last, rather than left as "No runs yet" with the pager hidden (frontend review on
+            // PR #418).
+            var lastPage = Math.Max(1, (paged.TotalCount + _filters.PageSize - 1) / _filters.PageSize);
+            if (paged.Items.Count == 0 && paged.TotalCount > 0 && _page > lastPage)
+            {
+                _page = lastPage;
+                await LoadRunsAsync(announcement);
+                return;
+            }
+
             _runs = [.. paged.Items];
             _total = paged.TotalCount;
             var count = Plural(paged.TotalCount, "run", "runs");
@@ -373,7 +446,9 @@ public partial class BackgroundJobs
 
     private Task RetryRunsAsync() => LoadRunsAsync(RunsAnnouncement.None);
 
-    private string RowLabel(ExistingJobRun run) => $"{JobOf(run.JobType).Name} run started {RunTime.Full(run.StartedAtUtc)}";
+    // Seconds, not minutes: a manual run beside a scheduled one can start in the same minute, and two rows sharing one
+    // "Show details for …" name could not be told apart (frontend review on PR #418).
+    internal static string RowLabel(ExistingJobRun run) => $"{JobOf(run.JobType).Name} run started {RunTime.Precise(run.StartedAtUtc)}";
 
     private IReadOnlyList<OdsRecordColumn<ExistingJobRun>> Columns =>
     [
@@ -633,6 +708,7 @@ public partial class BackgroundJobs
         }
 
         _follows.RemoveAt(index);
+        follow.Cancellation.Dispose();
         if (active == follow.StopId)
             _focusAfterRender = _follows.Count == 0 ? HistoryHeadingId : _follows[Math.Min(index, _follows.Count - 1)].StopId;
 
@@ -643,6 +719,9 @@ public partial class BackgroundJobs
     {
         _lifetime.Cancel();
         _filterDebounce?.Dispose();
+        _cooldownTimer?.Dispose();
+        foreach (var follow in _follows)
+            follow.Cancellation.Dispose();
         _overviewLoader.Dispose();
         _runsLoader.Dispose();
         _announce?.Dispose();
