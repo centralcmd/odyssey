@@ -156,11 +156,14 @@ public sealed class BackgroundJobsService(
             heldUntil = await PhotoThumbnailBreaker.ResumesAtAsync(context, now, cancellationToken);
         }
 
+        // NotConfigured is derived from the job's own data (weather points, volumes), so it is shown only to a caller
+        // holding the job's detail-read claim; anyone else sees the health the run log alone gives (NeverRun when the
+        // log is empty), which tells them nothing they cannot already read (security review on PR #418).
         var health =
             !ticking ? JobHealth.NotTicking
             : liveHeld is not null ? JobHealth.Held
             : liveRunning ? JobHealth.Running
-            : notConfigured ? JobHealth.NotConfigured
+            : notConfigured && canRead ? JobHealth.NotConfigured
             : lastDecisive == JobRunStatus.Failed ? JobHealth.Failing
             : overdueAfter is { } overdue && lastRun?.FinishedAtUtc is { } finished && finished < now.AddSeconds(-overdue) ? JobHealth.Overdue
             : lastRun is null ? JobHealth.NeverRun
@@ -330,13 +333,13 @@ public sealed class BackgroundJobsService(
             var zone = ResolveZone(query.Tz);
             if (query.StartedFrom is { } from)
             {
-                var fromUtc = LocalMidnightUtc(from, zone);
+                var fromUtc = BoundUtc(from, zone, "startedFrom");
                 runs = runs.Where(r => r.StartedAtUtc >= fromUtc);
             }
 
             if (query.StartedTo is { } to)
             {
-                var toUtc = LocalMidnightUtc(to.AddDays(1), zone);
+                var toUtc = BoundUtc(to, zone, "startedTo", nextDay: true);
                 runs = runs.Where(r => r.StartedAtUtc < toUtc);
             }
         }
@@ -379,6 +382,27 @@ public sealed class BackgroundJobsService(
         }
 
         return zone;
+    }
+
+    /// <summary>
+    /// One end of the date filter. Model validation bounds both dates already; this re-checks them for a direct
+    /// caller and turns any conversion edge left over into the same <c>400</c> keyed on the field, never a <c>500</c>.
+    /// </summary>
+    internal static DateTime BoundUtc(DateOnly date, TimeZoneInfo zone, string field, bool nextDay = false)
+    {
+        if (date < JobRunsQueryParams.MinStartedDate || date > JobRunsQueryParams.MaxStartedDate)
+        {
+            throw new DomainValidationException(JobRunsQueryParams.DateRangeMessage, code: null, field: field);
+        }
+
+        try
+        {
+            return LocalMidnightUtc(nextDay ? date.AddDays(1) : date, zone);
+        }
+        catch (ArgumentException)
+        {
+            throw new DomainValidationException(JobRunsQueryParams.DateRangeMessage, code: null, field: field);
+        }
     }
 
     /// <summary>

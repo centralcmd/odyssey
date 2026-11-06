@@ -552,6 +552,21 @@ public sealed class JobRunsQueryParams : QueryParams<JobRunSortBy>, IValidatable
     /// <summary>One generic message for every time-zone rejection: it echoes nothing the caller sent.</summary>
     public const string TimeZoneMessage = "The time zone is not recognised.";
 
+    /// <summary>
+    /// The earliest date the run-log filter accepts. Nothing is recorded before it, and it keeps the local-midnight
+    /// conversion clear of <see cref="DateTime.MinValue"/>, where a zone offset underflows.
+    /// </summary>
+    public static readonly DateOnly MinStartedDate = new(1980, 1, 1);
+
+    /// <summary>
+    /// The latest date the run-log filter accepts. The <c>to</c> bound is the NEXT day's midnight, so the last day
+    /// of the calendar (9999-12-31) would overflow; a year short of it leaves room for every zone offset.
+    /// </summary>
+    public static readonly DateOnly MaxStartedDate = new(9998, 12, 31);
+
+    /// <summary>One message for an out-of-range date; it names the bounds, never the value sent.</summary>
+    public const string DateRangeMessage = "The date must be between 1980-01-01 and 9998-12-31.";
+
     public JobRunsQueryParams()
     {
         Limit = DefaultLimit;
@@ -589,6 +604,16 @@ public sealed class JobRunsQueryParams : QueryParams<JobRunSortBy>, IValidatable
         if (Offset > MaxOffset)
         {
             yield return new ValidationResult($"Offset must be at most {MaxOffset}.", [nameof(Offset)]);
+        }
+
+        if (StartedFrom is { } start && (start < MinStartedDate || start > MaxStartedDate))
+        {
+            yield return new ValidationResult(DateRangeMessage, [nameof(StartedFrom)]);
+        }
+
+        if (StartedTo is { } end && (end < MinStartedDate || end > MaxStartedDate))
+        {
+            yield return new ValidationResult(DateRangeMessage, [nameof(StartedTo)]);
         }
 
         if (StartedFrom is { } from && StartedTo is { } to && from > to)

@@ -150,6 +150,32 @@ public class BackgroundJobsApiTests
         Assert.Equal(Now.AddSeconds(-30), jobs[JobType.Weather].LastHeartbeatAtUtc);
     }
 
+    /// <summary>
+    /// Security review on PR #418: NotConfigured is read from the job's own data (weather points, volumes), so a
+    /// caller without the job's detail-read claim sees the health the run log alone gives — NeverRun here — while the
+    /// sync, which has no detail claim, still reads NotConfigured.
+    /// </summary>
+    [Fact]
+    public async Task Not_configured_is_shown_only_to_a_caller_who_can_read_the_jobs_detail()
+    {
+        await using var factory = new ApiFactory(SettingsOnly);
+        await factory.SeedAsync(context =>
+        {
+            foreach (var jobType in JobCatalogue.Entries.Select(entry => entry.JobType))
+            {
+                context.JobHeartbeats.Add(Beat(jobType, Guid.NewGuid()));
+            }
+        });
+        using var client = factory.CreateClient();
+
+        var jobs = (await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview"))!.Jobs.ToDictionary(job => job.JobType);
+
+        Assert.Equal(JobHealth.NotConfigured, jobs[JobType.ExchangeRateSync].Health);
+        Assert.Equal(JobHealth.NeverRun, jobs[JobType.Weather].Health);
+        Assert.Equal(JobHealth.NeverRun, jobs[JobType.FileStorageMaintenance].Health);
+        Assert.Equal(JobHealth.NeverRun, jobs[JobType.PhotoThumbnails].Health);
+    }
+
     /// <summary>AC 21: the precedence, one state at a time, on the sync (configured by one enabled currency).</summary>
     [Theory]
     [InlineData("none", JobHealth.NeverRun)]
@@ -337,6 +363,42 @@ public class BackgroundJobsApiTests
         Assert.Contains(
             problem.GetProperty("errors").EnumerateObject(),
             error => string.Equals(error.Name, "tz", StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// Security review on PR #418: a date at either end of the calendar used to overflow the local-midnight
+    /// conversion and 500. It is a 400 keyed on the date that was out of range.
+    /// </summary>
+    [Theory]
+    [InlineData("startedTo=9999-12-31", "startedTo")]
+    [InlineData("startedFrom=0001-01-01", "startedFrom")]
+    [InlineData("startedFrom=0001-01-01&startedTo=0001-01-02", "startedFrom")]
+    [InlineData("startedFrom=9999-12-31&startedTo=9999-12-31", "startedTo")]
+    [InlineData("startedFrom=1979-12-31", "startedFrom")]
+    public async Task An_out_of_range_date_is_a_400_keyed_on_the_date(string dates, string field)
+    {
+        await using var factory = new ApiFactory(Admin);
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync($"{Base}/runs?{dates}&tz=Pacific/Kiritimati");
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(
+            problem.GetProperty("errors").EnumerateObject(),
+            error => string.Equals(error.Name, field, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("startedFrom=1980-01-01&tz=Pacific/Kiritimati")]
+    [InlineData("startedTo=9998-12-31&tz=Etc/GMT-14")]
+    [InlineData("startedTo=9998-12-31&tz=Pacific/Pago_Pago")]
+    public async Task The_extreme_accepted_dates_list_without_error(string query)
+    {
+        await using var factory = new ApiFactory(Admin);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{Base}/runs?{query}")).StatusCode);
     }
 
     [Fact]
