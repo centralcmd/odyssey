@@ -12,7 +12,7 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Every worker replica runs it.</b> The run guard (the <c>RunningGuard</c> unique index) keeps two
+/// <b>Every worker replica runs it.</b> The run guard (the <c>JobRuns.ExclusiveGuard</c> unique index) keeps two
 /// scheduled runs from starting, and the <c>ClaimedAtUtc</c> concurrency token keeps two replicas from
 /// executing one manual run.
 /// </para>
