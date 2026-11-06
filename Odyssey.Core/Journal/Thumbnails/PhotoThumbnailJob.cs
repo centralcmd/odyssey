@@ -138,21 +138,23 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         await HeartbeatAsync(state, cancellationToken);
         tally = new ThumbnailTickTally();
         manualRunId = null;
-        var failed = false;
+        JobFailureCategory? failure = null;
         try
         {
             state = await RunGatedAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            failed = true;
+            // A run cut short by shutdown is Cancelled, as the weather and file-storage runs record it — a deploy
+            // restart is not an internal error (architect review on PR #418).
+            failure = ex is OperationCanceledException ? JobFailureCategory.Cancelled : JobFailureCategory.Internal;
             throw;
         }
         finally
         {
             lastState = state;
             await HeartbeatAsync(state, CancellationToken.None);
-            await RecordTickAsync(recorder, state, failed);
+            await RecordTickAsync(recorder, state, failure);
             if (ticks % PhotoThumbnailTiming.CleanupEveryNthTick == 0)
             {
                 await CleanUpAsync();
@@ -171,13 +173,13 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
     /// its reason; otherwise a manual run is finished with the tick's counts, a tick that did work extends the burst,
     /// and an idle tick closes it.
     /// </summary>
-    private async Task RecordTickAsync(JobRunRecorder recorder, ThumbnailWorkerState state, bool failed)
+    private async Task RecordTickAsync(JobRunRecorder recorder, ThumbnailWorkerState state, JobFailureCategory? failure)
     {
         var counts = tally;
         if (manualRunId is { } runId)
         {
             await recorder.FinishAsync<PhotoThumbnailJobRun>(JobType.PhotoThumbnails, runId, counts.AddTo,
-                failed ? (JobRunStatus.Failed, JobFailureCategory.Internal) : null, CancellationToken.None);
+                failure is { } category ? (JobRunStatus.Failed, category) : null, CancellationToken.None);
         }
         else if (counts.HasWork)
         {
