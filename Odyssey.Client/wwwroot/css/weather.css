@@ -156,14 +156,13 @@
 
 
 /* ---------- Hours of one day (issues #414, #415) ----------
-   Design system · weather.css. The panel a day card opens, under the whole strip: a native table labelled by the panel
-   heading; gap rows span the table; "Forecast ends" sits OUTSIDE the scroll wrapper so it never scrolls away. The wrapper
+   Design system · weather.css. The panel a day card opens, under the whole strip: a native table labelled by the panel's
+   visually hidden heading; gap rows span the table; "Forecast ends" sits OUTSIDE the scroll wrapper so it never scrolls away. The wrapper
    becomes a focusable region only while the table overflows. */
 .wx-hours-host[hidden] { display: none; }
-.wx-hours { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-3); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
-.wx-hours-h { margin: 0; font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
-.wx-hours-h:focus { outline: none; }
-.wx-hours-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+.wx-hours { position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-3); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
+.wx-hours:focus { outline: none; } /* the heading is visually hidden, so the panel is the focus destination */
+.wx-hours:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .wx-hours-note { margin: 0; display: inline-flex; align-items: center; gap: var(--space-2); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .wx-hours-scroll { position: relative; overflow-x: auto; scrollbar-width: thin; } /* the containing block for the cells' sr-only spans, so they cannot widen the page */
 .wx-hours-scroll:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }

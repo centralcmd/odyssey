@@ -203,7 +203,9 @@ public class WeatherDayHoursTests : IDisposable
         body.InvokeAsync(() => Cards(body)[2].Click());
         body.WaitForAssertion(() => Assert.NotEmpty(body.FindAll(".wx-hours-gap")));
 
-        Assert.Contains("some rows are 6-hour blocks", body.Find(".wx-hours-note").TextContent);
+        // The open card already says which day it is, and the rows read for themselves: no visible title, no notes.
+        Assert.Contains("sr-only", body.Find(".wx-hours-h").ClassName);
+        Assert.Empty(body.FindAll(".wx-hours-note"));
         var gaps = body.FindAll(".wx-hours-gap td").Select(td => td.TextContent).ToList();
         Assert.Equal(["No forecast before 01:00", "No forecast for 11:00–12:00"], gaps);
         Assert.All(body.FindAll(".wx-hours-gap td"), td => Assert.Equal("5", td.GetAttribute("colspan")));
@@ -241,7 +243,7 @@ public class WeatherDayHoursTests : IDisposable
             body.FindAll(".wx-hours-table tbody tr")[0].QuerySelectorAll("td")[2].QuerySelector(".sr-only")!.TextContent);
         Assert.Equal("0.8 mm, 70 % chance",
             body.FindAll(".wx-hours-table tbody tr")[1].QuerySelectorAll("td")[2].QuerySelector(".sr-only")!.TextContent);
-        Assert.Contains(body.FindAll(".wx-hours-note"), n => n.TextContent.Contains("cut at midnight", StringComparison.Ordinal));
+        Assert.Empty(body.FindAll(".wx-hours-note"));
         // A day cut at both ends is not "partial": no leading gap and no "Forecast ends" line.
         Assert.Empty(body.FindAll(".wx-hours-gap"));
         Assert.Empty(body.FindAll(".wx-hours-end"));
@@ -450,8 +452,11 @@ public class WeatherDayHoursTests : IDisposable
         body.WaitForAssertion(() => Assert.NotNull(body.Find(".wx-hours-msg button")));
         await body.InvokeAsync(() => body.Find(".wx-hours-msg button").Click());
 
-        var headingId = body.Find(".wx-hours-h").Id!;
-        body.WaitForAssertion(() => Assert.Equal(headingId, module.VerifyInvoke("focusById").Arguments[0]));
+        // The heading is visually hidden, so focus goes to the panel itself, which shows the ring.
+        var panel = body.Find(".wx-hours");
+        Assert.Equal("-1", panel.GetAttribute("tabindex"));
+        body.WaitForAssertion(() => Assert.Equal(panel.Id, module.VerifyInvoke("focusById").Arguments[0]));
+        Assert.Null(body.Find(".wx-hours-h").GetAttribute("tabindex"));
         Assert.Equal("true", body.Find(".wx-hours").GetAttribute("aria-busy"));
     }
 

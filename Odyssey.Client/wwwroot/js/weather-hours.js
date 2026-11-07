@@ -33,9 +33,9 @@ export function detachEscape(panel) {
 
 // Reports whether the table overflows its wrapper. A ResizeObserver on both catches a change from the content
 // or from a late font, not only a window resize. Before reporting "no longer overflows" while the wrapper itself
-// holds focus, focus moves to the panel heading — the wrapper is about to lose its tabindex, and focus must never
+// holds focus, focus moves to the panel — the wrapper is about to lose its tabindex, and focus must never
 // fall to <body>.
-export function observeOverflow(wrapper, headingId, dotnet) {
+export function observeOverflow(wrapper, focusId, dotnet) {
     if (!wrapper || observers.has(wrapper) || typeof ResizeObserver === 'undefined') {
         return;
     }
@@ -48,9 +48,9 @@ export function observeOverflow(wrapper, headingId, dotnet) {
         }
 
         if (!overflows && document.activeElement === wrapper) {
-            const heading = document.getElementById(headingId);
-            if (heading) {
-                heading.focus();
+            const panel = document.getElementById(focusId);
+            if (panel) {
+                panel.focus();
             }
         }
 
@@ -81,7 +81,7 @@ export function containsFocus(...elements) {
     return elements.some((el) => el && active && (el === active || el.contains(active)));
 }
 
-// Focus the panel heading by id: it lives in a child component, and Try again moves focus there before the
+// Focus the panel by id: it lives in a child component, and Try again moves focus there before the
 // skeleton replaces the error box, so focus never falls to <body>.
 export function focusById(id) {
     const el = document.getElementById(id);

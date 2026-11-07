@@ -42,6 +42,9 @@ public partial class WeatherDayHours
 
     [Parameter] public EventCallback OnRetry { get; set; }
 
+    /// <summary>The id of the panel itself — the focus destination, since the heading is visually hidden.</summary>
+    internal static string FocusIdFor(string headingId) => $"{headingId}-panel";
+
     private ElementReference _wrapper;
     private ElementReference? _observed;
     private bool _overflows;
@@ -83,7 +86,7 @@ public partial class WeatherDayHours
         {
             _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/weather-hours.js");
             _self ??= DotNetObjectReference.Create(this);
-            await _module.InvokeVoidAsync("observeOverflow", _wrapper, HeadingId, _self);
+            await _module.InvokeVoidAsync("observeOverflow", _wrapper, FocusIdFor(HeadingId), _self);
             _observed = _wrapper;
         }
         catch (JSDisconnectedException)

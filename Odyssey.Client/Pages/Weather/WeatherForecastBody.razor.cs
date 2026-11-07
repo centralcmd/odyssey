@@ -253,7 +253,7 @@ public partial class WeatherForecastBody : IAsyncDisposable
         try
         {
             if (target == FocusTarget.Heading && await ModuleAsync() is { } module)
-                await module.InvokeVoidAsync("focusById", HeadingId);
+                await module.InvokeVoidAsync("focusById", WeatherDayHours.FocusIdFor(HeadingId));
             else if (element is { } el)
                 await el.FocusAsync();
         }

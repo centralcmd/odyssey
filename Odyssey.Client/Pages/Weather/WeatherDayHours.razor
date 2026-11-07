@@ -5,14 +5,16 @@
 @*
     WeatherDayHours — the hours of one day, under the day strip (design system · Weather.jsx WeatherDayHours;
     issues #414, #415). The body owns the selection, the request, the cool-down and the focus moves; this panel
-    renders one phase of one response. A native table labelled by the panel heading: rows are hours or 6-hour
+    renders one phase of one response. A native table labelled by the panel's visually hidden heading: rows are hours or 6-hour
     blocks, gaps are full-width rows, and "Forecast ends at" sits outside the scroll wrapper. The wrapper becomes
     a focusable region only while the table overflows (a data table is exempt from reflow, WCAG 1.4.10). Times
     are the POINT's clock; the heading says so when that differs from the viewer's.
 *@
 
-<div class="wx-hours" aria-busy="@(Phase == WeatherHoursPhase.Loading ? "true" : null)">
-    <div class="wx-hours-h" role="heading" aria-level="@HeadingLevel.ToString(CultureInfo.InvariantCulture)" id="@HeadingId" tabindex="-1">@Title</div>
+@* The title is for assistive technology only: the open card above already shows the day. The panel itself is the
+   focus destination, so a programmatic focus move lands on something with a visible ring. *@
+<div class="wx-hours" id="@FocusIdFor(HeadingId)" tabindex="-1" aria-busy="@(Phase == WeatherHoursPhase.Loading ? "true" : null)">
+    <div class="wx-hours-h sr-only" role="heading" aria-level="@HeadingLevel.ToString(CultureInfo.InvariantCulture)" id="@HeadingId">@Title</div>
     @switch (Phase)
     {
         case WeatherHoursPhase.Loading:
@@ -56,14 +58,6 @@
             }
             else
             {
-                @if (r.Steps.Any(s => s.PeriodHours > 1))
-                {
-                    <p class="wx-hours-note">Hour-by-hour isn’t available this far ahead — some rows are 6-hour blocks.</p>
-                }
-                @if (r.Steps.Any(s => IsCut(s, r.Day)))
-                {
-                    <p class="wx-hours-note">Blocks are cut at midnight; a cut block’s precipitation is MET’s total for the whole block.</p>
-                }
                 @if (r.Stale && !BodyStale)
                 {
                     <p class="wx-hours-note wx-stale"><OdsMIcon Name="cloud_off" Size="16" />Not up to date — showing the last forecast MET Norway sent.</p>
