@@ -1,0 +1,66 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    WeatherDayTile — one day's tile (design system · Weather.jsx WeatherForecastBody day card; issue #363 §4),
+    extracted so the dashboard strip and the event dialog render one copy.
+
+    It renders the tile's CONTENT. Interactive: the dashboard's disclosure card — the host keeps the <button>
+    around it, because it owns that button's reference for its focus moves and its aria-controls; this adds the
+    short day name and the chevron. Static (the event dialog): wrapped in a plain div, with the full date, the
+    glyph named by its words, and a "measured"/"forecast" marker. PreferMeasured shows Frost's half when the day
+    has one; the forecast's symbol stays the glyph, since measured days carry none.
+*@
+
+@if (Interactive)
+{
+    var f = Day.Forecast;
+    <span class="wx-day-name">@WeatherVisuals.DayShort(Day.Date, Today ?? Day.Date)<span class="sr-only">, @WeatherVisuals.DayLong(Day.Date)</span></span>
+    <span aria-hidden="true"><WeatherGlyph Code="@f?.SymbolCode" Size="28" /></span>
+    <span class="wx-day-temp">
+        <span class="wx-hi" aria-hidden="true">@WeatherVisuals.Temp(f?.MaxTempC)</span><span class="wx-lo" aria-hidden="true"> / @WeatherVisuals.Temp(f?.MinTempC)</span>
+        <span class="sr-only">@WeatherForecastBody.DaySentence(Day)</span>
+    </span>
+    <span class="wx-day-precip @(f?.PrecipitationMm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="14" />@WeatherVisuals.Mm(f?.PrecipitationMm)</span>
+    @if (f?.CoverageHours < 24)
+    {
+        <span class="wx-day-partial">@f.CoverageHours h of forecast</span>
+    }
+    <span class="wx-day-chev" aria-hidden="true"><OdsMIcon Name="expand_more" Size="18" /></span>
+}
+else
+{
+    var measured = PreferMeasured && Day.Observed is not null;
+    var (min, max, mm) = measured
+        ? (Day.Observed!.MinTempC, Day.Observed.MaxTempC, Day.Observed.PrecipitationMm)
+        : (Day.Forecast?.MinTempC, Day.Forecast?.MaxTempC, Day.Forecast?.PrecipitationMm);
+    <div class="wx-day-static">
+        <span class="wx-day-name">@WeatherVisuals.DayLong(Day.Date)</span>
+        @if (WeatherVisuals.SymbolOf(Day.Forecast?.SymbolCode) is not null)
+        {
+            <WeatherGlyph Code="@Day.Forecast!.SymbolCode" Size="26" />
+        }
+        else
+        {
+            <span class="wx-muted" aria-hidden="true">—</span>
+        }
+        <span class="wx-day-temp">
+            <span aria-hidden="true">@WeatherVisuals.Temp(max) / @WeatherVisuals.Temp(min)</span>
+            <span class="sr-only">high @WeatherVisuals.Temp(max), low @WeatherVisuals.Temp(min)</span>
+        </span>
+        <span class="wx-day-precip @(mm > 0 ? null : "none")"><OdsMIcon Name="water_drop" Size="13" />@WeatherVisuals.Mm(mm)</span>
+        <span class="wx-day-partial">@(measured ? "measured" : "forecast")</span>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public WeatherDaySummary Day { get; set; } = default!;
+
+    /// <summary>The point's today, for the interactive card's "Today" / "Tomorrow" name.</summary>
+    [Parameter] public DateOnly? Today { get; set; }
+
+    /// <summary>The dashboard's disclosure card (its host owns the button); false renders a static tile.</summary>
+    [Parameter] public bool Interactive { get; set; }
+
+    /// <summary>Show the measured half when the day has one (the event dialog).</summary>
+    [Parameter] public bool PreferMeasured { get; set; }
+}

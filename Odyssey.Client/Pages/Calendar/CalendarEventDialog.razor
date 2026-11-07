@@ -14,6 +14,7 @@
 @inject ILocationsApiClient Locations
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@using Odyssey.Client.Pages.Weather
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent">
     <ChildContent>
@@ -94,6 +95,15 @@
                     </LockedContent>
                     <ChildContent>@RuleFields</ChildContent>
                 </OdsRevealPanel>
+            }
+
+            @* Weather (issue #363 §3.4): Edit mode only, for the event as LOADED — never the draft. Closing the dialog
+               unmounts it, which cancels its read. Renders nothing without weather.read. *@
+            @if (Open && Mode == CalendarEventDialogMode.Edit && _sourceEvent is { } loaded)
+            {
+                <CalendarEventWeatherSection @key="loaded.CalendarEventId" EventId="loaded.CalendarEventId" EventTitle="@loaded.Title"
+                                             Start="loaded.StartDateTime" End="loaded.EndDateTime" Dirty="WeatherDirty"
+                                             OnNavigate="CancelAsync" />
             }
         </div>
     </ChildContent>

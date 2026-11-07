@@ -40,7 +40,21 @@ public partial class JournalEntryCard
     /// <summary>Detach a file from the entry. Unset = no Remove item on the file menus.</summary>
     [Parameter] public EventCallback<Guid>? OnRemoveFile { get; set; }
 
+    /// <summary>The batch weather for this entry, or null (none yet, none shown, or no <c>weather.read</c>).</summary>
+    [Parameter] public JournalEntryWeatherItem? Weather { get; set; }
+
+    /// <summary>MET's attribution as the batch response carried it.</summary>
+    [Parameter] public WeatherAttribution? WeatherAttribution { get; set; }
+
     private bool _filesOpen;
+
+    // The weather disclosure (issue #363 §3.6 step 6). When a re-request turns the item non-Ok while its button
+    // holds focus, the row is about to disappear: focus goes to the card's ⋯ button, else to the article.
+    private bool _weatherOpen;
+    private bool _weatherShown;
+    private bool _pendingWeatherFocus;
+    private ElementReference _weatherRow;
+    private IJSObjectReference? _weatherJs;
 
     // Focus return across a file removal (WCAG 2.4.3). The row's ⋯ menu is destroyed by its own action,
     // and the whole row list is unmounted when the last file goes — so the CARD, which outlives both,
@@ -72,7 +86,34 @@ public partial class JournalEntryCard
             ? $" by {Entry.UpdatedByName}"
             : string.Empty;
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
+    {
+        var shows = Weather is { Status: WeatherStatus.Ok, Day: not null };
+        if (_weatherShown && !shows)
+        {
+            _weatherOpen = false;
+            _pendingWeatherFocus = await WeatherHoldsFocusAsync();
+        }
+
+        _weatherShown = shows;
+        SetLeaf();
+    }
+
+    /// <summary>Asked BEFORE the re-render removes the row: afterwards there is nothing left to ask about.</summary>
+    private async Task<bool> WeatherHoldsFocusAsync()
+    {
+        try
+        {
+            _weatherJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/weather-hours.js");
+            return await _weatherJs.InvokeAsync<bool>("containsFocus", _weatherRow);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+    }
+
+    private void SetLeaf()
     {
         var d = Entry.EntryDate.ToLocalTime();
         _leafDow = d.ToString("ddd", CultureInfo.CurrentCulture);
@@ -124,6 +165,12 @@ public partial class JournalEntryCard
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (_pendingWeatherFocus)
+        {
+            _pendingWeatherFocus = false;
+            await FocusFirstAsync(Id is null ? null : $"#{Id} .je-cardmenu button", Id is null ? null : $"#{Id}");
+        }
+
         if (!_pendingFocus)
         {
             return;
@@ -151,8 +198,26 @@ public partial class JournalEntryCard
         }
     }
 
+    private async Task FocusFirstAsync(params string?[] candidates)
+    {
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            await _focusReturnJs.InvokeVoidAsync("focusFirst", candidates);
+        }
+        catch (Exception)
+        {
+            // Best-effort, as the attachment focus return.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        if (_weatherJs is not null)
+        {
+            try { await _weatherJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
         if (_focusReturnJs is not null)
         {
             try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }

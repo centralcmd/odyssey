@@ -70,6 +70,17 @@ public partial class OdsInfiniteList<TItem>
     /// <summary>Utility classes for the refetch bar.</summary>
     [Parameter] public string? BarClass { get; set; }
 
+    /// <summary>
+    /// Raised after render whenever the MEMBERSHIP of the rendered window changes, compared by
+    /// <see cref="ItemKey"/>: the first render, each reveal, a list whose rendered keys differ. A new
+    /// <see cref="Items"/> instance with the same rendered keys — a freshly sorted array — does not raise it.
+    /// For a host that fetches something per rendered item (the journal's weather, issue #363 §3.6); optional,
+    /// and a host that leaves it unset renders exactly as before.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<TItem>> OnShownChanged { get; set; }
+
+    private HashSet<object>? _lastShownKeys;
+
     private readonly string _id = $"odc-inf-{Guid.NewGuid():N}";
     private ElementReference _sentinel;
     private bool _observing;
@@ -148,19 +159,36 @@ public partial class OdsInfiniteList<TItem>
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/infinite-scroll.js");
         }
 
-        if (_module is null)
+        if (_module is not null)
+        {
+            if (HasMore && !_observing)
+            {
+                await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
+                _observing = true;
+            }
+            else if (!HasMore && _observing)
+            {
+                await _module.InvokeVoidAsync("unobserve", _id);
+                _observing = false;
+            }
+        }
+
+        // Last, so a host callback that throws cannot leave the sentinel unobserved and the list unable to grow.
+        await RaiseShownChangedAsync();
+    }
+
+    private async Task RaiseShownChangedAsync()
+    {
+        if (!OnShownChanged.HasDelegate || Loading || Error)
             return;
 
-        if (HasMore && !_observing)
-        {
-            await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
-            _observing = true;
-        }
-        else if (!HasMore && _observing)
-        {
-            await _module.InvokeVoidAsync("unobserve", _id);
-            _observing = false;
-        }
+        var shown = Items.Take(Shown).ToList();
+        var keys = shown.Select(item => ItemKey?.Invoke(item) ?? item!).ToHashSet();
+        if (_lastShownKeys is not null && _lastShownKeys.SetEquals(keys))
+            return;
+
+        _lastShownKeys = keys;
+        await OnShownChanged.InvokeAsync(shown);
     }
 
     public async ValueTask DisposeAsync()

@@ -1,0 +1,24 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    WeatherWhereLine — where an entry's or event's weather comes from, in one sentence (issue #363 §3.2; design
+    system · WeatherCalendarJournal.jsx). One wording source for the journal details and the event dialog.
+*@
+
+@if (WeatherEventText.Where(ResolvedFrom, Point, LinkedLocation, DistanceKm, Noun) is { } text)
+{
+    <p class="wx-where"><span aria-hidden="true"><OdsMIcon Name="place" Size="14" /></span><span>@text</span></p>
+}
+
+@code {
+    [Parameter] public WeatherResolvedFrom? ResolvedFrom { get; set; }
+
+    [Parameter] public WeatherPointRef? Point { get; set; }
+
+    [Parameter] public WeatherLinkedLocationRef? LinkedLocation { get; set; }
+
+    [Parameter] public int? DistanceKm { get; set; }
+
+    /// <summary><i>entry</i> or <i>event</i>: "This entry has no place."</summary>
+    [Parameter] public string Noun { get; set; } = "entry";
+}

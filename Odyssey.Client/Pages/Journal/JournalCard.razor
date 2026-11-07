@@ -20,6 +20,8 @@
 @inject IJSRuntime JS
 @inject IReferenceDataCache ReferenceData
 @inject ITagsApiClient<ExistingJournalTag> JournalTags
+@inject IWeatherApiClient WeatherApi
+@inject ILogger<JournalCard> Log
 
 <PageTitle>Journal</PageTitle>
 
@@ -96,6 +98,7 @@
     <div class="acct-list">
         <OdsInfiniteList TItem="JournalEntrySummary" Items="_entries" BatchSize="_batch"
                          ItemKey="@(e => (object)e.JournalEntryId)" Noun="journal entries"
+                         OnShownChanged="OnShownChanged"
                          Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="LoadEntries"
                          HasFilters="_hasFilters" OnClearFilters="ClearFilters"
                          EmptyIcon="menu_book"
@@ -112,6 +115,8 @@
                                   Attachments="@(_attachments.GetValueOrDefault(e.JournalEntryId))"
                                   Actions="BuildActions(e)"
                                   CanReadFiles="_canReadFiles"
+                                  Weather="WeatherLoader.Get(e.JournalEntryId)"
+                                  WeatherAttribution="WeatherLoader.Attribution"
                                   OnFilesOpened="@(() => LoadAttachmentsAsync(e))"
                                   OnOpenPhoto="@(p => OpenPhotoDetail(e, p))"
                                   OnRemoveFile="@(_canUpdate ? EventCallback.Factory.Create<Guid>(this, fileId => RemoveAttachmentAsync(e, fileId)) : null)" />

@@ -27,9 +27,6 @@ public partial class WeatherForecastBody : IAsyncDisposable
     /// <summary>Up to nine days from today, as the design shows.</summary>
     internal const int DaysShown = 9;
 
-    /// <summary>How long Try again stays unavailable after a 429. A pause for the person, not a copy of a server limit.</summary>
-    internal static TimeSpan RetryCoolDown = TimeSpan.FromSeconds(10);
-
     private static int _instances;
 
     private readonly string _instanceId = $"wx{Interlocked.Increment(ref _instances)}";
@@ -185,7 +182,7 @@ public partial class WeatherForecastBody : IAsyncDisposable
     {
         try
         {
-            await Task.Delay(RetryCoolDown, coolDown.Token);
+            await Task.Delay(WeatherRetry.CoolDown, coolDown.Token);
         }
         catch (TaskCanceledException)
         {

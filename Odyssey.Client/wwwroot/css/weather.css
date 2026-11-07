@@ -335,3 +335,60 @@
   .wx-dialog .odc-cardsel { grid-template-columns: minmax(0, 1fr) !important; }
   .wx-picked-again { margin-left: 44px; }
 }
+
+/* ── Calendar and journal (issue #363; design system · weather.css "Calendar and journal") ─────────────────── */
+
+/* Where the weather comes from — one sentence, journal details and event dialog. */
+.wx-where { display: flex; align-items: flex-start; gap: 6px; margin: 0; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-where .material-icons { margin-top: 2px; flex: none; }
+
+/* Journal — the disclosure is its own full-width row below .jec-meta. */
+.wx-jw { width: 100%; }
+.wx-jw .odc-collapsible-trigger { min-height: 24px; padding-block: 4px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); text-align: left; }
+.wx-jw .odc-collapsible-trigger:hover { color: var(--mud-palette-text-primary); }
+.wx-jw .odc-collapsible-title { white-space: normal; overflow-wrap: anywhere; }
+.wx-jw-line { display: inline-flex; align-items: flex-start; gap: 6px; }
+.wx-jw-ic { display: inline-flex; color: var(--brand-text); margin-top: 1px; }
+.wx-jw-body { display: flex; flex-direction: column; gap: 10px; padding: 6px 0 4px 26px; }
+.wx-jw-halves { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 24px; }
+.wx-jw-half-t { margin: 0 0 4px; font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans); letter-spacing: .04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.wx-jw-dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 12px; margin: 0; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); }
+.wx-jw-dl dt { color: var(--mud-palette-text-secondary); }
+.wx-jw-dl dd { margin: 0; color: var(--mud-palette-text-primary); }
+.wx-jw-note { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0 0; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-jw-foot { margin: 0; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); }
+
+/* Agenda — plain text after the title; drops under the title on a phone. */
+.wx-evs { display: inline-flex; align-items: center; gap: 4px; flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-evs .wx-glyph-ic { display: inline-flex; color: var(--brand-text); }
+.wx-evs-t { font-family: var(--font-mono); }
+
+/* Event dialog section. */
+.wx-ev { display: flex; flex-direction: column; gap: 10px; }
+.wx-ev-dirty { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-ev-dirty:empty { display: none; }
+.wx-ev-line { display: flex; align-items: flex-start; gap: 6px; margin: 0; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-ev-msg { display: flex; align-items: flex-start; gap: 10px; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); }
+.wx-ev-msg > span .material-icons { color: var(--mud-palette-text-secondary); margin-top: 1px; }
+.wx-ev-msg p { margin: 0; }
+.wx-ev-act { margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; color: var(--mud-palette-text-secondary); }
+.wx-ev-link { display: inline-flex; align-items: center; min-height: 24px; color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; }
+.wx-ev-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
+.wx-ev-hold { color: var(--mud-palette-text-secondary); }
+.wx-ev-skel { width: 100%; border-collapse: collapse; }
+.wx-ev .odc-sectiondivider-l:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
+/* Static tiles wrap rather than scroll: they are not focusable, so a sideways scroller would have no keyboard path (WCAG 1.4.10, 2.1.1). */
+.wx-days-static { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); overflow: visible; }
+.wx-day-static { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); text-align: center; }
+
+@media (max-width: 600px) {
+  .cal-agenda-row { flex-wrap: wrap; }
+  .cal-agenda-row .wx-evs { flex-basis: 100%; padding-left: 0; }
+  .wx-jw-body { padding-left: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .wx-jw .odc-collapsible-chev, .wx-ev-skel .odc-skeleton { transition: none; animation: none; }
+}
+@media (forced-colors: active) {
+  .wx-jw-ic, .wx-evs .wx-glyph-ic, .wx-where .material-icons { color: CanvasText; }
+}

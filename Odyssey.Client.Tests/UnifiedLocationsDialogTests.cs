@@ -65,6 +65,7 @@ public class UnifiedLocationsDialogTests
                 new ExistingLocation { LocationId = StorgataId, Name = "Storgata" }, HttpStatusCode.Created));
         ctx.Services.AddSingleton(calendar.Object);
         ctx.Services.AddSingleton(locations.Object);
+        ctx.Services.AddSingleton(Mock.Of<IWeatherApiClient>());
 
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CalendarEventDialog>(d => d
             .Add(x => x.Open, true)

@@ -64,6 +64,22 @@ public interface IWeatherApiClient
 
     /// <summary>Deletes the point and all its data; its places become unlinked.</summary>
     Task<ApiResult> DeletePointAsync(Guid weatherPointId, CancellationToken ct = default);
+
+    /// <summary>One calendar event's weather — hourly steps or the days of an all-day event (issue #430 §5.1).</summary>
+    Task<ApiResult<CalendarEventWeatherResponse>> CalendarEventAsync(Guid calendarEventId, Guid? weatherPointId = null, CancellationToken ct = default);
+
+    /// <summary>One journal entry's day of weather (issue #430 §5.1).</summary>
+    Task<ApiResult<JournalEntryWeatherResponse>> JournalEntryAsync(Guid journalEntryId, Guid? weatherPointId = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Weather summaries for calendar events (issue #430 §5.3). De-duplicates, then sends chunks of
+    /// <see cref="WeatherRules.BatchMaxIds"/> sequentially; all or nothing — the first failing chunk's result is
+    /// returned and no later chunk is sent. An empty input returns an empty success without a request.
+    /// </summary>
+    Task<ApiResult<CalendarEventWeatherBatch>> CalendarEventsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
+
+    /// <summary>The day's weather for journal entries (issue #430 §5.2), chunked as <see cref="CalendarEventsAsync"/>.</summary>
+    Task<ApiResult<JournalEntryWeatherBatch>> JournalEntriesAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default);
 }
 
 /// <inheritdoc cref="IWeatherApiClient" />
@@ -94,6 +110,62 @@ public sealed class WeatherApiClient(IOdysseyApi api) : IWeatherApiClient
             .Add("date", date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture))
             .Add("weatherPointId", weatherPointId?.ToString())
             .Build(), ct);
+
+    public Task<ApiResult<CalendarEventWeatherResponse>> CalendarEventAsync(Guid calendarEventId, Guid? weatherPointId = null, CancellationToken ct = default) =>
+        api.GetAsync<CalendarEventWeatherResponse>(PagedQuery.For($"api/calendar-events/{calendarEventId}/weather")
+            .Add("weatherPointId", weatherPointId?.ToString()).Build(), ct);
+
+    public Task<ApiResult<JournalEntryWeatherResponse>> JournalEntryAsync(Guid journalEntryId, Guid? weatherPointId = null, CancellationToken ct = default) =>
+        api.GetAsync<JournalEntryWeatherResponse>(PagedQuery.For($"api/journal-entries/{journalEntryId}/weather")
+            .Add("weatherPointId", weatherPointId?.ToString()).Build(), ct);
+
+    public async Task<ApiResult<CalendarEventWeatherBatch>> CalendarEventsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        var items = new List<CalendarEventWeatherItem>();
+        CalendarEventWeatherBatch? last = null;
+        foreach (var chunk in Chunks(ids))
+        {
+            var result = await api.GetAsync<CalendarEventWeatherBatch>(BatchUrl("api/calendar-events/weather", chunk), ct);
+            if (!result.IsSuccess || result.Value is null)
+            {
+                return result;
+            }
+
+            items.AddRange(result.Value.Items);
+            last = result.Value;
+        }
+
+        return ApiResult<CalendarEventWeatherBatch>.Success(
+            (last ?? new CalendarEventWeatherBatch()) with { Items = items }, System.Net.HttpStatusCode.OK);
+    }
+
+    public async Task<ApiResult<JournalEntryWeatherBatch>> JournalEntriesAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct = default)
+    {
+        var items = new List<JournalEntryWeatherItem>();
+        JournalEntryWeatherBatch? last = null;
+        foreach (var chunk in Chunks(ids))
+        {
+            var result = await api.GetAsync<JournalEntryWeatherBatch>(BatchUrl("api/journal-entries/weather", chunk), ct);
+            if (!result.IsSuccess || result.Value is null)
+            {
+                return result;
+            }
+
+            items.AddRange(result.Value.Items);
+            last = result.Value;
+        }
+
+        return ApiResult<JournalEntryWeatherBatch>.Success(
+            (last ?? new JournalEntryWeatherBatch()) with { Items = items }, System.Net.HttpStatusCode.OK);
+    }
+
+    /// <summary>De-duplicated (first seen wins), then split into requests of at most <see cref="WeatherRules.BatchMaxIds"/>.</summary>
+    internal static IEnumerable<IReadOnlyList<Guid>> Chunks(IReadOnlyCollection<Guid> ids) =>
+        ids.Distinct().Chunk(WeatherRules.BatchMaxIds);
+
+    /// <summary>Repeated <c>ids</c> keys in the <c>D</c> format, the only spelling the server accepts.</summary>
+    private static string BatchUrl(string path, IReadOnlyList<Guid> ids) =>
+        $"{path}?{string.Join("&", ids.Select(id => $"ids={id:D}"))}";
 
     public Task<ApiResult<WeatherPointOptions>> OptionsAsync(Guid? nearLocationId = null, CancellationToken ct = default) =>
         api.GetAsync<WeatherPointOptions>(

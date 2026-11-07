@@ -1,0 +1,38 @@
+@using Odyssey.Dtos.Journal
+@*
+    WeatherEventSummaryText — the weather on an agenda row (named apart from the WeatherEventSummary DTO it renders) (issue #363 §3.3; design system ·
+    WeatherCalendarJournal.jsx). Plain text, not a control, and only for an Ok item: the host renders it on the
+    event's FIRST agenda row alone, since the summary describes the start. The glyph's name starts "Weather:" so
+    the summary is not heard as part of the event title; there is no other hidden text, so the row's accessible
+    name is its visible text plus that name.
+*@
+
+@if (Item is { Status: WeatherStatus.Ok, Summary: { } s })
+{
+    var span = WeatherEventText.TemperatureSpan(s.MinTempC, s.MaxTempC);
+    var rain = WeatherEventText.AgendaPrecipitation(s, EventHours);
+    var tail = string.Join(" · ", new[] { s.Measured ? "measured" : null, Past ? "as forecast" : null }.OfType<string>());
+    <span class="wx-evs">
+        <WeatherGlyph Code="@s.SymbolCode" Size="15" Class="wx-evs-ic" Name="@WeatherEventText.GlyphName(s.SymbolCode)" />
+        <span class="wx-evs-t">@string.Join(" · ", new[] { span, rain }.OfType<string>())@if (tail.Length > 0)
+            {
+                <span class="wx-muted"> · @tail</span>
+            }</span>
+    </span>
+}
+
+@code {
+    [Parameter] public CalendarEventWeatherItem? Item { get; set; }
+
+    [Parameter] public DateTime Start { get; set; }
+
+    [Parameter] public DateTime End { get; set; }
+
+    /// <summary>For a test: the instant "past" is measured against.</summary>
+    [Parameter] public DateTime? UtcNow { get; set; }
+
+    private double EventHours => Item?.IsAllDay == true ? 24 : Math.Max(1, (WeatherEventText.Utc(End) - WeatherEventText.Utc(Start)).TotalHours);
+
+    /// <summary>A past TIMED event's summary is what was forecast: hourly weather is never measured.</summary>
+    private bool Past => Item?.IsAllDay == false && WeatherEventText.IsPast(End, UtcNow ?? DateTime.UtcNow);
+}

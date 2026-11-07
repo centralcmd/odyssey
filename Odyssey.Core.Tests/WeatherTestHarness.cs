@@ -177,6 +177,9 @@ internal sealed class WeatherTestHarness : IDisposable
     public WeatherReadService Read(OdysseyContext? context = null) =>
         new(context ?? Context, Fetch(context), Settings, Time);
 
+    public WeatherBatchReadService Batch(OdysseyContext? context = null) =>
+        new(context ?? NewContext(), Settings, Time);
+
     public WeatherPointService Admin(OdysseyContext? context = null)
     {
         var c = context ?? Context;

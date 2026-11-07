@@ -31,13 +31,13 @@ public class WeatherDayHoursTests : IDisposable
     public WeatherDayHoursTests()
     {
         WeatherDayHours.ViewerOffset = static _ => Oslo;
-        WeatherForecastBody.RetryCoolDown = TimeSpan.FromSeconds(10);
+        WeatherRetry.CoolDown = TimeSpan.FromSeconds(10);
     }
 
     public void Dispose()
     {
         WeatherDayHours.ViewerOffset = static utc => TimeZoneInfo.Local.GetUtcOffset(utc);
-        WeatherForecastBody.RetryCoolDown = TimeSpan.FromSeconds(10);
+        WeatherRetry.CoolDown = TimeSpan.FromSeconds(10);
         WeatherWidget.InteractiveCheck = OperatingSystem.IsBrowser;
         WeatherWidget.LocalNow = static () => DateTime.Now;
     }
@@ -505,7 +505,7 @@ public class WeatherDayHoursTests : IDisposable
     [Fact]
     public async Task After_a_429_Try_again_stays_focusable_but_unavailable_until_the_cool_down_ends()
     {
-        WeatherForecastBody.RetryCoolDown = TimeSpan.FromMilliseconds(200);
+        WeatherRetry.CoolDown = TimeSpan.FromMilliseconds(200);
         var (ctx, weather) = Context();
         using var _ = ctx;
         var date = Today.AddDays(1);
@@ -526,7 +526,7 @@ public class WeatherDayHoursTests : IDisposable
     [Fact]
     public async Task Switching_day_or_closing_cancels_a_running_cool_down()
     {
-        WeatherForecastBody.RetryCoolDown = TimeSpan.FromMinutes(5);
+        WeatherRetry.CoolDown = TimeSpan.FromMinutes(5);
         var (ctx, weather) = Context();
         using var _ = ctx;
         var limited = Today.AddDays(1);

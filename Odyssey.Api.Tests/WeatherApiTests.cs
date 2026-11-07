@@ -97,6 +97,8 @@ public class WeatherApiTests
         { "GET", "/api/weather/daily?from=2026-10-23&to=2026-10-24" },
         { "GET", $"/api/calendar-events/{Guid.Empty}/weather" },
         { "GET", $"/api/journal-entries/{Guid.Empty}/weather" },
+        { "GET", $"/api/calendar-events/weather?ids={Guid.Empty}" },
+        { "GET", $"/api/journal-entries/weather?ids={Guid.Empty}" },
         { "GET", "/api/weather/points" },
         { "GET", $"/api/weather/points/{Guid.Empty}" },
         { "GET", $"/api/weather/points/{Guid.Empty}/linked-locations" },
@@ -795,6 +797,172 @@ public class WeatherApiTests
         Assert.Equal(WeatherResolvedFrom.Linked, forEntry.ResolvedFrom);
         Assert.Equal(place.LocationId, forEntry.LinkedLocation!.LocationId);
         Assert.NotNull(forEntry.Day);
+    }
+
+    // ── Event and entry batches (issue #430) ──────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("/api/calendar-events/weather?ids={0}", PermissionClaims.CalendarRead)]
+    [InlineData("/api/journal-entries/weather?ids={0}", PermissionClaims.JournalRead)]
+    public async Task Batch_reads_need_both_claims_and_reach_the_batch_action_not_the_record(string template, string moduleClaim)
+    {
+        await using var weatherOnly = new WeatherFactory([PermissionClaims.WeatherRead]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await weatherOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+
+        await using var moduleOnly = new WeatherFactory([moduleClaim]);
+        Assert.Equal(HttpStatusCode.Forbidden, (await moduleOnly.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()))).StatusCode);
+
+        await using var both = new WeatherFactory([moduleClaim, PermissionClaims.WeatherRead]);
+        var response = await both.CreateClient().GetAsync(string.Format(template, Guid.NewGuid()));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(0, body.RootElement.GetProperty("items").GetArrayLength());
+        Assert.True(body.RootElement.TryGetProperty("attribution", out _));
+    }
+
+    public static TheoryData<string> MalformedIds => new()
+    {
+        "",
+        "?ids=",
+        "?ids=not-a-guid-SECRET",
+        "?ids={6f1c4a8e-0000-4000-8000-000000000001}",
+        "?ids=6f1c4a8e000040008000000000000001",
+        "?" + string.Join("&", Enumerable.Range(0, WeatherRules.BatchMaxIds + 1).Select(_ => $"ids={Guid.NewGuid()}")),
+    };
+
+    [Theory]
+    [MemberData(nameof(MalformedIds))]
+    public async Task A_malformed_ids_list_is_one_400_keyed_ids_that_echoes_nothing(string query)
+    {
+        await using var factory = new WeatherFactory([PermissionClaims.JournalRead, PermissionClaims.WeatherRead]);
+
+        var response = await factory.CreateClient().GetAsync($"/api/journal-entries/weather{query}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var text = await response.Content.ReadAsStringAsync();
+        using var body = JsonDocument.Parse(text);
+        var errors = body.RootElement.GetProperty("errors").EnumerateObject().ToList();
+        var error = Assert.Single(errors);
+        Assert.Equal("ids", error.Name);
+        Assert.Equal([WeatherRules.BatchIdsMessage], error.Value.EnumerateArray().Select(e => e.GetString()));
+        Assert.DoesNotContain("SECRET", text);
+        Assert.DoesNotContain("6f1c4a8e", text);
+    }
+
+    [Fact]
+    public async Task Fifty_ids_and_two_spellings_of_one_id_are_accepted()
+    {
+        await using var factory = new WeatherFactory([PermissionClaims.CalendarRead, PermissionClaims.WeatherRead]);
+        using var client = factory.CreateClient();
+        var fifty = string.Join("&", Enumerable.Range(0, WeatherRules.BatchMaxIds).Select(_ => $"ids={Guid.NewGuid()}"));
+        var id = Guid.NewGuid();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/calendar-events/weather?{fifty}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(
+            $"/api/calendar-events/weather?ids={id.ToString("D").ToLowerInvariant()}&ids={id.ToString("D").ToUpperInvariant()}")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_four_event_and_entry_reads_send_private_no_store()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var eventId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.CalendarEvents.Add(new CalendarEvent
+            {
+                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk",
+                StartDateTime = DateTime.UtcNow.AddDays(-3), EndDateTime = DateTime.UtcNow.AddDays(-3).AddHours(1),
+            });
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = entryId, ExternalUid = "e-cache", Title = "Today", Content = "…", EntryDate = DateTime.UtcNow.AddDays(-3),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        foreach (var path in new[]
+        {
+            $"/api/calendar-events/{eventId}/weather", $"/api/journal-entries/{entryId}/weather",
+            $"/api/calendar-events/weather?ids={eventId}", $"/api/journal-entries/weather?ids={entryId}",
+        })
+        {
+            var response = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            // HttpClient parses the header (and prints it back reordered), so assert its meaning: exactly
+            // private + no-store, and no directive that would let any cache keep the response.
+            var cache = response.Headers.CacheControl!;
+            Assert.True(cache.Private && cache.NoStore);
+            Assert.False(cache.Public || cache.NoCache || cache.MaxAge is not null || cache.SharedMaxAge is not null);
+            Assert.Empty(cache.Extensions);
+        }
+    }
+
+    [Fact]
+    public async Task Batch_reads_have_their_own_budget_and_do_not_spend_the_single_reads()
+    {
+        await using var factory = new WeatherFactory(Admin, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:WeatherReadBatch:PermitLimit"] = "1",
+            ["RateLimiting:WeatherReadBatch:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/journal-entries/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync($"/api/calendar-events/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_shipped_batch_budget_is_twenty_a_minute_and_leaves_the_single_reads_alone()
+    {
+        // AC 18 with the shipped configuration — no override — so a changed default fails here.
+        Assert.Equal((20, 60), (new WeatherReadBatchRateLimitOptions().PermitLimit, new WeatherReadBatchRateLimitOptions().WindowSeconds));
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+
+        for (var i = 0; i < 20; i++)
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/journal-entries/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync($"/api/calendar-events/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_batch_answers_a_linked_place_with_its_point_in_request_order()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var point = await CreatePointAsync(client);
+        var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
+        await LinkAsync(client, place.LocationId, point.WeatherPointId);
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            foreach (var id in new[] { first, second })
+            {
+                context.JournalEntries.Add(new JournalEntry
+                {
+                    JournalEntryId = id, ExternalUid = $"e-{id}", Title = "Day", Content = "…", EntryDate = DateTime.UtcNow, LocationId = place.LocationId,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        var batch = await client.GetFromJsonAsync<JournalEntryWeatherBatch>($"/api/journal-entries/weather?ids={second}&ids={first}", Json);
+
+        Assert.Equal([second, first], batch!.Items.Select(i => i.JournalEntryId));
+        Assert.All(batch.Items, i =>
+        {
+            Assert.Equal(WeatherResolvedFrom.Linked, i.ResolvedFrom);
+            Assert.Equal(point.WeatherPointId, i.Point!.WeatherPointId);
+            Assert.Equal(place.LocationId, i.LinkedLocation!.LocationId);
+        });
     }
 
     // ── Rate limits ───────────────────────────────────────────────────────────────────────────────
