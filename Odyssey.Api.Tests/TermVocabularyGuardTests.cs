@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Routing;
 using Odyssey.Api.Controllers;
-using Odyssey.Core.DataExport;
 using Odyssey.Dtos.Authorization;
 using Xunit;
 using ContextInterval = Odyssey.Context.Interval;
@@ -150,8 +149,7 @@ public class TermVocabularyGuardTests
 
     /// <summary>
     /// Issue #190 AC 18 — the account-owned term projections are gone from every wire shape: the
-    /// account record carries no term count or current terms, a term names no account, and the export
-    /// row has no account column. A contract is the only owner, so its id is not nullable.
+    /// account record carries no term count or current terms and a term names no account. A contract is the only owner, so its id is not nullable.
     /// </summary>
     [Fact]
     public void NoWireShape_CarriesAnAccountOwnedTerm()
@@ -160,8 +158,6 @@ public class TermVocabularyGuardTests
         Assert.Null(typeof(Odyssey.Dtos.Finance.ExistingAccount).GetProperty("CurrentTerms"));
         Assert.Null(typeof(Odyssey.Dtos.Finance.ExistingTerm).GetProperty("AccountId"));
         Assert.Equal(typeof(Guid), typeof(Odyssey.Dtos.Finance.ExistingTerm).GetProperty("ContractId")!.PropertyType);
-        Assert.Null(typeof(TermExport).GetProperty("AccountId"));
-        Assert.Equal(typeof(Guid), typeof(TermExport).GetProperty("ContractId")!.PropertyType);
         Assert.Null(typeof(Odyssey.Context.Term).GetProperty("AccountId"));
         Assert.Null(typeof(Odyssey.Context.Account).GetProperty("Terms"));
     }
@@ -203,22 +199,5 @@ public class TermVocabularyGuardTests
             Assert.All(role.Where(value => value.StartsWith("accounts.", StringComparison.Ordinal)),
                 value => Assert.Contains(value, expected));
         }
-    }
-
-    /// <summary>
-    /// AC 36 / AC 38 — the export document carries the renamed property and the three new fields, so
-    /// the whole-database export moves its term rows from the <c>accountTerms</c> key to <c>terms</c>.
-    /// </summary>
-    [Fact]
-    public void TheExportDocument_CarriesTheRenamedTermCollection()
-    {
-        Assert.NotNull(typeof(FinanceDatabaseExport).GetProperty("Terms"));
-        Assert.Null(typeof(FinanceDatabaseExport).GetProperty("AccountTerms"));
-
-        Assert.Equal(typeof(Guid), typeof(TermExport).GetProperty("TermId")!.PropertyType);
-        Assert.Equal(typeof(DtoInterval?), typeof(TermExport).GetProperty("Interval")!.PropertyType);
-        Assert.Equal(typeof(int?), typeof(TermExport).GetProperty("IntervalCount")!.PropertyType);
-        Assert.Equal(typeof(DateTime?), typeof(TermExport).GetProperty("AnchorDate")!.PropertyType);
-        Assert.Null(typeof(TermExport).GetProperty("AccountTermId"));
     }
 }

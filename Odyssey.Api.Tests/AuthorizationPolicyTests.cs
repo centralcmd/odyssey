@@ -74,11 +74,12 @@ public class AuthorizationPolicyTests
     /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.points.read</c>,
     /// <c>weather.points.update</c> and <c>weather.points.delete</c>. 107 once issue #346 added
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
-    /// deliberately left out.
+    /// deliberately left out. 107 once the whole-database JSON export was removed with its
+    /// <c>data.export</c> claim.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(108, DeclaredClaims().Count());
+        Assert.Equal(107, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -218,25 +219,6 @@ public class AuthorizationPolicyTests
             "Issue #146 §7.3 accepts returning a contract document's issuedBy as a bare contact id "
             + "because no shipped role reaches contracts.read without contacts.read. Re-make that "
             + "argument before granting them apart. Roles that do: " + string.Join(", ", gaps));
-    }
-
-    /// <summary>
-    /// Issue #350 §7.12 adds locations to the whole-database export, which is gated on <c>data.export</c>
-    /// alone. That only discloses nothing new while every holder of <c>data.export</c> can already read
-    /// locations live — so a role granted the export without <c>locations.read</c> fails the build.
-    /// </summary>
-    [Fact]
-    public void No_role_holds_DataExport_without_LocationsRead()
-    {
-        var gaps = MappedRoles()
-            .Where(role => role.Claims.Contains(PermissionClaims.DataExport, StringComparer.Ordinal))
-            .Where(role => !role.Claims.Contains(PermissionClaims.LocationsRead, StringComparer.Ordinal))
-            .Select(role => role.Role)
-            .ToList();
-
-        Assert.True(gaps.Count == 0,
-            "The data export carries every location; a role that can export must be able to read them. Roles that do not: "
-            + string.Join(", ", gaps));
     }
 
     /// <summary>
