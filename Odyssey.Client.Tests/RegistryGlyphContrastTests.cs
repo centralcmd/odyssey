@@ -338,6 +338,51 @@ public sealed class RegistryGlyphContrastTests
         }
     }
 
+    /// <summary>
+    /// A tag chip draws its name and icon IN its tag's colour (<c>.odc-chip.user-color</c>), so that colour is
+    /// text and takes the text-grade <c>--user-text-l</c>: floored on dark, capped on light. Pinned by value.
+    /// </summary>
+    [Fact]
+    public void The_user_text_token_floors_dark_and_caps_light()
+    {
+        Assert.Equal(0.72, UserBound("--user-text-l", dark: true));
+        Assert.Equal(0.48, UserBound("--user-text-l", dark: false));
+    }
+
+    /// <summary>
+    /// Every colour a user can store, painted as chip text through <c>--user-text-l</c>, clears 4.5:1 on the
+    /// chip's own ground — the raw colour at the theme's <c>--tint-soft</c>, composited over both the surface
+    /// and the page background — on both themes, under both renderings.
+    /// </summary>
+    [Fact]
+    public void Every_user_colour_chip_text_clears_text_contrast_on_its_own_tint()
+    {
+        var (floor, cap) = (UserBound("--user-text-l", dark: true), UserBound("--user-text-l", dark: false));
+        var steps = Enumerable.Range(0, 16).Select(i => i * 17).ToArray();
+        var colours = steps.SelectMany(r => steps.SelectMany(g => steps.Select(b => $"#{r:X2}{g:X2}{b:X2}")))
+            .Concat(Odyssey.Dtos.ColorPalette.All.Select(s => s.Hex));
+
+        foreach (var hex in colours)
+        {
+            var value = Convert.ToInt32(hex[1..], 16);
+            var raw = (((value >> 16) & 0xFF) / 255.0, ((value >> 8) & 0xFF) / 255.0, (value & 0xFF) / 255.0);
+            var (l, a, b) = OkLab((Linear(raw.Item1), Linear(raw.Item2), Linear(raw.Item3)));
+            var (c, h) = (Math.Sqrt(a * a + b * b), Math.Atan2(b, a) * 180.0 / Math.PI);
+
+            foreach (var dark in new[] { true, false })
+            {
+                var painted = dark ? Math.Max(l, floor) : Math.Min(l, cap);
+                var tint = TintSoft(dark);
+                var theme = dark ? "dark" : "light";
+                foreach (var (how, rgb) in Renderings(painted, c, h))
+                {
+                    AssertRatio("UserColor", hex, $"chip text ({theme}, --user-text-l, {how}) on its tint over surface", rgb, Composite(raw, tint, Surface(dark)), TextContrastMinimum);
+                    AssertRatio("UserColor", hex, $"chip text ({theme}, --user-text-l, {how}) on its tint over background", rgb, Composite(raw, tint, Background(dark)), TextContrastMinimum);
+                }
+            }
+        }
+    }
+
     // ── Plumbing ────────────────────────────────────────────────────────────────
 
     private static OdsTypeOption Option(string registry, string key) =>
@@ -381,6 +426,25 @@ public sealed class RegistryGlyphContrastTests
         var bound = Regex.Match(AppCss(), selector + @"\s*\{\s*--user-glyph-l:\s*" + fn + @"\(\s*l\s*,\s*(?<n>[\d.]+)\s*\)\s*;\s*\}");
         Assert.True(bound.Success, $"app.css declares no {fn}(l, N) --user-glyph-l for the {(dark ? "dark" : "light")} theme.");
         return double.Parse(bound.Groups["n"].Value, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The <c>max(l, N)</c> (dark) or <c>min(l, N)</c> (light) bound of a user-colour token in <c>app.css</c>.</summary>
+    private static double UserBound(string token, bool dark)
+    {
+        var selector = dark ? @":root,\s*\[data-theme='dark'\]" : @"html:not\(\[data-theme='dark'\]\)";
+        var fn = dark ? "max" : "min";
+        var bound = Regex.Match(AppCss(), selector + @"\s*\{\s*" + Regex.Escape(token) + @":\s*" + fn + @"\(\s*l\s*,\s*(?<n>[\d.]+)\s*\)\s*;\s*\}");
+        Assert.True(bound.Success, $"app.css declares no {fn}(l, N) {token} for the {(dark ? "dark" : "light")} theme.");
+        return double.Parse(bound.Groups["n"].Value, CultureInfo.InvariantCulture);
+    }
+
+    /// <summary>The theme's <c>--tint-soft</c> strength, as a fraction, read from <c>app.css</c>.</summary>
+    private static double TintSoft(bool dark)
+    {
+        var values = Regex.Matches(AppCss(), @"--tint-soft:\s*(?<n>\d+)%;").Select(m => int.Parse(m.Groups["n"].Value, CultureInfo.InvariantCulture)).Distinct().ToList();
+        Assert.True(values.Count == 2, "Expected one --tint-soft per theme in app.css.");
+        // Dark is the stronger tint in the design system (14% vs 12%); asserted by value rather than by block order.
+        return (dark ? values.Max() : values.Min()) / 100.0;
     }
 
     private static (double R, double G, double B) Surface(bool dark)

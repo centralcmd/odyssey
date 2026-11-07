@@ -5,7 +5,7 @@ namespace Odyssey.Client.Tests;
 
 /// <summary>
 /// Keeps every tag and calendar colour on the one validated path to a style (issues #392 §7.5, #394 §8):
-/// the <c>UserColor</c> helper and the typed <c>UserColor</c> / <c>UserColorDot</c> parameters.
+/// the <c>UserColor</c> helper and the typed <c>UserColor</c> parameters.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -93,8 +93,9 @@ public class UserColorSinkLintTests
     [Theory]
     [InlineData("<span style=\"@UserColor.Background(calendar.Color, x)\"></span>")]
     [InlineData("<OdsAvatar UserColor=\"@ColorOf(t)\" />")]
-    [InlineData("<OdsChip UserColorDot=\"@tag.Color\" />")]
+    [InlineData("<OdsChip UserColor=\"@tag.Color\" />")]
     [InlineData("private string? D => UserColor.Dot(tag.Color);")]
+    [InlineData("private string? C => UserColor.Chip(tag.Color);")]
     [InlineData("new OdsOption(id, name) { Icon = \"circle\", IconColor = UserColor.Canonical(c.Color) }")]
     [InlineData("<span style=\"@AlbumVisuals.GlyphStyle(a.Color, AlbumVisuals.SurfaceFallback)\"></span>")]
     [InlineData("new OdsOption(id, name) { IconColor = AlbumVisuals.Ink(a.Color, AlbumVisuals.OverviewFallback) }")]
