@@ -97,7 +97,7 @@ public static class GlobalExceptionHandler
             // A client disconnect (browser navigated away, download aborted) cancels RequestAborted and
             // surfaces here as an OperationCanceledException. Logging it as an unhandled 500 pollutes the
             // error dashboards on exactly the long-running paths where it happens most — the ICS/vCard
-            // exports, the data export and file analysis. There is nobody left to write a response to.
+            // exports and file analysis. There is nobody left to write a response to.
             case OperationCanceledException when context.RequestAborted.IsCancellationRequested:
                 logger.LogInformation("Request cancelled by client on {Method} {Path}.",
                     context.Request.Method, context.Request.Path);

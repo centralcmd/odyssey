@@ -67,7 +67,6 @@ internal static class SettingsPageHarness
         ctx.Services.AddSingleton(ExchangeRateSyncFakes.Client().Object);
         ctx.Services.AddSingleton(storage ?? new Mock<IFileStorageApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IPhotosApiClient>().Object);
-        ctx.Services.AddSingleton(new Mock<IDataExportApiClient>().Object);
         ctx.Services.AddSingleton(new Mock<IWeatherApiClient>().Object);
         ctx.Services.AddSingleton<IWeatherPointOptionsCache>(sp => new WeatherPointOptionsCache(
             sp.GetRequiredService<IWeatherApiClient>(), sp.GetRequiredService<AuthenticationStateProvider>()));

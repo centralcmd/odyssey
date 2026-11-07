@@ -23,7 +23,6 @@ using Microsoft.Extensions.Options;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Odyssey.Core.Email;
-using Odyssey.Core.DataExport;
 using Odyssey.Core.FileExport;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -544,7 +543,6 @@ else
 }
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddScoped<DataExportService>();
 
 // Filesystem object storage (issue #346). Shared with Odyssey.Worker, which runs the maintenance job: the API
 // registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration

@@ -10,7 +10,7 @@
 - **Journal** — entries, tasks, their tags and attachments.
 - **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
   job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
-  derived data and are left out of the data export.
+  derived data.
 - **Calendars** — calendars, events and recurrence patterns.
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.

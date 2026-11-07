@@ -13,7 +13,6 @@
 @inject Odyssey.ApiClient.Resources.IFileStorageApiClient FileStorage
 @inject Odyssey.ApiClient.Resources.IPhotosApiClient PhotosApi
 @inject TimeProvider Time
-@inject Odyssey.ApiClient.Resources.IDataExportApiClient DataExport
 @inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
 @inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
 @inject Odyssey.Client.Services.IAccountLimitsCache AccountLimits
@@ -353,7 +352,7 @@
     // hides the control's own help/error node inside the frame.
     private RenderFragment SettingField(SettingItem item) => item.Control switch
     {
-        SettingControl.Toggle or SettingControl.Export or SettingControl.Action => TileField(item),
+        SettingControl.Toggle or SettingControl.Action => TileField(item),
         _ => FrameField(item),
     };
 
@@ -484,11 +483,4 @@
         Disabled="@IsRowDisabled(item)"
         Error="@FieldStateFor(item)"
         AriaDescribedBy="@DescribedBy(item)" />;
-
-    private RenderFragment ExportControl() => @<OdsButton
-        Icon="file_download"
-        Loading="_isExporting"
-        OnClick="ExportDatabaseJson">
-        Export database JSON
-    </OdsButton>;
 }

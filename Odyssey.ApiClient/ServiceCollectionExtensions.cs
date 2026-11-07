@@ -62,7 +62,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPhotosApiClient, PhotosApiClient>();
         services.AddScoped<IPhotoTagsApiClient, PhotoTagsApiClient>();
         services.AddScoped<IAlbumsApiClient, AlbumsApiClient>();
-        services.AddScoped<IDataExportApiClient, DataExportApiClient>();
         services.AddScoped<IFileExportApiClient, FileExportApiClient>();
         services.AddScoped<IProfileApiClient, ProfileApiClient>();
         services.AddScoped<ISystemSettingsApiClient, SystemSettingsApiClient>();
