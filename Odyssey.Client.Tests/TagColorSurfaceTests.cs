@@ -90,25 +90,38 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Contains("background:var(--tag-soft);", avatar.Find(".odc-avatar").GetAttribute("style")!, StringComparison.Ordinal);
         Assert.DoesNotContain("user-color", avatar.Find(".odc-avatar").ClassList);
 
-        var chip = ctx.Render<OdsChip>(p => p.Add(c => c.UserColorDot, value).AddChildContent("Travel"));
-        Assert.Empty(chip.FindAll(".odc-chip-colordot"));
+        var chip = ctx.Render<OdsChip>(p => p.Add(c => c.Tone, OdsChipTone.Tag).Add(c => c.UserColor, value).AddChildContent("Travel"));
+        Assert.DoesNotContain("user-color", chip.Find(".odc-chip").ClassList);
+        Assert.Null(chip.Find(".odc-chip").GetAttribute("style"));
     }
 
     [Fact]
-    public void The_chip_dot_is_decorative_and_leaves_the_chip_unchanged()
+    public void A_coloured_chip_takes_the_colour_itself_with_no_dot()
     {
-        var cut = ctx.Render<OdsChip>(p => p.Add(c => c.Tone, OdsChipTone.Tag).Add(c => c.UserColorDot, "#15803d").AddChildContent("Travel"));
+        var cut = ctx.Render<OdsChip>(p => p.Add(c => c.Tone, OdsChipTone.Tag).Add(c => c.UserColor, "#15803d").AddChildContent("Travel"));
 
-        var dot = cut.Find(".odc-chip-colordot");
-        Assert.Equal("true", dot.GetAttribute("aria-hidden"));
-        Assert.Equal("--user-color:#15803D", dot.GetAttribute("style"));
-        Assert.Null(cut.Find(".odc-chip").GetAttribute("style"));
+        var chip = cut.Find(".odc-chip");
+        Assert.Contains("tag", chip.ClassList);
+        Assert.Contains("user-color", chip.ClassList);
+        Assert.Equal("--user-color:#15803D;", chip.GetAttribute("style"));
+        Assert.Empty(cut.FindAll(".odc-chip-colordot"));
+    }
+
+    [Fact]
+    public void The_user_color_chip_rule_paints_text_through_the_text_token_on_a_soft_tint()
+    {
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+        Assert.Contains(
+            ".odc-chip.user-color { color: oklch(from var(--user-color) var(--user-text-l, l) c h); "
+            + "background: color-mix(in srgb, var(--user-color) var(--tint-soft), transparent); }",
+            css, StringComparison.Ordinal);
+        Assert.DoesNotContain("odc-chip-colordot", css, StringComparison.Ordinal);
     }
 
     // ── Chip components ───────────────────────────────────────────────────────
 
     [Fact]
-    public void Transaction_tag_chips_show_a_dot_only_for_a_coloured_tag()
+    public void Transaction_tag_chips_take_the_colour_only_for_a_coloured_tag()
     {
         var cut = ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags,
         [
@@ -117,20 +130,24 @@ public class TagColorSurfaceTests : IAsyncLifetime
         ]));
 
         var chips = cut.FindAll(".odc-chip.tag");
-        Assert.Single(chips[0].QuerySelectorAll(".odc-chip-colordot"));
-        Assert.Empty(chips[1].QuerySelectorAll(".odc-chip-colordot"));
+        Assert.Contains("user-color", chips[0].ClassList);
+        Assert.Equal("--user-color:#15803D;", chips[0].GetAttribute("style"));
+        Assert.DoesNotContain("user-color", chips[1].ClassList);
+        Assert.Null(chips[1].GetAttribute("style"));
         Assert.Equal("Food", chips[0].TextContent.Trim());
     }
 
     [Fact]
-    public void Journal_tag_chips_show_a_dot_only_for_a_coloured_tag()
+    public void Journal_tag_chips_take_the_colour_only_for_a_coloured_tag()
     {
         var cut = ctx.Render<JournalTagChips>(p => p.Add(c => c.Tags,
             [new JournalTagChips.Tag("Trip", "flight", "#0369a1"), new JournalTagChips.Tag("Misc", null, null)]));
 
         var chips = cut.FindAll(".odc-chip");
-        Assert.Equal("--user-color:#0369A1", chips[0].QuerySelector(".odc-chip-colordot")!.GetAttribute("style"));
-        Assert.Null(chips[1].QuerySelector(".odc-chip-colordot"));
+        Assert.Equal("--user-color:#0369A1;", chips[0].GetAttribute("style"));
+        Assert.Contains("user-color", chips[0].ClassList);
+        Assert.Null(chips[1].GetAttribute("style"));
+        Assert.DoesNotContain("user-color", chips[1].ClassList);
     }
 
     // ── OdsTagColorPicker ─────────────────────────────────────────────────────

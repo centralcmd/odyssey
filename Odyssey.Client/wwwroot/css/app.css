@@ -397,6 +397,13 @@ html:not([data-theme='dark']) { --glyph-l: min(l, 0.58); --glyph-text-l: min(l, 
 :root, [data-theme='dark'] { --user-glyph-l: max(l, 0.62); }
 html:not([data-theme='dark']) { --user-glyph-l: min(l, 0.58); }
 
+/* User-colour TEXT lightness (DS colors_and_type.css). A tag chip draws its name and icon in the tag's
+   colour on a soft tint of that colour (.odc-chip.user-color), so the bound is text-grade (WCAG 1.4.3,
+   4.5:1): floored at 0.72 on dark, capped at 0.48 on light. Worst case over the sRGB cube on the
+   chip's own tint, over surface and background: 4.68:1 dark, 4.76:1 light. */
+:root, [data-theme='dark'] { --user-text-l: max(l, 0.72); }
+html:not([data-theme='dark']) { --user-text-l: min(l, 0.48); }
+
 /* Tabular monospace utility (design-system .mono) — ledger figures, IDs, sizes. */
 .mono {
   font-family: 'Roboto Mono', monospace;

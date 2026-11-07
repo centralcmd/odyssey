@@ -3,8 +3,10 @@
     JournalTagChips — a compact row of tag-tone chips for the journal, task and photo tag families (the
     shared OdsTagChips is typed to the Finance ExistingTransactionTag). Each chip leads with ITS tag's
     icon (issue #345), or the generic "label" glyph when the tag has none; the record's title carries no
-    glyph. The glyph is decorative (aria-hidden) — the chip's text names the tag. Max caps the visible
-    chips + shows a +N; null shows them all.
+    glyph. The glyph is decorative (aria-hidden) — the chip's text names the tag. A coloured tag's chip
+    takes that colour (OdsChip.UserColor: text and glyph through --user-text-l on a soft tint); an
+    uncoloured one keeps the tag tone, as does the +N chip. Max caps the visible chips + shows a +N; null
+    shows them all.
 *@
 
 @if (_tags.Count > 0)
@@ -12,7 +14,7 @@
     <span class="je-tagchips">
         @foreach (var tag in _shown)
         {
-            <OdsChip Tone="OdsChipTone.Tag" Icon="@GlyphFor(tag.Icon)" UserColorDot="@tag.Color">@tag.Name</OdsChip>
+            <OdsChip Tone="OdsChipTone.Tag" Icon="@GlyphFor(tag.Icon)" UserColor="@tag.Color">@tag.Name</OdsChip>
         }
         @if (_hidden.Count > 0)
         {
