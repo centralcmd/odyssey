@@ -85,7 +85,7 @@
     private string _newName = string.Empty;
     private bool _busy;
     private bool _loaded;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private RenderFragment TitleFragment => builder => builder.AddContent(0, "Add to album");
     private RenderFragment SubtitleFragment => builder =>
@@ -108,7 +108,7 @@
     }
 
     private PhotoImageSource Cover(PhotoAlbumSummary a) =>
-        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
     private void Toggle(Guid id)
     {

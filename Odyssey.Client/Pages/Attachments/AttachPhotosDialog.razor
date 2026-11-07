@@ -2,10 +2,8 @@
     AttachPhotosDialog — the photo twin of AttachDocumentsDialog (Odyssey Design System ·
     ui_kits/web/AttachPhotosModal.jsx). Two ways a photo gets onto an entry or an album:
 
-      • Upload new — the shared OdsFileUpload, images only. Each file goes through the Files API; with
-        CreateLibraryPhoto a library Photo is created over it at once (an album needs its photo id),
-        otherwise the file id is handed back and the host's own write links it (a journal entry — the
-        server finds or creates the library photo for it).
+      • Upload new — the shared OdsFileUpload, images only. Each file is uploaded as a library photo in one
+        call (POST /api/photos, issue #428) and its photo id is handed to the host.
       • From Photos — pick photos already in the library (photos.read). A photo already on the entry or
         album is shown but disabled ("Already added").
 

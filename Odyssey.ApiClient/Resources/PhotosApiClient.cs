@@ -4,8 +4,7 @@ using Odyssey.Dtos;
 namespace Odyssey.ApiClient.Resources;
 
 /// <summary>
-/// Typed read clients for the Photos module endpoints (issue #321). Writes go through
-/// <see cref="IOdysseyApi"/> at the call sites, as the sibling Finance/Journal surfaces do.
+/// Typed clients for the Photos module endpoints (issue #321; the upload and the original since issue #428).
 /// Cross-claim links (tags, people, files, albums) come back as ids only — pages hydrate names via the
 /// respective claim-gated endpoints (spec §10.5).
 /// </summary>
@@ -41,12 +40,16 @@ public interface IPhotosApiClient
     string ThumbnailUrl(Guid photoId, ThumbnailSize size);
 
     /// <summary>
-    /// Promotes an already-uploaded file into a library photo. A <c>409</c> means the file is already
-    /// a photo — callers treat that as a benign no-op, so the status is left on the result rather than
-    /// being folded into a generic failure. Returns the created photo (the endpoint answers
-    /// <c>201</c> with a body), which the album-create flow needs to collect the new ids.
+    /// The absolute URL of a photo's original (issue #428 §5.2), for an <c>&lt;img src&gt;</c> or a download link.
     /// </summary>
-    Task<ApiResult<ExistingPhoto>> CreateAsync(NewPhoto photo, CancellationToken ct = default);
+    string ContentUrl(Guid photoId);
+
+    /// <summary>
+    /// Uploads a photo (issue #428 §5.1): the image as part <c>file</c> plus the optional fields. Returns the created
+    /// photo; a <c>409</c> (duplicate) is left on the result with its problem, whose <c>existingPhotoId</c> extension
+    /// names the existing photo for a caller holding <c>photos.read</c>.
+    /// </summary>
+    Task<ApiResult<ExistingPhoto>> UploadAsync(ApiUpload file, NewPhotoUpload? fields = null, CancellationToken ct = default);
 
     Task<ApiResult> UpdateAsync(Guid id, UpdatePhoto photo, CancellationToken ct = default);
 
@@ -97,8 +100,48 @@ public sealed class PhotosApiClient(IOdysseyApi api) : IPhotosApiClient
     public Task<ApiResult<PhotoLibraryStats>> GetStatsAsync(CancellationToken ct = default) =>
         api.GetAsync<PhotoLibraryStats>($"{Base}/stats", ct);
 
-    public Task<ApiResult<ExistingPhoto>> CreateAsync(NewPhoto photo, CancellationToken ct = default) =>
-        api.SendAsync<ExistingPhoto>(HttpMethod.Post, Base, photo, ct);
+    public string ContentUrl(Guid photoId) =>
+        new Uri(api.BaseAddress!, $"{Base}/{photoId}/content").ToString();
+
+    public Task<ApiResult<ExistingPhoto>> UploadAsync(ApiUpload file, NewPhotoUpload? fields = null, CancellationToken ct = default) =>
+        api.UploadAsync<ExistingPhoto>(Base, file, ct: ct, fields: FormFields(fields));
+
+    // Each id list is sent as the repeated field name without brackets, which ASP.NET binds to an array.
+    private static List<KeyValuePair<string, string>> FormFields(NewPhotoUpload? fields)
+    {
+        var form = new List<KeyValuePair<string, string>>();
+        if (fields is null)
+        {
+            return form;
+        }
+
+        void Add(string name, string? value)
+        {
+            if (value is not null)
+            {
+                form.Add(new(name, value));
+            }
+        }
+
+        var invariant = System.Globalization.CultureInfo.InvariantCulture;
+        Add("title", fields.Title);
+        Add("caption", fields.Caption);
+        Add("takenAt", fields.TakenAt?.ToString("O", invariant));
+        Add("capturedLatitude", fields.CapturedLatitude?.ToString("R", invariant));
+        Add("capturedLongitude", fields.CapturedLongitude?.ToString("R", invariant));
+        Add("locationName", fields.LocationName);
+        Add("pixelWidth", fields.PixelWidth?.ToString(invariant));
+        Add("pixelHeight", fields.PixelHeight?.ToString(invariant));
+        if (fields.Favourite)
+        {
+            Add("favourite", "true");
+        }
+
+        form.AddRange(fields.TagIds.Select(id => new KeyValuePair<string, string>("tagIds", id.ToString())));
+        form.AddRange(fields.PersonContactIds.Select(id => new KeyValuePair<string, string>("personContactIds", id.ToString())));
+        form.AddRange(fields.AlbumIds.Select(id => new KeyValuePair<string, string>("albumIds", id.ToString())));
+        return form;
+    }
 
     public Task<ApiResult> UpdateAsync(Guid id, UpdatePhoto photo, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Put, $"{Base}/{id}", photo, ct);

@@ -31,10 +31,6 @@ public sealed record PhotoAlbumSummary
     /// <summary>Both of the cover photo's thumbnails exist (issue #362 §4.4); false without a cover.</summary>
     public bool CoverThumbnailsReady { get; set; }
 
-    /// <summary>The cover photo's backing file id, projected so a list row can render its thumbnail
-    /// without a separate per-photo fetch. Null when there is no cover (or it resolved to nothing).</summary>
-    public Guid? CoverFileId { get; set; }
-
     public DateTime? Archived { get; set; }
 
     [StringLength(255)]

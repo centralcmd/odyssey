@@ -810,24 +810,22 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(deadline, cancellationToken);
 
-        var source = await context.Photos
-            .Where(p => p.PhotoId == claimed.PhotoId)
-            .Join(context.FileMetadata, p => p.FileId, f => f.Id, (p, f) => new { p.FileId, f.ContentType, f.FileName })
-            .FirstOrDefaultAsync(bounded.Token);
-        if (source is null)
+        // The original by photo id, whichever backend holds it, with the effective file name (issue #428 §3.1, §5.4).
+        var originals = scope.ServiceProvider.GetRequiredService<Originals.PhotoOriginalSource>();
+        var source = await originals.DescribeAsync(claimed.PhotoId, bounded.Token);
+        if (source is not { ContentType: { } contentType, FileName: { } fileName })
         {
             // SourceMissing: the photo or its file has gone, and the job cascades with it.
             return;
         }
 
-        if (PhotoThumbnailLimits.Pin(source.ContentType) is not { } format)
+        if (PhotoThumbnailLimits.Pin(contentType) is not { } format)
         {
             await UnsupportedAsync(claimed, PhotoThumbnailFailure.Type);
             return;
         }
 
-        var reader = scope.ServiceProvider.GetRequiredService<IImageContentReader>();
-        var content = await reader.ReadAllAsync(source.FileId, PhotoThumbnailRecipe.MaxSourceBytes, bounded.Token).WaitAsync(bounded.Token);
+        var content = await originals.ReadAllAsync(claimed.PhotoId, PhotoThumbnailRecipe.MaxSourceBytes, bounded.Token).WaitAsync(bounded.Token);
         if (content is null)
         {
             return;
@@ -868,8 +866,8 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         }
 
         var store = scope.ServiceProvider.GetRequiredService<IObjectStore>();
-        var medium = await PutAsync(store, result.Medium, ThumbnailSize.Medium, bucket, source.FileName, bounded.Token);
-        var small = await PutAsync(store, result.Small, ThumbnailSize.Small, bucket, source.FileName, bounded.Token);
+        var medium = await PutAsync(store, result.Medium, ThumbnailSize.Medium, bucket, fileName, bounded.Token);
+        var small = await PutAsync(store, result.Small, ThumbnailSize.Small, bucket, fileName, bounded.Token);
 
         // The renewal stops before the final save, so the two never race on the run's own row.
         await renewal.CancelAsync();
@@ -950,7 +948,7 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
                     if (row.StoredObjectId != storedObject.Id
                         && await context.StoredObjects.FirstOrDefaultAsync(o => o.Id == row.StoredObjectId, cancellationToken) is { State: StoredObjectState.Committed } replaced)
                     {
-                        store.StageRelease(replaced, immediate: true);
+                        store.StageRelease(replaced);
                     }
 
                     row.StoredObjectId = storedObject.Id;
@@ -1021,7 +1019,7 @@ public sealed class PhotoThumbnailJob : IPeriodicJob, IDisposable
         {
             if (storedObject.State == StoredObjectState.Committed)
             {
-                store.StageRelease(storedObject, immediate: true);
+                store.StageRelease(storedObject);
             }
         }
     }

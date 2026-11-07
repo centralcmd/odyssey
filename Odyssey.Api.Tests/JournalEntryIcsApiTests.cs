@@ -36,10 +36,11 @@ public class JournalEntryIcsApiTests
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
     ];
 
+    // Photo links need photos.read since issue #428 §3.3; attachments still need files.read.
     private static readonly string[] ReadWriteWithFiles =
     [
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate,
-        PermissionClaims.JournalUpdate, PermissionClaims.FilesRead,
+        PermissionClaims.JournalUpdate, PermissionClaims.FilesRead, PermissionClaims.PhotosRead,
     ];
 
     private static readonly string[] ReadWriteWithContacts =
@@ -121,12 +122,12 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_Entry_EmitsVJournal_WithAllFields()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead]).ToArray());
+        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
         using var client = factory.CreateClient();
         var tagId = await SeedJournalTagAsync(factory, "Travel");
         var cpUid = "urn:uuid:cp-acme";
         var cpId = await SeedContactAsync(factory, "Acme", cpUid);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         var pdfId = await SeedFileAsync(factory, "notes.pdf", "application/pdf");
 
         var created = await CreateAsync(client, NewEntry(
@@ -136,7 +137,7 @@ public class JournalEntryIcsApiTests
             entryDate: new DateTime(2026, 7, 30, 0, 0, 0, DateTimeKind.Utc),
             tagIds: [tagId],
             contactIds: [cpId],
-            photoFileIds: [imageId],
+            photoIds: [imageId],
             attachmentFileIds: [pdfId]));
 
         var body = await (await client.GetAsync(IcsPath)).Content.ReadAsStringAsync();
@@ -234,10 +235,10 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportFiltered_ByAttachmentPresence_ReturnsMatchingSet()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead]).ToArray());
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
-        var withPhoto = await CreateAsync(client, NewEntry("Trip", photoFileIds: [imageId]));
+        var withPhoto = await CreateAsync(client, NewEntry("Trip", photoIds: [imageId]));
         await CreateAsync(client, NewEntry("Grocery run"));
 
         var body = await (await client.GetAsync($"{IcsPath}?hasPhotos=true")).Content.ReadAsStringAsync();
@@ -640,11 +641,11 @@ public class JournalEntryIcsApiTests
     }
 
     [Fact]
-    public async Task Import_PhotoImage_WithFilesRead_LinksIt()
+    public async Task Import_PhotoReference_WithPhotosRead_LinksIt()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
-        var imageId = await SeedFileAsync(factory, "pic.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "pic.jpg");
 
         var ics = Vcalendar(Vjournal("ph1", "SUMMARY:With photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             $"ATTACH:odyssey-photo:{imageId}"));
@@ -655,6 +656,55 @@ public class JournalEntryIcsApiTests
         using var scope = factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.Single((await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos);
+    }
+
+    /// <summary>
+    /// Issue #428 §3.3: an old export names a photo by the file it wrapped. That id still resolves — through the
+    /// legacy photo's current FileId, and after the backfill through its LegacyFileId.
+    /// </summary>
+    [Fact]
+    public async Task Import_PhotoReferenceByLegacyOrBackfilledFileId_ResolvesToThePhoto()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var (legacyPhoto, legacyFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "legacy.jpg");
+        var (movedPhoto, movedFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "moved.jpg");
+        using (var scope = factory.Services.CreateScope())
+        {
+            // What the backfill leaves behind: the old file id kept, no file any more (the original is irrelevant here).
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var moved = await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto);
+            moved.LegacyFileId = movedFile;
+            moved.FileId = null;
+            await context.SaveChangesAsync();
+        }
+
+        var ics = Vcalendar(Vjournal("ph-legacy", "SUMMARY:Old export", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            $"ATTACH:odyssey-photo:{legacyFile}", $"ATTACH:odyssey-photo:{movedFile}"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(0, result.SkippedPhotoCount);
+        using var assertScope = factory.Services.CreateScope();
+        var ctx = assertScope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var linked = (await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos.Select(p => p.PhotoId).ToHashSet();
+        Assert.Equal(new HashSet<Guid> { legacyPhoto, movedPhoto }, linked);
+    }
+
+    /// <summary>Issue #428 §3.3: an image file no photo wraps is skipped and counted — the import never creates a photo.</summary>
+    [Fact]
+    public async Task Import_ImageFileNoPhotoWraps_IsSkipped_AndNoPhotoIsCreated()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var imageFile = await SeedFileAsync(factory, "receipt.jpg", "image/jpeg");
+
+        var ics = Vcalendar(Vjournal("ph-file", "SUMMARY:A file", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            $"ATTACH:odyssey-photo:{imageFile}"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(1, result.SkippedPhotoCount);
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos);
     }
 
     [Fact]
@@ -806,10 +856,10 @@ public class JournalEntryIcsApiTests
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
-        var imgA = await SeedFileAsync(factory, "a.jpg", "image/jpeg");
-        var imgB = await SeedFileAsync(factory, "b.jpg", "image/jpeg");
-        var created = await CreateAsync(client, NewEntry("Gallery", photoFileIds: [imgA, imgB]));
-        Assert.Equal(imgA, created.Photos.OrderBy(p => p.Position).First().FileId);
+        var imgA = await SeedPhotoAsync(factory, "a.jpg");
+        var imgB = await SeedPhotoAsync(factory, "b.jpg");
+        var created = await CreateAsync(client, NewEntry("Gallery", photoIds: [imgA, imgB]));
+        Assert.Equal(imgA, created.Photos.OrderBy(p => p.Position).First().PhotoId);
 
         // Re-import the same entry with the two photos in reverse order → Position must re-sequence
         // (B→0, A→1) over the existing library Photo links, not create new ones.
@@ -821,9 +871,9 @@ public class JournalEntryIcsApiTests
         var reloaded = await GetAsync(client, created.JournalEntryId);
         var ordered = reloaded.Photos.OrderBy(p => p.Position).ToList();
         Assert.Equal(2, ordered.Count);
-        Assert.Equal(imgB, ordered[0].FileId);
+        Assert.Equal(imgB, ordered[0].PhotoId);
         Assert.Equal(0, ordered[0].Position);
-        Assert.Equal(imgA, ordered[1].FileId);
+        Assert.Equal(imgA, ordered[1].PhotoId);
         Assert.Equal(1, ordered[1].Position);
     }
 
@@ -1115,7 +1165,7 @@ public class JournalEntryIcsApiTests
         DateTime? entryDate = null,
         Guid[]? tagIds = null,
         Guid[]? contactIds = null,
-        Guid[]? photoFileIds = null,
+        Guid[]? photoIds = null,
         Guid[]? attachmentFileIds = null) => new()
     {
         Title = title,
@@ -1124,7 +1174,7 @@ public class JournalEntryIcsApiTests
         Location = location,
         TagIds = tagIds ?? [],
         ContactIds = contactIds ?? [],
-        PhotoFileIds = photoFileIds ?? [],
+        PhotoIds = photoIds ?? [],
         AttachmentFileIds = attachmentFileIds ?? [],
     };
 
@@ -1219,6 +1269,9 @@ public class JournalEntryIcsApiTests
         await context.SaveChangesAsync();
         return id;
     }
+
+    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
 
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
     {

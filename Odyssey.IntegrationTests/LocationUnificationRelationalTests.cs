@@ -446,7 +446,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
     {
         var files = new FileLookup(context);
         return new JournalEntryService(
-            context, new ContactLookup(context), files, new PhotoLookup(context, files, null!), new StubJournalLimitsLookup());
+            context, new ContactLookup(context), files, new PhotoLookup(context), new StubJournalLimitsLookup());
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────────

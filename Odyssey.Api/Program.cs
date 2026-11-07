@@ -1,4 +1,5 @@
 using Odyssey.Core.Journal.Thumbnails;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Api;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
@@ -322,6 +323,8 @@ builder.Services.AddFileAnalysisRateLimiter(builder.Configuration);
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
 // The background-jobs manual run's per-user limit (issue #409 §3.5). Same composition rules.
 builder.Services.AddBackgroundJobsRateLimiter(builder.Configuration);
+// The photo upload's per-user limit (issue #428 §7.9). Same composition rules.
+builder.Services.AddPhotoUploadRateLimiter(builder.Configuration);
 
 // The location map's basemap (issue #370): deploy-time, validated at start-up, served by MapStylesController.
 builder.Services.AddMapStyles(builder.Configuration);
@@ -455,7 +458,7 @@ builder.Services.AddScoped<Odyssey.Core.Journal.TaskIcsService>();
 
 // Photos module (issue #321), now part of the merged OdysseyContext; consumes the Finance lookups above and
 // the bounded image-content reader for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
-// surface the Journal module uses to link/find-or-create library photos. Gated by claims only.
+// read surface the Journal module uses to link library photos. Gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Finance.IImageContentReader, Odyssey.Core.Finance.ImageContentReader>();
 builder.Services.AddSingleton<Odyssey.Core.Journal.IPhotoMetadataExtractor, Odyssey.Core.Journal.PhotoMetadataExtractor>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoMetadataService>();
@@ -553,6 +556,9 @@ builder.Services.AddFileStorage();
 // Photo thumbnails (issue #362): the storage feature, the service the photo paths use and the rename observer. The
 // job and the decoder are the worker's alone; nothing here decodes an image.
 builder.Services.AddPhotoThumbnails();
+// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer. The
+// backfill that moves legacy originals out of FileBlob runs in the worker.
+builder.Services.AddPhotoOriginals();
 
 builder.Services.AddScoped<AdminFileExportService>();
 

@@ -1,3 +1,4 @@
+using Odyssey.Core.Journal.Originals;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
@@ -46,6 +47,10 @@ public static class WorkerHost
         // Photo thumbnails (issue #362): the job and the Magick.NET decoder run here and nowhere else. A failing
         // self-test or volume holds this job alone (it reports PolicyFailed or StorageUnavailable); the others run on.
         services.AddPhotoThumbnails();
+        // Photo originals (issue #428): the content source the thumbnail job reads through, and the backfill that moves
+        // legacy originals out of FileBlob. The lease elects one runner per tick across replicas.
+        services.AddPhotoOriginals();
+        services.AddPeriodicJob<PhotoOriginalBackfillJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();

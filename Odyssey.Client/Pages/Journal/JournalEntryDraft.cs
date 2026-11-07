@@ -57,11 +57,11 @@ public sealed class JournalEntryDraft
 }
 
 /// <summary>
-/// A photo on a draft entry: its stored file (the server finds or creates the library photo), a label, and — when the
-/// library photo is known — its id and thumbnail readiness, so the form strip can show the Small thumbnail (issue
-/// #365 B2). A stale true costs one 404 and falls back to the original.
+/// A photo on a draft entry: its library photo (uploaded through the photo API first, issue #428), a label, and its
+/// thumbnail readiness, so the form strip can show the Small thumbnail (issue #365 B2). A stale true costs one 404 and
+/// falls back to the original.
 /// </summary>
-public sealed record JournalDraftPhoto(Guid FileId, string Name, Guid? PhotoId = null, bool ThumbnailsReady = false);
+public sealed record JournalDraftPhoto(Guid PhotoId, string Name, bool ThumbnailsReady = false);
 
 /// <summary>
 /// The one builder per journal write DTO (issue #383 §5.2). The server's <c>PUT</c> is a full replacement and
@@ -78,7 +78,7 @@ public static class JournalWrite
     /// <summary>The single construction of <see cref="NewJournalEntry"/> in the client.</summary>
     public static NewJournalEntry New(
         string title, string content, DateTime entryDate, string? details, Guid[] tagIds, Guid[] contactIds,
-        Guid[] photoFileIds, Guid[] attachmentFileIds, LocationLink link) => new()
+        Guid[] photoIds, Guid[] attachmentFileIds, LocationLink link) => new()
     {
         Title = title,
         Content = content,
@@ -87,14 +87,14 @@ public static class JournalWrite
         LocationId = link.Id,
         TagIds = tagIds,
         ContactIds = contactIds,
-        PhotoFileIds = photoFileIds,
+        PhotoIds = photoIds,
         AttachmentFileIds = attachmentFileIds,
     };
 
     /// <summary>The single construction of <see cref="UpdateJournalEntry"/> in the client.</summary>
     public static UpdateJournalEntry Update(
         string title, string content, DateTime entryDate, string? details, bool archived, Guid[] tagIds, Guid[] contactIds,
-        Guid[] photoFileIds, Guid[] attachmentFileIds, LocationLink link) => new()
+        Guid[] photoIds, Guid[] attachmentFileIds, LocationLink link) => new()
     {
         Title = title,
         Content = content,
@@ -104,7 +104,7 @@ public static class JournalWrite
         Archived = archived,
         TagIds = tagIds,
         ContactIds = contactIds,
-        PhotoFileIds = photoFileIds,
+        PhotoIds = photoIds,
         AttachmentFileIds = attachmentFileIds,
     };
 
@@ -115,7 +115,7 @@ public static class JournalWrite
         string.IsNullOrWhiteSpace(d.Location) ? null : d.Location.Trim(),
         ToGuids(d.TagIds),
         ToGuids(d.ContactIds),
-        [.. d.Photos.Select(p => p.FileId)],
+        [.. d.Photos.Select(p => p.PhotoId)],
         [.. d.Attachments.Select(a => a.Id)],
         link);
 
@@ -127,7 +127,7 @@ public static class JournalWrite
         archived,
         ToGuids(d.TagIds),
         ToGuids(d.ContactIds),
-        [.. d.Photos.Select(p => p.FileId)],
+        [.. d.Photos.Select(p => p.PhotoId)],
         [.. d.Attachments.Select(a => a.Id)],
         link);
 
@@ -141,7 +141,7 @@ public static class JournalWrite
         archived,
         [.. e.TagIds],
         [.. e.ContactIds],
-        [.. e.Photos.OrderBy(p => p.Position).Select(p => p.FileId)],
+        [.. e.Photos.OrderBy(p => p.Position).Select(p => p.PhotoId)],
         [.. e.Attachments.Select(a => a.FileId)],
         LocationLink.Keep(e.LocationId));
 

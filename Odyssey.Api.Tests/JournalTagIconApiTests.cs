@@ -166,11 +166,10 @@ public class JournalTagIconApiTests
         var trip = await SeedTagAsync(factory, kind, "Trip", "beach_access");
         var art = await SeedTagAsync(factory, kind, "art", null);
         var auto = await SeedTagAsync(factory, kind, "Auto", "directions_car");
-        var fileId = kind == Kind.Photo ? await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId) : Guid.Empty;
         using var client = factory.CreateClient();
 
         // POST: Trip and art — art sorts first but has no icon, so Trip's icon wins.
-        var post = await client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, fileId, [trip, art]));
+        var post = await PostRecordAsync(client, kind, [trip, art]);
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
         var created = await RecordOf(post);
         Assert.Equal("beach_access", created.DisplayIcon);
@@ -211,10 +210,9 @@ public class JournalTagIconApiTests
     public async Task An_untagged_record_has_the_default_display_icon_on_the_wire(Kind kind)
     {
         await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
-        var fileId = kind == Kind.Photo ? await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId) : Guid.Empty;
         using var client = factory.CreateClient();
 
-        var post = await client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, fileId, []));
+        var post = await PostRecordAsync(client, kind, []);
 
         Assert.Equal(TagIcons.Default, (await RecordOf(post)).DisplayIcon);
         Assert.Equal(TagIcons.Default, (await ListAsync(client, kind)).DisplayIcon);
@@ -227,9 +225,8 @@ public class JournalTagIconApiTests
         await using var factory = new OdysseyApiFactory(RecordAdmin(kind), ActorUserId);
         var bills = await SeedTagAsync(factory, kind, "Bills", "receipt_long");
         var food = await SeedTagAsync(factory, kind, "Food", "restaurant");
-        var fileId = kind == Kind.Photo ? await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId) : Guid.Empty;
         using var client = factory.CreateClient();
-        var created = await RecordOf(await client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, fileId, [bills, food])));
+        var created = await RecordOf(await PostRecordAsync(client, kind, [bills, food]));
         Assert.Equal("receipt_long", created.DisplayIcon);
 
         await RenameTagAsync(factory, kind, food, "Apples");
@@ -250,10 +247,9 @@ public class JournalTagIconApiTests
                 services.AddSingleton<IPhotoMetadataExtractor>(new StubPhotoMetadataExtractor(new PhotoMetadata { Keywords = ["Zebra"] }));
             });
         var trip = await SeedTagAsync(factory, Kind.Photo, "Trip", "beach_access");
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
-        var created = await RecordOf(await client.PostAsJsonAsync(RecordPath(Kind.Photo), CreateBody(Kind.Photo, fileId, [trip])));
+        var created = await RecordOf(await PostRecordAsync(client, Kind.Photo, [trip]));
 
         Assert.Equal(2, created.TagIds.Count);
         Assert.Equal(trip, created.TagIds[0]);
@@ -299,6 +295,12 @@ public class JournalTagIconApiTests
         Kind.Task => [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
         _ => [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.FilesRead],
     };
+
+    // A photo is uploaded as multipart since issue #428; the other kinds post JSON.
+    private static Task<HttpResponseMessage> PostRecordAsync(HttpClient client, Kind kind, Guid[] tagIds) =>
+        kind == Kind.Photo
+            ? PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = tagIds })
+            : client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, Guid.Empty, tagIds));
 
     private static object CreateBody(Kind kind, Guid fileId, Guid[] tagIds) => kind switch
     {
@@ -387,10 +389,8 @@ public class JournalTagIconApiTests
                 context.JournalTasks.Add(task);
                 break;
             default:
-                var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
-                var photo = new Photo { FileId = fileId, CreatedAt = now, UpdatedAt = now };
+                var (photo, _) = Odyssey.Testing.FileStorage.PhotoTestData.StageLegacyPhoto(context, userId: ActorUserId, createdAt: now);
                 photo.Tags.Add(new PhotoTagLink { PhotoTagId = tagId });
-                context.Photos.Add(photo);
                 break;
         }
 

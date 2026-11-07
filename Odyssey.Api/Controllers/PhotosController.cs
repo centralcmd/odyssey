@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Api.Identity;
 using Odyssey.Dtos.Authorization;
@@ -9,6 +10,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Journal;
@@ -24,24 +26,24 @@ public sealed class PhotosController : ControllerBase
 {
     private readonly ILogger<PhotosController> logger;
     private readonly PhotoService service;
-    private readonly FileService files;
     private readonly IUserDisplayNameResolver displayNames;
     private readonly PhotoThumbnailService thumbnails;
+    private readonly PhotoOriginalSource originals;
     private readonly IObjectStore store;
 
     public PhotosController(
         ILogger<PhotosController> logger,
         PhotoService service,
-        FileService files,
         IUserDisplayNameResolver displayNames,
         PhotoThumbnailService thumbnails,
+        PhotoOriginalSource originals,
         IObjectStore store)
     {
         this.logger = logger;
         this.service = service;
-        this.files = files;
         this.displayNames = displayNames;
         this.thumbnails = thumbnails;
+        this.originals = originals;
         this.store = store;
     }
 
@@ -123,6 +125,51 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
         return File(content.Content, "image/webp", lastModified: null, entityTag: etag);
     }
 
+    [HttpGet("{id}/content", Name = "GetPhotoContent")]
+    [Authorize(Policy = PermissionClaims.PhotosRead)]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status206PartialContent)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Stream a photo's original, from the object store or (not yet moved) its legacy file.",
+        Description = @"Served inline under photos.read with nosniff, CORP same-site, a strong ETag (the SHA-256) and range
+processing; private, no-cache, so revalidation costs one 304 with no body (issue #428 §5.2).")]
+    public async Task<IActionResult> GetContent(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
+    {
+        // Metadata only first: a conditional request never opens the file.
+        if (await originals.DescribeAsync(id, cancellationToken) is not { Sha256Hash: { } hash })
+        {
+            return this.NotFoundProblem($"Photo ID {id} not found.");
+        }
+
+        Response.Headers.CacheControl = "private, no-cache";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        // same-site, not same-origin: CORP compares the port too, and the dev stack's client and API differ in it.
+        Response.Headers["Cross-Origin-Resource-Policy"] = "same-site";
+
+        var etag = new EntityTagHeaderValue($"\"{hash}\"");
+        if (IfNoneMatches(etag))
+        {
+            Response.Headers.ETag = etag.ToString();
+            return StatusCode(StatusCodes.Status304NotModified);
+        }
+
+        if (await originals.OpenAsync(id, cancellationToken) is not { } content)
+        {
+            return this.NotFoundProblem($"Photo ID {id} not found.");
+        }
+
+        // Built by the framework, never by hand: a stored name holding a quote, CR/LF or non-ASCII text cannot break
+        // the header (issue #247).
+        var disposition = new ContentDispositionHeaderValue("inline");
+        disposition.SetHttpFileName(content.FileName);
+        Response.Headers.ContentDisposition = disposition.ToString();
+
+        return File(content.Content, content.ContentType, lastModified: null, entityTag: etag, enableRangeProcessing: true);
+    }
+
     private bool IfNoneMatches(EntityTagHeaderValue etag)
     {
         var candidates = Request.GetTypedHeaders().IfNoneMatch;
@@ -150,30 +197,60 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
 
     [HttpPost(Name = "PostPhoto")]
     [Authorize(Policy = PermissionClaims.PhotosCreate)]
+    [Consumes("multipart/form-data")]
+    [EnableRateLimiting(PhotoUploadRateLimiting.UploadPolicy)]
+    // No per-request [UploadSizeLimit]: under it the multipart reader refuses a file just over the admin cap inside
+    // model binding, which surfaces as a 400 with no cap in it. The transport ceiling (FileStorage:MaxFileSizeBytes,
+    // fixed at startup) still bounds the body; the service checks the admin cap and answers 413 naming it (#428 §5.1).
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingPhoto))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status415UnsupportedMediaType, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Create a library photo from an image file; runs EXIF/IPTC/XMP extraction.")]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Upload a photo: writes the original to the photo store and creates the library photo.",
+        Description = @"multipart/form-data: the image as part 'file', plus the optional NewPhotoUpload fields. Runs
+EXIF/IPTC/XMP extraction. 409 photo-duplicate when the same bytes are already a photo (issue #428 §5.1).")]
     public async Task<IActionResult> Post(
-        [FromBody] NewPhoto request, CancellationToken cancellationToken = default)
+        IFormFile? file,
+        [FromForm] NewPhotoUpload request,
+        CancellationToken cancellationToken = default)
     {
+        if (file is null)
+        {
+            return this.BadRequestProblem("A photo file is required.");
+        }
+
         if (User.ActingUserId() is not { } userId)
         {
             return this.MissingUserProblem();
         }
 
-        // A photo always links a Files-store image, so creating one requires files.read (mirrors the
-        // Journal file-link guard). Auto-creating tags from extracted keywords additionally needs
-        // photos.tags.create; absent it, only existing keyword tags are linked (§7/§10.6).
-        if (!User.HasPermission(PermissionClaims.FilesRead))
+        try
         {
-            return this.ForbiddenProblem("Linking a file requires the files.read permission.");
+            // Auto-creating tags from extracted keywords needs photos.tags.create; absent it, only existing keyword
+            // tags are linked (§7/§10.6).
+            var created = await service.UploadAsync(
+                file.ToFileUpload(), request, userId, User.HasPermission(PermissionClaims.PhotoTagsCreate), cancellationToken);
+            await EnrichAsync(created, cancellationToken);
+            return CreatedAtRoute("GetPhoto", new { id = created.PhotoId }, created);
         }
-
-        var created = await service.Create(request, userId, User.HasPermission(PermissionClaims.PhotoTagsCreate), cancellationToken);
-        await EnrichAsync(created, cancellationToken);
-        return CreatedAtRoute("GetPhoto", new { id = created.PhotoId }, created);
+        catch (DuplicatePhotoException duplicate)
+        {
+            // Claim-conditional (issue #428 §5.1, §7.7): which photo it is goes only to a caller who may read photos.
+            return User.HasPermission(PermissionClaims.PhotosRead)
+                ? this.ConflictProblem(duplicate.Message, new Dictionary<string, object?>
+                {
+                    ["code"] = duplicate.Code,
+                    ["existingPhotoId"] = duplicate.ExistingPhotoId,
+                    ["existingArchived"] = duplicate.ExistingArchived,
+                })
+                : this.ConflictProblem(duplicate.Message, new Dictionary<string, object?> { ["code"] = duplicate.Code });
+        }
     }
 
     [HttpPut("{id}", Name = "PutPhoto")]
@@ -192,44 +269,15 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
             return this.MissingUserProblem();
         }
 
-        // Renaming the backing file is a Files-store write, so it requires files.update — the same claim
-        // the Files page's rename enforces. Check before applying anything so the photo update isn't
-        // half-committed. A blank/omitted FileName leaves the file name untouched.
-        var wantsRename = !string.IsNullOrWhiteSpace(request.FileName);
-        if (wantsRename && !User.HasPermission(PermissionClaims.FilesUpdate))
-        {
-            return this.ForbiddenProblem("Renaming the backing file requires the files.update permission.");
-        }
-
-        // Sanitize before the photo update commits, for the same half-commit reason (issue #247): a
-        // name with nothing left after sanitization is refused here rather than after the photo saved.
-        var newFileName = wantsRename ? files.SanitizeRenamedFileName(request.FileName!) : null;
-
+        // A rename is photo data since issue #428 §5.4: the service writes Photo.FileName under photos.update alone.
         var updated = await service.Update(id, request, userId, cancellationToken);
         if (updated is null)
         {
             return this.NotFoundProblem($"Photo ID {id} not found.");
         }
 
-        if (newFileName is not null)
-        {
-            await RenameBackingFileAsync(updated.FileId, newFileName, cancellationToken);
-        }
-
         await EnrichAsync(updated, cancellationToken);
         return Ok(updated);
-    }
-
-    // Rename the photo's Files-store record in place, preserving its description (UpdateFileMetadataAsync
-    // rewrites description too, so pass the current value through). No-op when the name is unchanged.
-    private async Task RenameBackingFileAsync(Guid fileId, string newName, CancellationToken cancellationToken)
-    {
-        var meta = await files.GetFileMetadataAsync(fileId, cancellationToken);
-        if (meta is not null && !string.Equals(meta.FileName, newName, StringComparison.Ordinal))
-        {
-            await files.UpdateFileMetadataAsync(
-                fileId, new UpdateFileMetadataRequest { Description = meta.Description, FileName = newName }, cancellationToken);
-        }
     }
 
     [HttpDelete("{id}", Name = "DeletePhoto")]
@@ -237,24 +285,22 @@ alike. Served inline with a strong ETag and private, no-cache, so revalidation c
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Permanently delete a library photo and the file it wraps. "
-        + "Returns 409 when that file is also attached elsewhere, naming the other holders.")]
+    [SwaggerOperation(Summary = "Permanently delete a library photo; its original and thumbnails are released after "
+        + "the deletion grace. A legacy photo (not yet moved to the photo store) deletes the file it wraps, and returns "
+        + "409 when that file is also attached elsewhere, naming the other holders.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         return await service.Delete(id, cancellationToken) ? NoContent() : this.NotFoundProblem($"Photo ID {id} not found.");
     }
 
-    // Enrich the read model with data owned by other domains: author display names (identity) and the
-    // backing file's name (Files store). Both are resolved at the API edge on the single-photo reads.
+    // Enrich the read model with author display names (identity), resolved at the API edge on the single-photo reads.
+    // The file name is the photo's own effective name, filled by the service (issue #428 §5.4).
     private async Task EnrichAsync(ExistingPhoto photo, CancellationToken cancellationToken)
     {
         var names = await displayNames.ResolveAsync(User, [photo.CreatedByUserId, photo.UpdatedByUserId], cancellationToken);
         photo.CreatedByName = names.NameForAuthor(photo.CreatedByUserId);
         photo.UpdatedByName = names.NameForOptional(photo.UpdatedByUserId);
-
-        var meta = await files.GetFileMetadataAsync(photo.FileId, cancellationToken);
-        photo.FileName = meta?.FileName;
     }
 
 }

@@ -3387,6 +3387,11 @@ namespace Odyssey.Context.Migrations
                     b.Property<double?>("CapturedLongitude")
                         .HasColumnType("double");
 
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -3396,7 +3401,14 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Favourited")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid>("FileId")
+                    b.Property<Guid?>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<Guid?>("LegacyFileId")
                         .HasColumnType("char(36)");
 
                     b.Property<string>("LocationName")
@@ -3408,6 +3420,18 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<int?>("PixelWidth")
                         .HasColumnType("int");
+
+                    b.Property<string>("Sha256Hash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("StoredObjectId")
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime?>("TakenAt")
                         .HasColumnType("datetime(6)");
@@ -3431,13 +3455,26 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("FileId")
                         .IsUnique();
 
+                    b.HasIndex("LegacyFileId")
+                        .IsUnique();
+
+                    b.HasIndex("StoredObjectId")
+                        .IsUnique();
+
                     b.HasIndex("TakenAt");
 
                     b.HasIndex("UpdatedByUserId");
 
                     b.HasIndex("Archived", "TakenAt");
 
-                    b.ToTable("Photos");
+                    b.HasIndex("Sha256Hash", "SizeBytes");
+
+                    b.ToTable("Photos", t =>
+                        {
+                            t.HasCheckConstraint("CK_Photos_ExactlyOneSource", "(`FileId` IS NULL) <> (`StoredObjectId` IS NULL)");
+
+                            t.HasCheckConstraint("CK_Photos_OriginalComplete", "`StoredObjectId` IS NULL OR (`FileName` IS NOT NULL AND `ContentType` IS NOT NULL AND `SizeBytes` IS NOT NULL AND `Sha256Hash` IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.PhotoAlbum", b =>
@@ -3522,6 +3559,96 @@ namespace Odyssey.Context.Migrations
                         .IsUnique();
 
                     b.ToTable("PhotoAlbumItems");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillFailure", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PhotoId");
+
+                    b.ToTable("PhotoOriginalBackfillFailures", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large')");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillLease", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("ConsecutiveEnvironmentalFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CopiedSharedCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("HolderId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("LastRunAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PhotoOriginalBackfillLeases", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBackfillLeases_Singleton", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            ConsecutiveEnvironmentalFailures = 0,
+                            CopiedSharedCount = 0,
+                            Version = new Guid("8a1e6f2c-0b4d-4c7a-9e35-71d2c8f04b96")
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBucket", b =>
+                {
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentBucket")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosWritten")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Year");
+
+                    b.ToTable("PhotoOriginalBuckets", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBuckets_CurrentBucketPositive", "`CurrentBucket` >= 1");
+
+                            t.HasCheckConstraint("CK_PhotoOriginalBuckets_PhotosWrittenRange", "`PhotosWritten` BETWEEN 0 AND 10000");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.PhotoPerson", b =>
@@ -6736,8 +6863,12 @@ namespace Odyssey.Context.Migrations
                     b.HasOne("Odyssey.Context.FileMetadata", null)
                         .WithMany()
                         .HasForeignKey("FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("StoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6782,6 +6913,15 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Photo");
 
                     b.Navigation("PhotoAlbum");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillFailure", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.PhotoPerson", b =>

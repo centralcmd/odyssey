@@ -3,16 +3,14 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>
-/// Create request for a library photo (issue #321). The photo wraps one existing Files-store image
-/// referenced by <see cref="FileId"/>; metadata is extracted from the file on add and only fills the
-/// fields the caller leaves null (caller values win). Links are accepted as scalar id arrays only
-/// (§6 mass-assignment guard) — never nested entity objects.
+/// The form fields of a photo upload, <c>POST /api/photos</c> as <c>multipart/form-data</c> (issue #428 §5.1). The
+/// image itself is the separate <c>file</c> part — this type is shared with the WASM client and cannot hold an
+/// <c>IFormFile</c>. Metadata is extracted from the upload and only fills the fields the caller leaves null (caller
+/// values win). Links are scalar id arrays only (§6 mass-assignment guard); there is deliberately no file id: a
+/// photo is never made from an existing file.
 /// </summary>
-public sealed record NewPhoto
+public sealed record NewPhotoUpload
 {
-    [Required]
-    public required Guid FileId { get; set; }
-
     [StringLength(PhotoLimits.MaxTitleLength)]
     public string? Title { get; set; }
 

@@ -132,26 +132,32 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
     /// <summary>
     /// AC 15: every foreign key to <c>StoredObjects</c> belongs to exactly one catalogue feature and is RESTRICT. The
-    /// production model has no feature and must therefore have no such key; the test model has three, one per feature.
+    /// production model has two features — photo thumbnails and photo originals — and exactly their two keys; the test
+    /// model adds one per test feature.
     /// </summary>
     [Fact]
     public void Every_key_to_stored_objects_belongs_to_one_feature_and_is_restrict()
     {
-        // Production: one feature, photo thumbnails (issue #362), and exactly its key.
+        // Production: photo thumbnails (issue #362) and photo originals (issue #428), and exactly their keys.
         using var production = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-prod").Options);
-        var productionCatalogue = new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature]);
-        Assert.Equal(nameof(PhotoThumbnail), Assert.Single(KeysTo(production.Model)).DeclaringEntityType.ClrType.Name);
+        var productionCatalogue = new StorageFeatureCatalogue(
+            [Journal.Thumbnails.PhotoThumbnailStorage.Feature, Journal.Originals.PhotoOriginalStorage.Feature]);
+        Assert.Equal([nameof(Photo), nameof(PhotoThumbnail)],
+            KeysTo(production.Model).Select(fk => fk.DeclaringEntityType.ClrType.Name).Order());
         Assert.Empty(ReferenceViolations(production.Model, productionCatalogue));
 
         using var test = new TestStorageContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-test").Options);
-        var testCatalogue = new StorageFeatureCatalogue([.. TestStorageFeatures.All, Journal.Thumbnails.PhotoThumbnailStorage.Feature]);
-        Assert.Equal(4, KeysTo(test.Model).Count);
+        var testCatalogue = new StorageFeatureCatalogue(
+            [.. TestStorageFeatures.All, Journal.Thumbnails.PhotoThumbnailStorage.Feature, Journal.Originals.PhotoOriginalStorage.Feature]);
+        Assert.Equal(5, KeysTo(test.Model).Count);
         Assert.Empty(ReferenceViolations(test.Model, testCatalogue));
 
         // And it bites: drop a feature from the catalogue and its key is reported.
         Assert.Single(ReferenceViolations(test.Model, new StorageFeatureCatalogue(
-            [TestStorageFeatures.Files, TestStorageFeatures.Dated, Journal.Thumbnails.PhotoThumbnailStorage.Feature])));
-        Assert.Single(ReferenceViolations(production.Model, new StorageFeatureCatalogue([])));
+            [TestStorageFeatures.Files, TestStorageFeatures.Dated, Journal.Thumbnails.PhotoThumbnailStorage.Feature,
+             Journal.Originals.PhotoOriginalStorage.Feature])));
+        Assert.Single(ReferenceViolations(production.Model, new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature])));
+        Assert.Equal(2, ReferenceViolations(production.Model, new StorageFeatureCatalogue([])).Count);
     }
 
     internal static IReadOnlyList<IForeignKey> KeysTo(IModel model) =>

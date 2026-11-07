@@ -254,9 +254,8 @@ public class JournalEntryIcsService
                 .ToDictionaryAsync(t => t.JournalTagId, t => t.Name, cancellationToken);
 
         var photoIds = entries.SelectMany(e => e.Photos.Select(p => p.PhotoId)).Distinct().ToList();
-        var photoFileIds = photoIds.Count == 0
-            ? new Dictionary<Guid, Guid>()
-            : await photos.ResolveFileIdsAsync(photoIds, cancellationToken);
+        // Issue #428: a photo is written by its own id; import still accepts an old export's file ids.
+        var exportedPhotoIds = await photos.ExistingIdsAsync(photoIds, cancellationToken);
 
         IReadOnlyDictionary<Guid, string>? contactUids = null;
         if (includeContacts)
@@ -271,7 +270,7 @@ public class JournalEntryIcsService
         var ical = new IcalCalendar();
         foreach (var entry in entries)
         {
-            ical.Journals.Add(BuildVJournal(entry, tagNames, photoFileIds, contactUids, placeNames));
+            ical.Journals.Add(BuildVJournal(entry, tagNames, exportedPhotoIds, contactUids, placeNames));
         }
 
         return ical;
@@ -280,7 +279,7 @@ public class JournalEntryIcsService
     private static IcalJournal BuildVJournal(
         JournalEntry entry,
         IReadOnlyDictionary<Guid, string> tagNames,
-        IReadOnlyDictionary<Guid, Guid> photoFileIds,
+        IReadOnlySet<Guid> exportedPhotoIds,
         IReadOnlyDictionary<Guid, string>? contactUids,
         IReadOnlyDictionary<Guid, string> placeNames)
     {
@@ -320,13 +319,13 @@ public class JournalEntryIcsService
             }
         }
 
-        // Photos carry the underlying FileId (the internal PhotoId is instance-local, §9). A link whose
-        // library Photo no longer resolves is dropped, mirroring the read DTO.
+        // Photos carry their PhotoId (issue #428 §3.3; before it, the wrapped FileId). A link whose library Photo no
+        // longer resolves is dropped, mirroring the read DTO.
         foreach (var photo in entry.Photos.OrderBy(p => p.Position))
         {
-            if (photoFileIds.TryGetValue(photo.PhotoId, out var fileId))
+            if (exportedPhotoIds.Contains(photo.PhotoId))
             {
-                journal.Attachments.Add(new Attachment { Uri = new Uri($"{PhotoUriScheme}:{fileId}") });
+                journal.Attachments.Add(new Attachment { Uri = new Uri($"{PhotoUriScheme}:{photo.PhotoId}") });
             }
         }
 
@@ -343,10 +342,10 @@ public class JournalEntryIcsService
     public async Task<JournalEntryIcsImportResult> ImportAsync(
         Stream icsFile, long contentLength, string? contentType, string userId,
         bool canLinkFiles, bool canReadContacts, CancellationToken cancellationToken = default,
-        LocationClaims? claims = null)
+        LocationClaims? claims = null, bool canReadPhotos = false)
     {
         var journals = await ParseJournalsAsync(icsFile, contentLength, contentType, cancellationToken);
-        var lookups = await LoadLookupsAsync(journals, userId, canLinkFiles, canReadContacts, cancellationToken);
+        var lookups = await LoadLookupsAsync(journals, userId, canLinkFiles, canReadPhotos, canReadContacts, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         // One snapshot of each record for the whole import, so a concurrent admin write cannot split
@@ -394,8 +393,7 @@ public class JournalEntryIcsService
             ApplyAttachments(
                 target, journal, canLinkFiles, lookups.ExistingAttachmentIds, now, counts, maxLinksPerKind, skipped);
             ApplyPhotos(
-                target, journal, canLinkFiles, lookups.ImageFileIds, lookups.PhotoIdsByFileId, now, counts,
-                maxLinksPerKind, skipped);
+                target, journal, canReadPhotos, lookups.PhotoIdsByReference, now, counts, maxLinksPerKind, skipped);
         }
 
         var collisions = await SaveWithCollisionHandlingAsync(skipped, places, cancellationToken);
@@ -468,11 +466,10 @@ public class JournalEntryIcsService
         Dictionary<string, Guid> TagIdsByName,
         IReadOnlyDictionary<string, Guid> ContactIdsByUid,
         IReadOnlySet<Guid> ExistingAttachmentIds,
-        IReadOnlySet<Guid> ImageFileIds,
-        IReadOnlyDictionary<Guid, Guid> PhotoIdsByFileId);
+        IReadOnlyDictionary<Guid, Guid> PhotoIdsByReference);
 
     private async Task<ImportLookups> LoadLookupsAsync(
-        List<IcalJournal> journals, string userId, bool canLinkFiles, bool canReadContacts,
+        List<IcalJournal> journals, string userId, bool canLinkFiles, bool canReadPhotos, bool canReadContacts,
         CancellationToken cancellationToken)
     {
         // Match targets by UID → ExternalUid. Only load entries whose (well-formed) UID appears in this file.
@@ -511,16 +508,18 @@ public class JournalEntryIcsService
         var existingAttachmentIds = canLinkFiles && references.AttachmentFileIds.Count > 0
             ? await files.ExistingIdsAsync(references.AttachmentFileIds, cancellationToken)
             : (IReadOnlySet<Guid>)new HashSet<Guid>();
-        var (imageFileIds, photoIdByFileId) = await ResolvePhotoReferencesAsync(
-            references.PhotoFileIds, canLinkFiles, userId, cancellationToken);
+        // Issue #428 §3.3: a reference resolves to an existing photo (by photo id, legacy file id or backfilled file
+        // id) and never creates one. Linking photos needs photos.read.
+        var photoIdByReference = canReadPhotos && references.PhotoFileIds.Count > 0
+            ? await photos.ResolveReferencesAsync(references.PhotoFileIds, cancellationToken)
+            : new Dictionary<Guid, Guid>();
 
         return new ImportLookups(
             existing.ToDictionary(e => e.ExternalUid, StringComparer.Ordinal),
             tagsByName,
             contactIdByUid,
             existingAttachmentIds,
-            imageFileIds,
-            photoIdByFileId);
+            photoIdByReference);
     }
 
     /// <summary>The validated scalar fields of one VJOURNAL block, ready to write onto a row.</summary>
@@ -692,29 +691,6 @@ public class JournalEntryIcsService
             contactUids.ToList(), attachmentFileIds.ToList(), photoFileIds.ToList());
     }
 
-    // Pre-filters referenced photo file ids to image types, then batch find-or-creates library Photos for
-    // them (§5 step 3.7). A non-image or unknown reference is left out of both sets, so the per-block apply
-    // counts it as a skipped photo link rather than reaching PhotoLookup's throw-on-non-image path.
-    private async Task<(IReadOnlySet<Guid> ImageFileIds, IReadOnlyDictionary<Guid, Guid> PhotoIdByFileId)>
-        ResolvePhotoReferencesAsync(
-            IReadOnlyCollection<Guid> photoFileIds, bool canLinkFiles, string userId, CancellationToken cancellationToken)
-    {
-        if (!canLinkFiles || photoFileIds.Count == 0)
-        {
-            return (new HashSet<Guid>(), new Dictionary<Guid, Guid>());
-        }
-
-        var imageFileIds = await files.ExistingImageIdsAsync(photoFileIds.ToList(), cancellationToken);
-        if (imageFileIds.Count == 0)
-        {
-            return (imageFileIds, new Dictionary<Guid, Guid>());
-        }
-
-        var photoIdByFileId = await photos.FindOrCreatePhotoIdsForFilesAsync(
-            imageFileIds.ToList(), userId, cancellationToken);
-        return (imageFileIds, photoIdByFileId);
-    }
-
     // ── Per-block field application ─────────────────────────────────────────────
 
     private static void ApplyLocation(JournalEntry entry, IcalJournal journal, IcsPlaces places)
@@ -825,21 +801,21 @@ public class JournalEntryIcsService
     }
 
     private static void ApplyPhotos(
-        JournalEntry entry, IcalJournal journal, bool canLinkFiles, IReadOnlySet<Guid> imageFileIds,
-        IReadOnlyDictionary<Guid, Guid> photoIdByFileId, DateTime now, LinkSkipCounts counts,
+        JournalEntry entry, IcalJournal journal, bool canReadPhotos,
+        IReadOnlyDictionary<Guid, Guid> photoIdByReference, DateTime now, LinkSkipCounts counts,
         int maxLinksPerKind, ImportSkipCollector skipped)
     {
         var references = SchemedFileIds(journal, PhotoUriScheme);
-        if (!canLinkFiles)
+        if (!canReadPhotos)
         {
             counts.Photos += references.Count;
             return;
         }
 
-        // Not an image (or unknown), or the library Photo couldn't be resolved → skip this link only.
+        // A reference no existing photo answers to → skip this link only; nothing is created (issue #428 §3.3).
         var resolved = ImportLinks.Resolve(
             references,
-            fileId => imageFileIds.Contains(fileId) && photoIdByFileId.TryGetValue(fileId, out var photoId) ? photoId : null,
+            id => photoIdByReference.TryGetValue(id, out var photoId) ? photoId : null,
             maxLinksPerKind,
             onUnresolved: () => counts.Photos++,
             onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Photos++));

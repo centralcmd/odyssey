@@ -300,7 +300,7 @@ public class ContactConversionApiTests
         var org = await PhotoTestSupport.SeedPersonAsync(factory, "Acme", ContactType.Organization);
         using var client = factory.CreateClient();
 
-        var post = await client.PostAsJsonAsync("/api/photos", new NewPhoto { FileId = fileId, PersonContactIds = [person] });
+        var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { PersonContactIds = [person] });
         var photo = (await post.Content.ReadFromJsonAsync<ExistingPhoto>())!;
 
         // The race the spec accepts: the tagged contact became an organization after the tag was written.

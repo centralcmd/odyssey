@@ -88,7 +88,7 @@ public sealed class WorkerHostTests : IDisposable
 
     /// <summary>
     /// Issue #409 AC 22: every periodic job the worker hosts has exactly one run-log catalogue entry, and every entry a
-    /// hosted job — except the run log's own upkeep, declared infrastructure. A job added without an entry would run
+    /// hosted job — except the run log's own upkeep, declared infrastructure, and the declared one-off unrecorded jobs. A job added without an entry would run
     /// invisibly; an entry without a job would read NotTicking forever.
     /// </summary>
     [Fact]
@@ -106,7 +106,7 @@ public sealed class WorkerHostTests : IDisposable
         Assert.Equal(hosted.Count, hosted.Distinct().Count());
         Assert.Equal(catalogued.Count, catalogued.Distinct().Count());
         Assert.Equal(
-            catalogued.Concat(Core.Jobs.JobCatalogue.Infrastructure).OrderBy(type => type.FullName),
+            catalogued.Concat(Core.Jobs.JobCatalogue.Infrastructure).Concat(Core.Jobs.JobCatalogue.Unrecorded).OrderBy(type => type.FullName),
             hosted.OrderBy(type => type.FullName));
         Assert.Contains(typeof(Core.Jobs.JobRunMaintenanceJob), hosted);
         Assert.NotNull(provider.GetRequiredService<Core.Jobs.JobRunRecorder>());

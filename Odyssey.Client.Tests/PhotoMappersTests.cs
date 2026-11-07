@@ -16,7 +16,6 @@ public class PhotoMappersTests
     private static ExistingPhoto SamplePhoto(DateTime? archived = null, DateTime? favourited = null) => new()
     {
         PhotoId = Guid.NewGuid(),
-        FileId = Guid.NewGuid(),
         FileName = "beach.jpg",
         Title = "Beach",
         Caption = "A day out",
@@ -89,7 +88,6 @@ public class PhotoMappersTests
         var s = PhotoMappers.ToSummary(p);
 
         Assert.Equal(p.PhotoId, s.PhotoId);
-        Assert.Equal(p.FileId, s.FileId);
         Assert.Equal(p.Title, s.Title);
         Assert.Equal(p.Archived, s.Archived);
         Assert.Equal(p.Favourited, s.Favourited);
@@ -104,12 +102,10 @@ public class PhotoMappersTests
     public void MinimalSummary_carries_the_ids_and_safe_defaults()
     {
         var photoId = Guid.NewGuid();
-        var fileId = Guid.NewGuid();
 
-        var s = PhotoMappers.MinimalSummary(photoId, fileId);
+        var s = PhotoMappers.MinimalSummary(photoId);
 
         Assert.Equal(photoId, s.PhotoId);
-        Assert.Equal(fileId, s.FileId);
         // Null, not empty: the author is genuinely unknown on this path, and the attribution columns
         // became nullable when they turned into real foreign keys to AspNetUsers. The empty-string
         // placeholder only ever existed because the property used to be `required string`.

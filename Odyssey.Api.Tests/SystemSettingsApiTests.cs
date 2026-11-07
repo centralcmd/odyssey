@@ -546,6 +546,9 @@ public class SystemSettingsApiTests
         return new ClaimsPrincipal(new ClaimsIdentity(claims, "Test"));
     }
 
+    // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
+    // rows), and verifying a volume ensures the store is created.
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
-        : OdysseyApiFactory(permissions, ActorUserId);
+        : OdysseyApiFactory(permissions, ActorUserId,
+            configuration: new Dictionary<string, string?> { [NoPhotoVolumeKey] = "true" });
 }

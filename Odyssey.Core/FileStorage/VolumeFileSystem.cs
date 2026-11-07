@@ -1,3 +1,5 @@
+using System.Runtime.InteropServices;
+
 namespace Odyssey.Core.FileStorage;
 
 /// <summary>
@@ -23,6 +25,49 @@ public static class VolumeFileSystem
     // errno values .NET carries in IOException.HResult on Linux.
     private const int EEXIST = 17;
     private const int ENOSPC = 28;
+
+    // open(2) flags on Linux.
+    private const int O_RDONLY = 0;
+    private const int O_DIRECTORY = 0x10000;
+
+    /// <summary>
+    /// <c>fsync(2)</c> on a directory, so a rename into it is durable (issue #428 §3.4 step 5). .NET has no API for it;
+    /// on a platform other than Linux this is a no-op. A failure is an <see cref="IOException"/>.
+    /// </summary>
+    public static void FlushDirectory(string directoryPath)
+    {
+        if (!OperatingSystem.IsLinux())
+        {
+            return;
+        }
+
+        var fd = NativeOpen(directoryPath, O_RDONLY | O_DIRECTORY);
+        if (fd < 0)
+        {
+            throw new IOException($"Opening a volume folder for fsync failed (errno {Marshal.GetLastPInvokeError()}).");
+        }
+
+        try
+        {
+            if (NativeFsync(fd) != 0)
+            {
+                throw new IOException($"fsync of a volume folder failed (errno {Marshal.GetLastPInvokeError()}).");
+            }
+        }
+        finally
+        {
+            _ = NativeClose(fd);
+        }
+    }
+
+    [DllImport("libc", EntryPoint = "open", SetLastError = true)]
+    private static extern int NativeOpen([MarshalAs(UnmanagedType.LPUTF8Str)] string path, int flags);
+
+    [DllImport("libc", EntryPoint = "fsync", SetLastError = true)]
+    private static extern int NativeFsync(int fd);
+
+    [DllImport("libc", EntryPoint = "close", SetLastError = true)]
+    private static extern int NativeClose(int fd);
 
     /// <summary>
     /// <paramref name="relativePath"/> under <paramref name="rootPath"/>, refusing anything whose full path does not

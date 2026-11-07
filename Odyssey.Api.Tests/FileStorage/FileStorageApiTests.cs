@@ -40,7 +40,7 @@ public class FileStorageApiTests
         Assert.Equal(["archive", "primary"], volumes.Select(v => v.Name));
         var primary = volumes.Single(v => v.Name == "primary");
         Assert.Equal(FileStorageVolumeState.Available, primary.State);
-        Assert.Equal(["PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
+        Assert.Equal(["PhotoOriginals", "PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
         var usage = Assert.Single(primary.Features);
         Assert.Equal("TestFiles", usage.FeatureKey);
         Assert.Equal(1, usage.ObjectCount);
@@ -48,7 +48,7 @@ public class FileStorageApiTests
         Assert.NotNull(primary.FreeBytes);
         Assert.Contains("\"state\":\"Available\"", body, StringComparison.Ordinal);
         // Feature keys are canonical PascalCase on the wire, compared case-sensitively.
-        Assert.Contains("\"boundFeatures\":[\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"boundFeatures\":[\"PhotoOriginals\",\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
         Assert.Contains("\"featureKey\":\"TestFiles\"", body, StringComparison.Ordinal);
 
         Assert.DoesNotContain("/", body.Replace("\\u002F", "/"), StringComparison.Ordinal);
@@ -67,7 +67,16 @@ public class FileStorageApiTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            context.FileStorageMaintenanceLeases.Add(new FileStorageMaintenanceLease { Id = 1, Version = Guid.NewGuid(), LastCompletedAtUtc = completed });
+            // The lease row is seeded (HasData), and a host with volumes ensures the InMemory store is created.
+            var lease = await context.FileStorageMaintenanceLeases.FindAsync((byte)1);
+            if (lease is null)
+            {
+                context.FileStorageMaintenanceLeases.Add(new FileStorageMaintenanceLease { Id = 1, Version = Guid.NewGuid(), LastCompletedAtUtc = completed });
+            }
+            else
+            {
+                lease.LastCompletedAtUtc = completed;
+            }
             await context.SaveChangesAsync();
         }
 
@@ -114,7 +123,8 @@ public class FileStorageApiTests
     [Fact]
     public async Task With_no_volumes_configured_the_store_is_a_no_op_and_the_endpoint_returns_an_empty_list()
     {
-        await using var factory = new OdysseyApiFactory([PermissionClaims.FileStorageRead]);
+        await using var factory = new OdysseyApiFactory([PermissionClaims.FileStorageRead],
+            configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoPhotoVolumeKey] = "true" });
         using var client = factory.CreateClient();
 
         var volumes = await client.GetFromJsonAsync<List<FileStorageVolumeStatus>>(VolumesPath);
@@ -297,10 +307,19 @@ public class FileStorageGraceSettingApiTests
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            context.SystemSettings.Add(new SystemSetting
+            // Seeded (HasData) on a host with volumes, so overwrite the row rather than add a second.
+            var row = await context.SystemSettings.FindAsync(SystemSettingsKeys.FileStorageDeletionGraceHours);
+            if (row is null)
             {
-                Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = stored, UpdatedAt = DateTime.UtcNow,
-            });
+                context.SystemSettings.Add(new SystemSetting
+                {
+                    Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = stored, UpdatedAt = DateTime.UtcNow,
+                });
+            }
+            else
+            {
+                row.Value = stored;
+            }
             await context.SaveChangesAsync();
         }
 

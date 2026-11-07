@@ -60,5 +60,5 @@ public class TagIconProjectionTests
     }
 
     private static PhotoSummary Photo() =>
-        new() { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0 };
+        new() { PhotoId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0 };
 }

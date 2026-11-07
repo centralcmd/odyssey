@@ -560,6 +560,18 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
 
     /// <summary>
+    /// Photo originals on the object store (issue #428): the per-year bucket counter, the backfill's lease and its
+    /// parked failures. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
+    /// </summary>
+    public DbSet<PhotoOriginalBucket> PhotoOriginalBuckets => Set<PhotoOriginalBucket>();
+
+    /// <inheritdoc cref="PhotoOriginalBuckets" />
+    public DbSet<PhotoOriginalBackfillLease> PhotoOriginalBackfillLeases => Set<PhotoOriginalBackfillLease>();
+
+    /// <inheritdoc cref="PhotoOriginalBuckets" />
+    public DbSet<PhotoOriginalBackfillFailure> PhotoOriginalBackfillFailures => Set<PhotoOriginalBackfillFailure>();
+
+    /// <summary>
     /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and
     /// each process's last tick per job. Operational, out of scope for every export. Reach a job's own rows with
     /// <c>Set&lt;TRun&gt;()</c>.

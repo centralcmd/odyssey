@@ -74,9 +74,9 @@
             <ul class="jef-photos">
                 @foreach (var p in Draft.Photos)
                 {
-                    <li class="jef-photo" title="@p.Name" @key="p.FileId">
+                    <li class="jef-photo" title="@p.Name" @key="p.PhotoId">
                         <OdsPhotoImage Source="ImageOf(p)" Alt="" Fill="true" />
-                        <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.FileId)"
+                        <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.PhotoId)"
                                 aria-label="@($"Remove {p.Name}")"
                                 @onclick="@(() => RemovePhoto(p))">
                             <OdsMIcon Name="close" Size="14" />
@@ -115,9 +115,8 @@
 @if (_pickingPhotos)
 {
     <AttachPhotosDialog @bind-Open="_pickingPhotos"
-                        CreateLibraryPhoto="false"
                         Subtitle="Add photos to this entry. Photos stay in your library; adding links them here."
-                        AttachedIds="@([.. Draft.Photos.Select(p => p.FileId)])"
+                        AttachedIds="@([.. Draft.Photos.Select(p => p.PhotoId)])"
                         OnSubmit="StagePhotos" />
 }
 
@@ -173,13 +172,13 @@
 
     private bool _pickingFiles;
     private bool _pickingPhotos;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     protected override async Task OnInitializedAsync() =>
         _imageAccess = PhotoImageAccess.From(await Auth.GetUserAsync());
 
     private PhotoImageSource ImageOf(JournalDraftPhoto p) =>
-        PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+        PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
     // Per-instance, so two forms on one page never share a DOM id.
     private readonly string _uid = Guid.NewGuid().ToString("N")[..8];
@@ -214,9 +213,9 @@
     private void StagePhotos(IReadOnlyList<AttachPhotoItem> items)
     {
         var added = 0;
-        foreach (var item in items.Where(i => Draft.Photos.All(p => p.FileId != i.FileId)))
+        foreach (var item in items.Where(i => Draft.Photos.All(p => p.PhotoId != i.PhotoId)))
         {
-            Draft.Photos.Add(new JournalDraftPhoto(item.FileId, item.Name, item.PhotoId, item.ThumbnailsReady));
+            Draft.Photos.Add(new JournalDraftPhoto(item.PhotoId, item.Name, item.ThumbnailsReady));
             added++;
         }
         if (added > 0)
@@ -231,7 +230,7 @@
             : null;
         Draft.Photos.Remove(photo);
         _announce = $"{photo.Name} removed from the entry.";
-        _focusAfter = [neighbour is null ? null : $"#{PhotoRemoveId(neighbour.FileId)}", $"#jef-add-photos-{_uid} button"];
+        _focusAfter = [neighbour is null ? null : $"#{PhotoRemoveId(neighbour.PhotoId)}", $"#jef-add-photos-{_uid} button"];
     }
 
     private void RemoveAttachment(Guid fileId)

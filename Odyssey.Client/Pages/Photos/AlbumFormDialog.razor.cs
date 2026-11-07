@@ -55,7 +55,7 @@ public partial class AlbumFormDialog
 
     // Thumbnail + label for a photo picked in this session, whose summary the member load never saw.
     private readonly Dictionary<Guid, AttachPhotoItem> _pickedInfo = [];
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
     private bool _pickerOpen;
 
     private int PhotoCount => IsEdit ? _members.Count : _newIds.Count;
@@ -236,7 +236,7 @@ public partial class AlbumFormDialog
     private static string Label(PhotoSummary? s) => s is null ? "Photo" : (string.IsNullOrWhiteSpace(s.Title) ? "Photo" : s.Title!);
     private PhotoImageSource Thumb(PhotoSummary? s) => s is null
         ? PhotoImageSource.None
-        : PhotoImageSources.For(s.PhotoId, s.FileId, s.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+        : PhotoImageSources.For(s.PhotoId, s.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
     // A member picked in this session has no summary yet; its pick carries the file id and a label.
     private string LabelFor(Guid id) =>
@@ -245,7 +245,7 @@ public partial class AlbumFormDialog
     private PhotoImageSource ThumbFor(Guid id) =>
         Summary(id) is { } s ? Thumb(s)
         : _pickedInfo.TryGetValue(id, out var p)
-            ? PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files)
+            ? PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos)
         : PhotoImageSource.None;
 
     private void OpenPicker() => _pickerOpen = true;
@@ -256,7 +256,8 @@ public partial class AlbumFormDialog
         var added = 0;
         foreach (var item in items)
         {
-            if (item.PhotoId is not { } id || target.Contains(id))
+            var id = item.PhotoId;
+            if (target.Contains(id))
                 continue;
             _pickedInfo[id] = item;
             target.Add(id);

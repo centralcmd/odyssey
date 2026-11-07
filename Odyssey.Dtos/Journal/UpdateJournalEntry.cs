@@ -43,7 +43,8 @@ public sealed record UpdateJournalEntry
 
     public Guid[] ContactIds { get; set; } = [];
 
-    public Guid[] PhotoFileIds { get; set; } = [];
+    /// <summary>Library photo ids, in gallery order (issue #428: photos are uploaded through the photo API first).</summary>
+    public Guid[] PhotoIds { get; set; } = [];
 
     public Guid[] AttachmentFileIds { get; set; } = [];
 }

@@ -37,7 +37,6 @@ public static class PhotoMappers
     public static PhotoSummary ToSummary(ExistingPhoto p) => new()
     {
         PhotoId = p.PhotoId,
-        FileId = p.FileId,
         Title = p.Title,
         TakenAt = p.TakenAt,
         LocationName = p.LocationName,
@@ -59,11 +58,19 @@ public static class PhotoMappers
     /// A minimal summary from just the ids — enough for the detail dialog to render the image and
     /// navigate when the full photo can't be fetched (no photos.read, or the photo was since deleted).
     /// </summary>
-    public static PhotoSummary MinimalSummary(Guid photoId, Guid fileId) => new()
+    public static PhotoSummary MinimalSummary(Guid photoId) => new()
     {
         PhotoId = photoId,
-        FileId = fileId,
         PersonCount = 0,
         AlbumCount = 0,
     };
+
+    /// <summary>
+    /// A photo's label (issue #428): its title, else its file name, else <paramref name="fallback"/> — the first that is
+    /// not blank. The one rule every surface labels a photo by.
+    /// </summary>
+    public static string Label(string? title, string? fileName, string fallback = "Photo") =>
+        !string.IsNullOrWhiteSpace(title) ? title!
+        : !string.IsNullOrWhiteSpace(fileName) ? fileName!
+        : fallback;
 }

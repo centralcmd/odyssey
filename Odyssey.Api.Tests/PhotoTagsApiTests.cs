@@ -89,7 +89,7 @@ public class PhotoTagsApiTests
         var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
-        var photo = await client.PostAsJsonAsync("/api/photos", new NewPhoto { FileId = fileId, TagIds = [tagId] });
+        var photo = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = [tagId] });
         photo.EnsureSuccessStatusCode();
 
         var delete = await client.DeleteAsync($"{Path}/{tagId}");

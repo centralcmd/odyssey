@@ -62,7 +62,7 @@ public class AlbumIconColorSurfaceTests
     private static PhotoAlbumSummary Summary(string name, string? icon, string? color, Guid? cover) => new()
     {
         PhotoAlbumId = Guid.NewGuid(), Name = name, PhotoCount = cover is null ? 0 : 1, Icon = icon, Color = color,
-        CoverPhotoId = cover, CoverFileId = cover is null ? null : Guid.NewGuid(),
+        CoverPhotoId = cover,
     };
 
     private static ExistingPhotoAlbum Existing(Guid id, string? icon = "landscape", string? color = Teal) => new()
@@ -187,7 +187,7 @@ public class AlbumIconColorSurfaceTests
         await using var ctx = PageTestContext.Create(Claims);
         var albums = Clients(ctx, out var photos);
         var albumId = Guid.NewGuid();
-        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), Title = "Beach", PersonCount = 0, AlbumCount = 1 };
+        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), Title = "Beach", PersonCount = 0, AlbumCount = 1 };
         var existing = Existing(albumId) with { PhotoIds = [photo.PhotoId] };
         albums.Setup(a => a.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<PhotoAlbumSummary>>.Success([Summary("Lofoten", "landscape", Teal, null) with { PhotoAlbumId = albumId }], HttpStatusCode.OK));

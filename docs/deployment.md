@@ -1427,7 +1427,7 @@ defect (`Odyssey.Worker.Tests` compares the two compose blocks).
 | Variable | Meaning |
 |---|---|
 | `FileStorage__Volumes__<name>__RootPath` | An absolute path to an **existing** directory. `<name>` is letters and digits, starting with a letter (`primary`, `fastssd`). |
-| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind `PhotoThumbnails`, the one feature, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
+| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind both features, `PhotoOriginals` and `PhotoThumbnails`, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
 
 Several features may share one volume: each writes under its own folder. Volume names and feature keys
 are matched case-insensitively. Inside a volume, files sit under their sanitized original names
@@ -1544,7 +1544,10 @@ the worker's **hourly maintenance job**:
   volume after the database dump still contains every file the dump references. Removal happens within
   grace + 2 hours: ≤ 26 h at the default, ≤ 170 h at the maximum.
 - **Personal data** — features declared *Immediate*, and any delete driven by erasure such as an account
-  deletion — skips the grace and is removed within **2 hours**.
+  deletion — skips the grace and is removed within **2 hours**. Since issue #428 no shipped feature is
+  *Immediate*: photo originals and thumbnails both wait for the grace, so a deleted photo's bytes stay on
+  disk for up to grace + 2 hours. For a data subject's erasure request that cannot wait, see
+  [Photo originals → Erasure](#erasure-of-a-photo-original).
 - A stored grace that cannot be used (unparseable, `0`, out of range) makes the job use **168 h** and log a
   Warning; the settings page shows the row as faulted. Fix the value at `/settings`.
 
@@ -1801,6 +1804,74 @@ pixels.
   extended window in the incident record.
 - **Returning.** Restore the binding and deploy the patched image. The client falls back to originals
   throughout.
+
+## Photo originals
+
+Issue #428 moves the original of every photo uploaded in the journal or the photo library out of the
+database (`FileBlob`) onto the **`PhotoOriginals`** file-storage feature. Files uploaded anywhere else —
+finance documents, contract and journal attachments, avatars — stay where they were. A photo now owns its
+bytes: it has no Files-store row, `files.read` does not reach it, and its original is served by
+`GET /api/photos/{id}/content` under `photos.read`.
+
+### Release note
+
+- **One migration**, `MovePhotoOriginalsToObjectStore`: new columns on `Photos` (`StoredObjectId`, `FileName`,
+  `ContentType`, `SizeBytes`, `Sha256Hash`, `LegacyFileId`; `FileId` becomes nullable), three tables
+  (`PhotoOriginalBuckets`, `PhotoOriginalBackfillLeases` with its one row, `PhotoOriginalBackfillFailures`) and
+  two checks (`CK_Photos_ExactlyOneSource`, `CK_Photos_OriginalComplete`). **`Down()` only works before the
+  backfill has moved anything**: once a photo's `FileId` is `NULL` the column cannot become `NOT NULL` again.
+  Rolling back after that is a **backup restore**, nothing else.
+- **`FileStorage__Bindings__PhotoOriginals=primary`** on `api` and `worker`, in both compose files and the
+  AppHost. Without it both refuse to start (check B1). Keep the two services identical.
+- **Upload is one multipart call**, `POST /api/photos`, rate-limited per user by `RateLimiting:PhotoUpload`
+  (120 per 10 minutes by default). It refuses with `507` when the volume's free space is below the reserve —
+  the store's 1 GB floor plus 4 GB — and with `409` (`photo-duplicate`) when the same image is already a photo.
+  Creating a photo from an existing Files-store file is gone.
+- **Thumbnails become graced.** Their release used to be *Immediate*; it now waits for the deletion grace
+  like everything else.
+
+### The backfill
+
+The worker moves existing originals on its own, oldest photo first, 25 per tick every 30 seconds within a
+60-second budget, behind a single lease row so only one replica runs it. For each photo it writes the file,
+reads it back and compares the SHA-256 before the database changes; then, in one transaction that first
+locks the file row, it repoints the photo and deletes the old file **only if nothing else references it**
+(an attachment, an avatar, a contract file — the check is derived from the database model, not a list). A
+file still in use elsewhere is **copied** and kept; the count of those is reported.
+
+It does nothing while the photo volume is degraded or below the reserve. A storage or database error stops
+the tick and backs off 1, 5, 15, then 60 minutes; no photo is blamed for it. A photo that cannot be moved for
+a reason of its own is **parked** with a code and never retried automatically:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete the photo. |
+| `read` | The bytes are missing, a different length, or the type is not a photo type. | Same. |
+| `too-large` | The file is larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the photo in the database. |
+
+A parked photo stays readable from the database exactly as before. **To retry**, delete its row:
+
+```sql
+DELETE FROM PhotoOriginalBackfillFailures WHERE PhotoId = '{{ PHOTO_ID }}';
+```
+
+Progress — moved, remaining, parked by code, copied-shared, the back-off — is on
+`GET /api/file-storage/photo-backfill` (`file-storage.read`). It reports counts and codes only, never a name.
+
+### Erasure of a photo original
+
+A deleted photo's original waits for the deletion grace (default 24 h, at most 168 h) before the hourly job
+removes it, so a backup taken in that window still holds it. For an erasure request that cannot wait, lower
+**Deletion grace** at `/settings` to 1 h, delete the photo, and restore the setting after the next
+maintenance pass. The file name on disk is the sanitized original name; never log or share a volume
+listing.
+
+### Backup
+
+Photo originals are **primary data**, unlike thumbnails: the volume that holds `PhotoOriginals` must be in
+every backup, copied after the database dump and within the grace (see [Backup and
+restore](#backup-and-restore)). A database restored without its volume makes every moved photo unreadable,
+and the disk check's breaker halts clean-up rather than quarantine the volume.
 
 ## Security checklist
 

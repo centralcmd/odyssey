@@ -6,47 +6,49 @@ using Xunit;
 
 namespace Odyssey.Client.Tests;
 
-/// <summary>Issue #365 AC 9: the one client rule deciding a photo image's sources.</summary>
+/// <summary>
+/// Issue #365 AC 9, as amended by issue #428 §5.2: the one client rule deciding a photo image's sources. Both the
+/// thumbnail and the original are photo data under <c>photos.read</c>; <c>files.read</c> reaches neither.
+/// </summary>
 public class PhotoImageSourcesTests
 {
     private static readonly Guid PhotoId = Guid.NewGuid();
-    private static readonly Guid FileId = Guid.NewGuid();
 
-    private static (IPhotosApiClient Photos, IFilesApiClient Files) Clients(string? thumb = "/thumb", string? original = "/original")
+    private static IPhotosApiClient Photos(string? thumb = "/thumb", string? original = "/original")
     {
         var photos = new Mock<IPhotosApiClient>();
         photos.Setup(p => p.ThumbnailUrl(It.IsAny<Guid>(), It.IsAny<ThumbnailSize>())).Returns(thumb!);
-        var files = new Mock<IFilesApiClient>();
-        files.Setup(f => f.ContentUrl(It.IsAny<Guid>())).Returns(original!);
-        return (photos.Object, files.Object);
+        photos.Setup(p => p.ContentUrl(It.IsAny<Guid>())).Returns(original!);
+        return photos.Object;
     }
 
     [Theory]
-    [InlineData(true, true, true, "/thumb", "/original")]
-    [InlineData(true, false, true, "/thumb", null)]
-    [InlineData(false, true, true, null, "/original")]
-    [InlineData(false, false, true, null, null)]
-    [InlineData(true, true, false, null, "/original")]
-    [InlineData(true, false, false, null, null)]
-    [InlineData(false, true, false, null, "/original")]
-    [InlineData(false, false, false, null, null)]
-    public void Each_claim_and_flag_combination_yields_its_sources(bool photosRead, bool filesRead, bool ready, string? thumb, string? original)
+    [InlineData(true, true, "/thumb", "/original")]
+    [InlineData(true, false, null, "/original")]
+    [InlineData(false, true, null, null)]
+    [InlineData(false, false, null, null)]
+    public void Each_claim_and_flag_combination_yields_its_sources(bool photosRead, bool ready, string? thumb, string? original)
     {
-        var (photos, files) = Clients();
-
-        var source = PhotoImageSources.For(PhotoId, FileId, ready, ThumbnailSize.Small, new PhotoImageAccess(photosRead, filesRead), photos, files);
+        var source = PhotoImageSources.For(PhotoId, ready, ThumbnailSize.Small, new PhotoImageAccess(photosRead), Photos());
 
         Assert.Equal(new PhotoImageSource(thumb, original), source);
     }
 
     [Fact]
-    public void A_missing_photo_or_file_id_drops_that_source()
+    public void A_missing_photo_id_yields_no_source()
     {
-        var (photos, files) = Clients();
-        var all = new PhotoImageAccess(true, true);
+        Assert.Equal(PhotoImageSource.None, PhotoImageSources.For(null, true, ThumbnailSize.Small, new PhotoImageAccess(true), Photos()));
+    }
 
-        Assert.Equal(new PhotoImageSource(null, "/original"), PhotoImageSources.For(null, FileId, true, ThumbnailSize.Small, all, photos, files));
-        Assert.Equal(new PhotoImageSource("/thumb", null), PhotoImageSources.For(PhotoId, null, true, ThumbnailSize.Small, all, photos, files));
+    [Fact]
+    public void The_original_comes_from_the_photo_content_endpoint()
+    {
+        var photos = new Mock<IPhotosApiClient>();
+        photos.Setup(p => p.ContentUrl(PhotoId)).Returns("/api/photos/x/content");
+
+        var source = PhotoImageSources.For(PhotoId, false, ThumbnailSize.Small, new PhotoImageAccess(true), photos.Object);
+
+        Assert.Equal("/api/photos/x/content", source.Original);
     }
 
     [Theory]
@@ -54,9 +56,7 @@ public class PhotoImageSourcesTests
     [InlineData("")]
     public void A_builder_returning_null_or_empty_is_absent_never_an_empty_src(string? url)
     {
-        var (photos, files) = Clients(url, url);
-
-        var source = PhotoImageSources.For(PhotoId, FileId, true, ThumbnailSize.Small, new PhotoImageAccess(true, true), photos, files);
+        var source = PhotoImageSources.For(PhotoId, true, ThumbnailSize.Small, new PhotoImageAccess(true), Photos(url, url));
 
         Assert.True(source.IsEmpty);
     }
@@ -66,9 +66,8 @@ public class PhotoImageSourcesTests
     {
         var photos = new Mock<IPhotosApiClient>();
         photos.Setup(p => p.ThumbnailUrl(PhotoId, ThumbnailSize.Medium)).Returns("/medium");
-        var (_, files) = Clients();
 
-        var source = PhotoImageSources.For(PhotoId, FileId, true, ThumbnailSize.Medium, new PhotoImageAccess(true, true), photos.Object, files);
+        var source = PhotoImageSources.For(PhotoId, true, ThumbnailSize.Medium, new PhotoImageAccess(true), photos.Object);
 
         Assert.Equal("/medium", source.Thumb);
     }

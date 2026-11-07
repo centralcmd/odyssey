@@ -142,10 +142,9 @@ public class JournalEntryService
     }
 
     /// <summary>
-    /// Fill each row's photo links with their library <c>Photo</c>'s FileId, in ONE batched lookup for
-    /// the whole page — the same enrichment the detail read does per entry, and the reason the list
-    /// projection carries link rows without a file id of their own. A link whose PhotoId no longer
-    /// resolves is dropped, exactly as on the detail read, so FileId is never empty on a returned link.
+    /// Fill each row's photo links with their library <c>Photo</c>'s label, in ONE batched lookup for the whole
+    /// page — the same enrichment the detail read does per entry. A link whose PhotoId no longer resolves is
+    /// dropped, exactly as on the detail read.
     /// </summary>
     private async Task AttachPhotoLinksAsync(
         IReadOnlyList<JournalEntrySummary> items,
@@ -158,7 +157,7 @@ public class JournalEntryService
             return;
         }
 
-        var fileIdByPhotoId = await photos.ResolveFileIdsAsync(photoIds, cancellationToken);
+        var infoByPhotoId = await photos.ResolveAsync(photoIds, cancellationToken);
         var ready = await Thumbnails.PhotoThumbnailService.ReadyAsync(context, photoIds, cancellationToken);
         foreach (var item in items)
         {
@@ -168,12 +167,13 @@ public class JournalEntryService
             }
 
             item.Photos = rows
-                .Where(r => fileIdByPhotoId.ContainsKey(r.PhotoId))
+                .Where(r => infoByPhotoId.ContainsKey(r.PhotoId))
                 .Select(r => new JournalEntryPhotoDto
                 {
                     JournalEntryPhotoId = r.JournalEntryPhotoId,
                     PhotoId = r.PhotoId,
-                    FileId = fileIdByPhotoId[r.PhotoId],
+                    Title = infoByPhotoId[r.PhotoId].Title,
+                    FileName = infoByPhotoId[r.PhotoId].FileName,
                     Position = r.Position,
                     CreatedAt = r.CreatedAt,
                     ThumbnailsReady = ready.Contains(r.PhotoId),
@@ -192,22 +192,25 @@ public class JournalEntryService
     /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
     /// Null is no capability at all; a trusted, non-HTTP caller passes <see cref="LocationClaims.Trusted"/> explicitly.
     /// </param>
+    /// <param name="canReadPhotos">
+    /// Whether the caller holds <c>photos.read</c>: linking a photo the entry does not already hold needs it (issue #428
+    /// §3.3, change-only — re-sending a stored id needs nothing).
+    /// </param>
     public async Task<ExistingJournalEntry> Create(
-        NewJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        NewJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        bool canReadPhotos = false)
     {
         ValidateFields(request.Title, request.Content, request.EntryDate);
         var links = await ValidateLinks(
-            request.TagIds, request.ContactIds, request.PhotoFileIds, request.AttachmentFileIds, cancellationToken);
+            request.TagIds, request.ContactIds, request.PhotoIds, request.AttachmentFileIds, cancellationToken);
+        EnsureMayLinkPhotos(links.PhotoIds, kept: new HashSet<Guid>(), canReadPhotos);
         var resolver = new LocationResolver(context, timeProvider);
         var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.None, cancellationToken);
 
         var externalUid = NormalizeExternalUid(request.ExternalUid) ?? NewExternalUid();
         await EnsureExternalUidAvailable(externalUid, excludeId: null, cancellationToken);
 
-        // Photo-first, two separate transactions (§5): find-or-create the library Photos before writing
-        // the journal link rows. If the journal save fails, the only artifact is an orphan library Photo
-        // that the idempotent find-or-create re-links on retry.
-        var photoIds = await ResolvePhotoIdsAsync(links.PhotoFileIds, userId, cancellationToken);
+        var photoIds = links.PhotoIds;
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var entry = new JournalEntry
@@ -252,7 +255,8 @@ public class JournalEntryService
     // A full replacement (issue #380 §5.2): an omitted locationId clears the link, an unchanged one is kept
     // with no claim, and a changed one needs locations.read.
     public async Task<ExistingJournalEntry?> Update(
-        Guid id, UpdateJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        Guid id, UpdateJournalEntry request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        bool canReadPhotos = false)
     {
         var entry = await LoadWithDetailsForUpdate(id, cancellationToken);
         if (entry is null)
@@ -262,7 +266,8 @@ public class JournalEntryService
 
         ValidateFields(request.Title, request.Content, request.EntryDate);
         var links = await ValidateLinks(
-            request.TagIds, request.ContactIds, request.PhotoFileIds, request.AttachmentFileIds, cancellationToken);
+            request.TagIds, request.ContactIds, request.PhotoIds, request.AttachmentFileIds, cancellationToken);
+        EnsureMayLinkPhotos(links.PhotoIds, kept: entry.Photos.Select(p => p.PhotoId).ToHashSet(), canReadPhotos);
 
         // An optional ExternalUid replaces the stored identity; a null leaves it untouched. A value that
         // already belongs to a different entry is rejected (400) before any DB unique-constraint fires.
@@ -277,7 +282,7 @@ public class JournalEntryService
         var locationId = await resolver.ResolveRecordLinkAsync(
             request.LocationId, entry.LocationId, claims ?? LocationClaims.None, cancellationToken);
 
-        var photoIds = await ResolvePhotoIdsAsync(links.PhotoFileIds, userId, cancellationToken);
+        var photoIds = links.PhotoIds;
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         entry.Title = request.Title;
@@ -446,7 +451,7 @@ public class JournalEntryService
     private async Task<ValidatedLinks> ValidateLinks(
         Guid[] tagIds,
         Guid[] contactIds,
-        Guid[] photoFileIds,
+        Guid[] photoIds,
         Guid[] attachmentFileIds,
         CancellationToken cancellationToken)
     {
@@ -454,15 +459,15 @@ public class JournalEntryService
         var maxLinksPerKind = (await journalLimits.GetAsync(cancellationToken)).JournalEntryMaxLinksPerKind;
         var tags = DistinctCapped(tagIds, "tag", maxLinksPerKind);
         var contactLinks = DistinctCapped(contactIds, "contact", maxLinksPerKind);
-        var photos = DistinctCapped(photoFileIds, "photo", maxLinksPerKind);
+        var photoLinks = DistinctCapped(photoIds, "photo", maxLinksPerKind);
         var attachments = DistinctCapped(attachmentFileIds, "attachment", maxLinksPerKind);
 
         await EnsureTagsExist(tags, cancellationToken);
         await EnsureContactsExist(contactLinks, cancellationToken);
-        await EnsurePhotoFilesValid(photos, cancellationToken);
+        await EnsurePhotosExist(photoLinks, cancellationToken);
         await EnsureAttachmentFilesExist(attachments, cancellationToken);
 
-        return new ValidatedLinks(tags, contactLinks, photos, attachments);
+        return new ValidatedLinks(tags, contactLinks, photoLinks, attachments);
     }
 
     private static List<Guid> DistinctCapped(Guid[] ids, string kind, int maxLinksPerKind)
@@ -513,19 +518,29 @@ public class JournalEntryService
         }
     }
 
-    private async Task EnsurePhotoFilesValid(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    private async Task EnsurePhotosExist(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
     {
         if (ids.Count == 0)
         {
             return;
         }
 
-        var found = await files.ExistingImageIdsAsync(ids, cancellationToken);
+        var found = await photos.ExistingIdsAsync(ids, cancellationToken);
         var missing = ids.Where(id => !found.Contains(id)).ToList();
         if (missing.Count > 0)
         {
             throw new DomainUnprocessableException(
-                $"Photo file(s) are unknown or not an image type: {string.Join(", ", missing)}.");
+                $"Unknown photo(s): {string.Join(", ", missing)}.", "photoIds");
+        }
+    }
+
+    // Linking a photo the entry does not already hold needs photos.read (issue #428 §3.3); a kept link needs nothing,
+    // the LocationResolver shape.
+    private static void EnsureMayLinkPhotos(IReadOnlyCollection<Guid> desired, IReadOnlySet<Guid> kept, bool canReadPhotos)
+    {
+        if (!canReadPhotos && desired.Any(id => !kept.Contains(id)))
+        {
+            throw new DomainForbiddenException("Linking a photo requires the photos.read permission.");
         }
     }
 
@@ -606,20 +621,6 @@ public class JournalEntryService
         }
     }
 
-    // Resolve each validated image file id to its library Photo id (find-or-create, keyed on the
-    // Photo.FileId unique index), preserving gallery order. The validated file ids are already distinct,
-    // and FileId↔Photo is 1:1, so the resulting photo ids are distinct too (§5 v4).
-    private async Task<List<Guid>> ResolvePhotoIdsAsync(IReadOnlyList<Guid> fileIds, string userId, CancellationToken cancellationToken)
-    {
-        var photoIds = new List<Guid>(fileIds.Count);
-        foreach (var fileId in fileIds)
-        {
-            photoIds.Add(await photos.FindOrCreatePhotoIdForFileAsync(fileId, userId, cancellationToken));
-        }
-
-        return photoIds;
-    }
-
     private void DiffAttachments(JournalEntry entry, IReadOnlyCollection<Guid> desiredFileIds, DateTime now)
     {
         var desired = desiredFileIds.ToHashSet();
@@ -646,20 +647,20 @@ public class JournalEntryService
         TagIconProjection.Apply(dto, tagIds, await TagIconProjection.JournalTagsAsync(context, tagIds, cancellationToken));
         dto.ContactIds = entry.Contacts.Select(c => c.ContactId).ToList();
 
-        // Enrich each photo link with its library Photo's FileId in one batched lookup (§5 v4). A link
-        // whose PhotoId no longer resolves (the library Photo was deleted) is dropped entirely, so FileId
-        // is never empty on a returned link (§18d).
+        // Enrich each photo link with its library Photo's label in one batched lookup (issue #428 §5.3). A link
+        // whose PhotoId no longer resolves (the library Photo was deleted) is dropped entirely (§18d).
         var linkedPhotoIds = entry.Photos.Select(p => p.PhotoId).ToList();
-        var fileIdByPhotoId = await photos.ResolveFileIdsAsync(linkedPhotoIds, cancellationToken);
+        var infoByPhotoId = await photos.ResolveAsync(linkedPhotoIds, cancellationToken);
         var ready = await Thumbnails.PhotoThumbnailService.ReadyAsync(context, linkedPhotoIds, cancellationToken);
         dto.Photos = entry.Photos
             .OrderBy(p => p.Position)
-            .Where(p => fileIdByPhotoId.ContainsKey(p.PhotoId))
+            .Where(p => infoByPhotoId.ContainsKey(p.PhotoId))
             .Select(p => new JournalEntryPhotoDto
             {
                 JournalEntryPhotoId = p.JournalEntryPhotoId,
                 PhotoId = p.PhotoId,
-                FileId = fileIdByPhotoId[p.PhotoId],
+                Title = infoByPhotoId[p.PhotoId].Title,
+                FileName = infoByPhotoId[p.PhotoId].FileName,
                 Position = p.Position,
                 CreatedAt = p.CreatedAt,
                 ThumbnailsReady = ready.Contains(p.PhotoId),
@@ -680,7 +681,7 @@ public class JournalEntryService
     private sealed record ValidatedLinks(
         List<Guid> TagIds,
         List<Guid> ContactIds,
-        List<Guid> PhotoFileIds,
+        List<Guid> PhotoIds,
         List<Guid> AttachmentFileIds);
 
     private sealed class EntryRow

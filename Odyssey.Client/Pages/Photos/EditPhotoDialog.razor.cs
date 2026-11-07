@@ -24,10 +24,6 @@ public partial class EditPhotoDialog
     /// (contacts.create). A tagger who would meet a 403 is never shown the create row.</summary>
     [Parameter] public bool CanCreateContacts { get; set; }
 
-    /// <summary>Whether the caller may rename the backing file (files.update). When false the file-name
-    /// field is shown read-only and never submitted.</summary>
-    [Parameter] public bool CanRenameFile { get; set; }
-
     [Parameter] public EventCallback OnSaved { get; set; }
 
     private ExistingPhoto? _photo;
@@ -191,7 +187,7 @@ public partial class EditPhotoDialog
         var body = new UpdatePhoto
         {
             // Only submit a rename when the caller can perform one; blank leaves the file name untouched.
-            FileName = CanRenameFile && !string.IsNullOrWhiteSpace(_fileName) ? _fileName.Trim() : null,
+            FileName = string.IsNullOrWhiteSpace(_fileName) ? null : _fileName.Trim(),
             Title = string.IsNullOrWhiteSpace(_title) ? null : _title.Trim(),
             Caption = string.IsNullOrWhiteSpace(_caption) ? null : _caption.Trim(),
             LocationName = string.IsNullOrWhiteSpace(_location) ? null : _location.Trim(),

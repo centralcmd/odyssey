@@ -93,6 +93,14 @@ public static class JobCatalogue
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>
     public static readonly IReadOnlyList<Type> Infrastructure = [typeof(JobRunMaintenanceJob)];
 
+    /// <summary>
+    /// One-off migration jobs that record no runs and have no entry: they finish and then idle forever, so a run log
+    /// would fill with empty ticks and an overview row would read "never run" once the work is done. Each reports its
+    /// progress on its own status endpoint instead (the photo-original backfill: <c>GET /api/file-storage/photo-backfill</c>,
+    /// issue #428 §7.4). Listing a job here is a decision a guard test makes visible, not a way to skip the catalogue.
+    /// </summary>
+    public static readonly IReadOnlyList<Type> Unrecorded = [typeof(Journal.Originals.PhotoOriginalBackfillJob)];
+
     private static readonly Dictionary<JobType, JobCatalogueEntry> ByType = Entries.ToDictionary(entry => entry.JobType);
 
     public static JobCatalogueEntry Get(JobType jobType) => ByType[jobType];

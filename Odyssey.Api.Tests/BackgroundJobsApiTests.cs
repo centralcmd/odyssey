@@ -776,6 +776,8 @@ public class BackgroundJobsApiTests
         : OdysseyApiFactory(
             permissions,
             "background-jobs-actor",
+            // No photo volume: the file-storage job's "not configured" state is the host with no volume at all.
+            configuration: new Dictionary<string, string?> { [NoPhotoVolumeKey] = "true" },
             configureServices: services => services.AddSingleton<TimeProvider>(new FixedClock()),
             sharingStoreWith: sharingStoreWith)
     {

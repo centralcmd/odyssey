@@ -189,50 +189,59 @@ public sealed class PhotoThumbnailApiTests
     public async Task A_journal_photo_is_thumbnail_ready_only_for_a_photos_reader_on_every_action(bool photosRead)
     {
         await using var factory = new JournalFactory(photosRead ? [.. JournalClaims, PermissionClaims.PhotosRead] : JournalClaims);
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, JournalFactory.Actor);
-        using var client = factory.CreateClient();
-
-        // The first entry creates the library photo; its thumbnails are then made ready by hand.
-        var first = await PostEntryAsync(client, fileId);
-        var photoId = Assert.Single(first.Photos).PhotoId;
-        Assert.False(first.Photos[0].ThumbnailsReady);
+        var photoId = await SeedPhotoAsync(factory);
+        var entryId = Guid.NewGuid();
         using (var scope = factory.Services.CreateScope())
         {
+            // The photo's thumbnails are ready, and an entry links it — seeded directly, because since issue #428 a
+            // caller without photos.read cannot link a new photo, and the rule must hold for that caller's reads too.
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            // A photo the journal path creates is queued in the same save, in the uploader's interactive lane.
-            var job = await context.PhotoThumbnailJobs.SingleAsync(j => j.PhotoId == photoId);
-            Assert.Equal((PhotoThumbnailJobState.Pending, PhotoThumbnailJobPriority.Interactive), (job.State, job.Priority));
             context.PhotoThumbnails.AddRange(Thumbnail(photoId, ThumbnailSize.Small, Guid.NewGuid()), Thumbnail(photoId, ThumbnailSize.Medium, Guid.NewGuid()));
+            var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = entryId, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "With a photo", Content = "c",
+                EntryDate = now, CreatedByUserId = JournalFactory.Actor, CreatedAt = now, UpdatedAt = now,
+            });
+            context.JournalEntryPhotos.Add(new JournalEntryPhoto
+            {
+                JournalEntryPhotoId = Guid.NewGuid(), JournalEntryId = entryId, PhotoId = photoId, Position = 0, CreatedAt = now,
+            });
             await context.SaveChangesAsync();
         }
 
-        var created = await PostEntryAsync(client, fileId);
-        var detail = await client.GetFromJsonAsync<ExistingJournalEntry>($"{JournalPath}/{created.JournalEntryId}");
+        using var client = factory.CreateClient();
+        var detail = await client.GetFromJsonAsync<ExistingJournalEntry>($"{JournalPath}/{entryId}");
         var list = await client.GetPagedItemsAsync<ExistingJournalEntry>(JournalPath);
-        var put = await client.PutAsJsonAsync($"{JournalPath}/{created.JournalEntryId}", new UpdateJournalEntry
+        // Re-sending the link the entry holds needs no photos.read (change-only).
+        var put = await client.PutAsJsonAsync($"{JournalPath}/{entryId}", new UpdateJournalEntry
         {
             Title = "Renamed",
             Content = "Still with a picture.",
             EntryDate = new DateTime(2026, 6, 2, 0, 0, 0, DateTimeKind.Utc),
-            PhotoFileIds = [fileId],
+            PhotoIds = [photoId],
         });
         put.EnsureSuccessStatusCode();
         var updated = (await put.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
 
-        Assert.Equal(photosRead, Assert.Single(created.Photos).ThumbnailsReady);
         Assert.Equal(photosRead, Assert.Single(detail!.Photos).ThumbnailsReady);
         Assert.All(list!.SelectMany(e => e.Photos), photo => Assert.Equal(photosRead, photo.ThumbnailsReady));
         Assert.Equal(photosRead, Assert.Single(updated.Photos).ThumbnailsReady);
+        if (photosRead)
+        {
+            var created = await PostEntryAsync(client, photoId);
+            Assert.True(Assert.Single(created.Photos).ThumbnailsReady);
+        }
     }
 
-    private static async Task<ExistingJournalEntry> PostEntryAsync(HttpClient client, Guid fileId)
+    private static async Task<ExistingJournalEntry> PostEntryAsync(HttpClient client, Guid photoId)
     {
         var post = await client.PostAsJsonAsync(JournalPath, new NewJournalEntry
         {
             Title = "With a photo",
             Content = "Dear journal, today had a picture.",
             EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            PhotoFileIds = [fileId],
+            PhotoIds = [photoId],
         });
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
