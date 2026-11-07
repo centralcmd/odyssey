@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
@@ -46,6 +47,50 @@ public class WeatherBatchReadTests
         Assert.Equal((WeatherResolvedFrom.Linked, 3m), (batch.Items[0].ResolvedFrom!.Value, batch.Items[0].Day!.Observed!.MaxTempC!.Value));
         Assert.Equal((WeatherResolvedFrom.Household, 8m), (batch.Items[1].ResolvedFrom!.Value, batch.Items[1].Day!.Observed!.MaxTempC!.Value));
         Assert.Equal(WeatherStatus.NoData, batch.Items[2].Status);
+    }
+
+    [Fact]
+    public async Task Stale_in_both_batches_matches_the_single_reads()
+    {
+        using var h = new WeatherTestHarness();
+        var stale = await h.EnableAsync("Stale", tracked: true);
+        var fresh = await h.EnableAsync("Fresh", tracked: true);
+        await SetLastSuccessAsync(h, stale.Id, h.Time.GetUtcNow().UtcDateTime.AddHours(-10));
+        await SetLastSuccessAsync(h, fresh.Id, h.Time.GetUtcNow().UtcDateTime.AddMinutes(-10));
+        var day = new DateOnly(2026, 10, 20);
+        await AddDayAsync(h, stale.Id, day, observedMax: 8m);
+        await AddDayAsync(h, fresh.Id, day, observedMax: 8m);
+        var entries = new[] { await AddEntryAsync(h, stale.LocationId, Noon.AddDays(-3)), await AddEntryAsync(h, fresh.LocationId, Noon.AddDays(-3)) };
+        var start = Noon.AddDays(-1);
+        foreach (var point in new[] { stale, fresh })
+            await AddStepAsync(h, point.Id, start.AddHours(-6), start, 1, 5m, 0m);
+        var events = new[]
+        {
+            await AddEventAsync(h, stale.LocationId, start, start.AddHours(1)),
+            await AddEventAsync(h, fresh.LocationId, start, start.AddHours(1)),
+        };
+
+        var journal = await h.Batch().JournalEntriesAsync(entries, "u1", CancellationToken.None);
+        var calendar = await h.Batch().CalendarEventsAsync(events, "u1", CancellationToken.None);
+
+        Assert.Equal([true, false], journal.Items.Select(i => i.Stale));
+        Assert.Equal([true, false], calendar.Items.Select(i => i.Stale));
+        for (var i = 0; i < 2; i++)
+        {
+            var singleEntry = (await h.Read(h.NewContext()).JournalEntryAsync(entries[i], null, "u1", CancellationToken.None))!;
+            var singleEvent = (await h.Read(h.NewContext()).CalendarEventAsync(events[i], null, "u1", CancellationToken.None))!;
+            Assert.Equal(singleEntry.Stale, journal.Items[i].Stale);
+            Assert.Equal((singleEvent.Status, singleEvent.Stale), (calendar.Items[i].Status, calendar.Items[i].Stale));
+        }
+    }
+
+    private static async Task SetLastSuccessAsync(WeatherTestHarness h, Guid pointId, DateTime utc)
+    {
+        var schedule = await h.Context.WeatherPointSchedules.SingleAsync(s => s.WeatherPointId == pointId);
+        schedule.LastForecastSuccessUtc = utc;
+        schedule.ForecastFailureKind = null;
+        await h.Context.SaveChangesAsync();
+        h.Context.ChangeTracker.Clear();
     }
 
     [Fact]

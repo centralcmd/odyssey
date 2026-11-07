@@ -917,6 +917,20 @@ public class WeatherApiTests
     }
 
     [Fact]
+    public async Task The_shipped_batch_budget_is_twenty_a_minute_and_leaves_the_single_reads_alone()
+    {
+        // AC 18 with the shipped configuration — no override — so a changed default fails here.
+        Assert.Equal((20, 60), (new WeatherReadBatchRateLimitOptions().PermitLimit, new WeatherReadBatchRateLimitOptions().WindowSeconds));
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+
+        for (var i = 0; i < 20; i++)
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/journal-entries/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync($"/api/calendar-events/weather?ids={Guid.NewGuid()}")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/current")).StatusCode);
+    }
+
+    [Fact]
     public async Task A_batch_answers_a_linked_place_with_its_point_in_request_order()
     {
         await using var factory = new WeatherFactory(Admin);
