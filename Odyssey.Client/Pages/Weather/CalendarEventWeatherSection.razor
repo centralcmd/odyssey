@@ -103,7 +103,7 @@
                     {
                         <p class="wx-ev-line">Showing the first 31 days.</p>
                     }
-                    <ul class="wx-days wx-days-static" aria-label="@($"Weather for {EventTitle}, by day")">
+                    <ul class="wx-days wx-days-static" role="list" aria-label="@($"Weather for {EventTitle}, by day")">
                         @foreach (var day in r.Days)
                         {
                             <li class="wx-day" @key="day.Date"><WeatherDayTile Day="day" PreferMeasured="true" /></li>
