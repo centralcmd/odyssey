@@ -153,27 +153,28 @@ public partial class OdsInfiniteList<TItem>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        await RaiseShownChangedAsync();
-
         if (firstRender)
         {
             _selfRef = DotNetObjectReference.Create(this);
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/infinite-scroll.js");
         }
 
-        if (_module is null)
-            return;
+        if (_module is not null)
+        {
+            if (HasMore && !_observing)
+            {
+                await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
+                _observing = true;
+            }
+            else if (!HasMore && _observing)
+            {
+                await _module.InvokeVoidAsync("unobserve", _id);
+                _observing = false;
+            }
+        }
 
-        if (HasMore && !_observing)
-        {
-            await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
-            _observing = true;
-        }
-        else if (!HasMore && _observing)
-        {
-            await _module.InvokeVoidAsync("unobserve", _id);
-            _observing = false;
-        }
+        // Last, so a host callback that throws cannot leave the sentinel unobserved and the list unable to grow.
+        await RaiseShownChangedAsync();
     }
 
     private async Task RaiseShownChangedAsync()

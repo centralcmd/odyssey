@@ -11,7 +11,7 @@ namespace Odyssey.Core.Weather;
 public static class WeatherEventWeather
 {
     /// <summary>A timed event's weather never covers more than this; longer events show their first day.</summary>
-    public static readonly TimeSpan MaxWindow = TimeSpan.FromHours(24);
+    public static readonly TimeSpan MaxWindow = TimeSpan.FromHours(WeatherRules.EventMaxHours);
 
     /// <summary>A zero-length (or inverted) event still gets the hour that covers its start.</summary>
     public static readonly TimeSpan MinWindow = TimeSpan.FromHours(1);

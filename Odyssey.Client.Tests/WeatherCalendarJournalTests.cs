@@ -257,6 +257,22 @@ public class WeatherCalendarJournalTests : IDisposable
     }
 
     [Fact]
+    public async Task A_refresh_keeps_the_old_answer_on_screen_until_the_new_one_lands()
+    {
+        var fetch = new CountingFetch();
+        using var loader = Loader(fetch, TimeSpan.FromMilliseconds(100));
+        var ids = Ids(2);
+        await loader.ShowAsync(ids);
+
+        var refresh = loader.RefreshAsync(ids[0]);
+        Assert.NotNull(loader.Get(ids[0]));
+        await refresh;
+
+        Assert.Equal([ids[0]], fetch.Calls[1]);
+        Assert.NotNull(loader.Get(ids[0]));
+    }
+
+    [Fact]
     public async Task Changes_inside_the_debounce_collapse_into_one_request()
     {
         var fetch = new CountingFetch();

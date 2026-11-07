@@ -147,7 +147,7 @@ public partial class CalendarPage
     // for nothing.
     private WeatherBatchLoader<CalendarEventWeatherItem>? _agendaWeatherLoader;
 
-    private WeatherBatchLoader<CalendarEventWeatherItem> _agendaWeather => _agendaWeatherLoader ??= new(
+    private WeatherBatchLoader<CalendarEventWeatherItem> AgendaWeather => _agendaWeatherLoader ??= new(
         WeatherBatchReads.CalendarEvents(WeatherApi), item => item.CalendarEventId,
         () => InvokeAsync(StateHasChanged), Log, "agenda", TimeSpan.FromMilliseconds(300));
 
@@ -157,19 +157,19 @@ public partial class CalendarPage
             ? []
             : [.. _viewModels.Where(vm => EffectiveVisibleIds is null || EffectiveVisibleIds.Contains(vm.CalendarId)).Select(vm => vm.Id)];
 
-    private void ShowAgendaWeather() => _ = _agendaWeather.ShowAsync(AgendaWeatherIds());
+    private void ShowAgendaWeather() => _ = AgendaWeather.ShowAsync(AgendaWeatherIds());
 
     // A save may have moved the event's time or place: forget its answer so the agenda asks again.
     private async Task OnEventSavedAsync()
     {
         if (_eventDialogMode == CalendarEventDialogMode.Edit && _eventDialogEventId is { } id)
         {
-            _agendaWeather.Forget(id);
+            AgendaWeather.Forget(id);
         }
         else if (_eventDialogMode == CalendarEventDialogMode.Series && _eventDialogPatternId is { } patternId)
         {
             foreach (var e in _events.Where(e => e.RecurrencePatternId == patternId))
-                _agendaWeather.Forget(e.CalendarEventId);
+                AgendaWeather.Forget(e.CalendarEventId);
         }
 
         await ReloadEventsAsync();
@@ -180,9 +180,9 @@ public partial class CalendarPage
         try
         {
             var user = (await state).User;
-            _agendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            AgendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
             await InvokeAsync(StateHasChanged);
-            await _agendaWeather.ShowAsync(AgendaWeatherIds());
+            await AgendaWeather.ShowAsync(AgendaWeatherIds());
         }
         catch (Exception)
         {
@@ -213,7 +213,7 @@ public partial class CalendarPage
         _canDelete = user.HasPermission(PermissionClaims.CalendarDelete);
         _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
         _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
-        _agendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+        AgendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
     private async Task LoadCalendarsAsync()
@@ -563,7 +563,7 @@ public partial class CalendarPage
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
-            _agendaWeather.Forget(existing.CalendarEventId);
+            AgendaWeather.Forget(existing.CalendarEventId);
             await ReloadEventsAsync();
         }
     }
@@ -596,7 +596,7 @@ public partial class CalendarPage
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
-            _agendaWeather.Forget(existing.CalendarEventId);
+            AgendaWeather.Forget(existing.CalendarEventId);
             await ReloadEventsAsync();
         }
     }

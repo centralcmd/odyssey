@@ -99,7 +99,7 @@
                                                     @* Weather on the event's START row only: the summary describes the start (issue #363 §3.3). *@
                                                     @if (day == DateOnly.FromDateTime(vm.Start))
                                                     {
-                                                        <WeatherEventSummaryText Item="_agendaWeather.Get(vm.Id)" Start="vm.Start" End="vm.End" />
+                                                        <WeatherEventSummaryText Item="AgendaWeather.Get(vm.Id)" Start="vm.Start" End="vm.End" />
                                                     }
                                                 </button>
                                             }

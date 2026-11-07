@@ -115,8 +115,8 @@
                                   Attachments="@(_attachments.GetValueOrDefault(e.JournalEntryId))"
                                   Actions="BuildActions(e)"
                                   CanReadFiles="_canReadFiles"
-                                  Weather="_weather.Get(e.JournalEntryId)"
-                                  WeatherAttribution="_weather.Attribution"
+                                  Weather="WeatherLoader.Get(e.JournalEntryId)"
+                                  WeatherAttribution="WeatherLoader.Attribution"
                                   OnFilesOpened="@(() => LoadAttachmentsAsync(e))"
                                   OnOpenPhoto="@(p => OpenPhotoDetail(e, p))"
                                   OnRemoveFile="@(_canUpdate ? EventCallback.Factory.Create<Guid>(this, fileId => RemoveAttachmentAsync(e, fileId)) : null)" />

@@ -143,14 +143,14 @@ public partial class JournalCard
     private IReadOnlyList<Guid> _shownIds = [];
     private IJSObjectReference? _focusReturnJs;
 
-    private WeatherBatchLoader<JournalEntryWeatherItem> _weather => _weatherLoader ??= new(
+    private WeatherBatchLoader<JournalEntryWeatherItem> WeatherLoader => _weatherLoader ??= new(
         WeatherBatchReads.JournalEntries(WeatherApi), item => item.JournalEntryId,
         () => InvokeAsync(StateHasChanged), Log, "journal", TimeSpan.FromMilliseconds(250));
 
     private void OnShownChanged(IReadOnlyList<JournalEntrySummary> shown)
     {
         _shownIds = [.. shown.Select(e => e.JournalEntryId)];
-        _ = _weather.ShowAsync(_shownIds);
+        _ = WeatherLoader.ShowAsync(_shownIds);
     }
 
     // A sign-out, a different user or a changed claim set: start over from nothing.
@@ -159,9 +159,9 @@ public partial class JournalCard
         try
         {
             var user = (await state).User;
-            _weather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
             await InvokeAsync(StateHasChanged);
-            await _weather.ShowAsync(_shownIds);
+            await WeatherLoader.ShowAsync(_shownIds);
         }
         catch (Exception)
         {
@@ -201,7 +201,7 @@ public partial class JournalCard
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
         _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
         _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
-        _weather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+        WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
     private async Task LoadTags()
@@ -716,7 +716,7 @@ public partial class JournalCard
             var id = _editEntry.JournalEntryId;
             await ReloadEntry(id);
             // Its date or place may have moved: ask again for this entry alone.
-            _ = _weather.RefreshAsync(id);
+            _ = WeatherLoader.RefreshAsync(id);
         }
     }
 
@@ -754,7 +754,7 @@ public partial class JournalCard
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
             _attachments.Remove(e.JournalEntryId);
-            _weather.Forget(e.JournalEntryId);
+            WeatherLoader.Forget(e.JournalEntryId);
             await LoadEntries();
             await FocusPageHeadingAsync();
         }

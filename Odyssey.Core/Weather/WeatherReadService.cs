@@ -17,7 +17,7 @@ public sealed class WeatherReadService
     /// <summary>How far ahead Locationforecast reaches; a window wholly beyond it is <c>OutOfRange</c>.</summary>
     public static readonly TimeSpan Horizon = TimeSpan.FromDays(10);
 
-    internal const int AllDayMaxDays = 31;
+    internal const int AllDayMaxDays = WeatherRules.AllDayMaxDays;
 
     private readonly OdysseyContext context;
     private readonly WeatherFetchService fetch;

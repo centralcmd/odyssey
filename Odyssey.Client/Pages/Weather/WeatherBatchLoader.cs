@@ -31,6 +31,7 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
     private readonly TimeSpan debounce;
     private readonly Dictionary<Guid, TItem> items = [];
     private readonly HashSet<Guid> omitted = [];
+    private readonly HashSet<Guid> refreshing = [];
     private List<Guid> wanted = [];
     private CancellationTokenSource? pending;
     private bool disposed;
@@ -68,6 +69,7 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
         Cancel();
         items.Clear();
         omitted.Clear();
+        refreshing.Clear();
         wanted = [];
         Attribution = null;
         Stopped = false;
@@ -81,10 +83,14 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
         return ScheduleAsync();
     }
 
-    /// <summary>A record was saved: forget its answer and ask for it again (with whatever else is missing).</summary>
+    /// <summary>
+    /// A record was saved: ask for it again (with whatever else is missing). Its old answer stays on screen until
+    /// the new one lands, so the row does not blink out and back.
+    /// </summary>
     public Task RefreshAsync(Guid id)
     {
-        Forget(id);
+        omitted.Remove(id);
+        refreshing.Add(id);
         if (!wanted.Contains(id))
             wanted.Add(id);
         return ScheduleAsync();
@@ -95,6 +101,7 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
     {
         items.Remove(id);
         omitted.Remove(id);
+        refreshing.Remove(id);
     }
 
     private async Task ScheduleAsync()
@@ -121,7 +128,7 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
 
     private async Task LoadAsync(CancellationToken token, bool retried)
     {
-        var missing = wanted.Where(id => !items.ContainsKey(id) && !omitted.Contains(id)).ToList();
+        var missing = wanted.Where(id => (!items.ContainsKey(id) || refreshing.Contains(id)) && !omitted.Contains(id)).ToList();
         if (missing.Count == 0)
             return;
 
@@ -130,10 +137,16 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
 
         if (result.IsSuccess && result.Value is { } page)
         {
+            var answered = page.Items.Select(idOf).ToHashSet();
             foreach (var item in page.Items)
                 items[idOf(item)] = item;
-            foreach (var id in missing.Where(id => !items.ContainsKey(id)))
+            foreach (var id in missing.Where(id => !answered.Contains(id)))
+            {
+                items.Remove(id);
                 omitted.Add(id);
+            }
+
+            refreshing.ExceptWith(missing);
             Attribution = page.Attribution ?? Attribution;
             await changed();
             return;
@@ -145,6 +158,7 @@ internal sealed class WeatherBatchLoader<TItem> : IDisposable where TItem : clas
             Stopped = true;
             items.Clear();
             omitted.Clear();
+            refreshing.Clear();
             await changed();
             return;
         }

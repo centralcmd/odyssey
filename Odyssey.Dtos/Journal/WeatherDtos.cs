@@ -162,6 +162,12 @@ public static class WeatherRules
     /// </summary>
     public const int BatchMaxIds = 50;
 
+    /// <summary>A timed event's weather covers at most this many hours from its start (issue #430 §3.2.7).</summary>
+    public const int EventMaxHours = 24;
+
+    /// <summary>An all-day event's weather covers at most this many days from its first (issue #430 §5.1).</summary>
+    public const int AllDayMaxDays = 31;
+
     /// <summary>The one message a malformed batch <c>ids</c> list gets, keyed <c>ids</c>; it echoes no value.</summary>
     public const string BatchIdsMessage = "ids must be 1 to 50 GUIDs.";
     public const int OptionsMax = 200;
