@@ -171,6 +171,17 @@ public class ExchangeRateSyncPhaseZeroTests
         Assert.Equal("true", cut.Find("[aria-disabled]").GetAttribute("aria-disabled"));
     }
 
+    [Fact]
+    public async Task Button_Size_Sm_AddsTheCompactClass_AndMdAddsNone()
+    {
+        await using var ctx = NewContext();
+        var small = ctx.Render<OdsButton>(p => p.Add(b => b.Size, OdsButtonSize.Sm).AddChildContent("Try again"));
+        var medium = ctx.Render<OdsButton>(p => p.AddChildContent("Save"));
+
+        Assert.Contains("odc-btn-sm", small.Find("button").ClassList);
+        Assert.DoesNotContain("odc-btn-sm", medium.Find("button").ClassList);
+    }
+
     // ── OdsDatePicker ────────────────────────────────────────────────────────
 
     /// <summary>

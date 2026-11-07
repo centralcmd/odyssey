@@ -544,6 +544,35 @@ public class WeatherDayHoursTests : IDisposable
         Assert.Null(body.Find(".wx-hours-msg button").GetAttribute("aria-disabled"));
     }
 
+    [Fact]
+    public async Task Try_again_is_the_compact_button_the_design_asks_for()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var day = Today.AddDays(1);
+        Setup(weather, day, ApiResult<WeatherHourlyResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem()));
+        var body = Body(ctx, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero))));
+
+        await body.InvokeAsync(() => Cards(body)[1].Click());
+
+        body.WaitForAssertion(() => Assert.Contains("odc-btn-sm", body.Find(".wx-hours-msg button").ClassList));
+    }
+
+    [Fact]
+    public void A_stale_forecasts_foot_note_is_a_status_message()
+    {
+        var (ctx, weather) = Context();
+        using var _ = ctx;
+        var body = ctx.Render<WeatherForecastBody>(p => p
+            .Add(b => b.Current, Current() with { Stale = true })
+            .Add(b => b.Days, Days())
+            .Add(b => b.Reads, new WeatherPointReads(weather.Object, new FakeTime(new DateTimeOffset(2026, 10, 23, 8, 0, 0, TimeSpan.Zero)))));
+
+        var note = body.Find(".wx-foot .wx-stale");
+        Assert.Equal("status", note.GetAttribute("role"));
+        Assert.Contains("Not up to date", note.TextContent);
+    }
+
     // ── Hosts ─────────────────────────────────────────────────────────────────────────────────────
 
     private sealed class Claims(IReadOnlyList<string> permissions) : AuthenticationStateProvider

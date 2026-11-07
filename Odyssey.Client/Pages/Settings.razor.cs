@@ -1093,7 +1093,7 @@ public partial class Settings
         ]),
         // Exchange rates: the two global sync settings save with the page, and
         // Manage currencies links to /currencies, where the sync status, Run now, which currencies are
-        // synced, each one's own start date and the run history live.
+        // synced and each one's own start date live. The run history is on /background-jobs (issue #410).
         new("Exchange rates", Icons.Material.Filled.CurrencyExchange,
         [
             new("exchangeRateHistoryStartDate", "history", "History start date",

@@ -867,6 +867,9 @@
 .odc-btn-icon { font-size: 18px; line-height: 1; }
 .odc-btn-icon.start { margin-inline-end: 8px; }
 .odc-btn-icon.end { margin-inline-start: 8px; }
+/* OdsButton Size="Sm" (design system · bundle.css `.odc-btn.sm`): a compact action inside a message or panel.
+   The label line keeps the target above 24 px. */
+.mud-button-root.odc-btn-sm { padding: var(--space-1) var(--space-3); font-size: var(--fs-body2); }
 /* OdsButton AriaDisabled — the focusable unavailable state: MudBlazor's own disabled
    look, without the native disabled that would drop focus. */
 .mud-button-root.odc-btn-aria-disabled,
