@@ -1979,8 +1979,8 @@ public partial class Settings
     // A SEPARATE collection from SettingItem, not new entries in `Sections`. A secret has no Field, no
     // Load and no Write — it commits through its own per-key endpoint rather than the page's
     // whole-resource PUT — so folding it into the catalogue would force
-    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow a second
-    // exemption beyond SettingControl.Action. Keeping it separate means that test never sees these
+    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow an
+    // exemption beyond the tile-only SettingControl.Action. Keeping it separate means that test never sees these
     // rows and no existing guard is weakened.
     //
     // They still RENDER inside the section their Group names, joined at render time. That is the point

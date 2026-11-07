@@ -757,7 +757,7 @@ public class PropertyNetWorthTests
         Assert.Equal(Utc(2025, 1, 1), PropertyMembership.FirstContribution(null, disposed, Utc(2025, 1, 1), now));
     }
 
-    // ── Poisoned context ───────────────────────────────
+    // ── Poisoned context ──────────────────────────────────────────────────────────────────────
 
     private static async Task<string> SeedPoisonStoreAsync()
     {

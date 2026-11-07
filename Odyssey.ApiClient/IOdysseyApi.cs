@@ -53,7 +53,7 @@ public interface IOdysseyApi
     /// mismatched count is treated as a failed download (never a smaller-but-valid one) — a short
     /// count means the response was truncated mid-stream, and a missing header could mean anything
     /// from a CORS regression to a proxy stripping unlisted headers, so both fail closed. Every other
-    /// caller of this method (single-record downloads, the admin data export, file attachments) leaves
+    /// caller of this method (single-record downloads, file attachments) leaves
     /// this <see langword="null"/> and is unaffected.
     /// </param>
     Task<ApiResult<ApiFile>> GetFileAsync(

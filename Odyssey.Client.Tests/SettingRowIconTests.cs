@@ -87,19 +87,19 @@ public class SettingRowIconTests
     }
 
     /// <summary>
-    /// The six icons whose only consumer is this catalogue must pass. They are why the deny-list was
-    /// defended for as long as it was: a markup-presence allow-list would reject all six as absent,
+    /// The five icons whose only consumer is this catalogue must pass. They are why the deny-list was
+    /// defended for as long as it was: a markup-presence allow-list would reject all five as absent,
     /// which is a false positive that trains people to weaken the test. A font-derived allow-list
     /// accepts them, and this test says so out loud so the next person does not re-derive the argument.
     /// </summary>
     [Fact]
-    public void The_six_catalogue_only_icons_are_in_the_font()
+    public void The_five_catalogue_only_icons_are_in_the_font()
     {
         var ligatures = FontLigatures();
 
         string[] catalogueOnly =
         [
-            "how_to_reg", "mark_email_read", "download_for_offline",
+            "how_to_reg", "mark_email_read",
             "format_list_numbered", "file_upload", "sd_storage",
         ];
 

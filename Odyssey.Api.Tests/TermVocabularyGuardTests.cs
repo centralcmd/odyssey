@@ -149,7 +149,8 @@ public class TermVocabularyGuardTests
 
     /// <summary>
     /// Issue #190 AC 18 — the account-owned term projections are gone from every wire shape: the
-    /// account record carries no term count or current terms and a term names no account. A contract is the only owner, so its id is not nullable.
+    /// account record carries no term count or current terms and a term names no account. A contract
+    /// is the only owner, so its id is not nullable.
     /// </summary>
     [Fact]
     public void NoWireShape_CarriesAnAccountOwnedTerm()
