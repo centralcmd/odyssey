@@ -23,6 +23,17 @@
 .wx-wind-arrow { display: inline-flex; color: var(--mud-palette-text-secondary); }
 .wx-wind abbr { text-decoration: none; }
 
+/* A confirm button that keeps focus while busy or blocked (design system · weather.css, WxConfirmButton): it
+   is aria-disabled, never natively disabled. The design turns an `autorenew` glyph while busy; here
+   OdsButton's Loading spinner is the busy glyph, so the same two rules land on it — a progress cursor, and
+   no motion under reduced motion. */
+.wx-confirm { display: inline-flex; }
+.wx-confirm.busy .mud-button-root { cursor: progress; }
+@media (prefers-reduced-motion: reduce) {
+  .wx-confirm.busy .mud-progress-circular,
+  .wx-confirm.busy .mud-progress-circular-circle { animation: none; }
+}
+
 /* ---------- Card ---------- */
 .wx-card .odc-card-header { gap: var(--space-3); flex-wrap: wrap; }
 .wx-ttl { display: inline-flex; align-items: center; gap: var(--space-2); margin: 0; font: inherit; color: inherit; }

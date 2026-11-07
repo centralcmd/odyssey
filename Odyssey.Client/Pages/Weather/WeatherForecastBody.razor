@@ -92,7 +92,7 @@
         <div class="wx-foot">
             @if (Current.Stale)
             {
-                <span class="wx-stale">
+                <span class="wx-stale" role="status">
                     <OdsMIcon Name="cloud_off" Size="16" />
                     Not up to date — MET Norway didn’t answer the last refresh. Showing the forecast issued @WeatherVisuals.Clock(step.IssuedAtUtc) (your time).
                 </span>

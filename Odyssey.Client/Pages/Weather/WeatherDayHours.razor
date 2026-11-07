@@ -125,7 +125,7 @@
         <span aria-hidden="true"><OdsMIcon Name="@icon" Size="18" /></span><span>@text</span>
         @if (retry)
         {
-            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" AriaDisabled="@(!RetryEnabled)" OnClick="RetryAsync">Try again</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" AriaDisabled="@(!RetryEnabled)" OnClick="RetryAsync">Try again</OdsButton>
         }
     </div>;
 

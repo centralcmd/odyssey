@@ -33,6 +33,10 @@ public enum OdsReferenceNumberSize { Sm, Md }
 /// <summary>Button intent — filled (primary CTA) · outlined (secondary) · text (tertiary/nav) · danger (destructive).</summary>
 public enum OdsButtonVariant { Filled, Outlined, Text, Danger }
 
+/// <summary>Button size (design system: <c>size="md" | "sm"</c>) — Sm is the compact action inside a
+/// message or a panel (Try again under an inline error), never a dialog footer or a page header.</summary>
+public enum OdsButtonSize { Md, Sm }
+
 /// <summary>
 /// Chip semantic color. Never use brand tide/sea to encode money — use income/expense.
 /// The Status* tones map to the account/budget lifecycle palette (--status-* tokens):
