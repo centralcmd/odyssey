@@ -38,14 +38,20 @@ public static class UserColor
         Canonical(hex) is { } bg ? (bg, HexColor.Foreground(bg)) : null;
 
     /// <summary>The picker-dot custom property, for <c>.odc-colorpick-dot</c>; <c>null</c> when invalid.</summary>
-    public static string? Dot(string? hex) => Canonical(hex) is { } color ? $"--user-color:{color}" : null;
+    public static string? Dot(string? hex) => UserColorProperty(hex);
 
     /// <summary>
     /// The custom property a tag chip takes its colour from, for <c>OdsChip.UserColor</c>: the chip's
     /// <c>.user-color</c> rule paints its text and icon through <c>--user-text-l</c> (<c>app.css</c>) and
     /// its ground as a soft tint of the colour. <c>null</c> when invalid, so the chip keeps its tone.
     /// </summary>
-    public static string? Chip(string? hex) => Canonical(hex) is { } color ? $"--user-color:{color}" : null;
+    public static string? Chip(string? hex) => UserColorProperty(hex);
+
+    /// <summary>
+    /// The one <c>--user-color</c> declaration both <see cref="Dot"/> and <see cref="Chip"/> write, so the
+    /// two sinks cannot drift apart while they stay separately named.
+    /// </summary>
+    private static string? UserColorProperty(string? hex) => Canonical(hex) is { } color ? $"--user-color:{color}" : null;
 
     /// <summary>
     /// A tag colour drawn as a GLYPH on the page ground — the Overview "By tag" rows. The colour is

@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Bunit;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -40,6 +41,7 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Null(UserColor.Canonical(value));
         Assert.Null(UserColor.Fill(value));
         Assert.Null(UserColor.Dot(value));
+        Assert.Null(UserColor.Chip(value));
         Assert.Null(UserColor.Swatch(value));
         Assert.Null(UserColor.Glyph(value));
         Assert.Equal("background:#0369A1", UserColor.Background(value, ColorPalette.CalendarDefault));
@@ -52,6 +54,7 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.Equal("#77AA33", UserColor.Canonical("#77aa33"));
         Assert.Equal(("#F59E0B", HexColor.DarkForeground), UserColor.Fill("#f59e0b"));
         Assert.Equal("--user-color:#15803D", UserColor.Dot("#15803d"));
+        Assert.Equal("--user-color:#15803D", UserColor.Chip("#15803d"));
         Assert.Equal("--sw:#0369A1;--sw-fg:#FFFFFF", UserColor.Swatch("#0369a1"));
         Assert.Equal("oklch(from #0369A1 var(--user-glyph-l, l) c h)", UserColor.Glyph("#0369a1"));
     }
@@ -111,10 +114,17 @@ public class TagColorSurfaceTests : IAsyncLifetime
     public void The_user_color_chip_rule_paints_text_through_the_text_token_on_a_soft_tint()
     {
         var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
-        Assert.Contains(
-            ".odc-chip.user-color { color: oklch(from var(--user-color) var(--user-text-l, l) c h); "
-            + "background: color-mix(in srgb, var(--user-color) var(--tint-soft), transparent); }",
-            css, StringComparison.Ordinal);
+        var rule = Regex.Match(css, @"\.odc-chip\.user-color\s*\{(?<body>[^}]*)\}");
+        Assert.True(rule.Success, "odyssey-components.css has no .odc-chip.user-color rule.");
+
+        // Compare declarations, not formatting: whitespace inside a value is collapsed.
+        var declarations = rule.Groups["body"].Value
+            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(d => d.Split(':', 2))
+            .ToDictionary(d => d[0].Trim(), d => Regex.Replace(d[1].Trim(), @"\s+", " "));
+
+        Assert.Equal("oklch(from var(--user-color) var(--user-text-l, l) c h)", declarations["color"]);
+        Assert.Equal("color-mix(in srgb, var(--user-color) var(--tint-soft), transparent)", declarations["background"]);
         Assert.DoesNotContain("odc-chip-colordot", css, StringComparison.Ordinal);
     }
 
