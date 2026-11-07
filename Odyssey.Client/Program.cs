@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Auth;
 using Odyssey.Client;
@@ -38,6 +39,10 @@ var localDebugApiBaseAddress = (string?)null;
 var apiBaseAddress = shouldUseRelativeBase
     ? localDebugApiBaseAddress ?? new Uri(new Uri(builder.HostEnvironment.BaseAddress), "api/").ToString()
     : configuredApiBaseAddress;
+
+// The clock (issue #415): the weather hours cache expires answers by it, and ContractDetailView injects it.
+// One registration, so a test host can substitute its own.
+builder.Services.TryAddSingleton(TimeProvider.System);
 
 // The request pipeline is browser-specific only at its outermost layer: BrowserCredentialsHandler
 // opts fetch into sending the auth cookie cross-origin, then hands off to the library's portable

@@ -43,6 +43,43 @@ public static class WeatherComposer
             .OrderBy(step => step.TimeUtc)
             .ToList();
 
+    /// <summary>The longest period a stored step can have; how far before a window a step can start and still reach into it.</summary>
+    public const int LongestPeriodHours = 12;
+
+    /// <summary>
+    /// The rows of one window for the hourly read's day mode (issue #414): the <paramref name="effective"/> steps whose
+    /// period overlaps <c>[windowStartUtc, windowEndUtc)</c>, with every coarser step dropped where a finer one overlaps
+    /// it, in time order. Superseded runs are kept as history, so an older run's 6-hour block can sit beside a newer
+    /// run's hourly steps; the finer data wins and any hour it leaves uncovered is a gap, never a double-counted row.
+    /// The overlap is judged against the overlapping set as a whole, before anything is dropped, so the order of
+    /// removal cannot change the answer. The result never overlaps.
+    /// </summary>
+    public static List<WeatherForecastStep> DayRows(
+        IReadOnlyList<WeatherForecastStep> effective, DateTime windowStartUtc, DateTime windowEndUtc)
+    {
+        var overlapping = effective
+            .Where(step => step.TimeUtc < windowEndUtc && step.TimeUtc.AddHours(step.PeriodHours) > windowStartUtc)
+            .ToList();
+
+        var rows = new List<WeatherForecastStep>();
+        foreach (var step in overlapping
+            .Where(step => !overlapping.Any(finer => finer.PeriodHours < step.PeriodHours && Overlaps(finer, step)))
+            .OrderBy(step => step.TimeUtc))
+        {
+            // Two steps of one period never overlap in MET's grid; should a stored row ever break that, the earlier
+            // one is kept rather than letting the read contradict its own no-overlap contract.
+            if (rows.Count == 0 || step.TimeUtc >= rows[^1].TimeUtc.AddHours(rows[^1].PeriodHours))
+            {
+                rows.Add(step);
+            }
+        }
+
+        return rows;
+    }
+
+    private static bool Overlaps(WeatherForecastStep a, WeatherForecastStep b) =>
+        a.TimeUtc < b.TimeUtc.AddHours(b.PeriodHours) && b.TimeUtc < a.TimeUtc.AddHours(a.PeriodHours);
+
     /// <summary>The effective step whose period covers <paramref name="instantUtc"/>, preferring the finest period.</summary>
     public static WeatherForecastStep? Covering(IReadOnlyList<WeatherForecastStep> effective, DateTime instantUtc) =>
         effective

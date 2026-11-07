@@ -34,7 +34,7 @@
             default:
                 @if (_current is { Status: WeatherStatus.Ok, Step: not null, Point: not null })
                 {
-                    <WeatherForecastBody Current="_current" Days="_days" />
+                    <WeatherForecastBody Current="_current" Days="_days" Reads="Reads" HeadingLevel="4" />
                 }
                 else
                 {

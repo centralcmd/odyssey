@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
 using System.Text.Json.Serialization;
 
 namespace Odyssey.Dtos.Journal;
@@ -144,6 +145,13 @@ public static class WeatherRules
     public const int CoordinateScale = 3;
 
     public const int HourlyMaxDays = 10;
+
+    /// <summary>
+    /// The furthest point-local date the hourly read's day mode answers, counted from the point's today (issue #414):
+    /// today plus nine is the tenth calendar day, the last one the 10-day horizon reaches. The server's range check
+    /// and the client's day strip both read this one constant.
+    /// </summary>
+    public const int DayModeMaxDaysAhead = HourlyMaxDays - 1;
 
     /// <summary>A year, leap day included — what the temperature history's longest window and a custom range need.</summary>
     public const int DailyMaxDays = 366;
@@ -311,6 +319,33 @@ public sealed record WeatherStep
     public decimal? UvIndexClearSky { get; init; }
     public decimal? TempMinC { get; init; }
     public decimal? TempMaxC { get; init; }
+
+    /// <summary>
+    /// The step's start in the point's own clock, with its offset at that instant. Filled only by the hourly read's
+    /// day mode (issue #414) and omitted from every other response, whose wire shape is unchanged.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? LocalStart { get; init; }
+
+    /// <summary>The step's end (<see cref="TimeUtc"/> + <see cref="PeriodHours"/>) in the point's clock; day mode only.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? LocalEnd { get; init; }
+}
+
+/// <summary>
+/// The point-local date a day-mode hourly read answered (issue #414). <see cref="FromUtc"/>, <see cref="ToUtc"/> and
+/// <see cref="LengthHours"/> are filled only for a date inside the forecast window; an out-of-range date never has its
+/// bounds computed.
+/// </summary>
+public sealed record WeatherHourlyDay
+{
+    public DateOnly Date { get; init; }
+    public bool IsToday { get; init; }
+    public DateTime? FromUtc { get; init; }
+    public DateTime? ToUtc { get; init; }
+
+    /// <summary>23, 24 or 25 on most days; 23.5 or 24.5 where DST shifts by half an hour.</summary>
+    public decimal? LengthHours { get; init; }
 }
 
 public sealed record WeatherDayForecast
@@ -369,6 +404,11 @@ public sealed record WeatherHourlyResponse
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public WeatherResolvedFrom? ResolvedFrom { get; init; }
     public bool Stale { get; init; }
+
+    /// <summary>The day a day-mode read answered; omitted in range mode and when nothing resolved.</summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherHourlyDay? Day { get; init; }
+
     public IReadOnlyList<WeatherStep> Steps { get; init; } = [];
     public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
 }
@@ -501,30 +541,89 @@ public sealed class WeatherPointQuery
     public Guid? WeatherPointId { get; set; }
 }
 
-/// <summary><c>GET /api/weather/hourly</c>: <c>toUtc &gt; fromUtc</c>, span ≤ 10 days.</summary>
+/// <summary>
+/// <c>GET /api/weather/hourly</c>, in one of two modes. Range mode: <c>fromUtc</c> and <c>toUtc</c>, with
+/// <c>toUtc &gt; fromUtc</c> and a span of at most 10 days. Day mode (issue #414): <c>date</c>, a point-local
+/// <c>yyyy-MM-dd</c>, alone.
+/// </summary>
 public sealed class WeatherHourlyQuery : IValidatableObject
 {
+    private const string DateFormat = "yyyy-MM-dd";
+
     public Guid? WeatherPointId { get; set; }
 
-    [Required]
     public DateTime? FromUtc { get; set; }
 
-    [Required]
     public DateTime? ToUtc { get; set; }
+
+    /// <summary>
+    /// The point-local date for day mode. A string, not a <see cref="DateOnly"/>, so exactly one spelling of a date
+    /// is accepted: ASCII digits only and no trailing newline, which the default binder would let through.
+    /// </summary>
+    [RegularExpression(@"^[0-9]{4}-[0-9]{2}-[0-9]{2}\z", ErrorMessage = "date must be a calendar date written yyyy-MM-dd.")]
+    public string? Date { get; set; }
+
+    /// <summary>
+    /// The parsed <see cref="Date"/>. A method rather than a property, so model binding never binds it and the
+    /// OpenAPI document never lists it — this project references no ASP.NET Core type that could say so.
+    /// </summary>
+    public bool TryGetDate(out DateOnly date) =>
+        DateOnly.TryParseExact(Date, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out date);
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (FromUtc is { } from && ToUtc is { } to)
+        foreach (var result in ModeErrors())
         {
-            if (to <= from)
+            yield return result;
+        }
+    }
+
+    /// <summary>
+    /// Which mode the query is in, and why it is malformed if it is in neither. Shared by model validation and the
+    /// service's own re-check, so a caller that skips the HTTP pipeline meets the same rules.
+    /// </summary>
+    public IEnumerable<ValidationResult> ModeErrors()
+    {
+        if (Date is not null)
+        {
+            if (FromUtc is not null || ToUtc is not null)
             {
-                yield return new ValidationResult("toUtc must be after fromUtc.", [nameof(ToUtc)]);
+                yield return new ValidationResult("Use either date or fromUtc/toUtc, not both.", [nameof(Date)]);
             }
-            else if (to - from > TimeSpan.FromDays(WeatherRules.HourlyMaxDays))
+            else if (!TryGetDate(out _))
             {
-                yield return new ValidationResult(
-                    $"The window may span at most {WeatherRules.HourlyMaxDays} days.", [nameof(ToUtc)]);
+                yield return new ValidationResult("date must be a calendar date written yyyy-MM-dd.", [nameof(Date)]);
             }
+
+            yield break;
+        }
+
+        if (FromUtc is null && ToUtc is null)
+        {
+            yield return new ValidationResult("fromUtc and toUtc are required unless date is given.", [nameof(FromUtc)]);
+            yield break;
+        }
+
+        if (FromUtc is null)
+        {
+            yield return new ValidationResult("fromUtc is required with toUtc.", [nameof(FromUtc)]);
+            yield break;
+        }
+
+        if (ToUtc is null)
+        {
+            yield return new ValidationResult("toUtc is required with fromUtc.", [nameof(ToUtc)]);
+            yield break;
+        }
+
+        if (ToUtc <= FromUtc)
+        {
+            yield return new ValidationResult("toUtc must be after fromUtc.", [nameof(ToUtc)]);
+        }
+        else if (ToUtc - FromUtc > TimeSpan.FromDays(WeatherRules.HourlyMaxDays))
+        {
+            yield return new ValidationResult(
+                $"The window may span at most {WeatherRules.HourlyMaxDays} days.", [nameof(ToUtc)]);
         }
     }
 }

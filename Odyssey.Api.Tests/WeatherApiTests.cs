@@ -93,6 +93,7 @@ public class WeatherApiTests
     {
         { "GET", "/api/weather/current" },
         { "GET", "/api/weather/hourly?fromUtc=2026-10-23T00:00:00Z&toUtc=2026-10-24T00:00:00Z" },
+        { "GET", "/api/weather/hourly?date=2026-10-23" },
         { "GET", "/api/weather/daily?from=2026-10-23&to=2026-10-24" },
         { "GET", $"/api/calendar-events/{Guid.Empty}/weather" },
         { "GET", $"/api/journal-entries/{Guid.Empty}/weather" },
@@ -968,6 +969,194 @@ public class WeatherApiTests
             Interlocked.Increment(ref Calls);
             return Task.FromResult(new ObservationFetchResult(true, []));
         }
+    }
+
+    // ── Hours of one day (issue #414) ─────────────────────────────────────────────────────────────
+
+    /// <summary>The point's today as the SERVER computes it, so a run that straddles Oslo midnight cannot disagree with it.</summary>
+    private static async Task<DateOnly> PointTodayAsync(HttpClient client, Guid pointId)
+    {
+        // The UTC date is the point's today or one day either side; the day block's isToday says which.
+        var utc = DateOnly.FromDateTime(DateTime.UtcNow);
+        foreach (var candidate in new[] { utc, utc.AddDays(1), utc.AddDays(-1) })
+        {
+            var response = await client.GetFromJsonAsync<WeatherHourlyResponse>(
+                $"/api/weather/hourly?weatherPointId={pointId}&date={candidate:yyyy-MM-dd}", Json);
+            if (response!.Day!.IsToday)
+                return candidate;
+        }
+
+        throw new InvalidOperationException("No date within a day of UTC is the point's today.");
+    }
+
+    [Theory]
+    [InlineData("/api/weather/hourly?date=2026-10-23&fromUtc=2026-10-23T00:00:00Z", "date")]
+    [InlineData("/api/weather/hourly", "fromUtc")]
+    [InlineData("/api/weather/hourly?fromUtc=2026-10-23T00:00:00Z", "toUtc")]
+    [InlineData("/api/weather/hourly?date=2026-13-40", "date")]
+    [InlineData("/api/weather/hourly?date=2026-1-5", "date")]
+    [InlineData("/api/weather/hourly?date=05.11.2026", "date")]
+    [InlineData("/api/weather/hourly?date=2026-11-05%0A", "date")]
+    [InlineData("/api/weather/hourly?date=%EF%BC%92%EF%BC%90%EF%BC%92%EF%BC%96-%EF%BC%91%EF%BC%91-%EF%BC%90%EF%BC%95", "date")]
+    public async Task A_malformed_hourly_query_is_400_keyed_on_the_field_at_fault(string path, string key)
+    {
+        await using var factory = new WeatherFactory(Reader);
+        var response = await factory.CreateClient().GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
+        Assert.Contains(problem!.Errors.Keys, k => string.Equals(k, key, StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task Day_mode_returns_the_point_local_day_with_local_times_and_nothing_of_the_site()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var point = await CreatePointAsync(client);
+        var tomorrow = (await PointTodayAsync(client, point.WeatherPointId)).AddDays(1);
+
+        using var raw = JsonDocument.Parse(await client.GetStringAsync(
+            $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&date={tomorrow:yyyy-MM-dd}"));
+        var root = raw.RootElement;
+
+        Assert.Equal("Ok", root.GetProperty("status").GetString());
+        var day = root.GetProperty("day");
+        Assert.Equal(tomorrow.ToString("yyyy-MM-dd"), day.GetProperty("date").GetString());
+        Assert.False(day.GetProperty("isToday").GetBoolean());
+        var fromUtc = day.GetProperty("fromUtc").GetDateTime().ToUniversalTime();
+        var toUtc = day.GetProperty("toUtc").GetDateTime().ToUniversalTime();
+        Assert.Equal((decimal)(toUtc - fromUtc).TotalHours, day.GetProperty("lengthHours").GetDecimal());
+
+        var steps = root.GetProperty("steps").EnumerateArray().ToList();
+        Assert.NotEmpty(steps);
+        DateTimeOffset? previousEnd = null;
+        foreach (var step in steps)
+        {
+            var start = step.GetProperty("localStart").GetDateTimeOffset();
+            var end = step.GetProperty("localEnd").GetDateTimeOffset();
+            Assert.Equal(step.GetProperty("timeUtc").GetDateTime().ToUniversalTime(), start.UtcDateTime);
+            Assert.True(end.UtcDateTime > fromUtc && start.UtcDateTime < toUtc);
+            Assert.True(previousEnd is null || start >= previousEnd);
+            previousEnd = end;
+        }
+
+        // The point's clock travels as an offset, never as a zone id or a position (#414 §7.3).
+        var text = root.GetRawText();
+        foreach (var hidden in new[] { "timeZoneId", "latitude", "longitude", "altitudeMeters", "siteVersion" })
+        {
+            Assert.DoesNotContain($"\"{hidden}\"", text, StringComparison.OrdinalIgnoreCase);
+        }
+
+        Assert.DoesNotContain("Europe/Oslo", text, StringComparison.Ordinal);
+        Assert.DoesNotContain("59.91", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Day_mode_outside_the_window_is_OutOfRange_with_no_bounds_and_never_fetches()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var point = await CreatePointAsync(client);
+        var today = await PointTodayAsync(client, point.WeatherPointId);
+        var callsBefore = factory.Forecasts.Calls;
+
+        foreach (var date in new[] { today.AddDays(-1), today.AddDays(WeatherRules.DayModeMaxDaysAhead + 1), DateOnly.MinValue, DateOnly.MaxValue })
+        {
+            var response = await client.GetFromJsonAsync<WeatherHourlyResponse>(
+                $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&date={date:yyyy-MM-dd}", Json);
+            Assert.Equal(WeatherStatus.OutOfRange, response!.Status);
+            Assert.Equal(date, response.Day!.Date);
+            Assert.Null(response.Day.FromUtc);
+            Assert.Null(response.Day.LengthHours);
+            Assert.Empty(response.Steps);
+        }
+
+        Assert.Equal(callsBefore, factory.Forecasts.Calls);
+
+        var last = await client.GetFromJsonAsync<WeatherHourlyResponse>(
+            $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&date={today.AddDays(WeatherRules.DayModeMaxDaysAhead):yyyy-MM-dd}", Json);
+        Assert.NotEqual(WeatherStatus.OutOfRange, last!.Status);
+    }
+
+    [Fact]
+    public async Task Every_other_weather_read_keeps_its_wire_shape()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var point = await CreatePointAsync(client);
+        var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
+        await LinkAsync(client, place.LocationId, point.WeatherPointId);
+        var from = DateTime.UtcNow;
+
+        var start = from.AddHours(1);
+        var eventId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.CalendarEvents.Add(new CalendarEvent
+            {
+                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Walk", LocationId = place.LocationId,
+                StartDateTime = start, EndDateTime = start.AddHours(2),
+            });
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = entryId, ExternalUid = "e1", Title = "Today", Content = "…", EntryDate = from, LocationId = place.LocationId,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var range = await client.GetStringAsync(
+            $"/api/weather/hourly?weatherPointId={point.WeatherPointId}&fromUtc={from:yyyy-MM-ddTHH:mm:ssZ}&toUtc={from.AddHours(6):yyyy-MM-ddTHH:mm:ssZ}");
+        using (var doc = JsonDocument.Parse(range))
+        {
+            Assert.False(doc.RootElement.TryGetProperty("day", out _));
+            Assert.NotEmpty(doc.RootElement.GetProperty("steps").EnumerateArray());
+        }
+
+        // (body, carries steps): the journal-entry read carries a day summary and no step, so for it the absence of the
+        // local times is trivially true; for the others it is a fact about a real step.
+        foreach (var (body, carriesSteps) in new[]
+        {
+            (range, true),
+            (await client.GetStringAsync($"/api/weather/current?weatherPointId={point.WeatherPointId}"), true),
+            (await client.GetStringAsync($"/api/calendar-events/{eventId}/weather"), true),
+            (await client.GetStringAsync($"/api/journal-entries/{entryId}/weather"), false),
+        })
+        {
+            if (carriesSteps)
+                Assert.Contains("\"timeUtc\"", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"localStart\"", body, StringComparison.Ordinal);
+            Assert.DoesNotContain("\"localEnd\"", body, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Day_mode_shares_the_weather_read_limit()
+    {
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:WeatherRead:PermitLimit"] = "1",
+            ["RateLimiting:WeatherRead:WindowSeconds"] = "3600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/weather/hourly?date=2026-10-23")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.GetAsync("/api/weather/hourly?date=2026-10-24")).StatusCode);
+    }
+
+    [Fact]
+    public async Task The_openapi_document_lists_the_hourly_parameters_and_requires_none()
+    {
+        await using var factory = new WeatherFactory(Reader, configuration: new Dictionary<string, string?> { ["Swagger:Enabled"] = "true" });
+        using var document = JsonDocument.Parse(await factory.CreateClient().GetStringAsync("/swagger/v1/swagger.json"));
+
+        var parameters = document.RootElement.GetProperty("paths").GetProperty("/api/weather/hourly").GetProperty("get")
+            .GetProperty("parameters").EnumerateArray().ToList();
+        Assert.Equal(["date", "fromutc", "toutc", "weatherpointid"],
+            parameters.Select(p => p.GetProperty("name").GetString()!.ToLowerInvariant()).Order(StringComparer.Ordinal).ToList());
+        Assert.All(parameters, p => Assert.False(p.TryGetProperty("required", out var required) && required.GetBoolean()));
     }
 
     private sealed class WeatherFactory : OdysseyApiFactory

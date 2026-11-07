@@ -162,6 +162,20 @@ public sealed class WeatherReadService
 
     public async Task<WeatherHourlyResponse> HourlyAsync(WeatherHourlyQuery query, string userId, CancellationToken cancellationToken)
     {
+        // Model validation already ran on the HTTP path; this re-check is for a caller that skipped it, so the mode
+        // rules hold for every caller and neither branch below can meet a missing value.
+        if (query.ModeErrors().FirstOrDefault() is { } invalid)
+        {
+            var member = invalid.MemberNames.FirstOrDefault() ?? nameof(WeatherHourlyQuery.FromUtc);
+            throw new DomainValidationException(
+                invalid.ErrorMessage ?? "The hourly query is malformed.", null, char.ToLowerInvariant(member[0]) + member[1..]);
+        }
+
+        if (query.Date is not null && query.TryGetDate(out var date))
+        {
+            return await HourlyDayAsync(date, query.WeatherPointId, userId, cancellationToken);
+        }
+
         var from = AsUtc(query.FromUtc!.Value);
         var to = AsUtc(query.ToUtc!.Value);
         var resolution = await ResolveAsync(query.WeatherPointId, userId, cancellationToken);
@@ -190,6 +204,85 @@ public sealed class WeatherReadService
             Stale = await StaleAsync(resolution, point.WeatherPointId, cancellationToken),
             Steps = steps.Select(ToStep).ToList(),
         };
+    }
+
+    /// <summary>
+    /// The hourly read's day mode (issue #414): the rows of one point-local date. The date is range-checked against
+    /// the point's own today BEFORE any date arithmetic, so an extreme date can never overflow the bounds, and before
+    /// the on-demand fetch, so at most the ten dates of the window can trigger one. Today starts at the step covering
+    /// now. Every row carries its start and end in the point's clock, each with its own instant's offset.
+    /// </summary>
+    private async Task<WeatherHourlyResponse> HourlyDayAsync(
+        DateOnly date, Guid? pointId, string userId, CancellationToken cancellationToken)
+    {
+        var resolution = await ResolveAsync(pointId, userId, cancellationToken);
+        if (resolution.Point is not { } point)
+        {
+            return new WeatherHourlyResponse { Status = WeatherStatus.NoPlace };
+        }
+
+        var unbounded = new WeatherHourlyDay { Date = date };
+
+        // A point always has a site, but nothing in the schema forces it (CurrentSiteVersion carries no key): with no
+        // timeline there is no clock to place the day in, and every date answers the same way.
+        var timeline = await TimelineOrNullAsync(point.WeatherPointId, cancellationToken);
+        if (timeline is null)
+        {
+            return new WeatherHourlyResponse { Point = point, ResolvedFrom = resolution.From, Status = WeatherStatus.NoData, Day = unbounded };
+        }
+
+        var now = Now;
+        var localToday = timeline.DateForInstant(now);
+        if (date < localToday || date > localToday.AddDays(WeatherRules.DayModeMaxDaysAhead))
+        {
+            return new WeatherHourlyResponse { Point = point, ResolvedFrom = resolution.From, Status = WeatherStatus.OutOfRange, Day = unbounded };
+        }
+
+        var (fromUtc, toUtc) = timeline.DayBoundsUtc(date);
+        var isToday = date == localToday;
+        var day = new WeatherHourlyDay
+        {
+            Date = date,
+            IsToday = isToday,
+            FromUtc = DateTime.SpecifyKind(fromUtc, DateTimeKind.Utc),
+            ToUtc = DateTime.SpecifyKind(toUtc, DateTimeKind.Utc),
+            LengthHours = (decimal)(toUtc - fromUtc).TotalHours,
+        };
+
+        // localToday follows the instant rule and the bounds the date-ownership rule; after a site moves zone the two
+        // can disagree, so today's window starts at the later of now and its own midnight, and may be empty.
+        var windowStart = isToday && now > fromUtc ? now : fromUtc;
+        if (windowStart >= toUtc)
+        {
+            return new WeatherHourlyResponse { Point = point, ResolvedFrom = resolution.From, Status = WeatherStatus.Ok, Day = day };
+        }
+
+        await OnDemandAsync(resolution, now, cancellationToken);
+
+        var effective = await EffectiveStepsAsync(
+            point.WeatherPointId, windowStart.AddHours(-WeatherComposer.LongestPeriodHours), toUtc, cancellationToken);
+        var rows = WeatherComposer.DayRows(effective, windowStart, toUtc);
+        var zone = WeatherSiteTimeline.Zone(timeline.SiteForDate(date));
+        return new WeatherHourlyResponse
+        {
+            Point = point,
+            ResolvedFrom = resolution.From,
+            Status = await StatusAsync(resolution, rows.Count > 0, cancellationToken),
+            Stale = await StaleAsync(resolution, point.WeatherPointId, cancellationToken),
+            Day = day,
+            Steps = rows.Select(row => ToStep(row) with
+            {
+                LocalStart = InZone(row.TimeUtc, zone),
+                LocalEnd = InZone(row.TimeUtc.AddHours(row.PeriodHours), zone),
+            }).ToList(),
+        };
+    }
+
+    /// <summary>An instant in <paramref name="zone"/>'s clock, with that zone's offset AT the instant.</summary>
+    internal static DateTimeOffset InZone(DateTime instantUtc, TimeZoneInfo zone)
+    {
+        var utc = new DateTimeOffset(DateTime.SpecifyKind(instantUtc, DateTimeKind.Utc));
+        return utc.ToOffset(zone.GetUtcOffset(utc));
     }
 
     public async Task<WeatherDailyResponse> DailyAsync(WeatherDailyQuery query, string userId, CancellationToken cancellationToken)

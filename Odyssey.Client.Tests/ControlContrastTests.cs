@@ -178,6 +178,33 @@ public class ControlContrastTests
     }
 
     /// <summary>
+    /// The weather day card is a control (issue #415 §6.10, AC 17): its edge is <c>--control-border</c>, its selected bar
+    /// <c>--brand-text</c>, its focus ring <c>--focus-ring</c> inset one band below the bar, and its chevron the secondary
+    /// text colour. Each is a non-text mark on the surface, so each must clear 3:1 there in both themes. Runs on every build.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_weather_day_cards_marks_clear_three_to_one_on_the_surface(Theme theme)
+    {
+        var palette = Palette(theme);
+        var surface = Hex(palette.Surface);
+        var declaredRing = Declarations(AppCss, "--focus-ring")[theme];
+        var ring = declaredRing == "var(--mud-palette-primary)" ? Hex(palette.Primary) : Resolve(AppCss, declaredRing);
+
+        AssertRatio(Resolve(AppCss, Declarations(AppCss, "--control-border")[theme]), surface, NonTextContrastMinimum, $"day card edge ({theme})");
+        AssertRatio(Resolve(AppCss, Declarations(AppCss, "--brand-text")[theme]), surface, NonTextContrastMinimum, $"selected bar ({theme})");
+        AssertRatio(ring, surface, NonTextContrastMinimum, $"focus ring ({theme})");
+        AssertRatio(Hex(palette.TextSecondary), surface, NonTextContrastMinimum, $"chevron ({theme})");
+
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "weather.css"));
+        Assert.Matches(@"\.wx-day-btn \{[^}]*border: 1px solid var\(--control-border\);[^}]*border-top: var\(--focus-ring-width\) solid var\(--control-border\)", css);
+        Assert.Matches(@"\.wx-day-btn\[aria-expanded=""true""\] \{[^}]*border-top-color: var\(--brand-text\)", css);
+        Assert.Matches(@"\.wx-day-btn:focus-visible \{[^}]*outline: var\(--focus-ring-width\) solid var\(--focus-ring\);[^}]*outline-offset: calc\(-3 \* var\(--focus-ring-width\)\)", css);
+        Assert.Matches(@"\.wx-day-chev \{[^}]*color: var\(--mud-palette-text-secondary\)", css);
+    }
+
+    /// <summary>
     /// The page header's Search region recesses its controls to the Background fill inside the
     /// Surface card and outlines them with the softer <c>--control-border-quiet</c>. Softer is
     /// only licensed down to 3:1, against the fill inside the edge and the card outside it.
