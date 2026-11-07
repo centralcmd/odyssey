@@ -155,6 +155,15 @@ public static class WeatherRules
 
     /// <summary>A year, leap day included — what the temperature history's longest window and a custom range need.</summary>
     public const int DailyMaxDays = 366;
+
+    /// <summary>
+    /// The most ids one event or entry weather batch read takes (issue #430 §5.2). The API client splits a longer
+    /// list into requests of this size, so no caller restates it.
+    /// </summary>
+    public const int BatchMaxIds = 50;
+
+    /// <summary>The one message a malformed batch <c>ids</c> list gets, keyed <c>ids</c>; it echoes no value.</summary>
+    public const string BatchIdsMessage = "ids must be 1 to 50 GUIDs.";
     public const int OptionsMax = 200;
 
     /// <summary>A weather point's name (issue #387 §8). Converted points inherit a location name (≤ 100).</summary>
@@ -971,4 +980,125 @@ public sealed record WeatherPreferences
 public sealed record UpdateWeatherPreferences
 {
     public Guid? DefaultPointId { get; set; }
+}
+
+/// <summary>
+/// The <c>ids</c> rule of the two event/entry weather batch reads (issue #430 §8), shared by the API and the API
+/// client so both agree on what one id is. 1 to <see cref="WeatherRules.BatchMaxIds"/> ids, each in the <c>D</c>
+/// format only — so one GUID has one spelling — de-duplicated on the parsed value, first seen wins. A failure has
+/// one key, <c>ids</c>, and one fixed message (<see cref="WeatherRules.BatchIdsMessage"/>) that echoes no value.
+/// </summary>
+public static class WeatherBatchIds
+{
+    public static bool TryParse(IReadOnlyCollection<string>? ids, out IReadOnlyList<Guid> parsed)
+    {
+        parsed = [];
+        if (ids is null || ids.Count is 0 or > WeatherRules.BatchMaxIds)
+        {
+            return false;
+        }
+
+        var seen = new HashSet<Guid>();
+        var list = new List<Guid>(ids.Count);
+        foreach (var raw in ids)
+        {
+            if (!Guid.TryParseExact(raw, "D", out var id))
+            {
+                return false;
+            }
+
+            if (seen.Add(id))
+            {
+                list.Add(id);
+            }
+        }
+
+        parsed = list;
+        return true;
+    }
+}
+
+/// <summary>Which kind of window a calendar event's weather summary describes (issue #430 §5.3).</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<WeatherSummaryBasis>))]
+public enum WeatherSummaryBasis
+{
+    Hourly = 1,
+    Daily = 2,
+}
+
+/// <summary>
+/// The compact weather of one calendar event, as an agenda row shows it (issue #430 §5.3). Timed events: the
+/// non-overlapping hourly rows over the event's window. All-day events: the event's first day, the measured half
+/// when present. Null on the item unless its status is <c>Ok</c>.
+/// </summary>
+public sealed record WeatherEventSummary
+{
+    public WeatherSummaryBasis Basis { get; init; }
+    public string? SymbolCode { get; init; }
+    public decimal? MinTempC { get; init; }
+    public decimal? MaxTempC { get; init; }
+    public decimal? PrecipitationMm { get; init; }
+
+    /// <summary>The hours the summed precipitation spans; null for an all-day summary.</summary>
+    public int? PrecipitationHours { get; init; }
+    public DateTime? IssuedAtUtc { get; init; }
+    public bool Measured { get; init; }
+}
+
+/// <summary>One item of the journal batch: the single read's shape without attribution, keyed by the entry.</summary>
+public sealed record JournalEntryWeatherItem
+{
+    public Guid JournalEntryId { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherPointRef? Point { get; init; }
+    public WeatherStatus Status { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
+    public bool Stale { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherLinkedLocationRef? LinkedLocation { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? DistanceKm { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateOnly? Date { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherDaySummary? Day { get; init; }
+}
+
+/// <summary><c>GET /api/journal-entries/weather?ids=…</c> (issue #430 §5.2).</summary>
+public sealed record JournalEntryWeatherBatch
+{
+    public IReadOnlyList<JournalEntryWeatherItem> Items { get; init; } = [];
+    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
+}
+
+/// <summary>One item of the calendar batch (issue #430 §5.3).</summary>
+public sealed record CalendarEventWeatherItem
+{
+    public Guid CalendarEventId { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherPointRef? Point { get; init; }
+    public WeatherStatus Status { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherResolvedFrom? ResolvedFrom { get; init; }
+    public bool Stale { get; init; }
+    public bool IsAllDay { get; init; }
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public WeatherEventSummary? Summary { get; init; }
+}
+
+/// <summary><c>GET /api/calendar-events/weather?ids=…</c> (issue #430 §5.3).</summary>
+public sealed record CalendarEventWeatherBatch
+{
+    public IReadOnlyList<CalendarEventWeatherItem> Items { get; init; } = [];
+    public WeatherAttribution Attribution { get; init; } = WeatherAttribution.MetNorway;
 }

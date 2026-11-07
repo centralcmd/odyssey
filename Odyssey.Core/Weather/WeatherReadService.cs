@@ -17,15 +17,13 @@ public sealed class WeatherReadService
     /// <summary>How far ahead Locationforecast reaches; a window wholly beyond it is <c>OutOfRange</c>.</summary>
     public static readonly TimeSpan Horizon = TimeSpan.FromDays(10);
 
-    /// <summary>The least age at which a forecast reads as stale, however short the refresh interval.</summary>
-    private static readonly TimeSpan StaleFloor = TimeSpan.FromHours(3);
-
-    private const int AllDayMaxDays = 31;
+    internal const int AllDayMaxDays = 31;
 
     private readonly OdysseyContext context;
     private readonly WeatherFetchService fetch;
     private readonly IWeatherSettingsLookup settings;
     private readonly TimeProvider time;
+    private readonly WeatherPointResolver resolver;
 
     public WeatherReadService(OdysseyContext context, WeatherFetchService fetch, IWeatherSettingsLookup settings, TimeProvider? time = null)
     {
@@ -33,97 +31,21 @@ public sealed class WeatherReadService
         this.fetch = fetch;
         this.settings = settings;
         this.time = time ?? TimeProvider.System;
+        resolver = new WeatherPointResolver(context, settings, this.time);
     }
 
     private DateTime Now => time.GetUtcNow().UtcDateTime;
 
     // ── Resolution (§3; issue #387 §8) ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// What a read resolved to. <see cref="Point"/> is null when nothing resolved (<c>NoPlace</c>), and then
-    /// <see cref="From"/> is null too. <see cref="LinkedLocation"/> and <see cref="DistanceKm"/> are filled only for
-    /// <c>Linked</c>.
-    /// </summary>
-    public sealed record Resolution(
-        WeatherPointRef? Point,
-        bool Selectable,
-        bool Tracked,
-        WeatherResolvedFrom? From = null,
-        WeatherLinkedLocationRef? LinkedLocation = null,
-        int? DistanceKm = null);
-
-    /// <summary>
-    /// Explicit point id, then — for an event or entry — the point its place links to, then the caller's own
-    /// preference if selectable, then the household default if selectable. An explicit id with no point is a 404.
-    /// An explicit or linked point that is not selectable (forecast off, or being purged) still returns stored
-    /// history, never fetches and never falls back. A place with no link is skipped, so the preference and the
-    /// default apply.
-    /// </summary>
-    public async Task<Resolution> ResolveAsync(
-        Guid? explicitId, string userId, CancellationToken cancellationToken, Guid? linkedLocationId = null)
-    {
-        if (explicitId is { } id)
-        {
-            return await ResolveFixedAsync(id, WeatherResolvedFrom.Explicit, cancellationToken)
-                ?? throw new DomainNotFoundException($"Weather point ID {id} not found.");
-        }
-
-        if (linkedLocationId is { } linked
-            && await context.Locations.AsNoTracking()
-                .Where(l => l.LocationId == linked && l.WeatherPointId != null)
-                .Select(l => new { l.LocationId, l.Name, l.Latitude, l.Longitude, l.WeatherPointId })
-                .FirstOrDefaultAsync(cancellationToken) is { } place
-            && await ResolveFixedAsync(place.WeatherPointId!.Value, WeatherResolvedFrom.Linked, cancellationToken) is { } fromLink)
-        {
-            var site = await CurrentSiteAsync(place.WeatherPointId.Value, cancellationToken);
-            return fromLink with
-            {
-                LinkedLocation = new WeatherLinkedLocationRef { LocationId = place.LocationId, Name = place.Name },
-                DistanceKm = WeatherDistance.KmOrNull(place.Latitude, place.Longitude, site?.Latitude, site?.Longitude),
-            };
-        }
-
-        var preferred = await PreferredPointIdAsync(userId, cancellationToken);
-        var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultPointId;
-
-        foreach (var (candidate, from) in new[] { (preferred, WeatherResolvedFrom.Preferred), (household, WeatherResolvedFrom.Household) })
-        {
-            if (candidate is { } candidateId && await ResolveFixedAsync(candidateId, from, cancellationToken) is { Selectable: true } resolved)
-            {
-                return resolved;
-            }
-        }
-
-        return new Resolution(null, false, false);
-    }
-
-    private async Task<Resolution?> ResolveFixedAsync(Guid id, WeatherResolvedFrom from, CancellationToken cancellationToken)
-    {
-        var row = await context.WeatherPoints.AsNoTracking()
-            .Where(p => p.WeatherPointId == id)
-            .Select(p => new { p.Name, p.ForecastEnabled, p.PurgeStartedAt, p.IsTracked })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (row is null)
-        {
-            return null;
-        }
-
-        var selectable = row.ForecastEnabled && row.PurgeStartedAt is null;
-        return new Resolution(
-            new WeatherPointRef { WeatherPointId = id, Name = row.Name }, selectable, selectable && row.IsTracked, from);
-    }
+    /// <summary>The resolution order lives in <see cref="WeatherPointResolver"/>, shared with the batch reads (issue #430 §3.2).</summary>
+    public Task<WeatherResolution> ResolveAsync(
+        Guid? explicitId, string userId, CancellationToken cancellationToken, Guid? linkedLocationId = null) =>
+        resolver.ResolveAsync(explicitId, userId, cancellationToken, linkedLocationId);
 
     /// <summary>Selectable: the point exists, its forecast is on and it is not being purged.</summary>
     public Task<bool> IsSelectableAsync(Guid pointId, CancellationToken cancellationToken) =>
-        context.WeatherPoints.AsNoTracking()
-            .AnyAsync(p => p.WeatherPointId == pointId && p.ForecastEnabled && p.PurgeStartedAt == null, cancellationToken);
-
-    private Task<WeatherPointSite?> CurrentSiteAsync(Guid pointId, CancellationToken cancellationToken) =>
-        (from point in context.WeatherPoints.AsNoTracking()
-         join site in context.WeatherPointSites.AsNoTracking()
-             on new { point.WeatherPointId, Version = point.CurrentSiteVersion } equals new { site.WeatherPointId, Version = site.SiteVersion }
-         where point.WeatherPointId == pointId
-         select site).FirstOrDefaultAsync(cancellationToken);
+        resolver.IsSelectableAsync(pointId, cancellationToken);
 
     // ── Reads ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -324,8 +246,8 @@ public sealed class WeatherReadService
     }
 
     /// <summary>
-    /// A calendar event's weather (§3 Local dates): a timed event gets the hourly window <c>[Start, End)</c>
-    /// clamped to 24 h; an all-day one the dates <c>Start … End − 1 day</c>, at most 31. Null when the event
+    /// A calendar event's weather (§3 Local dates): a timed event gets the non-overlapping rows that overlap
+    /// <c>[Start, End)</c> clamped to 24 h (at least 1 h, issue #430 Goal 8); an all-day one the dates <c>Start … End − 1 day</c>, at most 31. Null when the event
     /// does not exist.
     /// </summary>
     public async Task<CalendarEventWeatherResponse?> CalendarEventAsync(
@@ -387,9 +309,11 @@ public sealed class WeatherReadService
         }
         else
         {
-            var clampedEnd = end - start > TimeSpan.FromHours(24) ? start.AddHours(24) : end;
-            steps = (await EffectiveStepsAsync(point.WeatherPointId, start, clampedEnd > start ? clampedEnd : start.AddHours(1), cancellationToken))
-                .Select(ToStep).ToList();
+            // The same window and overlap rule as the calendar batch (issue #430 Goal 8): a step that straddles the
+            // start is included, and a coarser block overlapped by finer steps is dropped.
+            var (fromUtc, toUtc) = WeatherEventWeather.Window(start, end);
+            var effective = await EffectiveStepsAsync(point.WeatherPointId, WeatherEventWeather.ReadFrom(fromUtc), toUtc, cancellationToken);
+            steps = WeatherEventWeather.Rows(effective, fromUtc, toUtc).Select(ToStep).ToList();
         }
 
         return new CalendarEventWeatherResponse
@@ -540,7 +464,7 @@ public sealed class WeatherReadService
 
     public async Task<WeatherPreferences> PreferencesAsync(string userId, CancellationToken cancellationToken)
     {
-        var preferred = await PreferredPointIdAsync(userId, cancellationToken);
+        var preferred = await resolver.PreferredPointIdAsync(userId, cancellationToken);
         var household = (await settings.GetAsync(cancellationToken)).HouseholdDefaultPointId;
         return new WeatherPreferences
         {
@@ -558,39 +482,9 @@ public sealed class WeatherReadService
                 "That weather point has no forecast. Choose one from the list.", code: null, field: "defaultPointId");
         }
 
-        var json = JsonSerializer.Serialize(new StoredPreference(request.DefaultPointId), PreferenceJson);
+        var json = WeatherPointResolver.SerializePreference(request.DefaultPointId);
         await new UserPreferencesService(context, time)
             .UpsertServerOwnedAsync(userId, UserPreferencesService.WeatherKey, json, cancellationToken);
-    }
-
-    private static readonly JsonSerializerOptions PreferenceJson = new(JsonSerializerDefaults.Web);
-
-    /// <summary>The stored shape, <c>{"defaultPointId": "…"}</c> (issue #387 renamed it from <c>defaultLocationId</c>).</summary>
-    private sealed record StoredPreference(Guid? DefaultPointId);
-
-    /// <summary>
-    /// The caller's stored point id, or null. A row that does not parse reads as no preference, never a failure;
-    /// whatever it names is re-checked for selectability by every caller, so a deleted point reads as absent.
-    /// </summary>
-    private async Task<Guid?> PreferredPointIdAsync(string userId, CancellationToken cancellationToken)
-    {
-        var json = await context.UserPreferences.AsNoTracking()
-            .Where(p => p.UserId == userId && p.Key == UserPreferencesService.WeatherKey)
-            .Select(p => p.PreferencesJson)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (string.IsNullOrEmpty(json))
-        {
-            return null;
-        }
-
-        try
-        {
-            return JsonSerializer.Deserialize<StoredPreference>(json, PreferenceJson)?.DefaultPointId;
-        }
-        catch (JsonException)
-        {
-            return null;
-        }
     }
 
     private async Task<WeatherPointRef?> SelectableRefAsync(Guid? id, CancellationToken cancellationToken)
@@ -612,7 +506,7 @@ public sealed class WeatherReadService
     /// gets one synchronous fetch. <see cref="WeatherFetchService"/> applies the backoff and the claim; a
     /// tracked point is the scheduler's alone.
     /// </summary>
-    private async Task OnDemandAsync(Resolution resolution, DateTime now, CancellationToken cancellationToken)
+    private async Task OnDemandAsync(WeatherResolution resolution, DateTime now, CancellationToken cancellationToken)
     {
         if (resolution is { Selectable: true, Tracked: false, Point: { } point })
         {
@@ -620,54 +514,11 @@ public sealed class WeatherReadService
         }
     }
 
-    private async Task<WeatherStatus> StatusAsync(Resolution resolution, bool hasData, CancellationToken cancellationToken)
-    {
-        if (hasData)
-        {
-            return WeatherStatus.Ok;
-        }
+    private Task<WeatherStatus> StatusAsync(WeatherResolution resolution, bool hasData, CancellationToken cancellationToken) =>
+        resolver.StatusAsync(resolution, hasData, cancellationToken);
 
-        if (!resolution.Selectable)
-        {
-            // A linked point is used as if named explicitly, with no fallback (issue #387 §8): with its forecast
-            // off it simply has no forecast data.
-            return resolution.From == WeatherResolvedFrom.Linked ? WeatherStatus.NoData : WeatherStatus.WeatherDisabled;
-        }
-
-        return (await settings.GetAsync(cancellationToken)).IsConfigured ? WeatherStatus.NoData : WeatherStatus.NotConfigured;
-    }
-
-    /// <summary>
-    /// Stale: the last refresh failed, OR the newest forecast is older than three refresh intervals (never
-    /// under 3 h). The age half covers what a recorded failure cannot: a scheduled place paused past a
-    /// lowered cap, or a scheduler that is not running, would otherwise serve a frozen forecast as current.
-    /// </summary>
-    private async Task<bool> StaleAsync(Resolution resolution, Guid pointId, CancellationToken cancellationToken)
-    {
-        if (!resolution.Selectable)
-        {
-            return false;
-        }
-
-        var schedule = await context.WeatherPointSchedules.AsNoTracking()
-            .Where(s => s.WeatherPointId == pointId)
-            .Select(s => new { s.ForecastFailureKind, s.LastForecastSuccessUtc })
-            .FirstOrDefaultAsync(cancellationToken);
-        if (schedule is null)
-        {
-            return false;
-        }
-
-        if (schedule.ForecastFailureKind is not null)
-        {
-            return true;
-        }
-
-        var interval = TimeSpan.FromMinutes((await settings.GetAsync(cancellationToken)).RefreshIntervalMinutes);
-        var staleAfter = interval * 3 > StaleFloor ? interval * 3 : StaleFloor;
-        return schedule.LastForecastSuccessUtc is { } last && Now - last > staleAfter;
-    }
-
+    private Task<bool> StaleAsync(WeatherResolution resolution, Guid pointId, CancellationToken cancellationToken) =>
+        resolver.StaleAsync(resolution, pointId, cancellationToken);
 
     private async Task<List<WeatherForecastStep>> EffectiveStepsAsync(
         Guid pointId, DateTime fromUtc, DateTime toUtc, CancellationToken cancellationToken) =>
@@ -766,7 +617,7 @@ public sealed class WeatherReadService
             : null,
     };
 
-    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    internal static DateTime AsUtc(DateTime value) => value.Kind switch
     {
         DateTimeKind.Utc => value,
         DateTimeKind.Local => value.ToUniversalTime(),

@@ -514,6 +514,7 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
 // fetches only on demand and for the Admin refresh.
 builder.Services.AddWeatherFetching();
 builder.Services.AddScoped<Odyssey.Core.Weather.WeatherReadService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherBatchReadService>();
 builder.Services.AddScoped<Odyssey.Core.Weather.WeatherPointService>();
 builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLinkService>();
 
