@@ -84,6 +84,10 @@ public static class ExchangeRateSyncConstants
     /// <summary>A series whose newest observation is older than this is not offered.</summary>
     public const int SupportedFreshnessDays = 30;
 
+    /// <summary>
+    /// How many recent sync runs the backoff and the schedule look back over. No longer a prune limit: the shared run
+    /// log is pruned by the <c>JobRunRetentionDays</c> setting (issue #409 §3.6).
+    /// </summary>
     public const int RunRetention = 500;
 
     /// <summary>A purge removes fetched rows in batches of this size, clearing the change tracker between them.</summary>

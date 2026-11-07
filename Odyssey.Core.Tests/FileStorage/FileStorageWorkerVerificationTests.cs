@@ -55,6 +55,40 @@ public class FileStorageWorkerVerificationTests : FileStorageTestBase
         Assert.Equal((null, 0), (status.MaintenanceHaltedCheck, status.MaintenanceHaltedWorkerCount));
     }
 
+    /// <summary>Issue #409 AC 6: the held period is one Held row naming the check; it closes once the checks pass.</summary>
+    [Fact]
+    public async Task A_held_job_records_one_held_period_naming_the_check_and_closes_it_on_recovery()
+    {
+        var (_, worker, aside) = await LostMountAsync();
+        var timers = new FakeTimeProvider(Clock.GetUtcNow());
+        var (job, gate) = NewJob(worker, timers);
+        var run = job.RunOnceAsync(default);
+        await WaitForVerdictAsync(worker, gate.WorkerId);
+
+        var deadline = DateTime.UtcNow + Patience;
+        List<FileStorageMaintenanceJobRun> held;
+        while ((held = await HeldRowsAsync(worker)).Count == 0)
+        {
+            Assert.True(DateTime.UtcNow < deadline, "The held period was never recorded.");
+            await Task.Delay(20);
+        }
+
+        var period = Assert.Single(held);
+        Assert.Equal((Dtos.Application.JobHeldReason.StorageCheckFailed, "VolumeLost"), (period.HeldReason!.Value, period.HeldByCheck));
+        Assert.Null(period.FinishedAtUtc);
+        Assert.NotEmpty(await InScopeAsync(worker, sp => sp.GetRequiredService<OdysseyContext>().JobHeartbeats.AsNoTracking().ToListAsync()));
+
+        RestoreMount(aside);
+        await AdvanceUntilAsync(timers, run);
+        await run;
+
+        Assert.NotNull(Assert.Single(await HeldRowsAsync(worker)).FinishedAtUtc);
+    }
+
+    private static Task<List<FileStorageMaintenanceJobRun>> HeldRowsAsync(FileStorageTestHost host) =>
+        InScopeAsync(host, sp => sp.GetRequiredService<OdysseyContext>().Set<FileStorageMaintenanceJobRun>().AsNoTracking()
+            .Where(r => r.Status == Dtos.Application.JobRunStatus.Held).ToListAsync());
+
     [Fact]
     public async Task A_held_job_ends_with_its_cancellation()
     {

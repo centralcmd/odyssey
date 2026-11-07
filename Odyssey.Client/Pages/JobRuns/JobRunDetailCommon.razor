@@ -1,0 +1,8 @@
+@*
+    The tiles every run detail ends with (issue #410 §3.6): Started and Finished as absolute times, and the Trigger.
+*@
+@inherits JobRunDetailBodyBase
+
+<OdsMetaTile Label="@Text("Started")">@StartedText</OdsMetaTile>
+<OdsMetaTile Label="@Text("Finished")">@FinishedText</OdsMetaTile>
+<OdsMetaTile Label="@Text("Trigger")">@TriggerText</OdsMetaTile>

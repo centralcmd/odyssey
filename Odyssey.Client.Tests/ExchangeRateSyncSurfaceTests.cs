@@ -101,7 +101,6 @@ public partial class ExchangeRateSyncSurfaceTests : IDisposable
 
         Assert.Contains("ExchangeRatesCard.razor.cs", names);
         Assert.Contains("CurrenciesCard.Sync.cs", names);
-        Assert.Contains("ExchangeRateSyncRunHistory.razor", names);
         Assert.Contains("ExchangeRateSyncStatusPanel.razor", names);
     }
 

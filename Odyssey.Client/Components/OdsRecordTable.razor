@@ -36,6 +36,10 @@
     (Currencies, Exchange rates, tag admin, Files) is a flat table, not a
     collapsed one. Rows that DO expand are unchanged.
 
+    ROW NAMES. RowLabel(row) names each record for its chevron — "Show details for {label}" /
+    "Hide details for {label}" — and points the chevron's aria-controls at a role="group" labelled
+    "Details for {label}" inside the panel. Without it the toggle reads "Expand row" / "Collapse row".
+
     Conceptually a MudTable with sort labels + expandable detail rows; built on
     raw table markup (like OdsCollapsible) because the accordion + inline-edit +
     saved-flash state machine is beyond MudTable's declarative model. Pairs with
@@ -96,6 +100,7 @@
                 var expanded = _openIds.Contains(rk);
                 var editing = _editIds.Contains(rk);
                 var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
+                var label = RowLabel?.Invoke(row);
                 <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClickAsync(rk, editing))">
                     @if (Leading is not null)
                     {
@@ -118,7 +123,7 @@
                             @if (CanExpand)
                             {
                                 <button type="button" id="@ExpandIdFor(rk)" class="odc-rec-expand"
-                                        aria-label="@(expanded ? "Collapse row" : "Expand row")" aria-expanded="@(expanded ? "true" : "false")"
+                                        aria-label="@ExpandLabel(expanded, label)" aria-expanded="@(expanded ? "true" : "false")"
                                         aria-controls="@(expanded ? detailId : null)"
                                         disabled="@editing" @onclick="@(() => ToggleRow(rk, fromMenu: false))" @onclick:stopPropagation="true">
                                     <span class="material-icons odc-rec-chev @(expanded ? "open" : null)" aria-hidden="true">expand_more</span>
@@ -129,16 +134,21 @@
                 </tr>
                 @if (expanded)
                 {
-                    <tr class="odc-rec-detail-row" id="@detailId">
+                    @* A named row (RowLabel) points its toggle at a labelled role="group" inside the panel — a
+                       group, not a landmark, so a long table adds no regions; an unnamed one keeps pointing
+                       at the detail row, as before. *@
+                    <tr class="odc-rec-detail-row" id="@(label is null ? detailId : null)">
                         <td class="odc-rec-detail-cell" colspan="@ColSpan">
                             <div class="odc-rec-panel @(editing ? "editing" : null)" id="@PanelIdFor(rk)" tabindex="-1">
-                                @if (editing && RenderEdit is not null)
+                                @if (label is not null)
                                 {
-                                    @RenderEdit(row, EditCtx(rk))
+                                    <div role="group" id="@detailId" aria-label="@($"Details for {label}")">
+                                        @PanelBody(row, rk, editing)
+                                    </div>
                                 }
                                 else
                                 {
-                                    @RenderDetail?.Invoke(row)
+                                    @PanelBody(row, rk, editing)
                                 }
                             </div>
                         </td>
@@ -174,3 +184,8 @@
         </tbody>
     </table>
 </div>
+
+@code {
+    private RenderFragment PanelBody(TRow row, object key, bool editing) =>
+        editing && RenderEdit is not null ? RenderEdit(row, EditCtx(key)) : RenderDetail?.Invoke(row) ?? (_ => { });
+}

@@ -48,7 +48,13 @@ public sealed class FileStorageWorkerVerification(
     /// not return, re-checking every <see cref="RetryInterval"/>; only cancellation ends the wait. Once they pass, a
     /// verdict this process could not clear is retried on every later call.
     /// </summary>
-    public async Task EnsureVerifiedAsync(CancellationToken cancellationToken)
+    /// <param name="whileHeld">
+    /// Called after each failed attempt and at least every <see cref="HeldTickInterval"/> while the job waits, with
+    /// the failing check's name (<c>null</c> when the checks could not run at all): the maintenance job heartbeats and
+    /// records its held period through it (issue #409 §3.3 step 3), so a held process is never taken for a dead one.
+    /// </param>
+    public async Task EnsureVerifiedAsync(
+        CancellationToken cancellationToken, Func<string?, CancellationToken, Task>? whileHeld = null)
     {
         if (!settled && volumes.IsActive)
         {
@@ -79,6 +85,7 @@ public sealed class FileStorageWorkerVerification(
             }
             catch (FileStorageMisconfiguredException ex)
             {
+                failedCheck = ex.Check;
                 // The verifier has already logged the check, the key and the remedy.
                 logger.LogError(
                     "File-storage maintenance is stopped in this worker: startup check {Check} failed. The worker's other jobs keep running; "
@@ -88,6 +95,7 @@ public sealed class FileStorageWorkerVerification(
             }
             catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
             {
+                failedCheck = null;
                 // The checks could not run at all — the database is unreachable, say. There is no verdict to record (the
                 // store that would hold it is what failed); the job stays held and the checks are re-run.
                 logger.LogError(
@@ -96,7 +104,34 @@ public sealed class FileStorageWorkerVerification(
             }
 
             wait = TimeSpan.Zero;
+            await WaitHeldAsync(failedCheck, whileHeld, cancellationToken);
+        }
+    }
+
+    /// <summary>How often a held job is called back while it waits for the next re-check.</summary>
+    public static readonly TimeSpan HeldTickInterval = TimeSpan.FromSeconds(60);
+
+    private string? failedCheck;
+
+    private async Task WaitHeldAsync(string? check, Func<string?, CancellationToken, Task>? whileHeld, CancellationToken cancellationToken)
+    {
+        if (whileHeld is null)
+        {
             await Task.Delay(RetryInterval, time, cancellationToken);
+            return;
+        }
+
+        var until = time.GetUtcNow() + RetryInterval;
+        while (time.GetUtcNow() < until)
+        {
+            await whileHeld(check, cancellationToken);
+            var remaining = until - time.GetUtcNow();
+            if (remaining <= TimeSpan.Zero)
+            {
+                break;
+            }
+
+            await Task.Delay(remaining < HeldTickInterval ? remaining : HeldTickInterval, time, cancellationToken);
         }
     }
 

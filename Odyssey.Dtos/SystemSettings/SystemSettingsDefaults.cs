@@ -335,4 +335,9 @@ public static class SystemSettingsDefaults
     /// backup never references a file it does not contain.
     /// </summary>
     public const int FileStorageDeletionGraceHours = 24;
+
+    // ── Background jobs (issue #409) ──────────────────────────────────────────────────────────────
+
+    /// <summary>Ninety days of finished runs: a quarter of history, well under 20 000 rows with two workers (§10).</summary>
+    public const int JobRunRetentionDays = 90;
 }

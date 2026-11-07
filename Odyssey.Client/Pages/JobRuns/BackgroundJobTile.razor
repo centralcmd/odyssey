@@ -1,0 +1,104 @@
+@*
+    BackgroundJobTile — one job on the Background jobs overview (issue #410 §3.3; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BgjJobTile): an h3 with the job's name, its health as a chip (icon AND word), a
+    "Starting run…" chip while its Run request is in flight, the held line, and a grid of meta tiles. Relative times are
+    computed against the overview's generatedAtUtc, never the render clock; the absolute time beneath is visible text
+    and the screen-reader source of truth, so the non-interactive card carries no aria-label (F9, F17, X6). Its one
+    action, "Show {job} runs", is a button: it filters the run history, it does not navigate (X4).
+*@
+@using Odyssey.Client.Services
+@using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
+
+<OdsCard Outlined="true" Class="bgj-tile-card">
+<div class="bgj-tile">
+    <div class="bgj-tile-head">
+        <span class="material-icons bgj-tile-ic" aria-hidden="true">@_job.Icon</span>
+        <h3 class="bgj-tile-h">@_job.Name</h3>
+    </div>
+    <div class="bgj-tile-chips">
+        <OdsChip Tone="@_health.Tone" Icon="@_health.Icon">@_health.Label</OdsChip>
+        @if (Starting)
+        {
+            <OdsChip Tone="OdsChipTone.Info" Icon="hourglass_top">Starting run…</OdsChip>
+        }
+    </div>
+    @if (Job.Health == JobHealth.Held)
+    {
+        <p class="bgj-held">@HeldLine(Job)</p>
+    }
+    <div class="odc-meta-grid bgj-facts">
+        <OdsMetaTile Label="@Text("Last run")">
+            @if (Job.LastRun is { } last)
+            {
+                var at = last.FinishedAtUtc ?? last.StartedAtUtc;
+                <span>@StatusOf(last.Status).Label · @RunTime.Relative(at, GeneratedAtUtc)</span>
+                <span class="bgj-abs">@RunTime.Full(at)</span>
+            }
+            else
+            {
+                <span>Never</span>
+            }
+        </OdsMetaTile>
+        <OdsMetaTile Label="@Text("Last success")">
+            @if (Job.LastSuccessAtUtc is { } success)
+            {
+                <span>@RunTime.Relative(success, GeneratedAtUtc)</span>
+                <span class="bgj-abs">@RunTime.Full(success)</span>
+            }
+            else
+            {
+                <span>Never</span>
+            }
+        </OdsMetaTile>
+        <OdsMetaTile Label="@Text("Next")">
+            @(Job.NextExpectedRunAtUtc is { } next ? $"Next run expected {RunTime.Clock(next)}" : "Runs when there is work")
+        </OdsMetaTile>
+        <OdsMetaTile Label="@Text("24 h")">
+            @($"{Plural(Job.Totals.Last24h.Runs, "run", "runs")} · {Count(Job.Totals.Last24h.Failed)} failed")
+        </OdsMetaTile>
+    </div>
+    <div class="bgj-tile-foot">
+        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="manage_search" OnClick="@(() => OnShowRuns.InvokeAsync(Job.JobType))">Show @_job.Lower runs</OdsButton>
+    </div>
+</div>
+</OdsCard>
+
+@code {
+    [Parameter, EditorRequired] public BackgroundJobSummary Job { get; set; } = default!;
+
+    /// <summary>The overview's <c>generatedAtUtc</c>: what every relative time on the tile is measured from.</summary>
+    [Parameter, EditorRequired] public DateTimeOffset GeneratedAtUtc { get; set; }
+
+    /// <summary>This job's Run request is in flight.</summary>
+    [Parameter] public bool Starting { get; set; }
+
+    [Parameter] public EventCallback<JobType> OnShowRuns { get; set; }
+
+    private JobVisual _job = OtherJob;
+    private JobChip _health = UnknownChip;
+
+    protected override void OnParametersSet()
+    {
+        _job = JobOf(Job.JobType);
+        _health = HealthOf(Job.Health);
+    }
+
+    /// <summary>
+    /// "Held: storage check failed (VolumeLost)" / "Held: paused after repeated crashes until 11:32" — the check and the
+    /// time only when sent. Without the reason: "Held — details need {area} access" when the caller lacks the job's
+    /// detail-read claim, else "Held" (round 3, V4).
+    /// </summary>
+    public static string HeldLine(BackgroundJobSummary job)
+    {
+        if (HeldOf(job.HeldReason) is not { } reason)
+        {
+            return !job.CanReadDetail && JobOf(job.JobType).Area is { } area ? $"Held — details need {area} access" : "Held";
+        }
+
+        var check = string.IsNullOrWhiteSpace(job.HeldCheck) ? string.Empty : $" ({job.HeldCheck})";
+        var until = job.HeldUntilUtc is { } at ? $" until {RunTime.Clock(at)}" : string.Empty;
+        return $"Held: {reason}{check}{until}";
+    }
+
+    private static RenderFragment Text(string value) => builder => builder.AddContent(0, value);
+}

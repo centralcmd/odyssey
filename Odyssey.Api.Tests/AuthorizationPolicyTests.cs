@@ -927,4 +927,78 @@ public class AuthorizationPolicyTests
 
         throw new InvalidOperationException("Could not locate RoleClaimSeeder.cs from " + AppContext.BaseDirectory);
     }
+
+    // ── Background jobs (issue #409 §3.1, S1, A1/S5, A-N4) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// The manual-run claims beyond <c>system-settings.update</c>, pinned per job (AC 22). The file-storage pass is
+    /// gated on <c>file-storage.read</c> BY DECISION (A-N4, S-N5): no file-storage write claim exists, the claim is
+    /// Admin-only and the pass is identical to a scheduled one. Adding a file-storage write claim is the trigger to
+    /// move this gate onto it.
+    /// </summary>
+    [Fact]
+    public void Each_jobs_manual_run_claims_are_pinned()
+    {
+        var claims = Odyssey.Core.Jobs.JobCatalogue.Entries.ToDictionary(entry => entry.JobType, entry => entry.ManualRunClaims);
+
+        Assert.Empty(claims[Dtos.Application.JobType.ExchangeRateSync]);
+        Assert.Equal([PermissionClaims.WeatherPointsUpdate], claims[Dtos.Application.JobType.Weather]);
+        Assert.Equal([PermissionClaims.FileStorageRead], claims[Dtos.Application.JobType.FileStorageMaintenance]);
+        Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
+        Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
+            && claim != PermissionClaims.FileStorageRead);
+    }
+
+    /// <summary>The detail-read claims (A1/S5): a field from a job's own domain follows that domain's read claim.</summary>
+    [Fact]
+    public void Each_jobs_detail_read_claim_is_pinned()
+    {
+        var claims = Odyssey.Core.Jobs.JobCatalogue.Entries.ToDictionary(entry => entry.JobType, entry => entry.DetailReadClaim);
+
+        Assert.Null(claims[Dtos.Application.JobType.ExchangeRateSync]);
+        Assert.Equal(PermissionClaims.WeatherPointsRead, claims[Dtos.Application.JobType.Weather]);
+        Assert.Equal(PermissionClaims.FileStorageRead, claims[Dtos.Application.JobType.FileStorageMaintenance]);
+        Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
+    }
+
+    /// <summary>
+    /// S1 and the cross-claim rule, as the shipped roles stand: every role holding <c>system-settings.update</c> holds
+    /// each job's manual-run claims, and every role holding <c>system-settings.read</c> holds each detail-read claim —
+    /// so splitting them later is a deliberate act that fails here first, never a silent narrowing of the page.
+    /// </summary>
+    [Fact]
+    public void Every_role_that_can_open_the_page_holds_every_job_claim()
+    {
+        foreach (var (role, roleClaims) in MappedRoles())
+        {
+            foreach (var entry in Odyssey.Core.Jobs.JobCatalogue.Entries)
+            {
+                if (roleClaims.Contains(PermissionClaims.SystemSettingsUpdate))
+                {
+                    Assert.All(entry.ManualRunClaims, claim => Assert.True(roleClaims.Contains(claim),
+                        $"{role} holds system-settings.update but not {claim}, so it cannot run {entry.JobType}."));
+                }
+
+                if (roleClaims.Contains(PermissionClaims.SystemSettingsRead) && entry.DetailReadClaim is { } read)
+                {
+                    Assert.True(roleClaims.Contains(read), $"{role} holds system-settings.read but not {read}.");
+                }
+            }
+        }
+    }
+
+    /// <summary>The controller's policies agree with the catalogue: read on the class, the base claim on the run action.</summary>
+    [Fact]
+    public void The_background_jobs_controller_policies_match_the_catalogue()
+    {
+        var controller = typeof(Odyssey.Api.Controllers.BackgroundJobsController);
+        Assert.Equal(
+            Odyssey.Core.Jobs.JobCatalogue.ReadBaseClaim,
+            Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        var post = controller.GetMethod(nameof(Odyssey.Api.Controllers.BackgroundJobsController.PostRun))!;
+        Assert.Equal(
+            Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim,
+            Assert.Single(post.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+    }
 }

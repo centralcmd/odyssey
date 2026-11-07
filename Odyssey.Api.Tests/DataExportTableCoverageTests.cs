@@ -93,7 +93,10 @@ public class DataExportTableCoverageTests
         // Exchange-rate sync (issue #349 §7.10): per-currency sync configuration is instance policy like
         // SystemSettings, and the run log is operational. The fetched RATES are exported, with Provider.
         ["ExchangeRateSyncCurrencies"] = "Application: exchange-rate sync configuration, instance policy",
-        ["ExchangeRateSyncRuns"] = "Application: exchange-rate sync run log, operational",
+        // The shared background-job run log (issue #409 §4.4, §7.10), which absorbed the sync's run log, and each
+        // worker process's last tick per job: operational, with no subject data beyond a SET NULL requester id.
+        ["JobRuns"] = "Application: background-job run log, operational",
+        ["JobHeartbeats"] = "Application: background-job worker heartbeats, operational",
         // The provider's list of published currencies (issue #351): a stored copy of the provider's own
         // data, re-fetched by every run, so there is nothing of the user's to export.
         ["ExchangeRateProviderSeries"] = "Application: the exchange-rate provider's currency list, re-fetched",

@@ -929,6 +929,22 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.FileStorageDeletionGraceHours = v,
             Advise = SettingAdvisories.DeletionGraceOutsideBackupWindow,
         },
+
+        // ── Background jobs (issue #409 §3.6, §8) ────────────────────────────────────────────────
+        //
+        // No cache key: the worker's JobRunMaintenanceJob reads it uncached once an hour, through
+        // IntSettingResolver, with its own degraded direction (the larger value — never prune more on a fault).
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.JobRunRetentionDays,
+            Min = SystemSettingsBounds.JobRunRetentionDaysMin,
+            Max = SystemSettingsBounds.JobRunRetentionDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.JobRunRetentionDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.JobRunRetentionDays),
+            Read = r => r.JobRunRetentionDays,
+            Write = (dto, v) => dto.JobRunRetentionDays = v,
+        },
     ];
 
     /// <summary>Descriptors by <see cref="SystemSettingDescriptor.Key"/>.</summary>

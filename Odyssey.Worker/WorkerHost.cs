@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Configuration;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
@@ -48,6 +49,10 @@ public static class WorkerHost
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();
+        // The shared run log's upkeep (issue #409 §3.4, §3.6): the stale-run sweep every 5 minutes, the retention
+        // prune once an hour. Infrastructure, not a catalogue job: it records no runs of its own.
+        services.AddJobRunRecording();
+        services.AddPeriodicJob<JobRunMaintenanceJob>();
 
         return builder;
     }

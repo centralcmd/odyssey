@@ -61,7 +61,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),
         // Exchange-rate sync (issue #349 §4).
         ("ExchangeRateSyncCurrencies", "UpdatedByUserId"),
-        ("ExchangeRateSyncRuns", "RequestedByUserId"),
+        // Issue #409 §4.4: the sync's declaration moved with its rows onto the shared run log.
+        ("JobRuns", "RequestedByUserId"),
     ];
 
     [SkippableFact]

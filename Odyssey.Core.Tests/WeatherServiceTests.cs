@@ -577,6 +577,7 @@ public class WeatherServiceTests
             .AddScoped(_ => h.NewContext())
             .AddScoped(sp => h.Fetch(sp.GetRequiredService<Odyssey.Context.OdysseyContext>()))
             .AddSingleton<IWeatherSettingsLookup>(h.Settings)
+            .AddJobRunRecordingWith(h.Time)
             .BuildServiceProvider();
         return new WeatherScheduleJob(services.GetRequiredService<IServiceScopeFactory>(), h.Time, NullLogger<WeatherScheduleJob>.Instance);
     }
