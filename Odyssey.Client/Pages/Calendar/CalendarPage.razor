@@ -1,5 +1,6 @@
 @page "/calendar"
 @using Odyssey.Client.Authorization
+@using Odyssey.Client.Pages.Weather
 @attribute [Authorize(Policy = PermissionClaims.CalendarRead)]
 @implements IDisposable
 @inject ICalendarApiClient CalendarApi
@@ -7,6 +8,8 @@
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IWeatherApiClient WeatherApi
+@inject ILogger<CalendarPage> Log
 
 <PageTitle>Calendar</PageTitle>
 
@@ -83,7 +86,7 @@
                                         <MudStack Spacing="1">
                                             @foreach (var vm in AgendaEventsFor(day))
                                             {
-                                                <button type="button" class="odc-cal-daypop-row" style="width:100%;" @onclick="() => OpenEventDialog(vm.Id)">
+                                                <button type="button" class="odc-cal-daypop-row cal-agenda-row" style="width:100%;" @onclick="() => OpenEventDialog(vm.Id)">
                                                     <span class="odc-cal-daypop-swatch" style="@Odyssey.Client.Theme.UserColor.Background(vm.Color, Odyssey.Dtos.ColorPalette.CalendarDefault)" aria-hidden="true"></span>
                                                     <span class="odc-cal-daypop-time">@(vm.IsAllDay ? "All day" : vm.Start.ToString("HH:mm"))</span>
                                                     <span class="odc-cal-daypop-t">
@@ -93,6 +96,11 @@
                                                         }
                                                         @vm.Title — @vm.CalendarName@(vm.LocationName is { } place ? $" · {place}" : null)
                                                     </span>
+                                                    @* Weather on the event's START row only: the summary describes the start (issue #363 §3.3). *@
+                                                    @if (day == DateOnly.FromDateTime(vm.Start))
+                                                    {
+                                                        <WeatherEventSummaryText Item="_agendaWeather.Get(vm.Id)" Start="vm.Start" End="vm.End" />
+                                                    }
                                                 </button>
                                             }
                                         </MudStack>
@@ -134,7 +142,7 @@
                       CanDelete="_canDelete"
                       CanReadLocations="_canReadLocations"
                       CanCreateLocations="_canCreateLocations"
-                      OnSaved="ReloadEventsAsync"
+                      OnSaved="OnEventSavedAsync"
                       OnEditSeries="OpenSeriesDialog"
                       OnExport="ExportEventDialogAsync" />
 

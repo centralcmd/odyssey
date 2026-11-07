@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Client.Pages.Weather;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos.Authorization;
 
@@ -139,12 +141,63 @@ public partial class CalendarPage
                 && CalendarGridMath.CoversDay(vm, day))
             .OrderBy(vm => vm.Start);
 
+    // ── Weather on the agenda (issue #363 §3.3, §3.7) ─────────────────────────
+    // Asked only in the agenda view, only for the events it renders after the calendar and search filters, and
+    // debounced so stepping through months quickly spends one permit, not one per step. Month, week and day ask
+    // for nothing.
+    private WeatherBatchLoader<CalendarEventWeatherItem>? _agendaWeatherLoader;
+
+    private WeatherBatchLoader<CalendarEventWeatherItem> _agendaWeather => _agendaWeatherLoader ??= new(
+        WeatherBatchReads.CalendarEvents(WeatherApi), item => item.CalendarEventId,
+        () => InvokeAsync(StateHasChanged), Log, "agenda", TimeSpan.FromMilliseconds(300));
+
+    /// <summary>The ids whose start row the agenda renders, after the visible-calendar and search filters.</summary>
+    internal IReadOnlyList<Guid> AgendaWeatherIds() =>
+        _view != "agenda"
+            ? []
+            : [.. _viewModels.Where(vm => EffectiveVisibleIds is null || EffectiveVisibleIds.Contains(vm.CalendarId)).Select(vm => vm.Id)];
+
+    private void ShowAgendaWeather() => _ = _agendaWeather.ShowAsync(AgendaWeatherIds());
+
+    // A save may have moved the event's time or place: forget its answer so the agenda asks again.
+    private async Task OnEventSavedAsync()
+    {
+        if (_eventDialogMode == CalendarEventDialogMode.Edit && _eventDialogEventId is { } id)
+        {
+            _agendaWeather.Forget(id);
+        }
+        else if (_eventDialogMode == CalendarEventDialogMode.Series && _eventDialogPatternId is { } patternId)
+        {
+            foreach (var e in _events.Where(e => e.RecurrencePatternId == patternId))
+                _agendaWeather.Forget(e.CalendarEventId);
+        }
+
+        await ReloadEventsAsync();
+    }
+
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        try
+        {
+            var user = (await state).User;
+            _agendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            await InvokeAsync(StateHasChanged);
+            await _agendaWeather.ShowAsync(AgendaWeatherIds());
+        }
+        catch (Exception)
+        {
+            // The page may already be gone; weather is supplementary and never worth an unhandled exception.
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
         {
             return;
         }
+
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -160,6 +213,7 @@ public partial class CalendarPage
         _canDelete = user.HasPermission(PermissionClaims.CalendarDelete);
         _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
         _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
+        _agendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
     private async Task LoadCalendarsAsync()
@@ -386,6 +440,7 @@ public partial class CalendarPage
             : _events.Where(e => MatchesSearch(e, term)).ToList();
 
         _viewModels = [.. filtered.Select(ToVm)];
+        ShowAgendaWeather();
     }
 
     /// <summary>
@@ -451,6 +506,7 @@ public partial class CalendarPage
     {
         _visibleCalendarIds = [.. values.Select(v => Guid.TryParse(v, out var id) ? id : Guid.Empty).Where(id => id != Guid.Empty)];
         PersistPageState();
+        ShowAgendaWeather();
     }
 
     private async Task ClearFilters()
@@ -507,6 +563,7 @@ public partial class CalendarPage
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
+            _agendaWeather.Forget(existing.CalendarEventId);
             await ReloadEventsAsync();
         }
     }
@@ -539,6 +596,7 @@ public partial class CalendarPage
 
         if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
         {
+            _agendaWeather.Forget(existing.CalendarEventId);
             await ReloadEventsAsync();
         }
     }
@@ -579,5 +637,10 @@ public partial class CalendarPage
         public string Month { get; set; } = string.Empty;
     }
 
-    public void Dispose() => _listLoader.Dispose();
+    public void Dispose()
+    {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        _agendaWeatherLoader?.Dispose();
+        _listLoader.Dispose();
+    }
 }

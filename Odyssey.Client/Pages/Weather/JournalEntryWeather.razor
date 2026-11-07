@@ -1,0 +1,92 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    JournalEntryWeather — the weather for a journal entry's day (issue #363 §3.2; design system ·
+    WeatherCalendarJournal.jsx). A flush disclosure on its OWN full-width row below the card's meta row; its
+    details open below it, inside the card. Renders nothing unless the item is Ok with a day.
+
+    The button text is the whole accessible name — "Weather: Rain, high 8°, low 4°, 7.4 mm of rain, measured" —
+    and expanded/collapsed is aria-expanded alone, so the name never says "show" or "hide". The entry's date is
+    the card's leaf, so it is not repeated; any date here comes from the item, never the client's reading of
+    EntryDate.
+*@
+
+@if (Item is { Status: WeatherStatus.Ok, Day: { } day })
+{
+    var symbol = WeatherVisuals.SymbolOf(day.Forecast?.SymbolCode);
+    <div class="wx-jw">
+        <OdsCollapsible HeadingLevel="0" Flush="true" Open="Open" OnToggle="OnToggle">
+            <Title>
+                <span class="wx-jw-line">
+                    <span class="wx-jw-ic" aria-hidden="true"><OdsMIcon Name="@(symbol?.Icon ?? "thermostat")" Size="16" /></span>
+                    <span>@WeatherEventText.JournalLine(day)</span>
+                </span>
+            </Title>
+            <ChildContent>
+                <div class="wx-jw-body">
+                    <WeatherWhereLine ResolvedFrom="Item.ResolvedFrom" Point="Item.Point" LinkedLocation="Item.LinkedLocation"
+                                      DistanceKm="Item.DistanceKm" Noun="entry" />
+                    <div class="wx-jw-halves">
+                        @if (day.Forecast is { } f)
+                        {
+                            <div class="wx-jw-half">
+                                <p class="wx-jw-half-t">Forecast</p>
+                                <dl class="wx-jw-dl">
+                                    <dt>Conditions</dt>
+                                    <dd>@if (symbol is not null)
+                                        {
+                                            <WeatherGlyph Code="@f.SymbolCode" Size="18" Labelled="true" />
+                                        }
+                                        else
+                                        {
+                                            <text>—</text>
+                                        }</dd>
+                                    <dt>High / low</dt><dd>@WeatherVisuals.TempRange(f.MinTempC, f.MaxTempC)</dd>
+                                    <dt>Precipitation</dt><dd>@WeatherVisuals.Mm(f.PrecipitationMm)</dd>
+                                    <dt>Wind</dt><dd><WeatherWind Speed="f.MeanWindSpeedMps" Gust="f.MaxWindGustMps" /></dd>
+                                    @if (f.IssuedAtUtc is { } issued)
+                                    {
+                                        <dt>Issued</dt><dd>@WeatherVisuals.Stamp(issued) (your time)</dd>
+                                    }
+                                </dl>
+                                @if (f.CoverageHours < 24)
+                                {
+                                    <p class="wx-jw-note">@f.CoverageHours h of forecast</p>
+                                }
+                            </div>
+                        }
+                        @if (day.Observed is { } o)
+                        {
+                            <div class="wx-jw-half">
+                                <p class="wx-jw-half-t">Measured</p>
+                                <dl class="wx-jw-dl">
+                                    <dt>High / low / mean</dt>
+                                    <dd>@WeatherVisuals.Temp(o.MaxTempC) / @WeatherVisuals.Temp(o.MinTempC) / @WeatherVisuals.Temp(o.MeanTempC)</dd>
+                                    <dt>Precipitation</dt><dd>@WeatherVisuals.Mm(o.PrecipitationMm)</dd>
+                                    <dt>Wind</dt><dd><WeatherWind Speed="o.MeanWindSpeedMps" Gust="o.MaxWindGustMps" /></dd>
+                                </dl>
+                                <p class="wx-jw-note">Measured values are UTC days; rain is counted 06:00–06:00 UTC.</p>
+                            </div>
+                        }
+                    </div>
+                    @if (Item.Stale)
+                    {
+                        <p class="wx-jw-note wx-stale"><span aria-hidden="true"><OdsMIcon Name="cloud_off" Size="15" /></span>Not up to date: showing the last forecast MET Norway sent.</p>
+                    }
+                    <p class="wx-jw-foot"><WeatherAttributionLine Attribution="Attribution" /></p>
+                </div>
+            </ChildContent>
+        </OdsCollapsible>
+    </div>
+}
+
+@code {
+    [Parameter] public JournalEntryWeatherItem? Item { get; set; }
+
+    /// <summary>MET's attribution as the batch response carried it.</summary>
+    [Parameter] public WeatherAttribution? Attribution { get; set; }
+
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter] public EventCallback<bool> OnToggle { get; set; }
+}

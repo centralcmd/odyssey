@@ -2,6 +2,7 @@
 @using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @using Odyssey.Dtos.Journal
+@using Odyssey.Client.Pages.Weather
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
@@ -17,7 +18,8 @@
     opens rather than for every card on the page.
 *@
 
-<article id="@Id" class="jec-card @(Archived ? "archived" : "")">
+@* tabindex -1: the article is the last focus fallback when a focused weather disclosure goes (issue #363 §3.6). *@
+<article id="@Id" class="jec-card @(Archived ? "archived" : "")" tabindex="-1">
     @* The date leaf, in the reader's local zone. EntryDate is stored date-only in UTC, so two entries
        on one date simply repeat it — the leaf anchors, it does not group. *@
     <div class="jec-leaf">
@@ -60,6 +62,15 @@
                 </span>
             }
         </div>
+
+        @* The weather for the entry's day (issue #363 §3.2): its own full-width row below the meta row, only for an
+           Ok item. The host passes nothing without weather.read. *@
+        @if (Weather is { Status: WeatherStatus.Ok, Day: not null })
+        {
+            <div class="jec-weather" @ref="_weatherRow">
+                <JournalEntryWeather Item="Weather" Attribution="WeatherAttribution" Open="_weatherOpen" OnToggle="v => _weatherOpen = v" />
+            </div>
+        }
 
         @* Never clamped: this card IS the detail. *@
         @if (!string.IsNullOrWhiteSpace(Entry.Content))

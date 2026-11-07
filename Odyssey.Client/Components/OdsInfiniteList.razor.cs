@@ -70,6 +70,17 @@ public partial class OdsInfiniteList<TItem>
     /// <summary>Utility classes for the refetch bar.</summary>
     [Parameter] public string? BarClass { get; set; }
 
+    /// <summary>
+    /// Raised after render whenever the MEMBERSHIP of the rendered window changes, compared by
+    /// <see cref="ItemKey"/>: the first render, each reveal, a list whose rendered keys differ. A new
+    /// <see cref="Items"/> instance with the same rendered keys — a freshly sorted array — does not raise it.
+    /// For a host that fetches something per rendered item (the journal's weather, issue #363 §3.6); optional,
+    /// and a host that leaves it unset renders exactly as before.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<TItem>> OnShownChanged { get; set; }
+
+    private HashSet<object>? _lastShownKeys;
+
     private readonly string _id = $"odc-inf-{Guid.NewGuid():N}";
     private ElementReference _sentinel;
     private bool _observing;
@@ -142,6 +153,8 @@ public partial class OdsInfiniteList<TItem>
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await RaiseShownChangedAsync();
+
         if (firstRender)
         {
             _selfRef = DotNetObjectReference.Create(this);
@@ -161,6 +174,20 @@ public partial class OdsInfiniteList<TItem>
             await _module.InvokeVoidAsync("unobserve", _id);
             _observing = false;
         }
+    }
+
+    private async Task RaiseShownChangedAsync()
+    {
+        if (!OnShownChanged.HasDelegate || Loading || Error)
+            return;
+
+        var shown = Items.Take(Shown).ToList();
+        var keys = shown.Select(item => ItemKey?.Invoke(item) ?? item!).ToHashSet();
+        if (_lastShownKeys is not null && _lastShownKeys.SetEquals(keys))
+            return;
+
+        _lastShownKeys = keys;
+        await OnShownChanged.InvokeAsync(shown);
     }
 
     public async ValueTask DisposeAsync()

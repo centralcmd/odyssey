@@ -1,7 +1,6 @@
 @using System.Globalization
 @using Odyssey.Client.Components
 @using Odyssey.Dtos.Journal
-@implements IAsyncDisposable
 @*
     WeatherDayHours — the hours of one day, under the day strip (design system · Weather.jsx WeatherDayHours;
     issues #414, #415). The body owns the selection, the request, the cool-down and the focus moves; this panel
@@ -62,55 +61,8 @@
                 {
                     <p class="wx-hours-note wx-stale"><OdsMIcon Name="cloud_off" Size="16" />Not up to date — showing the last forecast MET Norway sent.</p>
                 }
-                <div @ref="_wrapper" class="wx-hours-scroll" role="@(_overflows ? "region" : null)"
-                     aria-label="@(_overflows ? "Hourly table, scrolls sideways" : null)" tabindex="@(_overflows ? "0" : null)">
-                    <table class="wx-hours-table" aria-labelledby="@HeadingId">
-                        <thead>
-                            <tr><th scope="col">Time</th><th scope="col">Conditions</th><th scope="col">Temp</th><th scope="col">Precipitation</th><th scope="col">Wind</th></tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var row in Rows(r))
-                            {
-                                @if (row.Step is not { } step)
-                                {
-                                    <tr class="wx-hours-gap"><td colspan="5">@row.Gap</td></tr>
-                                    continue;
-                                }
-                                var now = r.Day is { IsToday: true } && row.First;
-                                var symbol = WeatherVisuals.SymbolOf(step.SymbolCode);
-                                <tr class="@(now ? "now" : null)">
-                                    <th scope="row">
-                                        <span aria-hidden="true">@if (now)
-                                            {
-                                                <b class="wx-hours-now">Now · </b>
-                                            }@VisibleTime(step, r.Day)</span>
-                                        <span class="sr-only">@SpokenTime(step, r.Day, now)</span>
-                                    </th>
-                                    <td><span class="wx-hours-cond"><span aria-hidden="true"><OdsMIcon Name="@(symbol?.Icon ?? "cloud")" Size="20" /></span>@(symbol?.Label ?? "Unknown conditions")</span></td>
-                                    <td class="wx-hours-num">@Measure(step.AirTemperatureC, WeatherVisuals.Temp)</td>
-                                    <td>
-                                        <span aria-hidden="true">@WeatherVisuals.Mm(step.PrecipitationMm)<span class="wx-muted"> · </span>@WeatherVisuals.Pct(step.PrecipitationProbabilityPct)</span>
-                                        @if (IsCut(step, r.Day) && step.PrecipitationMm is not null)
-                                        {
-                                            <span class="wx-hours-whole" aria-hidden="true">over @BlockSpan(step)</span>
-                                        }
-                                        <span class="sr-only">@SpokenPrecipitation(step, r.Day)</span>
-                                    </td>
-                                    <td>
-                                        @if (step.WindSpeedMps is null)
-                                        {
-                                            @Missing
-                                        }
-                                        else
-                                        {
-                                            <WeatherWind Speed="step.WindSpeedMps" Gust="step.WindGustMps" Degrees="step.WindFromDirectionDeg" />
-                                        }
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                <WeatherStepTable Steps="r.Steps" Day="r.Day" LabelledBy="@HeadingId" RegionLabel="Hourly table, scrolls sideways"
+                                  FocusFallbackId="@FocusIdFor(HeadingId)" />
                 @if (EndsAt(r) is { } end)
                 {
                     <p class="wx-hours-end">Forecast ends at @end</p>
@@ -128,9 +80,4 @@
             <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" AriaDisabled="@(!RetryEnabled)" OnClick="RetryAsync">Try again</OdsButton>
         }
     </div>;
-
-    private static readonly RenderFragment Missing = @<text><span aria-hidden="true">–</span><span class="sr-only">not available</span></text>;
-
-    private static RenderFragment Measure(decimal? value, Func<decimal?, string> format) =>
-        value is null ? Missing : @<text>@format(value)</text>;
 }
