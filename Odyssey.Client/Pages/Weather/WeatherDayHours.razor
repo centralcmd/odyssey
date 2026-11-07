@@ -1,0 +1,136 @@
+@using System.Globalization
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@implements IAsyncDisposable
+@*
+    WeatherDayHours — the hours of one day, under the day strip (design system · Weather.jsx WeatherDayHours;
+    issues #414, #415). The body owns the selection, the request, the cool-down and the focus moves; this panel
+    renders one phase of one response. A native table labelled by the panel's visually hidden heading: rows are hours or 6-hour
+    blocks, gaps are full-width rows, and "Forecast ends at" sits outside the scroll wrapper. The wrapper becomes
+    a focusable region only while the table overflows (a data table is exempt from reflow, WCAG 1.4.10). Times
+    are the POINT's clock; the heading says so when that differs from the viewer's.
+*@
+
+@* The title is for assistive technology only: the open card above already shows the day. The panel itself is the
+   focus destination, so a programmatic focus move lands on something with a visible ring. *@
+<div class="wx-hours" id="@FocusIdFor(HeadingId)" tabindex="-1" aria-busy="@(Phase == WeatherHoursPhase.Loading ? "true" : null)">
+    <div class="wx-hours-h sr-only" role="heading" aria-level="@HeadingLevel.ToString(CultureInfo.InvariantCulture)" id="@HeadingId">@Title</div>
+    @switch (Phase)
+    {
+        case WeatherHoursPhase.Loading:
+            <table class="wx-hours-table" aria-hidden="true">
+                <tbody>
+                    @for (var i = 0; i < 4; i++)
+                    {
+                        <OdsSkeletonRow Columns="5" />
+                    }
+                </tbody>
+            </table>
+            break;
+        case WeatherHoursPhase.RateLimited:
+            @Message("hourglass_bottom", "Weather is resting for a moment. You can try again in a few seconds.", true, true)
+            break;
+        case WeatherHoursPhase.Forbidden:
+            @Message("lock", "You no longer have access to weather.", false, true)
+            break;
+        case WeatherHoursPhase.NotFound:
+            @Message("location_off", "This weather point no longer exists.", false, true)
+            break;
+        case WeatherHoursPhase.Error:
+            @Message("cloud_off", "The hours couldn’t be loaded.", true, true)
+            break;
+        default:
+            @if (Response is not { } r)
+            {
+                @Message("cloud_off", "The hours couldn’t be loaded.", true, true)
+            }
+            else if (r.Status == WeatherStatus.OutOfRange)
+            {
+                @Message("event_busy", "This day is outside the forecast window.", false, false)
+            }
+            else if (r.Status != WeatherStatus.Ok)
+            {
+                @Message("cloud_queue", "MET Norway hasn’t answered for this point yet. Odyssey keeps trying on its own.", false, false)
+            }
+            else if (r.Steps.Count == 0)
+            {
+                @Message("schedule", "No hourly forecast for this day yet.", false, false)
+            }
+            else
+            {
+                @if (r.Stale && !BodyStale)
+                {
+                    <p class="wx-hours-note wx-stale"><OdsMIcon Name="cloud_off" Size="16" />Not up to date — showing the last forecast MET Norway sent.</p>
+                }
+                <div @ref="_wrapper" class="wx-hours-scroll" role="@(_overflows ? "region" : null)"
+                     aria-label="@(_overflows ? "Hourly table, scrolls sideways" : null)" tabindex="@(_overflows ? "0" : null)">
+                    <table class="wx-hours-table" aria-labelledby="@HeadingId">
+                        <thead>
+                            <tr><th scope="col">Time</th><th scope="col">Conditions</th><th scope="col">Temp</th><th scope="col">Precipitation</th><th scope="col">Wind</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in Rows(r))
+                            {
+                                @if (row.Step is not { } step)
+                                {
+                                    <tr class="wx-hours-gap"><td colspan="5">@row.Gap</td></tr>
+                                    continue;
+                                }
+                                var now = r.Day is { IsToday: true } && row.First;
+                                var symbol = WeatherVisuals.SymbolOf(step.SymbolCode);
+                                <tr class="@(now ? "now" : null)">
+                                    <th scope="row">
+                                        <span aria-hidden="true">@if (now)
+                                            {
+                                                <b class="wx-hours-now">Now · </b>
+                                            }@VisibleTime(step, r.Day)</span>
+                                        <span class="sr-only">@SpokenTime(step, r.Day, now)</span>
+                                    </th>
+                                    <td><span class="wx-hours-cond"><span aria-hidden="true"><OdsMIcon Name="@(symbol?.Icon ?? "cloud")" Size="20" /></span>@(symbol?.Label ?? "Unknown conditions")</span></td>
+                                    <td class="wx-hours-num">@Measure(step.AirTemperatureC, WeatherVisuals.Temp)</td>
+                                    <td>
+                                        <span aria-hidden="true">@WeatherVisuals.Mm(step.PrecipitationMm)<span class="wx-muted"> · </span>@WeatherVisuals.Pct(step.PrecipitationProbabilityPct)</span>
+                                        @if (IsCut(step, r.Day) && step.PrecipitationMm is not null)
+                                        {
+                                            <span class="wx-hours-whole" aria-hidden="true">over @BlockSpan(step)</span>
+                                        }
+                                        <span class="sr-only">@SpokenPrecipitation(step, r.Day)</span>
+                                    </td>
+                                    <td>
+                                        @if (step.WindSpeedMps is null)
+                                        {
+                                            @Missing
+                                        }
+                                        else
+                                        {
+                                            <WeatherWind Speed="step.WindSpeedMps" Gust="step.WindGustMps" Degrees="step.WindFromDirectionDeg" />
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                @if (EndsAt(r) is { } end)
+                {
+                    <p class="wx-hours-end">Forecast ends at @end</p>
+                }
+            }
+            break;
+    }
+</div>
+
+@code {
+    private RenderFragment Message(string icon, string text, bool retry, bool alert) => @<div class="wx-hours-msg" role="@(alert ? "alert" : null)">
+        <span aria-hidden="true"><OdsMIcon Name="@icon" Size="18" /></span><span>@text</span>
+        @if (retry)
+        {
+            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" AriaDisabled="@(!RetryEnabled)" OnClick="RetryAsync">Try again</OdsButton>
+        }
+    </div>;
+
+    private static readonly RenderFragment Missing = @<text><span aria-hidden="true">–</span><span class="sr-only">not available</span></text>;
+
+    private static RenderFragment Measure(decimal? value, Func<decimal?, string> format) =>
+        value is null ? Missing : @<text>@format(value)</text>;
+}

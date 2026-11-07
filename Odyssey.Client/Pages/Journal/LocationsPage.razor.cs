@@ -24,6 +24,10 @@ public partial class LocationsPage
     [Inject] private IWeatherApiClient Weather { get; set; } = default!;
     [Inject] private Microsoft.JSInterop.IJSRuntime Js { get; set; } = default!;
     [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    /// <summary>The registered clock, if any: the weather reads fall back to the system clock in a host that registers none.</summary>
+    private TimeProvider? ClockOrNull => Services.GetService(typeof(TimeProvider)) as TimeProvider;
 
     /// <summary><c>?open=&lt;locationId&gt;</c>: expand, scroll to and focus that record (issue #388 §3).</summary>
     [SupplyParameterFromQuery(Name = "open")] public Guid? OpenId { get; set; }
@@ -153,7 +157,7 @@ public partial class LocationsPage
         _canUpdatePoints = user.HasPermission(PermissionClaims.WeatherPointsUpdate);
         _canCreatePoints = _canOpenPoints && _canUpdatePoints;
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
-        _weatherReads = new WeatherPointReads(Weather);
+        _weatherReads = new WeatherPointReads(Weather, ClockOrNull);
 
         await RestorePageStateAsync();
         await Task.WhenAll(LoadLocations(), LoadCounts());
