@@ -5,6 +5,21 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.44.0](https://github.com/centralcmd/odyssey/compare/v0.43.0...v0.44.0) (2026-11-07)
+
+
+### Features
+
+* **client:** sync the client to design-system artifact version 1794072419-6b02 ([043aa37](https://github.com/centralcmd/odyssey/commit/043aa3730988f4db231d020e2b866583d60b43af))
+* open a day's hourly forecast from the weather day strip ([61d2f73](https://github.com/centralcmd/odyssey/commit/61d2f73ba8937e02ce1f640f70354cb5d3e746e5))
+* unified background-job run history ([75c3a8a](https://github.com/centralcmd/odyssey/commit/75c3a8aef3a0d2a331aa26552bd7adf70abe73ab))
+
+
+### CI/CD
+
+* Bump the actions group with 2 updates ([23a163e](https://github.com/centralcmd/odyssey/commit/23a163e1be78b8de191a55fea5a287c6aefe585e))
+* Bump the docker group across 4 directories with 2 updates ([5afcb65](https://github.com/centralcmd/odyssey/commit/5afcb65f3e3f81d33dc724bac527cf15b9db8282))
+
 ## [0.43.0](https://github.com/centralcmd/odyssey/compare/v0.42.0...v0.43.0) (2026-11-06)
 
 
