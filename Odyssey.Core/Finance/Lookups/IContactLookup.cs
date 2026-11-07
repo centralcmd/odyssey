@@ -17,6 +17,13 @@ public sealed record ContactRef(
     string? OrganizationNumber,
     DateTime? Archived);
 
+/// <summary>
+/// A contact as the file-analysis matcher sees it (issue #433): the resolved name and its alias values,
+/// nothing else. A narrow record on purpose — never <c>ExistingContact</c> — so the match path cannot
+/// pick up notes, organisation numbers or alias labels and re-open the issue #48 cross-claim leak.
+/// </summary>
+public sealed record ContactMatchRef(Guid ContactId, string Name, IReadOnlyList<string> Aliases);
+
 public interface IContactLookup
 {
     Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default);
@@ -65,6 +72,12 @@ public interface IContactLookup
     /// the merchant→contact name vocabulary it sends to the model.
     /// </summary>
     Task<IReadOnlyList<ContactRef>> ListActiveContactRefsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// All non-archived contacts with their alias values, for the file-analysis match vocabulary
+    /// (issue #433). Alias labels are not read.
+    /// </summary>
+    Task<IReadOnlyList<ContactMatchRef>> ListActiveContactMatchRefsAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The subset of <paramref name="ids"/> that exist and are contacts of type

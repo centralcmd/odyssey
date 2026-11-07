@@ -38,7 +38,13 @@ public sealed record FileAnalysisAuditEntry(
     // surface renders it as such rather than filling in today's settings.
     string? AnalyzerBaseUrlHost = null,
     string? ProcessorInForce = null,
-    string? ProcessorRegionInForce = null
+    string? ProcessorRegionInForce = null,
+    // Issue #433: a 16-character digest of the guidance each call sent, never the text; null when none.
+    string? ExtractionPromptAdditionDigest = null,
+    string? MatchPromptAdditionDigest = null,
+    // NOT defaulted: null means the job predates the feature ("not recorded"); set with a null digest
+    // means no guidance was sent ("none sent").
+    FileAnalysisMatchVocabularyScope? MatchVocabularyScope = null
 );
 
 public sealed record FileAnalysisAuditUser(string? Name, string? Email);

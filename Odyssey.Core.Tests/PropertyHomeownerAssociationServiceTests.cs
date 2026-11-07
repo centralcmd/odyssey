@@ -209,6 +209,9 @@ public class PropertyHomeownerAssociationServiceTests
         public Task<IReadOnlyList<ContactRef>> ListActiveContactRefsAsync(CancellationToken cancellationToken = default) =>
             inner.ListActiveContactRefsAsync(cancellationToken);
 
+        public Task<IReadOnlyList<ContactMatchRef>> ListActiveContactMatchRefsAsync(CancellationToken cancellationToken = default) =>
+            inner.ListActiveContactMatchRefsAsync(cancellationToken);
+
         public Task<IReadOnlySet<Guid>> ExistingPersonIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
             inner.ExistingPersonIdsAsync(ids, cancellationToken);
 

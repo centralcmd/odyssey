@@ -521,13 +521,6 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMaxTokens),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMaxTokens", dto.FileAnalysisMaxTokens),
                 Write: (p, req) => req.FileAnalysisMaxTokens = p.IntRequest("fileAnalysisMaxTokens")),
-            new("fileAnalysisMatchMaxVocabulary", "list_alt", "Match vocabulary size",
-                "How many known contacts and tags are offered to the match call. Over the cap the match is "
-                + "skipped, not truncated.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 5000,
-                Field: nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary),
-                Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchMaxVocabulary", dto.FileAnalysisMatchMaxVocabulary),
-                Write: (p, req) => req.FileAnalysisMatchMaxVocabulary = p.IntRequest("fileAnalysisMatchMaxVocabulary")),
             new("fileAnalysisMatchTimeoutSeconds", "history_toggle_off", "Match timeout",
                 "How long the match call may run before the job is marked failed and falls back to manual "
                 + "review.",
@@ -536,6 +529,28 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchTimeoutSeconds", dto.FileAnalysisMatchTimeoutSeconds),
                 Write: (p, req) => req.FileAnalysisMatchTimeoutSeconds = p.IntRequest("fileAnalysisMatchTimeoutSeconds"),
                 Unit: "sec"),
+            // Issue #433 backend rows. INTERIM single-line Text controls so the page can read and save the
+            // two keys; issue #434 replaces them with the multi-line LongText control and its counter.
+            new("fileAnalysisExtractionPromptAddition", "edit_note", "Extraction guidance",
+                "Optional. Extra instructions added to every statement extraction, after Odyssey's own rules — "
+                + "for example how your bank formats dates or which lines aren't transactions. Sent to the "
+                + "analysis provider with each analysis. Don't include personal data or passwords.",
+                SettingClaim.Count, SettingControl.Text, Max: PromptAdditionRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.FileAnalysisExtractionPromptAddition),
+                Load: (p, dto) => p.SetTextLoaded("fileAnalysisExtractionPromptAddition", dto.FileAnalysisExtractionPromptAddition),
+                Write: (p, req) => req.FileAnalysisExtractionPromptAddition = p.TextRequest("fileAnalysisExtractionPromptAddition"),
+                AllowEmpty: true,
+                Rule: PromptAdditionRule.Validate),
+            new("fileAnalysisMatchPromptAddition", "edit_note", "Matching guidance",
+                "Optional. Extra instructions for matching transactions to contacts and tags — for example local "
+                + "prefixes such as VIPPS* or BankAxept. Sent to the analysis provider with each match. Don't "
+                + "include personal data or passwords.",
+                SettingClaim.Count, SettingControl.Text, Max: PromptAdditionRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.FileAnalysisMatchPromptAddition),
+                Load: (p, dto) => p.SetTextLoaded("fileAnalysisMatchPromptAddition", dto.FileAnalysisMatchPromptAddition),
+                Write: (p, req) => req.FileAnalysisMatchPromptAddition = p.TextRequest("fileAnalysisMatchPromptAddition"),
+                AllowEmpty: true,
+                Rule: PromptAdditionRule.Validate),
         ]),
         // ── Transactional email (issue #421 Wave 2, extended by issue #8) ─────────────────────────
         // Row icons are ligatures the client already renders elsewhere — see the note above the File

@@ -84,7 +84,8 @@ public class FileAnalysisSessionTests
             matchStatus,
             null,
             autoLinkThreshold,
-            500);
+            FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions,
+            null, null, null, null, null);
 
     /// <summary>A session with one pending candidate seeded and no vocabulary.</summary>
     private static FileAnalysisSession SeededSession(out FileAnalysisRow row)

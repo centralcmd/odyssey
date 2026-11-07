@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Odyssey.Api.Identity;
@@ -145,6 +146,8 @@ public sealed class FileAnalysisController : ControllerBase
 
     [HttpPost("{analysisJobId}/match", Name = "MatchAnalysisCandidates")]
     [Authorize(Policy = PermissionClaims.FileAnalysisCreate)]
+    [EnableRateLimiting(FileAnalysisRateLimiting.MatchPolicy)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingFileAnalysisJob))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
@@ -152,9 +155,11 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Run (or re-run) the AI match step for an extraction-completed analysis job.",
-        Description = "Sends the user's contact and tag names to the AI provider to resolve each candidate's " +
+        Description = "Sends the user's active contacts (names, and aliases when the job's consent covers them) and " +
+                      "tags (names, and descriptions likewise) to the AI provider to resolve each candidate's " +
                       "merchant/category, persists the matches, and returns the updated job. Synchronous. A provider " +
-                      "failure or over-cap is recorded on matchStatus and never blocks importing the candidates.")]
+                      "failure is recorded on matchStatus and never blocks importing the candidates. 409 with code " +
+                      "file_analysis_destination_changed when the provider settings changed since the analysis.")]
     public async Task<IActionResult> MatchCandidates(
         [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
         Guid analysisJobId, CancellationToken cancellationToken = default)

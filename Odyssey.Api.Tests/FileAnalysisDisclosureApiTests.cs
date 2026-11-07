@@ -39,7 +39,9 @@ public class FileAnalysisDisclosureApiTests
     /// </para>
     /// </summary>
     private static readonly string[] DocumentedProperties =
-        ["processor", "processorRegion", "lawfulBasis", "privacyNoticeUrl", "model", "enabled", "disclosureVersion"];
+        ["processor", "processorRegion", "lawfulBasis", "privacyNoticeUrl", "model", "enabled", "disclosureVersion",
+         // Issue #433: the match field list, its coverage and the two guidance flags — never the text.
+         "matchVocabularyFields", "matchVocabularyCoverage", "extractionGuidanceInForce", "matchGuidanceInForce"];
 
     [Fact]
     public async Task AuthenticatedWithNoClaims_ReturnsOk()

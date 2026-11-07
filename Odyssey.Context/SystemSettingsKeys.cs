@@ -147,7 +147,6 @@ public static class SystemSettingsKeys
     // ---------------------------------------------------------------------------------------------
 
     public const string FileAnalysisMaxTokens = "FileAnalysisMaxTokens";
-    public const string FileAnalysisMatchMaxVocabulary = "FileAnalysisMatchMaxVocabulary";
     public const string FileAnalysisMatchTimeoutSeconds = "FileAnalysisMatchTimeoutSeconds";
     public const string PhotoMetadataReadMegabytes = "PhotoMetadataReadMegabytes";
     public const string PhotoMetadataExtractionTimeoutSeconds = "PhotoMetadataExtractionTimeoutSeconds";
@@ -195,6 +194,11 @@ public static class SystemSettingsKeys
     public const string FileAnalysisEnabled = "FileAnalysisEnabled";
     public const string FileAnalysisModel = "FileAnalysisModel";
     public const string FileAnalysisBaseUrl = "FileAnalysisBaseUrl";
+
+    // Administrator guidance appended to the extraction and match prompts (issue #433). Multi-line,
+    // normalised by PromptAdditionRule; "" means no addition.
+    public const string FileAnalysisExtractionPromptAddition = "FileAnalysisExtractionPromptAddition";
+    public const string FileAnalysisMatchPromptAddition = "FileAnalysisMatchPromptAddition";
 
     // ---------------------------------------------------------------------------------------------
     // Weather (issue #348). The contact travels to MET Norway in the User-Agent of every weather
@@ -280,7 +284,6 @@ public static class SystemSettingsKeys
         JournalTaskMaxLinksPerKind,
         FileStorageMaxUploadMegabytes,
         FileAnalysisMaxTokens,
-        FileAnalysisMatchMaxVocabulary,
         FileAnalysisMatchTimeoutSeconds,
         PhotoMetadataReadMegabytes,
         PhotoMetadataExtractionTimeoutSeconds,
@@ -299,6 +302,8 @@ public static class SystemSettingsKeys
         FileAnalysisEnabled,
         FileAnalysisModel,
         FileAnalysisBaseUrl,
+        FileAnalysisExtractionPromptAddition,
+        FileAnalysisMatchPromptAddition,
         WeatherUserAgentContact,
         WeatherRefreshIntervalMinutes,
         WeatherMaxTrackedPoints,

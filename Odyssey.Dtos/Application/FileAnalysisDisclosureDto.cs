@@ -61,4 +61,20 @@ public sealed record FileAnalysisDisclosureDto
     /// excluded from it.
     /// </summary>
     public string DisclosureVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Which fields of the user's contacts and tags the match step sends (issue #433), in a fixed order:
+    /// <c>contactName</c>, <c>contactAlias</c>, <c>tagName</c>, <c>tagDescription</c>. Served so the
+    /// consent copy is the server's, never a client-side copy; hashed into <see cref="DisclosureVersion"/>.
+    /// </summary>
+    public List<string> MatchVocabularyFields { get; set; } = [];
+
+    /// <summary>Which contacts and tags are sent: <c>allActive</c>, every non-archived one (issue #433).</summary>
+    public string MatchVocabularyCoverage { get; set; } = string.Empty;
+
+    /// <summary>Whether administrator guidance is added to the extraction prompt. The text is never served here.</summary>
+    public bool ExtractionGuidanceInForce { get; set; }
+
+    /// <summary>Whether administrator guidance is added to the match prompt. The text is never served here.</summary>
+    public bool MatchGuidanceInForce { get; set; }
 }

@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using System.Globalization;
 using Odyssey.Dtos.Application;
 using Odyssey.Core;
@@ -101,6 +102,20 @@ internal abstract class SystemSettingDescriptor
     /// </para>
     /// </summary>
     public bool AuditChanges => RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate;
+
+    /// <summary>
+    /// Whether an actual value change is written to the audit log as <strong>lengths and digests
+    /// only</strong>, independently of the claim (issue #433 §7.2). Set on the two prompt additions:
+    /// they take the ordinary claim, so <see cref="AuditChanges"/> is false for them, yet a change that
+    /// was saved and reverted without ever running must still leave a trace of who made it. The text
+    /// itself is free-form and administrator-authored, so it is never logged.
+    ///
+    /// <para>
+    /// A separate flag rather than a widening of <see cref="AuditChanges"/>: that one is derived from
+    /// the claim on purpose, and a guard test pins it there.
+    /// </para>
+    /// </summary>
+    public bool AuditDigestOnChange { get; init; }
 
     /// <summary>
     /// Optional non-blocking advisory for this field, evaluated against the freshly-projected read DTO
@@ -434,10 +449,41 @@ internal sealed class StringSetting : SystemSettingDescriptor
     /// </summary>
     public Func<string, string?>? Canonicalize { get; init; }
 
+    /// <summary>
+    /// Whether this is a multi-line free-text setting (issue #433 §8). When set, the whole pipeline is
+    /// <see cref="PromptAdditionRule"/>'s instead of the single-line one below: line breaks are
+    /// normalised to LF, the value is NFC-composed and trimmed, and LF and TAB are allowed while every
+    /// other control, format, separator, private-use and surrogate character is refused. The length is
+    /// measured on the normalised value, so <see cref="MaxLength"/> is checked after normalisation.
+    ///
+    /// <para>
+    /// Every setting without this flag keeps rejecting every character below <c>0x20</c>: CR/LF in a
+    /// single-line value that reaches a mail header is injection. A guard test pins that.
+    /// </para>
+    /// </summary>
+    public bool Multiline { get; init; }
+
     public override bool IsPresent(SystemSettingsUpdate request) => Read(request) is not null;
 
     public override void Validate(SystemSettingsUpdate request, RequestCapCeilings ceilings)
     {
+        if (Multiline)
+        {
+            // Empty is a clear, and only legal on an AllowEmpty key; every other outcome is the rule's.
+            if (PromptAdditionRule.Normalize(Read(request)).Length == 0 && !AllowEmpty)
+            {
+                throw Invalid("must not be empty.");
+            }
+
+            if (PromptAdditionRule.Validate(Read(request)) is { } message)
+            {
+                // The rule's message is written for the administrator and never echoes the value.
+                throw new DomainValidationException(message, ErrorCode, FieldName);
+            }
+
+            return;
+        }
+
         var raw = Read(request)!;
         var value = raw.Trim();
 
@@ -474,6 +520,11 @@ internal sealed class StringSetting : SystemSettingDescriptor
 
     public override string Format(SystemSettingsUpdate request)
     {
+        if (Multiline)
+        {
+            return PromptAdditionRule.Normalize(Read(request));
+        }
+
         var trimmed = Read(request)!.Trim();
 
         // Canonicalize is skipped for the legal-empty case, matching Validate: every canonicaliser

@@ -237,7 +237,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode,
             string promptTemplate, FileAnalysisTarget target, int maxTokens,
-            CancellationToken cancellationToken = default) =>
+            string? promptAddition, CancellationToken cancellationToken = default) =>
             Task.FromResult(new List<ExtractedTransaction>());
 
         public Task<List<MatchedCandidate>> MatchTransactionsAsync(
@@ -246,6 +246,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             IReadOnlyList<VocabularyEntry> tagVocabulary,
             FileAnalysisTarget target,
             int maxTokens,
+            MatchPromptOptions prompt,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(match?.Invoke(tagVocabulary) ?? []);
     }
@@ -256,7 +257,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             Task.FromResult(new FileAnalysisSettings(
                 "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",
                 "https://www.anthropic.com/legal/privacy", 90, 0.60m,
-                MaxTokens: 8096, MatchMaxVocabulary: 500, MatchTimeoutSeconds: 60,
+                MaxTokens: 8096, MatchTimeoutSeconds: 60,
                 Model: "claude-sonnet-5", BaseUrl: "https://api.anthropic.com", IsDegraded: false));
 
         public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default) =>

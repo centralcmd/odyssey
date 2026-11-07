@@ -2257,6 +2257,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("AccountFileId")
                         .HasColumnType("char(36)");
 
+                    b.Property<int?>("AliasCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("AnalyzerBaseUrlHost")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
@@ -2288,6 +2291,17 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
 
+                    b.Property<int?>("ContactCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisclosureVersionInForce")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<string>("ExtractionPromptAdditionInForce")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
                     b.Property<string>("FailureCode")
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
@@ -2304,9 +2318,25 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<string>("MatchDisclosureVersionInForce")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<string>("MatchFailureMessage")
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
+
+                    b.Property<int>("MatchGeneration")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("MatchPromptAdditionInForce")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<string>("MatchPromptVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<int>("MatchStatus")
                         .ValueGeneratedOnAdd()
@@ -2314,6 +2344,9 @@ namespace Odyssey.Context.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int?>("MatchTimeoutSecondsInForce")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MatchVocabularyScope")
                         .HasColumnType("int");
 
                     b.Property<int?>("MaxTokensInForce")
@@ -2342,7 +2375,16 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<int?>("TagCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TagDescriptionCount")
+                        .HasColumnType("int");
+
                     b.Property<int?>("VocabularyCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VocabularyReduction")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -4441,12 +4483,6 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
-                            Key = "FileAnalysisMatchMaxVocabulary",
-                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "500"
-                        },
-                        new
-                        {
                             Key = "FileAnalysisMatchTimeoutSeconds",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "60"
@@ -4576,6 +4612,18 @@ namespace Odyssey.Context.Migrations
                             Key = "FileAnalysisBaseUrl",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "https://api.anthropic.com"
+                        },
+                        new
+                        {
+                            Key = "FileAnalysisExtractionPromptAddition",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
+                        },
+                        new
+                        {
+                            Key = "FileAnalysisMatchPromptAddition",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
                         },
                         new
                         {

@@ -191,9 +191,6 @@ public static class SystemSettingsDefaults
     /// <summary>Model output cap on the extraction and match calls. A direct third-party spend lever.</summary>
     public const int FileAnalysisMaxTokens = 8096;
 
-    /// <summary>Per-list vocabulary cap; over it the LLM match is skipped, not truncated.</summary>
-    public const int FileAnalysisMatchMaxVocabulary = 500;
-
     /// <summary>Hard per-match-call timeout; on timeout the job records MatchStatus = Failed.</summary>
     public const int FileAnalysisMatchTimeoutSeconds = 60;
 
@@ -303,6 +300,12 @@ public static class SystemSettingsDefaults
     /// to Anthropic when the administrator had deliberately pointed the deployment at a gateway.
     /// </summary>
     public const string FileAnalysisBaseUrl = "https://api.anthropic.com";
+
+    /// <summary>No administrator guidance: the shipped extraction prompt is sent unchanged (issue #433).</summary>
+    public const string FileAnalysisExtractionPromptAddition = "";
+
+    /// <summary>No administrator guidance: the shipped match prompt is sent unchanged (issue #433).</summary>
+    public const string FileAnalysisMatchPromptAddition = "";
 
     // ── Weather (issue #348) ─────────────────────────────────────────────────────────────────────
 

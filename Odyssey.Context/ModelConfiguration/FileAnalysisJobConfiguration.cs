@@ -24,5 +24,8 @@ internal sealed class FileAnalysisJobConfiguration : IEntityTypeConfiguration<Fi
             .HasDefaultValue(FileAnalysisMatchStatus.NotRun)
             .HasSentinel(FileAnalysisMatchStatus.NotRun)
             .HasConversion<int>();
+
+        entity.Property(j => j.MatchVocabularyScope).HasConversion<int?>();
+        entity.Property(j => j.VocabularyReduction).HasConversion<int?>();
     }
 }

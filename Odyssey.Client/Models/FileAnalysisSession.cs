@@ -157,9 +157,6 @@ public sealed class FileAnalysisSession
     /// </summary>
     public decimal AutoLinkThreshold => Job is { } job ? (decimal)job.AutoLinkThreshold : 0.60m;
 
-    /// <summary>The server's cap on how many names may be sent for matching.</summary>
-    public int MaxVocabulary => Job?.MaxVocabulary ?? 500;
-
     public void SetContacts(IEnumerable<ExistingContact> loaded)
     {
         contacts.Clear();

@@ -174,5 +174,72 @@ public class FileAnalysisJob
     [StringLength(128)]
     public string? ProcessorRegionInForce { get; set; }
 
+    // ── Match vocabulary and administrator guidance (issue #433) ─────────────────────────────────
+
+    /// <summary>
+    /// What the user's consent covered for the match step, written once at analyze. <c>NULL</c> is a
+    /// job created before the feature, matched names-only for its whole life, re-matches included.
+    /// </summary>
+    public Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope? MatchVocabularyScope { get; set; }
+
+    /// <summary>The full disclosure version the user consented to, written at analyze.</summary>
+    [StringLength(16)]
+    public string? DisclosureVersionInForce { get; set; }
+
+    /// <summary>
+    /// The match-relevant part of that disclosure, written at analyze from the same snapshot. Match
+    /// compares a fresh value against it and refuses on a difference, so a match never sends data
+    /// under a disclosure the user did not see. It excludes the extraction-guidance flag: extraction has
+    /// already run, so changing that guidance must not refuse matches on open analyses.
+    /// </summary>
+    [StringLength(16)]
+    public string? MatchDisclosureVersionInForce { get; set; }
+
+    /// <summary>The administrator's extraction guidance this run sent, verbatim; <c>NULL</c> when none.</summary>
+    // TEXT, not varchar(4000): two utf8mb4 varchar(4000) columns would take 32 000 bytes of the table's
+    // 65 535-byte row-size budget. The 4000 limit is the rule's, enforced on write.
+    [StringLength(4000)]
+    [Column(TypeName = "text")]
+    public string? ExtractionPromptAdditionInForce { get; set; }
+
+    /// <summary>The match guidance the latest match run sent, verbatim; <c>NULL</c> when none.</summary>
+    // TEXT, not varchar(4000): two utf8mb4 varchar(4000) columns would take 32 000 bytes of the table's
+    // 65 535-byte row-size budget. The 4000 limit is the rule's, enforced on write.
+    [StringLength(4000)]
+    [Column(TypeName = "text")]
+    public string? MatchPromptAdditionInForce { get; set; }
+
+    /// <summary>
+    /// The version of the match text the latest run actually sent. A names-only run sends the
+    /// pre-feature text and is stamped <c>1.0</c>; <see cref="PromptVersion"/> is stamped at analyze
+    /// and says nothing about the match text.
+    /// </summary>
+    [StringLength(32)]
+    public string? MatchPromptVersion { get; set; }
+
+    /// <summary>Contacts the latest match run sent.</summary>
+    public int? ContactCount { get; set; }
+
+    /// <summary>Tags the latest match run sent.</summary>
+    public int? TagCount { get; set; }
+
+    /// <summary>Contact aliases the latest match run sent, after the payload budget.</summary>
+    public int? AliasCount { get; set; }
+
+    /// <summary>Tag descriptions the latest match run sent, after the payload budget.</summary>
+    public int? TagDescriptionCount { get; set; }
+
+    /// <summary>How far the latest match run had to shrink its vocabulary to fit the payload budget.</summary>
+    public Odyssey.Dtos.Finance.FileAnalysisVocabularyReduction? VocabularyReduction { get; set; }
+
+    /// <summary>
+    /// The match claim's concurrency token. The running guard is check-then-save, so on its own two
+    /// simultaneous requests can both pass it; every claim and every match-status write increments
+    /// this, and the loser's save fails instead of sending a second time. The same pattern as the
+    /// <c>Generation</c> tokens on <c>PhotoThumbnailJobs</c> and <c>JobRuns</c>.
+    /// </summary>
+    [ConcurrencyCheck]
+    public int MatchGeneration { get; set; }
+
     public ICollection<FileAnalysisCandidateTransaction> CandidateTransactions { get; set; } = new List<FileAnalysisCandidateTransaction>();
 }

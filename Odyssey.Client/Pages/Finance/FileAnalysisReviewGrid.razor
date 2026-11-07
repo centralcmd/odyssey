@@ -29,7 +29,7 @@
             <div class="fan-degraded-text">
                 @if (Session.MatchStatus == FileAnalysisMatchStatus.Skipped)
                 {
-                    <text><b>Matching was skipped.</b> You have more than @Session.MaxVocabulary contacts or tags to compare, so nothing was sent for matching. Link merchants and categories yourself, or re-match.</text>
+                    <text><b>Matching was skipped</b> when this analysis ran, because the list of contacts and tags was over the limit at the time. Link merchants and categories yourself, or re-match.</text>
                 }
                 else
                 {

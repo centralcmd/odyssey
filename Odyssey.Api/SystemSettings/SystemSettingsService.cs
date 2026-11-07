@@ -187,6 +187,15 @@ public sealed class SystemSettingsService(
         // it changed, and a rolled-back clear leaves no line claiming a credential was removed.
         foreach (var line in auditLines)
         {
+            if (line.DigestOnly)
+            {
+                // Lengths and digests, never the text (issue #433 §7.2).
+                logger.LogInformation(
+                    "System settings guidance change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
+                    actorUserId, line.Key, line.OldValue, line.NewValue);
+                continue;
+            }
+
             logger.LogInformation(
                 "System settings security-claim change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
                 actorUserId, line.Key, line.OldValue, line.NewValue);
@@ -213,7 +222,7 @@ public sealed class SystemSettingsService(
     /// PROJECTED values — the projection runs where the old and new strings are still in hand, so a
     /// line can never be composed from an unprojected one by a later edit at the emit site.
     /// </summary>
-    private sealed record PendingAudit(string Key, string OldValue, string NewValue);
+    private sealed record PendingAudit(string Key, string OldValue, string NewValue, bool DigestOnly = false);
 
     /// <summary>
     /// The write phase, extracted so the whole of it — not just <c>BeginTransactionAsync</c> — sits
@@ -334,6 +343,15 @@ public sealed class SystemSettingsService(
                     project is null ? newValue : project(newValue)));
             }
 
+            // Issue #433: the prompt additions take the ordinary claim, so the branch above skips them, but
+            // a change to what is sent to the processor must still say who made it. Lengths and digests
+            // only — the text is never logged.
+            if (descriptor.AuditDigestOnChange && valueChanged)
+            {
+                auditLines.Add(new PendingAudit(
+                    descriptor.Key, DigestSummary(oldValue), DigestSummary(newValue), DigestOnly: true));
+            }
+
             // G4/G7. Computed off the loop's own valueChanged rather than re-derived up front — see
             // the remarks above the transaction. Several triggers can fire; they still stage ONE
             // removal per secret, because the rows are the same rows.
@@ -404,6 +422,15 @@ public sealed class SystemSettingsService(
     /// entered for — is about an ENDPOINT, and the host is only half of one.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// The audit form of a prompt addition: its length and its 16-character digest, or <c>empty</c>.
+    /// Enough to tell one version from another and to match a job's stamp, without the text.
+    /// </summary>
+    private static string DigestSummary(string value) =>
+        Odyssey.Core.Finance.PromptAdditionDigest.Of(value) is { } digest
+            ? string.Create(CultureInfo.InvariantCulture, $"[length {value.Length}, digest {digest}]")
+            : "[empty]";
+
     private static string? RelayCredentialClearTrigger(string key, string newValue, bool valueChanged)
     {
         if (!valueChanged)

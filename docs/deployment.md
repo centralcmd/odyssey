@@ -369,10 +369,34 @@ sample counts, the mail throttle's tracked-address table, and the per-account sm
 | Max repeated fields per contact | lower only | Each field costs a sibling query and its own save, multiplied by an import entry cap that ships unlimited. Any number above the shipped 200 would be a guess about a product of three unbounded terms. |
 | Tracked recipient addresses | raise only | The per-recipient mail throttle fails **open** once its table is full, so a smaller table weakens the control instead of tightening it. |
 
+### Release note: file-analysis matching sends more, and the vocabulary cap is gone (issue #433)
+
+- **The match vocabulary cap is retired.** The `FileAnalysisMatchMaxVocabulary` setting (default 500) no
+  longer exists, and matching is never skipped for vocabulary size: every active contact and tag is sent.
+  Rolling the migration back re-inserts the row at **500**, not at an administrator's previous value.
+- **Matching sends contact aliases and tag descriptions** for analyses started after the upgrade. Alias
+  labels, notes and organisation numbers are still never sent. An analysis started before the upgrade
+  keeps matching on names only for its whole life.
+- **Users consent again once.** The consent disclosure now lists the data fields sent and whether
+  administrator guidance is in force, and its version covers both.
+- **Two new settings, `FileAnalysisExtractionPromptAddition` and `FileAnalysisMatchPromptAddition`**,
+  hold administrator guidance (up to 4000 characters each, empty by default) that is added to the
+  extraction and match prompts. Each change is logged with the acting user, the length and a digest,
+  never the text. Turning either on or off makes users consent again; turning **match** guidance on or
+  off, or changing the processor, region, lawful basis or privacy-notice URL, also refuses matches on
+  analyses that are already open (`409`, "start a new analysis").
+- **Two new deploy-time limits**, per user: `RateLimiting:FileAnalysisAnalyze` (default 10 per hour) and
+  `RateLimiting:FileAnalysisMatch` (default 30 per hour). A household importing many statements at once
+  may want to raise the analyze limit. Like every `RateLimiting:*` key they are configuration, not
+  settings, because the limiter is cached per user.
+- **A payload budget** of 200 000 characters bounds each match request: over it, aliases are left out
+  for that run, then tag descriptions. Names are always sent.
+
 ### Release note: three `FileAnalysis` keys retired from `appsettings.json`
 
 `FileAnalysis:MaxTokens`, `FileAnalysis:Match:MaxVocabulary` and `FileAnalysis:Match:TimeoutSeconds` are
-database-backed as of issue #434 and no longer read from configuration.
+database-backed as of issue #434 and no longer read from configuration. (`MaxVocabulary` was later retired altogether by
+issue #433; see the note above.)
 
 Their environment variables (`FILE_ANALYSIS_MAX_TOKENS`, `FILE_ANALYSIS_MATCH_MAX_VOCABULARY`,
 `FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS`, and the `Aspire:` keys) are **gone**, and nothing carries a

@@ -41,7 +41,7 @@ public class TuningSystemSettingsApiTests
         PermissionClaims.SystemSettingsSecurityUpdate,
     ];
 
-    /// <summary>Read plus only the ORDINARY write claim — enough for thirteen of the fifteen.</summary>
+    /// <summary>Read plus only the ORDINARY write claim — enough for twelve of the fourteen.</summary>
     private static readonly string[] ReadAndOrdinaryOnly =
         [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate];
 
@@ -59,7 +59,6 @@ public class TuningSystemSettingsApiTests
 
         Assert.NotNull(dto);
         Assert.Equal(SystemSettingsDefaults.FileAnalysisMaxTokens, dto!.FileAnalysisMaxTokens);
-        Assert.Equal(SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary, dto.FileAnalysisMatchMaxVocabulary);
         Assert.Equal(SystemSettingsDefaults.FileAnalysisMatchTimeoutSeconds, dto.FileAnalysisMatchTimeoutSeconds);
         Assert.Equal(SystemSettingsDefaults.PhotoMetadataReadMegabytes, dto.PhotoMetadataReadMegabytes);
         Assert.Equal(
@@ -113,16 +112,15 @@ public class TuningSystemSettingsApiTests
 
     // ── AC 6 / 7 / 8 — authorization ─────────────────────────────────────────────────────────────
 
-    /// <summary>All thirteen count-claim fields in one body, as a caller holding only that claim.</summary>
+    /// <summary>All twelve count-claim fields in one body, as a caller holding only that claim.</summary>
     [Fact]
-    public async Task Put_AllThirteenCountClaimFields_WithOnlyTheOrdinaryClaim_Succeeds()
+    public async Task Put_AllTwelveCountClaimFields_WithOnlyTheOrdinaryClaim_Succeeds()
     {
         await using var factory = new ApiFactory(ReadAndOrdinaryOnly);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            FileAnalysisMatchMaxVocabulary = 400,
             FileAnalysisMatchTimeoutSeconds = 45,
             PhotoMetadataExtractionTimeoutSeconds = 7,
             CalendarMaxWindowDays = 60,
@@ -208,7 +206,7 @@ public class TuningSystemSettingsApiTests
     /// It is also the mitigation the whole-resource <c>PUT</c> rests on for those keys: a second admin
     /// saving a stale form silently reverts the first one's raise, and a silent revert is
     /// indistinguishable from a deliberate set — except that the audit line names actor, field, old and
-    /// new. The thirteen count-claim keys' reverts stay invisible, which is accepted residue.
+    /// new. The twelve count-claim keys' reverts stay invisible, which is accepted residue.
     /// </para>
     /// </summary>
     [Fact]
@@ -295,8 +293,6 @@ public class TuningSystemSettingsApiTests
         }
 
         Both(nameof(SystemSettingsUpdate.FileAnalysisMaxTokens), 1024, 64_000, "Max tokens must be between");
-        Both(nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary), 1, 5_000,
-            "Match vocabulary cap must be between");
         Both(nameof(SystemSettingsUpdate.FileAnalysisMatchTimeoutSeconds), 5, 600, "Match timeout must be between");
         Both(nameof(SystemSettingsUpdate.PhotoMetadataReadMegabytes), 1, 16, "Metadata read size must be between");
         Both(nameof(SystemSettingsUpdate.PhotoMetadataExtractionTimeoutSeconds), 1, 120,
@@ -615,10 +611,9 @@ public class TuningSystemSettingsApiTests
         Assert.DoesNotContain(nameof(SystemSettingsUpdate.FileAnalysisMaxTokens), after!.Warnings.Keys);
     }
 
-    /// <summary>All six cost advisories, each raised one step above its default.</summary>
+    /// <summary>All five cost advisories, each raised one step above its default.</summary>
     [Theory]
     [InlineData(nameof(SystemSettingsUpdate.FileAnalysisMaxTokens), 8_097)]
-    [InlineData(nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary), 501)]
     [InlineData(nameof(SystemSettingsUpdate.PhotoMetadataReadMegabytes), 9)]
     [InlineData(nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateExportRows), 20_001)]
     [InlineData(nameof(SystemSettingsUpdate.CalendarIcsMaxAggregateOccurrences), 5_001)]
