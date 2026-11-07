@@ -21,7 +21,7 @@
          migrations image (a source lint enforces it). Patch policy (§7.5.8): a critical or actively exploited
          ImageMagick or libwebp CVE within 72 h, other Magick.NET security releases within 14 days. 15.x ships the
          linux-musl-x64 native the Alpine worker image needs, but no linux-musl-arm64 one. -->
-    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.0.0" />
+    <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.0" />
     <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.14" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.14" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.14" />
