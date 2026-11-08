@@ -15,7 +15,7 @@ using Odyssey.Dtos.Authorization;
 
 namespace Odyssey.Client.Pages.Finance;
 
-public partial class FileAnalysisDialog
+public partial class FileAnalysisDialog : IDisposable
 {
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
@@ -29,7 +29,8 @@ public partial class FileAnalysisDialog
     /// <summary>
     /// The host-resolved initial phase. The host already loaded the account's resumable map, so it
     /// decides whether the dialog opens on the consent gate (fresh analysis), the resume-vs-reanalyze
-    /// fork, or straight into loading the saved review. The dialog does not re-discover resumability.
+    /// fork, straight into loading the saved review, or onto a queued job's progress or result. The
+    /// dialog does not re-discover resumability.
     /// </summary>
     [Parameter] public StartMode Start { get; set; } = StartMode.Consent;
 
@@ -39,16 +40,41 @@ public partial class FileAnalysisDialog
     /// <summary>Raised after the review is finished (imported) so the host can refresh its resumable map.</summary>
     [Parameter] public EventCallback OnResolved { get; set; }
 
-    /// <summary>Which phase the host opens this dialog in. Resume/ReanalyzeConfirm need a <see cref="ResumeSummary"/>.</summary>
-    public enum StartMode { Consent, ReanalyzeConfirm, Resume }
+    /// <summary>
+    /// The account-file link this dialog analyzes. The first poll of any job checks the job's <c>AccountFileId</c>
+    /// against it and drops a job for another file (issue #445 §5, S7). <see cref="Guid.Empty"/> skips the check.
+    /// </summary>
+    [Parameter] public Guid AccountFileId { get; set; }
+
+    /// <summary>The job a <see cref="StartMode.Progress"/> or <see cref="StartMode.Result"/> open follows.</summary>
+    [Parameter] public Guid? JobId { get; set; }
+
+    /// <summary>
+    /// The file's latest job's sent status, from the host's summary: when it is <c>Yes</c> or <c>Possibly</c>,
+    /// every entry to consent opens with the second-transfer alert (issue #445 §7).
+    /// </summary>
+    [Parameter] public FileAnalysisDocumentSent? PriorDocumentSent { get; set; }
+
+    /// <summary>Analyze was chosen on a row whose job is still open: say so while showing its progress.</summary>
+    [Parameter] public bool AnnounceAlreadyRunning { get; set; }
+
+    /// <summary>The row's stable menu-trigger id: Close returns focus there for every entry point (A6).</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Which phase the host opens this dialog in. Resume/ReanalyzeConfirm need a <see cref="ResumeSummary"/>;
+    /// Progress (an open job) and Result (a failed or stopped one) need a <see cref="JobId"/>.
+    /// </summary>
+    public enum StartMode { Consent, ReanalyzeConfirm, Resume, Progress, Result }
+
+    /// <summary>The interactivity check, as a seam for bUnit (the <c>Preferences.InteractiveCheck</c> pattern).</summary>
+    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
 
     // The phase machine, candidate rows and match/merchant-create rules (issue #373). The dialog owns
     // only the I/O around it.
     private readonly FileAnalysisSession _session = new();
 
     private FileAnalysisPhase Phase => _session.Phase;
-
-    private string? _errorMessage;
 
     // Consent gate — analysis sends the complete document to the external AI processor, so the
     // dialog opens on an informed-consent gate before any bytes leave Odyssey. The affirmed text
@@ -62,7 +88,50 @@ public partial class FileAnalysisDialog
     private int _failedCount;
     private List<ImportFailure> _failures = [];
 
+    // ── The queued job (issue #445) ──
+    // Whether this dialog did NOT start the job (View progress, View result, a 409 attach): such a job reaches
+    // review without the match step, which is a transfer the attaching user never started (S1).
+    private bool _attached;
+    private bool _attachNote;
+    private FileAnalysisJobStatus? _jobStatus;
+    private bool _transferStarted;
+    private DateTimeOffset? _firstObservedOpen;
+    private bool _takingLong;
+    private bool _hiccup;
+    private int _unknownStatusPolls;
+    private CancellationTokenSource? _pollCts;
+    private CancellationTokenSource? _submitCts;
+    private bool _slowStart;
+
+    // The terminal state's client-owned copy and the facts its sent line states. No server text is ever held.
+    private FileAnalysisTerminalCopy? _terminal;
+    private FileAnalysisDocumentSent _terminalSent;
+    private string? _terminalProcessor;
+    private long? _tooLargeLimit;
+    private bool _tooLarge;
+
+    // The second-transfer alert's subject: the latest job's sent status.
+    private FileAnalysisDocumentSent? _priorSent;
+    private ElementReference _priorRef;
+    private bool ShowPriorAlert => FileAnalysisJobCopy.MayHaveBeenSent(_priorSent);
+
+    // One focusable heading per phase, focused once rendered (A1). Ids are per instance.
+    private ElementReference _phaseHeading;
+    private FileAnalysisPhase? _focusedPhase;
+    private bool _initialFocusSettled;
+    private readonly string _idBase = $"fan-{Guid.NewGuid():N}";
+    private string HeadingId => $"{_idBase}-h";
+    private string BodyId => $"{_idBase}-body";
+    private string SentId => $"{_idBase}-sent";
+
+    // The STAMPED processor names a job's transfer; today's disclosure only a transfer yet to happen.
+    private string JobProcessor => _session.Job?.ProcessorInForce is { Length: > 0 } stamped ? stamped : FileAnalysisJobCopy.FallbackProcessor;
+    private string NextProcessor => string.IsNullOrWhiteSpace(_disclosure.Processor) ? FileAnalysisJobCopy.FallbackProcessor : _disclosure.Processor;
+    private string ProgressProcessor => _session.Job?.ProcessorInForce is { Length: > 0 } stamped ? stamped : NextProcessor;
+
     private bool IsReview => Phase == FileAnalysisPhase.Review;
+
+    private bool IsConsentBody => Phase is FileAnalysisPhase.Consent or FileAnalysisPhase.Submitting;
 
     // OdsModal keys its inline MudDialog on `Wide`; flipping it re-teleports the dialog, and when that
     // happens during the resume init continuation (not a user event) the previous instance is orphaned
@@ -72,19 +141,21 @@ public partial class FileAnalysisDialog
     private bool IsWideFrame =>
         Phase is FileAnalysisPhase.Review or FileAnalysisPhase.ResumeLoading or FileAnalysisPhase.NoLongerAvailable;
 
-    // Header lead glyph + tint (mirrors the design-system AnalyzeFileModal): the consent gate and the
-    // no-longer-available state warn (amber); the reanalyze fork wears the history glyph; every other
-    // phase wears the brand-toned scanner.
+    // Header lead glyph + tint (mirrors the design-system AnalyzeFileModal).
     private string HeaderIcon => Phase switch
     {
-        FileAnalysisPhase.Consent => "shield",
+        FileAnalysisPhase.Consent or FileAnalysisPhase.Submitting => "shield",
         FileAnalysisPhase.ReanalyzeConfirm => "history",
         FileAnalysisPhase.NoLongerAvailable => "unpublished",
+        FileAnalysisPhase.Disabled or FileAnalysisPhase.Cancelled => "block",
+        FileAnalysisPhase.Blocked when _tooLarge => "block",
         _ => "document_scanner",
     };
 
     private OdsModalTone HeaderTone =>
-        Phase is FileAnalysisPhase.Consent or FileAnalysisPhase.NoLongerAvailable
+        Phase is FileAnalysisPhase.Consent or FileAnalysisPhase.Submitting or FileAnalysisPhase.NoLongerAvailable
+            or FileAnalysisPhase.Disabled or FileAnalysisPhase.Cancelled
+        || (Phase == FileAnalysisPhase.Blocked && _tooLarge)
             ? OdsModalTone.Warning
             : OdsModalTone.Brand;
 
@@ -94,10 +165,8 @@ public partial class FileAnalysisDialog
         ? (s.PendingCount > 0 ? s.PendingCount : s.CandidateCount)
         : _session.Rows.Count;
 
-    // Dialog-scoped polite live region (the dialog had none): the async resume state is announced
-    // here; the load-failure state announces via role="alert" on its own body. The visible text is
-    // empty on first paint and only set afterward (OnAfterRender) so assistive tech treats it as a
-    // mutation and actually speaks it — content present when a live region is inserted is not announced.
+    // Dialog-scoped polite live region. The visible text is empty on first paint and only set afterward
+    // (OnAfterRender) so assistive tech treats it as a mutation and actually speaks it.
     private string _liveMsg = string.Empty;
 
     /// <summary>
@@ -126,9 +195,19 @@ public partial class FileAnalysisDialog
 
     private bool _disclosureChangedNeedsFocus;
 
+    /// <summary>
+    /// The polite message is a function of (phase, job status, sub-state) — never of a poll — so it changes only
+    /// when that tuple does and an earlier message never masks a later one (issue #445 §6.3).
+    /// </summary>
     private string DesiredLiveMsg => _session.ActionAnnounce ?? Phase switch
     {
         FileAnalysisPhase.ResumeLoading => $"Opening your saved review for {FileName}.",
+        FileAnalysisPhase.Submitting when _slowStart => FileAnalysisJobCopy.StartingAnalysis,
+        FileAnalysisPhase.Analyzing when _takingLong => FileAnalysisJobCopy.TakingLonger,
+        FileAnalysisPhase.Analyzing when _attachNote => FileAnalysisJobCopy.AlreadyRunning,
+        FileAnalysisPhase.Analyzing when _jobStatus == FileAnalysisJobStatus.Queued => "Analysis queued.",
+        FileAnalysisPhase.Analyzing when _jobStatus == FileAnalysisJobStatus.Running && !_transferStarted => $"Preparing to send to {ProgressProcessor}.",
+        FileAnalysisPhase.Analyzing when _jobStatus == FileAnalysisJobStatus.Running => $"Sending to {ProgressProcessor} and extracting transactions.",
         FileAnalysisPhase.Matching => "Matching merchants and categories against your contacts and tags.",
         // The one summary line, announced once on entering Review (issue #434). Mutually exclusive with
         // the problem alerts, which announce themselves (role="alert").
@@ -148,15 +227,6 @@ public partial class FileAnalysisDialog
     private bool _analyzeRateLimited;
     private TimeSpan? _analyzeRetryAfter;
 
-    // "Start new analysis" after a 409 destination change lands focus on the consent step.
-    private ElementReference _consentStartRef;
-    private bool _consentStartNeedsFocus;
-
-    // The NoLongerAvailable step swaps into an already-open dialog with no focusable body control, so
-    // focus moves to its heading on entry (tracked so it fires once per entry).
-    private ElementReference _unavailableHeading;
-    private FileAnalysisPhase? _announcedPhase;
-
     // Per-phase modal width (overrides layered on the OdsModal frame): review widens to the
     // candidate grid (~1600px), consent to the two-column disclosure (~720px); every other
     // single-column phase keeps the default narrow modal.
@@ -167,7 +237,7 @@ public partial class FileAnalysisDialog
         // purely via CSS — a short message, not the full grid.
         FileAnalysisPhase.Review or FileAnalysisPhase.ResumeLoading => "fan-modal",
         FileAnalysisPhase.NoLongerAvailable => "fan-unavailable-modal",
-        FileAnalysisPhase.Consent => "fan-consent-modal",
+        FileAnalysisPhase.Consent or FileAnalysisPhase.Submitting => "fan-consent-modal",
         _ => string.Empty,
     };
 
@@ -182,35 +252,52 @@ public partial class FileAnalysisDialog
             return; // the resulting re-render re-enters here with the DOM settled
         }
 
-        // "Start new analysis" after a 409 destination change: land on the consent step (issue #434).
-        if (_consentStartNeedsFocus && Phase == FileAnalysisPhase.Consent)
-        {
-            _consentStartNeedsFocus = false;
-            try { await _consentStartRef.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
-            return;
-        }
+        await MoveFocusAsync();
+    }
 
-        // A re-prompted consent gate: land the user on the REASON, not on the checkbox that reset
-        // underneath them (issue #439 §5.3c AC 55). Fires once per re-prompt.
+    /// <summary>
+    /// Focus on a phase change (issue #445 §6.2): once the new phase has rendered, to its heading — unless a
+    /// higher-precedence notice holds it. On consent the order is the disclosure-changed notice, the
+    /// second-transfer alert, the 429 notice (which focuses itself), then the heading. Submitting keeps focus on
+    /// the busy send button. The phase the dialog OPENS on is left to the modal's own open focus, except that a
+    /// consent gate opening with the second-transfer alert lands on the alert.
+    /// </summary>
+    private async Task MoveFocusAsync()
+    {
         if (_disclosureChangedNeedsFocus)
         {
             _disclosureChangedNeedsFocus = false;
+            _focusedPhase = Phase;
             try { await _disclosureChangedRef.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
             return;
         }
 
-        // Move focus to the NoLongerAvailable heading once on entry so the screen reader reads the new
-        // context immediately. (ReanalyzeConfirm is only ever the initial phase, where the modal's own
-        // open-focus + dialog title already announce it.)
-        if (Phase == FileAnalysisPhase.NoLongerAvailable && _announcedPhase != FileAnalysisPhase.NoLongerAvailable)
+        if (_focusedPhase == Phase)
+            return;
+
+        var initial = !_initialFocusSettled;
+        _initialFocusSettled = true;
+        _focusedPhase = Phase;
+
+        if (Phase == FileAnalysisPhase.Submitting)
+            return;
+
+        if (Phase == FileAnalysisPhase.Consent)
         {
-            _announcedPhase = FileAnalysisPhase.NoLongerAvailable;
-            try { await _unavailableHeading.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
+            if (ShowPriorAlert)
+                await TryFocusAsync(_priorRef);
+            else if (!_analyzeRateLimited && !initial)
+                await TryFocusAsync(_phaseHeading);
+            return;
         }
-        else if (Phase != FileAnalysisPhase.NoLongerAvailable)
-        {
-            _announcedPhase = null;
-        }
+
+        if (!initial)
+            await TryFocusAsync(_phaseHeading);
+    }
+
+    private static async Task TryFocusAsync(ElementReference target)
+    {
+        try { await target.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
     }
 
     // The disclosure the consent panel renders. Starts as the compiled fallback so the gate can never
@@ -220,19 +307,27 @@ public partial class FileAnalysisDialog
 
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        _priorSent = PriorDocumentSent;
+
+        // Resolve the host-decided initial phase synchronously, before the first await, so the dialog
+        // never flashes the consent gate while a resume/reanalyze/progress open is in flight.
+        if (Start == StartMode.ReanalyzeConfirm)
+            _session.SetPhase(FileAnalysisPhase.ReanalyzeConfirm);
+        else if (Start == StartMode.Resume)
+            _session.SetPhase(FileAnalysisPhase.ResumeLoading);
+        else if (Start is StartMode.Progress or StartMode.Result)
+        {
+            _attached = true;
+            _attachNote = AnnounceAlreadyRunning;
+            _session.SetPhase(FileAnalysisPhase.Analyzing);
+        }
+
+        if (!InteractiveCheck())
             return;
 
         // Fetched here rather than in the panel, which stays purely presentational (#373). Stale-while-
         // revalidate, so an admin's change reaches the gate on its next open rather than next session.
         _disclosure = await Disclosures.GetAsync();
-
-        // Resolve the host-decided initial phase synchronously, before the first await, so the dialog
-        // never flashes the consent gate while a resume/reanalyze open is in flight.
-        if (Start == StartMode.ReanalyzeConfirm)
-            _session.SetPhase(FileAnalysisPhase.ReanalyzeConfirm);
-        else if (Start == StartMode.Resume)
-            _session.SetPhase(FileAnalysisPhase.ResumeLoading);
 
         // Resolve the inline-create gate (contacts.create) up front so the Merchant combobox
         // renders the right affordance from first paint.
@@ -249,12 +344,20 @@ public partial class FileAnalysisDialog
         // Resume: reference data is now loaded, so fetch the saved job and seed the Review rows.
         if (Start == StartMode.Resume)
             await ContinueResumeAsync();
+        else if (Start is StartMode.Progress or StartMode.Result)
+        {
+            if (JobId is { } id && id != Guid.Empty)
+                StartPolling(id);
+            else
+                ShowTerminal(FileAnalysisJobCopy.PostRefused);
+        }
     }
 
     // The consent gate cleared → record the affirmed consent and start the transfer.
     private async Task ProceedFromConsentAsync()
     {
-        if (!_consentChecked)
+        // Submitting: the busy button ignores a second activation, so a double click sends nothing (AC 1).
+        if (!_consentChecked || Phase == FileAnalysisPhase.Submitting)
             return;
         await RunAnalysisAsync();
     }
@@ -285,11 +388,18 @@ public partial class FileAnalysisDialog
     }
 
     // ── Analysis flow ─────────────────────────────────────────────────────────
+    // The POST only enqueues (issue #444): a 202 starts the poller; every refusal maps to client-owned copy by
+    // status and code, never to the server's text.
     private async Task RunAnalysisAsync()
     {
-        _session.SetPhase(FileAnalysisPhase.Analyzing);
+        _session.SetPhase(FileAnalysisPhase.Submitting);
+        _slowStart = false;
+        _submitCts?.Cancel();
+        _submitCts = new CancellationTokenSource();
+        _ = AnnounceSlowStartAsync(_submitCts.Token);
         StateHasChanged();
 
+        ApiResult<AnalyzeFileResponse> analyzed;
         try
         {
             var analyzeRequest = new AnalyzeFileRequest
@@ -306,74 +416,315 @@ public partial class FileAnalysisDialog
                 // recipient the user was not told about.
                 DisclosureVersion = _disclosure.DisclosureVersion,
             };
-            var analyzed = await Accounts.AnalyzeFileAsync(AccountId, FileId, analyzeRequest);
+            analyzed = await Accounts.AnalyzeFileAsync(AccountId, FileId, analyzeRequest);
+        }
+        catch
+        {
+            analyzed = default;
+        }
+        finally
+        {
+            _submitCts?.Cancel();
+            _slowStart = false;
+        }
 
-            if (analyzed.Status == HttpStatusCode.ServiceUnavailable)
+        _analyzeRateLimited = false;
+        if (analyzed.IsSuccess && analyzed.Status != default)
+        {
+            if (analyzed.Value is not { } accepted || accepted.AnalysisJobId == Guid.Empty)
             {
-                _session.SetPhase(FileAnalysisPhase.Disabled);
+                ShowTerminal(FileAnalysisJobCopy.PostRefused);
                 return;
             }
-            if (analyzed.Status == HttpStatusCode.Conflict)
-            {
+
+            _attached = false;
+            _attachNote = false;
+            _jobStatus = FileAnalysisJobStatus.Queued;
+            _transferStarted = false;
+            _session.Job = null;
+            _session.SetPhase(FileAnalysisPhase.Analyzing);
+            StartPolling(accepted.AnalysisJobId);
+            return;
+        }
+
+        switch (analyzed.Status)
+        {
+            case HttpStatusCode.Conflict when analyzed.Problem.IsFileAnalysisInProgress():
+                // Attach to the open job: nothing new is sent, the tick is discarded (S9), no auto-match (S1).
+                _consentChecked = false;
+                if (!analyzed.Problem.TryGetAnalysisJobId(out var openId))
+                {
+                    ShowTerminal(FileAnalysisJobCopy.PostRefused);
+                    return;
+                }
+
+                _attached = true;
+                _attachNote = true;
+                _jobStatus = null;
+                _session.Job = null;
+                _session.SetPhase(FileAnalysisPhase.Analyzing);
+                StartPolling(openId);
+                return;
+            case HttpStatusCode.Conflict when analyzed.Problem.IsFileAnalysisDisclosureChanged():
                 await RepromptForChangedDisclosureAsync();
                 return;
-            }
-            if (analyzed.Status == HttpStatusCode.TooManyRequests)
-            {
+            case HttpStatusCode.ServiceUnavailable when analyzed.Problem.IsFileAnalysisFeatureDisabled():
+                _session.SetPhase(FileAnalysisPhase.Disabled);
+                return;
+            case HttpStatusCode.ServiceUnavailable
+                when analyzed.Problem?.Code == FileAnalysisCodes.ConfigurationUnavailable:
+                ShowTerminal(FileAnalysisJobCopy.PostConfigurationUnavailable);
+                return;
+            case HttpStatusCode.ServiceUnavailable:
+                // No code (a proxy during a redeploy) is never the disabled state (R2-S N5).
+                ShowTerminal(FileAnalysisJobCopy.PostUnavailable);
+                return;
+            case HttpStatusCode.UnprocessableEntity when analyzed.Problem.IsFileAnalysisTooLarge():
+                _tooLarge = true;
+                _tooLargeLimit = analyzed.Problem.TryGetAnalysisSizeLimit(out var limit) ? limit : null;
+                _session.SetTooLarge();
+                return;
+            case HttpStatusCode.TooManyRequests:
                 // Nothing was sent. Back to the gate, which keeps the affirmation and shows the wait.
                 _analyzeRateLimited = true;
                 _analyzeRetryAfter = analyzed.RetryAfter;
                 _session.SetPhase(FileAnalysisPhase.Consent);
                 return;
-            }
-            _analyzeRateLimited = false;
-            if (analyzed.Status == HttpStatusCode.BadRequest)
-            {
-                _errorMessage = analyzed.Error;
+            case HttpStatusCode.BadRequest:
+                _tooLarge = false;
                 _session.SetPhase(FileAnalysisPhase.Blocked);
                 return;
-            }
-            if (!analyzed.IsSuccess)
-            {
-                _errorMessage = analyzed.Error;
-                _session.SetPhase(FileAnalysisPhase.Failed);
+            case default(HttpStatusCode):
+                // Never reached the server, or never answered: a job may have been enqueued (R2-S N1), so the
+                // copy says nothing about whether anything was sent, and the map refreshes on close.
+                ShowTerminal(FileAnalysisJobCopy.PostTimeout);
                 return;
-            }
-
-            var analyzeResult = analyzed.Value
-                ?? throw new InvalidOperationException("Empty response from analyze endpoint.");
-            _jobId = analyzeResult.AnalysisJobId;
-
-            _session.Job = (await FileAnalysis.GetJobAsync(_jobId)).Value;
-            if (_session.Job is null)
-            {
-                _errorMessage = "Could not load analysis results.";
-                _session.SetPhase(FileAnalysisPhase.Failed);
+            default:
+                ShowTerminal(FileAnalysisJobCopy.PostRefused);
                 return;
-            }
-
-            if (_session.Job.Status == FileAnalysisJobStatus.Failed)
-            {
-                _session.SetPhase(FileAnalysisPhase.Failed);
-                return;
-            }
-
-            // Extraction done. Nothing extracted ⇒ straight to Empty (no point matching). Otherwise
-            // hand off to the match step before opening Review.
-            _session.SeedRows();
-            if (_session.Rows.Count == 0)
-            {
-                _session.SetPhase(FileAnalysisPhase.Empty);
-                return;
-            }
-
-            await RunMatchAsync();
         }
-        catch (Exception ex)
+    }
+
+    // "Starting analysis…" only once the POST has taken longer than 500 ms (AC 1).
+    private async Task AnnounceSlowStartAsync(CancellationToken ct)
+    {
+        try
         {
-            _errorMessage = ex.Message;
-            _session.SetPhase(FileAnalysisPhase.Failed);
+            await Task.Delay(TimeSpan.FromMilliseconds(500), Time, ct);
         }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        await InvokeAsync(() =>
+        {
+            if (ct.IsCancellationRequested || Phase != FileAnalysisPhase.Submitting)
+                return;
+            _slowStart = true;
+            StateHasChanged();
+        });
+    }
+
+    private void ShowTerminal(FileAnalysisTerminalCopy copy, FileAnalysisDocumentSent sent = FileAnalysisDocumentSent.No,
+        string? processor = null, FileAnalysisPhase phase = FileAnalysisPhase.Failed)
+    {
+        StopPolling();
+        _terminal = copy;
+        _terminalSent = sent;
+        _terminalProcessor = processor;
+        _hiccup = false;
+        _session.SetPhase(phase);
+    }
+
+    // ── Polling (issue #445 §5) ──────────────────────────────────────────────
+    // One CancellationTokenSource per poll session, cancelled on close, on a new start and on dispose. The delay
+    // goes through the injected TimeProvider, so tests advance a clock instead of sleeping.
+    private void StartPolling(Guid jobId)
+    {
+        StopPolling();
+        _jobId = jobId;
+        _hiccup = false;
+        _unknownStatusPolls = 0;
+        _firstObservedOpen = null;
+        _takingLong = false;
+        _pollCts = new CancellationTokenSource();
+        _ = PollLoopAsync(jobId, _pollCts.Token);
+    }
+
+    private void StopPolling()
+    {
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        _pollCts = null;
+    }
+
+    private async Task PollLoopAsync(Guid jobId, CancellationToken ct)
+    {
+        var first = true;
+        var transient = 0;
+        while (!ct.IsCancellationRequested)
+        {
+            ApiResult<ExistingFileAnalysisJob> polled;
+            try
+            {
+                polled = await FileAnalysis.GetJobAsync(jobId, ct);
+            }
+            catch
+            {
+                polled = default;
+            }
+
+            if (ct.IsCancellationRequested)
+                return;
+
+            TimeSpan? next = null;
+            await InvokeAsync(async () =>
+            {
+                if (ct.IsCancellationRequested || jobId != _jobId)
+                    return;
+                next = await ApplyPollAsync(polled, first, () => ++transient, () => transient = 0);
+                first = false;
+                StateHasChanged();
+            });
+
+            if (next is not { } delay)
+                return;
+
+            try
+            {
+                await Task.Delay(delay, Time, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return;
+            }
+        }
+    }
+
+    /// <summary>Applies one poll; returns the wait before the next one, or <c>null</c> when polling ends.</summary>
+    private async Task<TimeSpan?> ApplyPollAsync(
+        ApiResult<ExistingFileAnalysisJob> polled, bool first, Func<int> countTransient, Action resetTransient)
+    {
+        if (polled.IsSuccess && polled.Value is { } job)
+        {
+            if (job.Id != _jobId)
+                return FileAnalysisPollPolicy.Interval(polled.RetryAfterDelta);
+
+            // A job for another file is dropped, never shown (S7).
+            if (first && AccountFileId != Guid.Empty && job.AccountFileId != AccountFileId)
+            {
+                ShowTerminal(FileAnalysisJobCopy.PostRefused);
+                return null;
+            }
+
+            resetTransient();
+            _hiccup = false;
+            _session.Job = job;
+
+            switch (job.Status)
+            {
+                case FileAnalysisJobStatus.New or FileAnalysisJobStatus.Queued or FileAnalysisJobStatus.Running:
+                    ObserveOpen(job);
+                    return FileAnalysisPollPolicy.Interval(polled.RetryAfterDelta);
+
+                case FileAnalysisJobStatus.Completed:
+                    StopPolling();
+                    await CompleteAsync(job);
+                    return null;
+
+                case FileAnalysisJobStatus.Failed:
+                    ShowTerminal(FileAnalysisJobCopy.ForFailed(job.FailureCode), job.DocumentSent, job.ProcessorInForce);
+                    return null;
+
+                case FileAnalysisJobStatus.Cancelled:
+                    ShowTerminal(FileAnalysisJobCopy.ForCancelled(job.FailureCode), job.DocumentSent, job.ProcessorInForce,
+                        FileAnalysisPhase.Cancelled);
+                    return null;
+
+                default:
+                    // An unknown status is non-terminal for at most three polls (S7).
+                    if (++_unknownStatusPolls >= FileAnalysisPollPolicy.UnknownStatusPolls)
+                    {
+                        ShowTerminal(FileAnalysisJobCopy.ForFailed(null), job.DocumentSent, job.ProcessorInForce);
+                        return null;
+                    }
+
+                    return FileAnalysisPollPolicy.Interval(polled.RetryAfterDelta);
+            }
+        }
+
+        switch (polled.Status)
+        {
+            case HttpStatusCode.NotFound:
+                StopPolling();
+                _session.SetPhase(FileAnalysisPhase.NoLongerAvailable);
+                return null;
+            case HttpStatusCode.Forbidden:
+                ShowTerminal(FileAnalysisJobCopy.PollForbidden);
+                return null;
+            case HttpStatusCode.Unauthorized:
+                // The app's UnauthorizedHandler already sends the user to sign in.
+                StopPolling();
+                return null;
+            case HttpStatusCode.TooManyRequests:
+                // Waits as told, and is not a transient failure (R2-F N7).
+                return FileAnalysisPollPolicy.Interval(polled.RetryAfterDelta ?? polled.RetryAfter);
+            case default(HttpStatusCode):
+            case >= HttpStatusCode.InternalServerError:
+                // A network error or any 5xx — a 503 included — is transient: keep polling, back off.
+                var failures = countTransient();
+                if (failures >= FileAnalysisPollPolicy.HiccupAfter)
+                    _hiccup = true;
+                return FileAnalysisPollPolicy.Backoff(failures);
+            default:
+                ShowTerminal(FileAnalysisJobCopy.PostRefused);
+                return null;
+        }
+    }
+
+    private void ObserveOpen(ExistingFileAnalysisJob job)
+    {
+        // The attach note gives way once the job moves on from the status it was attached at.
+        if (_jobStatus is { } previous && previous != job.Status)
+            _attachNote = false;
+
+        _jobStatus = job.Status == FileAnalysisJobStatus.New ? FileAnalysisJobStatus.Queued : job.Status;
+        _transferStarted = job.TransferStartedAt is not null;
+
+        // "Taking longer" counts from when THIS dialog first saw the job open, on the client clock (R2-F N4).
+        var now = Time.GetUtcNow();
+        _firstObservedOpen ??= now;
+        if (!_takingLong && now - _firstObservedOpen.Value >= FileAnalysisPollPolicy.TakingLongerAfter)
+            _takingLong = true;
+
+        if (Phase != FileAnalysisPhase.Analyzing)
+            _session.SetPhase(FileAnalysisPhase.Analyzing);
+    }
+
+    /// <summary>
+    /// Extraction finished. A job this dialog started goes on to the match step, as before; an attached one opens
+    /// its review UNMATCHED — matching is a transfer the attaching user never started (S1, F3).
+    /// </summary>
+    private async Task CompleteAsync(ExistingFileAnalysisJob job)
+    {
+        _jobStatus = job.Status;
+        if (_attached)
+        {
+            _session.MatchStatus = job.MatchStatus;
+            _session.SeedRows();
+            _session.SetPhase(_session.Rows.Count == 0 ? FileAnalysisPhase.Empty : FileAnalysisPhase.Review);
+            return;
+        }
+
+        _session.SeedRows();
+        if (_session.Rows.Count == 0)
+        {
+            _session.SetPhase(FileAnalysisPhase.Empty);
+            return;
+        }
+
+        await RunMatchAsync();
     }
 
     // The match step (issue #266): POST the match endpoint, which sends the contact + tag NAMES,
@@ -403,6 +754,13 @@ public partial class FileAnalysisDialog
                 _session.MatchRetryAfter = matched.RetryAfter;
                 _session.MatchStatus = FileAnalysisMatchStatus.Failed;
             }
+            else if (!matched.IsSuccess && matched.Status == HttpStatusCode.ServiceUnavailable
+                     && matched.Problem.IsFileAnalysisFeatureDisabled())
+            {
+                // Analysis was switched off while this review was open (R2-F N2): the disabled state, as today.
+                _session.SetPhase(FileAnalysisPhase.Disabled);
+                return;
+            }
             else if (matched.IsSuccess)
             {
                 _session.Job = matched.Value ?? _session.Job;
@@ -430,7 +788,8 @@ public partial class FileAnalysisDialog
     }
 
     // Re-match: re-run the match step only (no re-extract, no second consent), refreshing the
-    // None/Llm suggestions while preserving any row the reviewer already curated.
+    // None/Llm suggestions while preserving any row the reviewer already curated. For an attached review this
+    // is "Match names", which states what it sends first and only then calls match.
     private Task ReMatchAsync() => RunMatchAsync(preserveManual: true);
 
     /// <summary>
@@ -438,8 +797,21 @@ public partial class FileAnalysisDialog
     /// analysis was consented under different provider settings, so the way on is a fresh consent. The
     /// disclosure is re-fetched, the affirmation resets, and focus lands on the consent step.
     /// </summary>
-    private async Task StartNewAnalysisAsync()
+    private Task StartNewAnalysisAsync() => ReturnToConsentAsync();
+
+    /// <summary>
+    /// Try again, Review and analyze, Re-analyze and Analyze again all go back through consent (issue #445 §3,
+    /// S9): the box unticked, the disclosure re-read, and the second-transfer alert when the latest job may
+    /// already have sent the document — a new job, never a silent re-send.
+    /// </summary>
+    private async Task ReturnToConsentAsync()
     {
+        if (_session.Job is { } latest && FileAnalysisJobCopy.MayHaveBeenSent(latest.DocumentSent))
+            _priorSent = latest.DocumentSent;
+        else if (_terminal is { ShowSent: true } && FileAnalysisJobCopy.MayHaveBeenSent(_terminalSent))
+            _priorSent = _terminalSent;
+
+        StopPolling();
         Disclosures.Invalidate();
         _disclosure = await Disclosures.GetAsync();
         _consentChecked = false;
@@ -451,17 +823,16 @@ public partial class FileAnalysisDialog
         _session.Rows.Clear();
         _session.Job = null;
         _jobId = Guid.Empty;
-        _consentStartNeedsFocus = true;
+        _jobStatus = null;
+        _attached = false;
+        _attachNote = false;
+        _terminal = null;
+        _tooLarge = false;
         _session.SetPhase(FileAnalysisPhase.Consent);
         StateHasChanged();
     }
 
-    private async Task ReanalyzeAsync()
-    {
-        _session.Rows.Clear();
-        _session.Job = null;
-        await RunAnalysisAsync();
-    }
+    private Task ReanalyzeAsync() => ReturnToConsentAsync();
 
     // ── Resume flow ───────────────────────────────────────────────────────────
     // Reopen a persisted, still-resumable review without re-sending the document. Loads the saved job
@@ -506,6 +877,7 @@ public partial class FileAnalysisDialog
             }
 
             _jobId = jobId;
+            _attached = true;
             _session.MatchStatus = _session.Job!.MatchStatus;
             _session.SeedRows();
             _session.SetPhase(_session.Rows.Count == 0 ? FileAnalysisPhase.NoLongerAvailable : FileAnalysisPhase.Review);
@@ -520,11 +892,7 @@ public partial class FileAnalysisDialog
     // drop to the consent gate (a new transfer), resetting the affirmed checkbox.
     private Task ResumeFromConfirmAsync() => ContinueResumeAsync();
 
-    private void AnalyzeAgain()
-    {
-        _consentChecked = false;
-        _session.SetPhase(FileAnalysisPhase.Consent);
-    }
+    private Task AnalyzeAgain() => ReturnToConsentAsync();
 
     // ── Import ───────────────────────────────────────────────────────────────
     private async Task ImportAsync()
@@ -545,7 +913,10 @@ public partial class FileAnalysisDialog
             var imported = await FileAnalysis.ImportAsync(_jobId, _session.BuildImportRequest());
             if (!imported.IsSuccess)
             {
-                Snackbar.Add($"Import failed: {imported.Error}", Severity.Error);
+                // Client-owned copy: the dialog renders no server text (issue #445 §5).
+                Snackbar.Add(imported.Status == HttpStatusCode.ServiceUnavailable
+                    ? "Import failed: analysis isn’t available on this server right now."
+                    : "Import failed. Try again.", Severity.Error);
                 return;
             }
 
@@ -559,9 +930,9 @@ public partial class FileAnalysisDialog
             // "Review pending" hint clears (no stale indicator).
             await OnResolved.InvokeAsync();
         }
-        catch (Exception ex)
+        catch
         {
-            Snackbar.Add($"Import error: {ex.Message}", Severity.Error);
+            Snackbar.Add("Import failed. Try again.", Severity.Error);
         }
         finally
         {
@@ -569,7 +940,20 @@ public partial class FileAnalysisDialog
         }
     }
 
-    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+    // Closing never cancels the job (issue #445 §3): it stops this dialog's poller, and the host refreshes its map.
+    private Task CloseAsync()
+    {
+        StopPolling();
+        _submitCts?.Cancel();
+        return OpenChanged.InvokeAsync(false);
+    }
+
+    public void Dispose()
+    {
+        StopPolling();
+        _submitCts?.Cancel();
+        _submitCts?.Dispose();
+    }
 
     private async Task ViewTransactions()
     {
@@ -611,7 +995,7 @@ public partial class FileAnalysisDialog
             var result = await Contacts.CreateAsync(ContactQuickCreate.BuildPayload(name, type));
             if (!result.IsSuccess)
             {
-                Snackbar.Add($"Couldn’t create “{name}”: {result.Error}", Severity.Error);
+                Snackbar.Add($"Couldn’t create “{name}”.", Severity.Error);
                 _session.RollbackCreatedContact(tempId);
                 StateHasChanged();
                 return;
@@ -637,9 +1021,9 @@ public partial class FileAnalysisDialog
                     _session.ReconcileCreatedContact(tempId, match.ContactId, match.ResolvedDisplayName);
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Couldn’t create “{name}”.", Severity.Error);
             _session.RollbackCreatedContact(tempId);
         }
 
@@ -672,16 +1056,15 @@ public partial class FileAnalysisDialog
             {
                 // The create row is withheld when a listed tag already carries the name, so a conflict
                 // here means an ARCHIVED tag holds it — which this cannot select or un-archive.
-                var reason = result.Status == System.Net.HttpStatusCode.Conflict
-                    ? "an archived tag already uses that name."
-                    : result.Error;
-                Snackbar.Add($"Couldn’t create “{name}”: {reason}", Severity.Error);
+                Snackbar.Add(result.Status == System.Net.HttpStatusCode.Conflict
+                    ? $"Couldn’t create “{name}”: an archived tag already uses that name."
+                    : $"Couldn’t create “{name}”.", Severity.Error);
                 _session.RollbackCreatedTag(tempId);
             }
         }
-        catch (Exception ex)
+        catch
         {
-            Snackbar.Add($"Couldn’t create “{name}”: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Couldn’t create “{name}”.", Severity.Error);
             _session.RollbackCreatedTag(tempId);
         }
 

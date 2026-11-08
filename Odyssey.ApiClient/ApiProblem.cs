@@ -124,6 +124,53 @@ public static class ApiProblemExtensions
         string.Equals(problem?.Code, FileAnalysisDestinationChangedCode, StringComparison.Ordinal);
 
     /// <summary>
+    /// An analyze refused because the file already has an open analysis (<c>409 analysis_in_progress</c>,
+    /// issue #444). The open job's id is <see cref="TryGetAnalysisJobId"/>.
+    /// </summary>
+    public static bool IsFileAnalysisInProgress(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.AnalysisInProgress, StringComparison.Ordinal);
+
+    /// <summary>An analyze refused because the disclosure changed under an open consent gate (<c>409 disclosure_changed</c>).</summary>
+    public static bool IsFileAnalysisDisclosureChanged(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.DisclosureChanged, StringComparison.Ordinal);
+
+    /// <summary>An analyze refused because the file is over the analysis size ceiling (<c>422 file_too_large_for_analysis</c>).</summary>
+    public static bool IsFileAnalysisTooLarge(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.FileTooLargeForAnalysis, StringComparison.Ordinal);
+
+    /// <summary>A file-analysis write refused because analysis is switched off (<c>503 feature_disabled</c>).</summary>
+    public static bool IsFileAnalysisFeatureDisabled(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.FeatureDisabled, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The open job's id from a <c>409 analysis_in_progress</c> (the <c>analysisJobId</c> extension). False when
+    /// the member is absent, not a string, or not a GUID — a malformed id is never attached to.
+    /// </summary>
+    public static bool TryGetAnalysisJobId(this ApiProblem? problem, out Guid jobId)
+    {
+        jobId = Guid.Empty;
+        return problem?.Extensions is { } extensions
+            && extensions.TryGetValue(Odyssey.Dtos.Finance.FileAnalysisCodes.AnalysisJobIdExtension, out var element)
+            && element.ValueKind == JsonValueKind.String
+            && Guid.TryParse(element.GetString(), out jobId)
+            && jobId != Guid.Empty;
+    }
+
+    /// <summary>
+    /// The analysis size ceiling, in bytes, from a <c>422 file_too_large_for_analysis</c> (the <c>limitBytes</c>
+    /// extension). The client holds no copy of the limit: when this is false the copy says so without a number.
+    /// </summary>
+    public static bool TryGetAnalysisSizeLimit(this ApiProblem? problem, out long limitBytes)
+    {
+        limitBytes = 0;
+        return problem?.Extensions is { } extensions
+            && extensions.TryGetValue(Odyssey.Dtos.Finance.FileAnalysisCodes.LimitBytesExtension, out var element)
+            && element.ValueKind == JsonValueKind.Number
+            && element.TryGetInt64(out limitBytes)
+            && limitBytes > 0;
+    }
+
+    /// <summary>
     /// Reads an RFC 7807 <c>problem+json</c> error body into an <see cref="ApiProblem"/>. Guards
     /// against a non-JSON or empty body, in which case it returns a status-only problem whose
     /// <see cref="ApiProblem.Message"/> falls back to the response reason phrase.

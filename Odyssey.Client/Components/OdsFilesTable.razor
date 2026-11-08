@@ -35,6 +35,7 @@
 <OdsRecordTable TRow="OdsFilesRow"
                 Rows="@Files"
                 RowKey="@(f => (object)f.Id)"
+                MenuTriggerIdFor="@MenuTriggerIdForKey"
                 Columns="@_columns"
                 DefaultSort="@(DefaultSort ?? DefaultUploadedSort)"
                 Sort="@Sort"
@@ -107,7 +108,7 @@
                         {
                             <OdsChip Tone="OdsChipTone.Income" Dot="true">Saved</OdsChip>
                         }
-                        @if (file.StatusBadge is { } badge)
+                        @foreach (var badge in file.StatusBadges)
                         {
                             <OdsChip Tone="badge.Tone" Icon="@badge.Icon" Dot="@(string.IsNullOrEmpty(badge.Icon))">
                                 @* The accessible name (file + count) is carried in a visually-hidden text node, not an
