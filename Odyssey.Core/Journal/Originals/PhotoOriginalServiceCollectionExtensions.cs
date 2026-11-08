@@ -22,6 +22,7 @@ public static class PhotoOriginalServiceCollectionExtensions
         services.TryAddScoped<PhotoOriginalSource>();
         services.TryAddScoped<PhotoOriginalBucketAllocator>();
         services.TryAddScoped<PhotoOriginalWriter>();
+        services.TryAddScoped<PhotoBackfillStatusService>();
         services.TryAddScoped<IFileReferenceCounter, FileReferenceCounter>();
         services.AddJobRunRecording();
         return services;

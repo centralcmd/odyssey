@@ -26,9 +26,10 @@ public static class VolumeFileSystem
     private const int EEXIST = 17;
     private const int ENOSPC = 28;
 
-    // open(2) flags on Linux.
+    // open(2) flag. O_RDONLY is 0 on every Linux architecture; O_DIRECTORY is not (0x10000 on x86-64 is O_DIRECT on
+    // arm64), so it is deliberately not used: fsync works on a read-only descriptor of a directory, and the caller only
+    // ever passes a folder it just created or wrote into.
     private const int O_RDONLY = 0;
-    private const int O_DIRECTORY = 0x10000;
 
     /// <summary>
     /// <c>fsync(2)</c> on a directory, so a rename into it is durable (issue #428 §3.4 step 5). .NET has no API for it;
@@ -41,7 +42,7 @@ public static class VolumeFileSystem
             return;
         }
 
-        var fd = NativeOpen(directoryPath, O_RDONLY | O_DIRECTORY);
+        var fd = NativeOpen(directoryPath, O_RDONLY);
         if (fd < 0)
         {
             throw new IOException($"Opening a volume folder for fsync failed (errno {Marshal.GetLastPInvokeError()}).");

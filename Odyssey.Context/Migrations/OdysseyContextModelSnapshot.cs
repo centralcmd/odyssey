@@ -3579,7 +3579,7 @@ namespace Odyssey.Context.Migrations
 
                     b.ToTable("PhotoOriginalBackfillFailures", t =>
                         {
-                            t.HasCheckConstraint("CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large')");
+                            t.HasCheckConstraint("CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large', 'error')");
                         });
                 });
 

@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Dtos.Application;
@@ -17,7 +16,7 @@ namespace Odyssey.Api.Controllers;
 [ApiController]
 [Route("api/file-storage")]
 [Authorize(Policy = PermissionClaims.FileStorageRead)]
-public sealed class FileStorageController(FileStorageStatusService status, OdysseyContext context) : ControllerBase
+public sealed class FileStorageController(FileStorageStatusService status, PhotoBackfillStatusService photoBackfill) : ControllerBase
 {
     [HttpGet("photo-backfill")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PhotoBackfillStatus))]
@@ -25,7 +24,7 @@ public sealed class FileStorageController(FileStorageStatusService status, Odyss
         Summary = "Progress of the worker's move of legacy photo originals out of the database (issue #428).",
         Description = "Counts only — never an id, a name or a path.")]
     public async Task<ActionResult<PhotoBackfillStatus>> GetPhotoBackfill(CancellationToken cancellationToken) =>
-        Ok(await PhotoOriginalBackfillJob.GetStatusAsync(context, cancellationToken));
+        Ok(await photoBackfill.GetAsync(cancellationToken));
 
     [HttpGet("volumes")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IReadOnlyList<FileStorageVolumeStatus>))]

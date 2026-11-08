@@ -12,10 +12,10 @@ public sealed record PhotoBackfillStatus
     /// <summary>Moved photos whose file was kept because something else still used it.</summary>
     public int CopiedShared { get; set; }
 
-    /// <summary>Photos parked for a deterministic reason; not retried until an operator clears them.</summary>
+    /// <summary>Parked photos; not retried until an operator clears them.</summary>
     public int Failed { get; set; }
 
-    /// <summary>Parked photos per failure code: <c>hash</c>, <c>read</c>, <c>too-large</c>.</summary>
+    /// <summary>Parked photos per failure code: <c>hash</c>, <c>read</c>, <c>too-large</c>, <c>error</c>.</summary>
     public Dictionary<string, int> FailedByCode { get; set; } = [];
 
     /// <summary>Set while the job backs off after storage or database errors.</summary>

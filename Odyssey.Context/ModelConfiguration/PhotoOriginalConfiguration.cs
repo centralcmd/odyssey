@@ -72,6 +72,6 @@ internal sealed class PhotoOriginalBackfillFailureConfiguration : IEntityTypeCon
             .OnDelete(DeleteBehavior.Cascade);
 
         entity.ToTable(tb => tb.HasCheckConstraint(
-            "CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large')"));
+            "CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large', 'error')"));
     }
 }

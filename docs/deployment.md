@@ -1848,6 +1848,7 @@ a reason of its own is **parked** with a code and never retried automatically:
 | `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete the photo. |
 | `read` | The bytes are missing, a different length, or the type is not a photo type. | Same. |
 | `too-large` | The file is larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the photo in the database. |
+| `error` | An unexpected failure that is neither of the above nor a storage or database outage (the worker log names the exception type and the photo id). | Read the log line, fix the cause, then retry. |
 
 A parked photo stays readable from the database exactly as before. **To retry**, delete its row:
 

@@ -65,10 +65,16 @@ public class PhotoOriginalBackfillFailure
     public DateTime RecordedAtUtc { get; set; }
 }
 
-/// <summary>The deterministic backfill failure codes. Only these reach a row or a log line.</summary>
+/// <summary>The backfill failure codes. Only these reach a row or a log line.</summary>
 public static class PhotoOriginalBackfillFailureCodes
 {
     public const string Hash = "hash";
     public const string Read = "read";
     public const string TooLarge = "too-large";
+
+    /// <summary>
+    /// An exception that is neither one of the three checks above nor environmental (a storage or database outage): a
+    /// store contract or path-safety refusal, say. Parking it keeps one photo from stalling every younger one.
+    /// </summary>
+    public const string Error = "error";
 }

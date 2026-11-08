@@ -63,6 +63,12 @@ public sealed class PhotoOriginalBackfillJob(
 
     public async Task RunOnceAsync(CancellationToken cancellationToken)
     {
+        // Idle once done (PR #441 review): one read, and no probe and no lease write, when no legacy photo is left.
+        if (!await AnyWorkAsync(cancellationToken))
+        {
+            return;
+        }
+
         // The health gate (§3.4 step 2): the store verified in this process, the volume healthy, the reserve held.
         if (!volumes.IsActive || !await StorageHealthyAsync(cancellationToken))
         {
@@ -87,7 +93,20 @@ public sealed class PhotoOriginalBackfillJob(
                     break;
                 }
 
-                var outcome = await MoveOneAsync(photoId, cancellationToken);
+                PhotoBackfillOutcome outcome;
+                try
+                {
+                    outcome = await MoveOneAsync(photoId, cancellationToken);
+                }
+                catch (Exception ex) when (!IsEnvironmental(ex) && ex is not OperationCanceledException)
+                {
+                    // Neither a check this job makes nor an outage — a store contract or path-safety refusal, say. Park
+                    // the photo so the next one gets its turn; otherwise the oldest photo would stall every younger one
+                    // on each tick. Only the exception type is logged: a message could carry a file name.
+                    logger.LogWarning("Photo {PhotoId} failed with {Failure}; it is parked.", photoId, ex.GetType().Name);
+                    outcome = await ParkAsync(photoId, PhotoOriginalBackfillFailureCodes.Error, cancellationToken);
+                }
+
                 if (outcome is PhotoBackfillOutcome.Moved or PhotoBackfillOutcome.CopiedShared)
                 {
                     moved++;
@@ -111,14 +130,25 @@ public sealed class PhotoOriginalBackfillJob(
         }
     }
 
+    /// <summary>Whether any legacy photo is left that is not parked — the job's whole-run idle check.</summary>
+    public async Task<bool> AnyWorkAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await Unparked(context).AnyAsync(cancellationToken);
+    }
+
+    private static IQueryable<Photo> Unparked(OdysseyContext context) =>
+        context.Photos.AsNoTracking()
+            .Where(p => p.StoredObjectId == null && p.FileId != null)
+            .Where(p => !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId));
+
     /// <summary>Legacy photos not parked and without a running thumbnail job (§3.4 step 3), oldest first.</summary>
     public async Task<IReadOnlyList<Guid>> NextCandidatesAsync(CancellationToken cancellationToken)
     {
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        return await context.Photos.AsNoTracking()
-            .Where(p => p.StoredObjectId == null && p.FileId != null)
-            .Where(p => !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId))
+        return await Unparked(context)
             .Where(p => !context.PhotoThumbnailJobs.Any(j => j.PhotoId == p.PhotoId && j.State == PhotoThumbnailJobState.Running))
             .OrderBy(p => p.CreatedAt)
             .ThenBy(p => p.PhotoId)
@@ -410,35 +440,4 @@ public sealed class PhotoOriginalBackfillJob(
     private static bool IsEnvironmental(Exception ex) =>
         ex is FileStorageUnavailableException or FileStorageFullException or IOException or DbException or RetryLimitExceededException
         || ex is DbUpdateException { InnerException: DbException };
-
-    /// <summary>The progress the status endpoint reports (§5.5).</summary>
-    public static async Task<PhotoBackfillStatus> GetStatusAsync(OdysseyContext context, CancellationToken cancellationToken)
-    {
-        var lease = await context.PhotoOriginalBackfillLeases.AsNoTracking()
-            .FirstOrDefaultAsync(l => l.Id == PhotoOriginalBackfillLease.SingletonId, cancellationToken);
-        var byCode = await context.PhotoOriginalBackfillFailures.AsNoTracking()
-            .GroupBy(f => f.Code)
-            .Select(g => new { Code = g.Key, Count = g.Count() })
-            .ToListAsync(cancellationToken);
-        var failedByCode = new Dictionary<string, int>
-        {
-            [PhotoOriginalBackfillFailureCodes.Hash] = 0,
-            [PhotoOriginalBackfillFailureCodes.Read] = 0,
-            [PhotoOriginalBackfillFailureCodes.TooLarge] = 0,
-        };
-        foreach (var row in byCode)
-        {
-            failedByCode[row.Code] = row.Count;
-        }
-
-        return new PhotoBackfillStatus
-        {
-            Remaining = await context.Photos.CountAsync(p => p.StoredObjectId == null, cancellationToken),
-            CopiedShared = lease?.CopiedSharedCount ?? 0,
-            Failed = byCode.Sum(c => c.Count),
-            FailedByCode = failedByCode,
-            BackingOffUntilUtc = lease?.NextAttemptAtUtc,
-            LastRunAtUtc = lease?.LastRunAtUtc,
-        };
-    }
 }
