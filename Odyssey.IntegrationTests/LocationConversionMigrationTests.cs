@@ -444,8 +444,13 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         await PropertyAsync(context, "property-none", null, null, null, null);
 
         // Free-text places.
-        var calendar = new Calendar { CalendarId = Id("calendar"), Name = "Conversion", CreatedAt = Now, UpdatedAt = Now };
-        context.Calendars.Add(calendar);
+        // Raw SQL, like the locations above: the schema here predates later Calendars columns (Icon), which
+        // an EF insert through today's model would name.
+        var calendarId = Id("calendar");
+        await context.Database.ExecuteSqlAsync($"""
+            INSERT INTO `Calendars` (`CalendarId`, `Name`, `Color`, `CreatedAt`, `UpdatedAt`)
+            VALUES ({calendarId}, {"Conversion"}, {ColorPalette.CalendarDefault}, {Now}, {Now})
+            """);
         var texts = new List<(string Key, string Text)>
         {
             ("event-asen", "Asen"),
@@ -465,7 +470,7 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         {
             context.CalendarEvents.Add(new CalendarEvent
             {
-                CalendarEventId = Id(key), CalendarId = calendar.CalendarId, Title = key, Location = text,
+                CalendarEventId = Id(key), CalendarId = calendarId, Title = key, Location = text,
                 StartDateTime = Now, EndDateTime = Now.AddHours(1), CreatedAt = Now, UpdatedAt = Now,
             });
         }
@@ -476,7 +481,7 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
         {
             context.RecurrencePatterns.Add(new RecurrencePattern
             {
-                RecurrencePatternId = Id(key), CalendarId = calendar.CalendarId, Title = "Series", Location = text,
+                RecurrencePatternId = Id(key), CalendarId = calendarId, Title = "Series", Location = text,
                 StartDateTime = Now, EndDateTime = Now.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, CreatedAt = Now, UpdatedAt = Now,
             });
         }
