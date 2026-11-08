@@ -89,7 +89,13 @@ public sealed class WeatherPointService
     public async Task<ExistingWeatherPoint?> GetAsync(Guid pointId, bool canReadLocations, CancellationToken cancellationToken)
     {
         var point = await context.WeatherPoints.AsNoTracking().FirstOrDefaultAsync(p => p.WeatherPointId == pointId, cancellationToken);
-        return point is null ? null : (await ToDtosAsync([point], canReadLocations, cancellationToken))[0];
+        if (point is null)
+        {
+            return null;
+        }
+
+        var dto = (await ToDtosAsync([point], canReadLocations, cancellationToken))[0];
+        return dto with { HistoryWindows = await DescribeWindowsAsync(point, cancellationToken) };
     }
 
     /// <summary>The places linked to a point, by name, with the whole-km distance. Null when the point is unknown.</summary>
@@ -187,7 +193,6 @@ public sealed class WeatherPointService
             ForecastEnabled = forecast,
             HistoryEnabled = history,
             IsTracked = tracked,
-            HistoryFrom = request.HistoryFrom ?? DateOnly.FromDateTime(now).AddYears(-1),
             EnabledAt = now,
             CurrentSiteVersion = 1,
             SettingsVersion = Guid.NewGuid(),
@@ -201,11 +206,15 @@ public sealed class WeatherPointService
         context.WeatherPoints.Add(point);
         context.WeatherPointSites.Add(NewSite(point.WeatherPointId, 1, latitude, longitude, altitude, zone, now, userId));
         context.WeatherPointSchedules.Add(new WeatherPointSchedule { WeatherPointId = point.WeatherPointId, Version = Guid.NewGuid() });
+        // The windows are stored whatever HistoryEnabled says, so turning history on later behaves as today (#436 §5.3).
+        var windows = request.HistoryWindows is { } sent ? Desired(sent) : [DefaultWindow(now)];
+        context.WeatherPointHistoryWindows.AddRange(windows.Select(w => NewWindow(point.WeatherPointId, w)));
         await SaveNamedAsync(cancellationToken);
 
+        // Counts only: a window's dates are travel dates (#436 §7.6).
         logger.LogInformation(
-            "Weather point {WeatherPointId} created by {ActorUserId}; copied from location {SourceLocationId}.",
-            point.WeatherPointId, userId, request.FromLocationId is Guid source ? source : null);
+            "Weather point {WeatherPointId} created by {ActorUserId}; copied from location {SourceLocationId}; {WindowCount} history window(s).",
+            point.WeatherPointId, userId, request.FromLocationId is Guid source ? source : null, windows.Count);
         return (await GetAsync(point.WeatherPointId, canReadLocations, cancellationToken))!;
     }
 
@@ -226,6 +235,8 @@ public sealed class WeatherPointService
         var changes = new List<string>();
         var moved = false;
         var fromVersion = 0;
+        var windowCountBefore = 0;
+        var windowCountAfter = 0;
 
         var found = await FencedAsync(() => InTransactionAsync(async () =>
         {
@@ -284,13 +295,22 @@ public sealed class WeatherPointService
                 changes.Add(nameof(WeatherPoint.IsTracked));
             }
 
-            if (request.HistoryFrom is { } historyFrom && historyFrom != point.HistoryFrom)
+            var now = Now;
+
+            // History windows (#436 §5.4): null keeps the stored set; an array replaces it. Turning history on over an
+            // empty stored set stores the default window rather than refusing.
+            var stored = await context.WeatherPointHistoryWindows.Where(w => w.WeatherPointId == pointId).ToListAsync(cancellationToken);
+            windowCountBefore = stored.Count;
+            var desired = request.HistoryWindows is { } sent ? Desired(sent)
+                : history && stored.Count == 0 ? [DefaultWindow(now)]
+                : null;
+            var windowsChanged = desired is not null && ApplyWindows(pointId, stored, desired);
+            windowCountAfter = desired?.Count ?? stored.Count;
+            if (windowsChanged)
             {
-                changes.Add(nameof(WeatherPoint.HistoryFrom));
-                point.HistoryFrom = historyFrom;
+                changes.Add("HistoryWindows");
             }
 
-            var now = Now;
             if ((forecast || history) && !(point.ForecastEnabled || point.HistoryEnabled))
             {
                 point.EnabledAt = now;
@@ -310,11 +330,18 @@ public sealed class WeatherPointService
             // Turning either half off fences off a fetch in flight (§3 Write fencing); turning one on makes that half
             // due now; a move rotates it too, so a fetch for the old site cannot store.
             var switched = changes.Contains(nameof(WeatherPoint.ForecastEnabled)) || changes.Contains(nameof(WeatherPoint.HistoryEnabled));
-            if (switched || moved)
+            // A window edit rotates the fetch fence too, so an observation fetch that read the old windows cannot save
+            // its plan over the new one (#436 §3.5, architect A1).
+            if (switched || moved || windowsChanged)
             {
                 var schedule = await context.WeatherPointSchedules.FirstAsync(s => s.WeatherPointId == pointId, cancellationToken);
                 schedule.Version = Guid.NewGuid();
                 schedule.LeaseUntilUtc = null;
+                if (windowsChanged && history && schedule.ObservationFailureKind is null)
+                {
+                    schedule.NextObservationFetchAfterUtc = now;
+                }
+
                 if (forecastTurnedOn && schedule.NextForecastFetchAfterUtc is { } nextForecast && nextForecast > now && schedule.ForecastFailureKind is null)
                 {
                     schedule.NextForecastFetchAfterUtc = now;
@@ -346,7 +373,6 @@ public sealed class WeatherPointService
                     // The new site's observations start at its first owned date (the move day belongs to it).
                     var firstOwned = WeatherSiteTimeline.LocalDate(now, next);
                     schedule.ObservationsCheckedThroughDate = firstOwned.AddDays(-1);
-                    schedule.ObservationsBackfilledFromDate = firstOwned;
                     schedule.NextObservationFetchAfterUtc = schedule.NextObservationFetchAfterUtc is { } obs && obs > now ? obs : now;
                 }
             }
@@ -385,8 +411,8 @@ public sealed class WeatherPointService
         }
 
         logger.LogInformation(
-            "Weather point {WeatherPointId} updated by {ActorUserId}; changed: [{ChangedFields}].",
-            pointId, userId, string.Join(", ", changes));
+            "Weather point {WeatherPointId} updated by {ActorUserId}; changed: [{ChangedFields}]; history windows {WindowCountBefore} -> {WindowCountAfter}.",
+            pointId, userId, string.Join(", ", changes), windowCountBefore, windowCountAfter);
         return new WeatherPointUpdateResult
         {
             Point = (await GetAsync(pointId, canReadLocations, cancellationToken))!,
@@ -579,6 +605,12 @@ public sealed class WeatherPointService
             .ToDictionaryAsync(s => s.WeatherPointId, cancellationToken);
         var stations = (await context.WeatherStations.AsNoTracking().Where(st => ids.Contains(st.WeatherPointId)).ToListAsync(cancellationToken))
             .ToLookup(st => st.WeatherPointId);
+        // One aggregate read for the page, whatever the window counts (#436 §5.2).
+        var windowRows = await context.WeatherPointHistoryWindows.AsNoTracking()
+            .Where(w => ids.Contains(w.WeatherPointId))
+            .Select(w => new { w.WeatherPointId, w.FromDate, w.ToDate })
+            .ToListAsync(cancellationToken);
+        var windows = windowRows.ToLookup(w => w.WeatherPointId, w => (w.FromDate, w.ToDate));
         var linked = canReadLocations
             ? await context.Locations.AsNoTracking()
                 .Where(l => l.WeatherPointId != null && ids.Contains(l.WeatherPointId.Value))
@@ -605,7 +637,7 @@ public sealed class WeatherPointService
                 IsTracked = point.IsTracked,
                 TrackingSuspended = isSuspended,
                 TrackingSuspendedReason = isSuspended ? WeatherTrackingSuspendedReason.CapReached : null,
-                HistoryFrom = point.HistoryFrom,
+                HistoryWindowSummary = WeatherHistoryWindowSummary.From(windows[point.WeatherPointId].ToList()),
                 Site = new WeatherPointSiteDto
                 {
                     Version = site.SiteVersion,
@@ -629,6 +661,85 @@ public sealed class WeatherPointService
                 UpdatedAt = Utc(point.UpdatedAt),
             };
         }).ToList();
+    }
+
+    // ── History windows (issue #436) ──────────────────────────────────────────────────────────────
+
+    /// <summary>The window the server stores when none is sent: ongoing, from a year before <paramref name="now"/>.</summary>
+    private static WeatherWindow DefaultWindow(DateTime now) => new(DateOnly.FromDateTime(now).AddYears(-1), null);
+
+    /// <summary>A validated request set, sorted by start. Model validation has already refused a missing start.</summary>
+    private static List<WeatherWindow> Desired(IEnumerable<WeatherHistoryWindowDto> sent) =>
+        sent.Select(w => new WeatherWindow(w.From!.Value, w.To)).OrderBy(w => w.From).ToList();
+
+    private static WeatherPointHistoryWindow NewWindow(Guid pointId, WeatherWindow window) => new()
+    {
+        WeatherPointHistoryWindowId = Guid.NewGuid(),
+        WeatherPointId = pointId,
+        FromDate = window.From,
+        ToDate = window.To,
+    };
+
+    /// <summary>
+    /// Replaces the stored set by a diff on <c>FromDate</c> (#436 §8.8): a kept start updates <c>ToDate</c> in place, a
+    /// new start inserts, a vanished one is removed. A changed start is a remove and an insert of <b>different</b> keys,
+    /// so the unique <c>(WeatherPointId, FromDate)</c> index cannot collide whatever order EF emits. Tracked operations
+    /// only, so the fast tiers run it. True when anything changed.
+    /// </summary>
+    private bool ApplyWindows(Guid pointId, List<WeatherPointHistoryWindow> stored, IReadOnlyList<WeatherWindow> desired)
+    {
+        var changed = false;
+        var byFrom = stored.ToDictionary(w => w.FromDate);
+        var wanted = desired.Select(w => w.From).ToHashSet();
+        foreach (var gone in stored.Where(w => !wanted.Contains(w.FromDate)))
+        {
+            context.WeatherPointHistoryWindows.Remove(gone);
+            changed = true;
+        }
+
+        foreach (var window in desired)
+        {
+            if (byFrom.TryGetValue(window.From, out var row))
+            {
+                if (row.ToDate != window.To)
+                {
+                    row.ToDate = window.To;
+                    changed = true;
+                }
+            }
+            else
+            {
+                context.WeatherPointHistoryWindows.Add(NewWindow(pointId, window));
+                changed = true;
+            }
+        }
+
+        return changed;
+    }
+
+    /// <summary>
+    /// The single-point read's windows with status and progress, from the same planner the fetcher uses — so a
+    /// window can never claim progress the fetcher will not make.
+    /// </summary>
+    private async Task<IReadOnlyList<ExistingWeatherHistoryWindow>> DescribeWindowsAsync(WeatherPoint point, CancellationToken cancellationToken)
+    {
+        var windows = await context.WeatherPointHistoryWindows.AsNoTracking()
+            .Where(w => w.WeatherPointId == point.WeatherPointId)
+            .Select(w => new WeatherWindow(w.FromDate, w.ToDate))
+            .ToListAsync(cancellationToken);
+        if (windows.Count == 0)
+        {
+            return [];
+        }
+
+        var timeline = await fetch.TimelineAsync(point.WeatherPointId, cancellationToken);
+        var site = timeline.Current;
+        var coverage = await context.WeatherObservationCoverages.AsNoTracking()
+            .Where(c => c.WeatherPointId == point.WeatherPointId && c.SiteVersion == site.SiteVersion)
+            .Select(c => new WeatherDateRange(c.FromDate, c.ToDate))
+            .ToListAsync(cancellationToken);
+        var firstOwned = site.SiteVersion == 1 ? DateOnly.MinValue : timeline.FirstOwnedDate(site);
+        return WeatherHistoryPlan.Describe(windows, coverage, firstOwned, WeatherFetchService.LastComplete(site, Now));
     }
 
     private Task<WeatherPointSite?> CurrentSiteAsync(Guid pointId, int version, CancellationToken cancellationToken) =>

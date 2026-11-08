@@ -1675,7 +1675,6 @@ public class LocationUnificationApiTests
                     Name = $"Point {id:N}",
                     ForecastEnabled = forecast,
                     HistoryEnabled = false,
-                    HistoryFrom = new DateOnly(2026, 1, 1),
                     EnabledAt = DateTime.UtcNow,
                     CurrentSiteVersion = 1,
                     SettingsVersion = Guid.NewGuid(),

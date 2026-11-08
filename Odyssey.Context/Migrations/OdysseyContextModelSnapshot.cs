@@ -5521,6 +5521,28 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("WeatherObservations");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.WeatherObservationCoverage", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("SiteVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("FromDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("ToDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("WeatherPointId", "SiteVersion", "FromDate");
+
+                    b.ToTable("WeatherObservationCoverages", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherObservationCoverages_Order", "`ToDate` >= `FromDate`");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
                 {
                     b.Property<Guid>("WeatherPointId")
@@ -5544,9 +5566,6 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<bool>("HistoryEnabled")
                         .HasColumnType("tinyint(1)");
-
-                    b.Property<DateOnly>("HistoryFrom")
-                        .HasColumnType("date");
 
                     b.Property<bool>("IsTracked")
                         .HasColumnType("tinyint(1)");
@@ -5592,6 +5611,32 @@ namespace Odyssey.Context.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Odyssey.Context.WeatherPointHistoryWindow", b =>
+                {
+                    b.Property<Guid>("WeatherPointHistoryWindowId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateOnly>("FromDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ToDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("WeatherPointHistoryWindowId");
+
+                    b.HasIndex("WeatherPointId", "FromDate")
+                        .IsUnique();
+
+                    b.ToTable("WeatherPointHistoryWindows", t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherPointHistoryWindows_Order", "`ToDate` IS NULL OR `ToDate` >= `FromDate`");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>
                 {
                     b.Property<Guid>("WeatherPointId")
@@ -5630,9 +5675,6 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<int?>("ObservationFailureKind")
                         .HasColumnType("int");
-
-                    b.Property<DateOnly?>("ObservationsBackfilledFromDate")
-                        .HasColumnType("date");
 
                     b.Property<DateOnly?>("ObservationsCheckedThroughDate")
                         .HasColumnType("date");
@@ -7120,6 +7162,15 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Odyssey.Context.WeatherObservationCoverage", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
@@ -7131,6 +7182,15 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPointHistoryWindow", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>

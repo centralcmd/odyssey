@@ -204,6 +204,9 @@ public static class WeatherRules
     /// <summary>The earliest date measured history may start from.</summary>
     public static readonly DateOnly HistoryFloor = new(1950, 1, 1);
 
+    /// <summary>How far ahead of today a history window may start or end (issue #436 §8 rule 4).</summary>
+    public const int HistoryWindowMaxDaysAhead = 730;
+
     /// <summary>
     /// The <c>WeatherUserAgentContact</c> shape (§11): empty (not configured), or one email address or an
     /// absolute <c>https://</c> URL — printable ASCII only, since it is sent in the <c>User-Agent</c> header,
@@ -685,7 +688,16 @@ public sealed record ExistingWeatherPoint
     public bool IsTracked { get; init; }
     public bool TrackingSuspended { get; init; }
     public WeatherTrackingSuspendedReason? TrackingSuspendedReason { get; init; }
-    public DateOnly HistoryFrom { get; init; }
+
+    /// <summary>The windows' summary — on the list and the single read (issue #436 §5.2).</summary>
+    public WeatherHistoryWindowSummary HistoryWindowSummary { get; init; } = new();
+
+    /// <summary>
+    /// The windows themselves, oldest first — on the single-point read only; null (not serialized) on the list, so a
+    /// page costs one aggregate query whatever the window counts.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<ExistingWeatherHistoryWindow>? HistoryWindows { get; init; }
     public WeatherPointSiteDto Site { get; init; } = new();
     public bool PurgeInProgress { get; init; }
     public bool IsHouseholdDefault { get; init; }
@@ -751,8 +763,11 @@ public sealed record NewWeatherPoint : IValidatableObject
     [Required]
     public bool? IsTracked { get; set; }
 
-    /// <summary><see langword="null"/>: the create date − 1 year.</summary>
-    public DateOnly? HistoryFrom { get; set; }
+    /// <summary>
+    /// <see langword="null"/>: one ongoing window from the create date − 1 year, stored whatever
+    /// <see cref="HistoryEnabled"/> says. No attribute: every rule is <see cref="WeatherHistoryWindowRules"/>.
+    /// </summary>
+    public List<WeatherHistoryWindowDto>? HistoryWindows { get; set; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
@@ -785,7 +800,7 @@ public sealed record NewWeatherPoint : IValidatableObject
             }
         }
 
-        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryFrom))
+        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true))
         {
             yield return result;
         }
@@ -830,8 +845,8 @@ public sealed record UpdateWeatherPoint : IValidatableObject
     [Required]
     public bool? IsTracked { get; set; }
 
-    /// <summary><see langword="null"/> keeps the stored value.</summary>
-    public DateOnly? HistoryFrom { get; set; }
+    /// <summary><see langword="null"/> keeps the stored set; an array replaces it whole.</summary>
+    public List<WeatherHistoryWindowDto>? HistoryWindows { get; set; }
 
     [Required]
     public Guid? SettingsVersion { get; set; }
@@ -843,7 +858,7 @@ public sealed record UpdateWeatherPoint : IValidatableObject
             yield return new ValidationResult("Give the weather point a name.", [nameof(Name)]);
         }
 
-        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryFrom))
+        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true))
         {
             yield return result;
         }
@@ -856,20 +871,21 @@ public sealed record UpdateWeatherPoint : IValidatableObject
 /// <summary>The rules both point writes share.</summary>
 internal static class WeatherPointValidation
 {
-    public static IEnumerable<ValidationResult> Common(string? timeZoneId, DateOnly? historyFrom)
+    public static IEnumerable<ValidationResult> Common(string? timeZoneId, List<WeatherHistoryWindowDto>? windows, bool historyEnabled)
     {
         if (!string.IsNullOrWhiteSpace(timeZoneId) && !IanaTimeZones.IsValid(timeZoneId))
         {
             yield return new ValidationResult("The time zone must be an IANA time zone, e.g. Europe/Oslo.", ["TimeZoneId"]);
         }
 
-        if (historyFrom is { } from)
+        // Null keeps the stored set (PUT) or takes the default (POST); only a sent array is checked here. An empty
+        // stored set with history turned on is resolved by the service, which stores the default window.
+        if (windows is not null)
         {
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            if (from < WeatherRules.HistoryFloor || from > today)
+            foreach (var violation in WeatherHistoryWindowRules.Validate(windows, today, historyEnabled))
             {
-                yield return new ValidationResult(
-                    $"History can start between {WeatherRules.HistoryFloor:yyyy-MM-dd} and today.", ["HistoryFrom"]);
+                yield return WeatherHistoryWindowRules.ToValidationResult(violation, today);
             }
         }
     }

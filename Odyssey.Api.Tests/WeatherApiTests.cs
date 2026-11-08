@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -200,7 +201,7 @@ public class WeatherApiTests
                 locationId = Guid.NewGuid();
                 context.WeatherPoints.Add(new WeatherPoint
                 {
-                    WeatherPointId = pointId, Name = "P", ForecastEnabled = true, CurrentSiteVersion = 1, HistoryFrom = new DateOnly(2025, 1, 1),
+                    WeatherPointId = pointId, Name = "P", ForecastEnabled = true, CurrentSiteVersion = 1,
                     SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
                 });
                 context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = pointId, SiteVersion = 1, Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "Europe/Oslo", AppliedAt = now });
@@ -392,7 +393,7 @@ public class WeatherApiTests
             var id = Guid.NewGuid();
             context.WeatherPoints.Add(new WeatherPoint
             {
-                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1, HistoryFrom = new DateOnly(2025, 1, 1),
+                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1,
                 SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
             });
             context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = id, SiteVersion = 1, Latitude = 1, Longitude = 1, TimeZoneId = "UTC", AppliedAt = now });
@@ -581,7 +582,7 @@ public class WeatherApiTests
             var id = Guid.NewGuid();
             context.WeatherPoints.Add(new WeatherPoint
             {
-                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1, HistoryFrom = new DateOnly(2025, 1, 1),
+                WeatherPointId = id, Name = "P", CurrentSiteVersion = 1,
                 SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
             });
             context.WeatherPointSites.Add(new WeatherPointSite { WeatherPointId = id, SiteVersion = 1, Latitude = 59.9m, Longitude = 10.7m, TimeZoneId = "UTC", AppliedAt = now });
@@ -1157,6 +1158,168 @@ public class WeatherApiTests
         Assert.Equal(["date", "fromutc", "toutc", "weatherpointid"],
             parameters.Select(p => p.GetProperty("name").GetString()!.ToLowerInvariant()).Order(StringComparer.Ordinal).ToList());
         Assert.All(parameters, p => Assert.False(p.TryGetProperty("required", out var required) && required.GetBoolean()));
+    }
+
+    // ── History windows (issue #436) ───────────────────────────────────────────────────────────────
+
+    private static WeatherHistoryWindowDto Window(string from, string? to = null) =>
+        new() { From = DateOnly.Parse(from), To = to is null ? null : DateOnly.Parse(to) };
+
+    [Fact]
+    public async Task Windows_round_trip_with_a_status_and_the_list_carries_only_the_summary()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var request = NewPoint();
+        request.HistoryWindows = [Window("2026-06-10", "2026-06-17"), Window("2025-07-01", "2025-07-07")];
+        var created = await client.PostAsJsonAsync("/api/weather/points", request);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var point = (await created.Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+
+        var single = (await client.GetFromJsonAsync<ExistingWeatherPoint>($"/api/weather/points/{point.WeatherPointId}", Json))!;
+        Assert.Equal([new DateOnly(2025, 7, 1), new DateOnly(2026, 6, 10)], single.HistoryWindows!.Select(w => w.From));
+        Assert.All(single.HistoryWindows!, w => Assert.True(Enum.IsDefined(w.Status)));
+
+        var list = await client.GetStringAsync("/api/weather/points");
+        Assert.DoesNotContain("\"historyWindows\"", list, StringComparison.Ordinal);
+        Assert.Contains("\"historyWindowSummary\"", list, StringComparison.Ordinal);
+        Assert.Contains("\"count\":2", list, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Put_without_windows_keeps_them_and_with_an_array_replaces_them()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var request = NewPoint();
+        request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
+        var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+
+        var keep = await client.PutAsJsonAsync($"/api/weather/points/{point.WeatherPointId}", Update(point));
+        Assert.Equal(HttpStatusCode.OK, keep.StatusCode);
+        var kept = (await keep.Content.ReadFromJsonAsync<WeatherPointUpdateResult>(Json))!.Point;
+        Assert.Equal(new DateOnly(2026, 6, 10), Assert.Single(kept.HistoryWindows!).From);
+
+        var replace = Update(kept);
+        replace.HistoryWindows = [Window("2026-08-01", "2026-08-07"), Window("2026-09-01")];
+        var replaced = (await (await client.PutAsJsonAsync($"/api/weather/points/{point.WeatherPointId}", replace)).Content.ReadFromJsonAsync<WeatherPointUpdateResult>(Json))!.Point;
+        Assert.Equal([new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 1)], replaced.HistoryWindows!.Select(w => w.From));
+    }
+
+    public static TheoryData<string, string> InvalidWindowSets => new()
+    {
+        { """[{"from":"2026-06-10","to":"2026-06-17"},{"from":"2026-06-17","to":"2026-06-20"}]""", "HistoryWindows[1]" },
+        { """[{"from":"2025-01-01"},{"from":"2026-06-10","to":"2026-06-17"}]""", "HistoryWindows[0]" },
+        { """[{"from":"2026-06-10","to":"2026-06-09"}]""", "HistoryWindows[0].To" },
+        { """[{"from":"1949-12-31","to":"2026-06-09"}]""", "HistoryWindows[0].From" },
+        { """[{"to":"2026-06-09"}]""", "HistoryWindows[0].From" },
+        { """[]""", "HistoryWindows" },
+    };
+
+    [Theory]
+    [MemberData(nameof(InvalidWindowSets))]
+    public async Task An_invalid_window_set_is_a_400_keyed_on_the_member_path(string windowsJson, string key)
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var body = $$"""{"name":"Oslo","latitude":59.9,"longitude":10.7,"timeZoneId":"Europe/Oslo","forecastEnabled":true,"historyEnabled":true,"isTracked":false,"historyWindows":{{windowsJson}}}""";
+
+        var response = await client.PostAsync("/api/weather/points", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
+        Assert.Contains(key, problem.Errors.Keys);
+    }
+
+    [Fact]
+    public async Task An_impossibly_large_set_is_one_error_and_a_body_over_the_limit_is_a_413()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var count = WeatherHistoryWindowRules.MaxValidCount(DateOnly.FromDateTime(DateTime.UtcNow)) + 1;
+        var impossible = $$"""{"name":"Oslo","latitude":59.9,"longitude":10.7,"timeZoneId":"Europe/Oslo","forecastEnabled":true,"historyEnabled":true,"isTracked":false,"historyWindows":[{{string.Join(",", Enumerable.Repeat("{}", count))}}]}""";
+
+        var watch = System.Diagnostics.Stopwatch.StartNew();
+        var refused = await client.PostAsync("/api/weather/points", new StringContent(impossible, System.Text.Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        var problem = (await refused.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
+        Assert.Equal("HistoryWindows", Assert.Single(problem.Errors).Key);
+        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
+
+    }
+
+    [Fact]
+    public async Task An_oversized_body_maps_to_a_generic_413()
+    {
+        // The in-process host cannot enforce [RequestSizeLimit] (and the Testing environment refuses to run on Kestrel),
+        // so the transport half is Odyssey.E2ETests.Api's; this pins the handler half: status 413 only, no exception text.
+        var context = new Microsoft.AspNetCore.Http.DefaultHttpContext
+        {
+            RequestServices = new ServiceCollection().AddLogging().BuildServiceProvider(),
+            Response = { Body = new MemoryStream() },
+        };
+        context.Features.Set<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>(new Microsoft.AspNetCore.Diagnostics.ExceptionHandlerFeature
+        {
+            Error = new Microsoft.AspNetCore.Http.BadHttpRequestException("Request body too large. The max request body size is 4194304 bytes.", 413),
+        });
+
+        await Odyssey.Api.GlobalExceptionHandler.HandleAsync(context);
+
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, context.Response.StatusCode);
+        context.Response.Body.Position = 0;
+        var body = await new StreamReader(context.Response.Body).ReadToEndAsync();
+        Assert.DoesNotContain("4194304", body, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Both_point_writes_carry_the_4_mb_limit()
+    {
+        foreach (var name in new[] { "Post", "Put" })
+        {
+            var limit = typeof(Odyssey.Api.Controllers.WeatherPointsController).GetMethod(name)!
+                .GetCustomAttributes(typeof(RequestSizeLimitAttribute), false).Cast<RequestSizeLimitAttribute>().Single();
+            var bytes = (long)typeof(RequestSizeLimitAttribute).GetField("_bytes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(limit)!;
+            Assert.Equal(4L * 1024 * 1024, bytes);
+        }
+    }
+
+    [Fact]
+    public async Task A_window_only_edit_with_a_stale_token_is_a_409_and_changes_nothing()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var request = NewPoint();
+        request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
+        var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync($"/api/weather/points/{point.WeatherPointId}", Update(point))).StatusCode);
+
+        var stale = Update(point);
+        stale.HistoryWindows = [Window("2026-07-01", "2026-07-07")];
+        Assert.Equal(HttpStatusCode.Conflict, (await client.PutAsJsonAsync($"/api/weather/points/{point.WeatherPointId}", stale)).StatusCode);
+
+        var after = (await client.GetFromJsonAsync<ExistingWeatherPoint>($"/api/weather/points/{point.WeatherPointId}", Json))!;
+        Assert.Equal(new DateOnly(2026, 6, 10), Assert.Single(after.HistoryWindows!).From);
+    }
+
+    [Fact]
+    public async Task Weather_read_surfaces_carry_no_window_data()
+    {
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var request = NewPoint();
+        request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
+        var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+
+        foreach (var path in new[]
+        {
+            "/api/weather/points/options",
+            $"/api/weather/daily?weatherPointId={point.WeatherPointId}&from=2026-06-01&to=2026-06-30",
+            $"/api/weather/current?weatherPointId={point.WeatherPointId}",
+        })
+        {
+            var body = await client.GetStringAsync(path);
+            Assert.DoesNotContain("historyWindow", body, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     private sealed class WeatherFactory : OdysseyApiFactory

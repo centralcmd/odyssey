@@ -114,3 +114,32 @@ internal sealed class WeatherDayConfiguration : IEntityTypeConfiguration<Weather
             "CK_WeatherDays_HasData", "`ForecastCoverageHours` IS NOT NULL OR `ObservedFetchedAtUtc` IS NOT NULL"));
     }
 }
+
+internal sealed class WeatherPointHistoryWindowConfiguration : IEntityTypeConfiguration<WeatherPointHistoryWindow>
+{
+    public void Configure(EntityTypeBuilder<WeatherPointHistoryWindow> entity)
+    {
+        // A window is a setting of its point (issue #436 §4.1).
+        entity.HasOne<WeatherPoint>()
+            .WithMany()
+            .HasForeignKey(window => window.WeatherPointId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        entity.ToTable(tb => tb.HasCheckConstraint(
+            "CK_WeatherPointHistoryWindows_Order", "`ToDate` IS NULL OR `ToDate` >= `FromDate`"));
+    }
+}
+
+internal sealed class WeatherObservationCoverageConfiguration : IEntityTypeConfiguration<WeatherObservationCoverage>
+{
+    public void Configure(EntityTypeBuilder<WeatherObservationCoverage> entity)
+    {
+        entity.ToTable("WeatherObservationCoverages", tb => tb.HasCheckConstraint(
+            "CK_WeatherObservationCoverages_Order", "`ToDate` >= `FromDate`"));
+
+        entity.HasOne<WeatherPoint>()
+            .WithMany()
+            .HasForeignKey(coverage => coverage.WeatherPointId)
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}

@@ -32,6 +32,7 @@ public class DataExportTableCoverageTests
     {
         // Denormalized onto the row that owns it.
         ["TransactionTagLinks"] = "exported inline as TransactionExport.TransactionTagIds",
+        ["WeatherPointHistoryWindows"] = "exported inline as WeatherPointExport.HistoryWindows",
 
         // Contact detail — served by the vCard export, which is the richer representation.
         ["PersonDetails"] = "GET /api/contacts/vcard",

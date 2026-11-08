@@ -568,13 +568,17 @@ public sealed class DataExportService
                 ForecastEnabled = weather.ForecastEnabled,
                 HistoryEnabled = weather.HistoryEnabled,
                 IsTracked = weather.IsTracked,
-                HistoryFrom = weather.HistoryFrom,
                 EnabledAt = weather.EnabledAt,
                 CurrentSiteVersion = weather.CurrentSiteVersion,
                 PurgeStartedAt = weather.PurgeStartedAt,
                 PurgeMode = weather.PurgeMode,
                 CreatedAt = weather.CreatedAt,
                 UpdatedAt = weather.UpdatedAt,
+                HistoryWindows = context.WeatherPointHistoryWindows
+                    .Where(window => window.WeatherPointId == weather.WeatherPointId)
+                    .OrderBy(window => window.FromDate)
+                    .Select(window => new WeatherPointHistoryWindowExport { From = window.FromDate, To = window.ToDate })
+                    .ToList(),
             });
 
     private IQueryable<PropertyExport> PropertiesQuery() =>

@@ -29,7 +29,8 @@ namespace Odyssey.Core.DataExport;
 /// </summary>
 public sealed class DataExportDocument
 {
-    public int SchemaVersion { get; init; } = 1;
+    /// <summary>2 since issue #436: a weather point exports <c>HistoryWindows</c> in place of <c>HistoryFrom</c>.</summary>
+    public int SchemaVersion { get; init; } = 2;
 
     /// <summary>UTC instant the export was produced (also used for the download filename).</summary>
     public DateTime ExportedAt { get; init; }
@@ -80,6 +81,8 @@ public sealed class DataExportExclusions
             "WeatherForecastSteps",
             "WeatherObservations",
             "WeatherDays",
+            // Issue #436: which Frost ranges were already checked — derived, rebuilt by fetching.
+            "WeatherObservationCoverages",
         ];
 
     public IReadOnlyList<string> ExcludedFields { get; init; } = ["FileBlob.Content"];
@@ -184,13 +187,21 @@ public sealed class WeatherPointExport
     public bool ForecastEnabled { get; init; }
     public bool HistoryEnabled { get; init; }
     public bool IsTracked { get; init; }
-    public DateOnly HistoryFrom { get; init; }
     public DateTime EnabledAt { get; init; }
     public int CurrentSiteVersion { get; init; }
     public DateTime? PurgeStartedAt { get; init; }
     public WeatherPurgeMode? PurgeMode { get; init; }
     public DateTime CreatedAt { get; init; }
     public DateTime UpdatedAt { get; init; }
+
+    /// <summary>The point's history windows, oldest first (issue #436): the <c>WeatherPointHistoryWindows</c> table, inline.</summary>
+    public IReadOnlyList<WeatherPointHistoryWindowExport> HistoryWindows { get; init; } = [];
+}
+
+public sealed class WeatherPointHistoryWindowExport
+{
+    public DateOnly From { get; init; }
+    public DateOnly? To { get; init; }
 }
 
 public sealed class LocationExport

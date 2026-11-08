@@ -136,7 +136,8 @@ public class DataExportApiTests
         using var document = await GetExportDocumentAsync(client);
         var root = document.RootElement;
 
-        Assert.Equal(1, root.GetProperty("schemaVersion").GetInt32());
+        // 2 since issue #436: weather points export HistoryWindows in place of HistoryFrom.
+        Assert.Equal(2, root.GetProperty("schemaVersion").GetInt32());
         Assert.Equal("odyssey.database-export.v1", root.GetProperty("format").GetString());
         Assert.Equal(ActorUserId, root.GetProperty("exportedByUserId").GetString());
         Assert.True(root.TryGetProperty("exportedAt", out var exportedAt));

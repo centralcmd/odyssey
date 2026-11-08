@@ -165,7 +165,7 @@ public class LocationResolverTests
         var pointId = Guid.NewGuid();
         context.WeatherPoints.Add(new Odyssey.Context.WeatherPoint
         {
-            WeatherPointId = pointId, Name = "Oslo", CurrentSiteVersion = 1, HistoryFrom = new DateOnly(2025, 1, 1),
+            WeatherPointId = pointId, Name = "Oslo", CurrentSiteVersion = 1,
         });
         (await context.Locations.SingleAsync(l => l.LocationId == linked)).WeatherPointId = pointId;
         context.UserPreferences.Add(new Odyssey.Context.UserPreference
