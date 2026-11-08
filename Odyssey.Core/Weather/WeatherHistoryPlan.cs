@@ -111,14 +111,26 @@ public static class WeatherHistoryPlan
     /// <summary>Days of the sorted, merged <paramref name="covered"/> inside <paramref name="range"/>.</summary>
     public static int CoveredDays(WeatherDateRange range, IReadOnlyList<WeatherDateRange> covered)
     {
-        var days = 0;
-        foreach (var c in covered)
-        {
-            if (c.To < range.From)
-            {
-                continue;
-            }
+        var start = 0;
+        return CoveredDays(range, covered, ref start);
+    }
 
+    /// <summary>
+    /// <see cref="CoveredDays(WeatherDateRange, IReadOnlyList{WeatherDateRange})"/> from a cursor that only moves
+    /// forward: rows ending before <paramref name="range"/> are skipped for good, so a caller asking for ranges in
+    /// ascending start order sweeps <paramref name="covered"/> once rather than once per range (issue #436 AC 23).
+    /// </summary>
+    private static int CoveredDays(WeatherDateRange range, IReadOnlyList<WeatherDateRange> covered, ref int start)
+    {
+        while (start < covered.Count && covered[start].To < range.From)
+        {
+            start++;
+        }
+
+        var days = 0;
+        for (var i = start; i < covered.Count; i++)
+        {
+            var c = covered[i];
             if (c.From > range.To)
             {
                 break;
@@ -141,11 +153,13 @@ public static class WeatherHistoryPlan
     {
         var covered = Merge(coverage);
         var result = new List<ExistingWeatherHistoryWindow>();
+        // Windows go in start order, so their clips do too and one forward cursor serves them all.
+        var cursor = 0;
         foreach (var window in windows.OrderBy(w => w.From))
         {
             var clip = Clip(window, firstOwned, lastComplete);
             var fetchable = clip?.Days ?? 0;
-            var done = clip is { } c ? CoveredDays(c, covered) : 0;
+            var done = clip is { } c ? CoveredDays(c, covered, ref cursor) : 0;
             var status = window.From > lastComplete ? WeatherHistoryWindowStatus.Upcoming
                 : fetchable == 0 ? WeatherHistoryWindowStatus.Unavailable
                 : done < fetchable ? WeatherHistoryWindowStatus.Backfilling
