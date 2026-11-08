@@ -32,7 +32,7 @@ public sealed record ExistingFileAnalysisJob(
     DateTime? QueuedAt = null,
     DateTime? TransferStartedAt = null,
     // Computed by the server from the transfer stamp — the client never derives it from a failure code.
-    FileAnalysisDocumentSent DocumentSent = FileAnalysisDocumentSent.No,
+    FileAnalysisDocumentSent DocumentSent = FileAnalysisDocumentSent.Possibly,
     // The STAMPED processor, so a "sent to {processor}" line never names today's settings.
     string? ProcessorInForce = null
 );

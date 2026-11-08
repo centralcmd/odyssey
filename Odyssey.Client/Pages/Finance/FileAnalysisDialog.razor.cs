@@ -101,6 +101,11 @@ public partial class FileAnalysisDialog : IDisposable
     private int _unknownStatusPolls;
     private CancellationTokenSource? _pollCts;
     private CancellationTokenSource? _submitCts;
+
+    // Set once the dialog is closed or disposed, never reset: the host re-keys the dialog on every open, so a
+    // closed instance is never shown again. A response that lands after close (the analyze POST, a poll) must not
+    // start a poller or the match step — the match sends names to the provider from a dialog nobody sees.
+    private bool _closed;
     private bool _slowStart;
 
     // The terminal state's client-owned copy and the facts its sent line states. No server text is ever held.
@@ -395,6 +400,7 @@ public partial class FileAnalysisDialog : IDisposable
         _session.SetPhase(FileAnalysisPhase.Submitting);
         _slowStart = false;
         _submitCts?.Cancel();
+        _submitCts?.Dispose();
         _submitCts = new CancellationTokenSource();
         _ = AnnounceSlowStartAsync(_submitCts.Token);
         StateHasChanged();
@@ -427,6 +433,9 @@ public partial class FileAnalysisDialog : IDisposable
             _submitCts?.Cancel();
             _slowStart = false;
         }
+
+        if (_closed)
+            return;
 
         _analyzeRateLimited = false;
         if (analyzed.IsSuccess && analyzed.Status != default)
@@ -543,6 +552,9 @@ public partial class FileAnalysisDialog : IDisposable
     private void StartPolling(Guid jobId)
     {
         StopPolling();
+        if (_closed)
+            return;
+
         _jobId = jobId;
         _hiccup = false;
         _unknownStatusPolls = 0;
@@ -581,7 +593,7 @@ public partial class FileAnalysisDialog : IDisposable
             TimeSpan? next = null;
             await InvokeAsync(async () =>
             {
-                if (ct.IsCancellationRequested || jobId != _jobId)
+                if (ct.IsCancellationRequested || _closed || jobId != _jobId)
                     return;
                 next = await ApplyPollAsync(polled, first, () => ++transient, () => transient = 0);
                 first = false;
@@ -733,6 +745,9 @@ public partial class FileAnalysisDialog : IDisposable
     // is conveyed via matchStatus (200, not an error) so Review still opens with raw candidates.
     private async Task RunMatchAsync(bool preserveManual = false)
     {
+        if (_closed)
+            return;
+
         _session.SetPhase(FileAnalysisPhase.Matching);
         StateHasChanged();
 
@@ -943,6 +958,7 @@ public partial class FileAnalysisDialog : IDisposable
     // Closing never cancels the job (issue #445 §3): it stops this dialog's poller, and the host refreshes its map.
     private Task CloseAsync()
     {
+        _closed = true;
         StopPolling();
         _submitCts?.Cancel();
         return OpenChanged.InvokeAsync(false);
@@ -950,6 +966,7 @@ public partial class FileAnalysisDialog : IDisposable
 
     public void Dispose()
     {
+        _closed = true;
         StopPolling();
         _submitCts?.Cancel();
         _submitCts?.Dispose();

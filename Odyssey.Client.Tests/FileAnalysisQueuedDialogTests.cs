@@ -381,6 +381,28 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ClosingWhileSubmitting_StartsNoPoller_WhenThe202LandsLater()
+    {
+        // The host keeps a closed dialog mounted until its next open re-keys it, so a 202 that lands after Close
+        // must not start polling — a Completed poll would run the match step from a dialog nobody sees.
+        var pending = new TaskCompletionSource<ApiResult<AnalyzeFileResponse>>();
+        accounts.Setup(a => a.AnalyzeFileAsync(AccountId, FileId, It.IsAny<AnalyzeFileRequest>(), It.IsAny<CancellationToken>()))
+            .Returns(pending.Task);
+        polls.Enqueue(Ok(Job(FileAnalysisJobStatus.Completed)));
+        var cut = Render(FileAnalysisDialog.StartMode.Consent);
+
+        await SendFromConsentAsync(cut);
+        var close = cut.FindAll("button").First(b => b.TextContent.Trim() == "Close");
+        await cut.InvokeAsync(() => close.Click());
+        await cut.InvokeAsync(() => pending.SetResult(
+            ApiResult<AnalyzeFileResponse>.Success(new AnalyzeFileResponse(JobId), HttpStatusCode.Accepted)));
+        Advance(TimeSpan.FromSeconds(30), cut);
+
+        analysis.Verify(a => a.GetJobAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+        analysis.Verify(a => a.MatchAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task Submitting_KeepsOneBusyButton_AndASecondClickSendsNothing()
     {
         var pending = new TaskCompletionSource<ApiResult<AnalyzeFileResponse>>();

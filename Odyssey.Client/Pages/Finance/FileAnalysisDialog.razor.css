@@ -125,6 +125,9 @@
 /* The consent step's focus target after "Start new analysis" (issue #434). A named group, focused
    programmatically; the ring stays visible, as for the re-prompt above. */
 .fan-consent-start:focus { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: 10px; }
+/* The consent heading is sr-only, so the ring it would draw is invisible (WCAG 2.4.7): while it holds focus,
+   the consent block it names draws the ring instead — the review heading's pattern below. */
+.fan-consent-h:focus ~ .fan-consent-start { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: 10px; }
 
 /* Second-transfer alert (#445): informational, focus-taking, above the gate. */
 .fan-prior {

@@ -149,6 +149,11 @@ namespace Odyssey.Context.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            // The narrowed JobType CHECKs re-added below would refuse the queue's run-log rows, so they go first.
+            // Run-log rows are history, not data anyone restores from; the analysis jobs themselves are kept.
+            migrationBuilder.Sql("DELETE FROM `JobRuns` WHERE `JobType` = 6;");
+            migrationBuilder.Sql("DELETE FROM `JobHeartbeats` WHERE `JobType` = 6;");
+
             migrationBuilder.DropCheckConstraint(
                 name: "CK_JobRuns_CountersNonNegative",
                 table: "JobRuns");

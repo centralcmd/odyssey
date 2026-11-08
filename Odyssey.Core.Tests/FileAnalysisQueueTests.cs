@@ -86,6 +86,18 @@ public class FileAnalysisQueueTests
     }
 
     [Fact]
+    public async Task Enqueue_AFileOfExactlyTheCeiling_IsAccepted()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context, sizeBytes: FileAnalysisJobTiming.MaxAnalysisFileBytes);
+        var service = CreateService(context, new RecordingProvider());
+
+        var response = await service.AnalyzeAsync(accountId, fileId, FileAnalysisTestHarness.RequesterId, Consent());
+
+        Assert.Equal(ContextJobStatus.Queued, (await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == response.AnalysisJobId)).Status);
+    }
+
+    [Fact]
     public async Task Enqueue_AStaleQueuedJob_IsFailedInline_SoANewAnalysisIsAccepted()
     {
         // AC 11: with no worker running, a Queued row past UnclaimedTimeout does not wedge the file.
@@ -201,6 +213,36 @@ public class FileAnalysisQueueTests
         Assert.Equal(FileAnalysisDocumentSent.No, FileAnalysisTerminal.DocumentSent(job));
     }
 
+    [Theory]
+    [InlineData("requester-disabled", "file-bytes-changed")]
+    [InlineData("file-bytes-changed", "disclosure")]
+    [InlineData("disclosure", "template")]
+    [InlineData("template", "key-not-set")]
+    [InlineData("key-not-set", "switched-off")]
+    [InlineData("requester-disabled", "switched-off")]
+    public async Task ThePreSendChecks_RunInTheirDocumentedOrder(string earlier, string later)
+    {
+        // §4: when two checks would both refuse, the earlier one names the refusal — so the kill switch, read
+        // last and live, is the closest check to the transfer and a reorder fails here.
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var provider = new RecordingProvider(Extracted("Coffee"));
+        var service = CreateService(context, provider);
+        var response = await service.AnalyzeAsync(accountId, fileId, FileAnalysisTestHarness.RequesterId, Consent());
+
+        var (expectedStatus, expectedCode) = await ApplyAsync(context, earlier, fileId);
+        await ApplyAsync(context, later, fileId);
+        var template = earlier == "template" || later == "template"
+            ? new FileAnalysisTestHarness.TestPromptTemplate("A different prompt.")
+            : null;
+
+        await RunAsync(context, provider, response.AnalysisJobId, template);
+
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
+        Assert.Equal((expectedStatus, expectedCode), (job.Status, job.FailureCode));
+        Assert.Equal(0, provider.CallCount);
+    }
+
     [Fact]
     public async Task ADestinationChangeTheCacheHasNotSeen_IsStillRefused()
     {
@@ -268,6 +310,9 @@ public class FileAnalysisQueueTests
         Assert.Equal(FileAnalysisRunResult.Lost, result);
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal(FileAnalysisCodes.Interrupted, job.FailureCode);
+        // The transfer stamp was saved before the call, so the sweep's failure still reports a possible send.
+        Assert.NotNull(job.TransferStartedAt);
+        Assert.Equal(FileAnalysisDocumentSent.Possibly, FileAnalysisTerminal.DocumentSent(job));
     }
 
     [Fact]
@@ -302,18 +347,25 @@ public class FileAnalysisQueueTests
         var legacy = NewJob(accountFileId, ContextJobStatus.Running, queuedAt: null, startedAt: now - lease - TimeSpan.FromMinutes(1));
         var unclaimed = NewJob(accountFileId, ContextJobStatus.Queued, queuedAt: now - FileAnalysisJobTiming.UnclaimedTimeout - TimeSpan.FromSeconds(1));
         var healthy = NewJob(accountFileId, ContextJobStatus.Running, queuedAt: now.AddMinutes(-1), leaseUntil: now.AddMinutes(5));
-        context.FileAnalysisJobs.AddRange(expired, legacy, unclaimed, healthy);
+        var sentThenLost = NewJob(accountFileId, ContextJobStatus.Running, queuedAt: now.AddMinutes(-20), leaseUntil: now.AddSeconds(-1));
+        sentThenLost.TransferStartedAt = now.AddMinutes(-15);
+        context.FileAnalysisJobs.AddRange(expired, legacy, unclaimed, healthy, sentThenLost);
         await context.SaveChangesAsync();
 
         var swept = await FileAnalysisTestHarness.Queue(context, time: time).SweepAsync();
 
         var rows = await context.FileAnalysisJobs.AsNoTracking().ToDictionaryAsync(j => j.Id);
-        Assert.Equal(3, swept);
+        Assert.Equal(4, swept);
         Assert.Equal(FileAnalysisCodes.Interrupted, rows[expired.Id].FailureCode);
         Assert.Equal(FileAnalysisCodes.Interrupted, rows[legacy.Id].FailureCode);
         Assert.Equal(FileAnalysisCodes.NotStarted, rows[unclaimed.Id].FailureCode);
         Assert.Equal(ContextJobStatus.Running, rows[healthy.Id].Status);
-        Assert.All(new[] { expired.Id, legacy.Id, unclaimed.Id }, id => Assert.Equal(ContextJobStatus.Failed, rows[id].Status));
+        Assert.All(new[] { expired.Id, legacy.Id, unclaimed.Id, sentThenLost.Id }, id => Assert.Equal(ContextJobStatus.Failed, rows[id].Status));
+
+        // DocumentSent follows the transfer stamp, never the code: the same `interrupted` reads both ways.
+        Assert.Equal(FileAnalysisDocumentSent.Possibly, FileAnalysisTerminal.DocumentSent(rows[sentThenLost.Id]));
+        Assert.Equal(FileAnalysisDocumentSent.No, FileAnalysisTerminal.DocumentSent(rows[expired.Id]));
+        Assert.Equal(FileAnalysisDocumentSent.No, FileAnalysisTerminal.DocumentSent(rows[unclaimed.Id]));
     }
 
     [Fact]

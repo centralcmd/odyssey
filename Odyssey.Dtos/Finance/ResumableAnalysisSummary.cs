@@ -14,7 +14,7 @@ public sealed record ResumableAnalysisSummary(
     int CandidateCount,
     int PendingCount,
     // The primary job's server-computed sent status and terminal code (issue #444).
-    FileAnalysisDocumentSent DocumentSent = FileAnalysisDocumentSent.No,
+    FileAnalysisDocumentSent DocumentSent = FileAnalysisDocumentSent.Possibly,
     string? FailureCode = null,
     // The file's newest job when it ended Failed / Cancelled BESIDE a different primary (an open job or a
     // pending review): a failed re-analysis never hides Resume review.

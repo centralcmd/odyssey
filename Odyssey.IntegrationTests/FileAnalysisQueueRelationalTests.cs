@@ -98,6 +98,7 @@ public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
         var job = await verify.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal(FileAnalysisCodes.Interrupted, job.FailureCode);
+        Assert.Equal(FileAnalysisDocumentSent.Possibly, FileAnalysisTerminal.DocumentSent(job));
         Assert.Equal(0, await verify.FileAnalysisCandidateTransactions.CountAsync());
     }
 

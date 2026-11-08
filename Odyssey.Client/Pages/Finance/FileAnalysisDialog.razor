@@ -32,7 +32,7 @@
 
                 @if (IsConsentBody)
                 {
-                    <h3 class="sr-only" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">What is sent, and your consent</h3>
+                    <h3 class="sr-only fan-consent-h" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">What is sent, and your consent</h3>
                     @* Re-prompt after a 409 disclosure_changed (issue #439 §5.3c). Non-dismissable and
                        above the gate, so the reason is read before the facts it applies to. tabindex=-1
                        so focus can land here rather than on the affirmation that just reset. *@

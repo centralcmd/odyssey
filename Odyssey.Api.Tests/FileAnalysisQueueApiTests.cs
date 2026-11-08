@@ -61,8 +61,27 @@ public class FileAnalysisQueueApiTests
     }
 
     [Fact]
+    public async Task Analyze_AboveTheCeiling_Is422_WithTheLimit()
+    {
+        await using var factory = new OdysseyApiFactory(Claims);
+        await factory.EnableFileAnalysisAsync();
+        var (accountId, fileId, _) = await SeedStatementAsync(factory, FileAnalysisJobTiming.MaxAnalysisFileBytes + 1);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(
+            $"/api/accounts/{accountId}/files/{fileId}/analyze", await ConsentAsync(factory));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(FileAnalysisCodes.FileTooLargeForAnalysis, problem.RootElement.GetProperty("code").GetString());
+        Assert.Equal(FileAnalysisJobTiming.MaxAnalysisFileBytes, problem.RootElement.GetProperty(FileAnalysisCodes.LimitBytesExtension).GetInt64());
+        Assert.True(problem.RootElement.GetProperty("errors").TryGetProperty("file", out _));
+    }
+
+    [Fact]
     public async Task ReadingAnOpenJob_AsksTheClientToPoll_AndForbidsCaching()
     {
+        // Analysis is never enabled here: the job read answers with the switch off (issue #444 §6).
         await using var factory = new OdysseyApiFactory(Claims);
         var (_, _, accountFileId) = await SeedStatementAsync(factory);
         var jobId = await SeedJobAsync(factory, accountFileId, ContextJobStatus.Queued);
@@ -137,7 +156,8 @@ public class FileAnalysisQueueApiTests
         return job.Id;
     }
 
-    private static async Task<(Guid AccountId, Guid FileId, Guid AccountFileId)> SeedStatementAsync(OdysseyApiFactory factory)
+    private static async Task<(Guid AccountId, Guid FileId, Guid AccountFileId)> SeedStatementAsync(
+        OdysseyApiFactory factory, long sizeBytes = 3)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -162,7 +182,7 @@ public class FileAnalysisQueueApiTests
             Id = fileId,
             FileName = "statement.pdf",
             ContentType = "application/pdf",
-            SizeBytes = 3,
+            SizeBytes = sizeBytes,
             Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             UploadedAtUtc = DateTime.UtcNow,

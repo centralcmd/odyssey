@@ -63,6 +63,10 @@ public sealed class FileAnalysisExtractionRunner(
             {
                 FileAnalysisCredentialException => FileAnalysisCodes.ProviderCredentialError,
                 FileAnalysisProviderException => FileAnalysisCodes.ProviderError,
+                // Transport, timeout and open-breaker failures are the provider being unreachable, not a defect
+                // here; the client keys its copy on the code, so they must not read as an internal error.
+                HttpRequestException or Polly.Timeout.TimeoutRejectedException or Polly.CircuitBreaker.BrokenCircuitException
+                    => FileAnalysisCodes.ProviderError,
                 OperationCanceledException when cancellationToken.IsCancellationRequested => FileAnalysisCodes.Interrupted,
                 _ => FileAnalysisCodes.InternalError,
             };
@@ -95,6 +99,17 @@ public sealed class FileAnalysisExtractionRunner(
             })
             .FirstOrDefaultAsync(cancellationToken);
         if (file is null || file.FileType != Odyssey.Context.AccountFileType.Statement)
+        {
+            return await FinishAsync(job, FileAnalysisCodes.FileChanged, FileAnalysisRunResult.Refused);
+        }
+
+        // The ceiling was enforced at enqueue against the metadata; re-check the stored bytes' length in the
+        // database before materialising them, so a blob swapped or edited since is never loaded whole here.
+        var storedLength = await context.FileBlob.AsNoTracking()
+            .Where(b => b.Id == file.FileBlobId)
+            .Select(b => (long?)b.Content.Length)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (storedLength is not { } length || length > FileAnalysisJobTiming.MaxAnalysisFileBytes)
         {
             return await FinishAsync(job, FileAnalysisCodes.FileChanged, FileAnalysisRunResult.Refused);
         }
