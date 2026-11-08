@@ -43,7 +43,10 @@ public partial class WeatherPointsUiTests
             .Callback((NewWeatherPoint r, CancellationToken _) => sent = r)
             .ReturnsAsync(Ok(Point("Tromsø", OsloId)));
         await using var ctx = PageContext(weather, AdminClaims);
+        // Captured on both sides of the render, so a run that crosses midnight cannot flake.
+        var before = DateOnly.FromDateTime(DateTime.Today);
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<WeatherPointDialog>(d => d.Add(x => x.Open, true)));
+        var after = DateOnly.FromDateTime(DateTime.Today);
 
         var box = cut.FindAll(".wx-hw-row input[type=checkbox]").Single();
         Assert.True(box.HasAttribute("checked"));
@@ -57,7 +60,8 @@ public partial class WeatherPointsUiTests
 
         cut.WaitForAssertion(() => Assert.NotNull(sent));
         var window = Assert.Single(sent!.HistoryWindows!);
-        Assert.Equal((DateOnly.FromDateTime(DateTime.Today).AddYears(-1), (DateOnly?)null), (window.From, window.To));
+        Assert.Contains(window.From!.Value, new[] { before.AddYears(-1), after.AddYears(-1) });
+        Assert.Null(window.To);
     }
 
     [Fact]
