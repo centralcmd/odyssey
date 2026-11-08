@@ -781,7 +781,9 @@ a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey
 
 - **Read through `PhotoOriginalSource`**, which resolves either shape, never `FileMetadata` directly. The original is
   served by `GET /api/photos/{id}/content` under `photos.read` alone; `files.read` reaches no photo, and no photo
-  appears on the Files list.
+  appears on the Files list. That includes a **legacy** photo's file: `FileService` reads through
+  `FileReferenceCounter.VisibleInFilesStore`, which hides a file a photo names (`FileId` or `LegacyFileId`) unless
+  another referencing column also names it — an attachment's own claim already reaches that one.
 - **Upload is one multipart `POST /api/photos`** (`PhotoService.UploadAsync`): validated, hashed, duplicate-checked
   (`409 photo-duplicate`, existing id only for a `photos.read` holder), reserve-checked (`507`), written, then one save.
   There is no "photo from an existing file id" path any more; a JSON body with `fileId` is a `415`.

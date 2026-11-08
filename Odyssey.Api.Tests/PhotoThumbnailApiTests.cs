@@ -278,6 +278,9 @@ public sealed class PhotoThumbnailApiTests
             {
                 PhotoId = photoId, State = PhotoThumbnailJobState.Done, NextAttemptAtUtc = DateTime.UtcNow, UpdatedAtUtc = DateTime.UtcNow,
             });
+            // Also an attachment: since PR #441 a file only a photo names is hidden from /api/files, so the Files-store
+            // rename that re-renders a photo's thumbnails is one of a file shared with an attachment.
+            context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow });
             await context.SaveChangesAsync();
         }
 

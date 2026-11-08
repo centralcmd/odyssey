@@ -29,6 +29,9 @@ public class FileService
         renameObservers = [.. observers ?? []];
     }
 
+    /// <summary>The files <c>/api/files</c> may show: every one but a photo's own original (issue #428).</summary>
+    private IQueryable<FileMetadata> VisibleFiles => context.FileMetadata.Where(FileReferenceCounter.VisibleInFilesStore(context));
+
     public async Task<FileUploadResponse> UploadFileAsync(FileUpload file, string userId, string? description, CancellationToken cancellationToken = default)
     {
         await validationService.ValidateFileAsync(file, cancellationToken);
@@ -119,7 +122,7 @@ public class FileService
 
     public async Task<FileMetadataResponse?> GetFileMetadataAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await VisibleFiles
             .AsNoTracking()
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
@@ -140,7 +143,7 @@ public class FileService
 
     public async Task<(FileMetadataResponse? Metadata, Stream? Content)> GetFileContentAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await VisibleFiles
             .Include(fm => fm.FileBlob)
             .AsNoTracking()
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
@@ -168,7 +171,7 @@ public class FileService
         FilesQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = context.FileMetadata.AsNoTracking().AsQueryable();
+        var q = VisibleFiles.AsNoTracking();
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
@@ -223,7 +226,7 @@ public class FileService
 
     public async Task<FileMetadataResponse?> UpdateFileMetadataAsync(Guid fileId, UpdateFileMetadataRequest request, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata.FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
+        var metadata = await VisibleFiles.FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
         if (metadata == null)
         {
@@ -317,7 +320,7 @@ public class FileService
 
     public async Task<bool> DeleteFileAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await VisibleFiles
             .Include(fm => fm.FileBlob)
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 

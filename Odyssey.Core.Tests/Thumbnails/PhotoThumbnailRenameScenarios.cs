@@ -211,13 +211,38 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
 
     private static async Task RenameAsync(FileStorageTestHost host, Guid photoId, string name)
     {
+        var fileId = await FileIdAsync(host, photoId);
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(await FileIdAsync(host, photoId), new UpdateFileMetadataRequest { FileName = name });
+        Assert.NotNull(await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = name }));
     }
 
-    private static Task<Guid> FileIdAsync(FileStorageTestHost host, Guid photoId) =>
-        WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync());
+    /// <summary>
+    /// The legacy photo's file id, made reachable through the Files store first. Since PR #441 a file only a photo names
+    /// is hidden from <c>FileService</c> (it is a photo original, renamed through the photo); a file renamed there and
+    /// re-rendering a photo's thumbnails is one that is also an attachment — so these scenarios attach it to an entry.
+    /// </summary>
+    private static async Task<Guid> FileIdAsync(FileStorageTestHost host, Guid photoId)
+    {
+        var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync());
+        await WithContextAsync(host, async c =>
+        {
+            if (await c.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId))
+            {
+                return;
+            }
+
+            var entry = new JournalEntry
+            {
+                JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
+                EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            };
+            c.JournalEntries.Add(entry);
+            c.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
+            await c.SaveChangesAsync();
+        });
+        return fileId;
+    }
 
     private static Task<string> FileNameAsync(FileStorageTestHost host, Guid photoId) =>
         WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId)
