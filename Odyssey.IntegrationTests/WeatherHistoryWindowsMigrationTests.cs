@@ -76,6 +76,77 @@ public class WeatherHistoryWindowsMigrationTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// AC 17's second half and the edges of §11: after the migration the fetcher asks Frost only for the days the old
+    /// markers did not cover; a moved point asks nothing for its current site; a point whose old backfill start lay past
+    /// its re-check marker (the post-move shape) gets no coverage row; and <c>Down()</c> falls back to
+    /// <c>CreatedAt − 1 year</c> for a point left with no windows.
+    /// </summary>
+    [SkippableFact]
+    public async Task After_the_migration_the_fetcher_skips_covered_days_and_down_falls_back_for_a_point_without_windows()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+        var fresh = Guid.Parse("20000000-0000-0000-0000-000000000004");
+
+        await using (var context = NewContext())
+        {
+            await MigrationSeam.MigrateToAsync(context, Before);
+            await SeedAsync(context, MidBackfill, historyEnabled: true, siteVersion: 1, historyFrom: "2025-01-01", backfilledFrom: "2025-06-01", checkedThrough: "2026-11-06");
+            await SeedAsync(context, Moved, historyEnabled: true, siteVersion: 2, historyFrom: "2024-01-01", backfilledFrom: "2026-06-14", checkedThrough: "2026-11-06");
+            await SeedAsync(context, fresh, historyEnabled: true, siteVersion: 1, historyFrom: "2026-01-01", backfilledFrom: "2026-11-07", checkedThrough: "2026-11-06");
+            await SeedAsync(context, NeverFetched, historyEnabled: false, siteVersion: 1, historyFrom: "2025-08-01", backfilledFrom: null, checkedThrough: null);
+            await context.Database.MigrateAsync();
+        }
+
+        await using (var verify = NewContext())
+        {
+            Assert.False(await verify.WeatherObservationCoverages.AnyAsync(c => c.WeatherPointId == fresh));
+        }
+
+        var now = WeatherHistoryWindowsRelationalTests.Morning;
+        foreach (var id in new[] { MidBackfill, Moved })
+        {
+            await WindowFetching.ResolveStationsAsync(NewContext(), id, now);
+        }
+
+        // MidBackfill: coverage 2025-06-01..2026-11-06 and the re-check is current, so the one request is the uncovered
+        // head of its window, and the next tick has nothing left to ask.
+        var source = new WindowObservations();
+        for (var i = 0; i < 2; i++)
+        {
+            await using var context = NewContext();
+            await WindowFetching.Fetch(context, source, now).FetchObservationsAsync(MidBackfill, CancellationToken.None);
+        }
+
+        Assert.Equal((new DateOnly(2025, 1, 1), new DateOnly(2025, 5, 31)), Assert.Single(source.Calls));
+
+        // Moved: its window starts long before the current site's first owned date, which the coverage reaches already.
+        var moved = new WindowObservations();
+        await using (var context = NewContext())
+        {
+            await WindowFetching.Fetch(context, moved, now).FetchObservationsAsync(Moved, CancellationToken.None);
+        }
+
+        Assert.Empty(moved.Calls);
+
+        await using (var context = NewContext())
+        {
+            await context.Database.ExecuteSqlRawAsync(
+                $"DELETE FROM `WeatherPointHistoryWindows` WHERE `WeatherPointId` = '{NeverFetched}'");
+            await MigrationSeam.MigrateToAsync(context, Before);
+            // SeedAsync writes CreatedAt 2025-01-01, so the fallback is a year before that.
+            Assert.Equal("2024-01-01", Date(await MigrationSeam.ScalarAsync(context,
+                $"SELECT `HistoryFrom` FROM `WeatherPoints` WHERE `WeatherPointId` = '{NeverFetched}'")));
+            Assert.Equal("2025-01-01", Date(await MigrationSeam.ScalarAsync(context,
+                $"SELECT `HistoryFrom` FROM `WeatherPoints` WHERE `WeatherPointId` = '{MidBackfill}'")));
+            Assert.Null(NullIfDbNull(await MigrationSeam.ScalarAsync(context,
+                $"SELECT `ObservationsBackfilledFromDate` FROM `WeatherPointSchedules` WHERE `WeatherPointId` = '{fresh}'")));
+        }
+    }
+
+    private static object? NullIfDbNull(object? value) => value is DBNull ? null : value;
+
     [SkippableFact]
     public async Task The_order_checks_hold_and_writes_and_the_cascade_behave_on_mariadb()
     {

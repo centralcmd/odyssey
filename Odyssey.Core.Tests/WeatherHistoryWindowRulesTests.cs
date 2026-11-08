@@ -80,19 +80,61 @@ public class WeatherHistoryWindowRulesTests
     }
 
     [Fact]
-    public void A_maximal_valid_set_validates_quickly()
+    public void A_maximal_valid_set_is_valid()
     {
-        // One window per day from the floor to today + 730: the largest valid set (§7.7, AC 23).
-        var windows = new List<WeatherHistoryWindowDto>();
-        for (var d = new DateOnly(1950, 1, 1); d <= Today.AddDays(730); d = d.AddDays(1))
+        // One window per day from the floor to today + 730: the largest valid set (§7.7). How its cost grows is
+        // pinned by the growth-ratio test below, not by a wall-clock bound that a loaded CI runner would break.
+        var windows = OneDayWindows(WeatherHistoryWindowRules.MaxValidCount(Today));
+        Assert.Equal(WeatherHistoryWindowRules.MaxValidCount(Today), windows.Count);
+        Assert.Empty(WeatherHistoryWindowRules.Validate(windows, Today, requireAny: true));
+    }
+
+    /// <summary>
+    /// AC 23: the rules are O(n log n). Four times the windows must cost well under sixteen times as much (what a
+    /// pairwise scan would give); the bound of 8 leaves room for n log n and noise. The best of several runs is
+    /// compared, so a stray GC pause cannot fail it.
+    /// </summary>
+    [Fact]
+    public void Validation_cost_grows_linearithmically_not_quadratically()
+    {
+        var small = OneDayWindows(5_000);
+        var large = OneDayWindows(20_000);
+        var ratio = GrowthRatio(
+            () => Assert.Empty(WeatherHistoryWindowRules.Validate(small, Today, requireAny: true)),
+            () => Assert.Empty(WeatherHistoryWindowRules.Validate(large, Today, requireAny: true)));
+        Assert.True(ratio < 8, $"4x the windows cost {ratio:0.0}x the time");
+    }
+
+    /// <summary>One-day windows on consecutive days from the floor, newest first — so request order is not start order.</summary>
+    private static List<WeatherHistoryWindowDto> OneDayWindows(int count)
+    {
+        var windows = Enumerable.Range(0, count)
+            .Select(i => new DateOnly(1950, 1, 1).AddDays(i))
+            .Select(d => new WeatherHistoryWindowDto { From = d, To = d })
+            .ToList();
+        windows.Reverse();
+        return windows;
+    }
+
+    /// <summary>The best-of-seven time of <paramref name="large"/> over that of <paramref name="small"/>, after a warm-up.</summary>
+    internal static double GrowthRatio(Action small, Action large)
+    {
+        small();
+        large();
+        static long Best(Action run)
         {
-            windows.Add(new WeatherHistoryWindowDto { From = d, To = d });
+            var best = long.MaxValue;
+            for (var i = 0; i < 7; i++)
+            {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                run();
+                best = Math.Min(best, watch.ElapsedTicks);
+            }
+
+            return Math.Max(best, 1);
         }
 
-        windows.Reverse();
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        Assert.Empty(WeatherHistoryWindowRules.Validate(windows, Today, requireAny: true));
-        Assert.True(watch.ElapsedMilliseconds < 1000, $"took {watch.ElapsedMilliseconds} ms");
+        return (double)Best(large) / Best(small);
     }
 
     [Fact]
@@ -203,6 +245,59 @@ public class WeatherHistoryWindowRulesTests
     {
         var parts = WeatherFetchService.BackfillParts([R("2020-01-01", "2026-01-01")], 365);
         Assert.Equal([R("2025-01-02", "2026-01-01")], parts);
+    }
+
+    /// <summary>
+    /// <paramref name="count"/> two-day windows three days apart from 1960, each with its first day covered — so every
+    /// window is its own one-day gap and every coverage row touches a window.
+    /// </summary>
+    private static (List<WeatherWindow> Windows, List<WeatherDateRange> Coverage) Interleaved(int count)
+    {
+        var start = new DateOnly(1960, 1, 1);
+        var windows = Enumerable.Range(0, count).Select(i => new WeatherWindow(start.AddDays(3 * i), start.AddDays(3 * i + 1))).ToList();
+        var coverage = windows.Select(w => new WeatherDateRange(w.From, w.From)).ToList();
+        windows.Reverse();
+        coverage.Reverse();
+        return (windows, coverage);
+    }
+
+    [Fact]
+    public void Two_thousand_windows_against_two_thousand_coverage_rows_plan_every_gap_and_status()
+    {
+        // §10 / AC 23: the planner's sized case. Inputs arrive unsorted; the planner sorts.
+        var (windows, coverage) = Interleaved(2_000);
+        var lastComplete = new DateOnly(2026, 11, 6);
+
+        var gaps = WeatherHistoryPlan.Gaps(windows, coverage, DateOnly.MinValue, lastComplete);
+        Assert.Equal(2_000, gaps.Count);
+        Assert.All(gaps, g => Assert.Equal(1, g.Days));
+        Assert.Equal(windows[0].To, gaps[0].To); // newest first
+        Assert.Equal(windows[^1].From.AddDays(1), gaps[^1].From);
+
+        var described = WeatherHistoryPlan.Describe(windows, coverage, DateOnly.MinValue, lastComplete);
+        Assert.Equal(2_000, described.Count);
+        Assert.All(described, d => Assert.Equal((WeatherHistoryWindowStatus.Backfilling, 1, (int?)2), (d.Status, d.CoveredDays, d.FetchableDays)));
+    }
+
+    /// <summary>AC 23: the planner is a merge-sweep — four times the windows and coverage must not cost sixteen times as much.</summary>
+    [Fact]
+    public void Planner_cost_grows_linearithmically_not_quadratically()
+    {
+        var lastComplete = new DateOnly(2026, 11, 6);
+        var (smallWindows, smallCoverage) = Interleaved(2_000);
+        var (largeWindows, largeCoverage) = Interleaved(8_000);
+        var ratio = GrowthRatio(
+            () =>
+            {
+                WeatherHistoryPlan.Gaps(smallWindows, smallCoverage, DateOnly.MinValue, lastComplete);
+                WeatherHistoryPlan.Describe(smallWindows, smallCoverage, DateOnly.MinValue, lastComplete);
+            },
+            () =>
+            {
+                WeatherHistoryPlan.Gaps(largeWindows, largeCoverage, DateOnly.MinValue, lastComplete);
+                WeatherHistoryPlan.Describe(largeWindows, largeCoverage, DateOnly.MinValue, lastComplete);
+            });
+        Assert.True(ratio < 8, $"4x the input cost {ratio:0.0}x the time");
     }
 
     [Fact]
