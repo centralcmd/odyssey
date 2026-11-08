@@ -265,6 +265,25 @@ public class PhotoOriginalBackfillJobRun : JobRun
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes
 /// them. No key to anything.
 /// </summary>
+/// <summary>
+/// A burst of the file-analysis queue (issue #444): one row covers the ticks that claimed work, like the
+/// thumbnail job's. Counts only.
+/// </summary>
+public class FileAnalysisJobRun : JobRun
+{
+    public FileAnalysisJobRun() : base(Dtos.Application.JobType.FileAnalysis)
+    {
+    }
+
+    public int AnalysesCompleted { get; set; }
+
+    public int AnalysesFailed { get; set; }
+
+    public int AnalysesRefused { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (AnalysesCompleted, AnalysesFailed);
+}
+
 [Table("JobHeartbeats")]
 [PrimaryKey(nameof(JobType), nameof(WorkerId))]
 public class JobHeartbeat

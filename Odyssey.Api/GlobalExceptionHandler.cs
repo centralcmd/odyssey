@@ -47,7 +47,7 @@ public static class GlobalExceptionHandler
                     "Feature disabled on {Method} {Path}: {Message}",
                     context.Request.Method, context.Request.Path, disabled.Message);
                 return WriteAsync(context, disabled.StatusCode, disabled.Message,
-                    extensions: new Dictionary<string, object?> { ["code"] = disabled.Code });
+                    extensions: DomainExtensions(disabled));
 
             // The file store's 503 (issue #346 §9): a degraded volume usually recovers within a probe interval,
             // so the client is told when to try again.
@@ -132,12 +132,20 @@ public static class GlobalExceptionHandler
     {
         var errors = domain.Errors;
 
-        if (domain.Code is null && errors is null)
+        if (domain.Code is null && errors is null && domain.Extensions is null)
         {
             return null;
         }
 
         var extensions = new Dictionary<string, object?>();
+        if (domain.Extensions is { } extra)
+        {
+            foreach (var (key, value) in extra)
+            {
+                extensions[key] = value;
+            }
+        }
+
         if (domain.Code is { } code)
         {
             extensions["code"] = code;

@@ -12,7 +12,7 @@ namespace Odyssey.Core.Finance;
 /// </summary>
 public abstract class FeatureDisabledException : DomainException
 {
-    public const string FeatureCode = "feature_disabled";
+    public const string FeatureCode = Odyssey.Dtos.Finance.FileAnalysisCodes.FeatureDisabled;
 
     public override int StatusCode => (int)HttpStatusCode.ServiceUnavailable;
 

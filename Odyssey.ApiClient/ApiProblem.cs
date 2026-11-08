@@ -113,7 +113,7 @@ public static class ApiProblemExtensions
     internal static JsonSerializerOptions SerializerOptions => Options;
 
     /// <summary>The <c>code</c> a match refused because the provider settings moved since analyze carries (issue #433).</summary>
-    public const string FileAnalysisDestinationChangedCode = "file_analysis_destination_changed";
+    public const string FileAnalysisDestinationChangedCode = Odyssey.Dtos.Finance.FileAnalysisCodes.MatchDestinationChanged;
 
     /// <summary>
     /// Whether this is the match refusal for a destination or disclosure that changed after the analysis

@@ -693,6 +693,13 @@ next one going ahead, runs never overlapping. Five rules:
   them in the client.
   `api` and `worker` must get identical `FileStorage__Volumes__*`/`__Bindings__*` and mounts in both
   compose files and the AppHost; `FileStorageDeploymentParityTests` enforces it.
+- **Statement extraction is a queue, not a request** (issue #444). `POST …/analyze` only enqueues (`202` +
+  `Location`); `FileAnalysisQueueJob` claims one job per tick per process, re-checks requester, file, uncached
+  settings, destination, disclosure, template hash, credential and the kill switch (last) **before** it stamps
+  `TransferStartedAt` and sends, and never re-sends: a lost lease is `Failed / interrupted`, an unclaimed row
+  `Failed / not_started`. `DocumentSent` is derived from that stamp alone. The sweep also runs inline in the API
+  for the one file or job a request touches, and under `Testing` the API runs the job inline. It has no manual
+  run (`ManualRunSupported: false` → `409 job-run.manual-run-unsupported`). Match and import stay synchronous.
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's
   `IMemoryCache`, not the worker's, so a changed value applies to jobs on the next read after the 30 s TTL.
   A setting that must bind on the very next job run is read uncached, as `FileAnalysisEnabled` is.
@@ -1131,8 +1138,10 @@ either/or with `ChildContent`.
 Some things deliberately stay in deploy-time config, and the reasons are recorded in issue #421's
 Non-Goals so they are not re-litigated: connection strings and secrets; `RateLimiting:*` (the
 partitioner is synchronous and caches its limiter per partition key, so a changed limit never reaches a
-live partition); and `FileAnalysis:PromptVersion`/`PromptTemplatePath` (the prompt template is a deployed file, and a version
-string that can drift from the file it names is worse than one that cannot). `Map:*` (issue #370) stays too: the
+live partition). `FileAnalysis:PromptVersion`/`PromptTemplatePath` were on that list and are now **gone from
+configuration altogether** (issue #444): the template is an embedded resource in `Odyssey.Core`, its version a
+`const` beside it, and every job is stamped with the template's SHA-256 — a version string that can drift from
+the file it names was the worry, and a hash cannot drift. `Map:*` (issue #370) stays too: the
 browser can only reach a tile host the client container's CSP allows, and nginx renders that CSP from
 `MAP_ALLOWED_ORIGINS` at container start, so an admin-editable style URL would either be silently blocked
 or force a CSP wide enough to defeat it. `FileAnalysis:Model` was
@@ -1153,7 +1162,9 @@ Issue #434 adds one more of the same class:
 `FileAnalysis:TimeoutSeconds`, consumed once at startup inside `.AddStandardResilienceHandler()`, so a
 runtime value could never reach a live pipeline — and worse than inert, since the options validator
 rejects the handler unless `SamplingDuration >= 2 x AttemptTimeout`. Note the contrast with
-`FileAnalysis:Match:TimeoutSeconds`, which *is* per-call and *did* move.
+`FileAnalysis:Match:TimeoutSeconds`, which *is* per-call and *did* move. Since issue #444 it is read by
+**both** hosts through the shared `AddFileAnalysis` registration and bounded `[Range(10, 140)]` with
+`ValidateOnStart`, because it also sizes the queue's lease; `WorkerHostTests` pins the two shipped values equal.
 
 **Issue #8 moved the last four `Email:*` values and left the section empty.** `Email:SmtpHost`,
 `SmtpPort`, `UseStartTls` and `ClientBaseUrl` were the strongest entries on that Non-Goal list, and

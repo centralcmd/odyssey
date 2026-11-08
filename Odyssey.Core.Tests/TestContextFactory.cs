@@ -92,6 +92,14 @@ public static class TestContextFactory
     public static Odyssey.Core.Finance.IContactLookup ContactLookup(OdysseyContext journal) =>
         new Odyssey.Core.Journal.ContactLookup(journal);
 
+    /// <summary>
+    /// A second context over the SAME in-memory store as <paramref name="context"/> — another replica's view,
+    /// for the queue's concurrency tests (issue #444).
+    /// </summary>
+    public static OdysseyContext Reopen(OdysseyContext context) =>
+        new((DbContextOptions<OdysseyContext>)Microsoft.EntityFrameworkCore.Infrastructure.AccessorExtensions
+            .GetService<Microsoft.EntityFrameworkCore.Infrastructure.IDbContextOptions>(context));
+
     public static OdysseyContext Create()
     {
         var options = new DbContextOptionsBuilder<OdysseyContext>()

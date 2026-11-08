@@ -125,6 +125,13 @@ public interface IFileAnalysisSettingsLookup
     Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// The same snapshot, read fresh from the store and never from the cache (issue #444 §3 step 4.3):
+    /// the worker compares a job's consent stamps against this immediately before a transfer, because a
+    /// settings save evicts only the API process's cache.
+    /// </summary>
+    Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// The kill switch, read <strong>live on every call</strong> — never cached, and deliberately not a
     /// member of <see cref="FileAnalysisSettings"/> so no caller can consume a cached copy by accident
     /// (issue #439 §5.1).

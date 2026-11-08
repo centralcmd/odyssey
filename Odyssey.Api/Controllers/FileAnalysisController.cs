@@ -21,6 +21,9 @@ namespace Odyssey.Api.Controllers;
 [Route("api/file-analysis")]
 public sealed class FileAnalysisController : ControllerBase
 {
+    /// <summary>The advisory poll interval a non-terminal job read carries (issue #444 §5.2).</summary>
+    private const string PollIntervalSeconds = "2";
+
     private readonly ILogger<FileAnalysisController> logger;
     private readonly FileAnalysisService fileAnalysisService;
     private readonly UserManager<ApplicationUser> userManager;
@@ -129,18 +132,27 @@ public sealed class FileAnalysisController : ControllerBase
     [Authorize(Policy = PermissionClaims.FileAnalysisRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingFileAnalysisJob))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get the status and candidate transactions for an analysis job.",
-        Description = "Returns the job metadata and all extracted candidate transactions.")]
+        Description = "The polling endpoint (issue #444): while the job is Queued or Running the response carries "
+            + "Retry-After: 2; candidates arrive with Completed. Readable while analysis is switched off.")]
     public async Task<IActionResult> GetJob(
         [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
         Guid analysisJobId, CancellationToken cancellationToken = default)
     {
         var job = await fileAnalysisService.GetJobAsync(analysisJobId, cancellationToken);
+
+        // The read can fail a stale job inline (a write under a read claim, deliberately), so no cache may keep an
+        // answer: every poll must see the job as it is now.
+        Response.Headers.CacheControl = "no-store";
         if (job is null)
             return this.NotFoundProblem($"Analysis job {analysisJobId} not found.");
+
+        // Advisory polling interval while the job can still change.
+        if (job.Status is Odyssey.Dtos.Finance.FileAnalysisJobStatus.New or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Queued
+            or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Running)
+            Response.Headers.RetryAfter = PollIntervalSeconds;
         return Ok(job);
     }
 

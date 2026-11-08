@@ -6,6 +6,7 @@ using Odyssey.Core.Configuration;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Jobs;
 using Odyssey.Core.Journal.Thumbnails;
+using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
@@ -54,6 +55,11 @@ public static class WorkerHost
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();
+        // AI file analysis (issue #444): extraction runs here, never in the API. The registration is shared with the
+        // API (one redirect, credential and retry posture); the job re-checks each consent before sending, one job per
+        // process at a time. This container therefore needs egress to the provider host (docs/deployment.md).
+        services.AddFileAnalysis(builder.Configuration);
+        services.AddPeriodicJob<FileAnalysisQueueJob>();
         // The shared run log's upkeep (issue #409 §3.4, §3.6): the stale-run sweep every 5 minutes, the retention
         // prune once an hour. Infrastructure, not a catalogue job: it records no runs of its own.
         services.AddJobRunRecording();

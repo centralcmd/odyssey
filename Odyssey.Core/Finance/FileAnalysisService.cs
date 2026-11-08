@@ -28,6 +28,8 @@ public class FileAnalysisService
     private readonly IFileAnalysisSettingsLookup settingsLookup;
     private readonly ILogger<FileAnalysisService> logger;
     private readonly TimeProvider timeProvider;
+    private readonly FileAnalysisJobQueue queue;
+    private readonly IFileAnalysisPromptTemplate promptTemplate;
 
     public FileAnalysisService(
         OdysseyContext context,
@@ -36,8 +38,12 @@ public class FileAnalysisService
         IOptions<FileAnalysisOptions> options,
         IFileAnalysisSettingsLookup settingsLookup,
         ILogger<FileAnalysisService> logger,
+        FileAnalysisJobQueue queue,
+        IFileAnalysisPromptTemplate promptTemplate,
         TimeProvider? timeProvider = null)
     {
+        this.queue = queue;
+        this.promptTemplate = promptTemplate;
         this.context = context;
         this.provider = provider;
         this.contactLookup = contactLookup;
@@ -47,6 +53,11 @@ public class FileAnalysisService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
+    /// <summary>
+    /// Validates, records the consent and ENQUEUES an extraction (issue #444): the job is saved
+    /// <c>Queued</c> with every consent stamp, and nothing is sent here. <c>Odyssey.Worker</c> claims it,
+    /// re-checks the consent from an uncached settings read and only then transfers the document.
+    /// </summary>
     public async Task<AnalyzeFileResponse> AnalyzeAsync(
         Guid accountId,
         Guid fileId,
@@ -56,11 +67,9 @@ public class FileAnalysisService
     {
         await EnsureEnabledAsync(cancellationToken);
 
-        // Find the AccountFile joining this account to this file
+        // The metadata only: the bytes are the worker's to read, so the request stays fast whatever the size.
         var accountFile = await context.AccountFiles
             .Include(af => af.FileMetadata)
-                .ThenInclude(fm => fm!.FileBlob)
-            .Include(af => af.Account)
             .FirstOrDefaultAsync(
                 af => af.AccountId == accountId && af.FileMetadataId == fileId,
                 cancellationToken)
@@ -69,24 +78,20 @@ public class FileAnalysisService
         if (accountFile.FileType != Context.AccountFileType.Statement)
             throw new DomainValidationException("Only files of type Statement can be analyzed.");
 
+        var fileMetadata = accountFile.FileMetadata
+            ?? throw new InvalidOperationException("File metadata could not be loaded.");
+
+        // The analysis ceiling (issue #444 v4): the upload cap cannot bound the worker's memory, this does.
+        if (fileMetadata.SizeBytes > FileAnalysisJobTiming.MaxAnalysisFileBytes)
+            throw new FileAnalysisTooLargeException(FileAnalysisJobTiming.MaxAnalysisFileBytes);
+
         // Consent gate — analysis sends the complete document to a third-party AI processor, so a
         // per-document consent is a hard precondition (GDPR Art. 6(1)(a)), not a UI affordance. The
-        // check lives here, right before the transfer, so no caller (UI, Swagger, script) can ship a
-        // statement without it. The affirmed text is captured verbatim on the job for the audit log.
+        // affirmed text is captured verbatim on the job for the audit log.
         if (consent?.ConsentAcknowledged != true)
             throw new DomainValidationException("Consent is required before sending this document to the external AI provider.");
 
-        var fileMetadata = accountFile.FileMetadata
-            ?? throw new InvalidOperationException("File metadata could not be loaded.");
-        var fileBlob = fileMetadata.FileBlob
-            ?? throw new InvalidOperationException("File content could not be loaded.");
-
-        var promptTemplate = await LoadPromptTemplateAsync(cancellationToken);
-
-        // One snapshot per analysis, read once: the values must not shift between the job's stamped
-        // lawful basis, the future-date filter and the applied threshold within a single run. Since
-        // issue #439 the model, the destination, the processor and the region all come from this same
-        // snapshot, which is what lets the four job stamps below describe one coherent moment.
+        // One snapshot, read once: every stamp below describes one coherent moment.
         var settings = await settingsLookup.GetAsync(cancellationToken);
 
         // Issue #433: a failed settings read knows nothing, including the guidance flags the disclosure
@@ -100,23 +105,44 @@ public class FileAnalysisService
         var target = RequireTarget(settings);
 
         // The consent the user affirmed is bound to the disclosure they were shown (issue #439 §5.3c).
-        // Recomputed from THIS snapshot — the same one the transfer uses — so the comparison cannot be
-        // defeated by the values shifting between the check and the send. A mismatch (or a missing
-        // echo) is a 409 here, before any job row exists and before any provider request is made.
+        // A mismatch (or a missing echo) is a 409 here, before any job row exists.
         if (!FileAnalysisDisclosureVersion.Matches(settings, consent.DisclosureVersion))
             throw new FileAnalysisDisclosureChangedException();
+
+        // A stale open job must not wedge the file when no worker is running (issue #444 §3 step 1), so this
+        // file's expired rows are failed inline before the one-open-job check.
+        await queue.SweepAsync(accountFileId: accountFile.Id, cancellationToken: cancellationToken);
+
+        // One open job per file. Check-then-insert, so two clients posting within one round-trip can both
+        // pass it — accepted (product decision): each is separately consented and recorded, and the rate
+        // limiter bounds it. The client closes the double-click case by refusing a second click.
+        var open = await context.FileAnalysisJobs.AsNoTracking()
+            .Where(j => j.AccountFileId == accountFile.Id
+                && (j.Status == ContextJobStatus.Queued || j.Status == ContextJobStatus.Running))
+            .OrderByDescending(j => j.QueuedAt)
+            .Select(j => (Guid?)j.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (open is { } openId)
+            throw new FileAnalysisInProgressException(openId);
 
         var job = new FileAnalysisJob
         {
             AccountFileId = accountFile.Id,
-            Status = ContextJobStatus.Running,
-            StartedAt = timeProvider.GetUtcNow().UtcDateTime,
+            // Queued (issue #444): the worker claims it, re-checks this consent from an uncached read and
+            // only then sends. StartedAt is set when the transfer starts, never here.
+            Status = ContextJobStatus.Queued,
+            QueuedAt = timeProvider.GetUtcNow().UtcDateTime,
             AnalyzerProvider = ContextAnalyzerProvider.Claude,
             // From the resolved target, not from options: the model is admin-editable now, so the value
             // stamped here has to be the value the request below is BUILT with, or the audit trail and
             // the transfer describe different runs.
             AnalyzerModel = Truncate(target.Model, 256),
-            PromptVersion = options.PromptVersion,
+            PromptVersion = promptTemplate.Version,
+            // What the worker must hold to send (issue #444 §3 step 4): the template it would send, the
+            // bytes the user consented to, and the destination's full origin (scheme, host and port).
+            PromptTemplateHash = promptTemplate.Sha256,
+            FileSha256 = Truncate(fileMetadata.Sha256Hash, 64),
+            AnalyzerBaseUrlOrigin = Truncate(OriginOf(target.BaseUrl), 256),
             RequestedByUserId = requestedByUserId,
             ConsentRecorded = true,
             ConsentMethod = Truncate(string.IsNullOrWhiteSpace(consent.ConsentMethod) ? "Per-document checkbox" : consent.ConsentMethod, 128),
@@ -152,89 +178,51 @@ public class FileAnalysisService
         context.FileAnalysisJobs.Add(job);
         await context.SaveChangesAsync(cancellationToken);
 
-        try
-        {
-            var accountCurrency = accountFile.Account?.CurrencyCode ?? "USD";
-
-            var extracted = await provider.ExtractTransactionsAsync(
-                fileBlob.Content,
-                fileMetadata.ContentType,
-                accountCurrency,
-                promptTemplate,
-                target,
-                settings.MaxTokens,
-                settings.ExtractionPromptAddition,
-                cancellationToken);
-
-            var maxFutureDate = timeProvider.GetUtcNow().UtcDateTime.AddDays(settings.MaxFutureTransactionDays);
-
-            var candidates = extracted
-                .Where(t => t.TransactionDate <= maxFutureDate)
-                .Select(t => new FileAnalysisCandidateTransaction
-                {
-                    AnalysisJobId = job.Id,
-                    TransactionDate = t.TransactionDate,
-                    BookingDate = t.BookingDate,
-                    Description = Truncate(t.Description, 1024) ?? string.Empty,
-                    Merchant = Truncate(t.Merchant, 512),
-                    CategoryHint = Truncate(t.CategoryHint, 256),
-                    Amount = t.Amount,
-                    Currency = NormalizeCurrency(t.Currency, accountCurrency),
-                    ExternalId = Truncate(t.ExternalId, 256),
-                    ReferenceNumber = Truncate(t.ReferenceNumber, 256),
-                    LlmConfidence = t.LlmConfidence.HasValue
-                        ? Math.Clamp(t.LlmConfidence.Value, 0m, 1m)
-                        : null,
-                    LlmModel = Truncate(t.LlmModel, 256),
-                    LlmProviderResponseId = Truncate(t.LlmProviderResponseId, 256),
-                    LlmRawJson = t.LlmRawJson,
-                    ReviewStatus = ContextReviewStatus.Pending,
-                })
-                .ToList();
-
-            context.FileAnalysisCandidateTransactions.AddRange(candidates);
-
-            job.Status = ContextJobStatus.Completed;
-            job.CompletedAt = timeProvider.GetUtcNow().UtcDateTime;
-            job.FileTypeDetected = fileMetadata.ContentType;
-
-            await context.SaveChangesAsync(cancellationToken);
-
-            logger.LogInformation("Analysis job {JobId} completed with {Count} candidates.", job.Id, candidates.Count);
-        }
-        catch (Exception ex)
-        {
-            // The raw exception (incl. any upstream provider body) is logged for diagnostics, but the
-            // persisted FailureMessage is surfaced in the admin audit log, so record a CURATED reason
-            // rather than ex.Message — never leak the provider body or internal details (mirrors the
-            // match path above).
-            logger.LogError(ex, "Analysis job {JobId} failed.", job.Id);
-            job.Status = ContextJobStatus.Failed;
-            job.CompletedAt = timeProvider.GetUtcNow().UtcDateTime;
-            // Three curated outcomes, most specific first. The credential case is separated from the
-            // generic provider error (issue #445 AC 3) because only one of them is the administrator's
-            // to fix, and a job that failed because this deployment has no usable key must not read as
-            // "the provider misbehaved". Still curated, never ex.Message: FailureMessage is surfaced in
-            // the admin audit log.
-            (job.FailureCode, job.FailureMessage) = ex switch
-            {
-                FileAnalysisCredentialException =>
-                    ("provider_credential_error",
-                        "The analysis provider credential is missing or unreadable on this server."),
-                FileAnalysisProviderException =>
-                    ("provider_error", "The analysis provider returned an error."),
-                _ => ("internal_error", "An internal error occurred during analysis."),
-            };
-            await context.SaveChangesAsync(cancellationToken);
-            throw;
-        }
-
+        logger.LogInformation("Analysis job {JobId} queued.", job.Id);
         return new AnalyzeFileResponse(job.Id);
     }
 
+    /// <summary>
+    /// Runs a just-queued job in THIS process — only for a host with no worker (the <c>Testing</c>
+    /// environment, the <c>ExchangeRateSyncJob</c> run-now precedent). The caller decides that by environment
+    /// name alone, never by a setting.
+    /// </summary>
+    public async Task RunInlineAsync(Guid jobId, FileAnalysisExtractionRunner runner, CancellationToken cancellationToken)
+    {
+        if (await queue.TryClaimAsync(jobId, cancellationToken))
+        {
+            await runner.RunAsync(jobId, cancellationToken);
+        }
+    }
+
+    /// <summary>A mapped candidate row (§3 step 6), shared with the worker's runner.</summary>
+    internal static FileAnalysisCandidateTransaction ToCandidate(Guid jobId, ExtractedTransaction t, string accountCurrency) => new()
+    {
+        AnalysisJobId = jobId,
+        TransactionDate = t.TransactionDate,
+        BookingDate = t.BookingDate,
+        Description = Truncate(t.Description, 1024) ?? string.Empty,
+        Merchant = Truncate(t.Merchant, 512),
+        CategoryHint = Truncate(t.CategoryHint, 256),
+        Amount = t.Amount,
+        Currency = NormalizeCurrency(t.Currency, accountCurrency),
+        ExternalId = Truncate(t.ExternalId, 256),
+        ReferenceNumber = Truncate(t.ReferenceNumber, 256),
+        LlmConfidence = t.LlmConfidence.HasValue
+            ? Math.Clamp(t.LlmConfidence.Value, 0m, 1m)
+            : null,
+        LlmModel = Truncate(t.LlmModel, 256),
+        LlmProviderResponseId = Truncate(t.LlmProviderResponseId, 256),
+        LlmRawJson = t.LlmRawJson,
+        ReviewStatus = ContextReviewStatus.Pending,
+    };
+
     public async Task<ExistingFileAnalysisJob?> GetJobAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
-        await EnsureEnabledAsync(cancellationToken);
+        // No enabled-gate since issue #444: the job is a historical record, like the audit log — and a client
+        // polling a job the kill switch cancelled must be able to read that it was cancelled. The inline sweep
+        // fails this one job if it went stale, so a missing worker never leaves a client polling for ever.
+        await queue.SweepAsync(jobId: jobId, cancellationToken: cancellationToken);
 
         var job = await context.FileAnalysisJobs
             .Include(j => j.CandidateTransactions)
@@ -270,20 +258,17 @@ public class FileAnalysisService
     }
 
     /// <summary>
-    /// The latest <em>resumable</em> analysis job per file for an account — the single account-scoped
-    /// read that lets the Files surface offer "Resume review" in one request (no N+1). A job is
-    /// resumable when extraction <see cref="ContextJobStatus.Completed"/> and at least one candidate is
-    /// still <see cref="ContextReviewStatus.Pending"/>; failed/running/all-reviewed jobs are excluded.
-    /// When several qualify for a file, the latest by <c>StartedAt</c> (tie-broken by <c>Id</c>) wins.
-    /// Files with no resumable job are uniformly absent — never an existence oracle. Counts are
-    /// SQL-projected so no candidate free-text is materialised.
+    /// Each file's latest analysis state for an account (issue #444 §5.3) — the one account-scoped read the
+    /// Files surface drives its chips, its menu and the dialog's start mode from. See
+    /// <see cref="ResumableAnalysisSummary"/> for the precedence; counts are SQL-projected, so no candidate
+    /// free-text is materialised.
     /// </summary>
     public async Task<IReadOnlyList<ResumableAnalysisSummary>> GetResumableJobsAsync(
         Guid accountId,
         CancellationToken cancellationToken = default)
     {
-        // 503 before any account/file lookup — uniform disabled behaviour, checked first.
-        await EnsureEnabledAsync(cancellationToken);
+        // No enabled-gate since issue #444: these are reads of existing jobs, and View progress / View result
+        // / Resume review must keep working while analysis is switched off.
 
         // 404 only when the account itself doesn't exist (an empty list otherwise).
         var accountExists = await context.Accounts
@@ -291,37 +276,67 @@ public class FileAnalysisService
         if (!accountExists)
             throw new DomainNotFoundException($"Account {accountId} not found.");
 
-        // One round-trip: project every Completed job for the account to its file id, started-at and
-        // SQL-computed counts (COUNT + conditional COUNT) — never Include-then-count, which would pull
-        // all candidate free-text into memory. The pending filter keeps only jobs with work left.
+        // One round-trip: every job for the account, projected to its file id, timestamps and SQL-computed
+        // counts (COUNT + conditional COUNT) — never Include-then-count, which would pull candidate free-text.
         var jobs = await context.FileAnalysisJobs
             .AsNoTracking()
-            .Where(j => j.AccountFile!.AccountId == accountId
-                && j.Status == ContextJobStatus.Completed)
+            .Where(j => j.AccountFile!.AccountId == accountId)
             .Select(j => new
             {
                 FileId = j.AccountFile!.FileMetadataId,
                 JobId = j.Id,
+                j.Status,
                 j.StartedAt,
+                j.QueuedAt,
+                j.TransferStartedAt,
+                j.CompletedAt,
+                j.FailureCode,
                 CandidateCount = j.CandidateTransactions.Count,
                 PendingCount = j.CandidateTransactions.Count(c => c.ReviewStatus == ContextReviewStatus.Pending),
             })
-            .Where(x => x.PendingCount > 0)
             .ToListAsync(cancellationToken);
 
-        // Reduce to the latest resumable job per file — deterministic (StartedAt desc, then Id desc)
-        // so repeated calls are stable.
-        return jobs
-            .GroupBy(x => x.FileId)
-            .Select(g => g.OrderByDescending(x => x.StartedAt).ThenByDescending(x => x.JobId).First())
-            .Select(x => new ResumableAnalysisSummary(
-                FileId: x.FileId,
-                AnalysisJobId: x.JobId,
-                Status: DtoJobStatus.Completed,
-                StartedAt: x.StartedAt,
-                CandidateCount: x.CandidateCount,
-                PendingCount: x.PendingCount))
-            .ToList();
+        // Newest first by request time (QueuedAt, else the legacy StartedAt), tie-broken by id: deterministic.
+        static DateTime At(DateTime? queued, DateTime? started) => queued ?? started ?? DateTime.MinValue;
+
+        var summaries = new List<ResumableAnalysisSummary>();
+        foreach (var file in jobs.GroupBy(x => x.FileId))
+        {
+            var ordered = file.OrderByDescending(x => At(x.QueuedAt, x.StartedAt)).ThenByDescending(x => x.JobId).ToList();
+            var open = ordered.FirstOrDefault(x => x.Status is ContextJobStatus.Queued or ContextJobStatus.Running);
+            var resumable = ordered.FirstOrDefault(x => x.Status == ContextJobStatus.Completed && x.PendingCount > 0);
+            var newest = ordered[0];
+            var newestFailed = newest.Status is ContextJobStatus.Failed or ContextJobStatus.Cancelled ? newest : null;
+
+            var primary = open ?? resumable ?? newestFailed;
+            if (primary is null)
+            {
+                continue; // never-analysed (no rows) or fully reviewed: uniformly absent
+            }
+
+            var latestFailure = newestFailed is not null && newestFailed.JobId != primary.JobId
+                ? new LatestAnalysisFailure(
+                    AnalysisJobId: newestFailed.JobId,
+                    Status: MapJobStatus(newestFailed.Status),
+                    FailureCode: newestFailed.FailureCode,
+                    DocumentSent: FileAnalysisTerminal.DocumentSent(newestFailed.Status, newestFailed.QueuedAt, newestFailed.TransferStartedAt),
+                    At: newestFailed.CompletedAt ?? At(newestFailed.QueuedAt, newestFailed.StartedAt))
+                : null;
+            var completed = primary.Status == ContextJobStatus.Completed;
+
+            summaries.Add(new ResumableAnalysisSummary(
+                FileId: file.Key,
+                AnalysisJobId: primary.JobId,
+                Status: MapJobStatus(primary.Status),
+                StartedAt: primary.QueuedAt is null ? primary.StartedAt : primary.TransferStartedAt,
+                CandidateCount: completed ? primary.CandidateCount : 0,
+                PendingCount: completed ? primary.PendingCount : 0,
+                DocumentSent: FileAnalysisTerminal.DocumentSent(primary.Status, primary.QueuedAt, primary.TransferStartedAt),
+                FailureCode: primary.FailureCode,
+                LatestFailure: latestFailure));
+        }
+
+        return summaries;
     }
 
     /// <summary>
@@ -342,7 +357,8 @@ public class FileAnalysisService
             .Include(j => j.AccountFile)
                 .ThenInclude(af => af!.Account)
             .Include(j => j.CandidateTransactions)
-            .OrderByDescending(j => j.StartedAt ?? DateTime.MinValue)
+            // COALESCE(QueuedAt, StartedAt): a queued or never-started job sorts by its request time.
+            .OrderByDescending(j => j.QueuedAt ?? j.StartedAt ?? DateTime.MinValue)
             .ToListAsync(cancellationToken);
 
         return jobs.Select(MapAuditEntry).ToList();
@@ -566,7 +582,7 @@ public class FileAnalysisService
             job.TagDescriptionCount = vocabulary.Tags.Count(t => t.Description is not null);
             job.VocabularyReduction = vocabulary.Reduction;
             job.MatchPromptAdditionInForce = extended ? Truncate(matchSettings.MatchPromptAddition, 4000) : null;
-            job.MatchPromptVersion = extended ? Truncate(options.PromptVersion, 32) : LegacyMatchPromptVersion;
+            job.MatchPromptVersion = extended ? Truncate(promptTemplate.Version, 32) : LegacyMatchPromptVersion;
             await context.SaveChangesAsync(cancellationToken);
 
             var candidates = job.CandidateTransactions.ToList();
@@ -939,9 +955,18 @@ public class FileAnalysisService
     /// only — the stored value is already validated to carry no path, query or <c>userinfo</c>, and
     /// this keeps that true of the stamp even if that ever changes.
     /// </summary>
-    private static string? HostOf(string baseUrl) =>
+    internal static string? HostOf(string baseUrl) =>
         Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host)
             ? uri.Host
+            : null;
+
+    /// <summary>
+    /// The destination's scheme, host and port (issue #444 §3 step 4.4) — what the worker compares before
+    /// sending, so a port or scheme change is a refusal too. Never the path, query or <c>userinfo</c>.
+    /// </summary>
+    internal static string? OriginOf(string baseUrl) =>
+        Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) && !string.IsNullOrEmpty(uri.Host)
+            ? $"{uri.Scheme}://{uri.Host}:{uri.Port}"
             : null;
 
     /// <summary>
@@ -1013,18 +1038,6 @@ public class FileAnalysisService
         await entry.ReloadAsync(cancellationToken);
     }
 
-    private async Task<string> LoadPromptTemplateAsync(CancellationToken cancellationToken = default)
-    {
-        var path = options.PromptTemplatePath;
-        if (!Path.IsPathRooted(path))
-            path = Path.Combine(AppContext.BaseDirectory, path);
-
-        if (!File.Exists(path))
-            throw new InvalidOperationException($"Prompt template not found at '{path}'.");
-
-        return await File.ReadAllTextAsync(path);
-    }
-
     private static string NormalizeCurrency(string? currency, string fallback)
     {
         if (string.IsNullOrWhiteSpace(currency))
@@ -1032,7 +1045,7 @@ public class FileAnalysisService
         return currency.Trim().ToUpperInvariant();
     }
 
-    private static string? Truncate(string? value, int maxLength) =>
+    internal static string? Truncate(string? value, int maxLength) =>
         value is null ? null : value.Length > maxLength ? value[..maxLength] : value;
 
     private static ExistingFileAnalysisJob MapJob(
@@ -1061,7 +1074,11 @@ public class FileAnalysisService
         TagCount: job.TagCount,
         AliasCount: job.AliasCount,
         TagDescriptionCount: job.TagDescriptionCount,
-        VocabularyReduction: job.VocabularyReduction
+        VocabularyReduction: job.VocabularyReduction,
+        QueuedAt: job.QueuedAt,
+        TransferStartedAt: job.TransferStartedAt,
+        DocumentSent: FileAnalysisTerminal.DocumentSent(job),
+        ProcessorInForce: job.ProcessorInForce
     );
 
     private static FileAnalysisAuditEntry MapAuditEntry(FileAnalysisJob job)
@@ -1074,7 +1091,8 @@ public class FileAnalysisService
 
         return new FileAnalysisAuditEntry(
             Id: job.Id,
-            At: job.StartedAt,
+            // A job that never transferred is dated by its request (issue #444 §5.4).
+            At: job.TransferStartedAt ?? job.QueuedAt ?? job.StartedAt,
             RequestedByUserId: job.RequestedByUserId,
             User: null, // enriched by the API layer from RequestedByUserId
             File: file is null ? null : new FileAnalysisAuditFile(file.Id, file.FileName, job.AccountFile!.FileType.ToString()),
@@ -1109,7 +1127,10 @@ public class FileAnalysisService
             AliasCount: job.AliasCount,
             TagCount: job.TagCount,
             TagDescriptionCount: job.TagDescriptionCount,
-            VocabularyReduction: job.VocabularyReduction);
+            VocabularyReduction: job.VocabularyReduction,
+            QueuedAt: job.QueuedAt,
+            TransferStartedAt: job.TransferStartedAt,
+            DocumentSent: FileAnalysisTerminal.DocumentSent(job));
     }
 
     private static ExistingFileAnalysisCandidateTransaction MapCandidate(

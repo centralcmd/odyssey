@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Odyssey.Dtos;
 
 namespace Odyssey.Core.Finance;
@@ -30,9 +31,17 @@ public class FileAnalysisOptions
     // .AddStandardResilienceHandler(), so a runtime value could never reach a live pipeline — and worse
     // than inert, since the options validator rejects the handler unless SamplingDuration >= 2x
     // AttemptTimeout. Contrast Match.TimeoutSeconds below, which IS per-call and did move.
+    //
+    // Bounded (issue #444 v4): the worker runs one job per tick inside RunOnceAsync, so the whole provider
+    // budget (2 × this, see FileAnalysisJobTiming) plus the blob load must stay under the background-jobs
+    // page's 300 s not-ticking threshold. ValidateOnStart in both hosts makes an out-of-range value a
+    // startup failure rather than a silently stalled worker.
+    [Range(FileAnalysisJobTiming.MinTimeoutSeconds, FileAnalysisJobTiming.MaxTimeoutSeconds)]
     public int TimeoutSeconds { get; set; } = 120;
-    public string PromptVersion { get; set; } = "1.0";
-    public string PromptTemplatePath { get; set; } = "Resources/Prompts/transaction-extraction.txt";
+    // PromptVersion and PromptTemplatePath are GONE (issue #444): the template is an embedded resource in
+    // Odyssey.Core with its version a const beside it (EmbeddedFileAnalysisPromptTemplate), so the API that
+    // stamps a job and the worker that sends it cannot hold different prompts. Deleted rather than kept
+    // as documentation of record, because a surviving property would read like a working override.
     // Moved to the system-settings store (issue #434 key 1); read through IFileAnalysisSettingsLookup
     // and passed to the provider as a parameter, so the value a request was built with is the value
     // stamped on the job.

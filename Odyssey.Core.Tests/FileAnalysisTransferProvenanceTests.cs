@@ -36,7 +36,7 @@ public class FileAnalysisTransferProvenanceTests
         var provider = FakeProvider.Returning(Extracted());
         var service = CreateService(context, provider);
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         Assert.Equal("claude-opus-5", provider.LastTarget!.Model);
         var job = await context.FileAnalysisJobs.SingleAsync();
@@ -57,7 +57,7 @@ public class FileAnalysisTransferProvenanceTests
         var provider = FakeProvider.Returning(Extracted());
         var service = CreateService(context, provider);
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         Assert.Equal("https://gateway.internal", provider.LastTarget!.BaseUrl);
 
@@ -87,7 +87,7 @@ public class FileAnalysisTransferProvenanceTests
         });
         var service = CreateService(context, provider);
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         Assert.Equal("claude-sonnet-5", provider.LastTarget!.Model);
         var job = await context.FileAnalysisJobs.SingleAsync();
@@ -113,7 +113,7 @@ public class FileAnalysisTransferProvenanceTests
         };
         var service = CreateService(context, FakeProvider.Returning(Extracted()));
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         settingsLookup.Settings = settingsLookup.Settings with
         {
@@ -157,7 +157,7 @@ public class FileAnalysisTransferProvenanceTests
         });
         var service = CreateService(context, provider);
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var job = await context.FileAnalysisJobs.SingleAsync();
         Assert.Equal("claude-opus-5", job.AnalyzerModel);
@@ -210,7 +210,7 @@ public class FileAnalysisTransferProvenanceTests
         };
         var service = CreateService(context, FakeProvider.Returning(Extracted()));
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var entry = Assert.Single(await service.GetAuditLogAsync());
         Assert.Equal("gateway.internal", entry.AnalyzerBaseUrlHost);
@@ -233,7 +233,7 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, provider);
 
         await Assert.ThrowsAsync<FileAnalysisDisclosureChangedException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent("a-version-from-before")));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent("a-version-from-before")));
 
         Assert.Empty(context.FileAnalysisJobs);
         Assert.Equal(0, provider.CallCount);
@@ -256,7 +256,7 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, provider);
 
         await Assert.ThrowsAsync<FileAnalysisDisclosureChangedException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", new AnalyzeFileRequest
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", new AnalyzeFileRequest
             {
                 ConsentAcknowledged = true,
                 ConsentText = "I consent.",
@@ -282,7 +282,7 @@ public class FileAnalysisTransferProvenanceTests
 
         var provider = FakeProvider.Returning(Extracted());
         await Assert.ThrowsAsync<FileAnalysisDisclosureChangedException>(() =>
-            CreateService(context, provider).AnalyzeAsync(accountId, fileId, "user-1", consent));
+            CreateService(context, provider).AnalyzeAndRunAsync(accountId, fileId, "user-1", consent));
 
         Assert.Equal(0, provider.CallCount);
     }
@@ -300,7 +300,7 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, FakeProvider.Returning(Extracted()));
 
         await Assert.ThrowsAsync<FileAnalysisDisabledException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent("stale")));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent("stale")));
     }
 
     [Fact]
@@ -313,7 +313,7 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, provider);
 
         await Assert.ThrowsAsync<FileAnalysisUnavailableException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent("stale")));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent("stale")));
 
         Assert.Empty(context.FileAnalysisJobs);
         Assert.Equal(0, provider.CallCount);
@@ -343,7 +343,7 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, provider);
 
         await Assert.ThrowsAsync<FileAnalysisUnavailableException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent()));
 
         Assert.Empty(context.FileAnalysisJobs);
         Assert.Equal(0, provider.CallCount);
@@ -362,7 +362,7 @@ public class FileAnalysisTransferProvenanceTests
         settingsLookup.Settings = settingsLookup.Settings with { IsDegraded = true };
         var provider = FakeProvider.Returning(Extracted());
 
-        await CreateService(context, provider).AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await CreateService(context, provider).AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         Assert.Equal(1, provider.CallCount);
         Assert.Single(context.FileAnalysisJobs);
@@ -383,10 +383,9 @@ public class FileAnalysisTransferProvenanceTests
         var service = CreateService(context, new FakeProvider(
             (_, _, _, _, _) => throw new FileAnalysisProviderException($"Claude API error 500: {hostile}")));
 
-        await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
-        var job = await context.FileAnalysisJobs.SingleAsync();
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal("provider_error", job.FailureCode);
         Assert.Equal("The analysis provider returned an error.", job.FailureMessage);
         Assert.DoesNotContain(hostile, job.FailureMessage!, StringComparison.Ordinal);
@@ -400,12 +399,8 @@ public class FileAnalysisTransferProvenanceTests
 
     private FileAnalysisService CreateService(OdysseyContext context, IFileAnalysisProvider provider)
     {
-        var promptPath = Path.Combine(Path.GetTempPath(), $"odyssey-prompt-{Guid.NewGuid():N}.txt");
-        File.WriteAllText(promptPath, "Extract transactions.");
-        return new FileAnalysisService(
-            context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(new FileAnalysisOptions { PromptTemplatePath = promptPath }),
-            settingsLookup, NullLogger<FileAnalysisService>.Instance);
+        return FileAnalysisTestHarness.Create(
+            context, provider, TestContextFactory.ContactLookup(journal), new FileAnalysisOptions(), settingsLookup);
     }
 
     /// <summary>The version the gate would have rendered, unless the test supplies its own.</summary>
@@ -442,7 +437,7 @@ public class FileAnalysisTransferProvenanceTests
             FileName = "statement.pdf",
             ContentType = "application/pdf",
             SizeBytes = 3,
-            Sha256Hash = "hash",
+            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             FileBlob = blob,
             UploadedAtUtc = DateTime.UtcNow,

@@ -111,13 +111,15 @@ public class BackgroundJobsApiTests
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
 
         Assert.Equal(
-            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill],
+            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
+                JobType.FileAnalysis],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
             Assert.Equal(JobHealth.NotTicking, job.Health);
             Assert.Equal(300, job.NotTickingAfterSeconds);
-            Assert.True(job.CanRunNow);
+            // The file-analysis queue has no manual run (issue #444): it only runs work a user consented to.
+            Assert.Equal(job.JobType != JobType.FileAnalysis, job.CanRunNow);
             Assert.True(job.CanReadDetail);
         });
         Assert.Null(overview.Jobs.Single(job => job.JobType == JobType.Weather).OverdueAfterSeconds);
