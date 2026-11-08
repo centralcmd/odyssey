@@ -38,7 +38,7 @@
                 <ul class="wx-effects" id="@EffectsId">
                     <li>every forecast fetched for it, and the daily summaries built from them;</li>
                     <li>its measured history and the MET stations it was matched to;</li>
-                    <li>every position it has used.</li>
+                    <li>every position it has used, and its history windows.</li>
                 </ul>
                 @* A null count (no locations.read) is never "0": the countless sentence says it instead. *@
                 @if (LinkedLocationCount is > 0 and var linked)
@@ -59,6 +59,7 @@
                     <li>the MET stations it was matched to, which are looked up again if historical data is turned back on.</li>
                 </ul>
                 <p class="wx-lede">The weather point, its settings@(Point.ForecastEnabled ? ", its forecast" : "") and its linked locations are kept. Backups follow the deployment’s own retention.</p>
+                <p class="wx-lede">History windows are kept. Remove them in Weather settings if you no longer want them.</p>
             }
             <OdsTextInputField Id="@FieldId" Label="@($"Type {Point.Name} to confirm")" Value="@_typed" ValueChanged="OnTyped"
                                Disabled="_running" AriaDescribedBy="@EffectsId" Error="@_nudge" Placeholder=""

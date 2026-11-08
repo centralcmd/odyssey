@@ -124,7 +124,7 @@
                     </div>
                     <ul class="wx-effects">
                         <li>The next forecast is fetched for the new position.</li>
-                        <li>Measured history continues from the station nearest the new position, from today (@WeatherVisuals.Date(DateOnly.FromDateTime(DateTime.Today))). Earlier days keep what was measured at the old one.</li>
+                        <li>Inside the history windows, measured days continue from the station nearest the new position, from today (@WeatherVisuals.Date(DateOnly.FromDateTime(DateTime.Today))). Earlier days keep what was measured at the old one, and a window that ended before today is not fetched again.</li>
                         @if (Changes.TimeZone)
                         {
                             <li>Days before today keep their own time zone, @Point.Site.TimeZoneId. From today, dates use @_tz.</li>
@@ -187,13 +187,37 @@
                            AriaLabelledBy="@($"{_uid}-hs-l")" AriaDescribedBy="@($"{_uid}-hs-h")" />
             </div>
 
+            @* Not rendered while history is off: the stored windows go back exactly as loaded. *@
             @if (_history)
             {
-                <OdsDateField Label="Keep measured history from" Value="_historyFrom" ValueChanged="@(v => { _historyFrom = v; _errors.Remove("historyFrom"); })"
-                              Min="HistoryFloor" Max="DateTime.Today"
-                              Placeholder="@(Creating ? WeatherVisuals.Date(DefaultFrom) : "Select date")"
-                              Help="@HistoryHelp" Error="@Err("historyFrom")" />
+                @switch (_windowsLoad)
+                {
+                    case WindowsLoad.Ready:
+                        <WeatherHistoryWindowsEditor Rows="_rows" OnChanged="OnWindowsChanged" RowErrors="_rowErrors"
+                                                     ListError="@(_submitted ? _listError : null)" OnAnnounce="SayInDialog" Uid="@_uid" />
+                        break;
+                    case WindowsLoad.Loading:
+                        <div class="wx-hw" aria-busy="true">
+                            <div class="wx-toggle-label">History windows</div>
+                            <OdsSkeleton Variant="OdsSkeletonVariant.Block" Class="wx-hw-skel" />
+                        </div>
+                        break;
+                    default:
+                        <div class="wx-alert-row">
+                            <OdsAlert Severity="Severity.Error">Couldn’t load this point’s history windows. Save stays off until they load.</OdsAlert>
+                            <OdsButton Variant="OdsButtonVariant.Outlined" Icon="refresh" OnClick="RetryWindowsAsync">Retry</OdsButton>
+                        </div>
+                        break;
+                }
             }
+
+            @* One persistent polite region, present from the first render; its text changes only with the answer. *@
+            <div role="status" class="wx-hw-shrink-region">
+                @if (_shrinkNote.Length > 0)
+                {
+                    <div class="wx-note"><OdsMIcon Name="info" Size="16" /><span>@_shrinkNote</span></div>
+                }
+            </div>
 
             @if (NothingToTurnOn)
             {
@@ -204,7 +228,7 @@
     <Footer>
         <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="CancelAsync">Cancel</OdsButton>
         <OdsButton Variant="OdsButtonVariant.Filled" Icon="@(Creating ? "add" : "save")" Loading="_saving"
-                   AriaDisabled="@(_saving || NothingToTurnOn || _stale || _purgeBlocked)" OnClick="SaveAsync">
+                   AriaDisabled="@(_saving || NothingToTurnOn || _stale || _purgeBlocked || WindowsBlocked)" OnClick="SaveAsync">
             @(Creating ? "Create weather point" : "Save")
         </OdsButton>
     </Footer>

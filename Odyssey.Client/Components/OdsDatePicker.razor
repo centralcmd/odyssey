@@ -74,11 +74,27 @@
     /// </summary>
     [Parameter] public string? AriaDescribedBy { get; set; }
 
+    /// <summary>
+    /// The inner input's id, so a host's <c>&lt;label for&gt;</c> and a focus-by-id reach the control itself rather than
+    /// MudDatePicker's wrapper. Generated when omitted.
+    /// </summary>
+    [Parameter] public string? InputId { get; set; }
+
+    /// <summary>Marks the inner input <c>aria-invalid</c>; MudDatePicker splats attributes onto its wrapper.</summary>
+    [Parameter] public bool AriaInvalid { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
     private MudDatePicker? _picker;
-    private readonly string _inputId = $"odc-dp-{Guid.NewGuid():N}";
+    private string _inputId = $"odc-dp-{Guid.NewGuid():N}";
+    private bool? _appliedInvalid;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(InputId))
+            _inputId = InputId;
+    }
 
     // The label applied to the inner input so far: re-applied whenever the parameter changes, not only on the
     // first render, so a label that follows state never goes stale.
@@ -105,6 +121,12 @@
             {
                 await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-describedby", DescribedBy);
                 _appliedDescribedBy = DescribedBy;
+            }
+
+            if (AriaInvalid != _appliedInvalid)
+            {
+                await Js.InvokeVoidAsync("odsSetAttr", _inputId, "aria-invalid", AriaInvalid ? "true" : null);
+                _appliedInvalid = AriaInvalid;
             }
         }
         catch { /* JS unavailable (e.g. prerender / teardown) */ }

@@ -335,3 +335,35 @@
   .wx-dialog .odc-cardsel { grid-template-columns: minmax(0, 1fr) !important; }
   .wx-picked-again { margin-left: 44px; }
 }
+
+/* ---- History windows (issues #436, #437; design system · ui_kits/web/weather.css, wx-hw / wx-hws) ----------------
+   The editor in New weather point / Weather settings, and the record's History windows section. Tokens only. */
+.wx-hw { display: flex; flex-direction: column; gap: 10px; }
+.wx-hw-head { display: flex; flex-direction: column; gap: 3px; }
+.wx-hw-head [tabindex="-1"]:focus { outline: none; }
+.wx-hw-head [tabindex="-1"]:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: 4px; }
+.wx-hw-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.wx-hw-row { margin: 0; min-width: 0; padding: 4px 14px 12px; border: 1px solid var(--control-border, var(--mud-palette-divider)); border-radius: 10px; display: flex; flex-direction: column; gap: 10px; }
+.wx-hw-row.error { border-color: var(--mud-palette-error); }
+.wx-hw-legend { padding: 0 6px; margin-left: -6px; font: var(--fw-medium) var(--fs-caption)/1.3 var(--font-sans); letter-spacing: 0.02em; color: var(--mud-palette-text-secondary); }
+.wx-hw-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.wx-hw-end { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; }
+.wx-hw-check { display: flex; align-items: center; gap: 4px 10px; flex-wrap: wrap; min-width: 0; }
+.wx-hw-check-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.wx-hw-skel { height: 96px; border-radius: 10px; }
+/* The dialog body scrolls: a focused field stays clear of its sticky header and footer (WCAG 2.4.11). */
+.wx-dialog .ods-modal-body, .wx-dialog .odc-modal-body { scroll-padding-block: 72px; }
+/* 320 px / 400 % zoom: the dates stack; No end date and Remove share the last line. */
+@media (max-width: 520px) {
+  .wx-hw-fields { grid-template-columns: minmax(0, 1fr); }
+  .wx-hw-row { padding-inline: 10px; }
+}
+
+.wx-hws-paused { margin: 2px 0 8px; }
+.wx-hws-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.wx-hws-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--mud-palette-divider); }
+.wx-hws-list li:first-child { border-top: none; }
+.wx-hws-range { font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); font-variant-numeric: tabular-nums; }
+.wx-hws-progress { grid-column: 1 / -1; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+@media (max-width: 400px) { .wx-hws-list li { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { .wx-hw-skel { animation: none; } }
