@@ -994,13 +994,5 @@
   "project/ui_kits/web/weather-data.js": "8faf04bf71526da86fb7b2250464beda74762269fb64724f3c86b4dae5cb1458",
   "project/ui_kits/web/weather.css": "aa0690681a29ff1fdef3cadf025fe7f5326ecb0ceca2aa2ad0f1a279c192f6f2"
  },
- "pending": [
-  "project/README.md",
-  "project/components/WeatherHistoryWindows/preview.html",
-  "project/docs/components-weather.md",
-  "project/ui_kits/web/Weather.jsx",
-  "project/ui_kits/web/WeatherPoints.jsx",
-  "project/ui_kits/web/weather-data.js",
-  "project/ui_kits/web/weather.css"
- ]
+ "pending": []
 }
