@@ -101,6 +101,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         await using var provider = await BuildProviderAsync();
         var photoId = await CreatePhotoAsync(provider);
         var fileId = await FileIdAsync(provider, photoId);
+        await ShareAsync(provider, fileId);
         var before = await JobAsync(provider, photoId);
 
         using (var scope = provider.CreateScope())
@@ -229,6 +230,24 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
     {
         using var scope = provider.CreateScope();
         return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync();
+    }
+
+    /// <summary>
+    /// Attaches the photo's file to a journal entry. Since PR #441 a file only a photo names is hidden from
+    /// <c>FileService</c>; the Files-store rename that re-renders a photo's thumbnails is one of a shared file.
+    /// </summary>
+    private static async Task ShareAsync(ServiceProvider provider, Guid fileId)
+    {
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var entry = new JournalEntry
+        {
+            JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
+            EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        context.JournalEntries.Add(entry);
+        context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync();
     }
 
     private static async Task<string> FileNameAsync(ServiceProvider provider, Guid fileId)
