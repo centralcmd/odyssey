@@ -111,11 +111,11 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
         var coloured = Guid.NewGuid();
         var plain = Guid.NewGuid();
         var unknown = Guid.NewGuid();
-        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 3, DisplayIcon = "flight" };
+        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 3, DisplayIcon = "flight" };
         photos.Setup(a => a.GetAsync(photo.PhotoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExistingPhoto
             {
-                PhotoId = photo.PhotoId, FileId = photo.FileId, AlbumIds = [coloured, unknown, plain],
+                PhotoId = photo.PhotoId, AlbumIds = [coloured, unknown, plain],
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
             });
         var albums = new Dictionary<Guid, OdsTagChips.Tag>
