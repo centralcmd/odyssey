@@ -97,7 +97,9 @@ public static class GlobalExceptionHandler
             // A body over an endpoint's [RequestSizeLimit] (issue #436 §7.7): the transport refuses it while model
             // binding reads it. Status 413 only, a generic body, and never the exception's own message.
             case BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge }:
-                logger.LogInformation("Request body too large on {Method} {Path}.", context.Request.Method, context.Request.Path);
+                // The route template, not the request path: a log line carries nothing the caller wrote.
+                logger.LogInformation("Request body too large on {Route}.",
+                    (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "an unrouted request");
                 return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, "The request is too large.");
 
             // A client disconnect (browser navigated away, download aborted) cancels RequestAborted and
