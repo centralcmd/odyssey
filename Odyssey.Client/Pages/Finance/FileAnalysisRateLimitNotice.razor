@@ -3,16 +3,15 @@
 @* A 429 on analyze or match (issue #434 state 18). The message names the wait in words from
    ApiResult.RetryAfter — never the raw header — and takes focus. The action stays FOCUSABLE while
    blocked (aria-disabled, not disabled) and points at the message; activating it then re-inserts the
-   alert text so it is spoken again. When the wait ends the action re-enables and a polite status says so. *@
+   alert text so it is spoken again. When the wait ends the action re-enables and the alert's text says so. *@
 
 <div class="fan-ratelimit">
-@if (_blocked)
-{
-    <FileAnalysisFocusAlert Icon="hourglass_top" Id="@MessageId" @key="_nonce">
-        @FileAnalysisDisclosureText.RateLimited(RetryAfter)
-    </FileAnalysisFocusAlert>
-}
-<div class="odc-sr-only" role="status" aria-live="polite">@_done</div>
+@* The alert stays mounted for the notice's whole life (a11y review on PR #440): removing it when the
+   wait ended dropped a user whose focus sat on it to <body>. Its TEXT changes instead, which a
+   role="alert" region announces, and the user keeps their place. *@
+<FileAnalysisFocusAlert Icon="@(_blocked ? "hourglass_top" : "check_circle")" Id="@MessageId" @key="_nonce">
+    @(_blocked ? FileAnalysisDisclosureText.RateLimited(RetryAfter) : DoneMessage)
+</FileAnalysisFocusAlert>
 <MudButton Variant="Variant.Outlined" StartIcon="@StartIcon" OnClick="ActivateAsync"
            Class="@(_blocked ? "fan-action-blocked" : null)"
            aria-disabled="@(_blocked ? "true" : null)"
@@ -32,9 +31,13 @@
 
     private bool _blocked = true;
     private int _nonce;
-    private string _done = string.Empty;
+    /// <summary>What the alert says once the wait has ended.</summary>
+    internal const string DoneMessage = "You can analyze again.";
+
     private CancellationTokenSource? _timer;
 
+    // RetryAfter is read once: the parents mount a fresh notice for every refused request (a phase change
+    // or a new MatchProblem), so a later 429 never reuses this instance's timer.
     protected override void OnInitialized()
     {
         _timer = new CancellationTokenSource();
@@ -53,7 +56,6 @@
         }
 
         _blocked = false;
-        _done = "You can analyse again.";
         await InvokeAsync(StateHasChanged);
     }
 

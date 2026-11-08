@@ -49,4 +49,31 @@ public class FileAnalysisRateLimitApiTests
 
         Assert.Equal(HttpStatusCode.TooManyRequests, refused.StatusCode);
     }
+
+    /// <summary>
+    /// The limits are per user and per call: exhausting one user's match budget leaves another user's
+    /// match and the same user's analyze untouched (senior-tester review on PR #440).
+    /// </summary>
+    [Fact]
+    public async Task TheMatchLimit_IsPerUser_AndSeparateFromAnalyze()
+    {
+        await using var factory = new OdysseyApiFactory([PermissionClaims.FileAnalysisCreate]);
+        using var client = factory.CreateClient();
+        var match = $"/api/file-analysis/{Guid.NewGuid()}/match";
+
+        for (var i = 0; i < 31; i++)
+        {
+            await client.PostAsync(match, null);
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.PostAsync(match, null)).StatusCode);
+
+        using var other = new HttpRequestMessage(HttpMethod.Post, match);
+        other.Headers.Add(TestAuthHandler.ActorOverrideHeader, "another-user");
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.SendAsync(other)).StatusCode);
+
+        var analyze = await client.PostAsJsonAsync(
+            $"/api/accounts/{Guid.NewGuid()}/files/{Guid.NewGuid()}/analyze", new { consentAcknowledged = true });
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, analyze.StatusCode);
+    }
 }

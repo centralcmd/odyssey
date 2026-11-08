@@ -13,7 +13,7 @@ using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages;
 
-public partial class Settings
+public partial class Settings : IDisposable
 {
     private const string PageStateKey = "settings-page";
     private bool _searchOpen = true;
@@ -1315,6 +1315,7 @@ public partial class Settings
         }
 
         state.Pending?.Cancel();
+        state.Pending?.Dispose();
         var pending = state.Pending = new CancellationTokenSource();
         _ = AnnounceLongTextAsync(item, state, pending.Token);
     }
@@ -1339,6 +1340,18 @@ public partial class Settings
     }
 
     internal static readonly TimeSpan LongTextAnnounceDelay = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>Cancels any pending guidance announcement, so none fires after the page has gone.</summary>
+    public void Dispose()
+    {
+        foreach (var state in _longTextAnnouncers.Values)
+        {
+            state.Pending?.Cancel();
+            state.Pending?.Dispose();
+        }
+
+        _longTextAnnouncers.Clear();
+    }
 
     /// <summary>The announcement a settled guidance value owes, or null. Pure apart from the edge state.</summary>
     private static string? LongTextAnnouncement(SettingItem item, LongTextAnnouncerState state, string text)
@@ -1386,7 +1399,9 @@ public partial class Settings
         return null;
     }
 
-    private static string? ErrorKind(string? error) => error switch
+    // Classified by the shared rule's own message openings; GuidanceAndMatchingSurfaceTests pins them,
+    // so a reworded rule fails a test instead of silently re-announcing on every keystroke.
+    internal static string? ErrorKind(string? error) => error switch
     {
         null => null,
         _ when error.StartsWith("Guidance can be at most", StringComparison.Ordinal) => "length",

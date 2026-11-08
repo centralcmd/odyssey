@@ -126,7 +126,7 @@ public static class FileAnalysisDisclosureText
 
     /// <summary>The <c>409 file_analysis_destination_changed</c> message. Nothing was sent.</summary>
     public const string DestinationChanged =
-        "The analysis provider settings changed after this statement was analysed, so nothing was sent. Start a new analysis to match it.";
+        "The analysis provider settings changed after this statement was analyzed, so nothing was sent. Start a new analysis to match it.";
 
     private static string Count(int n, string one, string many) =>
         n.ToString("N0", CultureInfo.InvariantCulture) + " " + (n == 1 ? one : many);

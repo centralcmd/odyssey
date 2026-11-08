@@ -182,8 +182,7 @@ public partial class FileAnalysisDialog
             return; // the resulting re-render re-enters here with the DOM settled
         }
 
-        // A re-prompted consent gate: land the user on the REASON, not on the checkbox that reset
-        // underneath them (issue #439 §5.3c AC 55). Fires once per re-prompt.
+        // "Start new analysis" after a 409 destination change: land on the consent step (issue #434).
         if (_consentStartNeedsFocus && Phase == FileAnalysisPhase.Consent)
         {
             _consentStartNeedsFocus = false;
@@ -191,6 +190,8 @@ public partial class FileAnalysisDialog
             return;
         }
 
+        // A re-prompted consent gate: land the user on the REASON, not on the checkbox that reset
+        // underneath them (issue #439 §5.3c AC 55). Fires once per re-prompt.
         if (_disclosureChangedNeedsFocus)
         {
             _disclosureChangedNeedsFocus = false;
@@ -443,9 +444,13 @@ public partial class FileAnalysisDialog
         _disclosure = await Disclosures.GetAsync();
         _consentChecked = false;
         _analyzeRateLimited = false;
+        _analyzeRetryAfter = null;
         _session.MatchProblem = FileAnalysisMatchProblem.None;
+        _session.MatchRetryAfter = null;
+        _session.MatchStatus = FileAnalysisMatchStatus.NotRun;
         _session.Rows.Clear();
         _session.Job = null;
+        _jobId = Guid.Empty;
         _consentStartNeedsFocus = true;
         _session.SetPhase(FileAnalysisPhase.Consent);
         StateHasChanged();

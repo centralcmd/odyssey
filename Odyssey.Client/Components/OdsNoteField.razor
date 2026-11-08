@@ -20,6 +20,8 @@
     the number and above it "{n} over limit", so colour is never the only signal.
     ReadOnly renders readonly + aria-readonly (focusable, selectable, copyable),
     never disabled. A caller's AriaDescribedBy is merged ahead of the field's own ids.
+    The sr-only twin is read when the field is focused, not live: a caller that wants threshold
+    announcements makes them itself (the settings guidance rows do, debounced and edge-triggered).
 *@
 
 <OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"

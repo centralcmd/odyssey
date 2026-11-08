@@ -390,7 +390,14 @@ sample counts, the mail throttle's tracked-address table, and the per-account sm
   may want to raise the analyze limit. Like every `RateLimiting:*` key they are configuration, not
   settings, because the limiter is cached per user.
 - **A payload budget** of 200 000 characters bounds each match request: over it, aliases are left out
-  for that run, then tag descriptions. Names are always sent.
+  for that run, then tag descriptions. Names are always sent, and are never shed: a household whose
+  names alone exceed the model's context gets a `Failed` match (review the candidates by hand), not a
+  partial one.
+- **Wire change for API consumers.** `fileAnalysisMatchMaxVocabulary` is gone from the system-settings
+  DTOs, and `maxVocabulary` from the file-analysis payloads. The web client in this release no longer
+  reads either; a third-party consumer that did must drop them. Matches refused by the new limits
+  answer `429` with `Retry-After`, and the destination refusal answers `409` with
+  `code: file_analysis_destination_changed`.
 
 ### Release note: three `FileAnalysis` keys retired from `appsettings.json`
 

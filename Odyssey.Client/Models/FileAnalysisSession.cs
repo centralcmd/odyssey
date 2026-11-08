@@ -68,18 +68,6 @@ public sealed class FileAnalysisRow
     public List<string> CatSuggestionIds { get; set; } = [];
 }
 
-/// <summary>
-/// The state machine and editing rules behind <c>FileAnalysisDialog</c>: the phase, the candidate
-/// rows, how a job's persisted match data becomes (or doesn't become) a link, and the optimistic
-/// create-a-merchant-then-reconcile-or-roll-back dance.
-/// </summary>
-/// <remarks>
-/// Plain C# on purpose (issue #373). None of this needs a renderer, a DI container or an
-/// <c>HttpClient</c>, and while it lived inside the dialog's 960-line <c>@code</c> block none of it
-/// could be tested — including the rollback path, which is the one place a failed create can leave a
-/// row pointing at a contact that does not exist. The dialog keeps the I/O: it calls the API,
-/// toasts, moves focus, and asks this class what to render.
-/// </remarks>
 /// <summary>A match request the server refused before sending anything (issue #434).</summary>
 public enum FileAnalysisMatchProblem
 {
@@ -92,6 +80,18 @@ public enum FileAnalysisMatchProblem
     RateLimited,
 }
 
+/// <summary>
+/// The state machine and editing rules behind <c>FileAnalysisDialog</c>: the phase, the candidate
+/// rows, how a job's persisted match data becomes (or doesn't become) a link, and the optimistic
+/// create-a-merchant-then-reconcile-or-roll-back dance.
+/// </summary>
+/// <remarks>
+/// Plain C# on purpose (issue #373). None of this needs a renderer, a DI container or an
+/// <c>HttpClient</c>, and while it lived inside the dialog's 960-line <c>@code</c> block none of it
+/// could be tested — including the rollback path, which is the one place a failed create can leave a
+/// row pointing at a contact that does not exist. The dialog keeps the I/O: it calls the API,
+/// toasts, moves focus, and asks this class what to render.
+/// </remarks>
 public sealed class FileAnalysisSession
 {
     /// <summary>The step being shown.</summary>

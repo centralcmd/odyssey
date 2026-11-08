@@ -49,7 +49,7 @@
                                                      MessageId="fan-analyze-ratelimit-msg"
                                                      OnAction="ProceedFromConsentAsync" />
                     }
-                    <div class="fan-consent-start" tabindex="-1" @ref="_consentStartRef">
+                    <div class="fan-consent-start" role="group" aria-label="What is sent, and your consent" tabindex="-1" @ref="_consentStartRef">
                     <FileAnalysisConsentPanel FileName="@FileName" FileSizeBytes="FileSizeBytes"
                                               Disclosure="@_disclosure"
                                               DisclosureResolved="@DisclosureUsable"

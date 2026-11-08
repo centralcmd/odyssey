@@ -168,6 +168,26 @@ public class GuidanceAndMatchingSurfaceTests : IDisposable
         Assert.Contains("not being sent", page.Find("#ss-advisory-fileAnalysisMatchPromptAddition").TextContent);
     }
 
+    /// <summary>
+    /// The announcer classifies an error by the shared rule's message openings; this pins them, so a
+    /// reworded rule fails here instead of re-announcing on every keystroke.
+    /// </summary>
+    [Theory]
+    [InlineData("length")]
+    [InlineData("character")]
+    [InlineData("delimiter")]
+    public void EveryRuleFailure_IsClassifiedByItsKind(string kind)
+    {
+        var value = kind switch
+        {
+            "length" => new string('a', PromptAdditionRule.MaxLength + 1),
+            "character" => "ok\nbell " + (char)0x07,
+            _ => "x admin_guidance y",
+        };
+
+        Assert.Equal(kind, Settings.ErrorKind(PromptAdditionRule.Validate(value)));
+    }
+
     // ── Consent bullet and the shared copy ───────────────────────────────────────────────────────
 
     [Fact]
@@ -310,6 +330,28 @@ public class GuidanceAndMatchingSurfaceTests : IDisposable
         action.Click();
         Assert.False(rematched); // blocked: activating re-announces instead of sending
         Assert.Contains("25 minutes", cut.Find("[role=alert]").TextContent);
+    }
+
+    /// <summary>
+    /// When the wait ends the alert stays mounted and only its text changes, so a user whose focus sat
+    /// on it keeps their place (accessibility review on PR #440, WCAG 2.4.3).
+    /// </summary>
+    [Fact]
+    public async Task WhenTheWaitEnds_TheAlertStays_AndTheActionReEnables()
+    {
+        await using var ctx = NewContext();
+        var acted = false;
+        var cut = ctx.Render<FileAnalysisRateLimitNotice>(p => p
+            .Add(c => c.RetryAfter, TimeSpan.FromMilliseconds(1))
+            .Add(c => c.Label, "Re-match")
+            .Add(c => c.OnAction, () => { acted = true; }));
+
+        cut.WaitForAssertion(() => Assert.Contains(FileAnalysisRateLimitNotice.DoneMessage, cut.Find("[role=alert]").TextContent));
+        var action = cut.Find("button");
+        Assert.False(action.HasAttribute("aria-disabled"));
+
+        action.Click();
+        Assert.True(acted);
     }
 
     private static FileAnalysisSession Seeded(FileAnalysisMatchProblem problem)
