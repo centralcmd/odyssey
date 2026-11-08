@@ -80,6 +80,7 @@ var fileStorageSettings = new Dictionary<string, string>
 {
     ["FileStorage__Volumes__primary__RootPath"] = fileVolumePrimaryPath,
     ["FileStorage__Bindings__PhotoThumbnails"] = "primary",
+    ["FileStorage__Bindings__PhotoOriginals"] = "primary",
 };
 
 var migrations = builder

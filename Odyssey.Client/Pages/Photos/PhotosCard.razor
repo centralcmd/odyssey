@@ -6,7 +6,6 @@
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums
-@inject IFilesApiClient Files
 @inject AuthenticationStateProvider Auth
 @inject IPageStateService PageState
 @inject ISnackbar Snackbar
@@ -127,7 +126,7 @@
                  PhotoId="@(_editId ?? Guid.Empty)"
                  TagOptions="_tagOptions" PeopleOptions="_peopleOptions" AlbumOptions="_albumOptions"
                  CanCreateTags="_canCreateTags" CanCreateContacts="_canCreateContacts"
-                 CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+                 OnSaved="OnPhotoSaved" />
 
 <AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
                   PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />

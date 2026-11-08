@@ -70,12 +70,6 @@ public class PhotoAlbumService
                 CoverPhotoId = a.CoverPhotoId,
                 Icon = a.Icon,
                 Color = a.Color,
-                // Resolve the cover's backing file id in the same query so the list can show a thumbnail
-                // without a per-photo round trip.
-                CoverFileId = context.Photos
-                    .Where(p => p.PhotoId == a.CoverPhotoId)
-                    .Select(p => (Guid?)p.FileId)
-                    .FirstOrDefault(),
                 CoverThumbnailsReady = a.CoverPhotoId != null
                     && context.PhotoThumbnails.Count(t => t.PhotoId == a.CoverPhotoId) == 2,
                 Archived = a.Archived,
@@ -95,7 +89,6 @@ public class PhotoAlbumService
         public Guid? CoverPhotoId { get; init; }
         public string? Icon { get; init; }
         public string? Color { get; init; }
-        public Guid? CoverFileId { get; init; }
         public bool CoverThumbnailsReady { get; init; }
         public DateTime? Archived { get; init; }
         public string? CreatedByUserId { get; init; }
@@ -110,7 +103,6 @@ public class PhotoAlbumService
         CoverPhotoId = row.CoverPhotoId,
         Icon = TagIcons.Normalize(row.Icon),
         Color = HexColor.Normalize(row.Color),
-        CoverFileId = row.CoverFileId,
         CoverThumbnailsReady = row.CoverThumbnailsReady,
         Archived = row.Archived,
         CreatedByUserId = row.CreatedByUserId,

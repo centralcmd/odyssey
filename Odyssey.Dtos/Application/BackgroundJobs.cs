@@ -11,7 +11,7 @@ namespace Odyssey.Dtos.Application;
 // an Unknown member at 255: the sentinel TolerantEnumConverter reads a name it does not know into. It is never
 // stored (the JobRuns CHECKs exclude it) and never sent by the server.
 
-/// <summary>The four background jobs that record runs. The discriminator of <c>JobRuns</c>.</summary>
+/// <summary>The background jobs that record runs. The discriminator of <c>JobRuns</c>.</summary>
 [JsonConverter(typeof(TolerantEnumConverter<JobType>))]
 public enum JobType : byte
 {
@@ -19,6 +19,9 @@ public enum JobType : byte
     Weather = 2,
     FileStorageMaintenance = 3,
     PhotoThumbnails = 4,
+
+    /// <summary>The one-off move of legacy photo originals onto the photo store (issue #428).</summary>
+    PhotoOriginalBackfill = 5,
 
     Unknown = byte.MaxValue,
 }
@@ -89,8 +92,11 @@ public enum JobHeldReason : byte
     /// <summary>The thumbnail decoder failed its security self-test.</summary>
     DecoderPolicyFailed = 4,
 
-    /// <summary>The thumbnail volume is unavailable in this process.</summary>
+    /// <summary>The photo volume (thumbnails, originals) is unavailable or below its reserve in this process.</summary>
     StorageUnavailable = 5,
+
+    /// <summary>The photo-original move waits out its back-off after a storage or database error.</summary>
+    BackingOff = 6,
 
     Unknown = byte.MaxValue,
 }
@@ -166,7 +172,7 @@ public sealed record BackgroundJobSummary
     /// <summary>The failing file-storage check (a check name, never a path); <c>null</c> without <c>file-storage.read</c>.</summary>
     public string? HeldCheck { get; set; }
 
-    /// <summary>When the thumbnail breaker resumes, when known; <c>null</c> without the detail-read claim.</summary>
+    /// <summary>When a held job resumes, when known (the thumbnail breaker, the photo-original back-off); <c>null</c> without the detail-read claim.</summary>
     public DateTime? HeldUntilUtc { get; set; }
 
     /// <summary>The caller holds every claim a manual run of this job needs. The claim list itself is never sent.</summary>
@@ -234,12 +240,15 @@ public sealed record RunningJobRun
     public DateTime StartedAtUtc { get; set; }
 }
 
-/// <summary>The worker-side signals of two jobs; each part is <c>null</c> without its job's detail-read claim.</summary>
+/// <summary>The worker-side signals of three jobs; each part is <c>null</c> without its job's detail-read claim.</summary>
 public sealed record BackgroundJobsWorkerHealth
 {
     public FileStorageWorkerHealth? FileStorage { get; set; }
 
     public ThumbnailWorkerHealth? Thumbnails { get; set; }
+
+    /// <summary>How far the photo-original move has got (issue #428); counts and failure codes only.</summary>
+    public PhotoBackfillStatus? PhotoOriginalBackfill { get; set; }
 }
 
 /// <summary>How many worker processes report failing file-storage checks, and which checks (names, never paths).</summary>
@@ -346,6 +355,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.Weather)] = typeof(WeatherJobRunDetail),
         [nameof(Application.JobType.FileStorageMaintenance)] = typeof(FileStorageMaintenanceJobRunDetail),
         [nameof(Application.JobType.PhotoThumbnails)] = typeof(PhotoThumbnailJobRunDetail),
+        [nameof(Application.JobType.PhotoOriginalBackfill)] = typeof(PhotoOriginalBackfillJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -517,6 +527,21 @@ public sealed record PhotoThumbnailJobRunDetail : JobRunDetail
     public int? Hangs { get; set; }
 }
 
+public sealed record PhotoOriginalBackfillJobRunDetail : JobRunDetail
+{
+    /// <summary>Moved, with their database file removed because nothing else used it.</summary>
+    public int? PhotosMoved { get; set; }
+
+    /// <summary>Moved, with their database file kept because an attachment still uses it.</summary>
+    public int? PhotosCopiedShared { get; set; }
+
+    /// <summary>Parked for a reason of their own; not retried until an operator clears them.</summary>
+    public int? PhotosParked { get; set; }
+
+    /// <summary>Ticks cut short by a storage or database error, after which the move backs off.</summary>
+    public int? Interruptions { get; set; }
+}
+
 /// <summary><c>202</c> of <c>POST /api/background-jobs/{jobType}/runs</c>.</summary>
 public sealed record JobRunStarted
 {
@@ -572,7 +597,7 @@ public sealed class JobRunsQueryParams : QueryParams<JobRunSortBy>, IValidatable
         Limit = DefaultLimit;
     }
 
-    [EnumFilter(typeof(JobType), 4)]
+    [EnumFilter(typeof(JobType), 5)]
     public JobType[]? JobTypes { get; set; }
 
     [EnumFilter(typeof(JobRunStatus), 6)]

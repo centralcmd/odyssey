@@ -700,9 +700,10 @@ next one going ahead, runs never overlapping. Five rules:
 **Files on disk go through the filesystem object store, `Odyssey.Core/FileStorage/`** (issue #346).
 Deploy-time volumes (`FileStorage:Volumes:<name>:RootPath`) hold the bytes; `StoredObjects` rows say what is
 where; code-declared *storage features* (`StorageFeature`, registered in DI, assembled into
-`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **Photo
-thumbnails (#362) are the production catalogue's one feature**, so every host with volumes must bind
-`PhotoThumbnails` (check B1); the three `TestShared/FileStorage` features exercise the store's own tests.
+`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **The production
+catalogue holds two features, `PhotoOriginals` (#428) and `PhotoThumbnails` (#362), both `Graced`**, so every host with
+volumes must bind both (check B1); a guard test fails on an `Immediate` production feature. The three
+`TestShared/FileStorage` features exercise the store's own tests.
 Existing uploads stay in `FileBlob`. Rules a consumer
 inherits, and that are easy to get backwards:
 
@@ -771,6 +772,33 @@ to get backwards:
   → placeholder). The viewer, lightbox and edit banner always show the original; `PhotoThumbnailSurfaceTests`
   keeps a surface from building a `ContentUrl` or a CSS `background-image`.
 - **The five thumbnail tables are derived data**.
+
+**A photo owns its original on the object store, not in the Files store** (issue #428). Only journal and photo-library
+photos: every other upload stays in `FileBlob`. `Photo.StoredObjectId` (RESTRICT, feature `PhotoOriginals`, laid out
+`<upload year>/<bucket>`) carries the bytes and the photo carries its own `FileName`/`ContentType`/`SizeBytes`/`Sha256Hash`;
+a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey.Worker`) moves it, and
+`CK_Photos_ExactlyOneSource` keeps exactly one of the two set. Rules that are easy to get backwards:
+
+- **Read through `PhotoOriginalSource`**, which resolves either shape, never `FileMetadata` directly. The original is
+  served by `GET /api/photos/{id}/content` under `photos.read` alone; `files.read` reaches no photo, and no photo
+  appears on the Files list. That includes a **legacy** photo's file: `FileService` reads through
+  `FileReferenceCounter.VisibleInFilesStore`, which hides a file a photo names (`FileId` or `LegacyFileId`) unless
+  another referencing column also names it — an attachment's own claim already reaches that one.
+- **Upload is one multipart `POST /api/photos`** (`PhotoService.UploadAsync`): validated, hashed, duplicate-checked
+  (`409 photo-duplicate`, existing id only for a `photos.read` holder), reserve-checked (`507`), written, then one save.
+  There is no "photo from an existing file id" path any more; a JSON body with `fileId` is a `415`.
+- **A rename changes `Photo.FileName` only**, never the file on disk. Journal entries link photos by `PhotoIds`.
+- **The backfill deletes a legacy file only when `IFileReferenceCounter` finds no other user.** That counter is
+  derived from the EF model (every key to `FileMetadata` but `Photo.FileId`), so a new referencing table is counted
+  without a code change — never replace it with a hand-kept list. A shared file is copied and kept.
+- **The backfill is a catalogued, work-driven job** (`JobType.PhotoOriginalBackfill = 5`) on `/background-jobs`:
+  bursts, a held period only while photos are left (`StorageUnavailable`, or `BackingOff` with the lease's
+  `NextAttemptAtUtc` as its resume time), and a manual run that ends a back-off. Its status card is
+  `BackgroundJobsWorkerHealth.PhotoOriginalBackfill`, the same `PhotoBackfillStatus` as
+  `GET /api/file-storage/photo-backfill`; both, and its counters, follow `file-storage.read`.
+- **`OdysseyApiFactory` binds both photo features to a per-factory temp volume.** A test that needs a host with no
+  volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoPhotoVolumeKey`; on EF
+  InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the

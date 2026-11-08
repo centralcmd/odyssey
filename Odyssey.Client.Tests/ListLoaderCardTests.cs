@@ -247,7 +247,6 @@ public class ListLoaderCardTests
     private static PhotoSummary Photo(string title) => new()
     {
         PhotoId = Guid.NewGuid(),
-        FileId = Guid.NewGuid(),
         Title = title,
         PersonCount = 0,
         AlbumCount = 0,

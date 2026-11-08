@@ -435,6 +435,96 @@ public class BackgroundJobsUnitTests
         Assert.Contains("Trigger", cut.Markup);
     }
 
+    // ── Photo original move (issue #428) ─────────────────────────────────────────────────────────
+
+    [Fact]
+    public async Task A_move_runs_detail_shows_its_four_counters_and_says_why_when_they_are_withheld()
+    {
+        await using var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddMudServices();
+        var run = new ExistingJobRun { Id = Guid.NewGuid(), JobType = JobType.PhotoOriginalBackfill, Status = JobRunStatus.PartiallySucceeded, StartedAtUtc = Now.UtcDateTime };
+        IRenderedComponent<JobRunDetailPanel> Detail(bool canRead, PhotoOriginalBackfillJobRunDetail detail) => ctx.Render<JobRunDetailPanel>(p => p
+            .Add(x => x.Run, run)
+            .Add(x => x.CanReadDetail, canRead)
+            .Add(x => x.OnLoad, _ => Task.CompletedTask)
+            .Add(x => x.State, new JobRunDetailState(JobRunDetailStatus.Loaded, detail)));
+
+        var shown = Detail(true, new PhotoOriginalBackfillJobRunDetail
+        {
+            Id = run.Id, JobType = JobType.PhotoOriginalBackfill, Status = JobRunStatus.PartiallySucceeded, StartedAtUtc = Now.UtcDateTime,
+            PhotosMoved = 1180, PhotosCopiedShared = 2, PhotosParked = 3, Interruptions = 0,
+        });
+        var tiles = shown.FindAll(".odc-meta-tile").Select(t => t.TextContent).ToList();
+        Assert.Contains(tiles, t => t.Contains("Moved") && t.Contains(1180.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)));
+        Assert.Contains(tiles, t => t.Contains("Copied and kept") && t.Contains('2'));
+        Assert.Contains(tiles, t => t.Contains("Parked") && t.Contains('3'));
+        Assert.Contains(tiles, t => t.Contains("Interruptions") && t.Contains('0'));
+
+        var hidden = Detail(false, new PhotoOriginalBackfillJobRunDetail { Id = run.Id, JobType = JobType.PhotoOriginalBackfill, StartedAtUtc = Now.UtcDateTime });
+        Assert.Contains("Not shown — needs file storage access", hidden.Markup);
+    }
+
+    private static IRenderedComponent<PhotoOriginalMoveCard> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
+        ctx.Render<PhotoOriginalMoveCard>(p => p.Add(x => x.Status, status).Add(x => x.GeneratedAtUtc, Now));
+
+    [Fact]
+    public async Task The_move_card_counts_what_is_left_apart_from_what_is_parked_and_lists_the_parked_by_reason()
+    {
+        await using var ctx = new BunitContext();
+        ctx.Services.AddMudServices();
+
+        var cut = MoveCard(ctx, new PhotoBackfillStatus
+        {
+            Remaining = 2843, Failed = 3, CopiedShared = 5,
+            FailedByCode = new() { ["hash"] = 1, ["read"] = 2, ["too-large"] = 0, ["error"] = 0 },
+            LastRunAtUtc = Now.UtcDateTime.AddMinutes(-1),
+        });
+
+        Assert.Equal($"{2840.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)} photo originals still to move from the database to disk.",
+            cut.Find(".bgj-move-lead").TextContent);
+        var stats = cut.FindAll(".odc-stat").Select(s => s.TextContent).ToList();
+        Assert.Equal(3, stats.Count);
+        Assert.Contains(stats, t => t.Contains("Parked") && t.Contains('3'));
+        Assert.Contains(stats, t => t.Contains("Copied and kept") && t.Contains('5'));
+        Assert.Equal("Parked photos by reason", cut.Find("ul.bgj-move-codes").GetAttribute("aria-label"));
+        Assert.Equal(["Checksum mismatch: 1", "Couldn’t be read: 2"], cut.FindAll("ul.bgj-move-codes li").Select(li => li.TextContent));
+        Assert.Empty(cut.FindAll(".bgj-held"));
+        Assert.Equal($"Last pass {RunTime.Absolute(Now.UtcDateTime.AddMinutes(-1))}", cut.Find(".bgj-caption").TextContent);
+        Assert.Empty(cut.FindAll("[aria-live], [role=status], button"));
+    }
+
+    [Fact]
+    public async Task The_move_card_says_when_only_parked_photos_are_left_names_an_unknown_code_and_shows_the_back_off()
+    {
+        await using var ctx = new BunitContext();
+        ctx.Services.AddMudServices();
+
+        var cut = MoveCard(ctx, new PhotoBackfillStatus
+        {
+            Remaining = 4, Failed = 4, FailedByCode = new() { ["read"] = 1, ["something-newer"] = 3 },
+            BackingOffUntilUtc = Now.UtcDateTime.AddMinutes(14),
+        });
+
+        Assert.StartsWith("Only parked photos are left.", cut.Find(".bgj-move-lead").TextContent);
+        Assert.Equal(["Couldn’t be read: 1", "Other: 3"], cut.FindAll("ul.bgj-move-codes li").Select(li => li.TextContent));
+        Assert.Equal($"Paused after a storage or database error until {RunTime.Clock(Now.UtcDateTime.AddMinutes(14))}.", cut.Find(".bgj-held").TextContent);
+        Assert.Equal("No pass yet", cut.Find(".bgj-caption").TextContent);
+    }
+
+    [Fact]
+    public async Task The_move_card_says_every_original_is_on_disk_and_a_past_back_off_is_not_shown()
+    {
+        await using var ctx = new BunitContext();
+        ctx.Services.AddMudServices();
+
+        var cut = MoveCard(ctx, new PhotoBackfillStatus { Remaining = 0, BackingOffUntilUtc = Now.UtcDateTime.AddMinutes(-5) });
+
+        Assert.Equal("Every photo original is on disk.", cut.Find(".bgj-move-lead").TextContent);
+        Assert.Empty(cut.FindAll("ul.bgj-move-codes"));
+        Assert.Empty(cut.FindAll(".bgj-held"));
+    }
+
     // ── Toast host (AC 29) ───────────────────────────────────────────────────────────────────────
 
     [Fact]

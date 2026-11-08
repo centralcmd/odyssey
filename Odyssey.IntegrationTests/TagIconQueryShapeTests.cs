@@ -67,7 +67,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
 
             var photo = await CountAsync(context => Photos(context).Get(seeded.PhotoId));
             Assert.Equal(("beach_access", "#B23B3B"), (photo.Result!.DisplayIcon, photo.Result.DisplayColor));
-            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands);
+            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands + OriginalDescriptionCommands);
         }
         finally
         {
@@ -156,6 +156,10 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     // Issue #362: a photo detail read counts its thumbnails in one query — one per read, never one per tag.
     private const int ThumbnailReadinessCommands = 1;
 
+    // Issue #428: a photo detail read describes its original (name, type, size) through PhotoOriginalSource, which
+    // resolves a moved and a legacy photo alike — one query per read, never one per tag.
+    private const int OriginalDescriptionCommands = 1;
+
     // The winning tag's lower-case colour must come back normalised; the icon-less "art" tag's must not win.
     private static string? SeedColor(string name) => name switch { "Trip" => "#b23b3b", "art" => "#15803D", _ => null };
 
@@ -235,16 +239,17 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     {
         var files = new FileLookup(context);
         return new JournalEntryService(
-            context, new ContactLookup(context), files, new PhotoLookup(context, files, null!), new StubJournalLimitsLookup());
+            context, new ContactLookup(context), files, new PhotoLookup(context), new StubJournalLimitsLookup());
     }
 
     private static JournalTaskService Tasks(OdysseyContext context) =>
         new(context, new FileLookup(context), new StubJournalLimitsLookup());
 
     private static PhotoService Photos(OdysseyContext context) =>
-        new(context, new ContactLookup(context), new FileLookup(context), new FileReferenceGuard(context), null!,
+        new(context, new ContactLookup(context), new FileReferenceGuard(context), null!,
             new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance,
-            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System));
+            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System),
+            null!, null!, new FixedUploadLimits(64L * 1024 * 1024));
 
     private OdysseyContext NewContext(CommandCounter? counter)
     {

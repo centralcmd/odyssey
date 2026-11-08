@@ -16,6 +16,7 @@ public static class JobRunDetailRegistry
         [typeof(WeatherJobRunDetail)] = typeof(JobRunDetailWeather),
         [typeof(FileStorageMaintenanceJobRunDetail)] = typeof(JobRunDetailFileStorageMaintenance),
         [typeof(PhotoThumbnailJobRunDetail)] = typeof(JobRunDetailPhotoThumbnails),
+        [typeof(PhotoOriginalBackfillJobRunDetail)] = typeof(JobRunDetailPhotoOriginalBackfill),
     };
 
     public static Type BodyFor(JobRunDetail detail) => Bodies.GetValueOrDefault(detail.GetType(), typeof(JobRunDetailBase));

@@ -97,12 +97,13 @@ public sealed class JournalEntriesController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        if (LinksFiles(request.PhotoFileIds, request.AttachmentFileIds) && !CanLinkFiles())
+        if (request.AttachmentFileIds.Length > 0 && !CanLinkFiles())
         {
             return this.ForbiddenProblem("Linking files requires the files.read permission.");
         }
 
-        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
+        // Linking a photo the entry does not hold needs photos.read (issue #428 §3.3), decided change-only by the service.
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims(), CanReadPhotos());
         await EnrichAuthorsAsync(created, cancellationToken);
         ApplyThumbnailRule(created.Photos);
         return CreatedAtRoute("GetJournalEntry", new { id = created.JournalEntryId }, created);
@@ -125,12 +126,12 @@ public sealed class JournalEntriesController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        if (LinksFiles(request.PhotoFileIds, request.AttachmentFileIds) && !CanLinkFiles())
+        if (request.AttachmentFileIds.Length > 0 && !CanLinkFiles())
         {
             return this.ForbiddenProblem("Linking files requires the files.read permission.");
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims(), CanReadPhotos());
         if (updated is null)
         {
             return this.NotFoundProblem($"Journal entry ID {id} not found.");
@@ -240,7 +241,7 @@ public sealed class JournalEntriesController : ControllerBase
         await using var stream = file.OpenReadStream();
         var result = await icsService.ImportAsync(
             stream, file.Length, file.ContentType, userId, CanLinkFiles(), CanReadContacts(), cancellationToken,
-            User.LocationClaims());
+            User.LocationClaims(), CanReadPhotos());
         return Ok(result);
     }
 
@@ -277,10 +278,9 @@ public sealed class JournalEntriesController : ControllerBase
         entry.UpdatedByName = names.NameForOptional(entry.UpdatedByUserId);
     }
 
-    private static bool LinksFiles(Guid[] photoFileIds, Guid[] attachmentFileIds) =>
-        photoFileIds.Length > 0 || attachmentFileIds.Length > 0;
-
     private bool CanLinkFiles() => User.HasPermission(PermissionClaims.FilesRead);
+
+    private bool CanReadPhotos() => User.HasPermission(PermissionClaims.PhotosRead);
 
     private bool CanReadContacts() => User.HasPermission(PermissionClaims.ContactsRead);
 }

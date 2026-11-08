@@ -74,7 +74,7 @@ public class AttachmentFocusReturnTests
 
         cut.WaitForAssertion(() => Assert.True(module.Invocations["focusFirstLater"].Count > 0));
         var chain = LastCandidates(module, "focusFirstLater");
-        Assert.EndsWith(next.FileId.ToString(), chain[0]);
+        Assert.EndsWith(next.PhotoId.ToString(), chain[0]);
         Assert.EndsWith(" button", chain[^1]);
         Assert.Equal(2, draft.Photos.Count);
         Assert.Contains(cut.FindAll("[role=status].sr-only"), r => r.TextContent == "photo-2.jpg removed from the entry.");
@@ -89,7 +89,7 @@ public class AttachmentFocusReturnTests
 
         RemovePhoto(cut, 1);
 
-        cut.WaitForAssertion(() => Assert.EndsWith(previous.FileId.ToString(), LastCandidates(module, "focusFirstLater")[0]));
+        cut.WaitForAssertion(() => Assert.EndsWith(previous.PhotoId.ToString(), LastCandidates(module, "focusFirstLater")[0]));
     }
 
     [Fact]

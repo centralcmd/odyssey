@@ -14,6 +14,7 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
             .HasValue<WeatherJobRun>(JobType.Weather)
             .HasValue<FileStorageMaintenanceJobRun>(JobType.FileStorageMaintenance)
             .HasValue<PhotoThumbnailJobRun>(JobType.PhotoThumbnails)
+            .HasValue<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill)
             .IsComplete();
 
         entity.Property(run => run.OpenHeldGuard)
@@ -26,12 +27,12 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
 
         entity.ToTable(tb =>
         {
-            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4)");
+            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5)");
             tb.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
             tb.HasCheckConstraint(
                 "CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
-            tb.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 5");
+            tb.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
             tb.HasCheckConstraint(
                 "CK_JobRuns_CountersNonNegative",
                 "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0"
@@ -43,7 +44,9 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
                 + " AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0"
                 + " AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0"
                 + " AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0"
-                + " AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0");
+                + " AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0"
+                + " AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0"
+                + " AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0");
             // FinishedAtUtc is NULL only on a Running row or an open held period, and always NULL on a Running one.
             tb.HasCheckConstraint(
                 "CK_JobRuns_FinishedMatchesStatus",
@@ -62,6 +65,6 @@ internal sealed class JobHeartbeatConfiguration : IEntityTypeConfiguration<JobHe
 {
     public void Configure(EntityTypeBuilder<JobHeartbeat> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4)"));
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5)"));
     }
 }

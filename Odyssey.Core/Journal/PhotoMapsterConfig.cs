@@ -38,7 +38,7 @@ public static class PhotoMapsterConfig
             // navigation collection and cross-module nav, so a same-named nested property in a request
             // body can never round-trip into a related or cross-module entity. Link rows are built
             // explicitly in the services from the scalar id arrays.
-            TypeAdapterConfig<NewPhoto, Photo>
+            TypeAdapterConfig<NewPhotoUpload, Photo>
                 .NewConfig()
                 .Ignore(dest => dest.Tags)
                 .Ignore(dest => dest.People)

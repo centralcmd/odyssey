@@ -63,8 +63,7 @@ public partial class PhotosCard
     private bool _canDelete;
     private bool _canManageAlbums;
     private bool _canCreateTags;
-    private bool _canRenameFile;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "photos-page";
 
@@ -96,7 +95,6 @@ public partial class PhotosCard
         _canDelete = user.HasPermission(PermissionClaims.PhotosDelete);
         _canManageAlbums = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
         _canCreateTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
-        _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
         _imageAccess = PhotoImageAccess.From(user);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
 
@@ -304,7 +302,7 @@ public partial class PhotosCard
     }
 
     private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files),
+        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
             string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
             p.Archived is not null, p.Favourited is not null);
 

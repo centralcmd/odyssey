@@ -83,11 +83,11 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     public void The_photo_dialog_shows_its_tags_as_tag_chips_with_their_icons()
     {
         var tagId = Guid.NewGuid();
-        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0, DisplayIcon = "flight" };
+        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0, DisplayIcon = "flight" };
         photos.Setup(a => a.GetAsync(photo.PhotoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ExistingPhoto
             {
-                PhotoId = photo.PhotoId, FileId = photo.FileId, TagIds = [tagId],
+                PhotoId = photo.PhotoId, TagIds = [tagId],
                 CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
             });
 
@@ -110,7 +110,7 @@ public class JournalTagIconSurfaceTests : IAsyncLifetime
     [InlineData(TagIcons.Default, "photo_library")]
     public void The_photo_dialog_always_leads_with_the_library_glyph(string icon, string lead)
     {
-        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0, DisplayIcon = icon };
+        var photo = new PhotoSummary { PhotoId = Guid.NewGuid(), PersonCount = 0, AlbumCount = 0, DisplayIcon = icon };
 
         // An inline MudDialog renders into the provider, so the provider's markup is what the user sees.
         var provider = ctx.Render<MudDialogProvider>();

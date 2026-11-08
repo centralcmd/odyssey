@@ -10,7 +10,6 @@
 *@
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
-@inject IFilesApiClient Files
 @inject ISnackbar Snackbar
 @inject ITagsApiClient<ExistingPhotoTag> PhotoTagWrites
 @inject IContactQuickCreate ContactCreator
@@ -28,13 +27,12 @@
         <div class="pl-editbody">
             <div class="pl-edit-banner">
                 <div class="pl-edit-bannerimg"
-                     style="background-image: url('@Files.ContentUrl(_photo.FileId)');@(_photo is { PixelWidth: > 0 and { } bw, PixelHeight: > 0 and { } bh } ? $" aspect-ratio: {bw} / {bh};" : "")"></div>
+                     style="background-image: url('@Photos.ContentUrl(_photo.PhotoId)');@(_photo is { PixelWidth: > 0 and { } bw, PixelHeight: > 0 and { } bh } ? $" aspect-ratio: {bw} / {bh};" : "")"></div>
             </div>
             <OdsField Label="Title" @bind-Value="_title" Icon="title" MaxLength="200"
                       Placeholder="A short title" Help="Falls back to the file name when empty." />
             <OdsField Label="File name" @bind-Value="_fileName" Icon="image" MaxLength="256"
-                      Disabled="@(!CanRenameFile)"
-                      Help="@(CanRenameFile ? "The stored file's name." : null)" />
+                      Help="The photo's file name, used when it is downloaded." />
             <div class="odc-form-grid">
                 <OdsDateField Label="Date taken" @bind-Value="_date" />
                 <OdsTimeField Label="Time" @bind-Value="_time" />

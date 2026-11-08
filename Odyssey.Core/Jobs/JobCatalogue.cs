@@ -1,5 +1,6 @@
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos;
@@ -88,6 +89,16 @@ public static class JobCatalogue
             StaleAfter: PhotoThumbnailTiming.RunBudget + PhotoThumbnailTiming.JobDeadline + TimeSpan.FromMinutes(5),
             ManualRunClaims: [PermissionClaims.PhotosUpdate],
             DetailReadClaim: PermissionClaims.PhotosRead),
+
+        // The photo-original move (issue #428). Work-driven, and idle for good once every legacy photo has moved. Its
+        // progress and its park codes are file-storage operations data, so both gates follow file-storage.read — the
+        // same decision as the maintenance pass above: no file-storage write claim exists, the claim is Admin-only, and
+        // a manual run only does what the next tick would (it also ends a back-off).
+        new(JobType.PhotoOriginalBackfill, typeof(PhotoOriginalBackfillJob), PhotoOriginalBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: PhotoOriginalBackfillJob.RunBudget + PhotoOriginalBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.FileStorageRead],
+            DetailReadClaim: PermissionClaims.FileStorageRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

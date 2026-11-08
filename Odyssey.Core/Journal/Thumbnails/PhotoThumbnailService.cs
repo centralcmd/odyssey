@@ -77,7 +77,7 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
     }
 
     /// <summary>
-    /// Stages an immediate release of both of a photo's thumbnails, in the delete's own save (§4.1). The rows and the
+    /// Stages the release of both of a photo's thumbnails, in the delete's own save (§4.1; graced since issue #428 §3.6). The rows and the
     /// job are removed too rather than left to the cascade, which the EF InMemory provider does not run.
     /// </summary>
     public async Task StageDeleteAsync(Guid photoId, CancellationToken cancellationToken)
@@ -96,8 +96,10 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
     /// </summary>
     public async Task StageRenameAsync(Guid fileId, CancellationToken cancellationToken)
     {
+        // A legacy photo renamed through the photo API carries its own name (issue #428 §5.4), which then wins over
+        // its file's: renaming the file on the Files page no longer changes what the photo is called.
         var photoId = await context.Photos
-            .Where(p => p.FileId == fileId)
+            .Where(p => p.FileId == fileId && p.FileName == null)
             .Select(p => (Guid?)p.PhotoId)
             .FirstOrDefaultAsync(cancellationToken);
         if (photoId is not { } id)
@@ -105,6 +107,12 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
             return;
         }
 
+        await StageRenameForPhotoAsync(id, cancellationToken);
+    }
+
+    /// <summary>The rename rule for a photo renamed through the photo API (issue #428 §5.4), in the update's own save.</summary>
+    public async Task StageRenameForPhotoAsync(Guid id, CancellationToken cancellationToken)
+    {
         var thumbnails = await context.PhotoThumbnails.Where(t => t.PhotoId == id).ToListAsync(cancellationToken);
         await StageReleaseAsync([.. thumbnails.Select(t => t.StoredObjectId)], cancellationToken);
         context.PhotoThumbnails.RemoveRange(thumbnails);
@@ -229,7 +237,7 @@ public sealed class PhotoThumbnailService(OdysseyContext context, IObjectStore s
                 ?? await context.StoredObjects.FirstOrDefaultAsync(o => o.Id == objectId, cancellationToken);
             if (tracked is { State: StoredObjectState.Committed })
             {
-                store.StageRelease(tracked, immediate: true);
+                store.StageRelease(tracked);
             }
         }
     }

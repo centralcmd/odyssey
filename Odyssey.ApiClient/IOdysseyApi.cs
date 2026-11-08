@@ -63,14 +63,16 @@ public interface IOdysseyApi
     /// POSTs a multipart upload under the form field <paramref name="fieldName"/> and deserializes the
     /// response as <typeparamref name="T"/>. <paramref name="contentTypeOverride"/> forces the part's
     /// media type (the ICS/vCard imports declare <c>text/calendar</c> / <c>text/vcard</c> regardless of
-    /// what the browser reported).
+    /// what the browser reported). <paramref name="fields"/> are sent as extra form fields beside the file — a
+    /// repeated name for a list (the photo upload's id lists, issue #428).
     /// </summary>
     Task<ApiResult<T>> UploadAsync<T>(
         string url,
         ApiUpload file,
         string fieldName = "file",
         string? contentTypeOverride = null,
-        CancellationToken ct = default);
+        CancellationToken ct = default,
+        IReadOnlyList<KeyValuePair<string, string>>? fields = null);
 }
 
 /// <inheritdoc cref="IOdysseyApi" />
@@ -228,11 +230,17 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         ApiUpload file,
         string fieldName = "file",
         string? contentTypeOverride = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default,
+        IReadOnlyList<KeyValuePair<string, string>>? fields = null)
     {
         try
         {
             using var content = new MultipartFormDataContent();
+            foreach (var (name, value) in fields ?? [])
+            {
+                content.Add(new StringContent(value), name);
+            }
+
             using var stream = file.OpenRead();
             var part = new StreamContent(stream);
 

@@ -88,6 +88,11 @@
                         {
                             <OdsEmptyLine Text="Nothing running." Pad="OdsSize.Sm" />
                         }
+                        @if (loaded.WorkerHealth.PhotoOriginalBackfill is { } move)
+                        {
+                            <h2 class="bgj-h2">Photo original move</h2>
+                            <PhotoOriginalMoveCard Status="move" GeneratedAtUtc="GeneratedAt" />
+                        }
                         @if (WorkerHealthLines(loaded.WorkerHealth) is { Count: > 0 } lines)
                         {
                             <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">

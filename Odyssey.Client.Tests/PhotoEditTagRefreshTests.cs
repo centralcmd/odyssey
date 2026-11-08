@@ -51,7 +51,7 @@ public sealed class PhotoEditTagRefreshTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedResult<PhotoSummary>>.Success(new PagedResult<PhotoSummary>
             {
-                Items = [new PhotoSummary { PhotoId = PhotoId, FileId = Guid.NewGuid(), Title = "Summit", PersonCount = 0, AlbumCount = 0 }],
+                Items = [new PhotoSummary { PhotoId = PhotoId, Title = "Summit", PersonCount = 0, AlbumCount = 0 }],
                 TotalCount = 1,
                 Offset = 0,
                 Limit = 24,
@@ -60,7 +60,6 @@ public sealed class PhotoEditTagRefreshTests
             .ReturnsAsync(new ExistingPhoto
             {
                 PhotoId = PhotoId,
-                FileId = Guid.NewGuid(),
                 Title = "Summit",
                 CreatedAt = new DateTime(2026, 9, 1),
                 UpdatedAt = new DateTime(2026, 9, 1),

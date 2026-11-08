@@ -525,7 +525,14 @@ public sealed class DemoDataSeeder(
         // keyed on the natural keys, so a fresh DB, an already-backfilled DB and a re-run all converge to
         // the same demo set without ever colliding on the unique indexes (FileId, Name, the link pairs).
         var existingPhotoIds = (await context.Photos.Select(p => p.PhotoId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingFileIds = (await context.Photos.Select(p => p.FileId).ToListAsync(cancellationToken)).ToHashSet();
+        // A demo photo the worker's backfill has since moved to the photo store (issue #428) keeps its old file id
+        // as LegacyFileId, so a re-run still recognises it.
+        var existingFileIds = (await context.Photos
+                .Select(p => new { p.FileId, p.LegacyFileId })
+                .ToListAsync(cancellationToken))
+            .SelectMany(p => new[] { p.FileId, p.LegacyFileId })
+            .Where(id => id is not null)
+            .ToHashSet();
         var existingTagNames = (await context.PhotoTags.Select(t => t.Name).ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var existingTagIds = (await context.PhotoTags.Select(t => t.PhotoTagId).ToListAsync(cancellationToken)).ToHashSet();

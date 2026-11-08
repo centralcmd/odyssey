@@ -1,3 +1,4 @@
+using Odyssey.Core.Journal.Originals;
 using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -100,6 +101,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         await using var provider = await BuildProviderAsync();
         var photoId = await CreatePhotoAsync(provider);
         var fileId = await FileIdAsync(provider, photoId);
+        await ShareAsync(provider, fileId);
         var before = await JobAsync(provider, photoId);
 
         using (var scope = provider.CreateScope())
@@ -182,7 +184,7 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
             options => options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)),
             new Dictionary<string, string>(),
             features: [],
-            configureServices: services => services.AddPhotoThumbnails());
+            configureServices: services => services.AddPhotoThumbnails().AddPhotoOriginals());
 
         var error = await Assert.ThrowsAsync<FileStorageMisconfiguredException>(() => host.VerifyAsync());
 
@@ -227,7 +229,25 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
     private static async Task<Guid> FileIdAsync(ServiceProvider provider, Guid photoId)
     {
         using var scope = provider.CreateScope();
-        return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync();
+        return await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync();
+    }
+
+    /// <summary>
+    /// Attaches the photo's file to a journal entry. Since PR #441 a file only a photo names is hidden from
+    /// <c>FileService</c>; the Files-store rename that re-renders a photo's thumbnails is one of a shared file.
+    /// </summary>
+    private static async Task ShareAsync(ServiceProvider provider, Guid fileId)
+    {
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var entry = new JournalEntry
+        {
+            JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
+            EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        };
+        context.JournalEntries.Add(entry);
+        context.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
+        await context.SaveChangesAsync();
     }
 
     private static async Task<string> FileNameAsync(ServiceProvider provider, Guid fileId)
@@ -269,36 +289,15 @@ public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
         return stored.Id;
     }
 
+    /// <summary>A legacy photo (issue #428): this file tests the rename observer, which only a file rename reaches.</summary>
     private static async Task<Guid> CreatePhotoAsync(ServiceProvider provider)
     {
-        Guid fileId;
-        using (var scope = provider.CreateScope())
-        {
-            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-            fileId = Guid.NewGuid();
-            context.FileBlob.Add(blob);
-            context.FileMetadata.Add(new FileMetadata
-            {
-                Id = fileId,
-                UploadedByUserId = "user",
-                FileName = "p.jpg",
-                ContentType = "image/jpeg",
-                SizeBytes = 3,
-                Sha256Hash = Convert.ToHexString(SHA256.HashData(blob.Content)),
-                FileBlobId = blob.Id,
-                FileBlob = blob,
-                UploadedAtUtc = DateTime.UtcNow,
-            });
-            await context.SaveChangesAsync();
-        }
-
-        using (var scope = provider.CreateScope())
-        {
-            var photo = await scope.ServiceProvider.GetRequiredService<PhotoService>()
-                .Create(new NewPhoto { FileId = fileId }, "user", canAutoCreateTags: false);
-            return photo.PhotoId;
-        }
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var (photo, _) = PhotoTestData.StageLegacyPhoto(context, [1, 2, 3], userId: "user");
+        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageEnqueueAsync(photo, default);
+        await context.SaveChangesAsync();
+        return photo.PhotoId;
     }
 
     private async Task<ServiceProvider> BuildProviderAsync()

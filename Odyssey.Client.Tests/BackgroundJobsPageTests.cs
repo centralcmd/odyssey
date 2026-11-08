@@ -142,7 +142,7 @@ public class BackgroundJobsPageTests
         await using var f = NewFixture();
         var cut = Render(f);
 
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
         Assert.NotNull(cut.Find("section[aria-label='Overview']"));
         Assert.NotNull(cut.Find("section[aria-label='Search']"));
         Assert.Equal(["Jobs", "Totals", "Running now", "Run history"], cut.FindAll("h2.bgj-h2").Select(h => h.TextContent.Trim()));
@@ -178,6 +178,27 @@ public class BackgroundJobsPageTests
         Assert.Contains("No runs", success.QuerySelector(".sr-only")!.TextContent);
     }
 
+    /// <summary>Issue #428: the move's status card has its own h2, and is absent when its block is null (no file-storage.read).</summary>
+    [Fact]
+    public async Task The_photo_original_move_card_appears_only_with_its_status_block()
+    {
+        var withStatus = Overview();
+        withStatus.WorkerHealth = new BackgroundJobsWorkerHealth { PhotoOriginalBackfill = new PhotoBackfillStatus { Remaining = 12 } };
+        await using (var f = NewFixture(withStatus))
+        {
+            var cut = await RenderLoaded(f);
+            Assert.Contains(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
+            Assert.Single(cut.FindComponents<PhotoOriginalMoveCard>());
+        }
+
+        await using (var f = NewFixture())
+        {
+            var cut = await RenderLoaded(f);
+            Assert.DoesNotContain(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
+            Assert.Empty(cut.FindComponents<PhotoOriginalMoveCard>());
+        }
+    }
+
     // ── Run items per canRunNow (AC 12) ──────────────────────────────────────────────────────────
 
     [Fact]
@@ -203,7 +224,7 @@ public class BackgroundJobsPageTests
     }
 
     [Fact]
-    public async Task All_four_run_items_exist_while_the_overview_is_loading()
+    public async Task Every_run_item_exists_while_the_overview_is_loading()
     {
         await using var f = NewFixture();
         f.Api.Setup(a => a.GetOverviewAsync(It.IsAny<CancellationToken>())).Returns(new TaskCompletionSource<ApiResult<BackgroundJobsOverview>>().Task);
@@ -211,7 +232,7 @@ public class BackgroundJobsPageTests
 
         var items = OpenMenu(f, cut).Select(i => i.TextContent.Trim()).ToList();
 
-        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Refresh"], items);
+        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run photo original move", "Refresh"], items);
         Assert.Equal("true", cut.Find("section[aria-label='Overview']").GetAttribute("aria-busy"));
     }
 
@@ -220,7 +241,7 @@ public class BackgroundJobsPageTests
     {
         await using var f = NewFixture(claims: [PermissionClaims.SystemSettingsRead]);
         var cut = Render(f);
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
 
         Assert.Equal(["Refresh"], OpenMenu(f, cut).Select(i => i.TextContent.Trim()));
     }
@@ -409,7 +430,7 @@ public class BackgroundJobsPageTests
         f.Api.Setup(a => a.RunNowAsync(JobType.Weather, It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<JobRunStarted>.Success(new JobRunStarted { Id = runId }, HttpStatusCode.Accepted));
         var cut = Render(f);
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
 
         OpenMenu(f, cut).Single(i => i.TextContent.Trim() == "Run weather").Click();
 
@@ -431,7 +452,7 @@ public class BackgroundJobsPageTests
             .ReturnsAsync(ApiResult<JobRunStarted>.Failure(HttpStatusCode.Conflict,
                 new ApiProblem { Status = 409, Code = JobRunConflictCodes.AlreadyRunning, Detail = "SERVER-DETAIL" }));
         var cut = Render(f);
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
 
         await cut.InvokeAsync(() => cut.Instance.RunNowAsync(JobType.Weather));
 
@@ -486,7 +507,7 @@ public class BackgroundJobsPageTests
     private static async Task<IRenderedComponent<BackgroundJobs>> RenderLoaded(Fixture f, FollowSteps? steps = null)
     {
         var cut = Render(f);
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
         if (steps is not null)
             await cut.InvokeAsync(() => cut.Instance.FollowDelay = steps.Delay);
         return cut;
@@ -787,7 +808,7 @@ public class BackgroundJobsPageTests
         fail = false;
         cut.Find("#bgj-overview-retry").Click();
 
-        cut.WaitForAssertion(() => Assert.Equal(4, cut.FindAll("h3.bgj-tile-h").Count));
+        cut.WaitForAssertion(() => Assert.Equal(BackgroundJobPresentation.Jobs.Count, cut.FindAll("h3.bgj-tile-h").Count));
         Assert.Equal(BackgroundJobs.JobsHeadingId, FocusCalls(f).LastOrDefault());
         Assert.Equal("-1", cut.Find($"#{BackgroundJobs.JobsHeadingId}").GetAttribute("tabindex"));
     }
@@ -813,7 +834,7 @@ public class BackgroundJobsPageTests
         var available = Now.UtcDateTime.AddMinutes(1);
         await using var f = NewFixture(Overview(
             Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
-            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails)));
+            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill)));
         var cut = await RenderLoaded(f);
         Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);
 

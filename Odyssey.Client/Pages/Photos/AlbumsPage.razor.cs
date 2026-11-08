@@ -50,7 +50,7 @@ public partial class AlbumsPage
 
     private bool _canCreate;
     private bool _canUpdate;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "albums-page";
 
@@ -224,12 +224,12 @@ public partial class AlbumsPage
     }
 
     private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files),
+        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
             string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
             p.Archived is not null, p.Favourited is not null);
 
     private PhotoImageSource Cover(PhotoAlbumSummary a) =>
-        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files);
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
     private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);

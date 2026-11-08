@@ -3,15 +3,13 @@ using System.ComponentModel.DataAnnotations;
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>
-/// List-row projection for a photo: the scalar fields the grid needs (incl. <see cref="FileId"/> to build
-/// the image URL), tag ids, and link counts. People/album names are not included — the read stays
+/// List-row projection for a photo: the scalar fields the grid needs (the image URL is built from
+/// <see cref="PhotoId"/>, issue #428), tag ids, and link counts. People/album names are not included — the read stays
 /// link-ids-only (§10.5).
 /// </summary>
 public sealed record PhotoSummary : ITagIconRecord
 {
     public required Guid PhotoId { get; set; }
-
-    public required Guid FileId { get; set; }
 
     [StringLength(PhotoLimits.MaxTitleLength)]
     public string? Title { get; set; }

@@ -54,7 +54,6 @@ public partial class JournalCard
     private bool _canUpdatePhotos;
     private bool _canDeletePhotos;
     private bool _canCreatePhotoTags;
-    private bool _canRenameFile;
     private bool _photoRefsLoaded;
     private Dictionary<Guid, string> _photoTagNames = [];
     private Dictionary<Guid, string?> _photoTagIcons = [];
@@ -70,7 +69,7 @@ public partial class JournalCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadFiles;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
     private bool _canReadJournalTags;
@@ -200,7 +199,6 @@ public partial class JournalCard
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
         _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
-        _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
         WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
@@ -279,10 +277,6 @@ public partial class JournalCard
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
-
-        // Every card renders its gallery, so the page's photo filenames are hydrated once per load
-        // rather than per card. Deliberately after the render above: the list must not wait on it.
-        await HydratePagePhotosAsync();
     }
 
     private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);
@@ -391,37 +385,6 @@ public partial class JournalCard
         return entry;
     }
 
-    // Photo file metadata (name/size/type) for every entry on the page, so each gallery tile carries a
-    // real filename as its caption and accessible name. Fetched once per file id and cached, in
-    // parallel rather than in sequence — a page of cards would otherwise serialise dozens of round
-    // trips. A file the caller can't read (no files.read) or that was deleted resolves to null and
-    // renders as an "Unavailable" placeholder.
-    private async Task HydratePagePhotosAsync()
-    {
-        if (!_canReadFiles)
-        {
-            return;
-        }
-
-        var ids = _entries
-            .SelectMany(e => e.Photos.Select(p => p.FileId))
-            .Distinct()
-            .Where(id => !_fileMeta.ContainsKey(id))
-            .ToList();
-        if (ids.Count == 0)
-        {
-            return;
-        }
-
-        var metas = await Task.WhenAll(ids.Select(id => Files.GetMetadataAsync(id)));
-        for (var i = 0; i < ids.Count; i++)
-        {
-            _fileMeta[ids[i]] = metas[i];
-        }
-
-        StateHasChanged();
-    }
-
     // The attachment list behind the card's footer count. The summary carries only the count — the
     // file ids live on the detail — so opening the disclosure is what pays for both fetches, on the one
     // card the reader actually asked about.
@@ -479,22 +442,20 @@ public partial class JournalCard
     }
 
     private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        GalleryPhotos(e.Photos, id => _canReadFiles ? _fileMeta.GetValueOrDefault(id) : null, _imageAccess, Photos, Files);
+        GalleryPhotos(e.Photos, _imageAccess, Photos);
 
     /// <summary>
-    /// The gallery's sources (issue #365 B5): the original still needs resolved metadata, as before; the Small
-    /// thumbnail does not, so a <c>photos.read</c>-only caller with a ready thumbnail sees it rather than "no access".
-    /// "No access" is only the case with neither source. Static so the rule is tested without rendering the page.
+    /// The gallery's sources (issue #365 B5, issue #428): both the Small thumbnail and the original are photo data
+    /// under <c>photos.read</c>, and the label travels on the link. "No access" is the case with neither source.
+    /// Static so the rule is tested without rendering the page.
     /// </summary>
     internal static IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(
-        IEnumerable<JournalEntryPhotoDto> photos, Func<Guid, FileMetadataResponse?> metadata, PhotoImageAccess access,
-        IPhotosApiClient photoClient, IFilesApiClient fileClient) =>
-        [.. photos.OrderBy(p => p.Position).Select(p =>
+        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient) =>
+        [.. photos.OrderBy(p => p.Position).Select((p, i) =>
         {
-            var meta = metadata(p.FileId);
-            var image = PhotoImageSources.For(
-                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient, fileClient);
-            return new JournalPhotoGallery.Photo(p.FileId.ToString(), meta?.FileName ?? "Photo", image, Unavailable: image.IsEmpty);
+            var image = PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient);
+            return new JournalPhotoGallery.Photo(
+                p.PhotoId.ToString(), PhotoMappers.Label(p.Title, p.FileName, $"Photo {i + 1}"), image, Unavailable: image.IsEmpty);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>
@@ -506,7 +467,7 @@ public partial class JournalCard
     // Remember the activating gallery tile so focus returns to it when the lightbox closes (WCAG 2.4.3),
     // then open. The lightbox itself traps focus (MudFocusTrap) while open.
     // Clicking a gallery tile opens the shared PhotoDetailDialog over the entry's photos. The gallery
-    // keys tiles by FileId; the entry's link order (Position) drives the dialog's prev/next, so the
+    // keys tiles by PhotoId; the entry's link order (Position) drives the dialog's prev/next, so the
     // summary list is built in that same order and the clicked tile's ordinal is the opening index.
     private async Task OpenPhotoDetail(JournalEntrySummary e, JournalPhotoGallery.Photo photo)
     {
@@ -524,10 +485,10 @@ public partial class JournalCard
         [
             .. ordered.Select((jp, i) => fulls[i] is { } full
                 ? PhotoMappers.ToSummary(full)
-                : PhotoMappers.MinimalSummary(jp.PhotoId, jp.FileId)),
+                : PhotoMappers.MinimalSummary(jp.PhotoId)),
         ];
         _detailEntryId = e.JournalEntryId;
-        var idx = ordered.FindIndex(p => p.FileId.ToString() == photo.Id);
+        var idx = ordered.FindIndex(p => p.PhotoId.ToString() == photo.Id);
         _detailIndex = idx < 0 ? 0 : idx;
     }
 
@@ -631,15 +592,6 @@ public partial class JournalCard
         if (_detailEntryId is not { } eid)
         {
             return;
-        }
-
-        var entry = _entries.FirstOrDefault(e => e.JournalEntryId == eid);
-        if (entry is not null)
-        {
-            foreach (var fid in entry.Photos.Select(p => p.FileId))
-            {
-                _fileMeta.Remove(fid);
-            }
         }
 
         _details.Remove(eid);

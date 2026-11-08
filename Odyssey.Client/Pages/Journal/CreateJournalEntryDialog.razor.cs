@@ -74,10 +74,10 @@ public partial class CreateJournalEntryDialog
         try
         {
             var photos = new List<JournalDraftPhoto>();
+            // The label travels on the link itself since issue #428; no Files request.
             foreach (var p in entry.Photos.OrderBy(p => p.Position))
             {
-                var meta = await Files.GetMetadataAsync(p.FileId);
-                photos.Add(new JournalDraftPhoto(p.FileId, meta?.FileName ?? "Photo", p.PhotoId, p.ThumbnailsReady));
+                photos.Add(new JournalDraftPhoto(p.PhotoId, PhotoMappers.Label(p.Title, p.FileName), p.ThumbnailsReady));
             }
 
             // A dangling or unreadable attachment id is carried as a placeholder row rather than

@@ -27,9 +27,8 @@ namespace Odyssey.Client.Tests;
 /// its upload-only form by the Photos page.
 /// </summary>
 /// <remarks>
-/// A photo already on the entry or album is disabled and says so in text. The already-added match runs
-/// against both a photo's id and its file id, because an album holds the one and a journal entry the
-/// other — a match on only one would let the journal re-add a photo it already shows.
+/// A photo already on the entry or album is disabled and says so in text. Since issue #428 both hosts name a
+/// photo by its photo id, and an upload is one multipart call that creates the library photo.
 /// </remarks>
 public class AttachPhotosDialogTests
 {
@@ -38,7 +37,6 @@ public class AttachPhotosDialogTests
     private static PhotoSummary Photo(string title) => new()
     {
         PhotoId = Guid.NewGuid(),
-        FileId = Guid.NewGuid(),
         Title = title,
         PersonCount = 0,
         AlbumCount = 0,
@@ -74,19 +72,17 @@ public class AttachPhotosDialogTests
         bool canBrowse = true,
         bool uploadOnly = false,
         IReadOnlyList<Guid>? attached = null,
-        bool createLibraryPhoto = true,
-        Func<string?, Task<ApiResult<PagedResult<PhotoSummary>>>>? list = null,
-        bool filesRead = false)
+        Func<string?, Task<ApiResult<PagedResult<PhotoSummary>>>>? list = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
 
         var files = new Mock<IFilesApiClient>();
-        files.Setup(f => f.ContentUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/files/{id}/content");
         ctx.Services.AddSingleton(files.Object);
 
         var photos = new Mock<IPhotosApiClient>();
+        photos.Setup(p => p.ContentUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://localhost/api/photos/{id}/content");
         photos.Setup(p => p.ThumbnailUrl(It.IsAny<Guid>(), It.IsAny<ThumbnailSize>()))
             .Returns((Guid id, ThumbnailSize size) => $"http://localhost/api/photos/{id}/thumbnail?size={size}");
         photos.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<string?>(),
@@ -103,16 +99,14 @@ public class AttachPhotosDialogTests
         ctx.Services.AddSingleton(limits.Object);
 
         var claims = new List<string>();
-        if (canUpload) claims.AddRange([PermissionClaims.FilesCreate, PermissionClaims.PhotosCreate]);
+        if (canUpload) claims.Add(PermissionClaims.PhotosCreate);
         if (canBrowse) claims.Add(PermissionClaims.PhotosRead);
-        if (filesRead) claims.Add(PermissionClaims.FilesRead);
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(claims));
 
         var submitted = new List<AttachPhotoItem>();
         var cut = ctx.Render<DialogHost>(p => p
             .Add(h => h.AttachedIds, attached ?? [])
             .Add(h => h.UploadOnly, uploadOnly)
-            .Add(h => h.CreateLibraryPhoto, createLibraryPhoto)
             .Add(h => h.OnSubmit, items => submitted.AddRange(items)));
 
         if (!canUpload && canBrowse)
@@ -128,34 +122,33 @@ public class AttachPhotosDialogTests
     [Fact]
     public void A_ready_photo_shows_its_small_thumbnail_and_a_not_ready_one_its_original()
     {
-        var h = Render(filesRead: true, list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+        var h = Render(list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
 
         Assert.Equal($"http://localhost/api/photos/{Fjord.PhotoId}/thumbnail?size=Small", h.Tile(Fjord).QuerySelector("img")!.GetAttribute("src"));
-        Assert.Equal($"http://localhost/api/files/{Cabin.FileId}/content", h.Tile(Cabin).QuerySelector("img")!.GetAttribute("src"));
+        Assert.Equal($"http://localhost/api/photos/{Cabin.PhotoId}/content", h.Tile(Cabin).QuerySelector("img")!.GetAttribute("src"));
     }
 
     [Fact]
     public void A_failed_thumbnail_falls_back_to_the_original_silently_and_the_tile_keeps_its_name_and_state()
     {
-        var h = Render(filesRead: true, list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
+        var h = Render(list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
         var label = h.Tile(Fjord).GetAttribute("aria-label");
 
         h.Tile(Fjord).QuerySelector("img")!.TriggerEvent("onerror", EventArgs.Empty);
 
-        Assert.Equal($"http://localhost/api/files/{Fjord.FileId}/content", h.Tile(Fjord).QuerySelector("img")!.GetAttribute("src"));
+        Assert.Equal($"http://localhost/api/photos/{Fjord.PhotoId}/content", h.Tile(Fjord).QuerySelector("img")!.GetAttribute("src"));
         Assert.Equal(label, h.Tile(Fjord).GetAttribute("aria-label"));
         Assert.Equal("false", h.Tile(Fjord).GetAttribute("aria-pressed"));
         Assert.Empty(h.Toasts);
     }
 
+    /// <summary>Issue #428 §5.2: the original is photo data, so a tile never asks the files endpoint for it.</summary>
     [Fact]
-    public void Without_files_read_a_not_ready_photo_shows_the_placeholder_and_requests_no_original()
+    public void No_tile_requests_an_image_from_the_files_endpoint()
     {
         var h = Render(list: _ => Task.FromResult(Page(Ready(Fjord), Cabin, Market)));
 
-        Assert.NotNull(h.Tile(Fjord).QuerySelector("img"));
-        Assert.Null(h.Tile(Cabin).QuerySelector("img"));
-        Assert.NotNull(h.Tile(Cabin).QuerySelector(".odc-photoimg-ph"));
+        Assert.NotNull(h.Tile(Cabin).QuerySelector("img"));
         Assert.DoesNotContain("/api/files/", h.Host.Markup, StringComparison.Ordinal);
     }
 
@@ -205,12 +198,10 @@ public class AttachPhotosDialogTests
         Assert.Equal(3, h.Host.FindAll("button.apd-tile").Count);
     }
 
-    [Theory]
-    [InlineData(true)]
-    [InlineData(false)]
-    public void A_photo_already_added_is_disabled_whether_named_by_photo_or_file_id(bool byPhotoId)
+    [Fact]
+    public void A_photo_already_added_is_disabled()
     {
-        var h = Render(attached: [byPhotoId ? Fjord.PhotoId : Fjord.FileId]);
+        var h = Render(attached: [Fjord.PhotoId]);
 
         var tile = h.Tile(Fjord);
         Assert.True(tile.HasAttribute("disabled"));
@@ -235,9 +226,9 @@ public class AttachPhotosDialogTests
         Assert.Contains("Add photo", h.Host.Markup, StringComparison.Ordinal);
     }
 
-    /// <summary>Submit hands back each pick with both ids, in pick order, and never touches the library.</summary>
+    /// <summary>Submit hands back each pick in pick order and uploads nothing.</summary>
     [Fact]
-    public void Submit_hands_back_the_picks_with_both_ids_in_pick_order()
+    public void Submit_hands_back_the_picks_in_pick_order()
     {
         var h = Render();
 
@@ -247,9 +238,8 @@ public class AttachPhotosDialogTests
 
         h.Host.WaitForAssertion(() => Assert.Equal(2, h.Submitted.Count));
         Assert.Equal([Market.PhotoId, Fjord.PhotoId], h.Submitted.Select(i => i.PhotoId));
-        Assert.Equal([Market.FileId, Fjord.FileId], h.Submitted.Select(i => i.FileId));
         Assert.All(h.Submitted, i => Assert.Equal(AttachDocumentSource.Library, i.Source));
-        h.Photos.Verify(p => p.CreateAsync(It.IsAny<NewPhoto>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Photos.Verify(p => p.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<NewPhotoUpload?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -330,17 +320,21 @@ public class AttachPhotosDialogTests
         h.Host.WaitForAssertion(() => Assert.Contains("Couldn’t load your photos.", h.Host.Markup, StringComparison.Ordinal));
     }
 
+    private static ApiResult<ExistingPhoto> Created(string name) =>
+        ApiResult<ExistingPhoto>.Success(new ExistingPhoto
+        {
+            PhotoId = Guid.NewGuid(), FileName = name, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+        }, HttpStatusCode.Created);
+
     /// <summary>
-    /// A 409 from creating the library photo (the file is already one) is named with its way out and the
+    /// A 409 from the upload (the same image is already a photo, issue #428 §4.3) is named with its way out and the
     /// dialog stays open — never a silent no-op that reads as a dead button.
     /// </summary>
     [Fact]
     public async Task An_upload_already_in_the_library_is_named_and_the_dialog_stays_open()
     {
         var h = Render(canUpload: true);
-        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new FileUploadResponse(Guid.NewGuid(), "fjord.jpg", "image/jpeg", 10, "hash", DateTime.UtcNow, null));
-        h.Photos.Setup(p => p.CreateAsync(It.IsAny<NewPhoto>(), It.IsAny<CancellationToken>()))
+        h.Photos.Setup(p => p.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<NewPhotoUpload?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<ExistingPhoto>.Failure(HttpStatusCode.Conflict, new ApiProblem { Detail = "exists" }));
 
         await h.Pick(Image("fjord.jpg"));
@@ -351,47 +345,39 @@ public class AttachPhotosDialogTests
         Assert.Contains("wasn’t added", h.Host.Markup, StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// The journal's photos upload without creating a library photo — the entry write finds or creates it —
-    /// so the item carries the stored file id and no photo id.
-    /// </summary>
+    /// <summary>An upload is one call that creates the library photo, and the item carries the new photo's id.</summary>
     [Fact]
-    public async Task Without_a_library_photo_an_upload_hands_back_only_the_file()
+    public async Task An_upload_creates_the_photo_in_one_call_and_hands_back_its_id()
     {
-        var stored = Guid.NewGuid();
-        var h = Render(canUpload: true, createLibraryPhoto: false);
-        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new FileUploadResponse(stored, "hike.jpg", "image/jpeg", 10, "hash", DateTime.UtcNow, null));
+        var h = Render(canUpload: true);
+        var created = Created("hike.jpg");
+        h.Photos.Setup(p => p.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<NewPhotoUpload?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(created);
 
         await h.Pick(Image("hike.jpg"));
         h.Footer.Click();
 
         h.Host.WaitForAssertion(() => Assert.Single(h.Submitted));
-        Assert.Equal(stored, h.Submitted[0].FileId);
-        Assert.Null(h.Submitted[0].PhotoId);
-        h.Photos.Verify(p => p.CreateAsync(It.IsAny<NewPhoto>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(created.Value!.PhotoId, h.Submitted[0].PhotoId);
+        Assert.Equal(AttachDocumentSource.Upload, h.Submitted[0].Source);
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
-    /// <summary>A retry after a partly failed batch neither re-adds what made it nor stores any file twice.</summary>
+    /// <summary>A retry after a partly failed batch neither re-adds what made it nor uploads any photo twice.</summary>
     [Fact]
     public async Task A_retry_does_not_upload_the_photos_that_already_made_it()
     {
         var h = Render(canUpload: true);
-        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ApiUpload u, string? _, CancellationToken _) =>
-                new FileUploadResponse(Guid.NewGuid(), u.FileName, "image/jpeg", 10, "hash", DateTime.UtcNow, null));
         var failCabin = true;
-        var calls = 0;
-        h.Photos.Setup(p => p.CreateAsync(It.IsAny<NewPhoto>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() =>
+        h.Photos.Setup(p => p.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<NewPhotoUpload?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApiUpload u, NewPhotoUpload? _, CancellationToken _) =>
             {
-                calls++;
-                if (calls == 2 && failCabin)
+                if (u.FileName == "cabin.jpg" && failCabin)
                 {
                     failCabin = false;
                     return ApiResult<ExistingPhoto>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Detail = "boom" });
                 }
-                return ApiResult<ExistingPhoto>.Success(new ExistingPhoto { PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }, HttpStatusCode.Created);
+                return Created(u.FileName);
             });
 
         await h.Pick(Image("fjord.jpg"), Image("cabin.jpg"));
@@ -400,9 +386,7 @@ public class AttachPhotosDialogTests
 
         h.Footer.Click();
         h.Host.WaitForAssertion(() => Assert.Equal(2, h.Submitted.Count));
-        // Each file is stored once: the retry only re-runs cabin's refused library-photo step.
-        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
-        h.Photos.Verify(p => p.CreateAsync(It.IsAny<NewPhoto>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
+        h.Photos.Verify(p => p.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<NewPhotoUpload?>(), It.IsAny<CancellationToken>()), Times.Exactly(3));
         Assert.Equal(["fjord.jpg", "cabin.jpg"], h.Submitted.Select(i => i.Name));
     }
 
@@ -418,7 +402,6 @@ public class AttachPhotosDialogTests
     {
         [Parameter] public IReadOnlyList<Guid> AttachedIds { get; set; } = [];
         [Parameter] public bool UploadOnly { get; set; }
-        [Parameter] public bool CreateLibraryPhoto { get; set; } = true;
         [Parameter] public Action<IReadOnlyList<AttachPhotoItem>>? OnSubmit { get; set; }
 
         private bool _open = true;
@@ -438,7 +421,6 @@ public class AttachPhotosDialogTests
                 EventCallback.Factory.Create<bool>(this, open => _open = open));
             builder.AddComponentParameter(8, nameof(AttachPhotosDialog.OnSubmit),
                 EventCallback.Factory.Create<IReadOnlyList<AttachPhotoItem>>(this, items => OnSubmit?.Invoke(items)));
-            builder.AddComponentParameter(9, nameof(AttachPhotosDialog.CreateLibraryPhoto), CreateLibraryPhoto);
             builder.CloseComponent();
         }
     }

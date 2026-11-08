@@ -1,3 +1,4 @@
+using Odyssey.Dtos.Journal;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -239,11 +240,10 @@ public class TagColorApiTests
         var trip = await SeedTagAsync(factory, kind, "Trip", "beach_access", "#0369a1");
         var art = await SeedTagAsync(factory, kind, "art", null, "#15803D");
         var corrupt = await SeedTagAsync(factory, kind, "Auto", "directions_car", "red;x:y");
-        var fileId = kind == Kind.Photo ? await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId) : Guid.Empty;
         using var client = factory.CreateClient();
 
         // art sorts first but has no icon, so Trip wins — and its colour comes along, upper-cased.
-        var post = await client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, fileId, [trip, art]));
+        var post = await PostRecordAsync(client, kind, [trip, art]);
         Assert.Equal(HttpStatusCode.Created, post.StatusCode);
         var created = await DisplayOf(post);
         Assert.Equal(("beach_access", "#0369A1"), (created.Icon, created.Color));
@@ -373,6 +373,12 @@ public class TagColorApiTests
         Kind.Task => [PermissionClaims.TasksRead, PermissionClaims.TasksCreate, PermissionClaims.TasksUpdate],
         _ => [PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate, PermissionClaims.PhotosUpdate, PermissionClaims.FilesRead],
     };
+
+    // A photo is uploaded as multipart since issue #428; the other kinds post JSON.
+    private static Task<HttpResponseMessage> PostRecordAsync(HttpClient client, Kind kind, Guid[] tagIds) =>
+        kind == Kind.Photo
+            ? PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload { TagIds = tagIds })
+            : client.PostAsJsonAsync(RecordPath(kind), CreateBody(kind, Guid.Empty, tagIds));
 
     private static object CreateBody(Kind kind, Guid fileId, Guid[] tagIds) => kind switch
     {

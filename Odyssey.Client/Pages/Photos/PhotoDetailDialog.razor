@@ -7,7 +7,6 @@
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
 *@
 @using Odyssey.Dtos
-@inject IFilesApiClient Files
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js
 
@@ -17,9 +16,9 @@
           HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
     <div class="odc-modal-body pl-ods2" tabindex="-1" @ref="_body" @onkeydown="OnKeyDown">
         <div class="pl-ods2-stage">
-            @if (Current is { FileId: var fid })
+            @if (Current is { PhotoId: var pid })
             {
-                <img class="pl-ods-img" style="object-fit: contain;" src="@Files.ContentUrl(fid)" alt="@Label(Current)" />
+                <img class="pl-ods-img" style="object-fit: contain;" src="@Api.ContentUrl(pid)" alt="@Label(Current)" />
             }
             @if (Photos.Count > 1)
             {
@@ -223,9 +222,9 @@
 
     private async Task DownloadAsync()
     {
-        if (Current is { FileId: var fid })
+        if (Current is { PhotoId: var pid })
         {
-            await Js.InvokeVoidAsync("open", Files.ContentUrl(fid), "_blank", "noopener");
+            await Js.InvokeVoidAsync("open", Api.ContentUrl(pid), "_blank", "noopener");
         }
     }
 

@@ -1,52 +1,60 @@
 using Odyssey.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Odyssey.Context;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Pagination;
-using Odyssey.Context;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// CRUD, archival, and server-side listing for library photos (issue #321). Cross-module references
-/// (people, files) are validated via narrow read-only Finance lookups in front of the DB foreign keys
-/// (§5). Reads return link ids only (§10.5), and unresolved person links are dropped at read
-/// time (§10.4). Metadata extraction runs on add only and never overrides a caller-supplied value.
+/// CRUD, archival, and server-side listing for library photos (issue #321). Since issue #428 a photo owns its
+/// original: an upload writes it to the object store (<c>PhotoOriginals</c>) and creates the photo in one request,
+/// and no photo is ever made from an existing file. Reads return link ids only (§10.5), and unresolved person links
+/// are dropped at read time (§10.4). Metadata extraction runs on add only and never overrides a caller-supplied value.
 /// </summary>
 public class PhotoService
 {
     private readonly OdysseyContext context;
     private readonly IContactLookup contacts;
-    private readonly IFileLookup files;
     private readonly IFileReferenceGuard fileReferences;
     private readonly PhotoMetadataService metadataService;
     private readonly IJournalLimitsLookup journalLimits;
     private readonly ILogger<PhotoService> logger;
     private readonly PhotoThumbnailService thumbnails;
+    private readonly PhotoOriginalWriter originals;
+    private readonly IObjectStore store;
+    private readonly IUploadLimitsLookup uploadLimits;
     private readonly TimeProvider timeProvider;
 
     public PhotoService(
         OdysseyContext context,
         IContactLookup contacts,
-        IFileLookup files,
         IFileReferenceGuard fileReferences,
         PhotoMetadataService metadataService,
         IJournalLimitsLookup journalLimits,
         ILogger<PhotoService> logger,
         PhotoThumbnailService thumbnails,
+        PhotoOriginalWriter originals,
+        IObjectStore store,
+        IUploadLimitsLookup uploadLimits,
         TimeProvider? timeProvider = null)
     {
         this.context = context;
         this.contacts = contacts;
-        this.files = files;
         this.fileReferences = fileReferences;
         this.metadataService = metadataService;
         this.journalLimits = journalLimits;
         this.logger = logger;
         this.thumbnails = thumbnails;
+        this.originals = originals;
+        this.store = store;
+        this.uploadLimits = uploadLimits;
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -123,7 +131,6 @@ public class PhotoService
                 Summary = new PhotoSummary
                 {
                     PhotoId = p.PhotoId,
-                    FileId = p.FileId,
                     Title = p.Title,
                     TakenAt = p.TakenAt,
                     LocationName = p.LocationName,
@@ -200,22 +207,42 @@ public class PhotoService
         return dto;
     }
 
-    public async Task<ExistingPhoto> Create(
-        NewPhoto request, string userId, bool canAutoCreateTags, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Uploads a photo (issue #428 §3.2): validates the image, refuses a duplicate, writes the original to the object
+    /// store and creates the photo — with its tags, people, album items and thumbnail job — in one save.
+    /// </summary>
+    public async Task<ExistingPhoto> UploadAsync(
+        FileUpload upload, NewPhotoUpload request, string userId, bool canAutoCreateTags, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(upload);
+        var contentType = await ValidateUploadAsync(upload, cancellationToken);
         ValidateCoordinates(request.CapturedLatitude, request.CapturedLongitude);
         var callerTakenAt = NormalizeTakenAt(request.TakenAt, fromCaller: true);
-
-        await EnsureFileIsImage(request.FileId, cancellationToken);
         var links = await ValidateLinks(request.TagIds, request.PersonContactIds, request.AlbumIds, cancellationToken);
 
-        var extracted = await metadataService.ExtractAsync(request.FileId, cancellationToken);
+        // The form file is spooled to disk by the framework, so it is hashed and read here without a second copy in
+        // memory (§3.2 step 3); the stream is re-opened for the write.
+        await using var content = upload.OpenReadStream();
+        var hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(content, cancellationToken)).ToLowerInvariant();
+        await EnsureNotDuplicateAsync(hash, upload.Length, cancellationToken);
+
+        var extracted = await metadataService.ExtractFromStreamAsync(content, cancellationToken);
         var tagIds = await ResolveTagIdsAsync(links.TagIds, extracted.Keywords, canAutoCreateTags, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var fileName = SanitizeUploadName(upload.FileName);
+        content.Position = 0;
+        var maxBytes = (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes;
+        var stored = await originals.PutAsync(content, fileName, contentType, now, maxBytes, cancellationToken);
+
         var photo = new Photo
         {
-            FileId = request.FileId,
+            PhotoId = Guid.NewGuid(),
+            StoredObjectId = stored.Id,
+            FileName = fileName,
+            ContentType = contentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash,
             Title = Clamp(request.Title ?? extracted.Title, PhotoLimits.MaxTitleLength),
             Caption = Clamp(request.Caption ?? extracted.Caption, PhotoLimits.MaxCaptionLength),
             TakenAt = callerTakenAt ?? NormalizeTakenAt(extracted.TakenAt, fromCaller: false),
@@ -241,14 +268,85 @@ public class PhotoService
         }
 
         context.Photos.Add(photo);
+        // Album items share the photo's save (issue #428 §3.2 step 7), so a failed link cannot leave a half-made photo.
+        await StageAlbumItemsAsync(photo.PhotoId, links.AlbumIds, now, cancellationToken);
         // The thumbnail job, in the same save as the photo (issue #362 §3.3 step 1). The worker sees it on its next tick.
         await thumbnails.StageEnqueueAsync(photo, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        await AddToAlbumsAsync(photo.PhotoId, links.AlbumIds, now, cancellationToken);
-
         var created = await LoadWithDetails(photo.PhotoId, cancellationToken);
         return await ToDtoAsync(created!, cancellationToken);
+    }
+
+    /// <summary>
+    /// The upload's checks (§6, §8): the effective cap (413), then an allowed image type whose leading bytes agree
+    /// with it (415). Returns the normalised content type.
+    /// </summary>
+    private async Task<string> ValidateUploadAsync(FileUpload upload, CancellationToken cancellationToken)
+    {
+        if (upload.Length <= 0)
+        {
+            throw new DomainValidationException("The photo file is empty.", code: null, field: "file");
+        }
+
+        var limits = await uploadLimits.GetAsync(cancellationToken);
+        if (upload.Length > limits.MaxUploadBytes)
+        {
+            throw new PhotoTooLargeException($"The photo is larger than the {limits.MaxUploadMegabytes} MB limit.");
+        }
+
+        if (string.IsNullOrWhiteSpace(upload.ContentType) || !PhotoOriginalLimits.ContentTypes.Contains(upload.ContentType))
+        {
+            throw new PhotoUnsupportedTypeException("A photo must be a JPEG, PNG, GIF or WebP image.");
+        }
+
+        await using (var header = upload.OpenReadStream())
+        {
+            var bytes = new byte[16];
+            var read = await header.ReadAtLeastAsync(bytes, bytes.Length, throwOnEndOfStream: false, cancellationToken);
+            if (!FileValidationService.HeaderMatchesContentType(upload.ContentType, bytes.AsSpan(0, read)))
+            {
+                throw new PhotoUnsupportedTypeException("The file's content does not match its declared image type.");
+            }
+        }
+
+        return PhotoOriginalLimits.Normalize(upload.ContentType);
+    }
+
+    /// <summary>
+    /// Refuses bytes equal to an existing photo's (§3.2 step 3): a disk-backed photo by its own hash, a legacy one by
+    /// its file's — only files wrapped by a photo, so this is never an oracle for finance documents. Archived photos
+    /// count. Holds no lock: two identical uploads at the same instant can both pass (accepted, Non-Goal 9).
+    /// </summary>
+    private async Task EnsureNotDuplicateAsync(string hash, long size, CancellationToken cancellationToken)
+    {
+        var match = await context.Photos
+            .Where(p => p.Sha256Hash == hash && p.SizeBytes == size)
+            .Select(p => new { p.PhotoId, p.Archived })
+            .FirstOrDefaultAsync(cancellationToken)
+            ?? await context.Photos
+                .Where(p => p.FileId != null)
+                .Join(context.FileMetadata, p => p.FileId, f => (Guid?)f.Id, (p, f) => new { p.PhotoId, p.Archived, f.Sha256Hash, f.SizeBytes })
+                .Where(x => x.Sha256Hash == hash && x.SizeBytes == size)
+                .Select(x => new { x.PhotoId, x.Archived })
+                .FirstOrDefaultAsync(cancellationToken);
+        if (match is not null)
+        {
+            throw new DuplicatePhotoException(match.PhotoId, match.Archived is not null);
+        }
+    }
+
+    private static string SanitizeUploadName(string? fileName)
+    {
+        var sanitized = new FileValidationService().SanitizeFileName(fileName ?? string.Empty);
+        if (string.IsNullOrWhiteSpace(sanitized))
+        {
+            sanitized = "photo";
+        }
+
+        return sanitized.Length > FileValidationService.MaxFileNameLength
+            ? sanitized[..FileValidationService.MaxFileNameLength].TrimEnd()
+            : sanitized;
     }
 
     public async Task<ExistingPhoto?> Update(
@@ -262,6 +360,11 @@ public class PhotoService
 
         ValidateCoordinates(request.CapturedLatitude, request.CapturedLongitude);
         var takenAt = NormalizeTakenAt(request.TakenAt, fromCaller: true);
+        // A rename is photo data (issue #428 §5.4): it writes Photo.FileName under photos.update and never touches a
+        // Files-store row. A blank name leaves the name as it is. Sanitized before anything is applied.
+        var newFileName = string.IsNullOrWhiteSpace(request.FileName)
+            ? null
+            : new FileValidationService().SanitizeRenamedFileName(request.FileName);
         // Person links are validated change-only (issue #335 §7.6): a tag the photo already holds is
         // never re-checked, so one left behind by a contact converted to an Organization concurrently
         // with its creation never makes the photo un-editable. A newly added id must still be a Person.
@@ -284,6 +387,18 @@ public class PhotoService
         photo.UpdatedAt = now;
         ApplyArchiveTransition(photo, request.Archived);
         ApplyFavouriteTransition(photo, request.Favourite);
+        if (newFileName is not null)
+        {
+            var current = await PhotoOriginalSource.Describe(context, context.Photos.Where(p => p.PhotoId == id))
+                .Select(i => i.FileName)
+                .FirstOrDefaultAsync(cancellationToken);
+            if (!string.Equals(current, newFileName, StringComparison.Ordinal))
+            {
+                photo.FileName = newFileName;
+                // The thumbnails are named from the photo's name, so they follow it (the #362 rename rule).
+                await thumbnails.StageRenameForPhotoAsync(photo.PhotoId, cancellationToken);
+            }
+        }
 
         DiffTags(photo, links.TagIds);
         DiffPeople(photo, links.PersonIds);
@@ -305,17 +420,25 @@ public class PhotoService
             return false;
         }
 
-        // A library photo and the file it wraps are one thing, so they are deleted together in both
-        // directions: deleting the file cascades the photo (FK on Photo.FileId), and deleting the photo
-        // deletes the file here. This reverses the original §7 decision to leave the blob intact, which
-        // had left the two directions disagreeing about which object was the durable one.
+        if (photo.StoredObjectId is { } objectId)
+        {
+            // A photo that owns its original (issue #428): the original and both thumbnails are released in the
+            // delete's own save, graced by FileStorageDeletionGraceHours. No file is touched.
+            await thumbnails.StageDeleteAsync(photo.PhotoId, cancellationToken);
+            await store.StageReleaseAsync(objectId, immediate: false, cancellationToken);
+            context.Photos.Remove(photo);
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
+
+        // A legacy photo and the file it wraps are one thing, so they are deleted together in both directions:
+        // deleting the file cascades the photo (FK on Photo.FileId), and deleting the photo deletes the file here.
         //
-        // Refuse when something else still holds the file. Nine tables carry a cascading FK to
-        // FileMetadata, so deleting it would quietly strip the file off a transaction, a tax statement or
-        // a journal entry as a side effect of a photo delete — the database would do it without
-        // complaint. A 409 naming the other holders is the honest answer; the caller can detach it there
-        // first, or delete the file directly if that is really what they meant.
-        var otherHolders = await fileReferences.DescribeNonPhotoReferencesAsync(photo.FileId, cancellationToken);
+        // Refuse when something else still holds the file. Several tables carry a cascading FK to FileMetadata, so
+        // deleting it would quietly strip the file off a transaction, a tax statement or a journal entry as a side
+        // effect of a photo delete. A 409 naming the other holders is the honest answer.
+        var fileId = photo.FileId!.Value;
+        var otherHolders = await fileReferences.DescribeNonPhotoReferencesAsync(fileId, cancellationToken);
         if (otherHolders.Count > 0)
         {
             throw new DomainConflictException(
@@ -324,12 +447,12 @@ public class PhotoService
         }
 
         // Owned tag/person/album-item rows cascade; an album whose cover was this photo nulls its
-        // CoverPhotoId (FK SET NULL). Both thumbnails are released immediately in the same save (issue #362 §4.1).
+        // CoverPhotoId (FK SET NULL). Both thumbnails are released in the same save (issue #362 §4.1).
         await thumbnails.StageDeleteAsync(photo.PhotoId, cancellationToken);
         context.Photos.Remove(photo);
         await context.SaveChangesAsync(cancellationToken);
 
-        await fileReferences.DeleteFileAndBlobAsync(photo.FileId, cancellationToken);
+        await fileReferences.DeleteFileAndBlobAsync(fileId, cancellationToken);
         return true;
     }
 
@@ -409,15 +532,6 @@ public class PhotoService
         }
 
         return DateTime.SpecifyKind(takenAt, DateTimeKind.Unspecified);
-    }
-
-    private async Task EnsureFileIsImage(Guid fileId, CancellationToken cancellationToken)
-    {
-        var found = await files.ExistingImageIdsAsync([fileId], cancellationToken);
-        if (!found.Contains(fileId))
-        {
-            throw new DomainUnprocessableException($"File is unknown or not an image type: {fileId}.");
-        }
     }
 
     private async Task<ValidatedLinks> ValidateLinks(
@@ -607,7 +721,7 @@ public class PhotoService
         }
     }
 
-    private async Task AddToAlbumsAsync(Guid photoId, IReadOnlyCollection<Guid> albumIds, DateTime now, CancellationToken cancellationToken)
+    private async Task StageAlbumItemsAsync(Guid photoId, IReadOnlyCollection<Guid> albumIds, DateTime now, CancellationToken cancellationToken)
     {
         if (albumIds.Count == 0)
         {
@@ -625,8 +739,6 @@ public class PhotoService
                 CreatedAt = now,
             });
         }
-
-        await context.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<Dictionary<Guid, int>> NextAlbumPositionsAsync(IReadOnlyCollection<Guid> albumIds, CancellationToken cancellationToken)
@@ -722,10 +834,14 @@ public class PhotoService
 
     private async Task<ExistingPhoto> ToDtoAsync(Photo photo, CancellationToken cancellationToken)
     {
+        var original = await PhotoOriginalSource.Describe(context, context.Photos.Where(p => p.PhotoId == photo.PhotoId))
+            .FirstOrDefaultAsync(cancellationToken);
         var dto = new ExistingPhoto
         {
             PhotoId = photo.PhotoId,
-            FileId = photo.FileId,
+            FileName = original?.FileName,
+            ContentType = original?.ContentType,
+            SizeBytes = original?.SizeBytes,
             Title = photo.Title,
             Caption = photo.Caption,
             TakenAt = photo.TakenAt,
