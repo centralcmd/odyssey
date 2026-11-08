@@ -30,8 +30,9 @@ public readonly record struct ApiResult
 
     /// <summary>
     /// How long the server asked the caller to wait, from the response's <c>Retry-After</c> header
-    /// (issue #434) — read for every result, not only the auth session. Both header forms are parsed
-    /// (see <see cref="ApiRetryAfter.Of"/>); <c>null</c> when the header is missing or invalid.
+    /// (issue #434) — read for every result, not only the auth session, and on a success as well as a
+    /// failure (a polled job's <c>200</c> carries the poll interval, issue #445). Both header forms are
+    /// parsed (see <see cref="ApiRetryAfter.Of"/>); <c>null</c> when the header is missing or invalid.
     /// </summary>
     public TimeSpan? RetryAfter { get; init; }
 
@@ -83,6 +84,13 @@ public readonly record struct ApiResult<T>
 
     /// <inheritdoc cref="ApiResult.RetryAfter"/>
     public TimeSpan? RetryAfter { get; init; }
+
+    /// <summary>
+    /// The <c>Retry-After</c> header's delta-seconds form only, or <c>null</c> (absent, invalid, or an HTTP-date).
+    /// The analysis poller reads this narrower value (issue #445): a poll interval measured against a client clock
+    /// it cannot trust is not one it should follow. <see cref="RetryAfter"/> keeps parsing both forms.
+    /// </summary>
+    public TimeSpan? RetryAfterDelta { get; init; }
 
     /// <summary>The id parsed from the trailing segment of <see cref="Location"/>, when it is a GUID.</summary>
     public Guid? CreatedId => ApiLocation.ExtractId(Location);
@@ -153,4 +161,8 @@ public static class ApiRetryAfter
 
         return null;
     }
+
+    /// <summary>The delta-seconds form alone (a negative value clamps to zero); <c>null</c> for an HTTP-date or no header.</summary>
+    public static TimeSpan? DeltaOf(HttpResponseMessage response) =>
+        response.Headers.RetryAfter?.Delta is { } delta ? (delta < TimeSpan.Zero ? TimeSpan.Zero : delta) : null;
 }

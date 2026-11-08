@@ -87,7 +87,9 @@ public class FileAnalysisKillSwitchTests
         // the line above is still warm.
         await factory.SetSystemSettingAsync(SystemSettingsKeys.FileAnalysisEnabled, "false");
 
-        var response = await client.GetAsync($"/api/file-analysis/{Guid.NewGuid()}");
+        // A write, not the job read: since issue #444 the job read is ungated (a client must be able to read that
+        // the switch cancelled its job), so the switch is probed where it still binds.
+        var response = await client.PostAsync($"/api/file-analysis/{Guid.NewGuid()}/match", content: null);
 
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();

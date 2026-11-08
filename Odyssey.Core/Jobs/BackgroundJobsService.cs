@@ -513,6 +513,13 @@ public sealed class BackgroundJobsService(
                 Interruptions = move.Interruptions,
             },
             PhotoOriginalBackfillJobRun => new PhotoOriginalBackfillJobRunDetail(),
+            FileAnalysisJobRun analysis when canRead => new FileAnalysisJobRunDetail
+            {
+                AnalysesCompleted = analysis.AnalysesCompleted,
+                AnalysesFailed = analysis.AnalysesFailed,
+                AnalysesRefused = analysis.AnalysesRefused,
+            },
+            FileAnalysisJobRun => new FileAnalysisJobRunDetail(),
             _ => new JobRunDetail(),
         };
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
+using Odyssey.Client.Models;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -62,6 +63,13 @@ public partial class AccountFilesSection
     private bool _analysisOpen;
     private FileAnalysisDialog.StartMode _analysisStart = FileAnalysisDialog.StartMode.Consent;
     private ResumableAnalysisSummary? _resumeSummary;
+    private Guid? _analysisJobId;
+    private FileAnalysisDocumentSent? _analysisPriorSent;
+    private bool _analysisAlreadyRunning;
+
+    // The rows' stable menu-trigger ids (issue #445 §6.8): one prefix per section, so focus returns to the row's
+    // trigger after the map refresh re-renders the table.
+    private string MenuIdPrefix => $"acct-files-{AccountId:N}";
 
     // The account-scoped resumable map, keyed by file id — the single read that drives the
     // "Review pending" chip, the Resume review menu action, and the dialog's initial phase.
@@ -78,11 +86,16 @@ public partial class AccountFilesSection
     // resumable map, so it decides: Resume review → straight to loading the saved review; Analyze with
     // a resumable job present → the resume-vs-reanalyze fork (no silent duplicate); Analyze with none →
     // the consent gate. The consent gate + analyze/import requests run inside the dialog.
-    private void OpenAnalysis(ExistingAccountFile af, FileAnalysisDialog.StartMode start, ResumableAnalysisSummary? summary)
+    private void OpenAnalysis(
+        ExistingAccountFile af, FileAnalysisDialog.StartMode start, ResumableAnalysisSummary? summary,
+        Guid? jobId = null, bool alreadyRunning = false)
     {
         _analysisFile = af;
         _analysisStart = start;
         _resumeSummary = summary;
+        _analysisJobId = jobId;
+        _analysisPriorSent = RowStateFor(af).PriorDocumentSent;
+        _analysisAlreadyRunning = alreadyRunning;
         _analysisKey = Guid.NewGuid();
         _analysisOpen = true;
     }
@@ -138,19 +151,55 @@ public partial class AccountFilesSection
         ValidTo = f.ValidTo,
         IssuedAt = f.IssuedAt,
         IssuedBy = f.IssuedBy,
-        // An open, resumable review surfaces as an additive "Review pending" chip — meaning carried as
-        // text, with a full accessible name (file + count).
-        StatusBadge = ResumableFor(f) is { } rj
-            ? new OdsFilesRowStatusBadge
-            {
-                Text = $"Review pending · {rj.PendingCount}",
-                AriaLabel = $"Resume analysis review for {f.FileMetadata.FileName} — {rj.PendingCount} candidate{(rj.PendingCount == 1 ? "" : "s")} pending",
-            }
-            : null,
+        StatusBadges = AnalysisBadges(f.FileMetadata.FileName, RowStateFor(f)),
     });
 
-    private ResumableAnalysisSummary? ResumableFor(ExistingAccountFile file) =>
-        _resumableByFile.GetValueOrDefault(file.FileMetadata.Id);
+    private FileAnalysisRowState RowStateFor(ExistingAccountFile file) =>
+        FileAnalysisRowState.For(_resumableByFile.GetValueOrDefault(file.FileMetadata.Id));
+
+    // The row's analysis chips (issue #445 §3), from the one matrix: meaning carried as text, each with a full
+    // accessible name that includes the file name.
+    private static IReadOnlyList<OdsFilesRowStatusBadge> AnalysisBadges(string fileName, FileAnalysisRowState state)
+    {
+        var badges = new List<OdsFilesRowStatusBadge>();
+        if (state.OpenJobId is not null)
+        {
+            badges.Add(new OdsFilesRowStatusBadge
+            {
+                Text = "Analyzing",
+                Tone = OdsChipTone.Info,
+                AriaLabel = $"Analysis of {fileName} is running",
+            });
+        }
+
+        if (state.PendingReview is { } review)
+        {
+            badges.Add(new OdsFilesRowStatusBadge
+            {
+                Text = $"Review pending · {review.PendingCount}",
+                AriaLabel = $"Resume analysis review for {fileName} — {review.PendingCount} candidate{(review.PendingCount == 1 ? "" : "s")} pending",
+            });
+        }
+
+        if (state.Failure is { } failure)
+        {
+            badges.Add(failure.Stopped
+                ? new OdsFilesRowStatusBadge
+                {
+                    Text = "Analysis stopped",
+                    Tone = OdsChipTone.Default,
+                    AriaLabel = $"The last analysis of {fileName} was stopped",
+                }
+                : new OdsFilesRowStatusBadge
+                {
+                    Text = "Analysis failed",
+                    Tone = OdsChipTone.Error,
+                    AriaLabel = $"The last analysis of {fileName} failed",
+                });
+        }
+
+        return badges;
+    }
 
     // Contacts feed the "Issued by" picker (edit panel) and resolve the issuer
     // id to a display name in the detail well.
@@ -247,28 +296,49 @@ public partial class AccountFilesSection
 
         if (CanAnalyze && file.FileType == AccountFileType.Statement)
         {
-            var resumable = ResumableFor(file);
+            // One matrix decides the chip, these items and the dialog's start mode (issue #445 §3). Job reads are not
+            // gated by the analysis switch, so View progress, View result and Resume review open while it is off.
+            var state = RowStateFor(file);
+            var resumable = state.PendingReview;
+
+            if (state.OpenJobId is { } openId)
+                menu.Add(new OdsMenuItem { Icon = "hourglass_top", Label = "View progress", OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Progress, null, openId)) });
 
             // Resume review — only when this file has an open, resumable job.
             if (resumable is not null)
                 menu.Add(new OdsMenuItem { Icon = "history", Label = "Resume review", OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Resume, resumable)) });
 
+            if (state.Failure is { } failure)
+                menu.Add(new OdsMenuItem
+                {
+                    Icon = "error_outline",
+                    Label = state.FailureIsLastAttempt ? "View last attempt" : "View result",
+                    OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Result, null, failure.JobId)),
+                });
+
             // Analyze distinguishes resume-vs-reanalyze instead of silently creating a duplicate: a
-            // resumable job present → the confirm fork; otherwise the normal consent gate.
+            // resumable job present → the confirm fork; an open job → its progress (nothing new is sent while one
+            // is open); otherwise the normal consent gate.
             //
             // With analysis switched off instance-wide the item is NOT RENDERED (issue #439, design
             // system · components/Menu): an action that cannot be taken is absent from the menu
             // rather than dimmed with an explanation, so a consent gate is never opened for a
             // transfer that cannot happen. Where an operator needs to know that analysis is off,
-            // the settings surface says so — a menu row is not the place for it. The Resume item
-            // above needs no equivalent: with the switch off the resumable-map read 503s and yields
-            // an empty map, so no Resume affordance renders in the first place.
+            // the settings surface says so — a menu row is not the place for it. The View/Resume items
+            // above stay: they only read a job (issue #444 ungated job reads), and in a resumed review
+            // Match names and Import get the dialog's own disabled handling.
             menu.Add(new OdsMenuItem
             {
                 Icon = "auto_fix_high",
                 Label = "Analyze",
                 Disabled = !_analysisEnabled,
-                OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, resumable is not null ? FileAnalysisDialog.StartMode.ReanalyzeConfirm : FileAnalysisDialog.StartMode.Consent, resumable)),
+                OnClick = EventCallback.Factory.Create(this, () =>
+                {
+                    if (state.OpenJobId is { } running)
+                        OpenAnalysis(file, FileAnalysisDialog.StartMode.Progress, null, running, alreadyRunning: true);
+                    else
+                        OpenAnalysis(file, resumable is not null ? FileAnalysisDialog.StartMode.ReanalyzeConfirm : FileAnalysisDialog.StartMode.Consent, resumable);
+                }),
             });
         }
 

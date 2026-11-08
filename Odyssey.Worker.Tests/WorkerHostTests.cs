@@ -87,6 +87,47 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     /// <summary>
+    /// Issue #444: the file-analysis queue runs here — the job, the extraction runner, the provider client behind
+    /// the shared <c>AddFileAnalysis</c> registration, and the embedded prompt template.
+    /// </summary>
+    [Fact]
+    public void The_graph_resolves_and_hosts_the_file_analysis_queue()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(), service => service is PeriodicJobService<Core.Finance.FileAnalysisQueueJob>);
+        Assert.Equal(Core.Finance.EmbeddedFileAnalysisPromptTemplate.CurrentVersion,
+            provider.GetRequiredService<Core.Finance.IFileAnalysisPromptTemplate>().Version);
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Core.Finance.FileAnalysisExtractionRunner>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Core.Finance.FileAnalysisJobQueue>());
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Core.Finance.IFileAnalysisProvider>());
+    }
+
+    /// <summary>
+    /// Issue #444: the API stamps a job and the worker sends it, so both must bind the same
+    /// <c>FileAnalysis</c> options from their shipped configuration — a timeout that differed would size the
+    /// lease in one process for a budget the other does not use.
+    /// </summary>
+    [Fact]
+    public void The_api_and_the_worker_ship_the_same_file_analysis_options()
+    {
+        static Dictionary<string, string?> Section(string project)
+        {
+            var configuration = new ConfigurationBuilder()
+                .AddJsonFile(Path.Combine(RepositoryRoot(), project, "appsettings.json"), optional: false)
+                .Build();
+            return configuration.GetSection("FileAnalysis").AsEnumerable(makePathsRelative: true)
+                .Where(pair => pair.Value is not null)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+        }
+
+        var api = Section("Odyssey.Api");
+        Assert.NotEmpty(api);
+        Assert.Equal(api.OrderBy(p => p.Key), Section("Odyssey.Worker").OrderBy(p => p.Key));
+    }
+
+    /// <summary>
     /// Issue #409 AC 22: every periodic job the worker hosts has exactly one run-log catalogue entry, and every entry a
     /// hosted job — except the run log's own upkeep, declared infrastructure. A job added without an entry would run
     /// invisibly; an entry without a job would read NotTicking forever.

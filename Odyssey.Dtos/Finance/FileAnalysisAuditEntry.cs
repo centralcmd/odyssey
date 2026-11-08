@@ -51,7 +51,11 @@ public sealed record FileAnalysisAuditEntry(
     int? AliasCount = null,
     int? TagCount = null,
     int? TagDescriptionCount = null,
-    FileAnalysisVocabularyReduction? VocabularyReduction = null
+    FileAnalysisVocabularyReduction? VocabularyReduction = null,
+    // ── The extraction queue (issue #444) ──
+    DateTime? QueuedAt = null,
+    DateTime? TransferStartedAt = null,
+    FileAnalysisDocumentSent DocumentSent = FileAnalysisDocumentSent.No
 );
 
 public sealed record FileAnalysisAuditUser(string? Name, string? Email);

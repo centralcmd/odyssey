@@ -386,14 +386,18 @@ public sealed class AccountsController : ControllerBase
     [Authorize(Policy = PermissionClaims.FileAnalysisCreate)]
     [EnableRateLimiting(FileAnalysisRateLimiting.AnalyzePolicy)]
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AnalyzeFileResponse))]
+    [ProducesResponseType(StatusCodes.Status202Accepted, Type = typeof(AnalyzeFileResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
-        Summary = "Trigger AI analysis of an account statement file.",
-        Description = "Runs the file through the configured AI provider and extracts candidate transactions. File type must be Statement.")]
+        Summary = "Queue AI analysis of an account statement file.",
+        Description = "Records the consent and queues the analysis; the worker sends the file and extracts candidate "
+            + "transactions. Answers 202 with the job id; poll GET /api/file-analysis/{id}. 409 analysis_in_progress "
+            + "carries the open job's id. File type must be Statement.")]
     public async Task<IActionResult> AnalyzeAccountFile(
         [FromRoute(Name = "accountId")] Guid accountId,
         [FromRoute(Name = "fileId")] Guid fileId,
@@ -407,7 +411,17 @@ public sealed class AccountsController : ControllerBase
         }
 
         var result = await fileAnalysisService.AnalyzeAsync(accountId, fileId, userId, request, cancellationToken);
-        return Ok(result);
+
+        // Testing hosts run no worker, so the job runs here (the ExchangeRateSyncJob run-now precedent). Selected by
+        // the environment NAME alone — never a setting — so no Production host can take this path (issue #444 v4).
+        var environment = HttpContext.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (environment.IsEnvironment("Testing"))
+        {
+            var runner = HttpContext.RequestServices.GetRequiredService<FileAnalysisExtractionRunner>();
+            await fileAnalysisService.RunInlineAsync(result.AnalysisJobId, runner, cancellationToken);
+        }
+
+        return AcceptedAtRoute("GetFileAnalysisJob", new { analysisJobId = result.AnalysisJobId }, result);
     }
 
     [HttpPut("{accountId}/files/{fileId}", Name = "UpdateAccountFile")]

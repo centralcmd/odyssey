@@ -31,7 +31,7 @@ namespace Odyssey.Core.Finance;
 /// </summary>
 public sealed class FileAnalysisDisclosureChangedException : DomainException
 {
-    public const string DisclosureChangedCode = "disclosure_changed";
+    public const string DisclosureChangedCode = Odyssey.Dtos.Finance.FileAnalysisCodes.DisclosureChanged;
 
     public override int StatusCode => (int)HttpStatusCode.Conflict;
 

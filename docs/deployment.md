@@ -450,7 +450,36 @@ Four operational notes:
 - **The circuit breaker is per typed client, not per host.** After repointing the base URL, a breaker
   opened by failures against the *previous* host stays open for the rest of its sampling window
   (`2 x FileAnalysis:TimeoutSeconds`, so 240s at the shipped 120s). Pre-existing behaviour, but now
-  reachable by an admin action: wait it out, or restart the API.
+  reachable by an admin action: wait it out, or restart the worker (which sends the document since issue
+  #444; the API keeps a breaker of its own for the match step).
+
+### Release note: statement analysis runs in the worker (issue #444)
+
+Extraction moved out of the API request and into `Odyssey.Worker`. What an operator needs to know:
+
+- **The worker now needs egress to the analysis provider** (the base URL host, `api.anthropic.com` by
+  default). The API still needs it for the match step. Neither compose file restricts egress today; a
+  deployment that firewalls containers must open it for both.
+- **`POST /api/accounts/{id}/files/{fileId}/analyze` answers `202 Accepted`** with a `Location` to
+  `GET /api/file-analysis/{jobId}`, which a client polls (it sends `Retry-After: 2` while the job is open and
+  `Cache-Control: no-store` always). A second request while a job is open on the file is a `409` with
+  `code: analysis_in_progress` and the open job's `analysisJobId`. Third-party consumers that read
+  candidates from the old `200` body must poll instead.
+- **A statement above 32 MiB is refused with `422`** (`code: file_too_large_for_analysis`, `limitBytes`),
+  a fixed ceiling, before anything is queued.
+- **`FileAnalysis:PromptVersion` and `FileAnalysis:PromptTemplatePath` are retired.** The prompt is embedded
+  in the build and every job records its SHA-256; a configured value is ignored.
+- **`FileAnalysis:TimeoutSeconds` must be 10–140** and is validated at startup in both the API and the
+  worker; keep the two equal (the shipped `appsettings.json` files are).
+- **An unset API key now refuses before sending.** A gateway that authenticates by network position
+  rather than by key still needs *a* key stored — any placeholder value — or every job fails with
+  `provider_credential_error` and nothing is sent.
+- **Nothing is ever re-sent automatically.** A worker that dies mid-call leaves the job
+  `Failed / interrupted`, reported to the user as "possibly sent"; a job no worker claims within 15
+  minutes fails as `not_started`, "not sent". Jobs left `Running` by the old synchronous path when you
+  upgrade are failed the same way by the first sweep.
+- The run log at `/background-jobs` gains a **File analysis** entry (counts of completed, failed and
+  refused analyses). It has no *Run now*.
 
 ### Release note: five credentials moved into the encrypted secret store (issue #445)
 

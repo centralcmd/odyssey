@@ -179,7 +179,10 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
     private static FileAnalysisService NewService(OdysseyContext context, NoopAnalysisProvider? provider = null) =>
         new(context, provider ?? new NoopAnalysisProvider(), new ContactLookup(context),
             Options.Create(new FileAnalysisOptions { Enabled = true }),
-            new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance);
+            new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance,
+            new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
+                NullLogger<FileAnalysisJobQueue>.Instance),
+            new EmbeddedFileAnalysisPromptTemplate());
 
     private async Task MigrateAsync()
     {
@@ -253,6 +256,9 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
 
     private sealed class EnabledSettingsLookup : IFileAnalysisSettingsLookup
     {
+        public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+            GetAsync(cancellationToken);
+
         public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FileAnalysisSettings(
                 "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",

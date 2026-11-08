@@ -102,25 +102,18 @@ public class FileAnalysisServiceTests
 
     private FileAnalysisService CreateService(
         OdysseyContext context, IFileAnalysisProvider provider, FileAnalysisOptions options) =>
-        new(context, provider, TestContextFactory.ContactLookup(journal), Options.Create(options),
-            settingsLookup, NullLogger<FileAnalysisService>.Instance);
+        FileAnalysisTestHarness.Create(context, provider, TestContextFactory.ContactLookup(journal), options, settingsLookup);
 
     // The six file-analysis settings now come from the store, not IOptions (issue #421 Wave 1).
     // Mutate settingsLookup.Settings in a test that needs a non-default value.
     private readonly FakeFileAnalysisSettingsLookup settingsLookup = new();
 
-    // Writes the prompt template the service loads from disk to a temp file and points the options at it.
-    private static FileAnalysisOptions EnabledOptions()
+    // The prompt template is embedded since issue #444; the harness supplies a fixed test one.
+    private static FileAnalysisOptions EnabledOptions() => new()
     {
-        var promptPath = Path.Combine(Path.GetTempPath(), $"odyssey-prompt-{Guid.NewGuid():N}.txt");
-        File.WriteAllText(promptPath, "Extract transactions.");
-        return new FileAnalysisOptions
-        {
-            Enabled = true,
-            PromptTemplatePath = promptPath,
-            MaxFutureTransactionDays = 30,
-        };
-    }
+        Enabled = true,
+        MaxFutureTransactionDays = 30,
+    };
 
     // Seeds an account + a file blob + an AccountFile of the given type, returning the file id.
     private static async Task<(Guid accountId, Guid fileId)> SeedStatementAsync(
@@ -146,7 +139,7 @@ public class FileAnalysisServiceTests
             FileName = "statement.pdf",
             ContentType = "application/pdf",
             SizeBytes = 3,
-            Sha256Hash = "hash",
+            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             FileBlob = blob,
             UploadedAtUtc = DateTime.UtcNow,
@@ -213,17 +206,19 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<FileAnalysisDisabledException>(() =>
-            service.AnalyzeAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+            service.AnalyzeAndRunAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
     }
 
     [Fact]
-    public async Task GetJobAsync_WhenDisabled_ThrowsDisabledException()
+    public async Task GetJobAsync_WhenDisabled_StillReadsTheJob()
     {
+        // Issue #444 (A8): the job is a historical record, so a client polling a job the kill switch cancelled
+        // can read that it was cancelled; an unknown id is still null.
         await using var context = TestContextFactory.Create();
         settingsLookup.Enabled = false;
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisDisabledException>(() => service.GetJobAsync(Guid.NewGuid()));
+        Assert.Null(await service.GetJobAsync(Guid.NewGuid()));
     }
 
     [Fact]
@@ -246,7 +241,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AnalyzeAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+            service.AnalyzeAndRunAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
     }
 
     [Fact]
@@ -257,25 +252,27 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1"));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1"));
     }
 
     // ── Provider failure path ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task AnalyzeAsync_ProviderThrows_MarksJobFailedWithProviderCode_AndPropagates()
+    public async Task AnalyzeAsync_ProviderThrows_MarksJobFailedWithProviderCode()
     {
+        // Since issue #444 the provider is called by the worker, so its failure is recorded on the job, never
+        // thrown back to the (long gone) request.
         await using var context = TestContextFactory.Create();
         var (accountId, fileId) = await SeedStatementAsync(context);
         var service = CreateService(
             context, FakeProvider.Throwing(new FileAnalysisProviderException("upstream 500")), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
-        var job = await context.FileAnalysisJobs.SingleAsync();
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal("provider_error", job.FailureCode);
+        Assert.NotNull(job.TransferStartedAt);
         Assert.NotNull(job.CompletedAt);
         Assert.Empty(context.FileAnalysisCandidateTransactions);
     }
@@ -288,10 +285,9 @@ public class FileAnalysisServiceTests
         var service = CreateService(
             context, FakeProvider.Throwing(new InvalidOperationException("boom")), EnabledOptions());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
-        var job = await context.FileAnalysisJobs.SingleAsync();
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal("internal_error", job.FailureCode);
     }
@@ -307,7 +303,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var job = await context.FileAnalysisJobs.Include(j => j.CandidateTransactions).SingleAsync();
         Assert.Equal(response.AnalysisJobId, job.Id);
@@ -326,7 +322,7 @@ public class FileAnalysisServiceTests
         var (accountId, fileId) = await SeedStatementAsync(context);
         var service = CreateService(context, FakeProvider.Returning(Extracted(DateTime.UtcNow.AddDays(-1), "Coffee")), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent() with
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent() with
         {
             ConsentText = "I consent to sending the complete file.",
             ConsentMethod = "Per-document checkbox",
@@ -355,7 +351,7 @@ public class FileAnalysisServiceTests
             : new AnalyzeFileRequest { ConsentAcknowledged = acknowledged.Value, ConsentText = "text present" };
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", consent));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", consent));
 
         Assert.False(sent); // the document never reached the provider
         Assert.Empty(context.FileAnalysisJobs); // and no job/consent row was written
@@ -370,7 +366,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent() with { ConsentText = "I consent." });
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent() with { ConsentText = "I consent." });
 
         var log = await service.GetAuditLogAsync();
 
@@ -401,7 +397,7 @@ public class FileAnalysisServiceTests
         var (accountId, fileId) = await SeedStatementAsync(context);
         var service = CreateService(context, FakeProvider.Returning(
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var job = Assert.Single(context.FileAnalysisJobs);
         job.ContactCount = 214;
@@ -456,7 +452,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
 
         var result = await service.ImportCandidatesAsync(
@@ -487,7 +483,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
         (await context.Currencies.SingleAsync(c => c.CurrencyCode == "SEK")).Archived = DateTime.UtcNow;
         await context.SaveChangesAsync();
@@ -511,7 +507,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
 
         var result = await service.ImportCandidatesAsync(
@@ -534,7 +530,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
         return (service, response.AnalysisJobId, accountId, candidates);
     }
@@ -686,7 +682,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-3), "A", -1m),
             Extracted(DateTime.UtcNow.AddDays(-2), "B", -2m),
             Extracted(DateTime.UtcNow.AddDays(-1), "C", -3m)), EnabledOptions());
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
         var unknownId = Guid.NewGuid();
 
@@ -824,7 +820,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var firstCandidate = (await context.FileAnalysisCandidateTransactions.FirstAsync()).Id;
         await service.ImportCandidatesAsync(
             response.AnalysisJobId,
@@ -844,8 +840,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(
             context, FakeProvider.Throwing(new FileAnalysisProviderException("scanned image — no text layer")), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var entry = Assert.Single(await service.GetAuditLogAsync());
         Assert.Equal(DtoJobStatus.Failed, entry.Status);
@@ -863,7 +858,7 @@ public class FileAnalysisServiceTests
         var (accountId, fileId) = await SeedStatementAsync(context);
         var enabled = EnabledOptions();
         await CreateService(context, FakeProvider.Returning(Extracted(DateTime.UtcNow.AddDays(-1), "Coffee")), enabled)
-            .AnalyzeAsync(accountId, fileId, "user-1", Consent());
+            .AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         // The audit trail must survive the switch being turned off — GetAuditLogAsync deliberately does
         // not call EnsureEnabledAsync, since a disabled instance still has to answer "what did we send?".
@@ -884,7 +879,7 @@ public class FileAnalysisServiceTests
             // 400 days out — beyond the 30-day MaxFutureTransactionDays window, must be dropped.
             Extracted(DateTime.UtcNow.AddDays(400), "Dropped")), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
         Assert.Equal("Kept", candidate.Description);
@@ -942,7 +937,7 @@ public class FileAnalysisServiceTests
             FileName = name,
             ContentType = "application/pdf",
             SizeBytes = 1,
-            Sha256Hash = "hash",
+            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             FileBlob = blob,
             UploadedAtUtc = DateTime.UtcNow,
@@ -961,13 +956,15 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task GetResumableJobsAsync_WhenDisabled_ThrowsDisabledException()
+    public async Task GetResumableJobsAsync_WhenDisabled_StillReads()
     {
+        // Issue #444 (A8): View progress, View result and Resume review keep working while analysis is off.
         await using var context = TestContextFactory.Create();
+        var (accountId, _) = await SeedStatementAsync(context);
         settingsLookup.Enabled = false;
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisDisabledException>(() => service.GetResumableJobsAsync(Guid.NewGuid()));
+        Assert.Empty(await service.GetResumableJobsAsync(accountId));
     }
 
     [Fact]
@@ -997,29 +994,59 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task GetResumableJobsAsync_ExcludesAllReviewedFailedRunningAndNeverAnalysed_Uniformly()
+    public async Task GetResumableJobsAsync_ReportsEachFilesLatestState_AndOmitsReviewedAndNeverAnalysed()
     {
+        // Issue #444 §5.3: the list carries each file's latest analysis STATE — an open job, a pending review, or
+        // a failure — so the Files row can show it. A fully reviewed or never-analysed file stays absent.
         await using var context = TestContextFactory.Create();
 
-        // File A — completed, but every candidate already reviewed → not resumable.
+        // File A — completed, every candidate already reviewed → absent.
         var (accountId, fileA) = await SeedStatementAsync(context);
         await AddJobAsync(context, await AccountFileIdOf(context, fileA), DateTime.UtcNow, pending: 0, reviewed: 3);
 
-        // File B — only a Failed job (even with would-be pending candidates) → not resumable.
+        // File B — a running job → present as Running, with no counts.
         var fileB = await AddStatementFileAsync(context, accountId, "b.pdf");
-        await AddJobAsync(context, await AccountFileIdOf(context, fileB), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Running);
+        var running = await AddJobAsync(context, await AccountFileIdOf(context, fileB), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Running);
 
-        // File C — only a Failed job → not resumable.
+        // File C — only a failed job → present as Failed.
         var fileC = await AddStatementFileAsync(context, accountId, "c.pdf");
-        await AddJobAsync(context, await AccountFileIdOf(context, fileC), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Failed);
+        var failed = await AddJobAsync(context, await AccountFileIdOf(context, fileC), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Failed);
 
-        // File D — never analysed (no job at all).
+        // File D — never analysed (no job at all) → absent.
         await AddStatementFileAsync(context, accountId, "d.pdf");
 
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
+        var summaries = (await service.GetResumableJobsAsync(accountId)).ToDictionary(s => s.FileId);
 
-        // All four non-resumable reasons are uniformly absent — no existence oracle.
-        Assert.Empty(await service.GetResumableJobsAsync(accountId));
+        Assert.Equal(2, summaries.Count);
+        Assert.Equal(running, summaries[fileB].AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Running, summaries[fileB].Status);
+        Assert.Equal(0, summaries[fileB].PendingCount);
+        Assert.Equal(failed, summaries[fileC].AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Failed, summaries[fileC].Status);
+        Assert.Null(summaries[fileC].LatestFailure);
+    }
+
+    [Fact]
+    public async Task GetResumableJobsAsync_ANewerFailure_IsCarriedBesideThePendingReview()
+    {
+        // Issue #444 v4 (maintainer decision): a failed re-analysis never hides Resume review.
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var accountFileId = await AccountFileIdOf(context, fileId);
+        var review = await AddJobAsync(context, accountFileId, new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc), pending: 2);
+        var failure = await AddJobAsync(context, accountFileId, new DateTime(2026, 6, 2, 9, 0, 0, DateTimeKind.Utc),
+            pending: 0, status: ContextJobStatus.Failed);
+
+        var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
+        var summary = Assert.Single(await service.GetResumableJobsAsync(accountId));
+
+        Assert.Equal(review, summary.AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Completed, summary.Status);
+        Assert.Equal(2, summary.PendingCount);
+        Assert.NotNull(summary.LatestFailure);
+        Assert.Equal(failure, summary.LatestFailure!.AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Failed, summary.LatestFailure.Status);
     }
 
     [Fact]
@@ -1622,7 +1649,8 @@ public class FileAnalysisServiceTests
 
         var provider = FakeProvider.Matching((_, _, _) => []);
         var aliasesOnly = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance)
+            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 1000 };
 
         var first = await aliasesOnly.MatchAsync(jobId);
@@ -1634,7 +1662,8 @@ public class FileAnalysisServiceTests
         Assert.Equal(0, first.AliasCount);
 
         var tiny = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance)
+            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 10 };
 
         var second = await tiny.MatchAsync(jobId);
@@ -1709,7 +1738,7 @@ public class FileAnalysisServiceTests
         Assert.Equal("VIPPS* is Vipps.", provider.LastMatchPrompt!.Addition);
         var stored = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == jobId);
         Assert.Equal("VIPPS* is Vipps.", stored.MatchPromptAdditionInForce);
-        Assert.Equal(MatchOptions().PromptVersion, stored.MatchPromptVersion);
+        Assert.Equal(FileAnalysisTestHarness.Template.Version, stored.MatchPromptVersion);
     }
 
     [Fact]
@@ -1792,7 +1821,7 @@ public class FileAnalysisServiceTests
         var provider = FakeProvider.Returning();
         var service = CreateService(context, provider, EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         Assert.Equal("Dates are DD.MM.YYYY.", provider.LastExtractionAddition);
         var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == response.AnalysisJobId);
@@ -1816,7 +1845,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, provider, EnabledOptions());
 
         await Assert.ThrowsAsync<FileAnalysisUnavailableException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", consent));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", consent));
 
         Assert.Equal(0, provider.CallCount);
         Assert.Empty(await context.FileAnalysisJobs.ToListAsync());

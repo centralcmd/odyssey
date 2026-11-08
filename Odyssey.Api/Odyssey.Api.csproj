@@ -29,12 +29,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Resources\Prompts\**\*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-
-  <ItemGroup>
     <!--
       The system-settings descriptor registry (issue #421) is an implementation detail of
       Odyssey.Api.SystemSettings, so it stays internal rather than widening the public surface. Its

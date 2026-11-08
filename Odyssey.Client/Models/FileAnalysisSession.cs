@@ -21,6 +21,12 @@ public enum FileAnalysisPhase
     ReanalyzeConfirm,
     ResumeLoading,
     NoLongerAvailable,
+
+    /// <summary>The analyze POST is in flight (issue #445): the consent body stays, the send button is busy.</summary>
+    Submitting,
+
+    /// <summary>The job ended <c>Cancelled</c> before anything was sent (issue #445).</summary>
+    Cancelled,
 }
 
 /// <summary>A sub-threshold match shown as a suggestion chip (name + confidence) rather than auto-linked.</summary>
@@ -235,7 +241,8 @@ public sealed class FileAnalysisSession
 
     private static (string Title, string Subtitle) PhaseText(FileAnalysisPhase phase) => phase switch
     {
-        FileAnalysisPhase.Consent => ("Send this statement to Claude?", "Analysis is done by an external AI provider. Review what leaves Odyssey, then confirm."),
+        FileAnalysisPhase.Consent or FileAnalysisPhase.Submitting => ("Send this statement to Claude?", "Analysis is done by an external AI provider. Review what leaves Odyssey, then confirm."),
+        FileAnalysisPhase.Cancelled => ("Analysis stopped", "The analysis ended before it ran."),
         FileAnalysisPhase.Analyzing => ("Analyzing statement", "Reading the document and extracting candidate transactions."),
         FileAnalysisPhase.Matching => ("Matching merchants and categories", "Comparing each candidate against your contacts and tags."),
         FileAnalysisPhase.Blocked => ("This file can’t be analyzed", "Analysis extracts transactions from bank statements."),
@@ -248,6 +255,16 @@ public sealed class FileAnalysisSession
         FileAnalysisPhase.NoLongerAvailable => ("This review is no longer available", "The saved analysis can’t be opened."),
         _ => ("Analyze statement", string.Empty),
     };
+
+    /// <summary>
+    /// The Blocked step for a file over the analysis size ceiling (<c>422 file_too_large_for_analysis</c>, issue #445):
+    /// nothing was queued.
+    /// </summary>
+    public void SetTooLarge()
+    {
+        SetPhase(FileAnalysisPhase.Blocked);
+        Subtitle = "Nothing was queued.";
+    }
 
     /// <summary>Switches to the Done step, whose title/subtitle name the account that received the import.</summary>
     public void SetImported(string? accountName)

@@ -28,7 +28,7 @@ namespace Odyssey.Core.Finance;
 /// </summary>
 public sealed class FileAnalysisUnavailableException : FeatureDisabledException
 {
-    public const string ConfigurationCode = "configuration_unavailable";
+    public const string ConfigurationCode = Odyssey.Dtos.Finance.FileAnalysisCodes.ConfigurationUnavailable;
 
     public override string? Code => ConfigurationCode;
 

@@ -15,6 +15,7 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
             .HasValue<FileStorageMaintenanceJobRun>(JobType.FileStorageMaintenance)
             .HasValue<PhotoThumbnailJobRun>(JobType.PhotoThumbnails)
             .HasValue<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill)
+            .HasValue<FileAnalysisJobRun>(JobType.FileAnalysis)
             .IsComplete();
 
         entity.Property(run => run.OpenHeldGuard)
@@ -27,7 +28,7 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
 
         entity.ToTable(tb =>
         {
-            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5)");
+            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6)");
             tb.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
             tb.HasCheckConstraint(
@@ -46,7 +47,9 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
                 + " AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0"
                 + " AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0"
                 + " AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0"
-                + " AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0");
+                + " AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0"
+                + " AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0"
+                + " AND COALESCE(`AnalysesRefused`, 0) >= 0");
             // FinishedAtUtc is NULL only on a Running row or an open held period, and always NULL on a Running one.
             tb.HasCheckConstraint(
                 "CK_JobRuns_FinishedMatchesStatus",
@@ -65,6 +68,6 @@ internal sealed class JobHeartbeatConfiguration : IEntityTypeConfiguration<JobHe
 {
     public void Configure(EntityTypeBuilder<JobHeartbeat> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5)"));
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6)"));
     }
 }

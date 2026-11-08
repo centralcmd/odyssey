@@ -9,16 +9,19 @@
 @inject IFileAnalysisDisclosureCache Disclosures
 @inject IContactsApiClient Contacts
 @inject ITagsApiClient<ExistingTransactionTag> TransactionTags
-@* Analyze/import/match go through the typed clients and branch on ApiResult.Status: 503 means the
-   file-analysis feature flag is off (Phase.Disabled), 400 means the consent gate rejected the request
-   (Phase.Blocked), anything else is a genuine failure (Phase.Failed).
+@inject TimeProvider Time
+@* Analyze only ENQUEUES (issues #444, #445): a 202 starts a poller that follows the job until it is
+   terminal. Every refusal and every terminal state maps to client-owned copy by status and code
+   (FileAnalysisJobCopy) — the dialog renders no server text at all. Whether the document left the
+   deployment is said only by the sent line, from the server's DocumentSent.
 
    The phase machine, the candidate rows and the merchant create/rollback live on FileAnalysisSession
    (Odyssey.Client/Models) so they can be unit-tested; the consent gate and the review grid are their
    own components. What is left here is the I/O and the per-phase framing. *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
-          Icon="@HeaderIcon" IconTone="@HeaderTone"
+          Icon="@HeaderIcon" IconTone="@HeaderTone" TitleLevel="2"
+          ReturnFocusToId="@ReturnFocusToId"
           Wide="IsWideFrame" Class="@ModalClass" AriaLabel="Analyze statement">
     <Title>@_session.Title</Title>
     <Subtitle>@_session.Subtitle</Subtitle>
@@ -27,17 +30,25 @@
             <!-- Body -->
             <div class="fan-content @(IsReview ? "wide" : "")">
 
-                @if (Phase == FileAnalysisPhase.Consent)
+                @if (IsConsentBody)
                 {
+                    <h3 class="sr-only fan-consent-h" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">What is sent, and your consent</h3>
                     @* Re-prompt after a 409 disclosure_changed (issue #439 §5.3c). Non-dismissable and
                        above the gate, so the reason is read before the facts it applies to. tabindex=-1
-                       so focus can land here rather than on the affirmation that just reset; the text is
-                       also announced through the dialog's live region, so it is never conveyed by
-                       position alone. *@
+                       so focus can land here rather than on the affirmation that just reset. *@
                     @if (_disclosureChangedNotice is { } notice)
                     {
                         <div class="fan-consent-reprompt" tabindex="-1" @ref="_disclosureChangedRef">
                             <OdsAlert Severity="Severity.Warning">@notice</OdsAlert>
+                        </div>
+                    }
+                    @* Second-transfer alert (issue #445 §7): the file's latest job may already have sent this
+                       document, so analyzing again is a second transfer. Focus lands here first. *@
+                    @if (ShowPriorAlert)
+                    {
+                        <div class="fan-prior" role="note" tabindex="-1" @ref="_priorRef">
+                            <OdsMIcon Name="info_outline" Size="18" />
+                            <div class="fan-prior-text">@string.Format(FileAnalysisJobCopy.SecondTransferFormat, NextProcessor)</div>
                         </div>
                     }
                     @* 429 on analyze (issue #434): the alert takes focus and carries the still-focusable
@@ -49,7 +60,7 @@
                                                      MessageId="fan-analyze-ratelimit-msg"
                                                      OnAction="ProceedFromConsentAsync" />
                     }
-                    <div class="fan-consent-start" role="group" aria-label="What is sent, and your consent" tabindex="-1" @ref="_consentStartRef">
+                    <div class="fan-consent-start" role="group" aria-label="What is sent, and your consent">
                     <FileAnalysisConsentPanel FileName="@FileName" FileSizeBytes="FileSizeBytes"
                                               Disclosure="@_disclosure"
                                               DisclosureResolved="@DisclosureUsable"
@@ -59,28 +70,65 @@
                 }
                 else if (Phase == FileAnalysisPhase.Analyzing)
                 {
+                    var queued = _jobStatus == FileAnalysisJobStatus.Queued;
                     <div class="fan-state">
                         <span class="fan-spinner" aria-hidden="true"></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">
+                            @(_jobStatus is null ? "Checking the analysis" : queued ? "Waiting to start" : "Analyzing your statement")
+                        </h3>
                         <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
-                        <div class="fan-steps">
-                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Uploaded &amp; queued</div>
-                            <div class="fan-step active"><span class="fan-step-dot"></span>Extracting transactions…</div>
-                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
-                        </div>
-                        <p class="fan-state-note">This usually takes a few seconds.</p>
+                        @if (_jobStatus is not null)
+                        {
+                            @* An ordered list (A5): the current step carries aria-current="step" and every step its
+                               state as text, so done and pending are never told apart by colour alone. *@
+                            <ol class="fan-steps">
+                                <li class="fan-step @(queued ? "active" : "done")" aria-current="@(queued ? "step" : null)">
+                                    @if (queued)
+                                    {
+                                        <span class="fan-step-dot" aria-hidden="true"></span>
+                                    }
+                                    else
+                                    {
+                                        <OdsMIcon Name="check" Size="15" />
+                                    }
+                                    <span>@(queued ? "Queued — nothing has been sent yet" : "Queued")</span>
+                                    <span class="sr-only">@(queued ? " (current)" : " (completed)")</span>
+                                </li>
+                                <li class="fan-step @(queued ? null : "active")" aria-current="@(queued ? null : "step")">
+                                    <span class="fan-step-dot" aria-hidden="true"></span>
+                                    <span>@(!queued && !_transferStarted ? $"Preparing to send to {ProgressProcessor}" : $"Sending to {ProgressProcessor} and extracting")</span>
+                                    <span class="sr-only">@(queued ? " (not started)" : " (current)")</span>
+                                </li>
+                                <li class="fan-step">
+                                    <span class="fan-step-dot" aria-hidden="true"></span>
+                                    <span>Ready to review</span>
+                                    <span class="sr-only"> (not started)</span>
+                                </li>
+                            </ol>
+                        }
+                        <p class="fan-state-note">Closing this dialog won’t stop the analysis. You’ll find the result on the file’s row.</p>
+                        @if (_takingLong)
+                        {
+                            <p class="fan-state-note">@FileAnalysisJobCopy.TakingLonger</p>
+                        }
+                        @if (_hiccup)
+                        {
+                            <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">@FileAnalysisJobCopy.PollHiccup</OdsAlert>
+                        }
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.Matching)
                 {
                     <div class="fan-state">
                         <span class="fan-spinner" aria-hidden="true"></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">Matching to your records</h3>
                         <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
                         <FileAnalysisProviderChip Job="_session.Job" />
-                        <div class="fan-steps">
-                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Extracted @_session.Rows.Count candidate@(_session.Rows.Count == 1 ? "" : "s")</div>
-                            <div class="fan-step active"><span class="fan-step-dot"></span>Matching against your records…</div>
-                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
-                        </div>
+                        <ol class="fan-steps">
+                            <li class="fan-step done"><OdsMIcon Name="check" Size="15" /><span>Extracted @_session.Rows.Count candidate@(_session.Rows.Count == 1 ? "" : "s")</span><span class="sr-only"> (completed)</span></li>
+                            <li class="fan-step active" aria-current="step"><span class="fan-step-dot" aria-hidden="true"></span><span>Matching against your records…</span><span class="sr-only"> (current)</span></li>
+                            <li class="fan-step"><span class="fan-step-dot" aria-hidden="true"></span><span>Ready to review</span><span class="sr-only"> (not started)</span></li>
+                        </ol>
                         <p class="fan-state-note">@(_session.Job?.MatchVocabularyScope == Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope.NamesOnly
                             ? "Only your contact and tag names are sent for matching, as when this analysis started. The statement isn’t re-sent."
                             : "Your contacts (with aliases) and tags (with descriptions) are sent for matching. The statement isn’t re-sent.")</p>
@@ -92,7 +140,7 @@
                         <div class="fan-fork-lead">
                             <span class="fan-fork-ic"><OdsMIcon Name="history" Size="22" /></span>
                             <div>
-                                <div class="fan-fork-t" tabindex="-1">A review is waiting for this file</div>
+                                <h3 class="fan-fork-t" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">A review is waiting for this file</h3>
                                 <p class="fan-fork-s">
                                     “@FileName” already has an open analysis with
                                     <b>@_pendingN candidate@(_pendingN == 1 ? "" : "s")</b> still pending. Resume to continue
@@ -110,67 +158,80 @@
                 {
                     <div class="fan-state">
                         <span class="fan-spinner" aria-hidden="true"></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">Opening your saved review</h3>
                         <FileAnalysisFileMeta FileName="@FileName" AccountName="@AccountName" />
-                        <div class="fan-steps">
-                            <div class="fan-step done"><OdsMIcon Name="check" Size="15" />Found saved review</div>
-                            <div class="fan-step active"><span class="fan-step-dot"></span>Loading candidates…</div>
-                            <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
-                        </div>
+                        <ol class="fan-steps">
+                            <li class="fan-step done"><OdsMIcon Name="check" Size="15" /><span>Found saved review</span><span class="sr-only"> (completed)</span></li>
+                            <li class="fan-step active" aria-current="step"><span class="fan-step-dot" aria-hidden="true"></span><span>Loading candidates…</span><span class="sr-only"> (current)</span></li>
+                            <li class="fan-step"><span class="fan-step-dot" aria-hidden="true"></span><span>Ready to review</span><span class="sr-only"> (not started)</span></li>
+                        </ol>
                         <p class="fan-state-note">Reopening the @_pendingN pending candidate@(_pendingN == 1 ? "" : "s") from your last review.</p>
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.NoLongerAvailable)
                 {
-                    <div class="fan-state" role="alert">
+                    @* Announced by focus on its heading, which reads the body through aria-describedby — no
+                       role="alert", which would announce it a second time (A3). *@
+                    <div class="fan-state">
                         <span class="fan-state-ic warn"><OdsMIcon Name="unpublished" Size="30" /></span>
-                        <div class="fan-state-title" tabindex="-1" @ref="_unavailableHeading">Nothing left to resume</div>
-                        <p class="fan-state-text">
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Nothing left to resume</h3>
+                        <p class="fan-state-text" id="@BodyId">
                             The review for “@FileName” has already been imported or removed, so there are no
                             candidates to pick up. You can run a fresh analysis instead.
                         </p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Blocked && _tooLarge)
+                {
+                    <div class="fan-state">
+                        <span class="fan-state-ic warn"><OdsMIcon Name="block" Size="30" /></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">This file is too large to analyze</h3>
+                        <p class="fan-state-text" id="@BodyId">@FileAnalysisJobCopy.TooLargeBody(_tooLargeLimit)</p>
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.Blocked)
                 {
                     <div class="fan-state">
                         <span class="fan-state-ic warn"><OdsMIcon Name="block" Size="30" /></span>
-                        <div class="fan-state-title">Only statements can be analyzed</div>
-                        <p class="fan-state-text">
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Only statements can be analyzed</h3>
+                        <p class="fan-state-text" id="@BodyId">
                             “@FileName” can’t be analyzed. Open <b>Edit</b> on the file and change its document type to
                             <b>Statement</b>, then try again.
                         </p>
-                        @if (!string.IsNullOrWhiteSpace(_errorMessage))
-                        {
-                            <p class="fan-state-note">@_errorMessage</p>
-                        }
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.Disabled)
                 {
                     <div class="fan-state">
                         <span class="fan-state-ic warn"><OdsMIcon Name="cloud_off" Size="30" /></span>
-                        <div class="fan-state-title">Analysis isn’t available</div>
-                        <p class="fan-state-text">The AI statement-analysis feature is not enabled on this server.</p>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Analysis isn’t available</h3>
+                        <p class="fan-state-text" id="@BodyId">The AI statement-analysis feature is not enabled on this server.</p>
                     </div>
                 }
-                else if (Phase == FileAnalysisPhase.Failed)
+                else if (Phase is FileAnalysisPhase.Failed or FileAnalysisPhase.Cancelled)
                 {
+                    var copy = _terminal ?? FileAnalysisJobCopy.ForFailed(null);
+                    var cancelled = Phase == FileAnalysisPhase.Cancelled;
                     <div class="fan-state">
-                        <span class="fan-state-ic err"><OdsMIcon Name="error_outline" Size="30" /></span>
-                        <div class="fan-state-title">We couldn’t read this statement</div>
-                        <p class="fan-state-text">
-                            @(_session.Job?.FailureMessage
-                                ?? _errorMessage
-                                ?? "The analyzer returned an error before any transactions were extracted. This can happen with scanned images or password-protected files.")
-                        </p>
-                        <FileAnalysisProviderChip Job="_session.Job" />
+                        <span class="fan-state-ic @(cancelled ? "warn" : "err")"><OdsMIcon Name="@(cancelled ? "block" : "error_outline")" Size="30" /></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading"
+                            aria-describedby="@(copy.ShowSent ? $"{BodyId} {SentId}" : BodyId)">@copy.Heading</h3>
+                        <p class="fan-state-text" id="@BodyId">@copy.Body</p>
+                        @if (copy.ShowSent)
+                        {
+                            <p class="fan-sent" id="@SentId">@FileAnalysisJobCopy.SentLine(_terminalSent, _terminalProcessor)</p>
+                        }
+                        @if (copy.ShowSent && _session.Job is not null)
+                        {
+                            <FileAnalysisProviderChip Job="_session.Job" />
+                        }
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.Empty)
                 {
                     <div class="fan-state">
                         <span class="fan-state-ic"><OdsMIcon Name="search_off" Size="30" /></span>
-                        <div class="fan-state-title">Nothing to import</div>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">Nothing to import</h3>
                         <p class="fan-state-text">
                             Odyssey didn’t find any transactions in “@FileName”. Check that every page uploaded, or add the
                             transactions manually.
@@ -182,7 +243,7 @@
                 {
                     <div class="fan-state">
                         <span class="fan-state-ic ok"><OdsMIcon Name="check_circle" Size="30" /></span>
-                        <div class="fan-state-title">Imported @_importedCount transaction@(_importedCount == 1 ? "" : "s")</div>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">Imported @_importedCount transaction@(_importedCount == 1 ? "" : "s")</h3>
                         <p class="fan-state-text">
                             @_importedCount candidate@(_importedCount == 1 ? " was" : "s were") added to
                             <b>@(string.IsNullOrWhiteSpace(AccountName) ? "your account" : AccountName)</b>@(_failedCount > 0 ? $" · {_failedCount} skipped" : "").
@@ -201,6 +262,23 @@
                 }
                 else // Review
                 {
+                    @* Visually hidden; while it has focus the grid shows the focus outline. *@
+                    <h3 class="sr-only fan-review-h" id="@HeadingId" tabindex="-1" @ref="_phaseHeading">Review @_session.Rows.Count transaction@(_session.Rows.Count == 1 ? "" : "s")</h3>
+                    @* A review that was never matched — an attached job, or a resumed one whose match never ran —
+                       says what Match names would send before it sends anything (issue #445 §3, S1). *@
+                    @if (_session.MatchProblem == FileAnalysisMatchProblem.None
+                         && _session.MatchStatus == FileAnalysisMatchStatus.NotRun && _session.Rows.Count > 0)
+                    {
+                        <div class="fan-degraded fan-notmatched" role="note">
+                            <OdsMIcon Name="link_off" Size="18" />
+                            <div class="fan-degraded-text">
+                                <b>Merchants and categories aren’t matched yet.</b>
+                                @FileAnalysisDisclosureText.NotMatchedYet(_disclosure,
+                                    _session.Job?.MatchVocabularyScope ?? FileAnalysisMatchVocabularyScope.NamesOnly, JobProcessor)
+                            </div>
+                            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Sync" OnClick="ReMatchAsync">Match names</MudButton>
+                        </div>
+                    }
                     <FileAnalysisReviewGrid Session="_session" FileName="@FileName" AccountName="@AccountName"
                                             OnReMatch="ReMatchAsync" OnReanalyze="ReanalyzeAsync"
                                             OnStartNewAnalysis="StartNewAnalysisAsync"
@@ -211,21 +289,30 @@
             </div>
     </ChildContent>
     <Footer>
-                @if (Phase == FileAnalysisPhase.Consent)
+                @if (IsConsentBody)
                 {
-                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                    var submitting = Phase == FileAnalysisPhase.Submitting;
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">@(submitting ? "Close" : "Cancel")</MudButton>
                     @if (!_analyzeRateLimited)
                     {
+                        @* ONE element across consent and submitting, so focus stays on it (R2-A N1): while the POST
+                           is in flight it is aria-disabled and aria-busy — never `disabled`, which would drop focus —
+                           and ProceedFromConsentAsync ignores a second activation. *@
                         <MudButton Variant="Variant.Filled" Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.CloudUpload"
-                                   Disabled="@(!_consentChecked || !DisclosureUsable)" OnClick="ProceedFromConsentAsync">
-                            Send &amp; analyze
+                                   Class="@(submitting ? "fan-action-blocked" : null)"
+                                   aria-disabled="@(submitting ? "true" : null)"
+                                   aria-busy="@(submitting ? "true" : null)"
+                                   Disabled="@(!submitting && (!_consentChecked || !DisclosureUsable))" OnClick="ProceedFromConsentAsync">
+                            @(submitting ? "Starting…" : "Send & analyze")
                         </MudButton>
                     }
                 }
-                else if (Phase == FileAnalysisPhase.Analyzing)
+                else if (Phase is FileAnalysisPhase.Analyzing or FileAnalysisPhase.Cancelled)
                 {
-                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
+                    @* Close, not Cancel: nothing is cancelled (issue #445 §3). *@
+                    <MudButton Variant="@(Phase == FileAnalysisPhase.Cancelled ? Variant.Filled : Variant.Text)"
+                               Color="@(Phase == FileAnalysisPhase.Cancelled ? Color.Primary : Color.Default)" OnClick="CloseAsync">Close</MudButton>
                 }
                 else if (Phase is FileAnalysisPhase.Blocked or FileAnalysisPhase.Disabled)
                 {
@@ -249,8 +336,17 @@
                 }
                 else if (Phase == FileAnalysisPhase.Failed)
                 {
-                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Close</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="ReanalyzeAsync">Try again</MudButton>
+                    var action = (_terminal ?? FileAnalysisJobCopy.ForFailed(null)).Action;
+                    <MudButton Variant="@(action == FileAnalysisTerminalAction.Close ? Variant.Filled : Variant.Text)"
+                               Color="@(action == FileAnalysisTerminalAction.Close ? Color.Primary : Color.Default)" OnClick="CloseAsync">Close</MudButton>
+                    @if (action == FileAnalysisTerminalAction.Retry)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="ReanalyzeAsync">Try again</MudButton>
+                    }
+                    else if (action == FileAnalysisTerminalAction.Review)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Shield" OnClick="ReanalyzeAsync">Review and analyze</MudButton>
+                    }
                 }
                 else if (Phase == FileAnalysisPhase.Empty)
                 {
@@ -262,6 +358,10 @@
                     <MudButton Variant="Variant.Text" OnClick="CloseAsync">Done</MudButton>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward"
                                OnClick="ViewTransactions">View transactions</MudButton>
+                }
+                else if (Phase == FileAnalysisPhase.Matching)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="CloseAsync">Close</MudButton>
                 }
                 else // Review
                 {

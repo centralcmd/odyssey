@@ -40,14 +40,16 @@ public class FileAnalysisFeatureFlagTests
     }
 
     [Fact]
-    public async Task GetJob_WhenDisabled_BubblesTo503ProblemDetails()
+    public async Task GetJob_WhenDisabled_IsNotGated()
     {
+        // Issue #444: the job read stays open with the switch off, so a client can read that the switch
+        // cancelled its queued job. An unknown id is therefore an ordinary 404, not the 503.
         await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
         var response = await client.GetAsync($"/api/file-analysis/{Guid.NewGuid()}");
 
-        await AssertFeatureDisabledAsync(response);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]
@@ -102,14 +104,15 @@ public class FileAnalysisFeatureFlagTests
     }
 
     [Fact]
-    public async Task GetResumableAnalysisJobs_WhenDisabled_BubblesTo503ProblemDetails()
+    public async Task GetResumableAnalysisJobs_WhenDisabled_IsNotGated()
     {
+        // Issue #444: the resumable read stays open with the switch off (a pending review or a failure must
+        // still be shown), so it never answers the feature-disabled 503.
         await using var factory = new OdysseyApiFactory(AllFileAnalysisClaims);
         using var client = factory.CreateClient();
 
-        // 503 is returned before any account lookup, even for an unknown account id.
         var response = await client.GetAsync($"/api/accounts/{Guid.NewGuid()}/files/analysis/resumable");
 
-        await AssertFeatureDisabledAsync(response);
+        Assert.NotEqual(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 }

@@ -32,6 +32,13 @@ public abstract class DomainException : Exception
     /// <summary>When set, the response carries <c>Retry-After</c> with this many seconds.</summary>
     public virtual int? RetryAfterSeconds => null;
 
+    /// <summary>
+    /// Extra problem-details members beside <c>code</c> and <c>errors</c> — e.g. the id of the job a
+    /// <c>409 analysis_in_progress</c> refers to (issue #444 §5), so the client can attach to it. Values
+    /// must be safe to echo to the caller: no free text, no names.
+    /// </summary>
+    public virtual IReadOnlyDictionary<string, object?>? Extensions => null;
+
     protected DomainException(string message) : base(message)
     {
     }

@@ -86,9 +86,12 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode)
-                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response), RetryAfterDelta = ApiRetryAfter.DeltaOf(response) };
 
-            return ApiResult<T>.Success(await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode);
+            // Retry-After is read on success too: a polled job answers 200 with the interval to wait
+            // before asking again (issue #445).
+            return ApiResult<T>.Success(await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode)
+                with { RetryAfter = ApiRetryAfter.Of(response), RetryAfterDelta = ApiRetryAfter.DeltaOf(response) };
         }
         catch (Exception ex)
         {
@@ -145,7 +148,8 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
                 return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
 
             return ApiResult<T>.Success(
-                await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location);
+                await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location)
+                with { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {
