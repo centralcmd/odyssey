@@ -55,7 +55,7 @@
                                     <span class="wx-hw-check-help" id="@EndHelpId(row)">collected every day</span>
                                 }
                             </span>
-                            <OdsIconButton Icon="delete" Danger="true" AriaLabel="@($"Remove window {n}")" id="@RemoveId(row)"
+                            <OdsIconButton Icon="@MudBlazor.Icons.Material.Outlined.Delete" Danger="true" AriaLabel="@($"Remove window {n}")" id="@RemoveId(row)"
                                            OnClick="@(() => RemoveAsync(row))" />
                         </div>
                     </fieldset>
