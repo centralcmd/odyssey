@@ -800,7 +800,7 @@ public sealed record NewWeatherPoint : IValidatableObject
             }
         }
 
-        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true))
+        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true, validationContext))
         {
             yield return result;
         }
@@ -858,7 +858,7 @@ public sealed record UpdateWeatherPoint : IValidatableObject
             yield return new ValidationResult("Give the weather point a name.", [nameof(Name)]);
         }
 
-        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true))
+        foreach (var result in WeatherPointValidation.Common(TimeZoneId, HistoryWindows, HistoryEnabled == true, validationContext))
         {
             yield return result;
         }
@@ -871,7 +871,8 @@ public sealed record UpdateWeatherPoint : IValidatableObject
 /// <summary>The rules both point writes share.</summary>
 internal static class WeatherPointValidation
 {
-    public static IEnumerable<ValidationResult> Common(string? timeZoneId, List<WeatherHistoryWindowDto>? windows, bool historyEnabled)
+    public static IEnumerable<ValidationResult> Common(string? timeZoneId, List<WeatherHistoryWindowDto>? windows, bool historyEnabled,
+        IServiceProvider? services = null)
     {
         if (!string.IsNullOrWhiteSpace(timeZoneId) && !IanaTimeZones.IsValid(timeZoneId))
         {
@@ -882,7 +883,9 @@ internal static class WeatherPointValidation
         // stored set with history turned on is resolved by the service, which stores the default window.
         if (windows is not null)
         {
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            // The host's clock where one is registered, so the today + 730 edge can be pinned with a fake one.
+            var clock = services?.GetService(typeof(TimeProvider)) as TimeProvider ?? TimeProvider.System;
+            var today = DateOnly.FromDateTime(clock.GetUtcNow().UtcDateTime);
             foreach (var violation in WeatherHistoryWindowRules.Validate(windows, today, historyEnabled))
             {
                 yield return WeatherHistoryWindowRules.ToValidationResult(violation, today);
