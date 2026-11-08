@@ -390,6 +390,36 @@ public class FileAnalysisServiceTests
         Assert.NotNull(entry.DurationMs);
     }
 
+    /// <summary>
+    /// Issue #434: the log's "Matched against" fact reads the latest match run's counts and reduction
+    /// off the audit entry itself, never off the job DTO.
+    /// </summary>
+    [Fact]
+    public async Task GetAuditLogAsync_ProjectsMatchCountsAndReduction()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+
+        var job = Assert.Single(context.FileAnalysisJobs);
+        job.ContactCount = 214;
+        job.AliasCount = 0;
+        job.TagCount = 38;
+        job.TagDescriptionCount = 0;
+        job.VocabularyReduction = FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted;
+        await context.SaveChangesAsync();
+
+        var entry = Assert.Single(await service.GetAuditLogAsync());
+
+        Assert.Equal(214, entry.ContactCount);
+        Assert.Equal(0, entry.AliasCount);
+        Assert.Equal(38, entry.TagCount);
+        Assert.Equal(0, entry.TagDescriptionCount);
+        Assert.Equal(FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted, entry.VocabularyReduction);
+    }
+
     [Fact]
     public async Task GetAuditLogAsync_OrdersNewestFirst()
     {

@@ -308,7 +308,7 @@ public partial class Settings
     internal enum SettingClaim { None, Security, Count }
     // Date and Action arrived with the exchange-rate sync card. Action is a button that
     // acts at once or navigates, and is not part of Save.
-    internal enum SettingControl { Toggle, Number, Size, Capacity, Text, Decimal, Percent, Date, Action }
+    internal enum SettingControl { Toggle, Number, Size, Capacity, Text, Decimal, Percent, Date, Action, LongText }
 
     /// <summary>The one non-saving control kind — never dirty, never validated, never written.</summary>
     internal static bool IsTileOnly(SettingControl control) =>
@@ -529,26 +529,29 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchTimeoutSeconds", dto.FileAnalysisMatchTimeoutSeconds),
                 Write: (p, req) => req.FileAnalysisMatchTimeoutSeconds = p.IntRequest("fileAnalysisMatchTimeoutSeconds"),
                 Unit: "sec"),
-            // Issue #433 backend rows. INTERIM single-line Text controls so the page can read and save the
-            // two keys; issue #434 replaces them with the multi-line LongText control and its counter.
+            // Administrator guidance (issues #433, #434). Multi-line LongText rows: an OdsNoteField counted
+            // against the NORMALISED length the server stores, with no native maxlength — an over-limit
+            // paste is kept and explained, never truncated. Validated by the shared PromptAdditionRule.
             new("fileAnalysisExtractionPromptAddition", "edit_note", "Extraction guidance",
                 "Optional. Extra instructions added to every statement extraction, after Odyssey's own rules — "
-                + "for example how your bank formats dates or which lines aren't transactions. Sent to the "
-                + "analysis provider with each analysis. Don't include personal data or passwords.",
-                SettingClaim.Count, SettingControl.Text, Max: PromptAdditionRule.MaxLength,
+                + "for example how your bank formats dates or which lines aren't transactions. Sent to "
+                + ProcessorToken + " with each analysis. Don't include personal data or passwords.",
+                SettingClaim.Count, SettingControl.LongText, Max: PromptAdditionRule.MaxLength,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisExtractionPromptAddition),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisExtractionPromptAddition", dto.FileAnalysisExtractionPromptAddition),
                 Write: (p, req) => req.FileAnalysisExtractionPromptAddition = p.TextRequest("fileAnalysisExtractionPromptAddition"),
+                Placeholder: PromptPlaceholder,
                 AllowEmpty: true,
                 Rule: PromptAdditionRule.Validate),
-            new("fileAnalysisMatchPromptAddition", "edit_note", "Matching guidance",
+            new("fileAnalysisMatchPromptAddition", "rule", "Matching guidance",
                 "Optional. Extra instructions for matching transactions to contacts and tags — for example local "
-                + "prefixes such as VIPPS* or BankAxept. Sent to the analysis provider with each match. Don't "
+                + "prefixes such as VIPPS* or BankAxept. Sent to " + ProcessorToken + " with each match. Don't "
                 + "include personal data or passwords.",
-                SettingClaim.Count, SettingControl.Text, Max: PromptAdditionRule.MaxLength,
+                SettingClaim.Count, SettingControl.LongText, Max: PromptAdditionRule.MaxLength,
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMatchPromptAddition),
                 Load: (p, dto) => p.SetTextLoaded("fileAnalysisMatchPromptAddition", dto.FileAnalysisMatchPromptAddition),
                 Write: (p, req) => req.FileAnalysisMatchPromptAddition = p.TextRequest("fileAnalysisMatchPromptAddition"),
+                Placeholder: PromptPlaceholder,
                 AllowEmpty: true,
                 Rule: PromptAdditionRule.Validate),
         ]),
@@ -1151,6 +1154,11 @@ public partial class Settings
 
     internal const string ExchangeRateCurrenciesKey = "exchangeRateCurrencies";
 
+    /// <summary>Replaced in the help line by the saved processor name (issue #434 §8).</summary>
+    internal const string ProcessorToken = "{processor}";
+
+    internal const string PromptPlaceholder = "Optional. For example: Lines starting with VIPPS* are Vipps payments.";
+
     private bool IsRowDisabled(SettingItem item) =>
         !Editable(item.Claim) || _phase != Phase.Ready || _isSaving;
 
@@ -1279,6 +1287,113 @@ public partial class Settings
         Touch();
     }
 
+    // ── Guidance rows: edge-triggered announcements (issue #434 §6) ─────────────────────────────
+    //
+    // Debounced 750 ms after the last keystroke, so typing never chatters. The counter speaks when the
+    // length RISES past 90 % (the actual count, so a paste reads correctly) and on reaching the limit
+    // exactly; above the limit it is silent, because the length error owns that announcement. It re-arms
+    // below 85 %. An error is announced by its KIND (length, character, delimiter) when the kind first
+    // appears and again only after it has cleared, so a moving count or line number never repeats it.
+    private readonly Dictionary<string, LongTextAnnouncerState> _longTextAnnouncers = new(StringComparer.Ordinal);
+
+    private sealed class LongTextAnnouncerState
+    {
+        public CancellationTokenSource? Pending { get; set; }
+        public bool NearArmed { get; set; } = true;
+        public bool LimitArmed { get; set; } = true;
+        public string? LastErrorKind { get; set; }
+    }
+
+    private void SetLongText(SettingItem item, string? value)
+    {
+        SetText(item.Key, value);
+
+        if (!_longTextAnnouncers.TryGetValue(item.Key, out var state))
+        {
+            state = new LongTextAnnouncerState();
+            _longTextAnnouncers[item.Key] = state;
+        }
+
+        state.Pending?.Cancel();
+        var pending = state.Pending = new CancellationTokenSource();
+        _ = AnnounceLongTextAsync(item, state, pending.Token);
+    }
+
+    private async Task AnnounceLongTextAsync(SettingItem item, LongTextAnnouncerState state, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(LongTextAnnounceDelay, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        var message = LongTextAnnouncement(item, state, GetText(item.Key));
+        if (message is not null)
+        {
+            Announce(message);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    internal static readonly TimeSpan LongTextAnnounceDelay = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>The announcement a settled guidance value owes, or null. Pure apart from the edge state.</summary>
+    private static string? LongTextAnnouncement(SettingItem item, LongTextAnnouncerState state, string text)
+    {
+        var max = item.Max;
+        var length = PromptAdditionRule.NormalisedLength(text);
+        var error = item.Rule?.Invoke(text);
+        var kind = ErrorKind(error);
+
+        string? message = null;
+        if (kind is not null && kind != state.LastErrorKind)
+        {
+            message = $"{item.Title}: {error}";
+        }
+
+        state.LastErrorKind = kind;
+        if (message is not null)
+        {
+            return message;
+        }
+
+        if (length < max * 85 / 100)
+        {
+            state.NearArmed = true;
+        }
+
+        if (length < max)
+        {
+            state.LimitArmed = true;
+        }
+
+        if (length == max && state.LimitArmed)
+        {
+            state.LimitArmed = false;
+            state.NearArmed = false;
+            return $"{item.Title}: Character limit reached";
+        }
+
+        if (length >= max * 90 / 100 && length < max && state.NearArmed)
+        {
+            state.NearArmed = false;
+            return $"{item.Title}: {length} of {max} characters";
+        }
+
+        return null;
+    }
+
+    private static string? ErrorKind(string? error) => error switch
+    {
+        null => null,
+        _ when error.StartsWith("Guidance can be at most", StringComparison.Ordinal) => "length",
+        _ when error.StartsWith("Line ", StringComparison.Ordinal) => "character",
+        _ => "delimiter",
+    };
+
     private decimal? GetDecimal(string key) => _decimals.TryGetValue(key, out var state) ? state.Draft : null;
 
     private void SetDecimal(string key, decimal? value)
@@ -1360,6 +1475,10 @@ public partial class Settings
         SettingControl.Toggle => _bools.TryGetValue(item.Key, out var b) && b.Draft != b.Saved,
         SettingControl.Text => _texts.TryGetValue(item.Key, out var s)
             && !string.Equals(s.Draft.Trim(), s.Saved, StringComparison.Ordinal),
+        // Compared NORMALISED against the server-returned value: a CRLF or a trailing newline is not a
+        // change, and after Save the row re-binds to the normalised text the server stored.
+        SettingControl.LongText => _texts.TryGetValue(item.Key, out var lt)
+            && !string.Equals(PromptAdditionRule.Normalize(lt.Draft), PromptAdditionRule.Normalize(lt.Saved), StringComparison.Ordinal),
         SettingControl.Decimal or SettingControl.Percent =>
             _decimals.TryGetValue(item.Key, out var d) && d.Draft != d.Saved,
         _ => _ints.TryGetValue(item.Key, out var i) && i.Draft != i.Saved,
@@ -1419,6 +1538,11 @@ public partial class Settings
 
         if (IsTileOnly(item.Control))
             return null;
+
+        // The shared rule owns length, characters and the reserved delimiter, measured on the normalised
+        // value — the same pipeline and the same messages as the server's 400.
+        if (item.Control == SettingControl.LongText)
+            return item.Rule?.Invoke(GetText(item.Key));
 
         if (item.Control is SettingControl.Text or SettingControl.Date)
         {
@@ -1537,6 +1661,7 @@ public partial class Settings
         SettingControl.Percent => PercentControl(item),
         SettingControl.Date => DateControl(item),
         SettingControl.Action => ActionControl(item),
+        SettingControl.LongText => LongTextControl(item),
         _ => ToggleControl(item),
     };
 
@@ -1557,6 +1682,32 @@ public partial class Settings
         // so a select row takes no `for` (HasFocusableControl).
         builder.AddAttribute(6, "aria-labelledby", TitleId(item.Key));
         builder.AddAttribute(7, "aria-describedby", DescribedBy(item));
+        builder.CloseComponent();
+    };
+
+    // Administrator guidance (issue #434). Built here rather than in the markup's @code block, which is
+    // at its size limit. READ ONLY, never disabled, for a viewer without the claim: the guidance in force
+    // stays focusable, scrollable and copyable. The frame owns the label (its <label for>), help, error and
+    // advisory; OdsNoteField owns the counter header and appends its sr-only twin after the row's ids.
+    private RenderFragment LongTextControl(SettingItem item) => builder =>
+    {
+        builder.OpenComponent<OdsNoteField>(0);
+        builder.AddComponentParameter(1, nameof(OdsNoteField.Id), ControlId(item.Key));
+        builder.AddComponentParameter(2, nameof(OdsNoteField.Value), GetText(item.Key));
+        builder.AddComponentParameter(3, nameof(OdsNoteField.ValueChanged),
+            EventCallback.Factory.Create<string>(this, v => SetLongText(item, v)));
+        builder.AddComponentParameter(4, nameof(OdsNoteField.Rows), 6);
+        builder.AddComponentParameter(5, nameof(OdsNoteField.CounterMax), item.Max);
+        builder.AddComponentParameter(6, nameof(OdsNoteField.CountLength), (Func<string, int>)PromptAdditionRule.NormalisedLength);
+        builder.AddComponentParameter(7, nameof(OdsNoteField.Placeholder), item.Placeholder);
+        builder.AddComponentParameter(8, nameof(OdsNoteField.ReadOnly), IsRowDisabled(item));
+        builder.AddComponentParameter(9, nameof(OdsNoteField.AriaDescribedBy), DescribedBy(item));
+        builder.AddComponentParameter(10, nameof(OdsNoteField.Spellcheck), "false");
+        builder.AddComponentParameter(11, nameof(OdsNoteField.AutoComplete), "off");
+        builder.AddComponentParameter(12, nameof(OdsNoteField.AutoCapitalize), "off");
+        // aria-invalid without a message on the control: the frame renders the message once, and the
+        // control reaches it through ErrorId in DescribedBy.
+        builder.AddAttribute(13, "aria-invalid", ErrorFor(item) is null ? null : "true");
         builder.CloseComponent();
     };
 
@@ -1593,6 +1744,11 @@ public partial class Settings
         var description = item.Key == ExchangeRateCurrenciesKey && _syncStatus is { } sync
             ? $"{sync.EnabledCount} currencies synced"
             : item.Description;
+        // The guidance rows name the processor the text travels to, read from the saved setting so the
+        // help line and the consent gate cannot name two different recipients.
+        description = description.Replace(ProcessorToken,
+            string.IsNullOrWhiteSpace(_dto?.FileAnalysisProcessor) ? "the analysis provider" : _dto!.FileAnalysisProcessor,
+            StringComparison.Ordinal);
         var parts = new List<string>(3) { description };
 
         // The marker in the outline says WHICH WAY; the range belongs here, where there is room for
@@ -1608,7 +1764,9 @@ public partial class Settings
 
         if (!Editable(item.Claim))
         {
-            parts.Add("Changing this needs an additional permission.");
+            parts.Add(item.Control == SettingControl.LongText
+                ? "Read only."
+                : "Changing this needs an additional permission.");
         }
 
         return string.Join(' ', parts);
@@ -1914,6 +2072,16 @@ public partial class Settings
 
     private string? AdvisoryText(SettingItem item)
     {
+        // A guidance row whose stored value cannot be used says so in its own words, in the advisory
+        // slot (the fault replaces the advisory; it has no separate id). "Not being sent" is the fact
+        // that matters: the analysis runs without it.
+        if (item.Control == SettingControl.LongText && item.Field is { } faultField
+            && _dto?.ProjectionFaults is { Count: > 0 } rowFaults && rowFaults.ContainsKey(faultField))
+        {
+            return "This stored guidance can't be used and is not being sent. "
+                   + (Editable(item.Claim) ? "Save a new value or clear it." : "An administrator can replace it.");
+        }
+
         if (item.Field is { } field && _dto?.Warnings is { Count: > 0 } warnings
             && warnings.TryGetValue(field, out var message))
         {

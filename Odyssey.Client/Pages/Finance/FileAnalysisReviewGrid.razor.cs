@@ -26,6 +26,9 @@ public partial class FileAnalysisReviewGrid
     /// <summary>Start over from the consent gate (offered when every candidate was removed).</summary>
     [Parameter] public EventCallback OnReanalyze { get; set; }
 
+    /// <summary>"Start new analysis" after a 409 destination change: back to the consent step (issue #434).</summary>
+    [Parameter] public EventCallback OnStartNewAnalysis { get; set; }
+
     /// <summary>
     /// A contact was optimistically staged in the session and now needs creating server-side. The
     /// dialog owns the POST and the reconcile/rollback that follows.

@@ -122,6 +122,9 @@
 .fan-rematch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
 .fan-rematch ::deep .material-icons { font-size: 14px !important; }
 
+/* The one-line match summary (issue #434): server counts, secondary text. */
+.fan-match-summary { margin: 0 0 var(--space-3); font: var(--fw-regular) 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+
 /* Match-degraded notice (role=alert) — non-blocking; Review opens with raw candidates. */
 .fan-degraded {
   display: flex; align-items: center; gap: 12px;

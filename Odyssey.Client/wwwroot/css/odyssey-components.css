@@ -1402,6 +1402,13 @@
 .odc-field-head .odc-field-label { margin: 0; }
 .odc-field-count { margin-left: auto; flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
 .odc-field-count.over { color: var(--mud-palette-error); }
+/* NoteField limit text and read-only (issue #434). The limit words sit beside the
+   number in the counter's own colour, so the state is text, not hue. Read-only is
+   not disabled: full-strength text, selectable, focusable; the gray surface and a
+   dashed --control-border (3:1 holds) mark it as not editable. */
+.odc-field-count-note { font-family: var(--font-sans); }
+.odc-input[readonly] { background: var(--mud-palette-background-gray); border-style: dashed; cursor: text; }
+.odc-input[readonly]:hover { border-color: var(--control-border); }
 
 /* ---------- ReferenceNumberField / ReferenceNumber — a counterparty identifier (issue #181).
    Mirrors the DS components/bundle.css block of the same name, plus the leading-icon input rule

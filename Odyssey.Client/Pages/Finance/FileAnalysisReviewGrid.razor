@@ -1,3 +1,4 @@
+@using Odyssey.Client.Models
 @using Odyssey.Dtos.Finance
 @* The candidate-review grid of the analyze-file dialog: the toolbar, the degraded-match notice and
    the editable candidate table. Split out of FileAnalysisDialog (issue #373) with the .fan-table* /
@@ -22,14 +23,41 @@
         </div>
     </div>
 
-    @if (Session.MatchStatus is FileAnalysisMatchStatus.Failed or FileAnalysisMatchStatus.Skipped && Session.Rows.Count > 0)
+    @* One line from the server's counts (issue #434). Mutually exclusive with the problem alerts and the
+       degraded banner; the dialog announces it once through its polite region. *@
+    @if (Session.MatchProblem == FileAnalysisMatchProblem.None && Session.MatchStatus == FileAnalysisMatchStatus.Completed
+         && Session.Rows.Count > 0 && Session.Job is { } summaryJob && FileAnalysisDisclosureText.MatchSummary(summaryJob) is { } summary)
+    {
+        <p class="fan-match-summary">@summary</p>
+    }
+
+    @* 409 file_analysis_destination_changed — matched ONLY on that code; any other 409 keeps the generic
+       handling. Nothing was sent; a new analysis is the way on. *@
+    @if (Session.MatchProblem == FileAnalysisMatchProblem.DestinationChanged && Session.Rows.Count > 0)
+    {
+        <FileAnalysisFocusAlert Icon="swap_horiz">
+            <ChildContent>@FileAnalysisDisclosureText.DestinationChanged</ChildContent>
+            <Action>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" OnClick="OnStartNewAnalysis">Start new analysis</MudButton>
+            </Action>
+        </FileAnalysisFocusAlert>
+    }
+
+    @if (Session.MatchProblem == FileAnalysisMatchProblem.RateLimited && Session.Rows.Count > 0)
+    {
+        <FileAnalysisRateLimitNotice RetryAfter="Session.MatchRetryAfter" Label="Re-match"
+                                     StartIcon="@Icons.Material.Filled.Sync" OnAction="OnReMatch" />
+    }
+
+    @if (Session.MatchProblem == FileAnalysisMatchProblem.None
+         && Session.MatchStatus is FileAnalysisMatchStatus.Failed or FileAnalysisMatchStatus.Skipped && Session.Rows.Count > 0)
     {
         <div class="fan-degraded" role="alert">
             <OdsMIcon Name="@(Session.MatchStatus == FileAnalysisMatchStatus.Skipped ? "filter_alt_off" : "sync_problem")" Size="18" />
             <div class="fan-degraded-text">
                 @if (Session.MatchStatus == FileAnalysisMatchStatus.Skipped)
                 {
-                    <text><b>Matching was skipped</b> when this analysis ran, because the list of contacts and tags was over the limit at the time. Link merchants and categories yourself, or re-match.</text>
+                    <text><b>Matching was skipped</b> when this analysis ran, because the list of contacts and tags was over the limit at the time. Link merchants and categories yourself, or re-match. A re-match uses names only for this analysis.</text>
                 }
                 else
                 {

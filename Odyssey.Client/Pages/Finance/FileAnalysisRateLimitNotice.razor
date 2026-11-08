@@ -1,0 +1,77 @@
+@using Odyssey.Client.Models
+@implements IDisposable
+@* A 429 on analyze or match (issue #434 state 18). The message names the wait in words from
+   ApiResult.RetryAfter — never the raw header — and takes focus. The action stays FOCUSABLE while
+   blocked (aria-disabled, not disabled) and points at the message; activating it then re-inserts the
+   alert text so it is spoken again. When the wait ends the action re-enables and a polite status says so. *@
+
+<div class="fan-ratelimit">
+@if (_blocked)
+{
+    <FileAnalysisFocusAlert Icon="hourglass_top" Id="@MessageId" @key="_nonce">
+        @FileAnalysisDisclosureText.RateLimited(RetryAfter)
+    </FileAnalysisFocusAlert>
+}
+<div class="odc-sr-only" role="status" aria-live="polite">@_done</div>
+<MudButton Variant="Variant.Outlined" StartIcon="@StartIcon" OnClick="ActivateAsync"
+           Class="@(_blocked ? "fan-action-blocked" : null)"
+           aria-disabled="@(_blocked ? "true" : null)"
+           aria-describedby="@(_blocked ? MessageId : null)">@Label</MudButton>
+</div>
+
+@code {
+    [Parameter] public TimeSpan? RetryAfter { get; set; }
+
+    [Parameter] public string Label { get; set; } = "Try again";
+
+    [Parameter] public string? StartIcon { get; set; }
+
+    [Parameter] public EventCallback OnAction { get; set; }
+
+    [Parameter] public string MessageId { get; set; } = "fan-ratelimit-msg";
+
+    private bool _blocked = true;
+    private int _nonce;
+    private string _done = string.Empty;
+    private CancellationTokenSource? _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new CancellationTokenSource();
+        _ = WaitAsync(FileAnalysisDisclosureText.EffectiveWait(RetryAfter), _timer.Token);
+    }
+
+    private async Task WaitAsync(TimeSpan wait, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(wait, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        _blocked = false;
+        _done = "You can analyse again.";
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private Task ActivateAsync()
+    {
+        if (_blocked)
+        {
+            // A new key re-mounts the alert: the text is removed and re-inserted, so it is spoken again.
+            _nonce++;
+            return Task.CompletedTask;
+        }
+
+        return OnAction.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        _timer?.Cancel();
+        _timer?.Dispose();
+    }
+}

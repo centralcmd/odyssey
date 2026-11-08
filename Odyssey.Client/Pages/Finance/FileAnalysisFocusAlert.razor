@@ -1,0 +1,36 @@
+@* An alert that takes focus when it arrives (issue #434 states 12, 17 and 18 share one rule):
+   role="alert" with tabindex="-1", focused once on first render so a keyboard or screen-reader user
+   lands on the reason rather than on a control that changed beneath them. *@
+
+<div class="fan-degraded fan-focus-alert" role="alert" tabindex="-1" id="@Id" @ref="_ref">
+    <OdsMIcon Name="@Icon" Size="18" />
+    <div class="fan-degraded-text">@ChildContent</div>
+    @Action
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = "info_outline";
+
+    [Parameter] public string? Id { get; set; }
+
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    private ElementReference _ref;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                await _ref.FocusAsync();
+            }
+            catch (InvalidOperationException)
+            {
+                // Not attached to a browser (prerender, bUnit): nothing to focus.
+            }
+        }
+    }
+}

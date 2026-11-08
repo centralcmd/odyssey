@@ -192,7 +192,7 @@ public sealed class SystemSettingsService(
                 // Lengths and digests, never the text (issue #433 §7.2).
                 logger.LogInformation(
                     "System settings guidance change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
-                    actorUserId, line.Key, line.OldValue, line.NewValue);
+                    actorUserId, GuidanceAuditField(line.Key), line.OldValue, line.NewValue);
                 continue;
             }
 
@@ -222,6 +222,19 @@ public sealed class SystemSettingsService(
     /// PROJECTED values — the projection runs where the old and new strings are still in hand, so a
     /// line can never be composed from an unprojected one by a later edit at the emit site.
     /// </summary>
+    /// <summary>
+    /// The field a digest-only line names, chosen from the closed set of guidance keys rather than
+    /// passed through from the descriptor. Only those two keys ever produce a digest line, and naming
+    /// them from this switch keeps every other key (the mail settings among them) structurally off it —
+    /// which is also what static analysis needs to see (code-scanning alert 71 on PR #440).
+    /// </summary>
+    private static string GuidanceAuditField(string key) => key switch
+    {
+        SystemSettingsKeys.FileAnalysisExtractionPromptAddition => "FileAnalysisExtractionPromptAddition",
+        SystemSettingsKeys.FileAnalysisMatchPromptAddition => "FileAnalysisMatchPromptAddition",
+        _ => "guidance",
+    };
+
     private sealed record PendingAudit(string Key, string OldValue, string NewValue, bool DigestOnly = false);
 
     /// <summary>

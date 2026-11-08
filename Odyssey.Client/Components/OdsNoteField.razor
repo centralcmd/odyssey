@@ -10,6 +10,16 @@
     OdsField; for a money / numeric value use OdsAmountField.
 
     Controlled: bind via @bind-Value.
+
+    Long-text settings (issue #434) need the counter without the truncation:
+    CounterMax shows the counter independently of MaxLength (which keeps meaning
+    "set the native maxlength attribute"), and CountLength supplies the count, so a
+    setting can count what the server will store. The visible counter is
+    aria-hidden; an sr-only twin ("{n} of {max} characters") is appended to
+    aria-describedby. At the limit a visible "Character limit reached" sits beside
+    the number and above it "{n} over limit", so colour is never the only signal.
+    ReadOnly renders readonly + aria-readonly (focusable, selectable, copyable),
+    never disabled. A caller's AriaDescribedBy is merged ahead of the field's own ids.
 *@
 
 <OdsFieldShell Label="@Label" HtmlFor="@FieldId" Required="@Required"
@@ -21,6 +31,11 @@
               placeholder="@Placeholder"
               maxlength="@MaxLength"
               disabled="@Disabled"
+              readonly="@ReadOnly"
+              aria-readonly="@(ReadOnly ? "true" : null)"
+              spellcheck="@Spellcheck"
+              autocomplete="@AutoComplete"
+              autocapitalize="@AutoCapitalize"
               autofocus="@AutoFocus"
               aria-required="@(Required ? "true" : null)"
               aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
@@ -46,7 +61,30 @@
     /// <summary>Visible rows (the textarea stays resizable). Default 3.</summary>
     [Parameter] public int Rows { get; set; } = 3;
 
-    /// <summary>Show the "len/max" counter (requires MaxLength). Default true.</summary>
+    /// <summary>
+    /// Show the counter against this number without setting native <c>maxlength</c>. Defaults to
+    /// <see cref="MaxLength"/>. A long-text setting passes this alone, so an over-limit paste is kept,
+    /// counted and explained rather than silently truncated.
+    /// </summary>
+    [Parameter] public int? CounterMax { get; set; }
+
+    /// <summary>Supplies the counted length (e.g. the server's normalised length). Defaults to <c>Value.Length</c>.</summary>
+    [Parameter] public Func<string, int>? CountLength { get; set; }
+
+    /// <summary><c>readonly</c> + <c>aria-readonly</c>: focusable and copyable. Never use Disabled for "you may look but not edit".</summary>
+    [Parameter] public bool ReadOnly { get; set; }
+
+    /// <summary>Ids merged ahead of the field's own help, error and counter ids, de-duplicated.</summary>
+    [Parameter] public string? AriaDescribedBy { get; set; }
+
+    /// <summary>Rendered <c>spellcheck</c> value ("true"/"false"); omitted when null.</summary>
+    [Parameter] public string? Spellcheck { get; set; }
+
+    [Parameter] public string? AutoComplete { get; set; }
+
+    [Parameter] public string? AutoCapitalize { get; set; }
+
+    /// <summary>Show the "len/max" counter (requires MaxLength or CounterMax). Default true.</summary>
     [Parameter] public bool ShowCount { get; set; } = true;
 
     [Parameter] public string? Help { get; set; }
@@ -70,24 +108,48 @@
 
     protected override void OnInitialized() => FieldId = Id ?? $"odc-note-{Guid.NewGuid():N}";
 
-    private bool Counted => ShowCount && MaxLength.HasValue;
+    private int? Max => CounterMax ?? MaxLength;
 
-    private int Length => Value?.Length ?? 0;
+    private bool Counted => ShowCount && Max.HasValue;
+
+    private int Length => CountLength is { } count ? count(Value ?? "") : Value?.Length ?? 0;
+
+    private string CountId => $"{FieldId}-count";
 
     private string? DescribedBy
     {
         get
         {
+            var ids = new List<string>();
+            if (!string.IsNullOrWhiteSpace(AriaDescribedBy))
+            {
+                ids.AddRange(AriaDescribedBy.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            }
+
             var hasHelp = !string.IsNullOrEmpty(Help);
             var hasError = !string.IsNullOrEmpty(Error);
-            if (!hasHelp && !hasError) return null;
+            if (hasHelp) ids.Add($"{FieldId}-help");
             // OdsFieldShell gives the error its own id only when a help node renders alongside it.
-            return hasHelp && hasError ? $"{FieldId}-help {FieldId}-help-error" : $"{FieldId}-help";
+            if (hasError) ids.Add(hasHelp ? $"{FieldId}-help-error" : $"{FieldId}-help");
+            if (Counted) ids.Add(CountId);
+
+            return ids.Count == 0 ? null : string.Join(' ', ids.Distinct(StringComparer.Ordinal));
         }
     }
 
     private RenderFragment? Counter => Counted
-        ? @<span class="odc-field-count @(Length >= MaxLength ? "over" : null)" aria-hidden="true">@Length/@MaxLength</span>
+        ? @<span class="odc-field-count @(Length >= Max ? "over" : null)">
+              <span aria-hidden="true">@Length/@Max</span>
+              @if (Length == Max)
+              {
+                  <span class="odc-field-count-note" aria-hidden="true"> · Character limit reached</span>
+              }
+              else if (Length > Max)
+              {
+                  <span class="odc-field-count-note" aria-hidden="true"> · @(Length - Max) over limit</span>
+              }
+              <span class="odc-sr-only" id="@CountId">@Length of @Max characters</span>
+          </span>
         : null;
 
     private Task OnInput(ChangeEventArgs e)

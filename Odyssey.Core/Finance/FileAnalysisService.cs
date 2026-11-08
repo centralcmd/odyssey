@@ -1103,7 +1103,13 @@ public class FileAnalysisService
             // predates the feature, which is how "none sent" is told apart from "not recorded".
             ExtractionPromptAdditionDigest: PromptAdditionDigest.Of(job.ExtractionPromptAdditionInForce),
             MatchPromptAdditionDigest: PromptAdditionDigest.Of(job.MatchPromptAdditionInForce),
-            MatchVocabularyScope: job.MatchVocabularyScope);
+            MatchVocabularyScope: job.MatchVocabularyScope,
+            // Issue #434: what the latest match run sent, for the log's "Matched against" fact.
+            ContactCount: job.ContactCount,
+            AliasCount: job.AliasCount,
+            TagCount: job.TagCount,
+            TagDescriptionCount: job.TagDescriptionCount,
+            VocabularyReduction: job.VocabularyReduction);
     }
 
     private static ExistingFileAnalysisCandidateTransaction MapCandidate(
