@@ -6,6 +6,7 @@ using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal.Originals;
+using Odyssey.Dtos.Application;
 using Odyssey.Testing.FileStorage;
 using Xunit;
 
@@ -377,6 +378,109 @@ public sealed class PhotoOriginalBackfillJobTests : PhotoThumbnailTestBase
 
         Assert.Equal(first, (await PhotoAsync(host, photoId)).StoredObjectId);
         Assert.Equal(1, await WithContextAsync(host, c => c.StoredObjects.CountAsync(o => o.FeatureKey == PhotoOriginalStorage.FeatureKey)));
+    }
+
+    // ── The run log (issue #409; the Background jobs page) ───────────────────────────────────────
+
+    private static Task<List<PhotoOriginalBackfillJobRun>> RunsAsync(FileStorageTestHost host) =>
+        WithContextAsync(host, c => c.Set<PhotoOriginalBackfillJobRun>().AsNoTracking().OrderBy(r => r.StartedAtUtc).ToListAsync());
+
+    [Fact]
+    public async Task A_tick_that_moves_opens_a_burst_and_the_next_idle_tick_finishes_it_succeeded()
+    {
+        var host = await NewThumbnailHostAsync();
+        await AddLegacyAsync(host, PhotoTestData.Jpeg(40));
+        var (_, sharedFile) = await AddLegacyAsync(host, PhotoTestData.Jpeg(41), createdAt: new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        await WithContextAsync(host, async c =>
+        {
+            c.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = Guid.NewGuid(), FileId = sharedFile, CreatedAt = DateTime.UtcNow });
+            await c.SaveChangesAsync();
+        });
+
+        await Backfill(host).RunOnceAsync(default);
+        var open = Assert.Single(await RunsAsync(host));
+        Assert.Equal((JobRunStatus.Running, JobRunTrigger.Scheduled, 1, 1), (open.Status, open.Trigger, open.PhotosMoved, open.PhotosCopiedShared));
+
+        await Backfill(host).RunOnceAsync(default);
+
+        var run = Assert.Single(await RunsAsync(host));
+        Assert.Equal((JobRunStatus.Succeeded, 2, 0), (run.Status, run.ItemsProcessed, run.ItemsFailed));
+        Assert.True(await WithContextAsync(host, c => c.JobHeartbeats.AnyAsync(h => h.JobType == JobType.PhotoOriginalBackfill)));
+    }
+
+    [Fact]
+    public async Task A_burst_that_only_parked_is_failed_as_unsupported_input()
+    {
+        var host = await NewThumbnailHostAsync();
+        var (_, fileId) = await AddLegacyAsync(host, PhotoTestData.Jpeg(42));
+        await SetFileAsync(host, fileId, f => f.ContentType = "application/pdf");
+
+        await Backfill(host).RunOnceAsync(default);
+        await Backfill(host).RunOnceAsync(default);
+
+        var run = Assert.Single(await RunsAsync(host));
+        Assert.Equal((JobRunStatus.Failed, JobFailureCategory.UnsupportedInput, 1), (run.Status, run.FailureCategory, run.PhotosParked));
+    }
+
+    [Fact]
+    public async Task With_work_left_and_storage_below_the_reserve_the_process_is_held_for_storage()
+    {
+        var host = await NewThumbnailHostAsync();
+        await AddLegacyAsync(host, PhotoTestData.Jpeg(43));
+        host.Space.Override = (1024L * 1024 * 1024, 1024L * 1024 * 1024 * 1024);
+
+        await Backfill(host).RunOnceAsync(default);
+
+        var held = Assert.Single(await RunsAsync(host));
+        Assert.Equal((JobRunStatus.Held, JobHeldReason.StorageUnavailable), (held.Status, held.HeldReason));
+    }
+
+    [Fact]
+    public async Task A_back_off_holds_the_process_and_a_manual_run_ends_it_and_records_the_move()
+    {
+        var store = new FaultyStore { PutFailure = () => new IOException("disk gone") };
+        var host = await NewThumbnailHostAsync(configure: store.Install);
+        var (photoId, _) = await AddLegacyAsync(host, PhotoTestData.Jpeg(44));
+
+        await Backfill(host).RunOnceAsync(default);  // interrupted: the burst records it, the lease backs off
+        store.PutFailure = null;
+        await Backfill(host).RunOnceAsync(default);  // backing off: the burst closes, a held period opens
+
+        var runs = await RunsAsync(host);
+        Assert.Equal((JobRunStatus.Failed, JobFailureCategory.Storage, 1), (runs[0].Status, runs[0].FailureCategory, runs[0].Interruptions));
+        Assert.Equal((JobRunStatus.Held, JobHeldReason.BackingOff), (runs[1].Status, runs[1].HeldReason));
+
+        var manualId = Guid.NewGuid();
+        await WithContextAsync(host, async c =>
+        {
+            var now = Clock.GetUtcNow().UtcDateTime;
+            c.JobRuns.Add(new PhotoOriginalBackfillJobRun
+            {
+                JobRunId = manualId, Trigger = JobRunTrigger.Manual, Status = JobRunStatus.Running,
+                StartedAtUtc = now, LastActivityAtUtc = now, Generation = Guid.NewGuid(),
+            });
+            await c.SaveChangesAsync();
+        });
+
+        await Backfill(host).RunOnceAsync(default);
+
+        Assert.NotNull((await PhotoAsync(host, photoId)).StoredObjectId);
+        Assert.Null((await LeaseAsync(host)).NextAttemptAtUtc);
+        runs = await RunsAsync(host);
+        var manual = runs.Single(r => r.JobRunId == manualId);
+        Assert.Equal((JobRunStatus.Succeeded, 1), (manual.Status, manual.PhotosMoved));
+        Assert.NotNull(runs.Single(r => r.Status == JobRunStatus.Held).FinishedAtUtc);
+    }
+
+    [Fact]
+    public async Task With_nothing_left_to_move_no_run_or_held_period_is_recorded()
+    {
+        var host = await NewThumbnailHostAsync();
+        host.Space.Override = (1024L * 1024 * 1024, 1024L * 1024 * 1024 * 1024);
+
+        await Backfill(host).RunOnceAsync(default);
+
+        Assert.Empty(await RunsAsync(host));
     }
 
     [Theory]

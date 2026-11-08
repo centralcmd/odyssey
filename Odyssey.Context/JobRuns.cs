@@ -235,6 +235,31 @@ public class PhotoThumbnailJobRun : JobRun
 }
 
 /// <summary>
+/// A burst or manual run of the photo-original move (issue #428), or a held period of one process — storage
+/// unavailable, or the back-off after a storage or database error.
+/// </summary>
+public class PhotoOriginalBackfillJobRun : JobRun
+{
+    public PhotoOriginalBackfillJobRun() : base(Dtos.Application.JobType.PhotoOriginalBackfill)
+    {
+    }
+
+    /// <summary>Moved, with the database file removed because nothing else used it.</summary>
+    public int PhotosMoved { get; set; }
+
+    /// <summary>Moved, with the database file kept because something else still uses it.</summary>
+    public int PhotosCopiedShared { get; set; }
+
+    /// <summary>Parked for a reason of their own (a <c>PhotoOriginalBackfillFailures</c> code).</summary>
+    public int PhotosParked { get; set; }
+
+    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
+    public int Interruptions { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (PhotosMoved + PhotosCopiedShared, PhotosParked);
+}
+
+/// <summary>
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes

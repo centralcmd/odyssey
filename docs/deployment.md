@@ -1629,8 +1629,9 @@ API's view, and a volume degraded only in the worker shows in the worker's log.
 
 ## Background jobs: the run log
 
-Issue #409 records the runs of all four worker jobs — exchange-rate sync, weather, file-storage maintenance and
-photo thumbnails — in one table, `JobRuns`, and each worker process's last tick per job in `JobHeartbeats`.
+Issue #409 records the runs of the worker jobs — exchange-rate sync, weather, file-storage maintenance, photo
+thumbnails and, since issue #428, the photo-original move — in one table, `JobRuns`, and each worker process's
+last tick per job in `JobHeartbeats`.
 **`/background-jobs`** reads both; everything there is under `system-settings.read` (Admin), and a job's own
 counters additionally need that job's read claim (`weather.points.read`, `file-storage.read`, `photos.read`).
 
@@ -1663,7 +1664,7 @@ same release tag, so the normal `pull` + `up -d` does this.
 |---|---|---|
 | Exchange-rate sync | run or purge (unchanged) | — |
 | File-storage maintenance | pass — scheduled hourly, or manual, picked up by a **30 s request poll** | while *this* worker's storage checks fail (`HeldByCheck` names the check, never a path) |
-| Weather, photo thumbnails | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable |
+| Weather, photo thumbnails, photo-original move | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable. Photo-original move, only while photos are left to move: StorageUnavailable (volume degraded or below its reserve) or BackingOff (after a storage or database error, until the back-off ends) |
 
 Every job writes its heartbeat first on every tick (at most once a minute per process), before any early
 return, so an idle, unconfigured or held job is never mistaken for a dead one. A job with no heartbeat for
@@ -1678,19 +1679,21 @@ process has stopped heartbeating, and once an hour deletes finished runs older t
 ### Manual runs
 
 `POST /api/background-jobs/{job}/runs` needs `system-settings.update` **and** the job's own claim
-(`weather.points.update`, `file-storage.read`, `photos.update`; the sync needs none beyond the first). The
+(`weather.points.update`, `file-storage.read` for both file-storage maintenance and the photo-original move,
+`photos.update`; the sync needs none beyond the first). A photo-original move run moves one batch at once and
+**ends a back-off** early; it is refused (`409 held`) only while every live worker is held for storage. The
 file-storage manual pass is gated on `file-storage.read` by decision — no file-storage write claim exists — and
 uses the same deletion grace and lease as a scheduled pass. A thumbnail manual run drains pending jobs and
 re-queues each `Failed` job **once in its lifetime** (`ManualRequeues`); `Unsupported` jobs, crashes and
 timeouts included, are never re-queued.
 
-Each job has a 60 s cooldown, and a per-user limiter sits in front of all four:
+Each job has a 60 s cooldown, and a per-user limiter sits in front of all of them:
 `RateLimiting:BackgroundJobsRun` (default 5 requests per user per minute). Every accepted manual run is written
 to the application log at Information under the System settings audit category
 (`Odyssey.Api.SystemSettings.SystemSettingsService`) with the acting user's id, the job and the run id —
 independent of the row, which is pruned and whose requester is nulled when the account is deleted.
 
-Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync executes a manual run inline; the other three
+Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync executes a manual run inline; the others
 stay unclaimed (no test may call MET or load ImageMagick).
 
 ## Photo thumbnails
@@ -1823,6 +1826,9 @@ bytes: it has no Files-store row, `files.read` does not reach it, and its origin
   Rolling back after that is a **backup restore**, nothing else.
 - **`FileStorage__Bindings__PhotoOriginals=primary`** on `api` and `worker`, in both compose files and the
   AppHost. Without it both refuse to start (check B1). Keep the two services identical.
+- **One more background job on `/background-jobs`**, the photo-original move. Its runs are recorded from the
+  first release (migration `AddPhotoOriginalBackfillJobRuns` widens the run log's checks), and its counts need
+  `file-storage.read`.
 - **Upload is one multipart call**, `POST /api/photos`, rate-limited per user by `RateLimiting:PhotoUpload`
   (120 per 10 minutes by default). It refuses with `507` when the volume's free space is below the reserve —
   the store's 1 GB floor plus 4 GB — and with `409` (`photo-duplicate`) when the same image is already a photo.
@@ -1856,8 +1862,12 @@ A parked photo stays readable from the database exactly as before. **To retry**,
 DELETE FROM PhotoOriginalBackfillFailures WHERE PhotoId = '{{ PHOTO_ID }}';
 ```
 
-Progress — moved, remaining, parked by code, copied-shared, the back-off — is on
-`GET /api/file-storage/photo-backfill` (`file-storage.read`). It reports counts and codes only, never a name.
+Progress — remaining, parked by code, copied-shared, the back-off — is on **`/background-jobs`** (the
+*Photo original move* tile, its status card and its runs, each run counting the photos moved, copied, parked and
+the interruptions) and on `GET /api/file-storage/photo-backfill`, both under `file-storage.read`. They report
+counts and codes only, never a name. A manual run from the page ends a back-off early; it does not retry a parked
+photo — that is still the `DELETE` above. Once nothing is left to move the job records nothing more, and its tile
+keeps showing its last run.
 
 ### Erasure of a photo original
 

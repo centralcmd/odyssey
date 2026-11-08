@@ -3,6 +3,7 @@ using Odyssey.Context;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos;
@@ -58,6 +59,7 @@ public sealed class BackgroundJobsService(
     IWeatherSettingsLookup weatherSettings,
     FileStorageVolumeRegistry volumes,
     PhotoThumbnailService thumbnails,
+    PhotoBackfillStatusService photoBackfill,
     JobRunSweeper sweeper,
     TimeProvider time)
 {
@@ -107,6 +109,7 @@ public sealed class BackgroundJobsService(
         {
             FileStorage = access.CanRead(JobType.FileStorageMaintenance) ? await FileStorageHealthAsync(now, cancellationToken) : null,
             Thumbnails = access.CanRead(JobType.PhotoThumbnails) ? await ThumbnailHealthAsync(now, cancellationToken) : null,
+            PhotoOriginalBackfill = access.CanRead(JobType.PhotoOriginalBackfill) ? await photoBackfill.GetAsync(cancellationToken) : null,
         };
         return overview;
     }
@@ -154,6 +157,13 @@ public sealed class BackgroundJobsService(
         if (canRead && liveHeld?.HeldReason == JobHeldReason.BreakerTripped)
         {
             heldUntil = await PhotoThumbnailBreaker.ResumesAtAsync(context, now, cancellationToken);
+        }
+        else if (canRead && liveHeld?.HeldReason == JobHeldReason.BackingOff)
+        {
+            heldUntil = await context.PhotoOriginalBackfillLeases.AsNoTracking()
+                .Where(l => l.Id == PhotoOriginalBackfillLease.SingletonId)
+                .Select(l => l.NextAttemptAtUtc)
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
         // NotConfigured is derived from the job's own data (weather points, volumes), so it is shown only to a caller
@@ -495,6 +505,14 @@ public sealed class BackgroundJobsService(
                 Hangs = photos.Hangs,
             },
             PhotoThumbnailJobRun => new PhotoThumbnailJobRunDetail(),
+            PhotoOriginalBackfillJobRun move when canRead => new PhotoOriginalBackfillJobRunDetail
+            {
+                PhotosMoved = move.PhotosMoved,
+                PhotosCopiedShared = move.PhotosCopiedShared,
+                PhotosParked = move.PhotosParked,
+                Interruptions = move.Interruptions,
+            },
+            PhotoOriginalBackfillJobRun => new PhotoOriginalBackfillJobRunDetail(),
             _ => new JobRunDetail(),
         };
 
@@ -559,6 +577,15 @@ public sealed class BackgroundJobsService(
             // A held file-storage worker never claims the request, so a 202 would only end as an Abandoned row that
             // blames a missing worker (architect review on PR #418). Refuse it the way a held thumbnail run is.
             return new ManualRunOutcome.Held(storageHeld, null);
+        }
+
+        // Held for storage in every live worker, the move cannot run; held only for its back-off it can, because a
+        // manual run is what ends a back-off early.
+        if (jobType == JobType.PhotoOriginalBackfill
+            && await EveryLiveWorkerHeldAsync(entry, now, cancellationToken) is { } moveHeld
+            && moveHeld != JobHeldReason.BackingOff)
+        {
+            return new ManualRunOutcome.Held(moveHeld, null);
         }
 
         // A dead run must never block a manual run for longer than its stale window (§3.4).
@@ -664,6 +691,9 @@ public sealed class BackgroundJobsService(
                 return await context.PhotoThumbnailJobs.AnyAsync(j => j.State == PhotoThumbnailJobState.Pending
                         || (j.State == PhotoThumbnailJobState.Failed && j.ManualRequeues == 0), cancellationToken)
                     || await context.Photos.AnyAsync(p => !context.PhotoThumbnailJobs.Any(j => j.PhotoId == p.PhotoId), cancellationToken);
+            case JobType.PhotoOriginalBackfill:
+                return await context.Photos.AnyAsync(p => p.StoredObjectId == null && p.FileId != null
+                    && !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId), cancellationToken);
             default:
                 return true;
         }
@@ -676,6 +706,7 @@ public sealed class BackgroundJobsService(
             JobType.Weather => new WeatherJobRun(),
             JobType.FileStorageMaintenance => new FileStorageMaintenanceJobRun(),
             JobType.PhotoThumbnails => new PhotoThumbnailJobRun(),
+            JobType.PhotoOriginalBackfill => new PhotoOriginalBackfillJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

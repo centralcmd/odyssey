@@ -60,6 +60,7 @@ public class BackgroundJobsApiTests
     [InlineData("Weather")]
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
+    [InlineData("PhotoOriginalBackfill")]
     public async Task A_manual_run_without_the_jobs_own_claim_is_forbidden(string jobType)
     {
         await using var factory = new ApiFactory(SettingsOnly);
@@ -110,7 +111,7 @@ public class BackgroundJobsApiTests
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
 
         Assert.Equal(
-            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails],
+            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
@@ -125,6 +126,7 @@ public class BackgroundJobsApiTests
         Assert.Equal(Now, overview.GeneratedAtUtc);
         Assert.NotNull(overview.WorkerHealth.FileStorage);
         Assert.NotNull(overview.WorkerHealth.Thumbnails);
+        Assert.NotNull(overview.WorkerHealth.PhotoOriginalBackfill);
     }
 
     /// <summary>AC 30: an unconfigured job still heartbeats, and reads NotConfigured, not NotTicking.</summary>
@@ -543,6 +545,7 @@ public class BackgroundJobsApiTests
     [InlineData("FileStorageMaintenance")]
     [InlineData("PhotoThumbnails")]
     [InlineData("ExchangeRateSync")]
+    [InlineData("PhotoOriginalBackfill")]
     public async Task A_run_with_nothing_to_do_is_skipped_at_once(string jobType)
     {
         await using var factory = new ApiFactory(Admin);
@@ -734,6 +737,110 @@ public class BackgroundJobsApiTests
         Assert.Equal((ExchangeRateSyncTrigger.Manual, ExchangeRateSyncRunStatus.Skipped), (run.Trigger, run.Status));
         var status = await client.GetFromJsonAsync<ExchangeRateSyncStatus>("/api/system-settings/exchange-rate-sync/status");
         Assert.Equal(Now.AddSeconds(60), status!.ManualRunAvailableAtUtc);
+    }
+
+    // ── The photo-original move (issue #428) ─────────────────────────────────────────────────────────────
+
+    private static void SeedLegacyPhoto(OdysseyContext context) =>
+        Odyssey.Testing.FileStorage.PhotoTestData.StageLegacyPhoto(context, createdAt: Now.AddDays(-30));
+
+    [Fact]
+    public async Task A_photo_original_move_with_a_legacy_photo_left_is_accepted()
+    {
+        await using var factory = new ApiFactory(Admin);
+        await factory.SeedAsync(SeedLegacyPhoto);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsync($"{Base}/PhotoOriginalBackfill/runs", null);
+
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    /// <summary>
+    /// Every live worker held for storage: the move cannot run, so the request is a 409 held. Held only for its back-off
+    /// it can — a manual run is what ends a back-off early — so that request is accepted.
+    /// </summary>
+    [Theory]
+    [InlineData(JobHeldReason.StorageUnavailable, HttpStatusCode.Conflict)]
+    [InlineData(JobHeldReason.BackingOff, HttpStatusCode.Accepted)]
+    public async Task A_photo_original_move_is_refused_only_while_every_worker_is_held_for_storage(JobHeldReason reason, HttpStatusCode expected)
+    {
+        await using var factory = new ApiFactory(Admin);
+        var worker = Guid.NewGuid();
+        await factory.SeedAsync(context =>
+        {
+            SeedLegacyPhoto(context);
+            context.JobHeartbeats.Add(Beat(JobType.PhotoOriginalBackfill, worker));
+            context.JobRuns.Add(Held<PhotoOriginalBackfillJobRun>(worker, reason));
+        });
+
+        var response = await factory.CreateClient().PostAsync($"{Base}/PhotoOriginalBackfill/runs", null);
+
+        Assert.Equal(expected, response.StatusCode);
+    }
+
+    /// <summary>
+    /// The status card and the back-off's resume time are file-storage data: shown with file-storage.read, and null
+    /// without it, like the other jobs' worker health.
+    /// </summary>
+    [Fact]
+    public async Task The_move_status_and_its_back_off_are_shown_only_with_file_storage_read()
+    {
+        var worker = Guid.NewGuid();
+        var resumes = Now.AddMinutes(14);
+        await using var admin = new ApiFactory(Admin);
+        await admin.SeedAsync(context =>
+        {
+            SeedLegacyPhoto(context);
+            context.JobHeartbeats.Add(Beat(JobType.PhotoOriginalBackfill, worker));
+            context.JobRuns.Add(Held<PhotoOriginalBackfillJobRun>(worker, JobHeldReason.BackingOff));
+            // The lease row is seeded (HasData) once the store is created.
+            var lease = context.PhotoOriginalBackfillLeases.Find(PhotoOriginalBackfillLease.SingletonId)!;
+            lease.NextAttemptAtUtc = resumes;
+            lease.ConsecutiveEnvironmentalFailures = 3;
+            lease.CopiedSharedCount = 2;
+        });
+        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
+
+        var full = await admin.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
+        var move = full!.Jobs.Single(job => job.JobType == JobType.PhotoOriginalBackfill);
+        Assert.Equal((JobHealth.Held, JobHeldReason.BackingOff, resumes), (move.Health, move.HeldReason, move.HeldUntilUtc));
+        var status = full.WorkerHealth.PhotoOriginalBackfill!;
+        Assert.Equal((1, 2, resumes), (status.Remaining, status.CopiedShared, status.BackingOffUntilUtc));
+        Assert.Equal(["error", "hash", "read", "too-large"], status.FailedByCode.Keys.Order());
+
+        var partial = await reader.CreateClient().GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
+        move = partial!.Jobs.Single(job => job.JobType == JobType.PhotoOriginalBackfill);
+        Assert.Equal((JobHealth.Held, (JobHeldReason?)null, (DateTime?)null), (move.Health, move.HeldReason, move.HeldUntilUtc));
+        Assert.Null(partial.WorkerHealth.PhotoOriginalBackfill);
+    }
+
+    [Fact]
+    public async Task A_move_run_detail_carries_its_counters_only_with_file_storage_read()
+    {
+        var id = Guid.NewGuid();
+        await using var admin = new ApiFactory(Admin);
+        await admin.SeedAsync(context =>
+        {
+            var run = new PhotoOriginalBackfillJobRun
+            {
+                JobRunId = id, Trigger = JobRunTrigger.Scheduled, StartedAtUtc = Now.AddMinutes(-3), ClaimedAtUtc = Now.AddMinutes(-3),
+                LastActivityAtUtc = Now, PhotosMoved = 20, PhotosCopiedShared = 3, PhotosParked = 2, Interruptions = 0,
+            };
+            run.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.UnsupportedInput, Now);
+            context.JobRuns.Add(run);
+        });
+        await using var reader = new ApiFactory(SettingsOnly, sharingStoreWith: admin);
+
+        var raw = await admin.CreateClient().GetStringAsync($"{Base}/runs/{id}");
+        Assert.StartsWith("{\"$kind\":\"PhotoOriginalBackfill\"", raw, StringComparison.Ordinal);
+        var detail = Assert.IsType<PhotoOriginalBackfillJobRunDetail>(JsonSerializer.Deserialize<JobRunDetail>(raw, Json));
+        Assert.Equal((20, 3, 2, 0, 23, 2), (detail.PhotosMoved, detail.PhotosCopiedShared, detail.PhotosParked, detail.Interruptions,
+            detail.ItemsProcessed, detail.ItemsFailed));
+
+        var hidden = Assert.IsType<PhotoOriginalBackfillJobRunDetail>(
+            await reader.CreateClient().GetFromJsonAsync<JobRunDetail>($"{Base}/runs/{id}"));
+        Assert.Equal(((int?)null, (int?)null), (hidden.PhotosMoved, hidden.ItemsProcessed));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────────────────────────────────

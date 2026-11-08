@@ -368,6 +368,7 @@ public static class JobRunOutcomes
     {
         WeatherJobRun weather => Weather(weather),
         PhotoThumbnailJobRun thumbnails => Thumbnails(thumbnails),
+        PhotoOriginalBackfillJobRun move => PhotoOriginalMove(move),
         FileStorageMaintenanceJobRun storage => storage.IntegrityFailures > 0
             ? (JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage)
             : (JobRunStatus.Succeeded, null),
@@ -386,6 +387,23 @@ public static class JobRunOutcomes
 
         var category = WeatherCategory(run.FailureKind);
         return run.PointsFailed >= run.PointsAttempted
+            ? (JobRunStatus.Failed, category)
+            : (JobRunStatus.PartiallySucceeded, category);
+    }
+
+    /// <summary>
+    /// A storage or database interruption outranks a parked photo for the category: the outage is what an operator has
+    /// to act on, and a parked photo is already listed by code on the status card.
+    /// </summary>
+    private static (JobRunStatus, JobFailureCategory?) PhotoOriginalMove(PhotoOriginalBackfillJobRun run)
+    {
+        if (run.Interruptions == 0 && run.PhotosParked == 0)
+        {
+            return (JobRunStatus.Succeeded, null);
+        }
+
+        var category = run.Interruptions > 0 ? JobFailureCategory.Storage : JobFailureCategory.UnsupportedInput;
+        return run.PhotosMoved + run.PhotosCopiedShared == 0
             ? (JobRunStatus.Failed, category)
             : (JobRunStatus.PartiallySucceeded, category);
     }

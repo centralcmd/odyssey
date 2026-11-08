@@ -791,7 +791,11 @@ a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey
 - **The backfill deletes a legacy file only when `IFileReferenceCounter` finds no other user.** That counter is
   derived from the EF model (every key to `FileMetadata` but `Photo.FileId`), so a new referencing table is counted
   without a code change — never replace it with a hand-kept list. A shared file is copied and kept.
-- **The backfill records no runs** (`JobCatalogue.Unrecorded`); its progress is `GET /api/file-storage/photo-backfill`.
+- **The backfill is a catalogued, work-driven job** (`JobType.PhotoOriginalBackfill = 5`) on `/background-jobs`:
+  bursts, a held period only while photos are left (`StorageUnavailable`, or `BackingOff` with the lease's
+  `NextAttemptAtUtc` as its resume time), and a manual run that ends a back-off. Its status card is
+  `BackgroundJobsWorkerHealth.PhotoOriginalBackfill`, the same `PhotoBackfillStatus` as
+  `GET /api/file-storage/photo-backfill`; both, and its counters, follow `file-storage.read`.
 - **`OdysseyApiFactory` binds both photo features to a per-factory temp volume.** A test that needs a host with no
   volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoPhotoVolumeKey`; on EF
   InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.

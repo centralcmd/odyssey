@@ -170,12 +170,37 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         await MigratedAsync();
         var id = Guid.NewGuid();
 
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 5, 0, 0, NOW(), NOW(), UUID())");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 6, 0, 0, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 5, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, 1, NOW(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PointsFailed`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PhotosParked`) VALUES ('{id}', 5, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `WorkerId`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 5, 0, 5, 7, UUID(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `PhotoThumbnailJobs` (`PhotoId`, `State`, `Generation`, `Attempts`, `LeaseExpiries`, `RerunRequested`, `Priority`, `AttemptedRecipeVersion`, `NextAttemptAtUtc`, `UpdatedAtUtc`, `ManualRequeues`) VALUES ('{id}', 3, 0, 0, 0, 0, 0, 0, NOW(), NOW(), 2)");
+    }
+
+    /// <summary>Issue #428: the photo-original move's rows — a finished burst and a back-off held period — are accepted.</summary>
+    [SkippableFact]
+    public async Task A_photo_original_move_run_and_its_back_off_period_are_accepted()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var burst = Running<PhotoOriginalBackfillJobRun>(JobRunTrigger.Scheduled);
+        burst.PhotosMoved = 4;
+        burst.Interruptions = 1;
+        burst.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage, DateTime.UtcNow);
+
+        await AddAsync(burst);
+        await AddAsync(new PhotoOriginalBackfillJobRun
+        {
+            JobRunId = Guid.NewGuid(), Trigger = JobRunTrigger.Scheduled, Status = JobRunStatus.Held, HeldReason = JobHeldReason.BackingOff,
+            StartedAtUtc = DateTime.UtcNow, LastActivityAtUtc = DateTime.UtcNow, WorkerId = Guid.NewGuid(),
+        });
+        await using var context = NewContext();
+        context.JobHeartbeats.Add(new JobHeartbeat { JobType = JobType.PhotoOriginalBackfill, WorkerId = Guid.NewGuid(), LastTickAtUtc = DateTime.UtcNow });
+        await context.SaveChangesAsync();
+        Assert.Equal(2, await context.Set<PhotoOriginalBackfillJobRun>().CountAsync());
     }
 
     /// <summary>AC 9 on real MariaDB: the second writer of one row loses on its Generation.</summary>

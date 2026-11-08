@@ -1,5 +1,6 @@
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos;
@@ -88,18 +89,20 @@ public static class JobCatalogue
             StaleAfter: PhotoThumbnailTiming.RunBudget + PhotoThumbnailTiming.JobDeadline + TimeSpan.FromMinutes(5),
             ManualRunClaims: [PermissionClaims.PhotosUpdate],
             DetailReadClaim: PermissionClaims.PhotosRead),
+
+        // The photo-original move (issue #428). Work-driven, and idle for good once every legacy photo has moved. Its
+        // progress and its park codes are file-storage operations data, so both gates follow file-storage.read — the
+        // same decision as the maintenance pass above: no file-storage write claim exists, the claim is Admin-only, and
+        // a manual run only does what the next tick would (it also ends a back-off).
+        new(JobType.PhotoOriginalBackfill, typeof(PhotoOriginalBackfillJob), PhotoOriginalBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: PhotoOriginalBackfillJob.RunBudget + PhotoOriginalBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.FileStorageRead],
+            DetailReadClaim: PermissionClaims.FileStorageRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>
     public static readonly IReadOnlyList<Type> Infrastructure = [typeof(JobRunMaintenanceJob)];
-
-    /// <summary>
-    /// One-off migration jobs that record no runs and have no entry: they finish and then idle forever, so a run log
-    /// would fill with empty ticks and an overview row would read "never run" once the work is done. Each reports its
-    /// progress on its own status endpoint instead (the photo-original backfill: <c>GET /api/file-storage/photo-backfill</c>,
-    /// issue #428 §7.4). Listing a job here is a decision a guard test makes visible, not a way to skip the catalogue.
-    /// </summary>
-    public static readonly IReadOnlyList<Type> Unrecorded = [typeof(Journal.Originals.PhotoOriginalBackfillJob)];
 
     private static readonly Dictionary<JobType, JobCatalogueEntry> ByType = Entries.ToDictionary(entry => entry.JobType);
 

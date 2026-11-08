@@ -61,20 +61,71 @@ public sealed class PhotoOriginalBackfillJob(
 
     public TimeSpan Interval => Tick;
 
+    /// <summary>The counts of the tick in progress; the job's ticks never overlap, so one instance is enough.</summary>
+    private BackfillTickTally tally = new();
+
     public async Task RunOnceAsync(CancellationToken cancellationToken)
+    {
+        var recorder = Recorder();
+        // The run log's heartbeat first, before any early return (issue #409 §3.3 step 1), so an idle process is still
+        // seen alive: at most one write a minute per process.
+        await recorder.HeartbeatAsync(JobType.PhotoOriginalBackfill, cancellationToken);
+        tally = new BackfillTickTally();
+        Guid? manualRunId = null;
+        JobHeldReason? held = null;
+        JobFailureCategory? failure = null;
+        try
+        {
+            (held, manualRunId) = await RunGatedAsync(recorder, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            failure = ex is OperationCanceledException ? JobFailureCategory.Cancelled : JobFailureCategory.Internal;
+            throw;
+        }
+        finally
+        {
+            await RecordTickAsync(recorder, held, manualRunId, failure);
+        }
+    }
+
+    /// <summary>
+    /// The gates, then one batch. Returns why this process is held, if it is, and the manual run it claimed. A held
+    /// state is reported only while work remains: once nothing is left to move, the job is simply idle.
+    /// </summary>
+    private async Task<(JobHeldReason? Held, Guid? ManualRunId)> RunGatedAsync(JobRunRecorder recorder, CancellationToken cancellationToken)
     {
         // Idle once done (PR #441 review): one read, and no probe and no lease write, when no legacy photo is left.
         if (!await AnyWorkAsync(cancellationToken))
         {
-            return;
+            return (null, null);
         }
 
         // The health gate (§3.4 step 2): the store verified in this process, the volume healthy, the reserve held.
         if (!volumes.IsActive || !await StorageHealthyAsync(cancellationToken))
         {
-            return;
+            return (JobHeldReason.StorageUnavailable, null);
         }
 
+        // A manual run the API requested (issue #409 §3.5) is claimed only by a process whose storage is healthy. It
+        // cuts the back-off short: an operator who fixed the outage should not have to wait out the hour.
+        var manualRunId = await recorder.ClaimManualAsync(JobType.PhotoOriginalBackfill, cancellationToken);
+        if (manualRunId is not null)
+        {
+            await ClearBackoffAsync(cancellationToken);
+        }
+        else if (await BackingOffAsync(cancellationToken))
+        {
+            return (JobHeldReason.BackingOff, null);
+        }
+
+        await MoveBatchAsync(cancellationToken);
+        return (null, manualRunId);
+    }
+
+    /// <summary>One batch under the lease. Another replica holding it means this one simply has nothing to do.</summary>
+    private async Task MoveBatchAsync(CancellationToken cancellationToken)
+    {
         var holder = Guid.NewGuid();
         if (!await TryClaimAsync(holder, cancellationToken))
         {
@@ -82,7 +133,6 @@ public sealed class PhotoOriginalBackfillJob(
         }
 
         var started = time.GetUtcNow();
-        var moved = 0;
         try
         {
             var candidates = await NextCandidatesAsync(cancellationToken);
@@ -107,9 +157,9 @@ public sealed class PhotoOriginalBackfillJob(
                     outcome = await ParkAsync(photoId, PhotoOriginalBackfillFailureCodes.Error, cancellationToken);
                 }
 
+                tally.Add(outcome);
                 if (outcome is PhotoBackfillOutcome.Moved or PhotoBackfillOutcome.CopiedShared)
                 {
-                    moved++;
                     await RecordSuccessAsync(holder, outcome == PhotoBackfillOutcome.CopiedShared, cancellationToken);
                 }
             }
@@ -117,6 +167,7 @@ public sealed class PhotoOriginalBackfillJob(
         catch (Exception ex) when (IsEnvironmental(ex) && !cancellationToken.IsCancellationRequested)
         {
             // An outage is not the photo's fault (§3.4 step 8): nothing is parked, the tick ends and the job backs off.
+            tally.Interruptions++;
             await RecordEnvironmentalFailureAsync(holder, ex, CancellationToken.None);
         }
         finally
@@ -124,9 +175,85 @@ public sealed class PhotoOriginalBackfillJob(
             await ReleaseAsync(holder);
         }
 
+        var moved = tally.Moved + tally.CopiedShared;
         if (moved > 0)
         {
             logger.LogInformation("Moved {Count} photo original(s) to the photo store.", moved);
+        }
+    }
+
+    private JobRunRecorder Recorder()
+    {
+        using var scope = scopes.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<JobRunRecorder>();
+    }
+
+    /// <summary>
+    /// The tick into the run log (issue #409 §3.2–§3.3), as the thumbnail job records it: a manual run is finished
+    /// with the tick's counts, a tick that did work extends this process's burst, an idle tick closes it, and a held
+    /// tick opens (or keeps) this process's held period with its reason.
+    /// </summary>
+    private async Task RecordTickAsync(JobRunRecorder recorder, JobHeldReason? held, Guid? manualRunId, JobFailureCategory? failure)
+    {
+        var counts = tally;
+        if (manualRunId is { } runId)
+        {
+            await recorder.FinishAsync<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill, runId, counts.AddTo,
+                failure is { } category ? (JobRunStatus.Failed, category) : null, CancellationToken.None);
+        }
+        else if (counts.HasWork)
+        {
+            await recorder.ExtendBurstAsync<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill, counts.AddTo, CancellationToken.None);
+        }
+
+        if (held is null && (counts.HasWork || manualRunId is not null))
+        {
+            await recorder.ReleaseHoldAsync(JobType.PhotoOriginalBackfill, CancellationToken.None);
+            return;
+        }
+
+        await recorder.CloseBurstAsync(JobType.PhotoOriginalBackfill, CancellationToken.None);
+        if (held is { } reason)
+        {
+            await recorder.HoldAsync<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill, reason, null, CancellationToken.None);
+        }
+        else
+        {
+            await recorder.ReleaseHoldAsync(JobType.PhotoOriginalBackfill, CancellationToken.None);
+        }
+    }
+
+    /// <summary>Whether the lease's back-off is still running.</summary>
+    private async Task<bool> BackingOffAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var now = time.GetUtcNow().UtcDateTime;
+        return await context.PhotoOriginalBackfillLeases.AsNoTracking()
+            .AnyAsync(l => l.Id == PhotoOriginalBackfillLease.SingletonId && l.NextAttemptAtUtc > now, cancellationToken);
+    }
+
+    /// <summary>A manual run ends the back-off; the failure count is kept, so a second outage still backs off longer.</summary>
+    private async Task ClearBackoffAsync(CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var lease = await context.PhotoOriginalBackfillLeases
+            .FirstOrDefaultAsync(l => l.Id == PhotoOriginalBackfillLease.SingletonId, cancellationToken);
+        if (lease?.NextAttemptAtUtc is null)
+        {
+            return;
+        }
+
+        lease.NextAttemptAtUtc = null;
+        lease.Version = Guid.NewGuid();
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Another replica changed the lease; its own claim decides.
         }
     }
 
@@ -440,4 +567,43 @@ public sealed class PhotoOriginalBackfillJob(
     private static bool IsEnvironmental(Exception ex) =>
         ex is FileStorageUnavailableException or FileStorageFullException or IOException or DbException or RetryLimitExceededException
         || ex is DbUpdateException { InnerException: DbException };
+}
+
+/// <summary>What one tick of the photo-original move did, added to its run row (issue #409 §3.2).</summary>
+internal sealed class BackfillTickTally
+{
+    public int Moved { get; set; }
+
+    public int CopiedShared { get; set; }
+
+    public int Parked { get; set; }
+
+    public int Interruptions { get; set; }
+
+    /// <summary>A tick that moved, parked or was cut short; anything else is idle.</summary>
+    public bool HasWork => Moved + CopiedShared + Parked + Interruptions > 0;
+
+    public void Add(PhotoBackfillOutcome outcome)
+    {
+        switch (outcome)
+        {
+            case PhotoBackfillOutcome.Moved:
+                Moved++;
+                break;
+            case PhotoBackfillOutcome.CopiedShared:
+                CopiedShared++;
+                break;
+            case PhotoBackfillOutcome.Parked:
+                Parked++;
+                break;
+        }
+    }
+
+    public void AddTo(PhotoOriginalBackfillJobRun run)
+    {
+        run.PhotosMoved += Moved;
+        run.PhotosCopiedShared += CopiedShared;
+        run.PhotosParked += Parked;
+        run.Interruptions += Interruptions;
+    }
 }
