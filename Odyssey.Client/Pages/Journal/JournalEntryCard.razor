@@ -96,7 +96,7 @@
                         <OdsContactChip @key="cp.Id" Name="@cp.Name" Type="@cp.Type"
                                         Archived="cp.Archived" Unavailable="@(cp.Name is null)" Compact="true" />
                     }
-                    <JournalTagChips Tags="Tags" />
+                    <OdsTagChips Tags="Tags" />
                 </div>
                 @if (Entry.AttachmentCount > 0)
                 {

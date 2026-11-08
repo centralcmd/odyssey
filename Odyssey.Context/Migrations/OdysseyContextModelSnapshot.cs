@@ -528,6 +528,10 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)

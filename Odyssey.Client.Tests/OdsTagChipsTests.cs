@@ -8,10 +8,10 @@ namespace Odyssey.Client.Tests;
 /// <summary>
 /// The journal / task / photo tag chip row (design system · <c>docs/components-calendar-journal-and-tasks.md</c>,
 /// "Tag icons on journal entries, tasks and photos"): each chip leads with its own tag's icon or the
-/// generic glyph, and <see cref="JournalTagChips.Max"/> folds the rest into a "+N" chip whose hidden names
+/// generic glyph, and <see cref="OdsTagChips.Max"/> folds the rest into a "+N" chip whose hidden names
 /// reach assistive technology as text.
 /// </summary>
-public sealed class JournalTagChipsTests : IAsyncLifetime
+public sealed class OdsTagChipsTests : IAsyncLifetime
 {
     private readonly BunitContext ctx = new();
 
@@ -19,21 +19,21 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
 
     public Task DisposeAsync() => ctx.DisposeAsync().AsTask();
 
-    private static List<JournalTagChips.Tag> Tags(int count) =>
-        [.. Enumerable.Range(0, count).Select(i => new JournalTagChips.Tag($"Tag {(char)('A' + i)}", "flag", null))];
+    private static List<OdsTagChips.Tag> Tags(int count) =>
+        [.. Enumerable.Range(0, count).Select(i => new OdsTagChips.Tag($"Tag {(char)('A' + i)}", "flag", null))];
 
-    private IRenderedComponent<JournalTagChips> Render(IEnumerable<JournalTagChips.Tag> tags, int? max = null) =>
-        ctx.Render<JournalTagChips>(p => p.Add(c => c.Tags, tags).Add(c => c.Max, max));
+    private IRenderedComponent<OdsTagChips> Render(IEnumerable<OdsTagChips.Tag> tags, int? max = null) =>
+        ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags, tags).Add(c => c.Max, max));
 
     [Theory]
     [InlineData("hiking", "hiking")]
-    [InlineData(null, JournalTagChips.FallbackGlyph)]
-    [InlineData("", JournalTagChips.FallbackGlyph)]
-    [InlineData("not_a_known_key", JournalTagChips.FallbackGlyph)]
-    [InlineData("HIKING", JournalTagChips.FallbackGlyph)]
-    [InlineData(TagIcons.Default, JournalTagChips.FallbackGlyph)]
+    [InlineData(null, OdsTagChip.FallbackGlyph)]
+    [InlineData("", OdsTagChip.FallbackGlyph)]
+    [InlineData("not_a_known_key", OdsTagChip.FallbackGlyph)]
+    [InlineData("HIKING", OdsTagChip.FallbackGlyph)]
+    [InlineData(TagIcons.Default, OdsTagChip.FallbackGlyph)]
     public void A_chip_leads_with_its_known_icon_else_the_generic_glyph(string? icon, string glyph) =>
-        Assert.Equal(glyph, JournalTagChips.GlyphFor(icon));
+        Assert.Equal(glyph, OdsTagChip.GlyphFor(icon));
 
     [Fact]
     public void Each_chip_shows_its_own_icon_decoratively_beside_its_name()
@@ -44,8 +44,38 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
         Assert.Equal(2, chips.Count);
         Assert.Equal("flight", chips[0].QuerySelector(".material-icons")!.TextContent.Trim());
         Assert.EndsWith("Travel", chips[0].TextContent.Trim());
-        Assert.Equal(JournalTagChips.FallbackGlyph, chips[1].QuerySelector(".material-icons")!.TextContent.Trim());
+        Assert.Equal(OdsTagChip.FallbackGlyph, chips[1].QuerySelector(".material-icons")!.TextContent.Trim());
         Assert.All(cut.FindAll(".material-icons"), g => Assert.Equal("true", g.GetAttribute("aria-hidden")));
+    }
+
+    [Fact]
+    public void A_transaction_tag_chip_reads_like_every_other_tag_chip()
+    {
+        var cut = ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags, OdsTagChips.Tag.Of(
+        [
+            new Odyssey.Dtos.Finance.ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Food", Archived = null, Icon = "restaurant", Color = "#15803d" },
+            new Odyssey.Dtos.Finance.ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = " ", Archived = null },
+        ])));
+
+        var chip = Assert.Single(cut.FindAll(".odc-chip.tag"));
+        Assert.Equal("restaurant", chip.QuerySelector(".material-icons")!.TextContent.Trim());
+        Assert.EndsWith("Food", chip.TextContent.Trim());
+        Assert.Equal("--user-color:#15803D;", chip.GetAttribute("style"));
+    }
+
+    [Fact]
+    public void The_empty_placeholder_shows_only_when_asked_for() =>
+        Assert.Equal("—", ctx.Render<OdsTagChips>(p => p.Add(c => c.Empty, "—")).Find(".odc-tagchips-empty").TextContent);
+
+    [Theory]
+    [InlineData(null, CalendarIcons.Default)]
+    [InlineData("not_a_known_key", CalendarIcons.Default)]
+    [InlineData("work", "work")]
+    public void An_owner_default_replaces_the_tag_glyph_for_an_unset_icon(string? icon, string glyph)
+    {
+        var cut = ctx.Render<OdsTagChip>(p => p.Add(c => c.Name, "Work").Add(c => c.Icon, icon).Add(c => c.DefaultIcon, CalendarIcons.Default));
+
+        Assert.Equal(glyph, cut.Find(".odc-chip .material-icons").TextContent.Trim());
     }
 
     [Fact]
@@ -56,10 +86,10 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
     {
         var cut = Render(Tags(6), max: 4);
 
-        var named = cut.FindAll(".odc-chip.tag:not(.je-tagchips-more)");
+        var named = cut.FindAll(".odc-chip.tag:not(.odc-tagchips-more)");
         Assert.Equal(["Tag A", "Tag B", "Tag C", "Tag D"], named.Select(c => c.TextContent.Replace("flag", "").Trim()));
 
-        var more = cut.Find(".odc-chip.tag.je-tagchips-more");
+        var more = cut.Find(".odc-chip.tag.odc-tagchips-more");
         Assert.StartsWith("+2", more.TextContent.Trim());
         Assert.Equal("Tag E, Tag F", more.GetAttribute("title"));
         Assert.Equal("more tags: Tag E, Tag F", more.QuerySelector(".sr-only")!.TextContent.Trim());
@@ -76,7 +106,7 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
         var cut = Render(Tags(count), max);
 
         Assert.Equal(count, cut.FindAll(".odc-chip.tag").Count);
-        Assert.Empty(cut.FindAll(".je-tagchips-more"));
+        Assert.Empty(cut.FindAll(".odc-tagchips-more"));
     }
 
     [Fact]
@@ -85,7 +115,7 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
         var cut = Render(Tags(2), max: 0);
 
         var chip = Assert.Single(cut.FindAll(".odc-chip.tag"));
-        Assert.Contains("je-tagchips-more", chip.ClassList);
+        Assert.Contains("odc-tagchips-more", chip.ClassList);
         Assert.StartsWith("+2", chip.TextContent.Trim());
     }
 
@@ -96,9 +126,9 @@ public sealed class JournalTagChipsTests : IAsyncLifetime
         var b = Guid.NewGuid();
         var byId = new Dictionary<Guid, (string Name, string? Icon)> { [a] = ("Alpha", "flag"), [b] = ("Beta", null) };
 
-        var tags = JournalTagChips.Tag.For([b, Guid.NewGuid(), a], byId, t => t.Name, t => t.Icon, _ => null);
+        var tags = OdsTagChips.Tag.For([b, Guid.NewGuid(), a], byId, t => t.Name, t => t.Icon, _ => null);
 
-        Assert.Equal([new JournalTagChips.Tag("Beta", null, null), new JournalTagChips.Tag("Alpha", "flag", null)], tags);
+        Assert.Equal([new OdsTagChips.Tag("Beta", null, null), new OdsTagChips.Tag("Alpha", "flag", null)], tags);
     }
 
     [Theory]

@@ -1,64 +1,90 @@
-@*
-    OdsTagChips — read-only display of a transaction's tag set
-    (Odyssey Design System · components/TagChips).
-
-    The multi-tag counterpart to a single <OdsChip Tone="Tag">: renders zero,
-    one, or many tag chips inline, collapsing to an em-dash placeholder when
-    empty. The canonical way to show a transaction's TransactionTags on a table
-    cell, a detail tile, or anywhere a single tag was shown before.
-
-    Pass Max to cap the visible chips and roll the rest into a "+N" overflow chip
-    (titled with the hidden names) so a dense table column never blows its height;
-    omit Max (detail panel) to show them all.
-*@
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
+@*
+    OdsTagChips — a read-only row of OdsTagChip (Odyssey Design System · components/TagChips), for every
+    tag family: transaction, journal, task and photo tags, and the album / calendar rows that read like
+    them. Each chip leads with ITS record's icon (or DefaultIcon), takes ITS colour, and names it.
+
+    Max caps the visible chips and rolls the rest into a "+N" chip (titled with the hidden names, which
+    also reach assistive technology as text) so a dense table column never blows its height; null shows
+    them all. Empty is the placeholder when there are none (the em-dash in a table cell); null renders
+    nothing.
+*@
 
 @if (_tags.Count == 0)
 {
-    <span class="odc-tagchips-empty">@Empty</span>
+    @if (Empty is not null)
+    {
+        <span class="odc-tagchips-empty">@Empty</span>
+    }
 }
 else
 {
     <span class="odc-tagchips">
         @foreach (var tag in _shown)
         {
-            <OdsChip Tone="OdsChipTone.Tag" UserColor="@tag.Color">@tag.Name</OdsChip>
+            <OdsTagChip Name="@tag.Name" Icon="@tag.Icon" Color="@tag.Color" DefaultIcon="@DefaultIcon" Tone="@Tone" />
         }
         @if (_hidden.Count > 0)
         {
-            <span class="odc-chip tag odc-tagchips-more" title="@HiddenTitle">
+            <OdsChip Tone="@Tone" Class="odc-tagchips-more" Title="@HiddenTitle">
                 +@_hidden.Count
-                @* title= is mouse-only — give AT the hidden names as text. *@
-                <span class="sr-only"> more tags: @HiddenTitle</span>
-            </span>
+                @* Title is mouse-only — give AT the hidden names as text. *@
+                <span class="sr-only"> more @Noun: @HiddenTitle</span>
+            </OdsChip>
         }
     </span>
 }
 
 @code {
-    /// <summary>The tags to display. Null/empty renders the <see cref="Empty"/> placeholder.</summary>
-    [Parameter] public IEnumerable<ExistingTransactionTag>? Tags { get; set; }
+    /// <summary>
+    /// A record as the chip draws it: its name, its stored <see cref="TagIcons"/> key and its colour (null =
+    /// none). All positional with no defaults, so every construction site states all three.
+    /// </summary>
+    public sealed record Tag(string Name, string? Icon, string? Color)
+    {
+        /// <summary>
+        /// Resolves a record's tag ids through the host's loaded tag map, in the ids' order, skipping an id
+        /// the map does not hold (deleted, or not yet loaded). One projection for every tag family.
+        /// </summary>
+        public static IReadOnlyList<Tag> For<TTag>(
+            IEnumerable<Guid> ids, IReadOnlyDictionary<Guid, TTag> byId, Func<TTag, string> name, Func<TTag, string?> icon,
+            Func<TTag, string?> color) =>
+            [.. ids.Select(id => byId.TryGetValue(id, out var tag) ? new Tag(name(tag), icon(tag), color(tag)) : null).OfType<Tag>()];
 
-    /// <summary>Cap the visible chips; the remainder collapse into a "+N" overflow chip. Null shows all.</summary>
+        /// <summary>A transaction's tags, in the order the DTO carries them.</summary>
+        public static IReadOnlyList<Tag> Of(IEnumerable<ExistingTransactionTag>? tags) =>
+            [.. (tags ?? []).Where(t => !string.IsNullOrWhiteSpace(t.Name)).Select(t => new Tag(t.Name, t.Icon, t.Color))];
+    }
+
+    [Parameter] public IEnumerable<Tag> Tags { get; set; } = [];
+
+    /// <summary>Cap the visible chips; the overflow collapses into a "+N" chip. Null = show all.</summary>
     [Parameter] public int? Max { get; set; }
 
-    /// <summary>Placeholder shown when there are no tags.</summary>
-    [Parameter] public string Empty { get; set; } = "—";
+    /// <summary>Placeholder when there are no tags; null renders nothing.</summary>
+    [Parameter] public string? Empty { get; set; }
 
-    private List<ExistingTransactionTag> _tags = [];
-    private List<ExistingTransactionTag> _shown = [];
-    private List<ExistingTransactionTag> _hidden = [];
+    /// <summary>The owner's default glyph, passed to every chip. <see cref="OdsTagChip.FallbackGlyph"/> for tags.</summary>
+    [Parameter] public string DefaultIcon { get; set; } = OdsTagChip.FallbackGlyph;
+
+    /// <summary>The tone an uncoloured chip (and the +N chip) keeps.</summary>
+    [Parameter] public OdsChipTone Tone { get; set; } = OdsChipTone.Tag;
+
+    /// <summary>The plural noun the +N chip's accessible text uses ("more tags: …").</summary>
+    [Parameter] public string Noun { get; set; } = "tags";
+
+    private List<Tag> _tags = [];
+    private List<Tag> _shown = [];
+    private List<Tag> _hidden = [];
 
     protected override void OnParametersSet()
     {
-        _tags = (Tags ?? [])
-            .Where(t => !string.IsNullOrWhiteSpace(t.Name))
-            .ToList();
-
-        if (Max is { } max && _tags.Count > max)
+        _tags = [.. Tags];
+        if (Max is { } max && max >= 0 && _tags.Count > max)
         {
-            _shown = _tags.Take(max).ToList();
-            _hidden = _tags.Skip(max).ToList();
+            _shown = _tags[..max];
+            _hidden = _tags[max..];
         }
         else
         {

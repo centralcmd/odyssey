@@ -28,7 +28,7 @@ public partial class AlbumsPage
     private Dictionary<Guid, string> _tagNames = [];
     private Dictionary<Guid, string?> _tagIcons = [];
     private Dictionary<Guid, string?> _tagColors = [];
-    private Dictionary<Guid, string> _albumNames = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
     private Dictionary<Guid, string> _personNames = [];
 
     // Header regions (the DS shares the Overview panel + a "Search albums…" field across both views).
@@ -101,7 +101,7 @@ public partial class AlbumsPage
         var albums = await Albums.ListAllAsync();
         _albumList = albums.ItemsOrToast(Snackbar, "albums");
         _loadError = !albums.IsSuccess;
-        _albumNames = _albumList.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+        _albumById = _albumList.ToDictionary(a => a.PhotoAlbumId);
 
         var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
         _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
@@ -235,7 +235,7 @@ public partial class AlbumsPage
     private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
 
     private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
-    private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
+    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     private RenderFragment SubFragment => builder =>

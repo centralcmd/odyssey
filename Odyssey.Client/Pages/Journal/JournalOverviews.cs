@@ -10,7 +10,7 @@ namespace Odyssey.Client.Pages.Journal;
 /// the per-tag glyph are testable without rendering a page (the <c>OverviewBreakdowns</c> precedent).
 /// </summary>
 /// <remarks>
-/// Every "By tag" row leads with ITS tag's icon through <see cref="JournalTagChips.GlyphFor"/>, the
+/// Every "By tag" row leads with ITS tag's icon through <see cref="OdsTagChip.GlyphFor"/>, the
 /// rule the tag chips use, so a tag without a known icon shows the same generic glyph on both, and
 /// tints it in ITS tag's colour through <see cref="UserColor.Glyph"/>; a tag without a valid colour keeps
 /// the family's ink. None of these tiles takes a total: a record carries several tags, so a sum counts it
@@ -80,7 +80,7 @@ public static class JournalOverviews
     public static OdsOption TagOption(Guid id, string name, string? icon, string? color, string fallbackColor) =>
         new(id.ToString(), name)
         {
-            Icon = JournalTagChips.GlyphFor(icon),
+            Icon = OdsTagChip.GlyphFor(icon),
             IconColor = UserColor.Glyph(color) ?? fallbackColor,
         };
 
@@ -105,7 +105,7 @@ public static class JournalOverviews
             .Select(x => new OdsBreakdownRow
             {
                 Key = id(x.Tag),
-                Icon = JournalTagChips.GlyphFor(icon(x.Tag)),
+                Icon = OdsTagChip.GlyphFor(icon(x.Tag)),
                 IconColor = UserColor.Glyph(color(x.Tag)) ?? fallbackColor,
                 Label = name(x.Tag),
                 Count = x.Count,

@@ -116,13 +116,8 @@ public partial class CalendarPage
     private IReadOnlyList<OdsOption> _calendarOptions =>
         [.. _calendars.Select(CalendarOption)];
 
-    /// <summary>A calendar row: a calendar glyph in the calendar's own colour, through the validated door.</summary>
-    internal static OdsOption CalendarOption(ExistingCalendar calendar) =>
-        new(calendar.CalendarId.ToString(), calendar.Name)
-        {
-            Icon = "calendar_month",
-            IconColor = Odyssey.Client.Theme.UserColor.Glyph(calendar.Color),
-        };
+    /// <summary>A calendar row: the calendar's own glyph in its own colour, through <see cref="CalendarVisuals"/>.</summary>
+    internal static OdsOption CalendarOption(ExistingCalendar calendar) => CalendarVisuals.Option(calendar);
 
     private IReadOnlySet<Guid>? EffectiveVisibleIds => _visibleCalendarIds.Count == 0 ? null : _visibleCalendarIds;
 

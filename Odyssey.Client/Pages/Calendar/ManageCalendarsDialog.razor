@@ -1,7 +1,8 @@
 @*
     ManageCalendarsDialog — the calendars CRUD dialog (Odyssey Design System · ManageCalendarsModal).
-    Per-row inline editor (name, description, and colour — the tag colour picker without No color), an add
-    row, and per-row delete.
+    Per-row inline editor (name, description, icon — the tag icon picker with the calendar glyph as its
+    Default — and colour — the tag colour picker without No color), an add row, and per-row delete. Each
+    row leads with the calendar's own glyph in its colour (CalendarVisuals), as every calendar surface does.
     Deleting a calendar that still holds events/patterns is blocked by the service (409) — rather than
     proactively disabling Delete from a live count (this client only ever loads the current month-grid
     window, not full history), the delete is attempted and the returned reason surfaces via the
@@ -17,7 +18,7 @@
                     var editing = _editingId == calendar.CalendarId;
                     <div class="@("cal-mgr-item" + (editing ? " editing" : ""))">
                         <div class="cal-mgr-row">
-                            <span class="cal-mgr-swatch" style="@Odyssey.Client.Theme.UserColor.Background(calendar.Color, Odyssey.Dtos.ColorPalette.CalendarDefault)" aria-hidden="true"></span>
+                            <span class="material-icons cal-mgr-glyph" style="@CalendarVisuals.GlyphStyle(calendar)" aria-hidden="true">@CalendarVisuals.Glyph(calendar)</span>
                             <div class="cal-mgr-id">
                                 <div class="cal-mgr-name">@calendar.Name</div>
                                 <div class="cal-mgr-sub">
@@ -56,6 +57,7 @@
                                     <OdsField Label="Description" Value="@_editDraft.Description" MaxLength="1000"
                                               ValueChanged="@(v => _editDraft.Description = v)" Placeholder="What this calendar holds" />
                                 </div>
+                                @IconField(_editDraft, $"cal-icon-{calendar.CalendarId:N}")
                                 @ColorField(_editDraft, $"cal-color-{calendar.CalendarId:N}")
                             </div>
                             <div class="cal-mgr-editor-actions">
@@ -81,6 +83,7 @@
                             <OdsField Label="Description" Value="@_newDraft.Description" MaxLength="1000"
                                       ValueChanged="@(v => _newDraft.Description = v)" Placeholder="What this calendar holds" />
                         </div>
+                        @IconField(_newDraft, "cal-icon-new")
                         @ColorField(_newDraft, "cal-color-new")
                     </div>
                     <div class="cal-mgr-editor-actions">
@@ -91,7 +94,7 @@
             }
             else
             {
-                <OdsAddRow Title="New calendar" Sub="Name, an optional description, and a colour."
+                <OdsAddRow Title="New calendar" Sub="Name, an optional description, an icon and a colour."
                            OnClick="@(() => { _adding = true; _editingId = null; ResetColorState(); })" />
             }
         </div>
@@ -106,6 +109,15 @@
 
 @code {
     private RenderFragment TitleContent => @<text>Manage calendars</text>;
+
+    // Keyed by the field id for the same reason as the colour picker below: it reads Value once.
+    private RenderFragment IconField(RowDraft draft, string id) =>
+        @<OdsFieldShell Label="Icon" HtmlFor="@id" LabelId="@($"{id}-label")" Help="@IconHelp">
+            <OdsTagIconPicker @key="@id" Id="@id" Value="@draft.Icon" ValueChanged="@(v => draft.Icon = v)"
+                              AriaLabelledBy="@($"{id}-label")" AriaDescribedBy="@($"{id}-help")" Disabled="@_isSaving"
+                              DefaultIcon="@Odyssey.Dtos.CalendarIcons.Default" DefaultLabel="Default (calendar icon)"
+                              DefaultCaption="the calendar icon" />
+        </OdsFieldShell>;
 
     // One editor is open at a time (edit and add are exclusive), so one picker state serves both. The
     // picker reads Value once, so it is keyed by the field id to re-open on the draft it belongs to.

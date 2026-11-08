@@ -60,6 +60,7 @@ public class CalendarService
     {
         var name = request.Name.Trim();
         EnsureValidColor(request.Color);
+        TagIconGuard.EnsureKnown(request.Icon);
         await EnsureNameAvailable(name, null, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -68,6 +69,7 @@ public class CalendarService
             Name = name,
             Description = request.Description,
             Color = HexColor.Normalize(request.Color)!,
+            Icon = request.Icon,
             CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -89,11 +91,13 @@ public class CalendarService
 
         var name = request.Name.Trim();
         EnsureValidColor(request.Color);
+        TagIconGuard.EnsureKnown(request.Icon);
         await EnsureNameAvailable(name, id, cancellationToken);
 
         calendar.Name = name;
         calendar.Description = request.Description;
         calendar.Color = HexColor.Normalize(request.Color)!;
+        calendar.Icon = request.Icon;
         calendar.UpdatedByUserId = userId;
         calendar.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 

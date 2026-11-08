@@ -45,7 +45,14 @@
                 <h3 class="cal-imp-result-h" tabindex="-1" @ref="_resultHeading">
                     Imported into
                     <span class="cal-imp-result-cal">
-                        <span class="cal-imp-dot" style="@Odyssey.Client.Theme.UserColor.Background(_targetColor, Odyssey.Dtos.ColorPalette.CalendarDefault)" aria-hidden="true"></span>@_targetName
+                        @if (_target is { } target)
+                        {
+                            <OdsTagChip Name="@target.Name" Icon="@target.Icon" Color="@target.Color" DefaultIcon="@Odyssey.Dtos.CalendarIcons.Default" />
+                        }
+                        else
+                        {
+                            <span>calendar</span>
+                        }
                     </span>
                 </h3>
 

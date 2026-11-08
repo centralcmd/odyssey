@@ -175,8 +175,8 @@ public class JournalOverviewsTests
     private static void AssertGlyphs(IReadOnlyList<OdsBreakdownRow> rows)
     {
         Assert.Equal("flight", Row(rows, "Travel").Icon);
-        Assert.Equal(JournalTagChips.FallbackGlyph, Row(rows, "Home").Icon);
-        Assert.Equal(JournalTagChips.FallbackGlyph, Row(rows, "Work").Icon);
+        Assert.Equal(OdsTagChip.FallbackGlyph, Row(rows, "Home").Icon);
+        Assert.Equal(OdsTagChip.FallbackGlyph, Row(rows, "Work").Icon);
     }
 
     // ── Every family: each row is tinted in its own tag's colour ──────────────

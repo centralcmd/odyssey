@@ -350,7 +350,7 @@ public class DropdownConsistencyTests
     {
         var option = Odyssey.Client.Pages.Journal.JournalOverviews.TagOption(Guid.NewGuid(), "Trip", icon, color, "var(--tag-text)");
 
-        Assert.Equal(JournalTagChips.GlyphFor(icon), option.Icon);
+        Assert.Equal(OdsTagChip.GlyphFor(icon), option.Icon);
         Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(color) ?? "var(--tag-text)", option.IconColor);
     }
 

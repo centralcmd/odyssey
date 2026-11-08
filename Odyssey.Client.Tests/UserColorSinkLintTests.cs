@@ -27,10 +27,12 @@ public class UserColorSinkLintTests
     private static readonly string[] ScopeNames =
     [
         "ExistingTransactionTag", "ExistingJournalTag", "ExistingJournalTaskTag", "ExistingPhotoTag",
-        "ExistingCalendar", "JournalTagChips", "OdsTagChips", "OdsTagAdmin", "OdsTagColorPicker",
+        "ExistingCalendar", "OdsTagChips", "OdsTagChip", "OdsTagAdmin", "OdsTagColorPicker",
         "OdsCalendarSwatches", "UserColor",
         // Album icon colours (issue #406): an album colour is user data on the same footing as a tag's.
         "PhotoAlbumSummary", "ExistingPhotoAlbum", "AlbumVisuals",
+        // Calendar icon colours: CalendarVisuals is the calendar twin of AlbumVisuals.
+        "CalendarVisuals",
     ];
 
     /// <summary>The album surfaces that must stay in the scan set (issue #406 AC 9).</summary>
@@ -107,6 +109,35 @@ public class UserColorSinkLintTests
         Assert.DoesNotContain(ScopedFiles(), path => path.Contains($"{Path.DirectorySeparatorChar}Charts{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
 
     /// <summary>
+    /// <c>CalendarVisuals</c> is the calendar's one door from a colour to a style. Every colour it reads
+    /// (any <c>x.Color</c>, whatever the variable is called) goes through <c>UserColor</c> on that line, and
+    /// its one style member, <c>GlyphStyle</c>, composes only <c>Ink</c>, which is a <c>UserColor.Glyph</c>.
+    /// The strict-file check below trusts <c>CalendarVisuals.GlyphStyle(</c> on the strength of this.
+    /// </summary>
+    [Fact]
+    public void Calendar_visuals_route_every_colour_through_UserColor()
+    {
+        var path = Directory.EnumerateFiles(ClientSource.Root, "CalendarVisuals.cs", SearchOption.AllDirectories).Single(p => !IsBuildOutput(p));
+        var source = File.ReadAllText(path);
+
+        var reads = Regex.Matches(source, @"\b\w+\.Color\b");
+        Assert.NotEmpty(reads);
+        foreach (Match read in reads)
+        {
+            var line = source[source.LastIndexOf('\n', read.Index)..source.IndexOf('\n', read.Index)];
+            Assert.Contains("UserColor.", line, StringComparison.Ordinal);
+        }
+
+        var ink = Regex.Match(source, @"public static string\? Ink\([^)]*\)\s*=>[^;]*;", RegexOptions.Singleline);
+        Assert.True(ink.Success, "CalendarVisuals.Ink not found");
+        Assert.Contains("UserColor.Glyph(", ink.Value, StringComparison.Ordinal);
+
+        var glyphStyle = Regex.Match(source, @"public static string GlyphStyle\([^)]*\)\s*=>\s*(?<body>[^;]*);", RegexOptions.Singleline);
+        Assert.True(glyphStyle.Success, "CalendarVisuals.GlyphStyle not found");
+        Assert.Equal("$\"color:{Ink(calendar)}\"", glyphStyle.Groups["body"].Value.Trim());
+    }
+
+    /// <summary>
     /// In the picker, the swatch chooser and the calendar dialog, every <c>style</c> expression is a
     /// <c>UserColor</c> call or a member whose body is one.
     /// </summary>
@@ -124,7 +155,9 @@ public class UserColorSinkLintTests
             foreach (Match match in Regex.Matches(markup, "\\bstyle=\"@([^\"]+)\""))
             {
                 var expression = match.Groups[1].Value;
-                if (expression.Contains("UserColor.", StringComparison.Ordinal))
+                // CalendarVisuals.GlyphStyle is the calendar's one style door, and it routes through UserColor
+                // (Calendar_visuals_route_every_colour_through_UserColor pins that). Nothing else in it is trusted.
+                if (expression.Contains("UserColor.", StringComparison.Ordinal) || expression.StartsWith("CalendarVisuals.GlyphStyle(", StringComparison.Ordinal))
                     continue;
 
                 var member = Regex.Match(expression, @"^\(?([A-Za-z_]\w*)").Groups[1].Value;

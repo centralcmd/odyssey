@@ -117,8 +117,8 @@ public partial class TasksPage
         }
     }
 
-    private IReadOnlyList<JournalTagChips.Tag> TagChips(JournalTaskSummary t) =>
-        JournalTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon, tag => tag.Color);
+    private IReadOnlyList<OdsTagChips.Tag> TagChips(JournalTaskSummary t) =>
+        OdsTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon, tag => tag.Color);
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()

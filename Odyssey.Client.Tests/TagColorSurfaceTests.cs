@@ -133,25 +133,25 @@ public class TagColorSurfaceTests : IAsyncLifetime
     [Fact]
     public void Transaction_tag_chips_take_the_colour_only_for_a_coloured_tag()
     {
-        var cut = ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags,
+        var cut = ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags, OdsTagChips.Tag.Of(
         [
             new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Food", Archived = null, Color = "#15803D" },
             new ExistingTransactionTag { TransactionTagId = Guid.NewGuid(), Name = "Misc", Archived = null, Color = null },
-        ]));
+        ])));
 
         var chips = cut.FindAll(".odc-chip.tag");
         Assert.Contains("user-color", chips[0].ClassList);
         Assert.Equal("--user-color:#15803D;", chips[0].GetAttribute("style"));
         Assert.DoesNotContain("user-color", chips[1].ClassList);
         Assert.Null(chips[1].GetAttribute("style"));
-        Assert.Equal("Food", chips[0].TextContent.Trim());
+        Assert.EndsWith("Food", chips[0].TextContent.Trim());
     }
 
     [Fact]
     public void Journal_tag_chips_take_the_colour_only_for_a_coloured_tag()
     {
-        var cut = ctx.Render<JournalTagChips>(p => p.Add(c => c.Tags,
-            [new JournalTagChips.Tag("Trip", "flight", "#0369a1"), new JournalTagChips.Tag("Misc", null, null)]));
+        var cut = ctx.Render<OdsTagChips>(p => p.Add(c => c.Tags,
+            [new OdsTagChips.Tag("Trip", "flight", "#0369a1"), new OdsTagChips.Tag("Misc", null, null)]));
 
         var chips = cut.FindAll(".odc-chip");
         Assert.Equal("--user-color:#0369A1;", chips[0].GetAttribute("style"));
@@ -427,7 +427,6 @@ public class TagColorSurfaceTests : IAsyncLifetime
         Assert.NotEmpty(files);
         Assert.DoesNotContain(files, f => File.ReadAllText(f).Contains("SwatchFor(", StringComparison.Ordinal));
         Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "CalendarPage.razor.cs")), StringComparison.Ordinal);
-        Assert.Contains("OdsCalendarSwatches.PaintFor(", File.ReadAllText(Path.Combine(dir, "ImportCalendarDialog.razor.cs")), StringComparison.Ordinal);
     }
 
     [Fact]

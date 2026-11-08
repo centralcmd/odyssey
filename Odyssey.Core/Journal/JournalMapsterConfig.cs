@@ -87,7 +87,8 @@ public static class JournalMapsterConfig
             // reaching a client style.
             TypeAdapterConfig<Calendar, ExistingCalendar>
                 .NewConfig()
-                .Map(dest => dest.Color, src => CalendarColorOnRead(src.Color));
+                .Map(dest => dest.Color, src => CalendarColorOnRead(src.Color))
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
 
             configured = true;
         }

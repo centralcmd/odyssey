@@ -31,6 +31,13 @@ public static class AlbumVisuals
     /// <summary>The <c>style</c> value for an album glyph: <c>color:</c> its <see cref="Ink"/>.</summary>
     public static string GlyphStyle(string? color, string fallback) => $"color:{Ink(color, fallback)}";
 
+    /// <summary>
+    /// An album as a chip (<see cref="OdsTagChip"/> with <see cref="PhotoAlbumIcons.Default"/>): its name, its
+    /// stored icon and its colour, exactly as a tag chip reads. <c>null</c> for an album the host does not hold.
+    /// </summary>
+    public static OdsTagChips.Tag? Chip(PhotoAlbumSummary? album) =>
+        album is null ? null : new OdsTagChips.Tag(album.Name, album.Icon, album.Color);
+
     /// <summary>An album's Overview "By album" row (surface B).</summary>
     public static OdsBreakdownRow OverviewRow(PhotoAlbumSummary album) => new()
     {

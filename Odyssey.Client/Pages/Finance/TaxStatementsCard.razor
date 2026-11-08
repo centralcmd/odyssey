@@ -253,12 +253,7 @@
                                         <span class="tx-role-tags">
                                             @if (s.TaxTagIds.Count > 0)
                                             {
-                                                <span class="tx-chips">
-                                                    @foreach (var name in TagNames(s.TaxTagIds))
-                                                    {
-                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
-                                                    }
-                                                </span>
+                                                <span class="tx-chips"><OdsTagChips Tags="TagChips(s.TaxTagIds)" /></span>
                                             }
                                             else
                                             {
@@ -274,12 +269,7 @@
                                         <span class="tx-role-tags">
                                             @if (s.IncomeTagIds.Count > 0)
                                             {
-                                                <span class="tx-chips">
-                                                    @foreach (var name in TagNames(s.IncomeTagIds))
-                                                    {
-                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
-                                                    }
-                                                </span>
+                                                <span class="tx-chips"><OdsTagChips Tags="TagChips(s.IncomeTagIds)" /></span>
                                             }
                                             else
                                             {
@@ -299,12 +289,7 @@
                                         <span class="tx-role-tags">
                                             @if (s.SettlementTagIds.Count > 0)
                                             {
-                                                <span class="tx-chips">
-                                                    @foreach (var name in TagNames(s.SettlementTagIds))
-                                                    {
-                                                        <OdsChip Tone="OdsChipTone.Tag">@name</OdsChip>
-                                                    }
-                                                </span>
+                                                <span class="tx-chips"><OdsTagChips Tags="TagChips(s.SettlementTagIds)" /></span>
                                             }
                                             else
                                             {

@@ -191,7 +191,7 @@
         @<text>@(string.IsNullOrWhiteSpace(txn.Description) ? "—" : txn.Description)</text>;
 
     private RenderFragment<ExistingTransaction> TagCell => txn =>
-        @<OdsTagChips Tags="txn.TransactionTags" Max="2" />;
+        @<OdsTagChips Tags="OdsTagChips.Tag.Of(txn.TransactionTags)" Max="2" Empty="—" />;
 
     private RenderFragment<ExistingTransaction> StatusCell => txn =>
         @<OdsChip Tone="StatusTone(txn.Status)" Dot="true">@txn.Status.ToString()</OdsChip>;

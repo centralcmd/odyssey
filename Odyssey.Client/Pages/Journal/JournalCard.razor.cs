@@ -58,7 +58,7 @@ public partial class JournalCard
     private Dictionary<Guid, string> _photoTagNames = [];
     private Dictionary<Guid, string?> _photoTagIcons = [];
     private Dictionary<Guid, string?> _photoTagColors = [];
-    private Dictionary<Guid, string> _photoAlbumNames = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _photoAlbumById = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
@@ -120,8 +120,8 @@ public partial class JournalCard
 
     private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.JournalTagRows(_tags, _entries);
 
-    private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
-        JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon, t => t.Color);
+    private IReadOnlyList<OdsTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
+        OdsTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon, t => t.Color);
 
     // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
     // renders as "Unavailable" rather than leaking the id into the chip row.
@@ -602,7 +602,7 @@ public partial class JournalCard
     internal string? PhotoTagIcon(Guid id) => _photoTagIcons.GetValueOrDefault(id);
 
     internal string? PhotoTagColor(Guid id) => _photoTagColors.GetValueOrDefault(id);
-    private string PhotoAlbumName(Guid id) => _photoAlbumNames.GetValueOrDefault(id, "—");
+    private OdsTagChips.Tag? PhotoAlbumChip(Guid id) => Odyssey.Client.Pages.Photos.AlbumVisuals.Chip(_photoAlbumById.GetValueOrDefault(id));
     private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
 
     // Tag/album names + edit-dialog option lists for the detail rail — loaded lazily on first open
@@ -622,15 +622,15 @@ public partial class JournalCard
             _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
-            _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _photoTagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
         }
 
         var albumsResult = await Albums.ListAllAsync();
         var albums = albumsResult.ItemsOrToast(Snackbar, "albums");
         if (albumsResult.IsSuccess)
         {
-            _photoAlbumNames = albums.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
-            _photoAlbumOptions = [.. albums.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+            _photoAlbumById = albums.ToDictionary(a => a.PhotoAlbumId);
+            _photoAlbumOptions = [.. albums.Select(Odyssey.Client.Pages.Photos.AlbumVisuals.FilterOption)];
         }
 
         // Active Person contacts for the people picker — reuse the entry's already-loaded set.
