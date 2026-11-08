@@ -62,7 +62,8 @@
                     </ul>
                     @if (_windows.Count > ShownLimit)
                     {
-                        <OdsButton Variant="OdsButtonVariant.Text" aria-expanded="@(_all ? "true" : "false")" OnClick="@(() => _all = !_all)">
+                        @* The label says what pressing does; no aria-expanded, which would contradict it (4.1.2). *@
+                        <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _all = !_all)">
                             @(_all ? $"Show the newest {ShownLimit}" : $"Show all {_windows.Count}")
                         </OdsButton>
                     }
@@ -85,7 +86,6 @@
     private Phase _phase = Phase.Loading;
     private IReadOnlyList<ExistingWeatherHistoryWindow> _windows = [];
     private bool _all;
-    private bool _loaded;
 
     private string SectionId => $"wx-hws-{Row.WeatherPointId:N}";
 
@@ -100,13 +100,7 @@
         : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail ? $"{fail.Label}. Collection resumes when MET Norway answers again."
         : null;
 
-    protected override async Task OnInitializedAsync()
-    {
-        if (_loaded)
-            return;
-        _loaded = true;
-        await LoadAsync();
-    }
+    protected override Task OnInitializedAsync() => LoadAsync();
 
     private async Task LoadAsync()
     {

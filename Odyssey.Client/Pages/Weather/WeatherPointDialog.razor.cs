@@ -105,6 +105,7 @@ public partial class WeatherPointDialog
     private IReadOnlyList<ExistingWeatherHistoryWindow> _loadedWindows = [];
     private Dictionary<string, WeatherWindowRowErrors> _rowErrors = [];
     private string? _listError;
+    private int _rowCountAtErrors = -1;
     private bool _shrinks;
     private string _shrinkNote = "";
     private bool _saving;
@@ -145,6 +146,8 @@ public partial class WeatherPointDialog
                 ["altitudeMeters"] = AltId,
                 ["timeZoneId"] = TimeZoneId,
             };
+            // The list's own error links to the History windows head, so every summary entry can be activated.
+            links["hw:list"] = WindowsHeadId;
             // A window error links to its field; a row-level one to the row's From.
             foreach (var key in _errors.Keys.Where(k => k.StartsWith("hw:", StringComparison.Ordinal)))
             {
@@ -289,6 +292,15 @@ public partial class WeatherPointDialog
     /// </summary>
     private void OnWindowsChanged(string key)
     {
+        // Adding or removing a row renumbers the rows, so every "window n" in an error goes stale: clear them all.
+        if (_rows.Count != _rowCountAtErrors)
+        {
+            _rowErrors = [];
+            foreach (var stale in _errors.Keys.Where(k => k.StartsWith("hw:", StringComparison.Ordinal)).ToList())
+                _errors.Remove(stale);
+            _rowCountAtErrors = _rows.Count;
+        }
+
         _rowErrors.Remove(key);
         foreach (var stale in _errors.Keys.Where(k => k.StartsWith($"hw:{key}:", StringComparison.Ordinal) || (k == "hw:list" && _rows.Count > 0)).ToList())
             _errors.Remove(stale);
@@ -310,6 +322,7 @@ public partial class WeatherPointDialog
     {
         _rowErrors = [];
         _listError = null;
+        _rowCountAtErrors = _rows.Count;
         if (!_history || _windowsLoad != WindowsLoad.Ready)
             return;
 
@@ -492,12 +505,13 @@ public partial class WeatherPointDialog
 
     /// <summary>
     /// The full array in display order — the request index the server's error keys use. History off on an existing
-    /// point: the loaded windows, exactly as they came, so no error can point at a hidden field.
+    /// point: null, which the server reads as "keep the stored set" — never the loaded set, which is empty while the
+    /// read is loading or has failed and would replace the stored windows with nothing.
     /// </summary>
-    private List<WeatherHistoryWindowDto> WindowsRequest =>
-        _history || Creating
+    private List<WeatherHistoryWindowDto>? WindowsRequest =>
+        Creating || (_history && _windowsLoad == WindowsLoad.Ready)
             ? WeatherHistoryWindows.ToRequest(_rows)
-            : [.. _loadedWindows.Select(w => new WeatherHistoryWindowDto { From = w.From, To = w.To })];
+            : null;
 
     private async Task CreateAsync()
     {

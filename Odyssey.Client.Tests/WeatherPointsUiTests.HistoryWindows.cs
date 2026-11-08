@@ -171,7 +171,7 @@ public partial class WeatherPointsUiTests
         Assert.Equal((index, field), WeatherHistoryWindows.ParseKey(key, rowCount: 2));
 
     [Fact]
-    public async Task History_off_hides_the_editor_and_sends_the_loaded_windows_unchanged()
+    public async Task History_off_hides_the_editor_and_keeps_the_stored_windows()
     {
         var point = WithWindows(Point("Cabin", OsloId) with { HistoryEnabled = false }, Win("2026-07-04", "2026-07-18"));
         var weather = Weather(point);
@@ -186,8 +186,29 @@ public partial class WeatherPointsUiTests
         await Press(cut, "Save");
 
         cut.WaitForAssertion(() => Assert.NotNull(sent));
-        var only = Assert.Single(sent!.HistoryWindows!);
-        Assert.Equal((new DateOnly(2026, 7, 4), (DateOnly?)new DateOnly(2026, 7, 18)), (only.From, only.To));
+        // null is "keep the stored set" on the server; an array would replace it.
+        Assert.Null(sent!.HistoryWindows);
+    }
+
+    [Fact]
+    public async Task History_off_with_a_failed_window_read_saves_without_replacing_the_windows()
+    {
+        var point = WithWindows(Point("Cabin", OsloId) with { HistoryEnabled = false }, Win("2026-07-04", "2026-07-18"));
+        var weather = Weather(point);
+        weather.Setup(w => w.PointAsync(OsloId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<ExistingWeatherPoint>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Status = 500 }));
+        UpdateWeatherPoint? sent = null;
+        weather.Setup(w => w.UpdatePointAsync(OsloId, It.IsAny<UpdateWeatherPoint>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, UpdateWeatherPoint r, CancellationToken _) => sent = r)
+            .ReturnsAsync(Ok(new WeatherPointUpdateResult { Point = point }));
+        await using var ctx = PageContext(weather, AdminClaims);
+        var cut = Settings(ctx, point);
+
+        cut.WaitForAssertion(() => Assert.Contains("Couldn’t load this point’s history windows.", cut.Markup));
+        await Press(cut, "Save");
+
+        cut.WaitForAssertion(() => Assert.NotNull(sent));
+        Assert.Null(sent!.HistoryWindows);
     }
 
     [Fact]

@@ -94,16 +94,16 @@ public static class GlobalExceptionHandler
                     context.Request.Method, context.Request.Path);
                 return WriteAsync(context, StatusCodes.Status409Conflict, ConflictMessage);
 
-            // A client disconnect (browser navigated away, download aborted) cancels RequestAborted and
-            // surfaces here as an OperationCanceledException. Logging it as an unhandled 500 pollutes the
-            // error dashboards on exactly the long-running paths where it happens most — the ICS/vCard
-            // exports, the data export and file analysis. There is nobody left to write a response to.
             // A body over an endpoint's [RequestSizeLimit] (issue #436 §7.7): the transport refuses it while model
             // binding reads it. Status 413 only, a generic body, and never the exception's own message.
             case BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge }:
                 logger.LogInformation("Request body too large on {Method} {Path}.", context.Request.Method, context.Request.Path);
                 return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, "The request is too large.");
 
+            // A client disconnect (browser navigated away, download aborted) cancels RequestAborted and
+            // surfaces here as an OperationCanceledException. Logging it as an unhandled 500 pollutes the
+            // error dashboards on exactly the long-running paths where it happens most — the ICS/vCard
+            // exports, the data export and file analysis. There is nobody left to write a response to.
             case OperationCanceledException when context.RequestAborted.IsCancellationRequested:
                 logger.LogInformation("Request cancelled by client on {Method} {Path}.",
                     context.Request.Method, context.Request.Path);

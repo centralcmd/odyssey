@@ -92,8 +92,14 @@
 
     protected override void OnParametersSet()
     {
-        if (!string.IsNullOrEmpty(InputId))
+        if (!string.IsNullOrEmpty(InputId) && InputId != _inputId)
+        {
+            // A different input: everything applied to the old one has to be applied again.
             _inputId = InputId;
+            _appliedAriaLabel = null;
+            _appliedDescribedBy = null;
+            _appliedInvalid = null;
+        }
     }
 
     // The label applied to the inner input so far: re-applied whenever the parameter changes, not only on the
