@@ -12,7 +12,8 @@
     Links are chosen as scalar ids (OdsTagMultiSelect for both tags and contacts, per FE #4/#5).
     Photos and attachments are picked through the shared dialogs — "Add photos" (AttachPhotosDialog:
     upload new or pick from the library) and "Attach documents" (AttachDocumentsDialog: upload new or
-    pick from Files) — so the draft only ever holds stored ids and nothing uploads at save. Content is
+    pick from Files) — so the draft only ever holds library photo ids and stored file ids, and nothing
+    uploads at save. Content is
     plain text.
 
     Both member pickers can create, and their create rows name what they make: Tags mints a journal

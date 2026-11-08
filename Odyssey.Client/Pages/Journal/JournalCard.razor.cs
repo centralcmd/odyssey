@@ -277,9 +277,6 @@ public partial class JournalCard
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
-
-        // Every card renders its gallery, so the page's photo filenames are hydrated once per load
-        // rather than per card. Deliberately after the render above: the list must not wait on it.
     }
 
     private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);

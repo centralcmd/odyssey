@@ -34,7 +34,7 @@ public static class PhotoTestSupport
         string contentType = "image/jpeg")
     {
         var form = new MultipartFormDataContent();
-        var part = new ByteArrayContent(bytes ?? PhotoTestData.Jpeg(Random.Shared.Next()));
+        var part = new ByteArrayContent(bytes ?? PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
         part.Headers.ContentType = new MediaTypeHeaderValue(contentType);
         form.Add(part, "file", fileName);
         foreach (var (name, value) in FormFields(fields ?? new NewPhotoUpload()))

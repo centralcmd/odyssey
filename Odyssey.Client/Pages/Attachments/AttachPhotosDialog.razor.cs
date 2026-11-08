@@ -41,7 +41,6 @@ public partial class AttachPhotosDialog
 
     private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
-    [Inject] private IFilesApiClient Files { get; set; } = default!;
     [Inject] private IPhotosApiClient Photos { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IUploadLimitsCache UploadLimits { get; set; } = default!;

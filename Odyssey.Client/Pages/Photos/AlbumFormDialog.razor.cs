@@ -238,7 +238,7 @@ public partial class AlbumFormDialog
         ? PhotoImageSource.None
         : PhotoImageSources.For(s.PhotoId, s.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
-    // A member picked in this session has no summary yet; its pick carries the file id and a label.
+    // A member picked in this session has no summary yet; its pick carries the photo id and a label.
     private string LabelFor(Guid id) =>
         Summary(id) is { } s ? Label(s) : _pickedInfo.GetValueOrDefault(id)?.Name ?? "Photo";
 

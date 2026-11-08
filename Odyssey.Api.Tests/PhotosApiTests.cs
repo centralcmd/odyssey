@@ -355,9 +355,9 @@ public class PhotosApiTests
     // ── Extraction: resilience, caller precedence, fill (criteria #1, #2, #3) ──
 
     [Fact]
-    public async Task Post_GarbageImage_Succeeds_WithNoMetadata()
+    public async Task Post_ImageWithNoReadableMetadata_Succeeds_WithNoMetadata()
     {
-        // Real extractor over non-image bytes: extraction fails internally → null fields, add still succeeds.
+        // Real extractor over a bare JPEG header with no EXIF or dimensions: it finds nothing, and the add still succeeds.
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
 
@@ -616,6 +616,32 @@ public class PhotosApiTests
         Assert.Equal(HttpStatusCode.Forbidden, (await filesClient.GetAsync($"{Path}/{photoId}/content")).StatusCode);
     }
 
+    /// <summary>
+    /// A moved photo whose file has gone from the volume is the store's integrity fault: a 500 with the
+    /// <c>file-storage-integrity</c> code, never empty bytes and never the file's name or path.
+    /// </summary>
+    [Fact]
+    public async Task ContentRoute_WhenTheFileIsMissingFromTheVolume_IsAnIntegrityFault_NamingNoFile()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var created = await PhotoTestSupport.UploadPhotoAsync(client, fileName: "Passport_Ola.jpg");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var storedObjectId = (await context.Photos.SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId!.Value;
+            var stored = await context.StoredObjects.SingleAsync(o => o.Id == storedObjectId);
+            File.Delete(System.IO.Path.Combine(factory.PhotoVolumeRoot, stored.RelativePath));
+        }
+
+        var response = await client.GetAsync($"{Path}/{created.PhotoId}/content");
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Contains("file-storage-integrity", body, StringComparison.Ordinal);
+        Assert.DoesNotContain("Passport", body, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>Issue #428 AC 2: a photo uploaded now is not a Files-store file, so the Files list never shows it.</summary>
     [Fact]
     public async Task AnUploadedPhoto_IsNotOnTheFilesList()
@@ -627,6 +653,71 @@ public class PhotosApiTests
         var files = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
 
         Assert.Empty(files!);
+    }
+
+    /// <summary>
+    /// PR #441 security finding 1: a legacy photo's original is still a Files-store row until the backfill moves it, and
+    /// <c>files.*</c> must not reach it meanwhile — not to list, read, download, rename or delete.
+    /// </summary>
+    [Fact]
+    public async Task ALegacyPhotoOriginal_IsUnreachableThroughTheFilesStore()
+    {
+        string[] filesAll =
+        [
+            PermissionClaims.FilesRead, PermissionClaims.FilesUpdate, PermissionClaims.FilesDelete,
+        ];
+        await using var factory = new ApiFactory(filesAll);
+        var (_, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "Holiday.jpg");
+        var plain = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId, "receipt.jpg");
+        using var client = factory.CreateClient();
+
+        var listed = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
+        Assert.Equal([plain], listed!.Select(f => f.Id));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/files/{fileId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/api/files/{fileId}/content")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound,
+            (await client.PutAsJsonAsync($"/api/files/{fileId}/metadata", new { fileName = "Renamed.jpg" })).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"/api/files/{fileId}")).StatusCode);
+
+        using var scope = factory.Services.CreateScope();
+        var file = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().FileMetadata.SingleAsync(f => f.Id == fileId);
+        Assert.Equal("Holiday.jpg", file.FileName);
+    }
+
+    /// <summary>
+    /// A legacy photo's file that is also a journal attachment stays a Files-store file: the attachment's own claim
+    /// already reaches it, and the backfill copies rather than removes it — before the move and after.
+    /// </summary>
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task APhotoFileThatIsAlsoAnAttachment_StaysOnTheFilesList(bool backfilled)
+    {
+        await using var factory = new ApiFactory([PermissionClaims.FilesRead]);
+        var (photoId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId, "Shared.jpg");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            context.JournalEntryAttachments.Add(new JournalEntryAttachment
+            {
+                JournalEntryId = Guid.NewGuid(), FileId = fileId, CreatedAt = DateTime.UtcNow,
+            });
+            if (backfilled)
+            {
+                // The backfill's end state for a shared file: the photo names it as its legacy file only.
+                var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
+                photo.LegacyFileId = fileId;
+                photo.FileId = null;
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+
+        var listed = await client.GetPagedItemsAsync<Odyssey.Dtos.Finance.FileListItem>("/api/files");
+        Assert.Equal([fileId], listed!.Select(f => f.Id));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/files/{fileId}/content")).StatusCode);
     }
 
     // ── Duplicates (issue #428 §3.2, AC 5) ───────────────────────────────────────
