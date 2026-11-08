@@ -146,6 +146,7 @@ internal static class SystemSettingsRegistry
             MaxLength = 128,
             Read = r => r.FileAnalysisProcessorRegion,
             Write = (dto, v) => dto.FileAnalysisProcessorRegion = v,
+            Advise = SettingAdvisories.DisclosureChangeRefusesOpenMatches,
         },
         new StringSetting
         {
@@ -157,6 +158,7 @@ internal static class SystemSettingsRegistry
             MaxLength = 128,
             Read = r => r.FileAnalysisLawfulBasis,
             Write = (dto, v) => dto.FileAnalysisLawfulBasis = v,
+            Advise = SettingAdvisories.DisclosureChangeRefusesOpenMatches,
         },
         new StringSetting
         {
@@ -169,6 +171,7 @@ internal static class SystemSettingsRegistry
             Validator = PrivacyNoticeUrl.Validate,
             Read = r => r.FileAnalysisPrivacyNoticeUrl,
             Write = (dto, v) => dto.FileAnalysisPrivacyNoticeUrl = v,
+            Advise = SettingAdvisories.DisclosureChangeRefusesOpenMatches,
         },
         new IntSetting
         {
@@ -536,22 +539,6 @@ internal static class SystemSettingsRegistry
         },
         new IntSetting
         {
-            Key = SystemSettingsKeys.FileAnalysisMatchMaxVocabulary,
-            Min = SystemSettingsBounds.FileAnalysisMatchMaxVocabularyMin,
-            Max = SystemSettingsBounds.FileAnalysisMatchMaxVocabularyMax,
-            FieldName = nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
-            DefaultValue = Int(SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary),
-            CacheKeyToEvict = FileAnalysisSettingsLookup.CacheKey,
-            Read = r => r.FileAnalysisMatchMaxVocabulary,
-            Write = (dto, v) => dto.FileAnalysisMatchMaxVocabulary = v,
-            Advise = SettingAdvisories.AboveDefault(
-                dto => dto.FileAnalysisMatchMaxVocabulary, SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary,
-                "Every name in the vocabulary is sent to the provider on each match call, so a larger "
-                + "list means a larger request and more tokens billed per match."),
-        },
-        new IntSetting
-        {
             Key = SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds,
             Min = SystemSettingsBounds.FileAnalysisMatchTimeoutSecondsMin,
             Max = SystemSettingsBounds.FileAnalysisMatchTimeoutSecondsMax,
@@ -766,6 +753,43 @@ internal static class SystemSettingsRegistry
             Read = r => r.FileAnalysisBaseUrl,
             Write = (dto, v) => dto.FileAnalysisBaseUrl = v,
             Advise = SettingAdvisories.BaseUrlAwayFromDefault,
+        },
+
+        // ── Administrator prompt guidance (issue #433) ───────────────────────────────────────────
+        //
+        // The ORDINARY claim, a product-owner decision. AuditChanges is therefore false for both; the
+        // digest audit line (AuditDigestOnChange) records who changed what, without the text.
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.FileAnalysisExtractionPromptAddition,
+            FieldName = nameof(SystemSettingsUpdate.FileAnalysisExtractionPromptAddition),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = SystemSettingsDefaults.FileAnalysisExtractionPromptAddition,
+            CacheKeyToEvict = FileAnalysisSettingsLookup.CacheKey,
+            MaxLength = PromptAdditionRule.MaxLength,
+            Multiline = true,
+            AllowEmpty = true,
+            AuditDigestOnChange = true,
+            ReadValidator = PromptAdditionRule.Validate,
+            Read = r => r.FileAnalysisExtractionPromptAddition,
+            Write = (dto, v) => dto.FileAnalysisExtractionPromptAddition = v,
+            Advise = SettingAdvisories.GuidanceSet(dto => dto.FileAnalysisExtractionPromptAddition, refusesOpenMatches: false),
+        },
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.FileAnalysisMatchPromptAddition,
+            FieldName = nameof(SystemSettingsUpdate.FileAnalysisMatchPromptAddition),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = SystemSettingsDefaults.FileAnalysisMatchPromptAddition,
+            CacheKeyToEvict = FileAnalysisSettingsLookup.CacheKey,
+            MaxLength = PromptAdditionRule.MaxLength,
+            Multiline = true,
+            AllowEmpty = true,
+            AuditDigestOnChange = true,
+            ReadValidator = PromptAdditionRule.Validate,
+            Read = r => r.FileAnalysisMatchPromptAddition,
+            Write = (dto, v) => dto.FileAnalysisMatchPromptAddition = v,
+            Advise = SettingAdvisories.GuidanceSet(dto => dto.FileAnalysisMatchPromptAddition, refusesOpenMatches: true),
         },
         new IntSetting
         {

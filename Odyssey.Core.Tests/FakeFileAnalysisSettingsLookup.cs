@@ -29,7 +29,6 @@ internal sealed class FakeFileAnalysisSettingsLookup : IFileAnalysisSettingsLook
         MaxFutureTransactionDays: 90,
         AutoLinkThreshold: 0.60m,
         MaxTokens: 8096,
-        MatchMaxVocabulary: 500,
         MatchTimeoutSeconds: 60,
         Model: "claude-sonnet-5",
         BaseUrl: "https://api.anthropic.com",

@@ -103,7 +103,12 @@ internal record MatchToolPayload(
 
 internal record VocabRef(
     [property: JsonPropertyName("ref")] string Ref,
-    [property: JsonPropertyName("name")] string Name
+    [property: JsonPropertyName("name")] string Name,
+    // Issue #433. Omitted when null, so a names-only request stays byte-identical to the old one.
+    [property: JsonPropertyName("aliases"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    IReadOnlyList<string>? Aliases = null,
+    [property: JsonPropertyName("description"), JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? Description = null
 );
 
 internal record MatchCandidatePayload(

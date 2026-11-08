@@ -84,7 +84,7 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode)
-                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync());
+                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
 
             return ApiResult<T>.Success(await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode);
         }
@@ -126,7 +126,7 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
             using var response = await SendCoreAsync(method, url, body, ct);
             return response.IsSuccessStatusCode
                 ? ApiResult.Success(response.StatusCode, response.Headers.Location)
-                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync());
+                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {
@@ -140,7 +140,7 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await SendCoreAsync(method, url, body, ct);
             if (!response.IsSuccessStatusCode)
-                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync());
+                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
 
             return ApiResult<T>.Success(
                 await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location);
@@ -169,7 +169,7 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         {
             using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct);
             if (!response.IsSuccessStatusCode)
-                return ApiResult<ApiFile>.Failure(response.StatusCode, await response.ReadProblemAsync());
+                return ApiResult<ApiFile>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
 
             var file = await ReadFileAsync(response, defaultFileName, ct);
 
@@ -243,7 +243,7 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
 
             using var response = await http.PostAsync(url, content, ct);
             if (!response.IsSuccessStatusCode)
-                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync());
+                return ApiResult<T>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
 
             return ApiResult<T>.Success(
                 await response.Content.ReadFromJsonAsync<T>(ct), response.StatusCode, response.Headers.Location);

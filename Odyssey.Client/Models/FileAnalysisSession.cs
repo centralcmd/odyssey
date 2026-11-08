@@ -68,6 +68,18 @@ public sealed class FileAnalysisRow
     public List<string> CatSuggestionIds { get; set; } = [];
 }
 
+/// <summary>A match request the server refused before sending anything (issue #434).</summary>
+public enum FileAnalysisMatchProblem
+{
+    None,
+
+    /// <summary><c>409 file_analysis_destination_changed</c>: the provider settings moved since analyze.</summary>
+    DestinationChanged,
+
+    /// <summary><c>429</c>: the per-user match limit.</summary>
+    RateLimited,
+}
+
 /// <summary>
 /// The state machine and editing rules behind <c>FileAnalysisDialog</c>: the phase, the candidate
 /// rows, how a job's persisted match data becomes (or doesn't become) a link, and the optimistic
@@ -146,8 +158,14 @@ public sealed class FileAnalysisSession
     /// <summary>Matches <c>TagWrite.MaxNameLength</c> — a longer typed name is clamped, not refused.</summary>
     public const int MaxTagNameLength = 64;
 
-    /// <summary>The number of contact + tag names that would be sent for matching (consent + progress copy).</summary>
-    public int VocabularyCount => contacts.Count + tags.Count;
+    /// <summary>
+    /// Why the last match request was refused before anything was sent (issue #434), or
+    /// <see cref="FileAnalysisMatchProblem.None"/>. Replaces the summary and the degraded banner while set.
+    /// </summary>
+    public FileAnalysisMatchProblem MatchProblem { get; set; }
+
+    /// <summary>The wait a <c>429</c> named, from <c>ApiResult.RetryAfter</c>.</summary>
+    public TimeSpan? MatchRetryAfter { get; set; }
 
     /// <summary>
     /// The effective auto-link policy is owned by the server and echoed on the job DTO — never a client
@@ -156,9 +174,6 @@ public sealed class FileAnalysisSession
     /// server defaults only before a job is loaded.)
     /// </summary>
     public decimal AutoLinkThreshold => Job is { } job ? (decimal)job.AutoLinkThreshold : 0.60m;
-
-    /// <summary>The server's cap on how many names may be sent for matching.</summary>
-    public int MaxVocabulary => Job?.MaxVocabulary ?? 500;
 
     public void SetContacts(IEnumerable<ExistingContact> loaded)
     {

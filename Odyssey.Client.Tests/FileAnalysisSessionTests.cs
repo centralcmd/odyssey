@@ -84,7 +84,8 @@ public class FileAnalysisSessionTests
             matchStatus,
             null,
             autoLinkThreshold,
-            500);
+            FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions,
+            null, null, null, null, null);
 
     /// <summary>A session with one pending candidate seeded and no vocabulary.</summary>
     private static FileAnalysisSession SeededSession(out FileAnalysisRow row)
@@ -603,7 +604,7 @@ public class FileAnalysisSessionTests
     // ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public void Archived_contacts_and_tags_are_not_offered_and_are_not_counted()
+    public void Archived_contacts_and_tags_are_not_offered()
     {
         var session = new FileAnalysisSession();
         session.SetContacts([Contact(Guid.NewGuid(), "Live"), Contact(Guid.NewGuid(), "Gone", DateTime.UtcNow)]);
@@ -615,7 +616,6 @@ public class FileAnalysisSessionTests
 
         Assert.Equal("Live", Assert.Single(session.ContactOptions).Label);
         Assert.Equal("Live", Assert.Single(session.TagOptions).Label);
-        Assert.Equal(2, session.VocabularyCount);
     }
 
     [Fact]

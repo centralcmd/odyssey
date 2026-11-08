@@ -60,10 +60,11 @@ public sealed class FileAnalysisSettingsLookup(
         SystemSettingsKeys.FileAnalysisMaxFutureTransactionDays,
         SystemSettingsKeys.FileAnalysisMatchAutoLinkThreshold,
         SystemSettingsKeys.FileAnalysisMaxTokens,
-        SystemSettingsKeys.FileAnalysisMatchMaxVocabulary,
         SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds,
         SystemSettingsKeys.FileAnalysisModel,
         SystemSettingsKeys.FileAnalysisBaseUrl,
+        SystemSettingsKeys.FileAnalysisExtractionPromptAddition,
+        SystemSettingsKeys.FileAnalysisMatchPromptAddition,
     ];
 
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(30);
@@ -130,8 +131,6 @@ public sealed class FileAnalysisSettingsLookup(
             // resolves to the compiled default, which is the more conservative of the two.
             MaxTokens: Integer(rows, SystemSettingsKeys.FileAnalysisMaxTokens,
                 SystemSettingsDefaults.FileAnalysisMaxTokens, ref degraded),
-            MatchMaxVocabulary: Integer(rows, SystemSettingsKeys.FileAnalysisMatchMaxVocabulary,
-                SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary, ref degraded),
             MatchTimeoutSeconds: Integer(rows, SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds,
                 SystemSettingsDefaults.FileAnalysisMatchTimeoutSeconds, ref degraded),
             // The two issue #439 values, and the only two members of this record that resolve to NULL
@@ -142,7 +141,12 @@ public sealed class FileAnalysisSettingsLookup(
                 SystemSettingsDefaults.FileAnalysisModel, ModelUsable, ref degraded),
             BaseUrl: Refusable(rows, SystemSettingsKeys.FileAnalysisBaseUrl,
                 SystemSettingsDefaults.FileAnalysisBaseUrl, FileAnalysisBaseUrlRule.Canonicalize, ref degraded),
-            IsDegraded: degraded);
+            IsDegraded: degraded,
+            // Issue #433: an unusable addition is OMITTED (null), never sent, and does not degrade the
+            // snapshot — the disclosure then truthfully reports that guidance is not in force.
+            ExtractionPromptAddition: Guidance(rows, SystemSettingsKeys.FileAnalysisExtractionPromptAddition),
+            MatchPromptAddition: Guidance(rows, SystemSettingsKeys.FileAnalysisMatchPromptAddition),
+            ReadFailed: readFailed);
 
         // A degraded resolution is deliberately not cached, matching the precedent: recomputing it is
         // cheap once the read is already failing, and recovery is immediate on the next good read
@@ -291,6 +295,35 @@ public sealed class FileAnalysisSettingsLookup(
     /// no ground truth to validate it against — naming a model the provider does not know is an admin
     /// error the provider reports, not something this can catch.
     /// </summary>
+    /// <summary>
+    /// A prompt addition as it will be sent: normalised, or <see langword="null"/> when there is none or
+    /// the stored value fails <see cref="PromptAdditionRule"/> (a hand edit or a restore). The value is
+    /// never logged, only the key.
+    /// </summary>
+    private string? Guidance(IReadOnlyDictionary<string, string> rows, string key)
+    {
+        if (!rows.TryGetValue(key, out var value))
+        {
+            return null;
+        }
+
+        var normalised = PromptAdditionRule.Normalize(value);
+        if (normalised.Length == 0)
+        {
+            return null;
+        }
+
+        if (PromptAdditionRule.Validate(normalised) is not null)
+        {
+            logger.LogError(
+                "The stored file-analysis setting '{Key}' fails the guidance rule; it is omitted from prompts "
+                + "until an administrator replaces it.", key);
+            return null;
+        }
+
+        return normalised;
+    }
+
     private static string? ModelUsable(string value)
     {
         var trimmed = value.Trim();

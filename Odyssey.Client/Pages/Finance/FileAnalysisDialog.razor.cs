@@ -4,6 +4,7 @@ using MudBlazor;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Services;
 using Odyssey.Client.Authorization;
+using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Components;
 using Odyssey.Client.Models;
@@ -129,8 +130,27 @@ public partial class FileAnalysisDialog
     {
         FileAnalysisPhase.ResumeLoading => $"Opening your saved review for {FileName}.",
         FileAnalysisPhase.Matching => "Matching merchants and categories against your contacts and tags.",
+        // The one summary line, announced once on entering Review (issue #434). Mutually exclusive with
+        // the problem alerts, which announce themselves (role="alert").
+        FileAnalysisPhase.Review when _session.MatchProblem == FileAnalysisMatchProblem.None
+                                      && _session.MatchStatus == FileAnalysisMatchStatus.Completed
+                                      && _session.Job is { } job => FileAnalysisDisclosureText.MatchSummary(job) ?? string.Empty,
         _ => string.Empty,
     };
+
+    /// <summary>
+    /// The gate may be affirmed only against a resolved disclosure that can be described (issue #434):
+    /// an incomplete one reuses the not-resolved presentation and keeps the affirmation disabled.
+    /// </summary>
+    private bool DisclosureUsable => Disclosures.IsResolved && !FileAnalysisDisclosureText.IsIncomplete(_disclosure);
+
+    // A 429 on analyze (issue #434): the wait the server named, and whether the notice is showing.
+    private bool _analyzeRateLimited;
+    private TimeSpan? _analyzeRetryAfter;
+
+    // "Start new analysis" after a 409 destination change lands focus on the consent step.
+    private ElementReference _consentStartRef;
+    private bool _consentStartNeedsFocus;
 
     // The NoLongerAvailable step swaps into an already-open dialog with no focusable body control, so
     // focus moves to its heading on entry (tracked so it fires once per entry).
@@ -160,6 +180,14 @@ public partial class FileAnalysisDialog
             _liveMsg = DesiredLiveMsg;
             StateHasChanged();
             return; // the resulting re-render re-enters here with the DOM settled
+        }
+
+        // "Start new analysis" after a 409 destination change: land on the consent step (issue #434).
+        if (_consentStartNeedsFocus && Phase == FileAnalysisPhase.Consent)
+        {
+            _consentStartNeedsFocus = false;
+            try { await _consentStartRef.FocusAsync(); } catch { /* not focusable yet — non-fatal */ }
+            return;
         }
 
         // A re-prompted consent gate: land the user on the REASON, not on the checkbox that reset
@@ -290,6 +318,15 @@ public partial class FileAnalysisDialog
                 await RepromptForChangedDisclosureAsync();
                 return;
             }
+            if (analyzed.Status == HttpStatusCode.TooManyRequests)
+            {
+                // Nothing was sent. Back to the gate, which keeps the affirmation and shows the wait.
+                _analyzeRateLimited = true;
+                _analyzeRetryAfter = analyzed.RetryAfter;
+                _session.SetPhase(FileAnalysisPhase.Consent);
+                return;
+            }
+            _analyzeRateLimited = false;
             if (analyzed.Status == HttpStatusCode.BadRequest)
             {
                 _errorMessage = analyzed.Error;
@@ -348,10 +385,25 @@ public partial class FileAnalysisDialog
         _session.SetPhase(FileAnalysisPhase.Matching);
         StateHasChanged();
 
+        _session.MatchProblem = FileAnalysisMatchProblem.None;
+        _session.MatchRetryAfter = null;
+
         try
         {
             var matched = await FileAnalysis.MatchAsync(_jobId);
-            if (matched.IsSuccess)
+            if (!matched.IsSuccess && matched.Problem.IsFileAnalysisDestinationChanged())
+            {
+                // Only this code: any other 409 keeps the generic failure handling below.
+                _session.MatchProblem = FileAnalysisMatchProblem.DestinationChanged;
+                _session.MatchStatus = FileAnalysisMatchStatus.Failed;
+            }
+            else if (!matched.IsSuccess && matched.Status == HttpStatusCode.TooManyRequests)
+            {
+                _session.MatchProblem = FileAnalysisMatchProblem.RateLimited;
+                _session.MatchRetryAfter = matched.RetryAfter;
+                _session.MatchStatus = FileAnalysisMatchStatus.Failed;
+            }
+            else if (matched.IsSuccess)
             {
                 _session.Job = matched.Value ?? _session.Job;
                 // The server conveys match success/failure/skip via matchStatus (200, never an error).
@@ -380,6 +432,29 @@ public partial class FileAnalysisDialog
     // Re-match: re-run the match step only (no re-extract, no second consent), refreshing the
     // None/Llm suggestions while preserving any row the reviewer already curated.
     private Task ReMatchAsync() => RunMatchAsync(preserveManual: true);
+
+    /// <summary>
+    /// "Start new analysis" after a <c>409 file_analysis_destination_changed</c> (issue #434): the open
+    /// analysis was consented under different provider settings, so the way on is a fresh consent. The
+    /// disclosure is re-fetched, the affirmation resets, and focus lands on the consent step.
+    /// </summary>
+    private async Task StartNewAnalysisAsync()
+    {
+        Disclosures.Invalidate();
+        _disclosure = await Disclosures.GetAsync();
+        _consentChecked = false;
+        _analyzeRateLimited = false;
+        _analyzeRetryAfter = null;
+        _session.MatchProblem = FileAnalysisMatchProblem.None;
+        _session.MatchRetryAfter = null;
+        _session.MatchStatus = FileAnalysisMatchStatus.NotRun;
+        _session.Rows.Clear();
+        _session.Job = null;
+        _jobId = Guid.Empty;
+        _consentStartNeedsFocus = true;
+        _session.SetPhase(FileAnalysisPhase.Consent);
+        StateHasChanged();
+    }
 
     private async Task ReanalyzeAsync()
     {

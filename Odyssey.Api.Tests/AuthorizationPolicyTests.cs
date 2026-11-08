@@ -118,7 +118,8 @@ public class AuthorizationPolicyTests
                      select $"{role.Role} holds '{claim}'").ToList();
 
         Assert.True(leaks.Count == 0,
-            "system-settings.* is Admin-only by design, and issue #421 §10.10 relies on it. "
+            "system-settings.* is Admin-only by design, and issue #421 §10.10 relies on it, as does issue "
+            + "#433 §7.2 (the prompt guidance takes the ordinary claim because only Admin holds it). "
             + "Revisit that reasoning before granting these: " + string.Join(", ", leaks));
 
         // The other half of the premise: Admin must actually hold all three, or the settings page is

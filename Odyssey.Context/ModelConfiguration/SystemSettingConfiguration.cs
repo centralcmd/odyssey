@@ -92,7 +92,6 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // `const` and two were POCO defaults on a section with no appsettings entry. None of them
             // has one now — an administrator sets every one of these at /settings.
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMaxTokens, Value = "8096", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchMaxVocabulary, Value = "500", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchTimeoutSeconds, Value = "60", UpdatedAt = seededAt },
             // Bytes on the options class, MEGABYTES here — matching the nine existing size settings.
             new SystemSetting { Key = SystemSettingsKeys.PhotoMetadataReadMegabytes, Value = "8", UpdatedAt = seededAt },
@@ -127,6 +126,9 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisEnabled, Value = "false", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisModel, Value = SystemSettingsDefaults.FileAnalysisModel, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileAnalysisBaseUrl, Value = SystemSettingsDefaults.FileAnalysisBaseUrl, UpdatedAt = seededAt },
+            // Administrator prompt guidance (issue #433): new keys, seeded empty, i.e. no addition.
+            new SystemSetting { Key = SystemSettingsKeys.FileAnalysisExtractionPromptAddition, Value = SystemSettingsDefaults.FileAnalysisExtractionPromptAddition, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.FileAnalysisMatchPromptAddition, Value = SystemSettingsDefaults.FileAnalysisMatchPromptAddition, UpdatedAt = seededAt },
             // The Contracts summary windows. The ending-soon window seeds the client `const 45` it
             // replaces exactly, so a default install is behaviourally identical; the other two are new
             // and seed the design system's own defaults (a 45-day look-ahead, six rendered rows).

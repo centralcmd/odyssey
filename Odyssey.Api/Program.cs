@@ -317,6 +317,7 @@ builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 // The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
+builder.Services.AddFileAnalysisRateLimiter(builder.Configuration);
 // The weather read and Admin-action limits (issue #348). Same composition rules.
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
 // The background-jobs manual run's per-user limit (issue #409 §3.5). Same composition rules.

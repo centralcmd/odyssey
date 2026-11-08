@@ -186,8 +186,6 @@ public sealed record SystemSettingsDto
     /// <summary>Model output cap on the file-analysis calls — a direct third-party spend lever.</summary>
     public int FileAnalysisMaxTokens { get; set; }
 
-    public int FileAnalysisMatchMaxVocabulary { get; set; }
-
     public int FileAnalysisMatchTimeoutSeconds { get; set; }
 
     /// <summary>Blob prefix read for photo metadata extraction, in megabytes.</summary>
@@ -242,6 +240,15 @@ public sealed record SystemSettingsDto
     /// to whatever host is set here, which the row's advisory states in the UI.
     /// </summary>
     public string FileAnalysisBaseUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Administrator guidance appended to every statement extraction prompt, as stored (normalised);
+    /// empty when none (issue #433).
+    /// </summary>
+    public string FileAnalysisExtractionPromptAddition { get; set; } = string.Empty;
+
+    /// <summary>Administrator guidance appended to every match prompt; empty when none (issue #433).</summary>
+    public string FileAnalysisMatchPromptAddition { get; set; } = string.Empty;
 
     // ── Weather (issue #348) ─────────────────────────────────────────────────────────────────────
 

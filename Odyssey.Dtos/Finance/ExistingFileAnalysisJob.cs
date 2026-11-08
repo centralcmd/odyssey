@@ -18,5 +18,13 @@ public sealed record ExistingFileAnalysisJob(
     string? MatchFailureMessage,
     // Effective server-side match policy, echoed so the client never hardcodes (or drifts from) it.
     double AutoLinkThreshold,
-    int MaxVocabulary
+    // ── Match vocabulary (issue #433) ──
+    // What the job's consent covers; NamesOnly for a job created before the feature (NULL column).
+    FileAnalysisMatchVocabularyScope MatchVocabularyScope,
+    // What the latest match run sent, counted after the payload budget. Null until a match has run.
+    int? ContactCount,
+    int? TagCount,
+    int? AliasCount,
+    int? TagDescriptionCount,
+    FileAnalysisVocabularyReduction? VocabularyReduction
 );

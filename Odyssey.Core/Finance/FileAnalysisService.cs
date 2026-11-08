@@ -89,6 +89,11 @@ public class FileAnalysisService
         // snapshot, which is what lets the four job stamps below describe one coherent moment.
         var settings = await settingsLookup.GetAsync(cancellationToken);
 
+        // Issue #433: a failed settings read knows nothing, including the guidance flags the disclosure
+        // version covers, so consent cannot be verified against it. 503, never a misleading 409.
+        if (settings.ReadFailed)
+            throw new FileAnalysisUnavailableException();
+
         // Refuse rather than substitute when the model or the destination is unusable — see
         // RequireTarget. Evaluated BEFORE the disclosure-version check, so a misconfigured instance
         // answers 503 rather than leaking disclosure state through a 409.
@@ -134,6 +139,14 @@ public class FileAnalysisService
             AnalyzerBaseUrlHost = Truncate(HostOf(target.BaseUrl), 256),
             ProcessorInForce = Truncate(settings.Processor, 128),
             ProcessorRegionInForce = Truncate(settings.ProcessorRegion, 128),
+            // Issue #433: what this consent covers, stamped from the same snapshot. Match reads the
+            // scope and compares the match-relevant version, so a later match never sends more, or
+            // to a different destination, than this consent named.
+            MatchVocabularyScope = FileAnalysisDisclosureVersion.CurrentScope,
+            DisclosureVersionInForce = FileAnalysisDisclosureVersion.Compute(settings),
+            MatchDisclosureVersionInForce =
+                FileAnalysisDisclosureVersion.ComputeForMatch(settings, FileAnalysisDisclosureVersion.CurrentScope),
+            ExtractionPromptAdditionInForce = Truncate(settings.ExtractionPromptAddition, 4000),
         };
 
         context.FileAnalysisJobs.Add(job);
@@ -150,6 +163,7 @@ public class FileAnalysisService
                 promptTemplate,
                 target,
                 settings.MaxTokens,
+                settings.ExtractionPromptAddition,
                 cancellationToken);
 
             var maxFutureDate = timeProvider.GetUtcNow().UtcDateTime.AddDays(settings.MaxFutureTransactionDays);
@@ -233,7 +247,7 @@ public class FileAnalysisService
         var contactNames = await LoadMatchedContactNamesAsync(job, cancellationToken);
         // Only used as the fallback for jobs predating AutoLinkThresholdInForce; a stamped job ignores it.
         var liveSettings = await settingsLookup.GetAsync(cancellationToken);
-        return MapJob(job, contactNames, liveSettings.MatchMaxVocabulary, liveSettings.AutoLinkThreshold);
+        return MapJob(job, contactNames, liveSettings.AutoLinkThreshold);
     }
 
     // Slim, batched id→name projection for the matched contacts: a single query over the distinct
@@ -485,90 +499,165 @@ public class FileAnalysisService
     }
 
     /// <summary>
+    /// The text of the match prompt a names-only run sends, unchanged from before issue #433; stamped as
+    /// <see cref="FileAnalysisJob.MatchPromptVersion"/> on such a run.
+    /// </summary>
+    private const string LegacyMatchPromptVersion = "1.0";
+
+    /// <summary>
+    /// The default payload budget, in characters of serialised vocabulary JSON (issue #433 §10): about
+    /// 50 000 tokens for Latin text (an estimate, not measured). Over it, aliases are dropped for the run,
+    /// then descriptions; names are always sent. Not a count cap and never a reason to skip matching.
+    /// </summary>
+    public const int DefaultMatchVocabularyBudget = 200_000;
+
+    /// <summary>The payload budget in force. Settable so a test can reach the reduction stages cheaply.</summary>
+    public int MatchVocabularyBudget { get; init; } = DefaultMatchVocabularyBudget;
+
+    private static readonly System.Text.Json.JsonSerializerOptions BudgetJsonOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    /// <summary>
     /// The AI <em>match</em> step (issue #266): resolve each extracted candidate's free-text
-    /// merchant/category to existing contacts/tags via a second LLM call that is sent the user's
-    /// contact + tag NAMES only (token-mapped), then persist the resolved ids/confidences. Runs
-    /// only on an extraction-completed job; a provider failure/over-cap is recorded on
-    /// <see cref="FileAnalysisJob.MatchStatus"/> and never blocks importing the candidates.
+    /// merchant/category to existing contacts/tags via a second LLM call, then persist the resolved
+    /// ids/confidences. Since issue #433 the vocabulary carries contact aliases and tag descriptions
+    /// when the job's consent covers them, every active contact and tag is sent (no count cap), and the
+    /// administrator's match guidance is added. Runs only on an extraction-completed job; a provider
+    /// failure is recorded on <see cref="FileAnalysisJob.MatchStatus"/> and never blocks importing.
     /// </summary>
     public async Task<ExistingFileAnalysisJob> MatchAsync(Guid jobId, CancellationToken cancellationToken = default)
     {
         await EnsureEnabledAsync(cancellationToken);
 
-        // One snapshot for the whole match run, and it is what gets stamped on the job — so the
-        // threshold the matches were applied under is the threshold the read DTO later reports.
+        // One snapshot for the whole match run, used for the destination check AND for everything sent,
+        // so the check and the transfer cannot describe different moments (issue #433 §3 step 2).
         var matchSettings = await settingsLookup.GetAsync(cancellationToken);
 
+        // A failed read cannot verify the job's consent: refuse (503) rather than guess.
+        if (matchSettings.ReadFailed)
+            throw new FileAnalysisUnavailableException();
+
         // Same refusal as the analyze path: an unusable model or destination stops the run rather than
-        // quietly falling back to the shipped defaults. The match call sends contact and tag NAMES to
-        // the provider, so it is a transfer too.
+        // quietly falling back to the shipped defaults. The match call is a transfer too.
         var matchTarget = RequireTarget(matchSettings);
 
-        var job = await BeginMatchAsync(jobId, cancellationToken);
-        job.AutoLinkThresholdInForce = matchSettings.AutoLinkThreshold;
-        job.MaxTokensInForce = matchSettings.MaxTokens;
-        job.MatchTimeoutSecondsInForce = matchSettings.MatchTimeoutSeconds;
+        var job = await BeginMatchAsync(jobId, matchSettings, matchTarget, cancellationToken);
 
-        var vocabulary = await BuildVocabularyAsync(cancellationToken);
-        job.VocabularyCount = vocabulary.TotalCount;
-
-        // Over the per-list cap ⇒ skip the LLM (manual fallback) rather than truncate-and-leak a subset.
-        var cap = matchSettings.MatchMaxVocabulary;
-        if (vocabulary.LargestListCount > cap)
-        {
-            job.MatchStatus = ContextMatchStatus.Skipped;
-            await context.SaveChangesAsync(cancellationToken);
-            logger.LogInformation("Match for job {JobId} skipped — vocabulary over cap ({Count} > {Cap}).",
-                jobId, vocabulary.LargestListCount, cap);
-            return await RequireJobAsync(jobId, cancellationToken);
-        }
-
-        var candidates = job.CandidateTransactions.ToList();
-        var inputs = candidates
-            .Select((c, index) => new MatchCandidateInput(index, c.Merchant, c.CategoryHint))
-            .ToList();
-
+        var providerCalled = false;
         try
         {
+            job.AutoLinkThresholdInForce = matchSettings.AutoLinkThreshold;
+            job.MaxTokensInForce = matchSettings.MaxTokens;
+            job.MatchTimeoutSecondsInForce = matchSettings.MatchTimeoutSeconds;
+
+            var scope = job.MatchVocabularyScope ?? FileAnalysisMatchVocabularyScope.NamesOnly;
+            var extended = scope == FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions;
+
+            var vocabulary = await BuildVocabularyAsync(extended, cancellationToken);
+
+            // Stamps BEFORE the provider call, in a second save after the claim (issue #433 §3 step 6):
+            // a failed or timed-out match still records what was sent.
+            job.VocabularyCount = vocabulary.TotalCount;
+            job.ContactCount = vocabulary.Contacts.Count;
+            job.TagCount = vocabulary.Tags.Count;
+            job.AliasCount = vocabulary.Contacts.Sum(c => c.Aliases?.Count ?? 0);
+            job.TagDescriptionCount = vocabulary.Tags.Count(t => t.Description is not null);
+            job.VocabularyReduction = vocabulary.Reduction;
+            job.MatchPromptAdditionInForce = extended ? Truncate(matchSettings.MatchPromptAddition, 4000) : null;
+            job.MatchPromptVersion = extended ? Truncate(options.PromptVersion, 32) : LegacyMatchPromptVersion;
+            await context.SaveChangesAsync(cancellationToken);
+
+            var candidates = job.CandidateTransactions.ToList();
+            var inputs = candidates
+                .Select((c, index) => new MatchCandidateInput(index, c.Merchant, c.CategoryHint))
+                .ToList();
+
+            var prompt = extended
+                ? new MatchPromptOptions(true, matchSettings.MatchPromptAddition)
+                : MatchPromptOptions.Legacy;
+
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(TimeSpan.FromSeconds(matchSettings.MatchTimeoutSeconds));
 
+            providerCalled = true;
             var results = await provider.MatchTransactionsAsync(
-                inputs, vocabulary.Contacts, vocabulary.Tags, matchTarget, matchSettings.MaxTokens,
+                inputs, vocabulary.Contacts, vocabulary.Tags, matchTarget, matchSettings.MaxTokens, prompt,
                 timeoutCts.Token);
 
             ApplyMatches(candidates, results, vocabulary, matchSettings.AutoLinkThreshold);
 
             job.MatchStatus = ContextMatchStatus.Completed;
+            job.MatchGeneration++;
             await SaveMatchesAsync(cancellationToken);
 
             logger.LogInformation("Match for job {JobId} completed over {Vocab} names.", jobId, job.VocabularyCount);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
+        catch (Exception ex)
         {
-            // Provider error, timeout, or malformed output — record a CURATED reason (never the raw
-            // provider body) and leave the extracted candidates intact and importable. The credential
-            // case is separated for the same reason the analysis path separates it (issue #445): only
-            // one of the two is the administrator's to fix, and there is no MatchFailureCode column, so
-            // the message is the only place the distinction can live.
+            // Every failure after the claim ends the run as Failed — including the caller disconnecting,
+            // which used to escape this handler and leave the job Running for good (issue #433). Saved
+            // with CancellationToken.None for exactly that case. The reason is CURATED, never the raw
+            // provider body: it is surfaced in the review dialog.
+            var callerCancelled = ex is OperationCanceledException && cancellationToken.IsCancellationRequested;
             logger.LogError(ex, "Match for job {JobId} failed.", jobId);
+
             job.MatchStatus = ContextMatchStatus.Failed;
-            job.MatchFailureMessage = ex is FileAnalysisCredentialException
-                ? "The matching provider credential is missing or unreadable on this server."
-                : "The matching provider returned an error.";
-            await context.SaveChangesAsync(cancellationToken);
+            job.MatchGeneration++;
+            job.MatchFailureMessage = !providerCalled
+                ? "Matching could not start."
+                : ex is FileAnalysisCredentialException
+                    ? "The matching provider credential is missing or unreadable on this server."
+                    : "The matching provider returned an error.";
+            await SaveFailedMatchAsync(job);
+
+            if (callerCancelled)
+                throw;
         }
 
         return await RequireJobAsync(jobId, cancellationToken);
     }
 
     /// <summary>
-    /// Loads the job and claims it for matching. The precondition failures here are HTTP errors (409);
-    /// a provider failure later is not — that sets <c>MatchStatus</c> and still returns the job so Review
-    /// opens with the raw candidates. The running guard is persisted before the long provider call so an
-    /// overlapping POST hits the 409.
+    /// Records a failed match even when the request was cancelled. Pending candidate changes from a
+    /// half-applied run are discarded first, so only the job's status is written.
     /// </summary>
-    private async Task<FileAnalysisJob> BeginMatchAsync(Guid jobId, CancellationToken cancellationToken)
+    private async Task SaveFailedMatchAsync(FileAnalysisJob job)
+    {
+        foreach (var entry in context.ChangeTracker.Entries()
+                     .Where(e => e.Entity is not FileAnalysisJob && e.State != EntityState.Unchanged)
+                     .ToList())
+        {
+            entry.State = entry.State == EntityState.Added ? EntityState.Detached : EntityState.Unchanged;
+        }
+
+        try
+        {
+            await context.SaveChangesAsync(CancellationToken.None);
+        }
+        catch (DbUpdateException saveEx)
+        {
+            // Nothing more can be done for this run; the original failure is what the caller sees.
+            logger.LogError(saveEx, "Recording the failed match for job {JobId} failed.", job.Id);
+        }
+    }
+
+    /// <summary>
+    /// Loads the job, checks that the destination and disclosure still match its consent, and claims it
+    /// for matching. The precondition failures here are HTTP errors (<c>409</c>), and nothing has been
+    /// sent when one is raised; a provider failure later is not — that sets <c>MatchStatus</c> and still
+    /// returns the job so Review opens with the raw candidates.
+    ///
+    /// <para>
+    /// The claim is the first write, and it is guarded twice: the running check, and the
+    /// <see cref="FileAnalysisJob.MatchGeneration"/> concurrency token. The check alone is
+    /// check-then-save, so two simultaneous requests could both pass it; the token makes the second
+    /// save fail, and that failure is the same <c>409</c> "already running" (issue #433 §3 step 6).
+    /// </para>
+    /// </summary>
+    private async Task<FileAnalysisJob> BeginMatchAsync(
+        Guid jobId, FileAnalysisSettings settings, FileAnalysisTarget target, CancellationToken cancellationToken)
     {
         var job = await context.FileAnalysisJobs
             .Include(j => j.CandidateTransactions)
@@ -581,66 +670,132 @@ public class FileAnalysisService
         if (job.MatchStatus == ContextMatchStatus.Running)
             throw new DomainConflictException($"A match for job {jobId} is already running.");
 
+        EnsureDestinationUnchanged(job, settings, target);
+
         job.MatchStatus = ContextMatchStatus.Running;
         job.MatchFailureMessage = null;
-        await context.SaveChangesAsync(cancellationToken);
+        job.MatchGeneration++;
+        try
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            throw new DomainConflictException($"A match for job {jobId} is already running.");
+        }
 
         return job;
     }
 
     /// <summary>
+    /// Refuses a match whose destination or match disclosure differs from the one the job was consented
+    /// under (issue #433 §3 step 2). Legacy stamps that are <c>NULL</c> skip their part of the check,
+    /// which is the pre-feature behaviour. The extraction-guidance flag is not part of the match version:
+    /// extraction already ran, so toggling that guidance must not refuse open analyses.
+    /// </summary>
+    private static void EnsureDestinationUnchanged(
+        FileAnalysisJob job, FileAnalysisSettings settings, FileAnalysisTarget target)
+    {
+        var changed =
+            (job.AnalyzerBaseUrlHost is { } host
+                && !string.Equals(host, Truncate(HostOf(target.BaseUrl), 256), StringComparison.OrdinalIgnoreCase))
+            || (job.ProcessorInForce is { } processor
+                && !string.Equals(processor, Truncate(settings.Processor, 128), StringComparison.Ordinal))
+            || (job.ProcessorRegionInForce is { } region
+                && !string.Equals(region, Truncate(settings.ProcessorRegion, 128), StringComparison.Ordinal))
+            || (job.MatchDisclosureVersionInForce is { } version
+                && !string.Equals(
+                    version,
+                    FileAnalysisDisclosureVersion.ComputeForMatch(
+                        settings, job.MatchVocabularyScope ?? FileAnalysisMatchVocabularyScope.NamesOnly),
+                    StringComparison.Ordinal));
+
+        if (changed)
+            throw new FileAnalysisDestinationChangedException();
+    }
+
+    /// <summary>
     /// What the provider is allowed to see, and how to read its answer back. Names are token-mapped both
     /// ways: the entries carry opaque refs plus names, and the maps turn a returned ref back into an id —
-    /// which is also the set-membership check that drops any ref the model invented.
+    /// which is also the set-membership check that drops any ref the model invented. An alias is never a
+    /// ref: a match on one is answered with its contact's ref.
     /// </summary>
     private sealed record MatchVocabulary(
         IReadOnlyList<VocabularyEntry> Contacts,
         IReadOnlyDictionary<string, Guid> ContactIdByRef,
         IReadOnlyList<VocabularyEntry> Tags,
-        IReadOnlyDictionary<string, Guid> TagIdByRef)
+        IReadOnlyDictionary<string, Guid> TagIdByRef,
+        FileAnalysisVocabularyReduction Reduction)
     {
         public int TotalCount => Contacts.Count + Tags.Count;
-
-        public int LargestListCount => Math.Max(Contacts.Count, Tags.Count);
     }
 
     /// <summary>
-    /// Builds the vocabulary: non-archived contact + tag NAMES only (no ids/notes/org numbers), each
-    /// assigned an opaque short ref token.
+    /// Builds the vocabulary: every non-archived contact and tag, each assigned an opaque short ref
+    /// token. With <paramref name="extended"/> (the job's consent covers it, issue #433) a contact carries
+    /// its alias values and a tag its description; never alias labels, notes or organisation numbers.
+    ///
     /// <para>
-    /// Contact moved from OdysseyContext to OdysseyContext (issue #325 follow-up): the all-contacts
-    /// vocabulary is fetched through the lookup (ContactRef.Name already encodes the display-name
-    /// resolution — DisplayName else Person "First Last" / Org LegalName).
+    /// There is no count cap. The only bound is the payload budget, applied in stages: over it, aliases
+    /// are dropped; still over, descriptions are dropped. Names are always sent, and matching always runs.
     /// </para>
     /// </summary>
-    private async Task<MatchVocabulary> BuildVocabularyAsync(CancellationToken cancellationToken)
+    private async Task<MatchVocabulary> BuildVocabularyAsync(bool extended, CancellationToken cancellationToken)
     {
-        var contacts = await contactLookup.ListActiveContactRefsAsync(cancellationToken);
+        IReadOnlyList<ContactMatchRef> contacts = extended
+            ? await contactLookup.ListActiveContactMatchRefsAsync(cancellationToken)
+            : (await contactLookup.ListActiveContactRefsAsync(cancellationToken))
+                .Select(c => new ContactMatchRef(c.ContactId, c.Name, []))
+                .ToList();
+
         var tags = await context.TransactionTags
             .Where(t => t.Archived == null)
-            .Select(t => new { t.TransactionTagId, t.Name })
+            .Select(t => new { t.TransactionTagId, t.Name, t.Description })
             .ToListAsync(cancellationToken);
 
-        var contactEntries = new List<VocabularyEntry>(contacts.Count);
         var contactIdByRef = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        var fullContacts = new List<VocabularyEntry>(contacts.Count);
         for (var i = 0; i < contacts.Count; i++)
         {
             var token = $"c{i}";
-            contactEntries.Add(new VocabularyEntry(token, contacts[i].Name));
+            fullContacts.Add(new VocabularyEntry(
+                token, contacts[i].Name, extended && contacts[i].Aliases.Count > 0 ? contacts[i].Aliases : null));
             contactIdByRef[token] = contacts[i].ContactId;
         }
 
-        var tagEntries = new List<VocabularyEntry>(tags.Count);
         var tagIdByRef = new Dictionary<string, Guid>(StringComparer.Ordinal);
+        var fullTags = new List<VocabularyEntry>(tags.Count);
         for (var i = 0; i < tags.Count; i++)
         {
             var token = $"t{i}";
-            tagEntries.Add(new VocabularyEntry(token, tags[i].Name));
+            fullTags.Add(new VocabularyEntry(
+                token, tags[i].Name,
+                Description: extended && !string.IsNullOrWhiteSpace(tags[i].Description) ? tags[i].Description : null));
             tagIdByRef[token] = tags[i].TransactionTagId;
         }
 
-        return new MatchVocabulary(contactEntries, contactIdByRef, tagEntries, tagIdByRef);
+        var reduction = FileAnalysisVocabularyReduction.None;
+        IReadOnlyList<VocabularyEntry> sentContacts = fullContacts;
+        IReadOnlyList<VocabularyEntry> sentTags = fullTags;
+
+        if (extended && Measure(sentContacts, sentTags) > MatchVocabularyBudget)
+        {
+            sentContacts = fullContacts.Select(c => c with { Aliases = null }).ToList();
+            reduction = FileAnalysisVocabularyReduction.AliasesOmitted;
+
+            if (Measure(sentContacts, sentTags) > MatchVocabularyBudget)
+            {
+                sentTags = fullTags.Select(t => t with { Description = null }).ToList();
+                reduction = FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted;
+            }
+        }
+
+        return new MatchVocabulary(sentContacts, contactIdByRef, sentTags, tagIdByRef, reduction);
     }
+
+    /// <summary>The serialised size of a vocabulary, in characters, for the payload budget.</summary>
+    private static int Measure(IReadOnlyList<VocabularyEntry> contacts, IReadOnlyList<VocabularyEntry> tags) =>
+        System.Text.Json.JsonSerializer.Serialize(new { contacts, tags }, BudgetJsonOptions).Length;
 
     /// <summary>
     /// Writes the provider's answer onto the candidate rows. The server owns the auto-link policy: a field
@@ -881,7 +1036,7 @@ public class FileAnalysisService
         value is null ? null : value.Length > maxLength ? value[..maxLength] : value;
 
     private static ExistingFileAnalysisJob MapJob(
-        FileAnalysisJob job, IReadOnlyDictionary<Guid, string> contactNames, int matchMaxVocabulary,
+        FileAnalysisJob job, IReadOnlyDictionary<Guid, string> contactNames,
         decimal liveAutoLinkThreshold) => new(
         Id: job.Id,
         AccountFileId: job.AccountFileId,
@@ -900,7 +1055,13 @@ public class FileAnalysisService
         // The job's own stamped threshold, so a later edit cannot re-interpret a completed job's
         // stored confidences. Null only for jobs predating the column — those fall back to live.
         AutoLinkThreshold: (double)(job.AutoLinkThresholdInForce ?? liveAutoLinkThreshold),
-        MaxVocabulary: matchMaxVocabulary
+        // Issue #433. A job without a stamp predates the feature and is names-only for its whole life.
+        MatchVocabularyScope: job.MatchVocabularyScope ?? FileAnalysisMatchVocabularyScope.NamesOnly,
+        ContactCount: job.ContactCount,
+        TagCount: job.TagCount,
+        AliasCount: job.AliasCount,
+        TagDescriptionCount: job.TagDescriptionCount,
+        VocabularyReduction: job.VocabularyReduction
     );
 
     private static FileAnalysisAuditEntry MapAuditEntry(FileAnalysisJob job)
@@ -937,7 +1098,18 @@ public class FileAnalysisService
             VocabularyCount: job.VocabularyCount,
             AnalyzerBaseUrlHost: job.AnalyzerBaseUrlHost,
             ProcessorInForce: job.ProcessorInForce,
-            ProcessorRegionInForce: job.ProcessorRegionInForce);
+            ProcessorRegionInForce: job.ProcessorRegionInForce,
+            // Issue #433: digests only, never the text. The scope is NOT defaulted here: null means the job
+            // predates the feature, which is how "none sent" is told apart from "not recorded".
+            ExtractionPromptAdditionDigest: PromptAdditionDigest.Of(job.ExtractionPromptAdditionInForce),
+            MatchPromptAdditionDigest: PromptAdditionDigest.Of(job.MatchPromptAdditionInForce),
+            MatchVocabularyScope: job.MatchVocabularyScope,
+            // Issue #434: what the latest match run sent, for the log's "Matched against" fact.
+            ContactCount: job.ContactCount,
+            AliasCount: job.AliasCount,
+            TagCount: job.TagCount,
+            TagDescriptionCount: job.TagDescriptionCount,
+            VocabularyReduction: job.VocabularyReduction);
     }
 
     private static ExistingFileAnalysisCandidateTransaction MapCandidate(

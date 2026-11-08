@@ -64,7 +64,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(46, NumericRows.Count);
+        Assert.Equal(45, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));

@@ -166,6 +166,29 @@ internal static class SettingAdvisories
     /// the administrator just typed, and states the two things that are easy to get wrong: the change
     /// is not retroactive, and cost and extraction quality both move with it.
     /// </summary>
+    /// <summary>
+    /// On a prompt addition, whenever it is set (issue #433 §5.2): where the text goes, what must not be
+    /// in it, and the consent consequence of turning it on or off. Never echoes the text.
+    /// </summary>
+    public static Func<SystemSettingsDto, AdvisoryContext, string?> GuidanceSet(
+        Func<SystemSettingsDto, string> read, bool refusesOpenMatches) =>
+        (dto, _) => string.IsNullOrEmpty(read(dto))
+            ? null
+            : $"This text is sent to {dto.FileAnalysisProcessor} with every "
+              + (refusesOpenMatches ? "match" : "analysis")
+              + ". Don't include personal data or passwords. Switching it between empty and set makes "
+              + "every user consent again"
+              + (refusesOpenMatches ? ", and refuses matches on analyses that are already open." : ".");
+
+    /// <summary>
+    /// On the region, lawful basis and privacy-notice URL (issue #433 §5.2): these are part of the
+    /// match disclosure version, so changing one refuses matches on analyses that are already open.
+    /// The processor row keeps its own advisory, which its tests pin as absent when the host matches.
+    /// </summary>
+    public static string? DisclosureChangeRefusesOpenMatches(SystemSettingsDto dto, AdvisoryContext context) =>
+        "Changing this makes users consent again and refuses matching on analyses that are already open; "
+        + "those statements need a new analysis.";
+
     public static string? ModelAwayFromDefault(SystemSettingsDto dto, AdvisoryContext context) =>
         string.Equals(dto.FileAnalysisModel, SystemSettingsDefaults.FileAnalysisModel, StringComparison.Ordinal)
             ? null

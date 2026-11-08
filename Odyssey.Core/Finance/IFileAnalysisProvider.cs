@@ -24,6 +24,7 @@ public interface IFileAnalysisProvider
         string promptTemplate,
         FileAnalysisTarget target,
         int maxTokens,
+        string? promptAddition,
         CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -39,7 +40,22 @@ public interface IFileAnalysisProvider
         IReadOnlyList<VocabularyEntry> tagVocabulary,
         FileAnalysisTarget target,
         int maxTokens,
+        MatchPromptOptions prompt,
         CancellationToken cancellationToken = default);
+}
+
+/// <summary>
+/// How the match prompt is worded for one run (issue #433 §13).
+/// </summary>
+/// <param name="Extended">
+/// The job's consent covers aliases, descriptions and guidance. <see langword="false"/> sends the
+/// pre-feature prompt byte for byte, so a names-only job's <c>1.0</c> stamp stays truthful.
+/// </param>
+/// <param name="Addition">The administrator's match guidance; honoured only when <paramref name="Extended"/>.</param>
+public sealed record MatchPromptOptions(bool Extended, string? Addition)
+{
+    /// <summary>The pre-feature prompt.</summary>
+    public static readonly MatchPromptOptions Legacy = new(false, null);
 }
 
 public record ExtractedTransaction(
@@ -62,7 +78,12 @@ public record ExtractedTransaction(
 public record MatchCandidateInput(int Index, string? Merchant, string? Category);
 
 /// <summary>A reference-list entry: an opaque token plus the name shown to the model.</summary>
-public record VocabularyEntry(string Ref, string Name);
+/// <summary>
+/// One vocabulary entry: an opaque ref and a name, plus (issue #433) a contact's aliases or a tag's
+/// description when the run sends them. Null means "not sent", never "none".
+/// </summary>
+public record VocabularyEntry(
+    string Ref, string Name, IReadOnlyList<string>? Aliases = null, string? Description = null);
 
 /// <summary>The model's match result for one candidate index (refs are validated by the caller).</summary>
 public record MatchedCandidate(

@@ -270,11 +270,6 @@ public sealed record SystemSettingsUpdate
         + "it bounds both extraction completeness and per-request API spend.")]
     public int? FileAnalysisMaxTokens { get; set; }
 
-    [Range(1, 5000, ErrorMessage =
-        "Match vocabulary cap must be between 1 and 5000. Over the cap the match step is skipped "
-        + "rather than truncated, and every name in it is sent to the provider on each match call.")]
-    public int? FileAnalysisMatchMaxVocabulary { get; set; }
-
     [Range(5, 600, ErrorMessage =
         "Match timeout must be between 5 and 600 seconds. On timeout the job records a failed match "
         + "and falls back to manual review.")]
@@ -442,6 +437,21 @@ public sealed record SystemSettingsUpdate
     [StringLength(256, ErrorMessage =
         "The provider base URL cannot exceed 256 characters.")]
     public string? FileAnalysisBaseUrl { get; set; }
+
+    /// <summary>
+    /// Administrator guidance appended to the extraction prompt (issue #433). <c>""</c> clears it.
+    /// The <c>[StringLength]</c> here is a <strong>transport</strong> bound only: a 4000-character value
+    /// sent with CRLF line breaks is up to 8000 long before normalisation. The 4000 limit is enforced
+    /// on the normalised value by <c>PromptAdditionRule</c>, through the descriptor.
+    /// </summary>
+    [StringLength(PromptAdditionRule.MaxRawLength, ErrorMessage =
+        "Guidance is far over the 4000-character limit.")]
+    public string? FileAnalysisExtractionPromptAddition { get; set; }
+
+    /// <summary>Administrator guidance appended to the match prompt (issue #433). As above.</summary>
+    [StringLength(PromptAdditionRule.MaxRawLength, ErrorMessage =
+        "Guidance is far over the 4000-character limit.")]
+    public string? FileAnalysisMatchPromptAddition { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Weather (issue #348). All four take system-settings.update. The two strings are AllowEmpty:

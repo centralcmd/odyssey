@@ -384,6 +384,8 @@ public sealed class AccountsController : ControllerBase
 
     [HttpPost("{accountId}/files/{fileId}/analyze", Name = "AnalyzeAccountFile")]
     [Authorize(Policy = PermissionClaims.FileAnalysisCreate)]
+    [EnableRateLimiting(FileAnalysisRateLimiting.AnalyzePolicy)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(AnalyzeFileResponse))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]

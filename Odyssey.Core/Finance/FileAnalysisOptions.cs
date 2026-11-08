@@ -60,8 +60,8 @@ public class FileAnalysisOptions
     // ── AI matching step (issue #266) ──
     //
     // The FileAnalysis:Match SECTION no longer exists in appsettings.json: AutoLinkThreshold moved to
-    // the settings store in issue #421 Wave 1, and MaxVocabulary/TimeoutSeconds followed in issue #434
-    // (keys 2 and 3). The class survives — binding an absent section is now the expected case — for the
+    // the settings store in issue #421 Wave 1, and TimeoutSeconds followed in issue #434. The vocabulary
+    // cap that moved with it was retired in issue #433: matching is never skipped for vocabulary size. The class survives — binding an absent section is now the expected case — for the
     // same reason Wave 1 kept the disclosure strings here: it is the one place a reader can see what
     // these values are without reading a migration.
     public MatchOptions Match { get; set; } = new();
@@ -71,13 +71,6 @@ public class MatchOptions
 {
     /// <summary>A returned match ≥ this is auto-linked (MatchMethod=Llm); below it is a suggestion only.</summary>
     public double AutoLinkThreshold { get; set; } = 0.60;
-
-    /// <summary>
-    /// Per-list cap (contacts, tags). Over cap ⇒ the LLM match is skipped, not truncated.
-    /// Database-backed since issue #434; the value here is documentation of record, initialised from the
-    /// same shared constant the migration seeds so the two cannot disagree.
-    /// </summary>
-    public int MaxVocabulary { get; set; } = SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary;
 
     /// <summary>
     /// Hard per-match-call timeout; on timeout ⇒ MatchStatus = Failed and manual fallback.

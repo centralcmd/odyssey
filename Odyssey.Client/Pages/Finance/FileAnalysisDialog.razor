@@ -40,12 +40,22 @@
                             <OdsAlert Severity="Severity.Warning">@notice</OdsAlert>
                         </div>
                     }
+                    @* 429 on analyze (issue #434): the alert takes focus and carries the still-focusable
+                       Send action; the footer's Send steps aside while it shows. *@
+                    @if (_analyzeRateLimited)
+                    {
+                        <FileAnalysisRateLimitNotice RetryAfter="_analyzeRetryAfter" Label="Send & analyze"
+                                                     StartIcon="@Icons.Material.Filled.CloudUpload"
+                                                     MessageId="fan-analyze-ratelimit-msg"
+                                                     OnAction="ProceedFromConsentAsync" />
+                    }
+                    <div class="fan-consent-start" role="group" aria-label="What is sent, and your consent" tabindex="-1" @ref="_consentStartRef">
                     <FileAnalysisConsentPanel FileName="@FileName" FileSizeBytes="FileSizeBytes"
-                                              VocabularyCount="_session.VocabularyCount"
                                               Disclosure="@_disclosure"
-                                              DisclosureResolved="@Disclosures.IsResolved"
+                                              DisclosureResolved="@DisclosureUsable"
                                               Checked="_consentChecked"
                                               CheckedChanged="@(v => _consentChecked = v)" />
+                    </div>
                 }
                 else if (Phase == FileAnalysisPhase.Analyzing)
                 {
@@ -71,7 +81,9 @@
                             <div class="fan-step active"><span class="fan-step-dot"></span>Matching against your records…</div>
                             <div class="fan-step"><span class="fan-step-dot"></span>Ready to review</div>
                         </div>
-                        <p class="fan-state-note">Only your contact and tag <b>names</b> are sent for matching@(_session.VocabularyCount > 0 ? $" — {_session.VocabularyCount} names this time" : ""). The statement isn’t re-sent.</p>
+                        <p class="fan-state-note">@(_session.Job?.MatchVocabularyScope == Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope.NamesOnly
+                            ? "Only your contact and tag names are sent for matching, as when this analysis started. The statement isn’t re-sent."
+                            : "Your contacts (with aliases) and tags (with descriptions) are sent for matching. The statement isn’t re-sent.")</p>
                     </div>
                 }
                 else if (Phase == FileAnalysisPhase.ReanalyzeConfirm)
@@ -191,6 +203,7 @@
                 {
                     <FileAnalysisReviewGrid Session="_session" FileName="@FileName" AccountName="@AccountName"
                                             OnReMatch="ReMatchAsync" OnReanalyze="ReanalyzeAsync"
+                                            OnStartNewAnalysis="StartNewAnalysisAsync"
                                             OnCreateContact="CreateContactAsync"
                                             OnCreateTag="CreateTagAsync"
                                             OnAnnounce="OnGridAnnounce" />
@@ -201,11 +214,14 @@
                 @if (Phase == FileAnalysisPhase.Consent)
                 {
                     <MudButton Variant="Variant.Text" OnClick="CloseAsync">Cancel</MudButton>
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.CloudUpload"
-                               Disabled="@(!_consentChecked)" OnClick="ProceedFromConsentAsync">
-                        Send &amp; analyze
-                    </MudButton>
+                    @if (!_analyzeRateLimited)
+                    {
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.CloudUpload"
+                                   Disabled="@(!_consentChecked || !DisclosureUsable)" OnClick="ProceedFromConsentAsync">
+                            Send &amp; analyze
+                        </MudButton>
+                    }
                 }
                 else if (Phase == FileAnalysisPhase.Analyzing)
                 {

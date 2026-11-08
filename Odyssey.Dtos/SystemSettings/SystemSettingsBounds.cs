@@ -158,9 +158,6 @@ public static class SystemSettingsBounds
     public const int FileAnalysisMaxTokensMin = 1024;
     public const int FileAnalysisMaxTokensMax = 64000;
 
-    public const int FileAnalysisMatchMaxVocabularyMin = 1;
-    public const int FileAnalysisMatchMaxVocabularyMax = 5000;
-
     public const int FileAnalysisMatchTimeoutSecondsMin = 5;
     public const int FileAnalysisMatchTimeoutSecondsMax = 600;
 

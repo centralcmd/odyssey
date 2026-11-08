@@ -372,7 +372,7 @@
         Advisory="@AdvisoryFor(item)"
         Bound="@BoundFor(item)"
         Dirty="@IsDirty(item)"
-        Wide="@(item.Control == SettingControl.Text)"
+        Wide="@(item.Control is SettingControl.Text or SettingControl.LongText)"
         Class="@FieldClass(item)"
         data-ss-row="@item.Key">
         @RenderControl(item)

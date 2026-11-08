@@ -109,3 +109,7 @@
   font-size: 0.75rem; line-height: 1.5; color: var(--mud-palette-text-secondary);
 }
 .fan-fork-note ::deep .material-icons { color: var(--finance-pending); flex: none; margin-top: 1px; }
+
+/* The consent step's focus target after "Start new analysis" (issue #434). A named group, focused
+   programmatically; the ring stays visible, as for the re-prompt above. */
+.fan-consent-start:focus { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: 10px; }

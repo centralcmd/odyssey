@@ -1,0 +1,13 @@
+/* The degraded-notice look (FileAnalysisReviewGrid's .fan-degraded), for an alert that takes focus
+   (issue #434). Its own scoped copy because a scoped rule does not reach another component's markup. */
+.fan-degraded {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: 11px 14px; border-radius: 10px; margin-bottom: var(--space-3);
+  background: var(--finance-pending-soft);
+  border: 1px solid color-mix(in srgb, var(--finance-pending) 32%, transparent);
+}
+.fan-degraded ::deep .material-icons { color: var(--pending-text); flex: none; }
+.fan-degraded-text { flex: 1; min-width: 0; font: var(--fw-regular) 12.5px/1.5 var(--font-sans); color: var(--warning-text); text-wrap: pretty; }
+.fan-degraded-text ::deep b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+/* The ring is not suppressed on programmatic focus — the same call the disclosure re-prompt makes. */
+.fan-focus-alert:focus { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }

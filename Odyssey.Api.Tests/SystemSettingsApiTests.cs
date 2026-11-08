@@ -162,8 +162,9 @@ public class SystemSettingsApiTests
         // and -5 when the standalone insurance-policy feature was, then +1 for the per-property
         // smart-tag cap (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync
         // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
-        // for the background-job run retention (issue #409).
-        Assert.Equal(73, rows.Count);
+        // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
+        // and +2 for the extraction and match prompt guidance (issue #433).
+        Assert.Equal(74, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

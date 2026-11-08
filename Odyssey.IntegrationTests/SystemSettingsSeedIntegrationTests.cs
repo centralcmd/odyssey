@@ -96,8 +96,9 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
             // (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync start
             // date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
-            // for the background-job run retention (issue #409).
-            Assert.Equal(73, rows.Count);
+            // for the background-job run retention (issue #409), then +2 -1 for the two prompt-guidance
+            // rows and the retired match-vocabulary cap (issue #433).
+            Assert.Equal(74, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)

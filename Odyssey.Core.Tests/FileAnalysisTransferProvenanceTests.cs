@@ -476,7 +476,8 @@ public class FileAnalysisTransferProvenanceTests
 
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode, string promptTemplate,
-            FileAnalysisTarget target, int maxTokens, CancellationToken cancellationToken = default)
+            FileAnalysisTarget target, int maxTokens, string? promptAddition,
+            CancellationToken cancellationToken = default)
         {
             CallCount++;
             LastTarget = target;
@@ -487,7 +488,8 @@ public class FileAnalysisTransferProvenanceTests
             IReadOnlyList<MatchCandidateInput> candidates,
             IReadOnlyList<VocabularyEntry> contactVocabulary,
             IReadOnlyList<VocabularyEntry> tagVocabulary,
-            FileAnalysisTarget target, int maxTokens, CancellationToken cancellationToken = default)
+            FileAnalysisTarget target, int maxTokens, MatchPromptOptions prompt,
+            CancellationToken cancellationToken = default)
         {
             CallCount++;
             LastTarget = target;

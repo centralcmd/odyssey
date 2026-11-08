@@ -129,7 +129,7 @@ public class FileAnalysisRuntimeSettingsApiTests
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
-            new SystemSettingsUpdate { FileAnalysisMatchMaxVocabulary = 400 });
+            new SystemSettingsUpdate { FileAnalysisMatchTimeoutSeconds = 45 });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var dto = await response.Content.ReadFromJsonAsync<SystemSettingsDto>();

@@ -59,6 +59,11 @@ public sealed class FileAnalysisDisclosureController(
             // Computed from the same snapshot the analyze path will recompute it from, so a gate opened
             // on this response and a transfer made against an unchanged snapshot agree by construction.
             DisclosureVersion = FileAnalysisDisclosureVersion.Compute(settings),
+            // Issue #433: the same values the version above hashes, from the same snapshot.
+            MatchVocabularyFields = [.. FileAnalysisDisclosureVersion.FieldsFor(FileAnalysisDisclosureVersion.CurrentScope)],
+            MatchVocabularyCoverage = FileAnalysisDisclosureVersion.Coverage,
+            ExtractionGuidanceInForce = settings.ExtractionPromptAddition is not null,
+            MatchGuidanceInForce = settings.MatchPromptAddition is not null,
         });
     }
 }

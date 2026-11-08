@@ -22,7 +22,7 @@ public sealed record ApiProblem
     /// The machine-readable error code from the problem's <c>code</c> extension, when present
     /// (e.g. <c>feature_disabled</c>). Reserved for callers that need to discriminate a specific
     /// failure beyond the HTTP status — today the feature-disabled branches key on the <c>503</c>
-    /// status itself, so nothing reads this yet; it is parsed so that wiring is already in place.
+    /// status itself; <see cref="ApiProblemExtensions.IsFileAnalysisDestinationChanged"/> reads it.
     /// </summary>
     public string? Code { get; init; }
 
@@ -111,6 +111,17 @@ public static class ApiProblemExtensions
 
     /// <summary>The same web-defaults options, for reading a problem extension member.</summary>
     internal static JsonSerializerOptions SerializerOptions => Options;
+
+    /// <summary>The <c>code</c> a match refused because the provider settings moved since analyze carries (issue #433).</summary>
+    public const string FileAnalysisDestinationChangedCode = "file_analysis_destination_changed";
+
+    /// <summary>
+    /// Whether this is the match refusal for a destination or disclosure that changed after the analysis
+    /// started (issue #434). The single home of that literal: any other <c>409</c> keeps the caller's
+    /// generic conflict handling.
+    /// </summary>
+    public static bool IsFileAnalysisDestinationChanged(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, FileAnalysisDestinationChangedCode, StringComparison.Ordinal);
 
     /// <summary>
     /// Reads an RFC 7807 <c>problem+json</c> error body into an <see cref="ApiProblem"/>. Guards

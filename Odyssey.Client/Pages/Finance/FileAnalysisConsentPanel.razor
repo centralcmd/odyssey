@@ -67,10 +67,24 @@
                 <OdsMIcon Name="account_balance" Size="18" />
                 <div><b>Whatever the file contains is sent.</b> Odyssey doesn’t inspect it first — the whole document is uploaded as-is, including any personal or financial data inside.</div>
             </li>
-            <li>
-                <OdsMIcon Name="sync_alt" Size="18" />
-                <div><b>Your contact and tag names are sent too.</b> After reading the statement, the model matches each transaction to your existing records — <b>names only, for matching</b>. No notes, organization numbers, or other fields.@(VocabularyCount > 0 ? $" {VocabularyCount} names this time." : "")</div>
-            </li>
+            @* Built from the disclosure's field list and coverage alone (issue #434): the old "names only,
+               for matching" and "No notes, organization numbers, or other fields" sentences and the client
+               tally are gone — the served list is the claim, and the server's counts appear after matching.
+               An incomplete disclosure renders no bullet at all rather than a guess. *@
+            @if (FileAnalysisDisclosureText.MatchBullet(Disclosure) is { } bullet)
+            {
+                <li>
+                    <OdsMIcon Name="sync_alt" Size="18" />
+                    <div><b>Your contacts and tags are sent too.</b> @bullet</div>
+                </li>
+            }
+            @if (Disclosure.ExtractionGuidanceInForce || Disclosure.MatchGuidanceInForce)
+            {
+                <li>
+                    <OdsMIcon Name="edit_note" Size="18" />
+                    <div><b>Your administrator’s analysis instructions are sent too.</b></div>
+                </li>
+            }
             <li>
                 <OdsMIcon Name="verified_user" Size="18" />
                 <div><b>Not used to train models.</b> @Disclosure.Processor retains the data for a limited period under their <a href="@Disclosure.PrivacyNoticeUrl" class="fan-link" target="_blank" rel="noopener noreferrer">privacy policy</a>.</div>
@@ -116,9 +130,6 @@
 
     /// <summary>Its size, shown alongside the name when known.</summary>
     [Parameter] public long FileSizeBytes { get; set; }
-
-    /// <summary>How many contact + tag names would be sent for matching.</summary>
-    [Parameter] public int VocabularyCount { get; set; }
 
     /// <summary>Whether the reviewer has affirmed the consent sentence.</summary>
     [Parameter] public bool Checked { get; set; }
