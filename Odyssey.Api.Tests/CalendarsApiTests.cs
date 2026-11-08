@@ -100,6 +100,23 @@ public class CalendarsApiTests
         Assert.Equal("#77AA33", read!.Color);
     }
 
+    [Theory]
+    [InlineData("not_a_known_key")]
+    [InlineData(CalendarIcons.Default)]
+    public async Task Update_UnknownOrDefaultIcon_ReturnsBadRequestAndKeepsTheIcon(string icon)
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var post = await client.PostAsJsonAsync(Path, new NewCalendar { Name = "Work", Color = "#15803D", Icon = "work" });
+        var calendar = (await post.Content.ReadFromJsonAsync<ExistingCalendar>())!;
+
+        var put = await client.PutAsJsonAsync($"{Path}/{calendar.CalendarId}", new NewCalendar { Name = "Work", Color = "#15803D", Icon = icon });
+
+        Assert.Equal(HttpStatusCode.BadRequest, put.StatusCode);
+        Assert.Contains("\"Icon\"", await put.Content.ReadAsStringAsync());
+        Assert.Equal("work", (await client.GetFromJsonAsync<ExistingCalendar>($"{Path}/{calendar.CalendarId}"))!.Icon);
+    }
+
     [Fact]
     public async Task Update_InvalidColor_ReturnsBadRequestAndKeepsTheColor()
     {

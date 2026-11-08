@@ -108,6 +108,35 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task A_calendar_icon_round_trips_and_a_retired_key_reads_as_null()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await EnsureRelationalSchemaAsync();
+
+        Guid calendarId;
+        await using (var context = NewRelationalContext())
+        {
+            var created = await new CalendarService(context).Create(
+                new NewCalendar { Name = $"Icon {Guid.NewGuid():N}", Color = "#0369A1", Icon = "work" }, userId: null!);
+            calendarId = created.CalendarId;
+        }
+
+        await using (var context = NewRelationalContext())
+        {
+            Assert.Equal("work", (await new CalendarService(context).Get(calendarId))!.Icon);
+
+            // A key the catalogue no longer has (a hand edit, a restore) never reaches a client.
+            await context.Database.ExecuteSqlAsync($"UPDATE `Calendars` SET `Icon` = {"retired_key"} WHERE `CalendarId` = {calendarId}");
+        }
+
+        await using (var context = NewRelationalContext())
+        {
+            Assert.Null((await new CalendarService(context).Get(calendarId))!.Icon);
+            await context.Calendars.Where(c => c.CalendarId == calendarId).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
     public async Task Deleting_an_account_cascades_to_its_transactions()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);

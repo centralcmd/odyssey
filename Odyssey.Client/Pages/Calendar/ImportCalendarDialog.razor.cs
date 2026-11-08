@@ -66,6 +66,14 @@ public partial class ImportCalendarDialog
         _maxImportBytes = _maxImportMb * 1024L * 1024;
     }
 
+    /// <summary>
+    /// The calendar the result line names, as its chip (icon and colour, through <see cref="CalendarVisuals"/>),
+    /// or <c>null</c> when the list no longer holds it (it changed while the import ran); the line then
+    /// reads "calendar".
+    /// </summary>
+    internal static OdsTagChips.Tag? TargetChip(IReadOnlyList<ExistingCalendar> calendars, Guid calendarId) =>
+        calendars.FirstOrDefault(c => c.CalendarId == calendarId) is { } calendar ? CalendarVisuals.Chip(calendar) : null;
+
     private void OnCalendarSelected(string value)
     {
         _calendarValue = value;
@@ -121,8 +129,7 @@ public partial class ImportCalendarDialog
                 return;
             }
 
-            var calendar = Calendars.FirstOrDefault(c => c.CalendarId == calendarId);
-            _target = calendar is null ? null : CalendarVisuals.Chip(calendar);
+            _target = TargetChip(Calendars, calendarId.Value);
             _result = outcome.Value;
 
             if (_result!.ImportedCount > 0 || _result.UpdatedCount > 0)

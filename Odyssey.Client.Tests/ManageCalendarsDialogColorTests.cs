@@ -109,6 +109,49 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
         Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(ColorPalette.CalendarDefault), option.IconColor);
     }
 
+    [Theory]
+    [InlineData("work", "#0369a1", "work", "#0369A1")]
+    [InlineData(null, "not a colour", null, ColorPalette.CalendarDefault)]
+    public void The_import_result_names_its_calendar_as_a_chip_with_icon_and_colour(string? icon, string color, string? chipIcon, string chipColor)
+    {
+        var id = Guid.NewGuid();
+        var calendars = new[] { new ExistingCalendar { CalendarId = id, Name = "Work", Color = color, Icon = icon } };
+
+        Assert.Equal(new OdsTagChips.Tag("Work", chipIcon, chipColor), ImportCalendarDialog.TargetChip(calendars, id));
+        Assert.Null(ImportCalendarDialog.TargetChip(calendars, Guid.NewGuid()));
+    }
+
+    [Fact]
+    public void The_calendar_chip_draws_the_calendar_glyph_for_a_calendar_without_an_icon()
+    {
+        var chip = CalendarVisuals.Chip(new ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Home", Color = "#15803D" });
+        var cut = ctx.Render<OdsTagChip>(p => p.Add(c => c.Name, chip.Name).Add(c => c.Icon, chip.Icon).Add(c => c.Color, chip.Color)
+            .Add(c => c.DefaultIcon, CalendarIcons.Default));
+
+        Assert.Equal(CalendarIcons.Default, cut.Find(".odc-chip .material-icons").TextContent.Trim());
+        Assert.Equal("--user-color:#15803D;", cut.Find(".odc-chip").GetAttribute("style"));
+    }
+
+    /// <summary>
+    /// Every calendar picker and the import result take the calendar's icon and colour from the one
+    /// <see cref="CalendarVisuals"/> rule, never a hand-built option or a bare swatch.
+    /// </summary>
+    [Theory]
+    [InlineData("CalendarPage.razor.cs", "CalendarVisuals.Option(")]
+    [InlineData("CalendarEventDialog.razor.cs", "CalendarVisuals.Option")]
+    [InlineData("ExportCalendarEventsDialog.razor.cs", "CalendarVisuals.Option")]
+    [InlineData("ImportCalendarDialog.razor.cs", "CalendarVisuals.Option")]
+    [InlineData("ImportCalendarDialog.razor.cs", "CalendarVisuals.Chip(")]
+    [InlineData("ImportCalendarDialog.razor", "DefaultIcon=\"@Odyssey.Dtos.CalendarIcons.Default\"")]
+    public void Calendar_surfaces_draw_through_CalendarVisuals(string file, string expected)
+    {
+        var source = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Calendar", file));
+
+        Assert.Contains(expected, source, StringComparison.Ordinal);
+        Assert.DoesNotContain("new OdsOption(c.CalendarId", source, StringComparison.Ordinal);
+        Assert.DoesNotContain("cal-imp-dot", source, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void An_empty_custom_hex_blocks_the_save_with_the_pickers_message()
     {
