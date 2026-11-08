@@ -1062,8 +1062,8 @@ issue #387 a place only *links* to a weather point, and the link goes with the p
    another place and then delete the merged-away forwarder. A forwarder must be deleted before the place
    it forwards to.
 4. The log records who deleted, merged or changed it and which fields changed — never the values.
-5. Copies outside the live row are **not** purged: the Admin data export (which includes locations) and
-   database backups age out under your existing export and backup retention.
+5. Copies outside the live row are **not** purged: database backups, and any Admin data export downloaded
+   before that feature was removed, age out under your existing export and backup retention.
 6. Record the request, the date and the backup retention that still applies.
 
 Deleting a user leaves every location they created; only the attribution is cleared.
@@ -1277,8 +1277,7 @@ every surface that displays it.
    stays blocked; repeat the delete to finish it. An interrupted full delete can only be finished by the
    full delete.
 4. Then erase the place itself as in the previous section, if the request covers it.
-5. Copies outside the live rows age out with your backup retention. The Admin data export carries the
-   points' names and settings, never coordinates or history.
+5. Copies outside the live rows age out with your backup retention.
 ## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
 
 Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).

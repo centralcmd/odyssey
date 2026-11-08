@@ -1,6 +1,5 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Weather;
@@ -18,8 +17,6 @@ public enum WeatherHoursPhase
 
 public partial class WeatherDayHours
 {
-    [Inject] private IJSRuntime JS { get; set; } = default!;
-
     /// <summary>The day the panel is for — the card's own date, used for the heading until the response names it.</summary>
     [Parameter, EditorRequired] public DateOnly Date { get; set; }
 
@@ -45,12 +42,6 @@ public partial class WeatherDayHours
     /// <summary>The id of the panel itself — the focus destination, since the heading is visually hidden.</summary>
     internal static string FocusIdFor(string headingId) => $"{headingId}-panel";
 
-    private ElementReference _wrapper;
-    private ElementReference? _observed;
-    private bool _overflows;
-    private IJSObjectReference? _module;
-    private DotNetObjectReference<WeatherDayHours>? _self;
-
     private string Title
     {
         get
@@ -65,83 +56,7 @@ public partial class WeatherDayHours
         }
     }
 
-    private bool ShowsTable => Phase == WeatherHoursPhase.Ready && Response is { Status: WeatherStatus.Ok, Steps.Count: > 0 };
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // The wrapper exists only while a table is shown; observe each new one, and let go of a removed one.
-        if (!ShowsTable)
-        {
-            if (_observed is not null)
-                await UnobserveAsync();
-            return;
-        }
-
-        if (_observed is { } observed && observed.Id == _wrapper.Id)
-            return;
-        if (_observed is not null)
-            await UnobserveAsync();
-
-        try
-        {
-            _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/weather-hours.js");
-            _self ??= DotNetObjectReference.Create(this);
-            await _module.InvokeVoidAsync("observeOverflow", _wrapper, FocusIdFor(HeadingId), _self);
-            _observed = _wrapper;
-        }
-        catch (JSDisconnectedException)
-        {
-        }
-        catch (InvalidOperationException)
-        {
-            // Prerendering or a test host without the module: the wrapper stays a plain div.
-        }
-    }
-
-    [JSInvokable]
-    public Task OnOverflowChanged(bool overflows)
-    {
-        if (_overflows == overflows)
-            return Task.CompletedTask;
-        _overflows = overflows;
-        return InvokeAsync(StateHasChanged);
-    }
-
     private Task RetryAsync() => RetryEnabled ? OnRetry.InvokeAsync() : Task.CompletedTask;
-
-    private async Task UnobserveAsync()
-    {
-        var observed = _observed;
-        _observed = null;
-        _overflows = false;
-        if (_module is null || observed is null)
-            return;
-        try
-        {
-            await _module.InvokeVoidAsync("unobserveOverflow", observed.Value);
-        }
-        catch (JSDisconnectedException)
-        {
-        }
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (_module is not null)
-        {
-            try
-            {
-                if (_observed is { } observed)
-                    await _module.InvokeVoidAsync("unobserveOverflow", observed);
-                await _module.DisposeAsync();
-            }
-            catch (JSDisconnectedException)
-            {
-            }
-        }
-
-        _self?.Dispose();
-    }
 
     // ── Rows ──────────────────────────────────────────────────────────────────────────────────────
 
@@ -152,10 +67,11 @@ public partial class WeatherDayHours
     /// The steps in order, with a full-width row for a leading gap (a later day whose first row starts after its
     /// midnight) and for every inner gap (a run join). The tail is not a row: it is the "Forecast ends" line.
     /// </summary>
-    internal static IEnumerable<Row> Rows(WeatherHourlyResponse response)
+    internal static IEnumerable<Row> Rows(WeatherHourlyResponse response) => Rows(response.Steps, response.Day);
+
+    /// <inheritdoc cref="Rows(WeatherHourlyResponse)"/>
+    internal static IEnumerable<Row> Rows(IReadOnlyList<WeatherStep> steps, WeatherHourlyDay? day)
     {
-        var steps = response.Steps;
-        var day = response.Day;
         if (day is { IsToday: false, FromUtc: { } dayStart } && steps.Count > 0 && Utc(steps[0].TimeUtc) > Utc(dayStart))
             yield return new Row(null, $"No forecast before {Hour(Start(steps[0]))}", false);
 

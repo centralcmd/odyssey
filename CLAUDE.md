@@ -131,7 +131,7 @@ Guard the boundary with:
 | `Journal/` | `Odyssey.Core.Journal` (plus `Journal/Interop/` → `…Journal.Interop`) |
 
 Account-level services sit in their own folders beside these (`UserAdministration/`, `Profiles/`,
-`Preferences/`, `Legal/`, `DataExport/`, `FileExport/`), moved out of `Odyssey.Api` by issue #287 M10.
+`Preferences/`, `Legal/`, `FileExport/`), moved out of `Odyssey.Api` by issue #287 M10.
 Where one needs something only the host can provide — mail delivery, the send throttle, the
 pseudonymization key, display-name resolution — the **interface** lives in Core (`Email/`, `Identity/`,
 `Legal/`) and the implementation stays in `Odyssey.Api`. `Odyssey.Api` keeps controllers (all under
@@ -483,10 +483,9 @@ already see *named*") is **false**: `ExistingTransactionFile.AttachedByUserId`,
 user ids with no name attached, and Guest holds `transactions.read`, `accounts.read` and `files.read`.
 That raw-id leak is pre-existing and out of scope here; it has its own issue.
 
-Both tables are declared **out of scope** on `DataExportTableCoverageTests`, alongside the identity
-tables they belong with — that guard reflects over every `DbSet` and fails the build otherwise. Adding
-the picture to the whole-database admin export would export a face from a document that deliberately
-omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
+There is deliberately **no whole-database JSON export** any more — the `data.export` claim, its
+endpoint and its Settings row were removed. Reinstating one re-opens this question: such a document
+would carry a face to a holder who is never the data subject.
 
 **A property is a `Contact`-shaped aggregate that only contract parties reference** (issue #167;
 issue #208 added the party link, which cascades with the property and never blocks its delete).
@@ -771,7 +770,7 @@ to get backwards:
   `PhotoImageSources.For`, and draws every photo below viewer size through `OdsPhotoImage` (thumbnail → original
   → placeholder). The viewer, lightbox and edit banner always show the original; `PhotoThumbnailSurfaceTests`
   keeps a surface from building a `ContentUrl` or a CSS `background-image`.
-- **The five thumbnail tables are derived data**, out of scope on `DataExportTableCoverageTests`.
+- **The five thumbnail tables are derived data**.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
@@ -1182,7 +1181,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 108 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 107 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`

@@ -84,3 +84,10 @@
 .jec-card.archived ::deep .odc-chip.archived,
 .jec-card.archived .jec-archived-at { color: var(--mud-palette-text-primary); }
 .jec-archived-at { margin-left: 6px; }
+
+/* The weather disclosure is its own full-width row below the meta row (issue #363 §3.2). */
+.jec-weather { width: 100%; min-width: 0; }
+
+/* The article is the last focus fallback when a focused weather disclosure goes (issue #363 §3.6 step 6), so it
+   carries a visible ring (WCAG 2.4.7 / 2.4.11) — from the existing focus tokens. */
+.jec-card:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }

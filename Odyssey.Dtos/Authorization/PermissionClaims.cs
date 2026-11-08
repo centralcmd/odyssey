@@ -88,8 +88,6 @@ public static class PermissionClaims
     // only (via AllClaims), never to Owner/User/Guest, so it can diverge from users.read.
     public const string FileAnalysisAudit = "file-analysis.audit";
 
-    public const string DataExport = "data.export";
-
     public const string FilesExportAll = "files.export-all";
 
     public const string TaxesCreate = "taxes.create";

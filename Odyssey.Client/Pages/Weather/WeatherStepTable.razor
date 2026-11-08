@@ -1,0 +1,74 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@implements IAsyncDisposable
+@*
+    WeatherStepTable — the hourly table (design system · Weather.jsx WeatherDayHours; issue #363 §4), extracted
+    from WeatherDayHours so the dashboard's hours panel and the event dialog render one copy. Rows are steps or
+    6-hour blocks, and an inner gap between runs is a full-width row. The wrapper becomes a focusable, named region
+    only while the table overflows (a data table is exempt from reflow, WCAG 1.4.10).
+
+    With a Day (the hours panel), times are the point's clock and a row is cut to the day it is listed under; with
+    none (the event dialog, whose read carries no local offsets) times are the viewer's clock and nothing is cut.
+    The table is named either by the host's heading (LabelledBy) or by its own visually hidden Caption.
+*@
+
+<div @ref="_wrapper" class="wx-hours-scroll" role="@(_overflows ? "region" : null)"
+     aria-label="@(_overflows ? RegionLabel : null)" tabindex="@(_overflows ? "0" : null)">
+    <table class="wx-hours-table" aria-labelledby="@LabelledBy">
+        @if (!string.IsNullOrEmpty(Caption))
+        {
+            <caption class="sr-only">@Caption</caption>
+        }
+        <thead>
+            <tr><th scope="col">@TimeHeader</th><th scope="col">Conditions</th><th scope="col">Temp</th><th scope="col">Precipitation</th><th scope="col">Wind</th></tr>
+        </thead>
+        <tbody>
+            @foreach (var row in WeatherDayHours.Rows(Steps, Day))
+            {
+                @if (row.Step is not { } step)
+                {
+                    <tr class="wx-hours-gap"><td colspan="5">@row.Gap</td></tr>
+                    continue;
+                }
+                var now = Day is { IsToday: true } && row.First;
+                var symbol = WeatherVisuals.SymbolOf(step.SymbolCode);
+                <tr class="@(now ? "now" : null)">
+                    <th scope="row">
+                        <span aria-hidden="true">@if (now)
+                            {
+                                <b class="wx-hours-now">Now · </b>
+                            }@WeatherDayHours.VisibleTime(step, Day)</span>
+                        <span class="sr-only">@WeatherDayHours.SpokenTime(step, Day, now)</span>
+                    </th>
+                    <td><span class="wx-hours-cond"><span aria-hidden="true"><OdsMIcon Name="@(symbol?.Icon ?? "cloud")" Size="20" /></span>@(symbol?.Label ?? "Unknown conditions")</span></td>
+                    <td class="wx-hours-num">@Measure(step.AirTemperatureC, WeatherVisuals.Temp)</td>
+                    <td>
+                        <span aria-hidden="true">@WeatherVisuals.Mm(step.PrecipitationMm)<span class="wx-muted"> · </span>@WeatherVisuals.Pct(step.PrecipitationProbabilityPct)</span>
+                        @if (WeatherDayHours.IsCut(step, Day) && step.PrecipitationMm is not null)
+                        {
+                            <span class="wx-hours-whole" aria-hidden="true">over @WeatherDayHours.BlockSpan(step)</span>
+                        }
+                        <span class="sr-only">@WeatherDayHours.SpokenPrecipitation(step, Day)</span>
+                    </td>
+                    <td>
+                        @if (step.WindSpeedMps is null)
+                        {
+                            @Missing
+                        }
+                        else
+                        {
+                            <WeatherWind Speed="step.WindSpeedMps" Gust="step.WindGustMps" Degrees="step.WindFromDirectionDeg" />
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@code {
+    private static readonly RenderFragment Missing = @<text><span aria-hidden="true">–</span><span class="sr-only">not available</span></text>;
+
+    private static RenderFragment Measure(decimal? value, Func<decimal?, string> format) =>
+        value is null ? Missing : @<text>@format(value)</text>;
+}

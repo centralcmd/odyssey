@@ -119,7 +119,6 @@ public static class RolePermissions
         FileAnalysisImport,
         UsersRead,
         UsersUpdate,
-        DataExport,
         FilesExportAll,
         UsersDelete,
         TaxesCreate,

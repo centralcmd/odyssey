@@ -127,8 +127,8 @@ public class SmtpEmailSenderLogRedactionTests
     /// The source-lint half: no log template in the API or in Core may carry a raw <c>{Recipient}</c>,
     /// and the one <c>{Link}</c> placeholder sits inside the environment gate. Behavioural tests only
     /// cover the branches they reach; this covers the next log line someone adds. Core is scanned too
-    /// because the account services that log about users and mail (user administration, legal, profile,
-    /// data export) moved there (issue #287 M10) — scanning the API alone would keep passing over them.
+    /// because the account services that log about users and mail (user administration, legal, profile)
+    /// moved there (issue #287 M10) — scanning the API alone would keep passing over them.
     /// </summary>
     [Fact]
     public void NoLogTemplate_CarriesARawRecipientOrAnUngatedLink()

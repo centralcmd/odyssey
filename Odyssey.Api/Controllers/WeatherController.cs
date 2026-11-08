@@ -17,7 +17,7 @@ namespace Odyssey.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/weather")]
-public sealed class WeatherController(WeatherReadService service) : ControllerBase
+public sealed class WeatherController(WeatherReadService service, WeatherBatchReadService batch) : ControllerBase
 {
     [HttpGet("current", Name = "GetWeatherCurrent")]
     [Authorize(Policy = PermissionClaims.WeatherRead)]
@@ -84,6 +84,7 @@ public sealed class WeatherController(WeatherReadService service) : ControllerBa
             return this.MissingUserProblem();
         }
 
+        Response.Headers.CacheControl = NoStore;
         var weather = await service.CalendarEventAsync(id, query.WeatherPointId, userId, cancellationToken);
         return weather is null ? this.NotFoundProblem($"Calendar event ID {id} not found.") : Ok(weather);
     }
@@ -103,8 +104,74 @@ public sealed class WeatherController(WeatherReadService service) : ControllerBa
             return this.MissingUserProblem();
         }
 
+        Response.Headers.CacheControl = NoStore;
         var weather = await service.JournalEntryAsync(id, query.WeatherPointId, userId, cancellationToken);
         return weather is null ? this.NotFoundProblem($"Journal entry ID {id} not found.") : Ok(weather);
+    }
+
+    /// <summary>
+    /// The event and entry weather reads carry a place-less record's weather from the VIEWER's own default point,
+    /// and place names, so no shared cache may keep them (issue #430 §7.11). Set directly, as the other
+    /// controllers do; <c>[ResponseCache]</c> would emit a different value.
+    /// </summary>
+    private const string NoStore = "private, no-store";
+
+    /// <summary>
+    /// One error, keyed exactly <c>ids</c>, with a fixed message (issue #430 §8). Raised before any database work.
+    /// The raw strings are bound so a malformed element never produces the framework's own <c>ids[3]</c> key with
+    /// the submitted value echoed back.
+    /// </summary>
+    private IActionResult BatchIdsProblem()
+    {
+        ModelState.Clear();
+        ModelState.AddModelError("ids", WeatherRules.BatchIdsMessage);
+        return ValidationProblem(ModelState);
+    }
+
+    [HttpGet("~/api/calendar-events/weather", Name = "GetCalendarEventsWeather")]
+    [Authorize(Policy = PermissionClaims.CalendarRead)]
+    [Authorize(Policy = PermissionClaims.WeatherRead)]
+    [EnableRateLimiting(WeatherRateLimiting.BatchPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventWeatherBatch))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
+    [SwaggerOperation(Summary = "Weather summaries for up to 50 calendar events (repeated ids). Unknown ids are omitted; never fetches from MET.")]
+    public async Task<IActionResult> CalendarEvents([FromQuery(Name = "ids")] string[]? ids, CancellationToken cancellationToken = default)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        if (!WeatherBatchIds.TryParse(ids, out var parsed))
+        {
+            return BatchIdsProblem();
+        }
+
+        Response.Headers.CacheControl = NoStore;
+        return Ok(await batch.CalendarEventsAsync(parsed, userId, cancellationToken));
+    }
+
+    [HttpGet("~/api/journal-entries/weather", Name = "GetJournalEntriesWeather")]
+    [Authorize(Policy = PermissionClaims.JournalRead)]
+    [Authorize(Policy = PermissionClaims.WeatherRead)]
+    [EnableRateLimiting(WeatherRateLimiting.BatchPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryWeatherBatch))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ValidationProblemDetails))]
+    [SwaggerOperation(Summary = "The day's weather for up to 50 journal entries (repeated ids). Unknown ids are omitted; never fetches from MET.")]
+    public async Task<IActionResult> JournalEntries([FromQuery(Name = "ids")] string[]? ids, CancellationToken cancellationToken = default)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        if (!WeatherBatchIds.TryParse(ids, out var parsed))
+        {
+            return BatchIdsProblem();
+        }
+
+        Response.Headers.CacheControl = NoStore;
+        return Ok(await batch.JournalEntriesAsync(parsed, userId, cancellationToken));
     }
 
     [HttpGet("points/options", Name = "GetWeatherPointOptions")]

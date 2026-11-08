@@ -76,6 +76,22 @@ public partial class CalendarEventDialog
     /// </summary>
     private void Announce(string message) => _ = _announcer?.Announce(message);
     private ExistingCalendarEvent? _sourceEvent;
+
+    /// <summary>The fields the weather depends on, as loaded — the Weather section's dirty rule compares against it.</summary>
+    private sealed record WeatherInputs(DateTime? StartDate, TimeSpan? StartTime, DateTime? EndDate, TimeSpan? EndTime, bool IsAllDay, LocationPick? Place);
+
+    private WeatherInputs? _loadedWeatherInputs;
+
+    private WeatherInputs CurrentWeatherInputs =>
+        new(_draft.StartDate, _draft.StartTime, _draft.EndDate, _draft.EndTime, _draft.IsAllDay, _draft.Place.Pick);
+
+    /// <summary>
+    /// The date, time, all-day or place differ from the loaded event, so the weather shown no longer describes the
+    /// form (issue #363 §3.4). The place counts only where its field exists (<c>locations.read</c>).
+    /// </summary>
+    private bool WeatherDirty =>
+        _loadedWeatherInputs is { } loaded
+        && (CanReadLocations ? loaded != CurrentWeatherInputs : loaded with { Place = null } != CurrentWeatherInputs with { Place = null });
     private bool _isSaving;
     private bool _previousOpen;
 
@@ -114,12 +130,14 @@ public partial class CalendarEventDialog
     private async Task LoadAsync()
     {
         _sourceEvent = null;
+        _loadedWeatherInputs = null;
 
         switch (Mode)
         {
             case CalendarEventDialogMode.Edit when EventId is { } id:
                 _sourceEvent = await CalendarApi.GetEventAsync(id);
                 _draft = _sourceEvent is not null ? CalendarEventDraft.FromEvent(_sourceEvent) : new CalendarEventDraft();
+                _loadedWeatherInputs = CurrentWeatherInputs;
                 break;
             case CalendarEventDialogMode.Series when PatternId is { } patternId:
                 var pattern = await CalendarApi.GetPatternAsync(patternId);

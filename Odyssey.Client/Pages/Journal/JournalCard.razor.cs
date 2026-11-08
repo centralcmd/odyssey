@@ -3,6 +3,7 @@ using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Authorization;
@@ -11,6 +12,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Client.Pages.Weather;
 
 namespace Odyssey.Client.Pages.Journal;
 
@@ -133,10 +135,46 @@ public partial class JournalCard
         })];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
+    // ── Weather (issue #363 §3.6) ─────────────────────────────────────────────
+    // Weather follows the RENDERED window, not the loaded list: the list loads every entry, the infinite list
+    // renders a batch, and only the rendered ids are asked about. Keyed by entry id, so a filter, sort or batch
+    // change does not clear it — an entry already answered is not asked about again.
+    private WeatherBatchLoader<JournalEntryWeatherItem>? _weatherLoader;
+    private IReadOnlyList<Guid> _shownIds = [];
+    private IJSObjectReference? _focusReturnJs;
+
+    private WeatherBatchLoader<JournalEntryWeatherItem> WeatherLoader => _weatherLoader ??= new(
+        WeatherBatchReads.JournalEntries(WeatherApi), item => item.JournalEntryId,
+        () => InvokeAsync(StateHasChanged), Log, "journal", TimeSpan.FromMilliseconds(250));
+
+    private void OnShownChanged(IReadOnlyList<JournalEntrySummary> shown)
+    {
+        _shownIds = [.. shown.Select(e => e.JournalEntryId)];
+        _ = WeatherLoader.ShowAsync(_shownIds);
+    }
+
+    // A sign-out, a different user or a changed claim set: start over from nothing.
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        try
+        {
+            var user = (await state).User;
+            WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            await InvokeAsync(StateHasChanged);
+            await WeatherLoader.ShowAsync(_shownIds);
+        }
+        catch (Exception)
+        {
+            // The page may already be gone; weather is supplementary and never worth an unhandled exception.
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
             return;
+
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -163,6 +201,7 @@ public partial class JournalCard
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
         _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
         _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
+        WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
     private async Task LoadTags()
@@ -674,7 +713,10 @@ public partial class JournalCard
         {
             _announce = "Entry updated.";
             await Task.WhenAll(LoadTags(), LoadContacts());
-            await ReloadEntry(_editEntry.JournalEntryId);
+            var id = _editEntry.JournalEntryId;
+            await ReloadEntry(id);
+            // Its date or place may have moved: ask again for this entry alone.
+            _ = WeatherLoader.RefreshAsync(id);
         }
     }
 
@@ -712,7 +754,9 @@ public partial class JournalCard
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
             _attachments.Remove(e.JournalEntryId);
+            WeatherLoader.Forget(e.JournalEntryId);
             await LoadEntries();
+            await FocusPageHeadingAsync();
         }
     }
 
@@ -881,9 +925,31 @@ public partial class JournalCard
     // edit dialog owns the picker that adds and removes them. The focus-return dance that used to land
     // a caller on a neighbouring tile went with them — a dialog returns focus to its own trigger.
 
+    // The card is gone, and with it its ⋯ button and anything inside it that held focus: land on the page's h1
+    // rather than letting focus fall to <body> (issue #363 §3.6 step 6).
+    private async Task FocusPageHeadingAsync()
+    {
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            await _focusReturnJs.InvokeVoidAsync("focusFirst", "h1");
+        }
+        catch (Exception)
+        {
+            // Best-effort: the deletion is already announced through the page's live region.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        _weatherLoader?.Dispose();
         _listLoader.Dispose();
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }

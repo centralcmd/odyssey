@@ -514,8 +514,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// A user's one profile picture (issue #94). Deliberately NOT in the domain file store: the pair
     /// below shares no relationship with <see cref="FileMetadata"/>/<see cref="FileBlob"/> in either
     /// direction, which is what keeps a face out of reach of every <c>files.*</c> claim and out of the
-    /// admin file export. Both are declared out of scope on <c>DataExportTableCoverageTests</c>,
-    /// alongside the identity tables they belong with.
+    /// admin file export.
     /// </summary>
     public DbSet<UserProfileImage> UserProfileImages => Set<UserProfileImage>();
 

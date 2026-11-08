@@ -156,10 +156,6 @@ public partial class Settings
     // client catalogue with these, so the server stays the single authority on which secrets exist.
     private readonly Dictionary<string, SecretSettingStatusDto> _secretStatuses = new(StringComparer.Ordinal);
 
-    // ── Export controls (unchanged behaviour, moved under the Data group) ─────
-    private bool _exportAvailable;
-    private bool _isExporting;
-
     /// <summary>
     /// The interactivity check, as a seam (issue #444 §13 step 4a). <c>OnInitializedAsync</c> has to
     /// early-return on the prerender pass, but that check is <c>false</c> in a bUnit host too, so a
@@ -186,10 +182,6 @@ public partial class Settings
         _hasCountUpdate = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
         _canReadStorage = user.HasPermission(PermissionClaims.FileStorageRead);
         _canReadPhotoStats = user.HasPermission(PermissionClaims.PhotosRead) && user.HasPermission(PermissionClaims.SystemSettingsRead);
-
-        // Gate the Data export control on the data.export permission alone — the feature is always
-        // available to holders of that claim.
-        _exportAvailable = user.HasPermission(PermissionClaims.DataExport);
 
         await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync(), LoadStorageHealthAsync());
     }
@@ -315,13 +307,12 @@ public partial class Settings
     // (previously "Non-Goal 2": no export cap at all).
     internal enum SettingClaim { None, Security, Count }
     // Date and Action arrived with the exchange-rate sync card. Action is a button that
-    // acts at once or navigates — Export is one use of that shape and keeps its own member and behaviour.
-    // Neither is part of Save.
-    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
+    // acts at once or navigates, and is not part of Save.
+    internal enum SettingControl { Toggle, Number, Size, Capacity, Text, Decimal, Percent, Date, Action }
 
-    /// <summary>The one non-saving control kinds — never dirty, never validated, never written.</summary>
+    /// <summary>The one non-saving control kind — never dirty, never validated, never written.</summary>
     internal static bool IsTileOnly(SettingControl control) =>
-        control is SettingControl.Export or SettingControl.Action;
+        control is SettingControl.Action;
 
     /// <summary>
     /// One row. <see cref="Load"/> and <see cref="Write"/> are the catalogue's half of the same
@@ -648,9 +639,6 @@ public partial class Settings
         ]),
         new("Data", Icons.Material.Filled.Storage,
         [
-            new("data-export", "download_for_offline", "Export database JSON",
-                "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
-                SettingClaim.None, SettingControl.Export),
             // Background jobs (issue #409 §3.6): the worker prunes finished runs older than this once an hour.
             new("jobRunRetentionDays", "history", "Background job history",
                 "How long a finished background-job run is kept in the run log before it is removed.",
@@ -1148,11 +1136,8 @@ public partial class Settings
 
     internal const string ExchangeRateCurrenciesKey = "exchangeRateCurrencies";
 
-    private bool IsRowDisabled(SettingItem item) => item.Control switch
-    {
-        SettingControl.Export => false,
-        _ => !Editable(item.Claim) || _phase != Phase.Ready || _isSaving,
-    };
+    private bool IsRowDisabled(SettingItem item) =>
+        !Editable(item.Claim) || _phase != Phase.Ready || _isSaving;
 
     private bool Matches(SettingItem item, string group) => Matches(item, group, _search);
 
@@ -1168,17 +1153,9 @@ public partial class Settings
         item.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         group.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-    // Export controls only earn a place once the server confirms each is available (permission);
-    // every other setting is always present.
-    private bool IsAvailable(SettingItem item) => item.Control switch
-    {
-        SettingControl.Export => _exportAvailable,
-        _ => true,
-    };
-
     private IReadOnlyList<SettingSection> VisibleSections =>
         Sections
-            .Select(s => s with { Items = s.Items.Where(IsAvailable).Where(i => Matches(i, s.Group)).ToList() })
+            .Select(s => s with { Items = s.Items.Where(i => Matches(i, s.Group)).ToList() })
             // A section survives on its CREDENTIALS alone (issue #445). Searching "SMTP password"
             // filters away every plaintext row in Email, and dropping the section there would hide the
             // one row that matched — the search would answer "no settings match" for a term naming a
@@ -1360,7 +1337,7 @@ public partial class Settings
 
     private bool IsDirty(SettingItem item) => item.Control switch
     {
-        SettingControl.Export or SettingControl.Action => false,
+        SettingControl.Action => false,
         SettingControl.Date => _texts.TryGetValue(item.Key, out var date)
             && !string.Equals(date.Draft.Trim(), date.Saved, StringComparison.Ordinal),
         SettingControl.Capacity => _capacities.TryGetValue(item.Key, out var cap) &&
@@ -1537,7 +1514,6 @@ public partial class Settings
 
     private RenderFragment RenderControl(SettingItem item) => item.Control switch
     {
-        SettingControl.Export => ExportControl(),
         SettingControl.Number => NumberControl(item),
         SettingControl.Size => SizeControl(item),
         SettingControl.Capacity => CapacityControl(item),
@@ -1588,8 +1564,7 @@ public partial class Settings
     /// names itself through <c>aria-labelledby</c> on the title instead.
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
-        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export
-            or SettingControl.Action)
+        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Action)
         && item.OptionsFrom is null;
 
     /// <summary>
@@ -2004,8 +1979,8 @@ public partial class Settings
     // A SEPARATE collection from SettingItem, not new entries in `Sections`. A secret has no Field, no
     // Load and no Write — it commits through its own per-key endpoint rather than the page's
     // whole-resource PUT — so folding it into the catalogue would force
-    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow a second
-    // exemption beyond SettingControl.Export. Keeping it separate means that test never sees these
+    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow an
+    // exemption beyond the tile-only SettingControl.Action. Keeping it separate means that test never sees these
     // rows and no existing guard is weakened.
     //
     // They still RENDER inside the section their Group names, joined at render time. That is the point
@@ -3013,62 +2988,5 @@ public partial class Settings
 
         var cap = Capacity(key);
         return cap.Unlimited ? new CapacityLimit { Unlimited = true } : new CapacityLimit { Value = cap.Value };
-    }
-
-    // ── Data export ───────────────────────────────────────────────────────────
-    private async Task ExportDatabaseJson()
-    {
-        // Guard against duplicate clicks while a request is in flight (the button also shows a
-        // loading state via _isExporting).
-        if (_isExporting)
-            return;
-
-        _isExporting = true;
-        try
-        {
-            var result = await DataExport.DownloadAsync();
-            switch (result.Outcome)
-            {
-                case DataExportOutcome.Success when result.File is not null:
-                    await JS.InvokeVoidAsync("downloadFileFromBytes",
-                        result.File.Bytes, result.File.FileName, "application/json");
-                    ShowExportReadyToast("Database export ready", result.File.FileName);
-                    break;
-                case DataExportOutcome.Forbidden:
-                    Snackbar.Add("You don't have permission to export the database.", Severity.Error);
-                    break;
-                case DataExportOutcome.Incomplete:
-                    // The download was truncated part-way through, so nothing was saved — a partial
-                    // export is worse than none, since it looks like a whole one (issue #401).
-                    Snackbar.Add("The export was cut short and is incomplete, so nothing was saved. Please try again.",
-                                 Severity.Error);
-                    break;
-                default:
-                    Snackbar.Add("Export failed. Please try again.", Severity.Error);
-                    break;
-            }
-        }
-        finally
-        {
-            _isExporting = false;
-        }
-    }
-
-    // Success toast for a finished export — title line plus the generated filename in mono,
-    // mirroring the design-system export toast (Odyssey Design System · SystemSettings).
-    private void ShowExportReadyToast(string title, string fileName)
-    {
-        RenderFragment message = builder =>
-        {
-            builder.OpenElement(0, "div");
-            builder.AddContent(1, title);
-            builder.OpenElement(2, "div");
-            builder.AddAttribute(3, "style",
-                "font-family: var(--font-mono); font-size: 11.5px; opacity: .75; margin-top: 2px; word-break: break-all;");
-            builder.AddContent(4, fileName);
-            builder.CloseElement();
-            builder.CloseElement();
-        };
-        Snackbar.Add(message, Severity.Success);
     }
 }
