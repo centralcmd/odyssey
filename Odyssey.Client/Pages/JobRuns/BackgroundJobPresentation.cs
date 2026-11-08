@@ -27,9 +27,9 @@ public sealed record JobChip(string Label, OdsChipTone Tone, string Icon);
 /// </summary>
 public static class BackgroundJobPresentation
 {
-    /// <summary>The four jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
+    /// <summary>The five jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
-        [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails];
+        [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -37,6 +37,7 @@ public static class BackgroundJobPresentation
         [JobType.Weather] = new("Weather", "weather", "cloud", "weather point", "Run weather", MudBlazor.Icons.Material.Filled.Cloud),
         [JobType.FileStorageMaintenance] = new("File-storage maintenance", "file-storage maintenance", "storage", "file storage", "Run file-storage maintenance", MudBlazor.Icons.Material.Filled.Storage),
         [JobType.PhotoThumbnails] = new("Photo thumbnails", "photo thumbnails", "photo_library", "photo", "Run photo thumbnails", MudBlazor.Icons.Material.Filled.PhotoLibrary),
+        [JobType.PhotoOriginalBackfill] = new("Photo original move", "photo original move", "drive_file_move", "file storage", "Run photo original move", MudBlazor.Icons.Material.Filled.DriveFileMove),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);
@@ -129,8 +130,21 @@ public static class BackgroundJobPresentation
         [JobHeldReason.BreakerTripped] = "paused after repeated crashes",
         [JobHeldReason.DecoderPaused] = "paused while a stuck decode ends",
         [JobHeldReason.DecoderPolicyFailed] = "the image decoder failed its security check",
-        [JobHeldReason.StorageUnavailable] = "thumbnail storage isn’t available",
+        [JobHeldReason.StorageUnavailable] = "photo storage isn’t available",
+        [JobHeldReason.BackingOff] = "paused after a storage or database error",
     };
+
+    /// <summary>
+    /// The photo-original move's park codes (issue #428) as the status card lists them, in the card's order. A code this
+    /// client does not know is counted under "Other" — the wire carries the code, never a sentence.
+    /// </summary>
+    public static readonly IReadOnlyList<(string Code, string Label)> ParkCodes =
+    [
+        ("hash", "Checksum mismatch"),
+        ("read", "Couldn’t be read"),
+        ("too-large", "Too large"),
+        ("error", "Unexpected error"),
+    ];
 
     /// <summary>The reason's words, or <c>null</c> for none or one this client does not know — the caller's generic copy then applies.</summary>
     public static string? HeldOf(JobHeldReason? reason) =>

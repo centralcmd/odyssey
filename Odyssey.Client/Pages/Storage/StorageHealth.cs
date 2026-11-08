@@ -31,6 +31,7 @@ public static class StorageHealth
     /// </summary>
     private static readonly IReadOnlyDictionary<string, string> FeatureLabels = new Dictionary<string, string>(StringComparer.Ordinal)
     {
+        ["PhotoOriginals"] = "Photo originals",
         ["PhotoThumbnails"] = "Photo thumbnails",
     };
 
