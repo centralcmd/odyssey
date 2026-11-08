@@ -290,6 +290,65 @@ public class DataExportApiTests
         Assert.False(transaction.TryGetProperty("transactionFiles", out _));
     }
 
+    // ── Weather point history windows (issue #436 AC 21) ──────────────
+
+    [Fact]
+    public async Task Export_WeatherPoint_CarriesItsHistoryWindowsOldestFirst_AndNoHistoryFrom()
+    {
+        await using var factory = new ApiFactory([PermissionClaims.DataExport]);
+        var windowed = Guid.Parse("0e0e0e0e-0000-4000-8000-000000000001");
+        var bare = Guid.Parse("0e0e0e0e-0000-4000-8000-000000000002");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var at = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+            context.WeatherPoints.AddRange(
+                new WeatherPoint { WeatherPointId = windowed, Name = "Cabin", HistoryEnabled = true, CurrentSiteVersion = 1, EnabledAt = at, CreatedAt = at, UpdatedAt = at },
+                new WeatherPoint { WeatherPointId = bare, Name = "Off", HistoryEnabled = false, CurrentSiteVersion = 1, EnabledAt = at, CreatedAt = at, UpdatedAt = at });
+            // Inserted out of order, so the export's ordering is what puts them oldest first.
+            context.WeatherPointHistoryWindows.AddRange(
+                new WeatherPointHistoryWindow { WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = windowed, FromDate = new DateOnly(2026, 9, 1) },
+                new WeatherPointHistoryWindow { WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = windowed, FromDate = new DateOnly(2025, 7, 1), ToDate = new DateOnly(2025, 7, 7) },
+                new WeatherPointHistoryWindow { WeatherPointHistoryWindowId = Guid.NewGuid(), WeatherPointId = windowed, FromDate = new DateOnly(2026, 6, 10), ToDate = new DateOnly(2026, 6, 17) });
+            context.WeatherObservationCoverages.Add(new WeatherObservationCoverage
+            {
+                WeatherPointId = windowed, SiteVersion = 1, FromDate = new DateOnly(2025, 7, 1), ToDate = new DateOnly(2025, 7, 7),
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        using var document = await GetExportDocumentAsync(client);
+        var root = document.RootElement;
+        Assert.Equal(2, root.GetProperty("schemaVersion").GetInt32());
+        var points = root.GetProperty("databases").GetProperty("finance").GetProperty("weatherPoints").EnumerateArray()
+            .ToDictionary(p => p.GetProperty("weatherPointId").GetGuid());
+
+        var windows = points[windowed].GetProperty("historyWindows").EnumerateArray()
+            .Select(w => (From: w.GetProperty("from").GetString(), To: w.GetProperty("to").ValueKind == JsonValueKind.Null ? null : w.GetProperty("to").GetString()))
+            .ToList();
+        Assert.Equal([("2025-07-01", "2025-07-07"), ("2026-06-10", "2026-06-17"), ("2026-09-01", (string?)null)], windows);
+        // Each element carries exactly its two dates: no row id, no point id, no derived status.
+        Assert.All(points[windowed].GetProperty("historyWindows").EnumerateArray(),
+            w => Assert.Equal(["from", "to"], w.EnumerateObject().Select(p => p.Name)));
+
+        Assert.Equal(JsonValueKind.Array, points[bare].GetProperty("historyWindows").ValueKind);
+        Assert.Equal(0, points[bare].GetProperty("historyWindows").GetArrayLength());
+
+        foreach (var point in points.Values)
+        {
+            Assert.False(point.TryGetProperty("historyFrom", out _));
+            Assert.DoesNotContain(point.EnumerateObject(), p => p.Name.Equals("historyFrom", StringComparison.OrdinalIgnoreCase));
+        }
+
+        // The windows travel only nested under their point, and the derived coverage table not at all.
+        var finance = root.GetProperty("databases").GetProperty("finance");
+        Assert.DoesNotContain(finance.EnumerateObject(), p => p.Name.Contains("historyWindow", StringComparison.OrdinalIgnoreCase)
+                                                              || p.Name.Contains("coverage", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("WeatherObservationCoverages",
+            root.GetProperty("exclusions").GetProperty("excludedTables").EnumerateArray().Select(e => e.GetString()));
+    }
+
     // ── Terms included (issue #172) ───────────────────────────────────
 
     [Fact]

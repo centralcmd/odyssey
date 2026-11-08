@@ -312,32 +312,90 @@ public class WeatherHistoryWindowServiceTests
     [Fact]
     public async Task Window_writes_and_fetches_log_no_window_dates()
     {
+        // AC 19 / §7.6: the write's audit lines and the fetcher's lines carry ids and counts, never a date of any window
+        // (nor of a stored day inside one) in any format, as text or as a structured argument.
         using var h = new WeatherTestHarness(Morning);
-        var log = new RecordingLogger<WeatherPointService>();
-        var admin = new WeatherPointService(h.Context, h.Fetch(), h.Settings, new TrackedWeatherHistoryPurger(h.Context), h.Time, log);
-        var point = await admin.CreateAsync(new NewWeatherPoint
+        h.Secrets.Frost = SecretResult.Found("client-id");
+        var pointLog = new RecordingLogger<WeatherPointService>();
+        var fetchLog = new RecordingLogger<WeatherFetchService>();
+        WeatherFetchService Fetch(OdysseyContext c) => new(c, h.Forecasts, h.Observations, h.Settings, h.Secrets, h.Time, fetchLog);
+        WeatherPointService Admin(OdysseyContext c) => new(c, Fetch(c), h.Settings, new TrackedWeatherHistoryPurger(c), h.Time, pointLog);
+
+        WeatherHistoryWindowDto[][] sets =
+        [
+            [W("2026-02-10", "2026-02-17"), W("2025-07-01", "2025-07-07")],
+            [W("2026-02-10", "2026-02-17"), W("2025-07-01", "2025-07-07"), W("2026-11-01", "2026-11-06")],
+            [W("2026-02-10", "2026-02-14"), W("2026-10-28", "2026-11-06")],
+        ];
+
+        var created = await Admin(h.NewContext()).CreateAsync(new NewWeatherPoint
         {
             Name = "Cabin", Latitude = 61.5m, Longitude = 10.1m, TimeZoneId = "Europe/Oslo",
-            ForecastEnabled = false, HistoryEnabled = true, IsTracked = false,
-            HistoryWindows = [W("2026-02-10", "2026-02-17")],
+            ForecastEnabled = false, HistoryEnabled = true, IsTracked = false, HistoryWindows = [.. sets[0]],
         }, WeatherTestHarness.AdminId, CancellationToken.None);
-        var update = WeatherPointServiceTestExtensions.Update(point);
-        update.HistoryWindows = [W("2026-03-10", "2026-03-17")];
-        await new WeatherPointService(h.NewContext(), h.Fetch(), h.Settings, new TrackedWeatherHistoryPurger(h.NewContext()), h.Time, log)
-            .UpdateAsync(point.WeatherPointId, update, WeatherTestHarness.AdminId, true, CancellationToken.None);
+        var id = created.WeatherPointId;
+        await ResolveStationsAsync(h, id);
+        h.Observations.Daily = EveryDay;
 
-        Assert.Contains(log.Lines, l => l.Contains("HistoryWindows", StringComparison.Ordinal) && l.Contains("1 -> 1", StringComparison.Ordinal));
-        Assert.All(log.Lines, l =>
+        // A fetch that stores both trips' days.
+        await Fetch(h.NewContext()).FetchObservationsAsync(id, CancellationToken.None);
+        Assert.NotEmpty(await h.NewContext().WeatherObservations.ToListAsync());
+
+        async Task EditAsync(WeatherHistoryWindowDto[] windows)
         {
-            Assert.DoesNotContain("2026-02", l, StringComparison.Ordinal);
-            Assert.DoesNotContain("2026-03", l, StringComparison.Ordinal);
-            Assert.DoesNotContain("10.02.2026", l, StringComparison.Ordinal);
-        });
+            var admin = Admin(h.NewContext());
+            var update = WeatherPointServiceTestExtensions.Update((await admin.GetAsync(id, true, CancellationToken.None))!);
+            update.HistoryWindows = [.. windows];
+            Assert.NotNull(await admin.UpdateAsync(id, update, WeatherTestHarness.AdminId, true, CancellationToken.None));
+        }
+
+        // A window write, then a fetch that a second window write fences off mid-request — the fetcher's own log line.
+        await EditAsync(sets[1]);
+        var edited = false;
+        h.Observations.Daily = (from, to) =>
+        {
+            if (!edited)
+            {
+                edited = true;
+                Task.Run(() => EditAsync(sets[2])).GetAwaiter().GetResult();
+            }
+
+            return EveryDay(from, to);
+        };
+        await Fetch(h.NewContext()).FetchObservationsAsync(id, CancellationToken.None);
+        Assert.True(edited);
+
+        // Not vacuous: both loggers spoke, and in counts.
+        Assert.Contains(pointLog.Lines, l => l.Text.Contains("2 history window(s)", StringComparison.Ordinal));
+        Assert.Contains(pointLog.Lines, l => l.Text.Contains("history windows 2 -> 3", StringComparison.Ordinal));
+        Assert.Contains(pointLog.Lines, l => l.Text.Contains("history windows 3 -> 2", StringComparison.Ordinal));
+        Assert.Contains(fetchLog.Lines, l => l.Text.Contains("fenced off", StringComparison.Ordinal) && l.Text.Contains(id.ToString(), StringComparison.Ordinal));
+
+        string[] formats = ["yyyy-MM-dd", "dd.MM.yyyy", "d.M.yyyy", "dd/MM/yyyy", "MM/dd/yyyy", "M/d/yyyy", "d/M/yyyy", "yyyyMMdd", "d MMM yyyy", "MMM d, yyyy"];
+        var days = sets.SelectMany(set => set).SelectMany(w =>
+            Enumerable.Range(0, w.To!.Value.DayNumber - w.From!.Value.DayNumber + 1).Select(n => w.From.Value.AddDays(n))).Distinct().ToList();
+        var forbidden = days.SelectMany(d => formats.Select(f => d.ToString(f, System.Globalization.CultureInfo.InvariantCulture))
+                .Append(d.ToString(System.Globalization.CultureInfo.CurrentCulture))
+                .Append(d.ToDateTime(TimeOnly.MinValue).ToString("O", System.Globalization.CultureInfo.InvariantCulture)[..13]))
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (var line in pointLog.Lines.Concat(fetchLog.Lines))
+        {
+            foreach (var text in line.Values.Prepend(line.Text))
+            {
+                var hit = forbidden.FirstOrDefault(f => text.Contains(f, StringComparison.Ordinal));
+                Assert.True(hit is null, $"A log line carries the window date '{hit}': {line.Text}");
+            }
+
+            Assert.DoesNotContain(line.Arguments, a => a is DateOnly or WeatherHistoryWindowDto or IEnumerable<WeatherHistoryWindowDto>);
+        }
     }
+
+    private sealed record LogLine(string Text, IReadOnlyList<string> Values, IReadOnlyList<object?> Arguments);
 
     private sealed class RecordingLogger<T> : Microsoft.Extensions.Logging.ILogger<T>
     {
-        public List<string> Lines { get; } = [];
+        public List<LogLine> Lines { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
 
@@ -345,6 +403,12 @@ public class WeatherHistoryWindowServiceTests
 
         public void Log<TState>(
             Microsoft.Extensions.Logging.LogLevel logLevel, Microsoft.Extensions.Logging.EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
+            Func<TState, Exception?, string> formatter)
+        {
+            var arguments = state is IReadOnlyList<KeyValuePair<string, object?>> pairs
+                ? pairs.Where(p => p.Key != "{OriginalFormat}").Select(p => p.Value).ToList()
+                : [];
+            Lines.Add(new LogLine(formatter(state, exception), [.. arguments.Select(a => a?.ToString() ?? string.Empty)], arguments));
+        }
     }
 }

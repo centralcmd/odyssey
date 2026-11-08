@@ -1206,46 +1206,106 @@ public class WeatherApiTests
         Assert.Equal([new DateOnly(2026, 8, 1), new DateOnly(2026, 9, 1)], replaced.HistoryWindows!.Select(w => w.From));
     }
 
+    private static string PointBody(string windowsJson) =>
+        $$"""{"name":"Oslo","latitude":59.9,"longitude":10.7,"timeZoneId":"Europe/Oslo","forecastEnabled":true,"historyEnabled":true,"isTracked":false,"historyWindows":{{windowsJson}}}""";
+
+    private static StringContent JsonBody(string json) => new(json, System.Text.Encoding.UTF8, "application/json");
+
+    /// <summary>The server's today (UTC, as <c>WeatherPointValidation</c> takes it) plus a number of days.</summary>
+    private static string ServerToday(int plusDays) => DateOnly.FromDateTime(DateTime.UtcNow).AddDays(plusDays).ToString("yyyy-MM-dd");
+
+    // AC 6: each case names the ONE key it must produce, and the test compares the whole key set, so a stray second key
+    // (a per-element attribute error, a duplicate under another casing) fails as surely as a missing one.
     public static TheoryData<string, string> InvalidWindowSets => new()
     {
         { """[{"from":"2026-06-10","to":"2026-06-17"},{"from":"2026-06-17","to":"2026-06-20"}]""", "HistoryWindows[1]" },
         { """[{"from":"2025-01-01"},{"from":"2026-06-10","to":"2026-06-17"}]""", "HistoryWindows[0]" },
+        { """[{"from":"2025-01-01"},{"from":"2026-01-01"}]""", "HistoryWindows[0]" },
         { """[{"from":"2026-06-10","to":"2026-06-09"}]""", "HistoryWindows[0].To" },
         { """[{"from":"1949-12-31","to":"2026-06-09"}]""", "HistoryWindows[0].From" },
+        { $$"""[{"from":"{{ServerToday(731)}}"}]""", "HistoryWindows[0].From" },
+        { $$"""[{"from":"2026-06-10","to":"{{ServerToday(731)}}"}]""", "HistoryWindows[0].To" },
         { """[{"to":"2026-06-09"}]""", "HistoryWindows[0].From" },
         { """[]""", "HistoryWindows" },
     };
 
     [Theory]
     [MemberData(nameof(InvalidWindowSets))]
-    public async Task An_invalid_window_set_is_a_400_keyed_on_the_member_path(string windowsJson, string key)
+    public async Task An_invalid_window_set_is_a_400_keyed_on_exactly_the_member_path(string windowsJson, string key)
     {
         await using var factory = new WeatherFactory(Admin);
         using var client = factory.CreateClient();
-        var body = $$"""{"name":"Oslo","latitude":59.9,"longitude":10.7,"timeZoneId":"Europe/Oslo","forecastEnabled":true,"historyEnabled":true,"isTracked":false,"historyWindows":{{windowsJson}}}""";
 
-        var response = await client.PostAsync("/api/weather/points", new StringContent(body, System.Text.Encoding.UTF8, "application/json"));
+        var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(windowsJson)));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = (await response.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
-        Assert.Contains(key, problem.Errors.Keys);
+        Assert.Equal([key], problem.Errors.Keys.Order(StringComparer.Ordinal));
     }
 
     [Fact]
-    public async Task An_impossibly_large_set_is_one_error_and_a_body_over_the_limit_is_a_413()
+    public async Task The_last_allowed_day_and_adjacent_windows_are_accepted()
     {
         await using var factory = new WeatherFactory(Admin);
         using var client = factory.CreateClient();
-        var count = WeatherHistoryWindowRules.MaxValidCount(DateOnly.FromDateTime(DateTime.UtcNow)) + 1;
-        var impossible = $$"""{"name":"Oslo","latitude":59.9,"longitude":10.7,"timeZoneId":"Europe/Oslo","forecastEnabled":true,"historyEnabled":true,"isTracked":false,"historyWindows":[{{string.Join(",", Enumerable.Repeat("{}", count))}}]}""";
 
-        var watch = System.Diagnostics.Stopwatch.StartNew();
-        var refused = await client.PostAsync("/api/weather/points", new StringContent(impossible, System.Text.Encoding.UTF8, "application/json"));
+        var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(
+            $$"""[{"from":"2026-06-10","to":"2026-06-17"},{"from":"2026-06-18","to":"2026-06-20"},{"from":"{{ServerToday(730)}}"}]""")));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task An_impossibly_large_set_is_one_list_error_with_no_per_element_errors()
+    {
+        // AC 24: the spec's shape — 700 000 empty elements, under the 4 MB write limit, far above D. Every element is
+        // individually invalid (no From), so any per-element work would surface as a per-element key. No wall-clock
+        // bound in the fast tier: the single key is the proof that nothing ran per element.
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        const int count = 700_000;
+        Assert.True(count > WeatherHistoryWindowRules.MaxValidCount(DateOnly.FromDateTime(DateTime.UtcNow)));
+        var impossible = PointBody($"[{string.Join(",", Enumerable.Repeat("{}", count))}]");
+        Assert.True(System.Text.Encoding.UTF8.GetByteCount(impossible) < 4 * 1024 * 1024);
+
+        var refused = await client.PostAsync("/api/weather/points", JsonBody(impossible));
+
         Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
         var problem = (await refused.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
-        Assert.Equal("HistoryWindows", Assert.Single(problem.Errors).Key);
-        Assert.True(watch.Elapsed < TimeSpan.FromSeconds(5), $"took {watch.Elapsed}");
+        var error = Assert.Single(problem.Errors);
+        Assert.Equal("HistoryWindows", error.Key);
+        Assert.Equal("There are more history windows than there are days they could cover.", Assert.Single(error.Value));
+    }
 
+    [Fact]
+    public async Task An_unknown_member_on_a_window_element_is_ignored_and_sets_no_id()
+    {
+        // AC 14 / §7.4: unknown members are ignored by the binder; a window id is always server-generated.
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var forged = Guid.NewGuid();
+        var response = await client.PostAsync("/api/weather/points", JsonBody(PointBody(
+            $$"""[{"from":"2026-06-10","to":"2026-06-17","id":"{{forged}}","weatherPointHistoryWindowId":"{{forged}}","weatherPointId":"{{forged}}","status":"Complete","extra":[1,"x"]}]""")));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var point = (await response.Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var stored = await context.WeatherPointHistoryWindows.AsNoTracking().SingleAsync();
+            Assert.NotEqual(forged, stored.WeatherPointHistoryWindowId);
+            Assert.NotEqual(Guid.Empty, stored.WeatherPointHistoryWindowId);
+            Assert.Equal(point.WeatherPointId, stored.WeatherPointId);
+            Assert.Equal((new DateOnly(2026, 6, 10), (DateOnly?)new DateOnly(2026, 6, 17)), (stored.FromDate, stored.ToDate));
+        }
+
+        var single = await client.GetStringAsync($"/api/weather/points/{point.WeatherPointId}");
+        Assert.DoesNotContain(forged.ToString(), single, StringComparison.OrdinalIgnoreCase);
+
+        // Nothing on the element could capture them: no [JsonExtensionData] bag, no id member.
+        Assert.DoesNotContain(typeof(WeatherHistoryWindowDto).GetProperties(), p =>
+            p.IsDefined(typeof(System.Text.Json.Serialization.JsonExtensionDataAttribute), true)
+            || p.Name.Contains("Id", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -1272,14 +1332,21 @@ public class WeatherApiTests
     }
 
     [Fact]
-    public void Both_point_writes_carry_the_4_mb_limit()
+    public async Task Both_point_writes_carry_the_4_mb_limit()
     {
-        foreach (var name in new[] { "Post", "Put" })
+        // Read off the routed endpoints' metadata — the public IRequestSizeLimitMetadata surface the request-size
+        // middleware consults — rather than the attribute's private field.
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var endpoints = factory.Services.GetServices<Microsoft.AspNetCore.Routing.EndpointDataSource>()
+            .SelectMany(source => source.Endpoints).ToList();
+
+        foreach (var name in new[] { "PostWeatherPoint", "PutWeatherPoint" })
         {
-            var limit = typeof(Odyssey.Api.Controllers.WeatherPointsController).GetMethod(name)!
-                .GetCustomAttributes(typeof(RequestSizeLimitAttribute), false).Cast<RequestSizeLimitAttribute>().Single();
-            var bytes = (long)typeof(RequestSizeLimitAttribute).GetField("_bytes", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!.GetValue(limit)!;
-            Assert.Equal(4L * 1024 * 1024, bytes);
+            var endpoint = Assert.Single(endpoints,
+                e => e.Metadata.GetMetadata<Microsoft.AspNetCore.Routing.IRouteNameMetadata>()?.RouteName == name);
+            var limit = endpoint.Metadata.GetMetadata<Microsoft.AspNetCore.Http.Metadata.IRequestSizeLimitMetadata>();
+            Assert.Equal(4L * 1024 * 1024, limit?.MaxRequestBodySize);
         }
     }
 
@@ -1301,24 +1368,142 @@ public class WeatherApiTests
         Assert.Equal(new DateOnly(2026, 6, 10), Assert.Single(after.HistoryWindows!).From);
     }
 
+    /// <summary>
+    /// A windowed point with measured days stored inside its trip, a place linked to it, and a calendar event and a
+    /// journal entry on a trip day at that place — so every <c>weather.read</c> surface (AC 9a) answers for this point
+    /// with real data rather than vacuously.
+    /// </summary>
+    private static async Task<(ExistingWeatherPoint Point, string[] Paths)> WindowedPointWithEveryReadAsync(WeatherFactory factory, HttpClient client)
+    {
+        var request = NewPoint();
+        request.HistoryWindows = [Window("2026-06-10", "2026-06-17"), Window("2025-07-01", "2025-07-07")];
+        var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+        var place = await CreateLocationAsync(client, "Storgata 1", latitude: 59.92m);
+        Assert.Equal(HttpStatusCode.OK, (await LinkAsync(client, place.LocationId, point.WeatherPointId)).StatusCode);
+
+        var eventId = Guid.NewGuid();
+        var entryId = Guid.NewGuid();
+        var tripDay = new DateTime(2026, 6, 12, 10, 0, 0, DateTimeKind.Utc);
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            for (var day = new DateOnly(2026, 6, 10); day <= new DateOnly(2026, 6, 17); day = day.AddDays(1))
+            {
+                context.WeatherDays.Add(new WeatherDay
+                {
+                    WeatherPointId = point.WeatherPointId, LocalDate = day, ObservedMinTempC = 9.5m, ObservedMaxTempC = 18.5m,
+                    ObservedMeanTempC = 14m, ObservedPrecipitationMm = 1.2m, ObservedFetchedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
+                    ObservedSiteVersion = 1, UpdatedAtUtc = new DateTime(2026, 6, 20, 7, 0, 0, DateTimeKind.Utc),
+                });
+            }
+
+            context.CalendarEvents.Add(new CalendarEvent
+            {
+                CalendarEventId = eventId, CalendarId = Guid.NewGuid(), Title = "Hike", LocationId = place.LocationId,
+                StartDateTime = tripDay, EndDateTime = tripDay.AddHours(3),
+            });
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = entryId, ExternalUid = "trip", Title = "Trip", Content = "…", EntryDate = tripDay, LocationId = place.LocationId,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        var now = DateTime.UtcNow;
+        var hourFrom = new DateTime(now.Year, now.Month, now.Day, now.Hour, 0, 0, DateTimeKind.Utc);
+        var pointToday = await PointTodayAsync(client, point.WeatherPointId);
+        var id = point.WeatherPointId;
+        return (point,
+        [
+            "/api/weather/points/options",
+            $"/api/weather/current?weatherPointId={id}",
+            $"/api/weather/hourly?weatherPointId={id}&fromUtc={hourFrom:yyyy-MM-ddTHH:mm:ssZ}&toUtc={hourFrom.AddHours(6):yyyy-MM-ddTHH:mm:ssZ}",
+            $"/api/weather/hourly?weatherPointId={id}&date={pointToday.AddDays(1):yyyy-MM-dd}",
+            // The daily read carries the history bounds (WeatherDailyResponse.History), the "history bounds" of AC 9a.
+            $"/api/weather/daily?weatherPointId={id}&from=2026-06-01&to=2026-06-30",
+            $"/api/calendar-events/{eventId}/weather",
+            $"/api/journal-entries/{entryId}/weather",
+        ]);
+    }
+
+    /// <summary>Every member name a window, its summary or its status travels under, plus the status values.</summary>
+    private static readonly string[] WindowVocabulary =
+    [
+        "historyWindow", "coveredDays", "fetchableDays", "earliestFrom", "latestTo", "hasOpenEnd",
+        "\"Upcoming\"", "\"Collecting\"", "\"Backfilling\"", "\"Complete\"", "\"Unavailable\"",
+    ];
+
     [Fact]
     public async Task Weather_read_surfaces_carry_no_window_data()
     {
         await using var factory = new WeatherFactory(Admin);
         using var client = factory.CreateClient();
-        var request = NewPoint();
-        request.HistoryWindows = [Window("2026-06-10", "2026-06-17")];
-        var point = (await (await client.PostAsJsonAsync("/api/weather/points", request)).Content.ReadFromJsonAsync<ExistingWeatherPoint>(Json))!;
+        var (point, paths) = await WindowedPointWithEveryReadAsync(factory, client);
 
-        foreach (var path in new[]
+        foreach (var path in paths)
         {
-            "/api/weather/points/options",
-            $"/api/weather/daily?weatherPointId={point.WeatherPointId}&from=2026-06-01&to=2026-06-30",
-            $"/api/weather/current?weatherPointId={point.WeatherPointId}",
-        })
+            var response = await client.GetAsync(path);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            var body = await response.Content.ReadAsStringAsync();
+            foreach (var word in WindowVocabulary)
+            {
+                Assert.DoesNotContain(word, body, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+
+        // Not vacuous: the bounds read answers with the stored trip days, and the event/entry reads resolve this point.
+        using var daily = JsonDocument.Parse(await client.GetStringAsync(paths[4]));
+        var history = daily.RootElement.GetProperty("history");
+        Assert.Equal("2026-06-10", history.GetProperty("measuredFrom").GetString());
+        Assert.Equal("2026-06-17", history.GetProperty("measuredThrough").GetString());
+        Assert.Equal(8, daily.RootElement.GetProperty("days").GetArrayLength());
+        foreach (var path in paths[5..])
         {
-            var body = await client.GetStringAsync(path);
-            Assert.DoesNotContain("historyWindow", body, StringComparison.OrdinalIgnoreCase);
+            using var doc = JsonDocument.Parse(await client.GetStringAsync(path));
+            Assert.Equal(point.WeatherPointId, doc.RootElement.GetProperty("point").GetProperty("weatherPointId").GetGuid());
+        }
+    }
+
+    [Fact]
+    public async Task Weather_read_responses_are_byte_identical_when_only_the_windows_change()
+    {
+        // AC 9b: same stored data, different windows → the same bytes on every weather.read surface, so the accepted
+        // exposure (§7.3: the measured days themselves) is exactly what is described and no wider.
+        await using var factory = new WeatherFactory(Admin);
+        using var client = factory.CreateClient();
+        var (point, paths) = await WindowedPointWithEveryReadAsync(factory, client);
+
+        async Task<List<string>> ReadAllAsync()
+        {
+            var bodies = new List<string>();
+            foreach (var path in paths)
+            {
+                var response = await client.GetAsync(path);
+                Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                bodies.Add(await response.Content.ReadAsStringAsync());
+            }
+
+            return bodies;
+        }
+
+        // A first pass settles the on-demand forecast fetch, so the comparison is about windows and nothing else.
+        await ReadAllAsync();
+        var before = await ReadAllAsync();
+
+        var current = (await client.GetFromJsonAsync<ExistingWeatherPoint>($"/api/weather/points/{point.WeatherPointId}", Json))!;
+        var edit = Update(current);
+        edit.HistoryWindows = [Window("2024-03-01", "2024-03-05"), Window("2026-06-12", "2026-06-13"), Window("2026-09-01")];
+        var edited = await client.PutAsJsonAsync($"/api/weather/points/{point.WeatherPointId}", edit);
+        Assert.Equal(HttpStatusCode.OK, edited.StatusCode);
+        var changed = (await edited.Content.ReadFromJsonAsync<WeatherPointUpdateResult>(Json))!.Point;
+        Assert.Equal(3, changed.HistoryWindowSummary.Count);
+        Assert.NotEqual(current.SettingsVersion, changed.SettingsVersion);
+
+        var after = await ReadAllAsync();
+
+        for (var i = 0; i < paths.Length; i++)
+        {
+            Assert.True(before[i] == after[i], $"{paths[i]} changed when only the windows did:\n{before[i]}\n---\n{after[i]}");
         }
     }
 

@@ -111,6 +111,32 @@ public class WeatherHistoryWindowRulesTests
         Assert.DoesNotContain("2026", new WeatherHistoryWindowSummary { EarliestFrom = new DateOnly(2026, 6, 10) }.ToString(), StringComparison.Ordinal);
     }
 
+    [Fact]
+    public void Point_write_dtos_redact_their_windows()
+    {
+        // AC 20: the parent write DTOs, which carry the windows as a list, print none of them — nor the name or position.
+        List<WeatherHistoryWindowDto> windows = [W("2026-06-10", "2026-06-17"), W("2025-07-01")];
+        var create = new NewWeatherPoint
+        {
+            Name = "Cabin by the lake", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, HistoryWindows = windows,
+        };
+        var update = new UpdateWeatherPoint
+        {
+            Name = "Cabin by the lake", Latitude = 61.517m, Longitude = 10.165m, TimeZoneId = "Europe/Oslo",
+            ForecastEnabled = true, HistoryEnabled = true, IsTracked = false, SettingsVersion = Guid.NewGuid(), HistoryWindows = windows,
+        };
+
+        foreach (var text in new[] { create.ToString(), update.ToString(), $"{create}", $"{update}" })
+        {
+            Assert.Contains("(redacted)", text, StringComparison.Ordinal);
+            foreach (var leak in new[] { "2026", "2025", "06-10", "07-01", "10.06", "Cabin", "61.5", "WeatherHistoryWindowDto" })
+            {
+                Assert.DoesNotContain(leak, text, StringComparison.Ordinal);
+            }
+        }
+    }
+
     // ── Planner ──────────────────────────────────────────────────────────────────────────────────
 
     private static WeatherWindow Win(string from, string? to = null) => new(DateOnly.Parse(from), to is null ? null : DateOnly.Parse(to));
