@@ -37,6 +37,7 @@ public class BackgroundJobsApiTests
         PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate,
         PermissionClaims.FileStorageRead,
         PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate,
+        PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate,
     ];
 
     private static readonly string[] SettingsOnly = [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate];
