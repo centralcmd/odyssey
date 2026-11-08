@@ -19,4 +19,13 @@ public sealed record NewCalendar
     [HexColor]
     [Required]
     public string Color { get; set; } = ColorPalette.CalendarDefault;
+
+    /// <summary>
+    /// A <see cref="TagIcons"/> key, or <c>null</c> for the calendar default (<see cref="CalendarIcons.Default"/>).
+    /// The default keys are refused, so each state has one representation. A <c>PUT</c> omitting it
+    /// resets the calendar to the default, as every other optional field on this replace body does.
+    /// </summary>
+    [StringLength(TagIcons.MaxKeyLength, ErrorMessage = TagIcons.InvalidIconMessage)]
+    [TagIcon]
+    public string? Icon { get; set; }
 }

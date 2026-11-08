@@ -25,6 +25,14 @@ public class Calendar
     [Required]
     public string Color { get; set; } = ColorPalette.CalendarDefault;
 
+    /// <summary>
+    /// A <c>TagIcons</c> catalogue key, or <c>NULL</c> for the calendar default (<c>CalendarIcons.Default</c>).
+    /// Never markup or a URL, and never a default key itself. A key the catalogue no longer has is
+    /// projected as <c>null</c> on read, so retiring one needs no data migration.
+    /// </summary>
+    [StringLength(64)]
+    public string? Icon { get; set; }
+
     public string? CreatedByUserId { get; set; }
 
     public string? UpdatedByUserId { get; set; }

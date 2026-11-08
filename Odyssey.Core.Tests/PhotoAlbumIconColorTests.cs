@@ -31,6 +31,15 @@ public class PhotoAlbumIconColorTests
     [Fact]
     public void Glyph_returns_a_known_key_itself() => Assert.Equal("landscape", PhotoAlbumIcons.Glyph("landscape"));
 
+    [Fact]
+    public void The_calendar_default_is_not_a_catalogue_member_and_is_the_fallback_glyph()
+    {
+        Assert.False(TagIcons.IsKnown(CalendarIcons.Default));
+        Assert.Equal(CalendarIcons.Default, CalendarIcons.Glyph(null));
+        Assert.Equal(CalendarIcons.Default, CalendarIcons.Glyph(TagIcons.Default));
+        Assert.Equal("work", CalendarIcons.Glyph("work"));
+    }
+
     /// <summary>
     /// Every entity property holding a catalogue key, declared once (issue #404 §7.11). A key retirement
     /// enumerates its tables from this list, so a sixth holder must be added here deliberately.
@@ -45,6 +54,7 @@ public class PhotoAlbumIconColorTests
             $"{nameof(JournalTaskTag)}.{nameof(JournalTaskTag.Icon)}",
             $"{nameof(PhotoTag)}.{nameof(PhotoTag.Icon)}",
             $"{nameof(PhotoAlbum)}.{nameof(PhotoAlbum.Icon)}",
+            $"{nameof(Odyssey.Context.Calendar)}.{nameof(Odyssey.Context.Calendar.Icon)}",
         ];
 
         using var context = TestContextFactory.Create();
