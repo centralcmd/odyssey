@@ -21,7 +21,7 @@ public partial class JournalEntryCard
     [Parameter] public IReadOnlyList<ContactLink> Contacts { get; set; } = [];
 
     /// <summary>The entry's tags, name-ordered, each with its own icon for its chip.</summary>
-    [Parameter] public IReadOnlyList<JournalTagChips.Tag> Tags { get; set; } = [];
+    [Parameter] public IReadOnlyList<OdsTagChips.Tag> Tags { get; set; } = [];
 
     [Parameter] public IReadOnlyList<JournalPhotoGallery.Photo> Photos { get; set; } = [];
 

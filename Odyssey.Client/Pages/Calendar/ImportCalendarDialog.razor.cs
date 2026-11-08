@@ -26,8 +26,7 @@ public partial class ImportCalendarDialog
     private bool _isImporting;
 
     private IcsImportResult? _result;
-    private string _targetName = string.Empty;
-    private string _targetColor = OdsCalendarSwatches.DefaultColor;
+    private OdsTagChips.Tag? _target;
     private string? _announce;
     private bool _focusResultPending;
     private ElementReference _resultHeading;
@@ -35,7 +34,7 @@ public partial class ImportCalendarDialog
     private readonly HashSet<string> _openReasons = new(StringComparer.Ordinal);
 
     private IReadOnlyList<OdsOption> _calendarOptions =>
-        [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name) { Icon = "circle", IconColor = Odyssey.Client.Theme.UserColor.Canonical(c.Color) })];
+        [.. Calendars.Select(CalendarVisuals.Option)];
 
     private int SkippedTotal => _result?.Skipped.Sum(g => g.Count) ?? 0;
 
@@ -123,8 +122,7 @@ public partial class ImportCalendarDialog
             }
 
             var calendar = Calendars.FirstOrDefault(c => c.CalendarId == calendarId);
-            _targetName = calendar?.Name ?? "calendar";
-            _targetColor = OdsCalendarSwatches.PaintFor(calendar?.Color).Bg;
+            _target = calendar is null ? null : CalendarVisuals.Chip(calendar);
             _result = outcome.Value;
 
             if (_result!.ImportedCount > 0 || _result.UpdatedCount > 0)

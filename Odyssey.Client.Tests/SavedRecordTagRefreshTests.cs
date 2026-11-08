@@ -62,7 +62,7 @@ public sealed class SavedRecordTagRefreshTests
         await cut.InvokeAsync(cut.Instance.OnEntryCreated);
 
         cut.WaitForAssertion(() => Assert.Contains(
-            cut.FindComponents<JournalTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
+            cut.FindComponents<OdsTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public sealed class SavedRecordTagRefreshTests
         await cut.InvokeAsync(cut.Instance.OnTaskSaved);
 
         cut.WaitForAssertion(() => Assert.Contains(
-            cut.FindComponents<JournalTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
+            cut.FindComponents<OdsTagChips>(), c => c.Instance.Tags.Any(t => t.Name == "Hiking")));
     }
 
     /// <summary>
@@ -149,7 +149,7 @@ public sealed class SavedRecordTagRefreshTests
             var chips = cut.FindAll(".tk-card-tags .odc-chip.tag");
             Assert.Equal(5, chips.Count);
             Assert.Equal("hiking", chips[0].QuerySelector(".material-icons")!.TextContent.Trim());
-            Assert.Equal(JournalTagChips.FallbackGlyph, chips[1].QuerySelector(".material-icons")!.TextContent.Trim());
+            Assert.Equal(OdsTagChip.FallbackGlyph, chips[1].QuerySelector(".material-icons")!.TextContent.Trim());
             Assert.StartsWith("+1", chips[4].TextContent.Trim());
         });
     }

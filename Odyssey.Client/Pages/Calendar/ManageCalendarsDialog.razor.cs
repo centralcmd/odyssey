@@ -22,6 +22,9 @@ public partial class ManageCalendarsDialog
     /// <summary>Export a calendar as an .ics file (per-row download action). Handled by the page.</summary>
     [Parameter] public EventCallback<ExistingCalendar> OnExport { get; set; }
 
+    /// <summary>The Icon field's help line.</summary>
+    public const string IconHelp = "Shown wherever this calendar is listed.";
+
     /// <summary>The Color field's help line.</summary>
     public const string ColorHelp = "Shown on this calendar's events.";
 
@@ -115,7 +118,7 @@ public partial class ManageCalendarsDialog
     private void StartEdit(ExistingCalendar calendar)
     {
         _editingId = calendar.CalendarId;
-        _editDraft = new RowDraft { Name = calendar.Name, Description = calendar.Description ?? string.Empty, Color = calendar.Color };
+        _editDraft = new RowDraft { Name = calendar.Name, Description = calendar.Description ?? string.Empty, Color = calendar.Color, Icon = calendar.Icon };
         _editError = null;
         _adding = false;
         ResetColorState();
@@ -229,6 +232,7 @@ public partial class ManageCalendarsDialog
         Name = draft.Name.Trim(),
         Description = string.IsNullOrWhiteSpace(draft.Description) ? null : draft.Description.Trim(),
         Color = draft.Color,
+        Icon = draft.Icon,
     };
 
     private sealed class RowDraft
@@ -236,5 +240,8 @@ public partial class ManageCalendarsDialog
         public string Name { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Color { get; set; } = OdsCalendarSwatches.DefaultColor;
+
+        /// <summary>A <c>TagIcons</c> key, or <c>null</c> for the calendar default.</summary>
+        public string? Icon { get; set; }
     }
 }

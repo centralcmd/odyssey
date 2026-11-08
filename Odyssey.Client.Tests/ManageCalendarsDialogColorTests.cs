@@ -74,6 +74,42 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
     }
 
     [Fact]
+    public void The_chosen_icon_is_saved_and_the_default_cell_sends_null()
+    {
+        var cut = OpenNewCalendar();
+
+        Assert.Equal("Default (calendar icon)", cut.Find("#cal-icon-new [aria-checked=true]").GetAttribute("aria-label"));
+        cut.FindAll("#cal-icon-new [role=radio]").Single(c => c.GetAttribute("aria-label") == TagIcons.LabelFor("work")).Click();
+        CreateButton(cut).Click();
+
+        cut.WaitForAssertion(() => calendars.Verify(c => c.CreateCalendarAsync(
+            It.Is<NewCalendar>(n => n.Name == "Hobby" && n.Icon == "work"), It.IsAny<CancellationToken>()), Times.Once));
+    }
+
+    [Fact]
+    public void A_row_leads_with_its_calendars_own_icon_in_its_colour()
+    {
+        var cut = ctx.Render<DialogHost>(p => p.Add(d => d.Calendars,
+        [
+            new ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Work", Color = "#0369A1", Icon = "work" },
+            new ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Home", Color = "#15803D" },
+        ]));
+
+        var glyphs = cut.FindAll(".cal-mgr-glyph");
+        Assert.Equal(["work", CalendarIcons.Default], glyphs.Select(g => g.TextContent.Trim()));
+        Assert.Equal("color:oklch(from #0369A1 var(--user-glyph-l, l) c h)", glyphs[0].GetAttribute("style"));
+    }
+
+    [Fact]
+    public void Every_calendar_option_carries_its_icon_and_colour()
+    {
+        var option = CalendarVisuals.Option(new ExistingCalendar { CalendarId = Guid.NewGuid(), Name = "Bills", Color = "not a colour", Icon = "work" });
+
+        Assert.Equal("work", option.Icon);
+        Assert.Equal(Odyssey.Client.Theme.UserColor.Glyph(ColorPalette.CalendarDefault), option.IconColor);
+    }
+
+    [Fact]
     public void An_empty_custom_hex_blocks_the_save_with_the_pickers_message()
     {
         var cut = OpenNewCalendar();
@@ -102,7 +138,7 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
 
         var add = cut.Find("button.odc-add-row");
         Assert.Contains("New calendar", add.TextContent);
-        Assert.Contains("Name, an optional description, and a colour.", add.TextContent);
+        Assert.Contains("Name, an optional description, an icon and a colour.", add.TextContent);
 
         add.Click();
         Assert.Equal("e.g. Personal", cut.Find(".cal-mgr-editor-grid input").GetAttribute("placeholder"));
@@ -111,6 +147,8 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
 
     public sealed class DialogHost : ComponentBase
     {
+        [Parameter] public IReadOnlyList<ExistingCalendar> Calendars { get; set; } = [];
+
         protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
         {
             builder.OpenComponent<MudDialogProvider>(0);
@@ -119,7 +157,7 @@ public class ManageCalendarsDialogColorTests : IAsyncLifetime
             builder.CloseComponent();
             builder.OpenComponent<ManageCalendarsDialog>(2);
             builder.AddComponentParameter(3, nameof(ManageCalendarsDialog.Open), true);
-            builder.AddComponentParameter(4, nameof(ManageCalendarsDialog.Calendars), (IReadOnlyList<ExistingCalendar>)[]);
+            builder.AddComponentParameter(4, nameof(ManageCalendarsDialog.Calendars), Calendars);
             builder.CloseComponent();
         }
     }

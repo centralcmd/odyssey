@@ -95,7 +95,7 @@ public partial class CalendarEventDialog
     private bool _isSaving;
     private bool _previousOpen;
 
-    private IReadOnlyList<OdsOption> _calendarOptions => [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name))];
+    private IReadOnlyList<OdsOption> _calendarOptions => [.. Calendars.Select(CalendarVisuals.Option)];
 
     private bool RepeatEditable => Mode == CalendarEventDialogMode.Create;
 

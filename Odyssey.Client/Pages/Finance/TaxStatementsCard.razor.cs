@@ -26,7 +26,7 @@ public partial class TaxStatementsCard
     private List<ExistingCurrency> _currencies = [];
     private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
     private List<ExistingTransactionTag> _tags = [];
-    private Dictionary<Guid, string> _tagNames = new();
+    private Dictionary<Guid, ExistingTransactionTag> _tagById = new();
     private IReadOnlyList<OdsOption> _tagOptions = [];
 
     // Per-statement problems (derived-net-worth pending / off-currency excluded).
@@ -230,8 +230,8 @@ public partial class TaxStatementsCard
     {
         var tags = await ReferenceData.TransactionTagsAsync();
         _tags = tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCulture).ToList();
-        _tagNames = tags.ToDictionary(t => t.TransactionTagId, t => t.Name);
-        _tagOptions = [.. _tags.Select(t => new OdsOption(t.TransactionTagId.ToString(), t.Name))];
+        _tagById = tags.ToDictionary(t => t.TransactionTagId);
+        _tagOptions = [.. _tags.Select(OdsTransactionTagOptions.From)];
     }
 
     // Per-statement reconciliation reports (derived figures + variances). Fetched in
@@ -617,9 +617,9 @@ public partial class TaxStatementsCard
     private static string SettlementWord(ExistingTaxStatement s, decimal? settle) =>
         TaxSettlementFigure.Word(s.SettlementAmount, settle);
 
-    // Tag id lists → display names (dropping ids no longer in the catalog).
-    private IEnumerable<string> TagNames(IEnumerable<Guid> ids) =>
-        ids.Select(id => _tagNames.GetValueOrDefault(id)).Where(n => n is not null)!;
+    // Tag id lists → chips (dropping ids no longer in the catalog).
+    private IReadOnlyList<OdsTagChips.Tag> TagChips(IEnumerable<Guid> ids) =>
+        OdsTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon, t => t.Color);
 
     private static OdsSeverity Sev(OdsSeverity s) => s;
 

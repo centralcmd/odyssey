@@ -43,7 +43,7 @@ public partial class PhotosCard
     private Dictionary<Guid, string> _tagNames = [];
     private Dictionary<Guid, string?> _tagIcons = [];
     private Dictionary<Guid, string?> _tagColors = [];
-    private Dictionary<Guid, string> _albumNames = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
     private Dictionary<Guid, string> _personNames = [];
     private IReadOnlyList<PhotoAlbumSummary> _albumSummaries = [];
     private int _libraryTotal;
@@ -132,7 +132,7 @@ public partial class PhotosCard
             _albumSummaries = albums;
             // Each option carries its Overview row's glyph and tone (issue #406 surface D1).
             _albumOptions = [.. _albumSummaries.Select(AlbumVisuals.FilterOption)];
-            _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+            _albumById = _albumSummaries.ToDictionary(a => a.PhotoAlbumId);
         }
 
         // People come from the caller's Person contacts (requires contacts.read; degrades to empty).
@@ -310,7 +310,7 @@ public partial class PhotosCard
     private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
 
     private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
-    private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
+    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     // ── Selection ──

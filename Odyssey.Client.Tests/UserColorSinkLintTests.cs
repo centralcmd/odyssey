@@ -27,10 +27,12 @@ public class UserColorSinkLintTests
     private static readonly string[] ScopeNames =
     [
         "ExistingTransactionTag", "ExistingJournalTag", "ExistingJournalTaskTag", "ExistingPhotoTag",
-        "ExistingCalendar", "JournalTagChips", "OdsTagChips", "OdsTagAdmin", "OdsTagColorPicker",
+        "ExistingCalendar", "OdsTagChips", "OdsTagChip", "OdsTagAdmin", "OdsTagColorPicker",
         "OdsCalendarSwatches", "UserColor",
         // Album icon colours (issue #406): an album colour is user data on the same footing as a tag's.
         "PhotoAlbumSummary", "ExistingPhotoAlbum", "AlbumVisuals",
+        // Calendar icon colours: CalendarVisuals is the calendar twin of AlbumVisuals.
+        "CalendarVisuals",
     ];
 
     /// <summary>The album surfaces that must stay in the scan set (issue #406 AC 9).</summary>
@@ -111,6 +113,19 @@ public class UserColorSinkLintTests
     /// <c>UserColor</c> call or a member whose body is one.
     /// </summary>
     [Fact]
+    public void Calendar_visuals_route_every_colour_through_UserColor()
+    {
+        var path = Directory.EnumerateFiles(ClientSource.Root, "CalendarVisuals.cs", SearchOption.AllDirectories).Single(p => !IsBuildOutput(p));
+        var source = File.ReadAllText(path);
+
+        foreach (Match read in Regex.Matches(source, @"calendar\.Color\b"))
+        {
+            var line = source[source.LastIndexOf('\n', read.Index)..source.IndexOf('\n', read.Index)];
+            Assert.Contains("UserColor.", line, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public void Every_style_in_the_strict_files_comes_from_UserColor()
     {
         var problems = new List<string>();
@@ -124,7 +139,9 @@ public class UserColorSinkLintTests
             foreach (Match match in Regex.Matches(markup, "\\bstyle=\"@([^\"]+)\""))
             {
                 var expression = match.Groups[1].Value;
-                if (expression.Contains("UserColor.", StringComparison.Ordinal))
+                // CalendarVisuals is the calendar's one door, and its every style routes through UserColor
+                // (Calendar_visuals_route_every_colour_through_UserColor pins that).
+                if (expression.Contains("UserColor.", StringComparison.Ordinal) || expression.StartsWith("CalendarVisuals.", StringComparison.Ordinal))
                     continue;
 
                 var member = Regex.Match(expression, @"^\(?([A-Za-z_]\w*)").Groups[1].Value;
