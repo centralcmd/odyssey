@@ -136,7 +136,6 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
             await context.WeatherPointSchedules.Where(s => s.WeatherPointId == pointId)
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(s => s.ObservationsCheckedThroughDate, (DateOnly?)null)
-                    .SetProperty(s => s.ObservationsBackfilledFromDate, (DateOnly?)null)
                     .SetProperty(s => s.LastObservationSuccessUtc, (DateTime?)null)
                     .SetProperty(s => s.ObservationFailureKind, (WeatherFetchFailureKind?)null)
                     .SetProperty(s => s.ObservationConsecutiveFailures, 0)
@@ -144,6 +143,8 @@ public sealed class RelationalWeatherHistoryPurger(OdysseyContext context) : IWe
                     .SetProperty(s => s.LeaseUntilUtc, (DateTime?)null)
                     .SetProperty(s => s.Version, Guid.NewGuid()), cancellationToken);
             await context.WeatherStations.Where(st => st.WeatherPointId == pointId).ExecuteDeleteAsync(cancellationToken);
+            // What was checked goes with what was measured (issue #436 §3.4); the windows are settings and stay.
+            await context.WeatherObservationCoverages.Where(c => c.WeatherPointId == pointId).ExecuteDeleteAsync(cancellationToken);
             await context.WeatherPoints.Where(w => w.WeatherPointId == pointId)
                 .ExecuteUpdateAsync(set => set
                     .SetProperty(w => w.StationResolvedAtUtc, (DateTime?)null)
@@ -208,6 +209,11 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
         // the in-memory provider does neither for untracked rows, so both are done by hand here.
         context.WeatherStations.RemoveRange(
             await context.WeatherStations.Where(st => st.WeatherPointId == pointId).ToListAsync(cancellationToken));
+        // Windows and coverage cascade on MariaDB; the in-memory provider has no cascade.
+        context.WeatherPointHistoryWindows.RemoveRange(
+            await context.WeatherPointHistoryWindows.Where(w => w.WeatherPointId == pointId).ToListAsync(cancellationToken));
+        context.WeatherObservationCoverages.RemoveRange(
+            await context.WeatherObservationCoverages.Where(c => c.WeatherPointId == pointId).ToListAsync(cancellationToken));
         var remaining = await context.WeatherPointSites.Where(s => s.WeatherPointId == pointId).ToListAsync(cancellationToken);
         context.WeatherPointSites.RemoveRange(remaining);
         foreach (var linked in await context.Locations.Where(l => l.WeatherPointId == pointId).ToListAsync(cancellationToken))
@@ -246,7 +252,6 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
         if (schedule is not null)
         {
             schedule.ObservationsCheckedThroughDate = null;
-            schedule.ObservationsBackfilledFromDate = null;
             schedule.LastObservationSuccessUtc = null;
             schedule.ObservationFailureKind = null;
             schedule.ObservationConsecutiveFailures = 0;
@@ -265,6 +270,9 @@ public sealed class TrackedWeatherHistoryPurger(OdysseyContext context) : IWeath
 
         context.WeatherStations.RemoveRange(
             await context.WeatherStations.Where(st => st.WeatherPointId == pointId).ToListAsync(cancellationToken));
+        // What was checked goes with what was measured (issue #436 §3.4); the windows are settings and stay.
+        context.WeatherObservationCoverages.RemoveRange(
+            await context.WeatherObservationCoverages.Where(c => c.WeatherPointId == pointId).ToListAsync(cancellationToken));
 
         await context.SaveChangesAsync(cancellationToken);
         context.ChangeTracker.Clear();

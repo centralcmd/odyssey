@@ -156,6 +156,9 @@
                     <WeatherPointLinkedSection @key="p.WeatherPointId" WeatherPointId="p.WeatherPointId" PointName="@p.Name"
                                                OnAnnounce="@((string m) => AnnounceLinked(p.WeatherPointId, m))" OnStatus="OnStatusAsync" />
                 }
+                @* History windows (#437): from the single-point read; keyed on the settings token so a save reloads it. Shown
+                   during a purge too, every window Paused — the windows are kept by a history purge. *@
+                <WeatherHistoryWindowsSection @key="@($"w:{p.WeatherPointId}:{p.SettingsVersion}")" Row="p" OnStatus="OnStatusAsync" />
                 @* The point's forecast — the section a linked location shows, labelled Forecast; only while the forecast
                    is on. Refresh forecast re-keys it so it reads the new issue. *@
                 @if (p.ForecastEnabled && !p.PurgeInProgress)

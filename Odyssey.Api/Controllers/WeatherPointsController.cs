@@ -19,6 +19,12 @@ namespace Odyssey.Api.Controllers;
 [Route("api/weather/points")]
 public sealed class WeatherPointsController(WeatherPointService service) : ControllerBase
 {
+    /// <summary>
+    /// The write body limit (issue #436 §7.7). Not a window cap: the largest valid window set is ≈ 1.2 MB compact and
+    /// ≈ 2 MB pretty-printed, so no valid save reaches it; it replaces the upload-sized transport ceiling.
+    /// </summary>
+    public const long WeatherPointWriteMaxBytes = 4 * 1024 * 1024;
+
     [HttpGet(Name = "GetWeatherPoints")]
     [Authorize(Policy = PermissionClaims.WeatherPointsRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PagedResult<ExistingWeatherPoint>))]
@@ -60,6 +66,8 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     }
 
     [HttpPost(Name = "PostWeatherPoint")]
+    [RequestSizeLimit(WeatherPointWriteMaxBytes)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [Authorize(Policy = PermissionClaims.WeatherPointsUpdate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingWeatherPoint))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
@@ -85,6 +93,8 @@ public sealed class WeatherPointsController(WeatherPointService service) : Contr
     }
 
     [HttpPut("{weatherPointId:guid}", Name = "PutWeatherPoint")]
+    [RequestSizeLimit(WeatherPointWriteMaxBytes)]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
     [Authorize(Policy = PermissionClaims.WeatherPointsUpdate)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(WeatherPointUpdateResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]

@@ -366,7 +366,17 @@ public sealed class WeatherFetchService
         var today = DateOnly.FromDateTime(localNow);
         var yesterday = today.AddDays(-1);
         var firstOwned = site.SiteVersion == 1 ? DateOnly.MinValue : timeline.FirstOwnedDate(site);
-        var floor = Max(weather.HistoryFrom, firstOwned);
+
+        // History windows (issue #436): only days inside a window are fetched, and the coverage rows say which of them
+        // were already asked for. A gap is an effective day not yet covered.
+        var windows = await context.WeatherPointHistoryWindows.AsNoTracking()
+            .Where(w => w.WeatherPointId == pointId)
+            .Select(w => new WeatherWindow(w.FromDate, w.ToDate))
+            .ToListAsync(cancellationToken);
+        var coverage = await context.WeatherObservationCoverages
+            .Where(c => c.WeatherPointId == pointId && c.SiteVersion == site.SiteVersion)
+            .OrderBy(c => c.FromDate)
+            .ToListAsync(cancellationToken);
 
         // Frost has finished yesterday by ObservationLocalHour; before then the newest complete day is the one before.
         // A place never fetched for its current site does not wait for that hour: it starts at once with the days
@@ -376,13 +386,27 @@ public sealed class WeatherFetchService
         var neverFetched = schedule.ObservationsCheckedThroughDate is null;
         var dailyPending = schedule.ObservationsCheckedThroughDate is not { } checkedThrough || checkedThrough < yesterday;
         var dailyAllowed = dailyPending && (morning || neverFetched);
-        var backfillPending = schedule.ObservationsBackfilledFromDate is { } backfilledFrom && backfilledFrom > floor;
 
-        if (!dailyAllowed && !backfillPending)
+        // The recent re-check re-asks the last seven complete days for late corrections, clipped to the windows.
+        var recheckFrom = Max(firstOwned, lastComplete.AddDays(-6));
+        var recheck = recheckFrom <= lastComplete
+            ? WeatherHistoryPlan.ClipToWindows(new WeatherDateRange(recheckFrom, lastComplete), windows)
+            : [];
+        var gaps = WeatherHistoryPlan.Gaps(windows, Ranges(coverage), firstOwned, lastComplete);
+
+        if (dailyAllowed && recheck.Count == 0)
+        {
+            // No window touches the last seven days: the re-check is satisfied without a request.
+            schedule.ObservationsCheckedThroughDate = lastComplete;
+            dailyAllowed = false;
+            dailyPending = lastComplete < yesterday;
+        }
+
+        if (!dailyAllowed && gaps.Count == 0)
         {
             // Nothing to send: only the wake-up time moves. Saved WITHOUT rotating the version, so it can
             // never fence off a forecast fetch another worker holds on the same point.
-            schedule.NextObservationFetchAfterUtc = NextObservationWindow(site, now, dailyPending);
+            schedule.NextObservationFetchAfterUtc = NextIdleWake(site, now, dailyPending, windows, lastComplete);
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
@@ -437,11 +461,12 @@ public sealed class WeatherFetchService
                 weather.StationResolvedAtUtc ??= now;
             }
 
-            // A group that gained a station measures from the history start again: its days so far are empty.
+            // A group that gained a station measures every window again: its days so far are empty. Only the current
+            // site's coverage goes, in this same fenced save (issue #436 §3.3 step 2).
             if (changed && found is not null && schedule.ObservationsCheckedThroughDate is not null)
             {
+                context.WeatherObservationCoverages.RemoveRange(coverage);
                 schedule.ObservationsCheckedThroughDate = null;
-                schedule.ObservationsBackfilledFromDate = null;
             }
 
             // One request per call keeps the scheduler at ≤ 1 request/s: the lookup was this call's request, so
@@ -465,61 +490,49 @@ public sealed class WeatherFetchService
         var stationIds = chosen.Values.Distinct(StringComparer.Ordinal).ToList();
         var chunkDays = BackfillChunkDays / stationIds.Count;
 
-        DateOnly from, to;
+        // The parts this request answers for, and their hull — what is actually sent.
         var daily = dailyAllowed;
-        if (daily)
-        {
-            from = Max(floor, lastComplete.AddDays(-6));
-            to = lastComplete;
-        }
-        else
-        {
-            var lowest = schedule.ObservationsBackfilledFromDate!.Value;
-            from = Max(floor, lowest.AddDays(-chunkDays));
-            to = lowest.AddDays(-1);
-        }
+        var parts = daily ? recheck : BackfillParts(gaps, chunkDays);
+        var from = parts[0].From;
+        var to = parts[^1].To;
 
         var inserted = new List<DateOnly>();
-        if (from <= to)
+        var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
+        var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
+        now = Now;
+        tally?.Attempt();
+        if (!fetched.Succeeded)
         {
-            var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
-            var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
-            now = Now;
-            tally?.Attempt();
-            if (!fetched.Succeeded)
-            {
-                tally?.Fail(fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError);
-                RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
-                await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
-                return secret.State;
-            }
-
-            inserted = await StageObservationsAsync(pointId, site.SiteVersion, chosen, Compose(chosen, fetched.Days), now, cancellationToken);
-            tally?.Store(inserted.Count);
+            tally?.Fail(fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError);
+            RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
+            await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
+            return secret.State;
         }
 
-        // Markers advance even on an empty result, so an empty range is never re-requested (AC 16).
+        // Only days inside a window are stored: the hull of several short gaps also returns the days between them.
+        var wanted = Compose(chosen, fetched.Days).Where(day => parts.Any(part => part.Contains(day.Date))).ToList();
+        inserted = await StageObservationsAsync(pointId, site.SiteVersion, chosen, wanted, now, cancellationToken);
+        tally?.Store(inserted.Count);
+
+        // Coverage advances even on an empty result, so an empty range is never re-requested (AC 16).
+        foreach (var part in parts)
+        {
+            AddCoverage(coverage, pointId, site.SiteVersion, part);
+        }
+
         if (daily)
         {
             schedule.ObservationsCheckedThroughDate = lastComplete;
-            if (schedule.ObservationsBackfilledFromDate is null || schedule.ObservationsBackfilledFromDate > from)
-            {
-                schedule.ObservationsBackfilledFromDate = from;
-            }
-        }
-        else
-        {
-            schedule.ObservationsBackfilledFromDate = from;
         }
 
         schedule.LastObservationSuccessUtc = now;
         schedule.ObservationFailureKind = null;
         schedule.ObservationConsecutiveFailures = 0;
-        var moreBackfill = schedule.ObservationsBackfilledFromDate > floor;
+        var moreBackfill = WeatherHistoryPlan.Gaps(windows, Ranges(coverage), firstOwned, lastComplete).Count > 0;
         // An early first fetch still owes yesterday, so it wakes at this morning's window rather than tomorrow's.
         schedule.NextObservationFetchAfterUtc = moreBackfill
             ? now
-            : NextObservationWindow(site, now, dailyPending: schedule.ObservationsCheckedThroughDate < yesterday);
+            : NextIdleWake(site, now, schedule.ObservationsCheckedThroughDate < yesterday, windows, lastComplete);
 
         if (await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken) && inserted.Count > 0)
         {
@@ -527,6 +540,115 @@ public sealed class WeatherFetchService
         }
 
         return secret.State;
+    }
+
+    /// <summary>
+    /// One backfill request's parts: the newest <paramref name="chunkDays"/> of the newest gap, then older gaps for as
+    /// long as the hull still fits one chunk — so many short windows do not multiply Frost requests (#436 §3.3 step 4).
+    /// </summary>
+    internal static List<WeatherDateRange> BackfillParts(IReadOnlyList<WeatherDateRange> gapsNewestFirst, int chunkDays)
+    {
+        var newest = gapsNewestFirst[0];
+        var to = newest.To;
+        var parts = new List<WeatherDateRange>
+        {
+            new(newest.Days > chunkDays ? to.AddDays(-(chunkDays - 1)) : newest.From, to),
+        };
+        var whole = newest.Days <= chunkDays;
+        for (var k = 1; whole && k < gapsNewestFirst.Count; k++)
+        {
+            var older = gapsNewestFirst[k];
+            if (to.DayNumber - older.From.DayNumber + 1 > chunkDays)
+            {
+                break;
+            }
+
+            parts.Insert(0, older);
+        }
+
+        return parts;
+    }
+
+    /// <summary>
+    /// Records a covered range, merging with overlapping or adjacent rows. A row keeps its key where it can: an
+    /// extension at the upper edge updates <c>ToDate</c> in place; one at the lower edge removes the old row and adds a
+    /// row with a different <c>FromDate</c>, so no save ever deletes and inserts one key (issue #436 §4.2).
+    /// </summary>
+    private void AddCoverage(List<WeatherObservationCoverage> rows, Guid pointId, int siteVersion, WeatherDateRange range)
+    {
+        var from = range.From;
+        var to = range.To;
+        var absorbed = rows.Where(r => r.FromDate.DayNumber <= to.DayNumber + 1 && r.ToDate.DayNumber + 1 >= from.DayNumber).ToList();
+        foreach (var row in absorbed)
+        {
+            if (row.FromDate < from)
+            {
+                from = row.FromDate;
+            }
+
+            if (row.ToDate > to)
+            {
+                to = row.ToDate;
+            }
+        }
+
+        var keep = absorbed.FirstOrDefault(r => r.FromDate == from);
+        foreach (var row in absorbed.Where(r => r != keep))
+        {
+            context.WeatherObservationCoverages.Remove(row);
+            rows.Remove(row);
+        }
+
+        if (keep is not null)
+        {
+            keep.ToDate = to;
+        }
+        else
+        {
+            var added = new WeatherObservationCoverage { WeatherPointId = pointId, SiteVersion = siteVersion, FromDate = from, ToDate = to };
+            context.WeatherObservationCoverages.Add(added);
+            rows.Add(added);
+        }
+
+        rows.Sort((a, b) => a.FromDate.CompareTo(b.FromDate));
+    }
+
+    /// <summary>
+    /// The newest day Frost has finished for <paramref name="site"/>: yesterday from <see cref="ObservationLocalHour"/>
+    /// site-local, the day before until then. The fetcher's and the read path's one definition.
+    /// </summary>
+    internal static DateOnly LastComplete(WeatherPointSite site, DateTime nowUtc)
+    {
+        var local = WeatherSiteTimeline.LocalTime(nowUtc, site);
+        var yesterday = DateOnly.FromDateTime(local).AddDays(-1);
+        return local.Hour >= ObservationLocalHour ? yesterday : yesterday.AddDays(-1);
+    }
+
+    private static List<WeatherDateRange> Ranges(IEnumerable<WeatherObservationCoverage> rows) =>
+        rows.Select(r => new WeatherDateRange(r.FromDate, r.ToDate)).ToList();
+
+    /// <summary>
+    /// When an idle point next needs a look: the next morning while a window reaches past the last complete day; with
+    /// only future windows, the morning after the earliest one's first day completes; with none left, a database-only
+    /// check in 24 h.
+    /// </summary>
+    private static DateTime NextIdleWake(
+        WeatherPointSite site, DateTime now, bool dailyPending, IReadOnlyList<WeatherWindow> windows, DateOnly lastComplete)
+    {
+        var current = windows.Any(w => w.From <= lastComplete && (w.To is null || w.To > lastComplete));
+        if (current)
+        {
+            return NextObservationWindow(site, now, dailyPending);
+        }
+
+        var upcoming = windows.Where(w => w.From > lastComplete).Select(w => (DateOnly?)w.From).Min();
+        if (upcoming is { } first)
+        {
+            var wake = WeatherSiteTimeline.StartOfDayUtc(first.AddDays(1), WeatherSiteTimeline.Zone(site)).AddHours(ObservationLocalHour);
+            return wake > now ? wake : NextObservationWindow(site, now, dailyPending);
+        }
+
+        return now.AddHours(24);
     }
 
     /// <summary>The longest backfill request, in station-days: a year from one station, a third of one from three.</summary>

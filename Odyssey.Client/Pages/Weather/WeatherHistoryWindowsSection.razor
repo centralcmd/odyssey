@@ -1,0 +1,133 @@
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IWeatherApiClient Weather
+@inject IJSRuntime Js
+@*
+    WeatherHistoryWindowsSection — a weather point's history windows in its record (issue #437 §3.3; design system ·
+    Weather.jsx WeatherHistoryWindowsSection, components/WeatherHistoryWindows). A record section like its siblings,
+    the count in its meta. Each window's range in words ("to", never a dash) and its status as a chip whose label
+    carries the meaning. A point-level condition outranks every window: one line at the top, and every chip reads
+    Paused, so no chip claims progress the point cannot make. Loaded from the single-point read when the record opens.
+    Admin-only data: windows are travel dates, rendered only on the Weather points page.
+*@
+
+<div id="@SectionId">
+    @switch (_phase)
+    {
+        case Phase.Loading:
+            <OdsRecordSection Class="acct-section wx-section" Label="History windows">
+                <div class="wx-linked-skel" aria-busy="true">
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Text" Width="52%" />
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Text" Width="38%" />
+                </div>
+            </OdsRecordSection>
+            break;
+        case Phase.Error:
+            <OdsRecordSection Class="acct-section wx-section" Label="History windows">
+                <div class="wx-sec-empty" role="alert">
+                    <span>Couldn’t load this point’s history windows.</span>
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="RetryAsync">Retry</OdsButton>
+                </div>
+            </OdsRecordSection>
+            break;
+        default:
+            @if (_windows.Count == 0)
+            {
+                <OdsRecordSection Class="acct-section wx-section" Label="History windows" Empty="true"
+                                  EmptyText="@(b => b.AddContent(0, "No history windows. Add one in Weather settings."))" />
+            }
+            else
+            {
+                <OdsRecordSection Class="acct-section wx-section" Label="History windows"
+                                  Meta="@($"{_windows.Count} {(_windows.Count == 1 ? "window" : "windows")}")">
+                    @if (PausedReason is { } reason)
+                    {
+                        <div class="wx-note wx-hws-paused"><OdsMIcon Name="pause_circle" Size="16" /><span>@reason</span></div>
+                    }
+                    <ul class="wx-hws-list">
+                        @foreach (var w in Shown)
+                        {
+                            var status = PausedReason is null ? WeatherHistoryWindows.StatusOf(w.Status) : WeatherHistoryWindows.Paused;
+                            var progress = PausedReason is null ? WeatherHistoryWindows.Progress(w) : null;
+                            <li @key="w.From">
+                                <span class="wx-hws-range">@WeatherHistoryWindows.Range(w.From, w.To)</span>
+                                <OdsChip Tone="status.Tone" Icon="@status.Icon">@status.Label</OdsChip>
+                                @if (progress is not null)
+                                {
+                                    <span class="wx-hws-progress">@progress</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                    @if (_windows.Count > ShownLimit)
+                    {
+                        @* The label says what pressing does; no aria-expanded, which would contradict it (4.1.2). *@
+                        <OdsButton Variant="OdsButtonVariant.Text" OnClick="@(() => _all = !_all)">
+                            @(_all ? $"Show the newest {ShownLimit}" : $"Show all {_windows.Count}")
+                        </OdsButton>
+                    }
+                </OdsRecordSection>
+            }
+            break;
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ExistingWeatherPoint Row { get; set; } = default!;
+
+    /// <summary>A 403 from the point endpoint — the page hands it to the claims refresher.</summary>
+    [Parameter] public EventCallback<System.Net.HttpStatusCode> OnStatus { get; set; }
+
+    internal const int ShownLimit = 20;
+
+    internal enum Phase { Loading, Ready, Error }
+
+    private Phase _phase = Phase.Loading;
+    private IReadOnlyList<ExistingWeatherHistoryWindow> _windows = [];
+    private bool _all;
+
+    private string SectionId => $"wx-hws-{Row.WeatherPointId:N}";
+
+    private IEnumerable<ExistingWeatherHistoryWindow> Shown =>
+        _all || _windows.Count <= ShownLimit ? _windows : _windows.Skip(_windows.Count - ShownLimit);
+
+    /// <summary>What stops every window from progressing; null when nothing does.</summary>
+    private string? PausedReason =>
+        !Row.HistoryEnabled ? "Paused — historical data is off. The windows are kept and apply again when it is turned on."
+        : Row.PurgeInProgress ? "Deleting history."
+        : !Row.HasObservationStation ? "No MET station near enough. Nothing can be measured for these windows."
+        : WeatherVisuals.FailureOf(Row.ObservationFailureKind) is { } fail ? $"{fail.Label}. Collection resumes when MET Norway answers again."
+        : null;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _phase = Phase.Loading;
+        StateHasChanged();
+        var result = await Weather.PointAsync(Row.WeatherPointId);
+        await OnStatus.InvokeAsync(result.Status);
+        if (!result.IsSuccess || result.Value is not { } point)
+        {
+            _phase = Phase.Error;
+            return;
+        }
+
+        _windows = point.HistoryWindows ?? [];
+        _phase = Phase.Ready;
+    }
+
+    /// <summary>The Retry button goes away on success, so focus moves to the section heading.</summary>
+    private async Task RetryAsync()
+    {
+        await LoadAsync();
+        if (_phase != Phase.Ready)
+            return;
+        StateHasChanged();
+        await Task.Yield();
+        try { await Js.InvokeVoidAsync("odsFocusSectionHeading", SectionId); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+}

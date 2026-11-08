@@ -26,7 +26,7 @@ namespace Odyssey.Client.Tests;
 /// a linked location's weather sections, the options cache, the bounded claims refresh and the quiet toast.
 /// </summary>
 [Collection(nameof(WeatherWidgetSeam))]
-public class WeatherPointsUiTests : IDisposable
+public partial class WeatherPointsUiTests : IDisposable
 {
     private static readonly Guid OsloId = Guid.Parse("0510a000-0000-0000-0000-000000000001");
     private static readonly Guid BergenId = Guid.Parse("0510a000-0000-0000-0000-000000000002");
@@ -187,8 +187,8 @@ public class WeatherPointsUiTests : IDisposable
         var forecast = page.FindComponent<WeatherForecastSection>();
         Assert.Equal("Forecast", forecast.Instance.Label);
         Assert.Equal(OsloId, forecast.Instance.WeatherPointId);
-        // Tiles · Map · Linked locations · Forecast · Weather history — the Locations record's order.
-        page.WaitForAssertion(() => Assert.Equal(["Weather", "Map", "Linked locations", "Forecast", "Weather history"],
+        // Tiles · Map · Linked locations · History windows · Forecast · Weather history.
+        page.WaitForAssertion(() => Assert.Equal(["Weather", "Map", "Linked locations", "History windows", "Forecast", "Weather history"],
             page.FindAll(".odc-record .odc-sectiondivider-l").Select(e => e.TextContent.Trim()).ToArray()));
         weather.Verify(w => w.CurrentAsync(OsloId, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -1220,7 +1220,8 @@ public class WeatherPointsUiTests : IDisposable
         ForecastEnabled = true,
         HistoryEnabled = true,
         IsTracked = true,
-        HistoryFrom = new DateOnly(2025, 1, 1),
+        HistoryWindowSummary = new WeatherHistoryWindowSummary { Count = 1, EarliestFrom = new DateOnly(2025, 1, 1), HasOpenEnd = true },
+        HistoryWindows = [new ExistingWeatherHistoryWindow { From = new DateOnly(2025, 1, 1), Status = WeatherHistoryWindowStatus.Collecting, CoveredDays = 300 }],
         LinkedLocationCount = 2,
         Site = new WeatherPointSiteDto { Version = 1, Latitude = 59.914m, Longitude = 10.752m, TimeZoneId = "Europe/Oslo", AppliedAt = new DateTime(2026, 3, 2) },
         EnabledAt = new DateTime(2026, 3, 2),
@@ -1257,6 +1258,12 @@ public class WeatherPointsUiTests : IDisposable
         weather.Setup(w => w.DailyAsync(It.IsAny<DateOnly>(), It.IsAny<DateOnly>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(new WeatherDailyResponse { History = new WeatherHistoryBounds() }));
         weather.Setup(w => w.LinkedLocationsAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<WeatherPointLinkedLocation>()));
+        // The single-point read the Settings dialog and the History windows section load (#437).
+        foreach (var p in points)
+        {
+            weather.Setup(w => w.PointAsync(p.WeatherPointId, It.IsAny<CancellationToken>())).ReturnsAsync(Ok(p));
+        }
+
         return weather;
     }
 

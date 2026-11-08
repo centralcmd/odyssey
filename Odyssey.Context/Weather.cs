@@ -34,8 +34,6 @@ public class WeatherPoint
 
     public bool IsTracked { get; set; }
 
-    public DateOnly HistoryFrom { get; set; }
-
     public DateTime EnabledAt { get; set; }
 
     /// <summary>
@@ -141,8 +139,6 @@ public class WeatherPointSchedule
     public DateTime? LastObservationSuccessUtc { get; set; }
 
     public DateOnly? ObservationsCheckedThroughDate { get; set; }
-
-    public DateOnly? ObservationsBackfilledFromDate { get; set; }
 
     public WeatherFetchFailureKind? ObservationFailureKind { get; set; }
 
@@ -323,4 +319,40 @@ public class WeatherDay
     public int? ObservedSiteVersion { get; set; }
 
     public DateTime UpdatedAtUtc { get; set; }
+}
+
+/// <summary>
+/// One history window of a <see cref="WeatherPoint"/> (issue #436): the point-local dates measured history is fetched
+/// for, both ends inclusive, <see cref="ToDate"/> null for an ongoing window. A setting of the point, written only as a
+/// whole set under the point's <see cref="WeatherPoint.SettingsVersion"/>; cascades with the point. Non-overlap and the
+/// single ongoing window are enforced by <c>WeatherHistoryWindowRules</c>, not by the database.
+/// </summary>
+[Index(nameof(WeatherPointId), nameof(FromDate), IsUnique = true)]
+public class WeatherPointHistoryWindow
+{
+    [Key]
+    public Guid WeatherPointHistoryWindowId { get; set; }
+
+    public Guid WeatherPointId { get; set; }
+
+    public DateOnly FromDate { get; set; }
+
+    public DateOnly? ToDate { get; set; }
+}
+
+/// <summary>
+/// A date range of one site of a point that has been requested from Frost and its answer stored (issue #436) — derived
+/// data that replaces the single backfill watermark so a point's history can have gaps. Rows of one (point, site) never
+/// overlap; adjacent ones are merged. Cascades with the point.
+/// </summary>
+[PrimaryKey(nameof(WeatherPointId), nameof(SiteVersion), nameof(FromDate))]
+public class WeatherObservationCoverage
+{
+    public Guid WeatherPointId { get; set; }
+
+    public int SiteVersion { get; set; }
+
+    public DateOnly FromDate { get; set; }
+
+    public DateOnly ToDate { get; set; }
 }

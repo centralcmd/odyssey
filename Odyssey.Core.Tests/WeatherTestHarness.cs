@@ -115,18 +115,26 @@ internal sealed class StubObservationSource : IWeatherObservationSource
         return Task.FromResult(new StationLookupResult(true, id is null ? null : new FoundStation(id, $"STATION {id}", 4.2, 90)));
     }
 
+    /// <summary>Runs while a daily request is "out" — how a test acts from another request mid-fetch.</summary>
+    public Func<Task>? DuringDaily { get; set; }
+
     /// <summary>Answers every requested station with the delegate's days, so each group finds its station's values.</summary>
-    public Task<ObservationFetchResult> FetchDailyAsync(
+    public async Task<ObservationFetchResult> FetchDailyAsync(
         IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to,
         string contact, string clientId, CancellationToken cancellationToken)
     {
         DailyCalls.Add((from, to));
         DailyStations.Add(stationIds);
+        if (DuringDaily is { } during)
+        {
+            await during();
+        }
+
         var result = Daily(from, to);
-        return Task.FromResult(result with
+        return result with
         {
             Days = [.. stationIds.SelectMany(id => result.Days.Select(day => day with { StationId = id }))],
-        });
+        };
     }
 }
 

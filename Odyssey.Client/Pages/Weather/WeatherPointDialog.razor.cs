@@ -61,8 +61,6 @@ public partial class WeatherPointDialog
     internal const string CoordinatesMode = "coords";
     internal const string SearchMode = "search";
 
-    private static readonly DateTime HistoryFloor = WeatherRules.HistoryFloor.ToDateTime(TimeOnly.MinValue);
-
     private static readonly OdsCardSelectOption FromLocationOption =
         new() { Value = FromLocationMode, Icon = "place", Label = "From a location", Sub = "Copy a saved place’s position" };
 
@@ -97,7 +95,19 @@ public partial class WeatherPointDialog
     private bool _forecast;
     private bool _history;
     private bool _tracked;
-    private DateTime? _historyFrom;
+
+    // History windows (issue #437 §3.2). Settings loads them from the single-point read — the list carries only a
+    // summary — so until that read succeeds there is no editor and Save is off: an empty editor would save no windows.
+    internal enum WindowsLoad { Loading, Ready, Error }
+
+    private WindowsLoad _windowsLoad = WindowsLoad.Ready;
+    private List<WeatherWindowRow> _rows = [];
+    private IReadOnlyList<ExistingWeatherHistoryWindow> _loadedWindows = [];
+    private Dictionary<string, WeatherWindowRowErrors> _rowErrors = [];
+    private string? _listError;
+    private int _rowCountAtErrors = -1;
+    private bool _shrinks;
+    private string _shrinkNote = "";
     private bool _saving;
     private bool _reloading;
     private bool _stale;
@@ -123,17 +133,34 @@ public partial class WeatherPointDialog
     private string AltId => $"wp-alt-{_uid}";
     private string TimeZoneId => $"wp-tz-{_uid}";
 
-    private IReadOnlyDictionary<string, string> ErrorLinks => new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    private IReadOnlyDictionary<string, string> ErrorLinks
     {
-        ["name"] = NameId,
-        ["fromLocationId"] = FromId,
-        ["search"] = SearchId,
-        ["latitude"] = CoordsId,
-        ["altitudeMeters"] = AltId,
-        ["timeZoneId"] = TimeZoneId,
-    };
+        get
+        {
+            var links = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["name"] = NameId,
+                ["fromLocationId"] = FromId,
+                ["search"] = SearchId,
+                ["latitude"] = CoordsId,
+                ["altitudeMeters"] = AltId,
+                ["timeZoneId"] = TimeZoneId,
+            };
+            // The list's own error links to the History windows head, so every summary entry can be activated.
+            links["hw:list"] = WindowsHeadId;
+            // A window error links to its field; a row-level one to the row's From.
+            foreach (var key in _errors.Keys.Where(k => k.StartsWith("hw:", StringComparison.Ordinal)))
+            {
+                var parts = key.Split(':');
+                if (parts.Length == 3)
+                    links[key] = $"hw-{_uid}-{parts[1]}-{(parts[2] == "to" ? "to" : "from")}";
+            }
 
-    private static readonly string[] FieldOrder = ["fromLocationId", "search", "latitude", "altitudeMeters", "timeZoneId", "name", "historyFrom"];
+            return links;
+        }
+    }
+
+    private static readonly string[] FieldOrder = ["fromLocationId", "search", "latitude", "altitudeMeters", "timeZoneId", "name"];
 
     /// <summary>Errors render after the first submit attempt, in field order.</summary>
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors => !_submitted ? [] :
@@ -190,15 +217,16 @@ public partial class WeatherPointDialog
         ? "Measured daily weather is fetched from MET’s Frost service and shown in the point’s Weather history and on linked places."
         : "No measured data is fetched. Everything already stored is kept until you delete it.";
 
-    private string HistoryHelp => Creating
-        ? $"Empty starts one year back, on {WeatherVisuals.Date(DefaultFrom)}. Earlier days are filled in from MET’s Frost service a year at a time."
-        : "Measured days from MET’s Frost service go back to this date. Moving it earlier fills in more; moving it later deletes nothing.";
+    private bool WindowsBlocked => _history && _windowsLoad != WindowsLoad.Ready;
+
+    private string WindowsHeadId => $"hw-h-{_uid}";
 
     protected override async Task OnInitializedAsync()
     {
         if (Point is { } p)
         {
             ApplyPoint(p, keepEdits: false);
+            await LoadWindowsAsync(focusHead: false);
         }
         else
         {
@@ -206,6 +234,8 @@ public partial class WeatherPointDialog
             _forecast = true;
             _history = true;
             _tracked = !(Cap is { } cap && TrackedCount >= cap);
+            // One ongoing window from a year back — what the server stores when none is sent.
+            _rows = [new WeatherWindowRow { From = DefaultFrom, Open = true }];
             if (CanReadLocations)
             {
                 // With no eligible place at all, the source field says so up front (issue #388 AC 30).
@@ -227,7 +257,102 @@ public partial class WeatherPointDialog
         _forecast = p.ForecastEnabled;
         _history = p.HistoryEnabled;
         _tracked = p.IsTracked;
-        _historyFrom = p.HistoryFrom.ToDateTime(TimeOnly.MinValue);
+    }
+
+    /// <summary>
+    /// The single-point read: the windows, and the freshest settings token. On failure the editor is not rendered and
+    /// Save stays off; a Retry that succeeds focuses the History windows head, since the Retry button is gone.
+    /// </summary>
+    private async Task LoadWindowsAsync(bool focusHead)
+    {
+        _windowsLoad = WindowsLoad.Loading;
+        StateHasChanged();
+        var result = await Weather.PointAsync(Point!.WeatherPointId);
+        await OnStatus.InvokeAsync(result.Status);
+        if (!result.IsSuccess || result.Value is not { } fresh)
+        {
+            _windowsLoad = WindowsLoad.Error;
+            _announce = "Couldn’t load this point’s history windows.";
+            return;
+        }
+
+        Point = fresh;
+        _loadedWindows = fresh.HistoryWindows ?? [];
+        _rows = WeatherHistoryWindows.RowsFrom(_loadedWindows);
+        _windowsLoad = WindowsLoad.Ready;
+        if (focusHead)
+            await FocusAsync(WindowsHeadId);
+    }
+
+    private Task RetryWindowsAsync() => LoadWindowsAsync(focusHead: true);
+
+    /// <summary>
+    /// An edit clears that row's errors; the shrink note is recomputed and its text changes only when the answer does,
+    /// so it is announced once, never per keystroke, never on create.
+    /// </summary>
+    private void OnWindowsChanged(string key)
+    {
+        // Adding or removing a row renumbers the rows, so every "window n" in an error goes stale: clear them all.
+        if (_rows.Count != _rowCountAtErrors)
+        {
+            _rowErrors = [];
+            foreach (var stale in _errors.Keys.Where(k => k.StartsWith("hw:", StringComparison.Ordinal)).ToList())
+                _errors.Remove(stale);
+            _rowCountAtErrors = _rows.Count;
+        }
+
+        _rowErrors.Remove(key);
+        foreach (var stale in _errors.Keys.Where(k => k.StartsWith($"hw:{key}:", StringComparison.Ordinal) || (k == "hw:list" && _rows.Count > 0)).ToList())
+            _errors.Remove(stale);
+        if (_rows.Count > 0)
+            _listError = null;
+
+        var shrinks = !Creating && WeatherHistoryWindows.Shrinks(_loadedWindows, _rows);
+        if (shrinks != _shrinks)
+        {
+            _shrinks = shrinks;
+            _shrinkNote = shrinks ? "Days already stored outside the new windows are kept. Use Delete history to remove them." : "";
+        }
+    }
+
+    private void SayInDialog(string message) => _announce = message;
+
+    /// <summary>The window rules on the rows: per-row errors for the editor, "Window n: …" entries for the summary.</summary>
+    private void ValidateWindows()
+    {
+        _rowErrors = [];
+        _listError = null;
+        _rowCountAtErrors = _rows.Count;
+        if (!_history || _windowsLoad != WindowsLoad.Ready)
+            return;
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var violations = WeatherHistoryWindows.Validate(_rows, today, out var toMissing);
+        foreach (var i in toMissing)
+            AddWindowError(i, WindowField.To, WeatherHistoryWindows.ToMissingMessage);
+        foreach (var v in violations)
+            AddWindowError(v.Index, v.Field, WeatherHistoryWindows.Message(v, today));
+    }
+
+    private void AddWindowError(int index, WindowField field, string message)
+    {
+        if (field == WindowField.List || index < 0 || index >= _rows.Count)
+        {
+            _listError = message;
+            _errors["hw:list"] = message;
+            return;
+        }
+
+        var row = _rows[index];
+        var current = _rowErrors.GetValueOrDefault(row.Key) ?? new WeatherWindowRowErrors();
+        _rowErrors[row.Key] = field switch
+        {
+            WindowField.From => current with { From = current.From ?? message },
+            WindowField.To => current with { To = current.To ?? message },
+            _ => current with { Row = current.Row ?? message },
+        };
+        var name = field switch { WindowField.From => "from", WindowField.To => "to", _ => "row" };
+        _errors[$"hw:{row.Key}:{name}"] = $"Window {index + 1}: {message}";
     }
 
     private void OnModeChanged(string mode)
@@ -341,13 +466,15 @@ public partial class WeatherPointDialog
             if (string.IsNullOrWhiteSpace(_tz))
                 _errors["timeZoneId"] = "Choose the time zone.";
         }
+
+        ValidateWindows();
     }
 
     internal const string SearchNotPicked = "Search for the place, then pick a result.";
 
     private async Task SaveAsync()
     {
-        if (_saving || NothingToTurnOn || _stale || _purgeBlocked)
+        if (_saving || NothingToTurnOn || _stale || _purgeBlocked || WindowsBlocked)
             return;
 
         _submitted = true;
@@ -376,7 +503,15 @@ public partial class WeatherPointDialog
         }
     }
 
-    private DateOnly? HistoryFromValue => _historyFrom is { } from ? DateOnly.FromDateTime(from) : null;
+    /// <summary>
+    /// The full array in display order — the request index the server's error keys use. History off on an existing
+    /// point: null, which the server reads as "keep the stored set" — never the loaded set, which is empty while the
+    /// read is loading or has failed and would replace the stored windows with nothing.
+    /// </summary>
+    private List<WeatherHistoryWindowDto>? WindowsRequest =>
+        Creating || (_history && _windowsLoad == WindowsLoad.Ready)
+            ? WeatherHistoryWindows.ToRequest(_rows)
+            : null;
 
     private async Task CreateAsync()
     {
@@ -399,7 +534,7 @@ public partial class WeatherPointDialog
         request.ForecastEnabled = _forecast;
         request.HistoryEnabled = _history;
         request.IsTracked = _forecast && _tracked;
-        request.HistoryFrom = _history ? HistoryFromValue : null;
+        request.HistoryWindows = WindowsRequest;
 
         var result = await Weather.CreatePointAsync(request);
         await OnStatus.InvokeAsync(result.Status);
@@ -438,7 +573,7 @@ public partial class WeatherPointDialog
             ForecastEnabled = _forecast,
             HistoryEnabled = _history,
             IsTracked = _forecast && _tracked,
-            HistoryFrom = _history ? HistoryFromValue : null,
+            HistoryWindows = WindowsRequest,
             SettingsVersion = point.SettingsVersion,
         });
         await OnStatus.InvokeAsync(result.Status);
@@ -494,7 +629,17 @@ public partial class WeatherPointDialog
         }
 
         var any = false;
-        foreach (var key in new[] { "name", "fromLocationId", "latitude", "longitude", "altitudeMeters", "timeZoneId", "historyFrom", "expectedLocationFingerprint" })
+        // Window keys are untrusted: each is parsed defensively and falls back to the list's error.
+        foreach (var (key, messages) in problem?.Errors ?? new Dictionary<string, string[]>())
+        {
+            if (!key.StartsWith("HistoryWindows", StringComparison.OrdinalIgnoreCase) || messages.Length == 0)
+                continue;
+            var (index, field) = WeatherHistoryWindows.ParseKey(key, _rows.Count);
+            AddWindowError(index, field, messages[0]);
+            any = true;
+        }
+
+        foreach (var key in new[] { "name", "fromLocationId", "latitude", "longitude", "altitudeMeters", "timeZoneId", "expectedLocationFingerprint" })
         {
             if (problem?.ErrorFor(key) is { } message)
             {
@@ -532,8 +677,16 @@ public partial class WeatherPointDialog
 
         Point = fresh;
         _stale = false;
-        _note = "Reloaded. Their changes are in, and your edits are kept — check them, then save again.";
-        _announce = _note;
+        // Windows are replaced whole on save, so keeping the local rows would overwrite the other Admin's set: the
+        // reload replaces them, and says so.
+        _loadedWindows = fresh.HistoryWindows ?? [];
+        _rows = WeatherHistoryWindows.RowsFrom(_loadedWindows);
+        _rowErrors = [];
+        _listError = null;
+        _shrinks = false;
+        _shrinkNote = "";
+        _note = "Reloaded. Their changes are in, and your other edits are kept — check them, then save again. History windows are the server’s.";
+        _announce = "Windows reloaded from the server. Your window edits were discarded.";
         await FocusAsync(NameId);
     }
 

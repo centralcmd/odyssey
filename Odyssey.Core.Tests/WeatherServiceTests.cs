@@ -392,8 +392,8 @@ public class WeatherServiceTests
         using var h = new WeatherTestHarness(new DateTimeOffset(2026, 10, 23, 1, 0, 0, TimeSpan.Zero));
         h.Secrets.Frost = SecretResult.Found("client-id");
         var location = await h.EnableAsync();
-        var weather = await h.Context.WeatherPoints.SingleAsync(w => w.WeatherPointId == location.Id);
-        weather.HistoryFrom = new DateOnly(2026, 10, 15);
+        // One ongoing history window from 15 October.
+        (await h.Context.WeatherPointHistoryWindows.SingleAsync(w => w.WeatherPointId == location.Id)).FromDate = new DateOnly(2026, 10, 15);
         await h.Context.SaveChangesAsync();
         h.Context.ChangeTracker.Clear();
         h.Observations.Daily = (_, _) => new ObservationFetchResult(true, []);
@@ -494,8 +494,8 @@ public class WeatherServiceTests
         {
             var row = await context.WeatherPoints.SingleAsync();
             row.StationResolvedAtUtc = h.Time.GetUtcNow().UtcDateTime;
-            // History from inside the first daily window, so no backfill is owed after it.
-            row.HistoryFrom = new DateOnly(2026, 10, 18);
+            // A window from inside the first daily range, so no backfill is owed after it.
+            (await context.WeatherPointHistoryWindows.SingleAsync()).FromDate = new DateOnly(2026, 10, 18);
             foreach (var group in new[] { WeatherMeasureGroup.Temperature, WeatherMeasureGroup.Precipitation, WeatherMeasureGroup.Wind })
             {
                 context.WeatherStations.Add(new Odyssey.Context.WeatherStation
@@ -599,7 +599,10 @@ public class WeatherServiceTests
         Assert.Equal("Oslo", created.Name);
         Assert.Equal(1, created.Site.Version);
         Assert.Equal((59.913m, 10.739m, 23, "Europe/Oslo"), (created.Site.Latitude, created.Site.Longitude, created.Site.AltitudeMeters!.Value, created.Site.TimeZoneId));
-        Assert.Equal(new DateOnly(2025, 10, 23), created.HistoryFrom);
+        // No windows sent: one ongoing window from a year back (issue #436 §5.3).
+        Assert.Equal(1, created.HistoryWindowSummary.Count);
+        Assert.Equal(new DateOnly(2025, 10, 23), created.HistoryWindowSummary.EarliestFrom);
+        Assert.True(created.HistoryWindowSummary.HasOpenEnd);
         Assert.NotEqual(Guid.Empty, created.SettingsVersion);
         Assert.Equal(1, await h.NewContext().WeatherPointSchedules.CountAsync());
         Assert.Null((await h.NewContext().Locations.SingleAsync(l => l.LocationId == location.LocationId)).WeatherPointId);
@@ -986,7 +989,7 @@ public class WeatherServiceTests
             var near = i == 0;
             h.Context.WeatherPoints.Add(new Odyssey.Context.WeatherPoint
             {
-                WeatherPointId = id, Name = near ? "zzz Nearest" : $"Point {i:D3}", ForecastEnabled = true, HistoryFrom = new DateOnly(2025, 1, 1),
+                WeatherPointId = id, Name = near ? "zzz Nearest" : $"Point {i:D3}", ForecastEnabled = true,
                 CurrentSiteVersion = 1, SettingsVersion = Guid.NewGuid(), EnabledAt = now, CreatedAt = now, UpdatedAt = now,
             });
             h.Context.WeatherPointSites.Add(new Odyssey.Context.WeatherPointSite

@@ -262,6 +262,15 @@
                 }
             });
         };
+        window.odsFocusSectionHeading = function (id) {
+            // Focus a section's heading after the control that had focus went away (a Retry that succeeded,
+            // issue #437 AC 24); the heading takes tabindex -1 so it can hold focus without joining the tab order.
+            const host = document.getElementById(id);
+            const heading = host && host.querySelector('h1, h2, h3, h4, h5, h6');
+            if (!heading) return;
+            if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+            heading.focus();
+        };
         window.odsScrollIntoViewById = function (id) {
             // Bring a keyboard-active option into its scrolling list's view (WCAG 2.4.7), moving no further
             // than needed.
