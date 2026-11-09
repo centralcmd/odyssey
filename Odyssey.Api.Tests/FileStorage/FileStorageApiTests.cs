@@ -40,7 +40,7 @@ public class FileStorageApiTests
         Assert.Equal(["archive", "primary"], volumes.Select(v => v.Name));
         var primary = volumes.Single(v => v.Name == "primary");
         Assert.Equal(FileStorageVolumeState.Available, primary.State);
-        Assert.Equal(["PhotoOriginals", "PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
+        Assert.Equal(["ContactAvatars", "FinanceFiles", "JournalFiles", "PhotoOriginals", "PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
         var usage = Assert.Single(primary.Features);
         Assert.Equal("TestFiles", usage.FeatureKey);
         Assert.Equal(1, usage.ObjectCount);

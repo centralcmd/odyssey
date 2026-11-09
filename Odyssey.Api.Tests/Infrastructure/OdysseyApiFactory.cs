@@ -76,8 +76,11 @@ public class OdysseyApiFactory(
     /// volume — and, since issue #448, the three file areas too — unless the factory configures its own volumes
     /// (<c>FileStorageApiFactory</c>). Deleted on dispose.
     /// </summary>
-    private readonly string photoVolumePath =
-        Path.Combine(Path.GetTempPath(), $"odyssey-tests-photos-{Guid.NewGuid():N}");
+    private readonly string photoVolumePath = sharingStoreWith?.photoVolumePath
+        ?? Path.Combine(Path.GetTempPath(), $"odyssey-tests-photos-{Guid.NewGuid():N}");
+
+    /// <summary>A factory sharing another's store shares its volume too (files live there since issue #448); the owner deletes it.</summary>
+    private readonly bool sharesPhotoVolume = sharingStoreWith is not null;
 
     /// <summary>The free space the photo volume reports; a test sets it to exercise the upload reserve.</summary>
     public TestSpaceProbe PhotoVolumeSpace { get; } = new();
@@ -186,7 +189,7 @@ public class OdysseyApiFactory(
                 Directory.Delete(dataProtectionKeysPath, recursive: true);
             }
 
-            if (Directory.Exists(photoVolumePath))
+            if (!sharesPhotoVolume && Directory.Exists(photoVolumePath))
             {
                 Directory.Delete(photoVolumePath, recursive: true);
             }
