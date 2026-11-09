@@ -666,6 +666,14 @@
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
     outline-offset: var(--focus-ring-offset);
 }
+/* Every MudButton, as the design system's `.odc-btn:focus-visible`: MudBlazor sets `outline: 0` on
+   .mud-button-root and draws keyboard focus as a background tint alone, which no variant clears 3:1 with
+   (WCAG 2.4.7 / 1.4.11). The outlined variant's primary focus edge was the last stronger cue, and it is
+   --control-border in every state since issue #419, so the ring is what marks focus on every variant. */
+.mud-button-root.mud-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
 
 /* The page-header filter bar (.ph-filter-bar / .ph-search / .ph-select) now has a
    single definition in Components/PageHeader.razor.css — the header renders the

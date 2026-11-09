@@ -545,13 +545,15 @@ public class ControlContrastTests
 
     /// <summary>
     /// A dialog's Cancel is a text button on the footer's wash, so the hover tint stacks on that wash. At the old 0.04
-    /// light wash the label fell to 4.47:1; the design system's 0.02 keeps it at 4.65:1. Read from the rules, so
-    /// thickening the wash fails here.
+    /// light wash the label fell to 4.47:1; the design system's 0.02 keeps it at 4.65:1. The header carries the same
+    /// wash and may hold a text action too. Read from the rules, so thickening either wash fails here.
     /// </summary>
     [Theory]
     [InlineData(Theme.Light, ".mud-dialog .mud-dialog-actions.ods-modal-foot")]
     [InlineData(Theme.Dark, "[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot")]
-    public void The_text_button_label_clears_text_contrast_when_hovered_in_a_dialog_footer(Theme theme, string footer)
+    [InlineData(Theme.Light, ".mud-dialog .mud-dialog-title.ods-modal-head")]
+    [InlineData(Theme.Dark, "[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head")]
+    public void The_text_button_label_clears_text_contrast_when_hovered_on_a_dialog_wash(Theme theme, string footer)
     {
         var palette = Palette(theme);
         var wash = Regex.Match(Rule(ComponentsCss, footer),
@@ -564,9 +566,40 @@ public class ControlContrastTests
         var ground = Over(washColour, double.Parse(wash.Groups["a"].Value, CultureInfo.InvariantCulture), Hex(palette.Surface));
         var label = Resolve(AppCss, Declarations(AppCss, "--brand-text")[theme]);
 
-        AssertRatio(label, ground, TextContrastMinimum, $"Text label on the dialog footer ({theme})");
+        AssertRatio(label, ground, TextContrastMinimum, $"Text label on {footer} ({theme})");
         AssertRatio(label, Over(palette.ActionDefault, palette.HoverOpacity, ground), TextContrastMinimum,
-            $"Text label hovered on the dialog footer ({theme})");
+            $"Text label hovered on {footer} ({theme})");
+    }
+
+    /// <summary>
+    /// MudBlazor sets <c>outline: 0</c> on every <c>.mud-button-root</c> and marks keyboard focus with a background tint
+    /// alone, under 3:1 on any variant. The client draws the design system's <c>.odc-btn:focus-visible</c> ring on every
+    /// MudButton (WCAG 2.4.7); without it the outlined variant, whose edge no longer turns primary on focus (#419),
+    /// would show focus only as that tint.
+    /// </summary>
+    [Fact]
+    public void Every_MudButton_draws_the_focus_ring_on_focus_visible()
+    {
+        var body = Rule(ComponentsCss, ".mud-button-root.mud-button:focus-visible");
+
+        Assert.Matches(@"outline:\s*var\(--focus-ring-width\)\s+solid\s+var\(--focus-ring\b", body);
+        Assert.Matches(@"outline-offset:\s*var\(--focus-ring-offset\)\s*;", body);
+        Assert.Contains(MudRules(), r => r.Selector == ".mud-button-root" && Regex.IsMatch(r.Body, @"outline:\s*0"));
+        Assert.True(Specificity(".mud-button-root.mud-button:focus-visible").CompareTo(Specificity(".mud-button-root")) > 0);
+    }
+
+    /// <summary>The ring sits outside the button, on the surface or background around it: 3:1 there (WCAG 1.4.11).</summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_focus_ring_clears_three_to_one_on_the_grounds_a_button_sits_on(Theme theme)
+    {
+        var palette = Palette(theme);
+        var declared = Declarations(AppCss, "--focus-ring")[theme];
+        var ring = declared == "var(--mud-palette-primary)" ? Hex(palette.Primary) : Resolve(AppCss, declared);
+
+        AssertRatio(ring, Hex(palette.Surface), NonTextContrastMinimum, $"--focus-ring on Surface ({theme})");
+        AssertRatio(ring, Hex(palette.Background), NonTextContrastMinimum, $"--focus-ring on Background ({theme})");
     }
 
     /// <summary>The rules themselves, so a later edit cannot swap the label back to the primary fill colour.</summary>
@@ -656,9 +689,8 @@ public class ControlContrastTests
     /// </summary>
     private static string Over(MudColor top, double alpha, string ground)
     {
-        var a = alpha;
         int Channel(byte fg, int offset) =>
-            (int)Math.Round(fg * a + Convert.ToByte(ground.Substring(offset, 2), 16) * (1 - a));
+            (int)Math.Round(fg * alpha + Convert.ToByte(ground.Substring(offset, 2), 16) * (1 - alpha));
         return $"#{Channel(top.R, 1):X2}{Channel(top.G, 3):X2}{Channel(top.B, 5):X2}";
     }
 
