@@ -39,6 +39,7 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
         ("Terms", "CurrencyCode"),
         ("ExchangeRates", "FromCurrencyCode"),
         ("ExchangeRates", "ToCurrencyCode"),
+        ("Instruments", "CurrencyCode"),
     ];
 
     [SkippableFact]
