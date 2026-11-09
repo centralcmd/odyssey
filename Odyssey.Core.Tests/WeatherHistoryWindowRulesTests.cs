@@ -90,19 +90,20 @@ public class WeatherHistoryWindowRulesTests
     }
 
     /// <summary>
-    /// AC 23: the rules are O(n log n). Four times the windows must cost well under sixteen times as much (what a
-    /// pairwise scan would give); the bound of 8 leaves room for n log n and noise. The best of several runs is
-    /// compared, so a stray GC pause cannot fail it.
+    /// AC 23: the rules are O(n log n). Sixteen times the windows cost about 22 times as much under n log n and 256
+    /// times under a pairwise scan; the bound of 64 sits between them with roughly 3x headroom either way, so a CI
+    /// runner shared with the other test projects cannot push an n log n run over it. The best of several interleaved
+    /// runs is compared, so a stray GC pause or a burst of contention lands on both sizes rather than one.
     /// </summary>
     [Fact]
     public void Validation_cost_grows_linearithmically_not_quadratically()
     {
-        var small = OneDayWindows(5_000);
+        var small = OneDayWindows(1_250);
         var large = OneDayWindows(20_000);
         var ratio = GrowthRatio(
             () => Assert.Empty(WeatherHistoryWindowRules.Validate(small, Today, requireAny: true)),
             () => Assert.Empty(WeatherHistoryWindowRules.Validate(large, Today, requireAny: true)));
-        Assert.True(ratio < 8, $"4x the windows cost {ratio:0.0}x the time");
+        Assert.True(ratio < 64, $"16x the windows cost {ratio:0.0}x the time");
     }
 
     /// <summary>One-day windows on consecutive days from the floor, newest first — so request order is not start order.</summary>
@@ -116,25 +117,27 @@ public class WeatherHistoryWindowRulesTests
         return windows;
     }
 
-    /// <summary>The best-of-seven time of <paramref name="large"/> over that of <paramref name="small"/>, after a warm-up.</summary>
+    /// <summary>The best-of-nine time of <paramref name="large"/> over that of <paramref name="small"/>, after a warm-up, with
+    /// the two sizes measured alternately so contention during the run affects both.</summary>
     internal static double GrowthRatio(Action small, Action large)
     {
         small();
         large();
-        static long Best(Action run)
+        long bestSmall = long.MaxValue, bestLarge = long.MaxValue;
+        for (var i = 0; i < 9; i++)
         {
-            var best = long.MaxValue;
-            for (var i = 0; i < 7; i++)
-            {
-                var watch = System.Diagnostics.Stopwatch.StartNew();
-                run();
-                best = Math.Min(best, watch.ElapsedTicks);
-            }
-
-            return Math.Max(best, 1);
+            bestSmall = Math.Min(bestSmall, Time(small));
+            bestLarge = Math.Min(bestLarge, Time(large));
         }
 
-        return (double)Best(large) / Best(small);
+        static long Time(Action run)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            run();
+            return Math.Max(watch.ElapsedTicks, 1);
+        }
+
+        return (double)bestLarge / bestSmall;
     }
 
     [Fact]
@@ -279,12 +282,13 @@ public class WeatherHistoryWindowRulesTests
         Assert.All(described, d => Assert.Equal((WeatherHistoryWindowStatus.Backfilling, 1, (int?)2), (d.Status, d.CoveredDays, d.FetchableDays)));
     }
 
-    /// <summary>AC 23: the planner is a merge-sweep — four times the windows and coverage must not cost sixteen times as much.</summary>
+    /// <summary>AC 23: the planner is a merge-sweep — sixteen times the windows and coverage must cost well under the 256 times a
+    /// pairwise scan would (see <see cref="Validation_cost_grows_linearithmically_not_quadratically"/> for the bound).</summary>
     [Fact]
     public void Planner_cost_grows_linearithmically_not_quadratically()
     {
         var lastComplete = new DateOnly(2026, 11, 6);
-        var (smallWindows, smallCoverage) = Interleaved(2_000);
+        var (smallWindows, smallCoverage) = Interleaved(500);
         var (largeWindows, largeCoverage) = Interleaved(8_000);
         var ratio = GrowthRatio(
             () =>
@@ -297,7 +301,7 @@ public class WeatherHistoryWindowRulesTests
                 WeatherHistoryPlan.Gaps(largeWindows, largeCoverage, DateOnly.MinValue, lastComplete);
                 WeatherHistoryPlan.Describe(largeWindows, largeCoverage, DateOnly.MinValue, lastComplete);
             });
-        Assert.True(ratio < 8, $"4x the input cost {ratio:0.0}x the time");
+        Assert.True(ratio < 64, $"16x the input cost {ratio:0.0}x the time");
     }
 
     [Fact]
