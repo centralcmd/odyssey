@@ -88,6 +88,6 @@ internal sealed class JobHeartbeatConfiguration : IEntityTypeConfiguration<JobHe
 {
     public void Configure(EntityTypeBuilder<JobHeartbeat> entity)
     {
-        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7)"));
+        entity.ToTable(tb => tb.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8)"));
     }
 }
