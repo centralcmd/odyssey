@@ -171,7 +171,7 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             var (photo, file) = PhotoTestData.StageLegacyPhoto(context, userId: "user");
             await context.SaveChangesAsync();
-            (photoId, fileId, blobId) = (photo.PhotoId, file.Id, file.FileBlobId);
+            (photoId, fileId, blobId) = (photo.PhotoId, file.Id, file.FileBlobId!.Value);
         }
 
         await using (var scope = provider.Scope())

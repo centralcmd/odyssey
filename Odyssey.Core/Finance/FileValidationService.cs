@@ -158,7 +158,8 @@ public class FileValidationService
     public static bool HeaderMatchesContentType(string contentType, ReadOnlySpan<byte> header) =>
         FileHeaderSignatures.Matches(contentType, header);
 
-    private static IEnumerable<string> GetDefaultAllowedMimeTypes()
+    /// <summary>The default upload allow-list; public so a guard test can require an on-disk extension for every entry (issue #448).</summary>
+    public static IEnumerable<string> GetDefaultAllowedMimeTypes()
     {
         return new[]
         {
