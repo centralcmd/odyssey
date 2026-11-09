@@ -111,7 +111,7 @@ public class BackgroundJobsApiTests
         var overview = await client.GetFromJsonAsync<BackgroundJobsOverview>($"{Base}/overview");
 
         Assert.Equal(
-            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill],
+            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill, JobType.FileBlobBackfill],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
