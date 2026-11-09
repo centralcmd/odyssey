@@ -366,7 +366,8 @@ builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();
 // Instrument prices (issue #446): the watchlist, manual prices and the price-source catalogue.
-Odyssey.Core.Finance.Instruments.InstrumentServiceCollectionExtensions.AddInstrumentPrices(builder.Services);
+// AddInstrumentPriceSync adds the source status, binding list and run-now; the worker runs the sync itself.
+Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(builder.Services);
 builder.Services.AddScoped<AccountTotalsService>();
 builder.Services.AddScoped<NetWorthHistoryService>();
 builder.Services.AddScoped<FileService>();

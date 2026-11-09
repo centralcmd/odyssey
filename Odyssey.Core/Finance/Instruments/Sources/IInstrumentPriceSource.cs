@@ -49,8 +49,8 @@ public sealed record SourceFetchResult
 
 /// <summary>
 /// A code-declared market-data source (issue #446 §3.1). Phase 1 ships the contract and no production source;
-/// each source is registered with <c>AddInstrumentPriceSource&lt;T&gt;()</c>, which builds its hardened
-/// <see cref="System.Net.Http.HttpClient"/>. A source never throws for a provider failure and never returns
+/// each source is registered with <c>AddInstrumentPriceSource&lt;T&gt;()</c>, and every request it makes goes
+/// through the framework's <see cref="ISourceHttp"/>. A source never throws for a provider failure and never returns
 /// provider text; only <see cref="FetchClosesAsync"/> makes a request, and only the worker calls it.
 /// </summary>
 public interface IInstrumentPriceSource
@@ -75,7 +75,24 @@ public interface IInstrumentPriceSource
     /// <summary>The secret keys the source needs; may be empty.</summary>
     IReadOnlyList<string> SecretKeys { get; }
 
-    Task<SourceFetchResult> FetchClosesAsync(SourceFetchRequest request, CancellationToken cancellationToken);
+    /// <summary>
+    /// Fetches closes for one window through <paramref name="http"/> — the framework-built transport, which pins the
+    /// host, attaches the credential, reserves the daily quota and bounds the response. A source never builds its
+    /// own <see cref="System.Net.Http.HttpClient"/>.
+    /// </summary>
+    Task<SourceFetchResult> FetchClosesAsync(SourceFetchRequest request, ISourceHttp http, CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// A source's key and host as compile-time statics, so <c>AddInstrumentPriceSource&lt;T&gt;()</c> can name and
+/// address its client at registration. They must equal the instance's <see cref="IInstrumentPriceSource.Key"/> and
+/// <see cref="IInstrumentPriceSource.Host"/>; the contract suite asserts it.
+/// </summary>
+public interface IInstrumentPriceSourceDeclaration
+{
+    static abstract string DeclaredKey { get; }
+
+    static abstract string DeclaredHost { get; }
 }
 
 /// <summary>

@@ -2,6 +2,7 @@ using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
+using Odyssey.Core.Finance.Instruments.Sync;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Weather;
@@ -123,6 +124,15 @@ public static class JobCatalogue
             StaleAfter: FileBlobBackfillJob.RunBudget + FileBlobBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
             ManualRunClaims: [PermissionClaims.FileStorageRead],
             DetailReadClaim: PermissionClaims.FileStorageRead),
+        // The instrument-price sync (issue #446): the exchange-rate sync's shape — a dynamic cadence from its interval
+        // setting, exclusive runs, and a stale window above its 10-minute run cap. Its counters are counts only, so the
+        // detail needs nothing beyond system-settings.read; a manual run makes outbound requests only to the sources an
+        // Admin bound, so it needs nothing beyond system-settings.update.
+        new(JobType.InstrumentPriceSync, typeof(InstrumentPriceSyncJob), InstrumentPriceSyncJob.Tick,
+            Cadence: null, DynamicCadence: true,
+            StaleAfter: TimeSpan.FromMinutes(2 * InstrumentPriceSyncConstants.RunTimeoutMinutes),
+            ManualRunClaims: [],
+            DetailReadClaim: null),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

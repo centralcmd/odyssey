@@ -96,7 +96,8 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
     {
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-                JobType.FileAnalysis, JobType.FileBlobBackfill],
+                JobType.FileAnalysis, JobType.FileBlobBackfill,
+                JobType.InstrumentPriceSync],
             JobCatalogue.Entries.Select(entry => entry.JobType));
         Assert.Equal(JobCatalogue.Entries.Count, JobCatalogue.Entries.Select(entry => entry.JobClass).Distinct().Count());
         Assert.All(JobCatalogue.Entries, entry => Assert.Equal(300, entry.NotTickingAfterSeconds));
@@ -105,6 +106,7 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
         Assert.True(JobCatalogue.Get(JobType.PhotoThumbnails).IsWorkDriven);
         Assert.True(JobCatalogue.Get(JobType.PhotoOriginalBackfill).IsWorkDriven);
         Assert.False(JobCatalogue.Get(JobType.ExchangeRateSync).IsWorkDriven);
+        Assert.False(JobCatalogue.Get(JobType.InstrumentPriceSync).IsWorkDriven);
         Assert.DoesNotContain(typeof(JobRunMaintenanceJob), JobCatalogue.Entries.Select(entry => entry.JobClass));
     }
 

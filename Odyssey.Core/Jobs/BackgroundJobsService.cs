@@ -63,6 +63,8 @@ public sealed class BackgroundJobsService(
     PhotoBackfillStatusService photoBackfill,
     FileBackfillStatusService fileBackfill,
     JobRunSweeper sweeper,
+    Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService instrumentPriceSync,
+    Odyssey.Core.Finance.Instruments.IInstrumentPriceSettingsLookup instrumentPriceSettings,
     TimeProvider time)
 {
     private static readonly TimeSpan Day = TimeSpan.FromDays(1);
@@ -221,6 +223,10 @@ public sealed class BackgroundJobsService(
                 return (status.EnabledCount == 0, status.NextRunAtUtc, TimeSpan.FromHours(status.IntervalHours));
             case JobType.Weather:
                 return (!await WeatherHasWorkAsync(cancellationToken), null, null);
+            case JobType.InstrumentPriceSync:
+                var nextPriceRun = await instrumentPriceSync.NextRunAtUtcAsync(cancellationToken);
+                var priceInterval = (await instrumentPriceSettings.GetAsync(cancellationToken)).SyncIntervalHours;
+                return (nextPriceRun is null, nextPriceRun, TimeSpan.FromHours(priceInterval));
             case JobType.FileStorageMaintenance:
                 var last = await context.FileStorageMaintenanceLeases.AsNoTracking()
                     .Where(l => l.Id == FileStorageMaintenanceLease.SingletonId)
@@ -539,6 +545,17 @@ public sealed class BackgroundJobsService(
                 Interruptions = files.Interruptions,
             },
             FileBlobBackfillJobRun => new FileBlobBackfillJobRunDetail(),
+            InstrumentPriceSyncJobRun prices when canRead => new InstrumentPriceSyncJobRunDetail
+            {
+                InstrumentsAttempted = prices.InstrumentsAttempted,
+                InstrumentsSucceeded = prices.InstrumentsSucceeded,
+                InstrumentsFailed = prices.InstrumentsFailed,
+                PricesInserted = prices.PricesInserted,
+                FallbacksUsed = prices.FallbacksUsed,
+                RequestsMade = prices.RequestsMade,
+                PricesDeleted = prices.PricesDeleted,
+            },
+            InstrumentPriceSyncJobRun => new InstrumentPriceSyncJobRunDetail(),
             _ => new JobRunDetail(),
         };
 
@@ -628,7 +645,7 @@ public sealed class BackgroundJobsService(
         }
 
         // The application's pre-check; on MariaDB the ExclusiveGuard unique index is the real guard.
-        var exclusive = jobType == JobType.FileStorageMaintenance;
+        var exclusive = jobType is JobType.FileStorageMaintenance or JobType.InstrumentPriceSync;
         if (await context.JobRuns.AnyAsync(r => r.JobType == jobType && r.Status == JobRunStatus.Running
                 && (exclusive || r.Trigger == JobRunTrigger.Manual), cancellationToken))
         {
@@ -717,6 +734,8 @@ public sealed class BackgroundJobsService(
                 return await context.PhotoThumbnailJobs.AnyAsync(j => j.State == PhotoThumbnailJobState.Pending
                         || (j.State == PhotoThumbnailJobState.Failed && j.ManualRequeues == 0), cancellationToken)
                     || await context.Photos.AnyAsync(p => !context.PhotoThumbnailJobs.Any(j => j.PhotoId == p.PhotoId), cancellationToken);
+            case JobType.InstrumentPriceSync:
+                return await instrumentPriceSync.HasWorkAsync(cancellationToken);
             case JobType.PhotoOriginalBackfill:
                 return await context.Photos.AnyAsync(p => p.StoredObjectId == null && p.FileId != null
                     && !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId), cancellationToken);
@@ -736,6 +755,7 @@ public sealed class BackgroundJobsService(
             JobType.PhotoThumbnails => new PhotoThumbnailJobRun(),
             JobType.PhotoOriginalBackfill => new PhotoOriginalBackfillJobRun(),
             JobType.FileBlobBackfill => new FileBlobBackfillJobRun(),
+            JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

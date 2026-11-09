@@ -24,3 +24,45 @@ public static class InstrumentServiceCollectionExtensions
         return services;
     }
 }
+
+public static class InstrumentPriceSyncServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers a price source and its framework-built transport (issue #446 §3.2): a named client whose base address
+    /// is the source's compiled https host, that never follows a redirect, decompresses (the 2 MB cap is applied by
+    /// <see cref="Sources.SourceHttp"/> to the inflated stream), and has its default request loggers removed — they
+    /// would log the URI, and a query-string credential with it. Call it in both hosts; only the worker fetches.
+    /// </summary>
+    public static IServiceCollection AddInstrumentPriceSource<TSource>(this IServiceCollection services)
+        where TSource : class, Sources.IInstrumentPriceSource, Sources.IInstrumentPriceSourceDeclaration
+    {
+        services.AddHttpClient(Sources.SourceHttpLimits.ClientName(TSource.DeclaredKey), http =>
+            {
+                http.BaseAddress = new Uri($"https://{TSource.DeclaredHost}/");
+                // SourceHttp enforces the 30 s attempt and 120 s total timeouts itself.
+                http.Timeout = System.Threading.Timeout.InfiniteTimeSpan;
+                http.MaxResponseContentBufferSize = Sources.SourceHttpLimits.MaxResponseBytes;
+            })
+            .ConfigurePrimaryHttpMessageHandler(() => new System.Net.Http.SocketsHttpHandler
+            {
+                AllowAutoRedirect = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.GZip | System.Net.DecompressionMethods.Deflate | System.Net.DecompressionMethods.Brotli,
+            })
+            .RemoveAllLoggers();
+        services.AddSingleton<TSource>();
+        services.AddSingleton<Sources.IInstrumentPriceSource>(sp => sp.GetRequiredService<TSource>());
+        return services.AddInstrumentPriceSync();
+    }
+
+    /// <summary>The sync's services, shared by the API (status, bindings, run-now) and the worker (running it). Idempotent.</summary>
+    public static IServiceCollection AddInstrumentPriceSync(this IServiceCollection services)
+    {
+        services.AddInstrumentPrices();
+        services.AddHttpClient();
+        services.TryAddSingleton<Sources.ISourceRequestQuota, Sources.SourceRequestQuota>();
+        services.TryAddScoped<Sync.InstrumentPriceSyncService>();
+        services.TryAddScoped<Sync.InstrumentPriceSourceAdminService>();
+        Jobs.JobRunServiceCollectionExtensions.AddJobRunRecording(services);
+        return services;
+    }
+}

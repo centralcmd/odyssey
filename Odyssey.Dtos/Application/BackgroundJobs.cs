@@ -369,6 +369,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.PhotoOriginalBackfill)] = typeof(PhotoOriginalBackfillJobRunDetail),
         [nameof(Application.JobType.FileAnalysis)] = typeof(FileAnalysisJobRunDetail),
         [nameof(Application.JobType.FileBlobBackfill)] = typeof(FileBlobBackfillJobRunDetail),
+        [nameof(Application.JobType.InstrumentPriceSync)] = typeof(InstrumentPriceSyncJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -705,4 +706,22 @@ public sealed class JobRunsQueryParams : QueryParams<JobRunSortBy>, IValidatable
             yield return new ValidationResult(TimeZoneMessage, [nameof(Tz)]);
         }
     }
+}
+
+/// <summary>An instrument-price sync run or purge (issue #446 §4.6). Counts only — never a symbol or a source symbol.</summary>
+public sealed record InstrumentPriceSyncJobRunDetail : JobRunDetail
+{
+    public int? InstrumentsAttempted { get; set; }
+
+    public int? InstrumentsSucceeded { get; set; }
+
+    public int? InstrumentsFailed { get; set; }
+
+    public int? PricesInserted { get; set; }
+
+    public int? FallbacksUsed { get; set; }
+
+    public int? RequestsMade { get; set; }
+
+    public int? PricesDeleted { get; set; }
 }
