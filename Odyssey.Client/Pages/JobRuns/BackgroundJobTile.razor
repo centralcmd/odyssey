@@ -4,7 +4,7 @@
     "Starting run…" chip while its Run request is in flight, the held line, and a grid of meta tiles. Relative times are
     computed against the overview's generatedAtUtc, never the render clock; the absolute time beneath is visible text
     and the screen-reader source of truth, so the non-interactive card carries no aria-label (F9, F17, X6). Its one
-    action, "Show {job} runs", is a button: it filters the run history, it does not navigate (X4).
+    tile has no action: one job's runs are the Search region's Job filter (the Attention line keeps its own "Show {job} runs").
 *@
 @using Odyssey.Client.Services
 @using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
@@ -57,9 +57,6 @@
             @($"{Plural(Job.Totals.Last24h.Runs, "run", "runs")} · {Count(Job.Totals.Last24h.Failed)} failed")
         </OdsMetaTile>
     </div>
-    <div class="bgj-tile-foot">
-        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="manage_search" OnClick="@(() => OnShowRuns.InvokeAsync(Job.JobType))">Show @_job.Lower runs</OdsButton>
-    </div>
 </div>
 </OdsCard>
 
@@ -71,8 +68,6 @@
 
     /// <summary>This job's Run request is in flight.</summary>
     [Parameter] public bool Starting { get; set; }
-
-    [Parameter] public EventCallback<JobType> OnShowRuns { get; set; }
 
     private JobVisual _job = OtherJob;
     private JobChip _health = UnknownChip;

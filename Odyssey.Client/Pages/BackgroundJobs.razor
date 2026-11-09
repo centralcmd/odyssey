@@ -12,7 +12,8 @@
     docs/components-background-jobs.md, ui_kits/web/BackgroundJobs.jsx). Gated on system-settings.read.
 
     PageHeader carries the three regions — Attention (only while a job is Failing, Not ticking, Held or Overdue),
-    Overview (job tiles, totals, what is running, worker health) and Search (the run log's filters) — and the header
+    Overview (job tiles, totals, what is running, the two moves, worker health; every figure an OdsInfoTile, no card around
+    a move) and Search (the run log's filters; no Reset button in the bar, the empty states keep theirs) — and the header
     menu: one "Run {job}" item per job, built from the presentation map so they exist while the overview loads or has
     failed, then Refresh. Below, the Run history: the follow list and one server-paged OdsRecordTable.
 
@@ -56,21 +57,21 @@
                             @foreach (var job in overview.Jobs)
                             {
                                 <BackgroundJobTile @key="job.JobType" Job="job" GeneratedAtUtc="GeneratedAt"
-                                                   Starting="_inFlight.Contains(job.JobType)" OnShowRuns="ShowRunsAsync" />
+                                                   Starting="_inFlight.Contains(job.JobType)" />
                             }
                         }
                     </div>
                     @if (_overview is { } loaded)
                     {
                         <h2 class="bgj-h2">Totals</h2>
-                        <div class="bgj-stats">
-                            @StatTile("Runs · 24 h", Count(loaded.Totals.Last24h.Runs))
-                            @StatTile("Failed · 24 h", Count(loaded.Totals.Last24h.Failed))
-                            @StatTile("Success · 24 h", SuccessRate(loaded.Totals.Last24h))
-                            @StatTile("Runs · 7 d", Count(loaded.Totals.Last7d.Runs))
-                            @StatTile("Failed · 7 d", Count(loaded.Totals.Last7d.Failed))
-                            @StatTile("Success · 7 d", SuccessRate(loaded.Totals.Last7d))
-                        </div>
+                        <OdsInfoTileGrid>
+                            @StatTile("play_circle", "Runs · 24 h", Count(loaded.Totals.Last24h.Runs))
+                            @StatTile("error_outline", "Failed · 24 h", Count(loaded.Totals.Last24h.Failed))
+                            @StatTile("task_alt", "Success · 24 h", SuccessRate(loaded.Totals.Last24h))
+                            @StatTile("play_circle", "Runs · 7 d", Count(loaded.Totals.Last7d.Runs))
+                            @StatTile("error_outline", "Failed · 7 d", Count(loaded.Totals.Last7d.Failed))
+                            @StatTile("task_alt", "Success · 7 d", SuccessRate(loaded.Totals.Last7d))
+                        </OdsInfoTileGrid>
                         <h2 class="bgj-h2">Running now</h2>
                         @if (loaded.Running.Count > 0)
                         {
@@ -91,12 +92,12 @@
                         @if (loaded.WorkerHealth.PhotoOriginalBackfill is { } move)
                         {
                             <h2 class="bgj-h2">Photo original move</h2>
-                            <BackfillMoveCard View="BackgroundJobPresentation.PhotoMoveView(move)" GeneratedAtUtc="GeneratedAt" />
+                            <BackfillMoveStatus View="BackgroundJobPresentation.PhotoMoveView(move)" GeneratedAtUtc="GeneratedAt" />
                         }
                         @if (loaded.WorkerHealth.FileBlobBackfill is { } files)
                         {
                             <h2 class="bgj-h2">File move</h2>
-                            <BackfillMoveCard View="BackgroundJobPresentation.FileMoveView(files)" GeneratedAtUtc="GeneratedAt" />
+                            <BackfillMoveStatus View="BackgroundJobPresentation.FileMoveView(files)" GeneratedAtUtc="GeneratedAt" />
                         }
                         @if (WorkerHealthLines(loaded.WorkerHealth) is { Count: > 0 } lines)
                         {
@@ -132,10 +133,6 @@
                         </div>
                         <OdsSortSelect TRow="ExistingJobRun" Fields="JobRunFilters.SortFields" Sort="_filters.Sort" SortChanged="OnSortChanged" />
                         <OdsPageSizeSelect Label="Runs per page" Value="_filters.PageSize" ValueChanged="OnPageSizeChanged" Options="OdsPageSizes.Batch" />
-                        @if (!_filters.IsDefault)
-                        {
-                            <OdsButton Variant="OdsButtonVariant.Text" Icon="filter_alt_off" OnClick="ResetFiltersAsync">Reset filters</OdsButton>
-                        }
                     </div>
                 </section>
             </SearchContent>
@@ -208,8 +205,9 @@
 </div>
 
 @code {
-    private RenderFragment StatTile(string overline, string? value) =>
-        @<OdsStatTile Overline="@Text(overline)">
+    @* The overview's figures are OdsInfoTiles — the tile every other Overview uses — in an OdsInfoTileGrid. *@
+    private RenderFragment StatTile(string icon, string label, string? value) =>
+        @<OdsInfoTile Icon="@icon" Label="@label">
             <Value>
                 @if (value is not null)
                 {
@@ -221,7 +219,7 @@
                     <span aria-hidden="true">—</span><span class="sr-only">No runs</span>
                 }
             </Value>
-        </OdsStatTile>;
+        </OdsInfoTile>;
 
     private RenderFragment RunsEmpty => _runsBadFilters
         ? @<div class="bgj-empty">

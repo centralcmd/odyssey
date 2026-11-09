@@ -1,28 +1,25 @@
 @*
-    BackfillMoveCard — a move's progress on the Background jobs overview (issues #428, #449; Odyssey Design System ·
-    ui_kits/web/BackgroundJobs.jsx, BackfillMoveCard): a lead sentence, three stat tiles, an optional detail line (the file
-    move's per-area on-disk counts), the parked items by reason, the back-off line while it runs and the last pass. It
-    renders a BackfillMoveView and does no arithmetic: BackgroundJobPresentation.PhotoMoveView / FileMoveView build it from
-    each DTO, which is null without file-storage.read — the page then renders no card at all. Counts and park codes only;
-    no DTO carries an id, a name or a path. Plain content: no live region and no action (a manual run is the header menu's
-    Run item). The parked list is labelled by its visible caption, not a hidden aria-label.
+    BackfillMoveStatus — a move's progress on the Background jobs overview (issues #428, #449; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BackfillMoveStatus): a lead sentence, an OdsInfoTileGrid of OdsInfoTiles (the file
+    move adds its per-area on-disk counts as three more tiles), the parked items by reason, the back-off line while it runs
+    and the last pass. No card: the section's h2 already frames it, and the tiles sit straight in the Overview like the
+    Totals. It renders a BackfillMoveView and does no arithmetic: BackgroundJobPresentation.PhotoMoveView / FileMoveView
+    build it from each DTO, which is null without file-storage.read — the page then renders no section at all. Counts and
+    park codes only; no DTO carries an id, a name or a path. Plain content: no live region and no action (a manual run is
+    the header menu's Run item). The parked list is labelled by its visible caption, not a hidden aria-label.
 *@
 @using Odyssey.Client.Services
 @using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
 
-<OdsCard Outlined="true">
 <div class="bgj-move">
     <p class="bgj-move-lead">@View.Lead</p>
-    <div class="bgj-move-stats">
-        @foreach (var (label, value) in View.Tiles)
+    <OdsInfoTileGrid>
+        @foreach (var tile in View.Tiles)
         {
-            <OdsStatTile @key="label" Overline="@Text(label)" Value="@Text(Count(value))" />
+            <OdsInfoTile @key="tile.Label" Icon="@tile.Icon" Label="@tile.Label"
+                         Value="@Text(Count(tile.Value))" Foot="@OdsInfoTile.Caption(tile.Foot)" />
         }
-    </div>
-    @if (View.DetailLine is { } detail)
-    {
-        <p class="bgj-move-detail">@detail</p>
-    }
+    </OdsInfoTileGrid>
     @if (View.ParkedLines.Count > 0)
     {
         <div class="bgj-move-parked">
@@ -41,7 +38,6 @@
     }
     <p class="bgj-caption">@(View.LastRunAtUtc is { } last ? $"Last pass {RunTime.Absolute(last)}" : "No pass yet")</p>
 </div>
-</OdsCard>
 
 @code {
     [Parameter, EditorRequired] public BackfillMoveView View { get; set; } = default!;
