@@ -712,10 +712,12 @@
   display: flex; align-items: flex-start; gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   margin-bottom: 0;
-  background: rgba(20, 30, 50, 0.04);
+  /* The design system's 0.02 wash (bundle.css .odc-modal-head/-foot). At 0.04 a text button's hover in the
+     footer took --brand-text under 4.5:1 in light (4.47:1); at 0.02 it is 4.65:1 (issue #419). */
+  background: rgba(20, 30, 50, 0.02);
   border-bottom: 1px solid var(--mud-palette-divider);
 }
-[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.02); }
 
 /* Optional leading icon tile — brand-tide by default; warning / error tints for
    destructive or confirm dialogs. */
@@ -741,13 +743,13 @@
   gap: var(--space-3);
   margin: 0;
   padding: var(--space-4) var(--space-5);
-  background: rgba(20, 30, 50, 0.04);
+  background: rgba(20, 30, 50, 0.02);
   border-top: 1px solid var(--mud-palette-divider);
 }
 /* Normalize action heights — MudBlazor text buttons (e.g. Cancel) render shorter
    than filled ones, which reads as a vertical mismatch in the row. */
 .mud-dialog .mud-dialog-actions.ods-modal-foot > .mud-button-root { margin: 0; min-height: 40px; }
-[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.02); }
 /* Footer legend explaining the required marker, once per dialog (DS .odc-modal-legend). Always
    rendered, shown only while the body holds a required field — a hand-labelled .odc-field-req or a
    MudBlazor control carrying .mud-input-required — so it tracks conditionally-rendered fields
@@ -882,6 +884,31 @@
 }
 .mud-button-root.mud-button-text.odc-btn-aria-disabled,
 .mud-button-root.mud-button-outlined.odc-btn-aria-disabled { background-color: transparent; }
+/* Outlined and text buttons (design system · bundle.css `.odc-btn.outlined` / `.odc-btn.text`, issue #419).
+   MudBlazor paints both labels in --mud-palette-primary, which in light is tide-600 on white: 2.49:1,
+   under WCAG 1.4.3's 4.5:1. The design system draws the outlined label in text-primary on the control
+   border, and the text label in --brand-text. Hover tints with the neutral action hover, and the
+   outlined edge stays --control-border in every state, where MudBlazor's state rules re-draw it in primary.
+   :where() keeps both disabled states out at no specificity cost, so these stay three classes (one more
+   for a state) and still out-rank MudBlazor's later sheet; its native-disabled colour is !important. */
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--mud-palette-text-primary);
+    border-color: var(--control-border);
+}
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    border-color: var(--control-border);
+    background-color: var(--mud-palette-action-default-hover);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--brand-text);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    background-color: var(--mud-palette-action-default-hover);
+}
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
    A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
