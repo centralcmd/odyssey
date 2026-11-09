@@ -340,9 +340,9 @@ public class AttachPhotosDialogTests
         await h.Pick(Image("fjord.jpg"));
         h.Footer.Click();
 
-        h.Host.WaitForAssertion(() => Assert.Contains(h.Toasts, t => t.Contains("already in your library", StringComparison.Ordinal)));
+        h.Host.WaitForAssertion(() => Assert.Contains(h.Host.FindAll("[role=alert]").Select(e => e.TextContent), t => t.Contains("already in your library", StringComparison.Ordinal)));
         Assert.Empty(h.Submitted);
-        Assert.Contains("wasn’t added", h.Host.Markup, StringComparison.Ordinal);
+        Assert.Empty(h.Toasts);
     }
 
     /// <summary>An upload is one call that creates the library photo, and the item carries the new photo's id.</summary>
@@ -360,7 +360,7 @@ public class AttachPhotosDialogTests
         h.Host.WaitForAssertion(() => Assert.Single(h.Submitted));
         Assert.Equal(created.Value!.PhotoId, h.Submitted[0].PhotoId);
         Assert.Equal(AttachDocumentSource.Upload, h.Submitted[0].Source);
-        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     /// <summary>A retry after a partly failed batch neither re-adds what made it nor uploads any photo twice.</summary>

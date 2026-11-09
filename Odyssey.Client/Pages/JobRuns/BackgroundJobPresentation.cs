@@ -29,7 +29,8 @@ public static class BackgroundJobPresentation
 {
     /// <summary>The five jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
-        [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill];
+        [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
+         JobType.FileBlobBackfill];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -38,6 +39,8 @@ public static class BackgroundJobPresentation
         [JobType.FileStorageMaintenance] = new("File-storage maintenance", "file-storage maintenance", "storage", "file storage", "Run file-storage maintenance", MudBlazor.Icons.Material.Filled.Storage),
         [JobType.PhotoThumbnails] = new("Photo thumbnails", "photo thumbnails", "photo_library", "photo", "Run photo thumbnails", MudBlazor.Icons.Material.Filled.PhotoLibrary),
         [JobType.PhotoOriginalBackfill] = new("Photo original move", "photo original move", "drive_file_move", "file storage", "Run photo original move", MudBlazor.Icons.Material.Filled.DriveFileMove),
+        // Issue #449: the photo move's icon on purpose — the same kind of job, told apart by its name.
+        [JobType.FileBlobBackfill] = new("File move", "file move", "drive_file_move", "file storage", "Run file move", MudBlazor.Icons.Material.Filled.DriveFileMove),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);
@@ -130,21 +133,90 @@ public static class BackgroundJobPresentation
         [JobHeldReason.BreakerTripped] = "paused after repeated crashes",
         [JobHeldReason.DecoderPaused] = "paused while a stuck decode ends",
         [JobHeldReason.DecoderPolicyFailed] = "the image decoder failed its security check",
-        [JobHeldReason.StorageUnavailable] = "photo storage isn’t available",
+        // Generic since issue #449: thumbnails, the photo move and the file move all read it.
+        [JobHeldReason.StorageUnavailable] = "file storage isn’t available",
         [JobHeldReason.BackingOff] = "paused after a storage or database error",
     };
 
     /// <summary>
-    /// The photo-original move's park codes (issue #428) as the status card lists them, in the card's order. A code this
+    /// The photo-original move's park codes (issue #428) as its status card lists them, in the card's order. A code this
     /// client does not know is counted under "Other" — the wire carries the code, never a sentence.
     /// </summary>
-    public static readonly IReadOnlyList<(string Code, string Label)> ParkCodes =
+    public static readonly IReadOnlyList<(string Code, string Label)> PhotoParkCodes =
     [
         ("hash", "Checksum mismatch"),
         ("read", "Couldn’t be read"),
         ("too-large", "Too large"),
         ("error", "Unexpected error"),
     ];
+
+    /// <summary>The file move's park codes (issue #449): the photo move's plus <c>type</c>, which only the file move parks for.</summary>
+    public static readonly IReadOnlyList<(string Code, string Label)> FileParkCodes =
+    [
+        ("hash", "Checksum mismatch"),
+        ("read", "Couldn’t be read"),
+        ("too-large", "Too large"),
+        ("type", "Unsupported type"),
+        ("error", "Unexpected error"),
+    ];
+
+    /// <summary>One line per code with a count above 0 in the given order, then any parked item under a code this client does not know.</summary>
+    public static IReadOnlyList<string> ParkedLines(IReadOnlyDictionary<string, int> byCode, int parked, IReadOnlyList<(string Code, string Label)> codes)
+    {
+        var lines = new List<string>();
+        var known = 0;
+        foreach (var (code, label) in codes)
+        {
+            var count = byCode.GetValueOrDefault(code);
+            known += count;
+            if (count > 0)
+                lines.Add($"{label}: {Count(count)}");
+        }
+
+        if (parked > known)
+            lines.Add($"Other: {Count(parked - known)}");
+        return lines;
+    }
+
+    /// <summary>The photo move's card (issue #428). Its DTO is unchanged: <c>remaining</c> counts parked photos too.</summary>
+    public static BackfillMoveView PhotoMoveView(PhotoBackfillStatus s)
+    {
+        var parked = Math.Max(0, s.Failed);
+        var waiting = Math.Max(0, s.Remaining - parked);
+        return new BackfillMoveView(
+            s.Remaining <= 0 ? "Every photo original is on disk."
+            : waiting > 0 ? $"{Plural(waiting, "photo original", "photo originals")} still to move from the database to disk."
+            : "Only parked photos are left. They stay readable from the database until an administrator clears them.",
+            [("To move", waiting), ("Parked", parked), ("Copied and kept", s.CopiedShared)],
+            null,
+            ParkedLines(s.FailedByCode, parked, PhotoParkCodes),
+            "Parked photos by reason",
+            s.BackingOffUntilUtc,
+            s.LastRunAtUtc);
+    }
+
+    /// <summary>
+    /// The file move's card (issue #449 §4.2). The server sends <c>toMove</c>, <c>waitingOnPhotos</c> and <c>failed</c>
+    /// disjoint, so nothing is subtracted. State precedence: Done → Moving → Waiting on photos → Only parked left.
+    /// </summary>
+    public static BackfillMoveView FileMoveView(FileBackfillStatus s)
+    {
+        var lead = s.Remaining <= 0 ? "Every file is on disk."
+            : s.ToMove > 0 ? $"{Plural(s.ToMove, "file", "files")} still to move from the database to disk."
+            : s.WaitingOnPhotos > 0 ? $"{Plural(s.WaitingOnPhotos, "file is", "files are")} waiting for the photo move to finish."
+            : "Only parked files are left. They stay readable from the database until an administrator clears them.";
+        var detail = $"On disk: {Plural(s.OnDisk.Finance, "finance file", "finance files")} · "
+            + $"{Plural(s.OnDisk.Journal, "journal file", "journal files")} · "
+            + $"{Plural(s.OnDisk.ContactAvatars, "contact avatar", "contact avatars")}";
+        return new BackfillMoveView(
+            lead,
+            [("To move", s.ToMove), ("Parked", s.Failed), ("Waiting on photos", s.WaitingOnPhotos)],
+            detail,
+            ParkedLines(s.FailedByCode, Math.Max(0, s.Failed), FileParkCodes),
+            "Parked files by reason",
+            s.BackingOffUntilUtc,
+            s.LastRunAtUtc);
+    }
 
     /// <summary>The reason's words, or <c>null</c> for none or one this client does not know — the caller's generic copy then applies.</summary>
     public static string? HeldOf(JobHeldReason? reason) =>
@@ -199,3 +271,16 @@ public static class BackgroundJobPresentation
     public static readonly IReadOnlyList<OdsOption> TriggerOptions =
         [.. Triggers.Select(t => new OdsOption(t.ToString(), TriggerWords[t]))];
 }
+
+/// <summary>
+/// What a move's status card renders (issue #449 §4.2): already chosen, worded and pluralised, so the card does no arithmetic
+/// on counts. Built by <see cref="BackgroundJobPresentation.PhotoMoveView"/> and <see cref="BackgroundJobPresentation.FileMoveView"/>.
+/// </summary>
+public sealed record BackfillMoveView(
+    string Lead,
+    IReadOnlyList<(string Label, int Value)> Tiles,
+    string? DetailLine,
+    IReadOnlyList<string> ParkedLines,
+    string ParkedListCaption,
+    DateTime? BackingOffUntilUtc,
+    DateTime? LastRunAtUtc);

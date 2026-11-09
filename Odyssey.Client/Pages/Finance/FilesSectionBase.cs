@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using MudBlazor;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -133,13 +134,36 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
 
         isUploading = true;
         var uploaded = 0;
+        var perFile = new List<string>();
         try
         {
-            foreach (var file in valid)
+            for (var i = 0; i < valid.Count; i++)
             {
-                try { await UploadSingleFileAsync(file, uploadLimits.MaxUploadBytes); uploaded++; }
-                catch (Exception ex) { Snackbar.Add(ex.Message, Severity.Error); }
+                var file = valid[i];
+                // Every finance surface uploads to the finance area (issue #449); placement only.
+                var result = await Files.UploadAsync(file.ToApiUpload(uploadLimits.MaxUploadBytes), FileUploadArea.Finance);
+                if (!result.IsSuccess)
+                {
+                    // 507 / 503 / 429 stop the batch. This section keeps no list of picked files, so the one toast says
+                    // to pick the rest again (issue #449 §3.2).
+                    var stop = UploadFailureText.StopOf(result.Status);
+                    if (stop != UploadStop.None)
+                    {
+                        Snackbar.Add(UploadFailureText.Stopped(stop, valid.Count - i, result.RetryAfter, pickAgain: true), Severity.Error,
+                            o => o.RequireInteraction = true);
+                        break;
+                    }
+
+                    perFile.Add(UploadFailureText.PerFile(result.Status, result.Problem?.Detail, file.Name, uploadLimits.MaxUploadMegabytes));
+                    continue;
+                }
+
+                try { await AttachAsync(result.Value!.Id); uploaded++; }
+                catch (Exception ex) { perFile.Add(UploadFailureText.Clean(ex.Message)); }
             }
+
+            if (perFile.Count > 0)
+                Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
 
             if (uploaded > 0)
             {
@@ -148,12 +172,6 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             }
         }
         finally { isUploading = false; }
-    }
-
-    private async Task UploadSingleFileAsync(IBrowserFile file, long maxUploadBytes)
-    {
-        var result = await Files.UploadAsync(file.ToApiUpload(maxUploadBytes));
-        await AttachAsync(result.Id);
     }
 
     protected async Task PreviewFileAsync(TFile file)

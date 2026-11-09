@@ -492,9 +492,10 @@ public class AttachDocumentsDialogTests
     private static void Stores(Harness h, params Guid[] ids)
     {
         var queue = new Queue<Guid>(ids);
-        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ApiUpload u, string? _, CancellationToken _) =>
-                new FileUploadResponse(queue.Dequeue(), u.FileName, "application/pdf", 10, "hash", Base, null));
+        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ApiUpload u, Odyssey.Dtos.FileUploadArea _, string? _, CancellationToken _) =>
+                ApiResult<FileUploadResponse>.Success(
+                    new FileUploadResponse(queue.Dequeue(), u.FileName, "application/pdf", 10, "hash", Base, null), HttpStatusCode.Created));
     }
 
     /// <summary>An upload is stored, then handed to the host as an Upload item carrying the stored id and the guessed type.</summary>
@@ -532,8 +533,10 @@ public class AttachDocumentsDialogTests
 
         h.Host.WaitForAssertion(() => Assert.Single(h.Posted));
         Assert.Equal("scan001.pdf", h.Posted[0].Name);
-        Assert.Contains(h.Toasts, t => t.Contains("couldn’t be renamed", StringComparison.Ordinal)
+        Assert.Contains(h.Host.FindAll("[role=alert]").Select(e => e.TextContent), t => t.Contains("couldn’t be renamed", StringComparison.Ordinal)
             && t.Contains("A file with that name already exists.", StringComparison.Ordinal));
+        Assert.DoesNotContain(false, h.OpenChanges);
+        Assert.DoesNotContain(h.Toasts, t => t.Contains("renamed", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -565,7 +568,7 @@ public class AttachDocumentsDialogTests
         h.SubmitButton.Click();
 
         h.Host.WaitForAssertion(() => Assert.Contains(false, h.OpenChanges));
-        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         Assert.Equal(2, h.Posted.Count(p => p.FileId == deedId));
     }
 
@@ -597,7 +600,7 @@ public class AttachDocumentsDialogTests
 
         h.Host.WaitForAssertion(() => Assert.Contains(false, h.OpenChanges));
         h.Files.Verify(f => f.UpdateMetadataAsync(stored, null, "Deed 2026.pdf", It.IsAny<CancellationToken>()), Times.Once);
-        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
+        h.Files.Verify(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Once);
         Assert.Equal("Deed 2026.pdf", h.Posted.Last().Name);
     }
 
@@ -605,13 +608,15 @@ public class AttachDocumentsDialogTests
     public async Task An_upload_that_fails_to_store_is_kept_for_a_retry_and_named()
     {
         var h = Render(canUpload: true);
-        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("boom"));
+        h.Files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<FileUploadResponse>.Failure(HttpStatusCode.InternalServerError, new ApiProblem { Detail = "boom" }));
 
         await h.Pick(Upload("deed.pdf"));
         h.SubmitButton.Click();
 
-        h.Host.WaitForAssertion(() => Assert.Contains(h.Toasts, t => t.Contains("Couldn’t upload “deed.pdf”", StringComparison.Ordinal)));
+        // Issue #449: inside the dialog the reason is on its alert line, never a toast.
+        h.Host.WaitForAssertion(() => Assert.Contains("Couldn’t upload “deed.pdf”", h.Host.Find("[role=alert]").TextContent, StringComparison.Ordinal));
+        Assert.Empty(h.Toasts);
         Assert.Empty(h.Posted);
         Assert.Single(h.Uploads);
         Assert.DoesNotContain(false, h.OpenChanges);
@@ -626,7 +631,8 @@ public class AttachDocumentsDialogTests
         await h.Pick(Upload("listing.html"), Upload("deed.pdf"));
 
         Assert.Equal(["deed.pdf"], h.Uploads.Select(u => u.Name));
-        Assert.Contains(h.Toasts, t => t.Contains(DocumentContentTypes.Label, StringComparison.Ordinal));
+        Assert.Contains(h.Host.FindAll("[role=alert]").Select(e => e.TextContent), t => t.Contains(DocumentContentTypes.Label, StringComparison.Ordinal));
+        Assert.Empty(h.Toasts);
     }
 
     /// <summary>A surface without the allow-list filters by its own extensions instead.</summary>
@@ -638,7 +644,8 @@ public class AttachDocumentsDialogTests
         await h.Pick(Upload("receipt.webp"), Upload("receipt.png"));
 
         Assert.Equal(["receipt.png"], h.Uploads.Select(u => u.Name));
-        Assert.Contains(h.Toasts, t => t.Contains("Allowed: PDF, JPG, PNG", StringComparison.Ordinal));
+        Assert.Contains(h.Host.FindAll("[role=alert]").Select(e => e.TextContent), t => t.Contains("Allowed: PDF, JPG, PNG", StringComparison.Ordinal));
+        Assert.Empty(h.Toasts);
     }
 
     /// <summary>
@@ -657,7 +664,8 @@ public class AttachDocumentsDialogTests
         await h.Pick(Upload("fits.pdf", Megabytes(effective)), Upload("too-big.pdf", Megabytes(effective) + 1));
 
         Assert.Equal(["fits.pdf"], h.Uploads.Select(u => u.Name));
-        Assert.Contains(h.Toasts, t => t.Contains($"exceeds the {effective} MB limit", StringComparison.Ordinal));
+        Assert.Contains(h.Host.FindAll("[role=alert]").Select(e => e.TextContent), t => t.Contains($"exceeds the {effective} MB limit", StringComparison.Ordinal));
+        Assert.Empty(h.Toasts);
         Assert.Contains($"up to {effective} MB each", h.Host.FindComponent<OdsFileUpload>().Instance.Hint, StringComparison.Ordinal);
     }
 
@@ -759,6 +767,7 @@ public class AttachDocumentsDialogTests
                 EventCallback.Factory.Create<IReadOnlyList<AttachDocumentItem>>(this, _ => OnAttached?.Invoke()));
             builder.AddComponentParameter(14, nameof(AttachDocumentsDialog.SurfaceMaxMegabytes), SurfaceMaxMegabytes);
             builder.AddComponentParameter(15, nameof(AttachDocumentsDialog.UploadExtensions), UploadExtensions);
+            builder.AddComponentParameter(16, nameof(AttachDocumentsDialog.Area), Odyssey.Dtos.FileUploadArea.Finance);
             builder.CloseComponent();
         }
     }

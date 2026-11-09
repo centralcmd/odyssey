@@ -106,7 +106,7 @@
 
 @if (_pickingFiles)
 {
-    <AttachDocumentsDialog @bind-Open="_pickingFiles"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Journal" @bind-Open="_pickingFiles"
                            Subtitle="Keep documents with this entry. Files stay in Files; attaching links them here."
                            Announce="false"
                            AttachedIds="@([.. Draft.Attachments.Select(a => a.Id)])"

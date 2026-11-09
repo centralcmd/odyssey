@@ -415,7 +415,7 @@
 
 @if (_uploadContract is not null)
 {
-    <AttachDocumentsDialog @key="_uploadKey"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Finance" @key="_uploadKey"
                            @bind-Open="_uploadOpen"
                            Subtitle="Keep a draft, the signed agreement, an amendment, or correspondence with this contract. Files stay in Files; attaching links them here."
                            Kinds="OdsTypeRegistries.ContractFileTypes"

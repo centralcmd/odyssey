@@ -1,80 +1,55 @@
 @*
-    PhotoOriginalMoveCard — the photo-original move's progress on the Background jobs overview (issue #428; Odyssey
-    Design System · ui_kits/web/BackgroundJobs.jsx, BgjMoveCard): a lead sentence, three stat tiles (to move, parked,
-    copied and kept), the parked photos by reason, the back-off line while it runs and the last pass. Built from the
-    overview's workerHealth.photoOriginalBackfill, which is null without file-storage.read — the page then renders no
-    card at all. Counts and park codes only; the DTO carries no photo id, name or path, so there is none to show. Plain
-    content: no live region and no action (a manual run is the header menu's Run item).
+    BackfillMoveCard — a move's progress on the Background jobs overview (issues #428, #449; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BackfillMoveCard): a lead sentence, three stat tiles, an optional detail line (the file
+    move's per-area on-disk counts), the parked items by reason, the back-off line while it runs and the last pass. It
+    renders a BackfillMoveView and does no arithmetic: BackgroundJobPresentation.PhotoMoveView / FileMoveView build it from
+    each DTO, which is null without file-storage.read — the page then renders no card at all. Counts and park codes only;
+    no DTO carries an id, a name or a path. Plain content: no live region and no action (a manual run is the header menu's
+    Run item). The parked list is labelled by its visible caption, not a hidden aria-label.
 *@
 @using Odyssey.Client.Services
 @using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
 
 <OdsCard Outlined="true">
 <div class="bgj-move">
-    <p class="bgj-move-lead">@Lead</p>
+    <p class="bgj-move-lead">@View.Lead</p>
     <div class="bgj-move-stats">
-        <OdsStatTile Overline="@Text("To move")" Value="@Text(Count(Waiting))" />
-        <OdsStatTile Overline="@Text("Parked")" Value="@Text(Count(Parked))" />
-        <OdsStatTile Overline="@Text("Copied and kept")" Value="@Text(Count(Status.CopiedShared))" />
+        @foreach (var (label, value) in View.Tiles)
+        {
+            <OdsStatTile @key="label" Overline="@Text(label)" Value="@Text(Count(value))" />
+        }
     </div>
-    @if (ParkedLines is { Count: > 0 } lines)
+    @if (View.DetailLine is { } detail)
     {
-        <ul class="bgj-move-codes" aria-label="Parked photos by reason">
-            @foreach (var line in lines)
-            {
-                <li @key="line">@line</li>
-            }
-        </ul>
+        <p class="bgj-move-detail">@detail</p>
     }
-    @if (Status.BackingOffUntilUtc is { } until && until > GeneratedAtUtc.UtcDateTime)
+    @if (View.ParkedLines.Count > 0)
+    {
+        <div class="bgj-move-parked">
+            <p class="bgj-move-cap" id="@_captionId">@View.ParkedListCaption</p>
+            <ul class="bgj-move-codes" aria-labelledby="@_captionId">
+                @foreach (var line in View.ParkedLines)
+                {
+                    <li @key="line">@line</li>
+                }
+            </ul>
+        </div>
+    }
+    @if (View.BackingOffUntilUtc is { } until && until > GeneratedAtUtc.UtcDateTime)
     {
         <p class="bgj-held">@($"Paused after a storage or database error until {RunTime.Clock(until)}.")</p>
     }
-    <p class="bgj-caption">@(Status.LastRunAtUtc is { } last ? $"Last pass {RunTime.Absolute(last)}" : "No pass yet")</p>
+    <p class="bgj-caption">@(View.LastRunAtUtc is { } last ? $"Last pass {RunTime.Absolute(last)}" : "No pass yet")</p>
 </div>
 </OdsCard>
 
 @code {
-    [Parameter, EditorRequired] public PhotoBackfillStatus Status { get; set; } = default!;
+    [Parameter, EditorRequired] public BackfillMoveView View { get; set; } = default!;
 
     /// <summary>The overview's clock: the back-off line is compared against it, never the render clock (#410 F17).</summary>
     [Parameter] public DateTimeOffset GeneratedAtUtc { get; set; }
 
-    private int Parked => Math.Max(0, Status.Failed);
-
-    /// <summary><c>Remaining</c> counts the parked photos too, so what is still to move is the difference.</summary>
-    private int Waiting => Math.Max(0, Status.Remaining - Parked);
-
-    private string Lead =>
-        Status.Remaining <= 0 ? "Every photo original is on disk."
-        : Waiting > 0 ? $"{Plural(Waiting, "photo original", "photo originals")} still to move from the database to disk."
-        : "Only parked photos are left. They stay readable from the database until an administrator clears them.";
-
-    /// <summary>One line per known code with a count above 0, then any parked photo under a code this client does not know.</summary>
-    private List<string> ParkedLines
-    {
-        get
-        {
-            var lines = new List<string>();
-            var known = 0;
-            foreach (var (code, label) in ParkCodes)
-            {
-                var count = Status.FailedByCode.GetValueOrDefault(code);
-                known += count;
-                if (count > 0)
-                {
-                    lines.Add($"{label}: {Count(count)}");
-                }
-            }
-
-            if (Parked > known)
-            {
-                lines.Add($"Other: {Count(Parked - known)}");
-            }
-
-            return lines;
-        }
-    }
+    private readonly string _captionId = $"bgj-move-cap-{Guid.NewGuid():N}";
 
     private static RenderFragment Text(string value) => builder => builder.AddContent(0, value);
 }

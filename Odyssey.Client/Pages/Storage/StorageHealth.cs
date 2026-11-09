@@ -33,6 +33,10 @@ public static class StorageHealth
     {
         ["PhotoOriginals"] = "Photo originals",
         ["PhotoThumbnails"] = "Photo thumbnails",
+        // Issue #449: the three file areas. Placement labels, not access boundaries — reads ignore the area.
+        ["FinanceFiles"] = "Finance files",
+        ["JournalFiles"] = "Journal files",
+        ["ContactAvatars"] = "Contact avatars",
     };
 
     public static string? FeatureLabel(string featureKey) => FeatureLabels.GetValueOrDefault(featureKey);

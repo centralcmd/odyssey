@@ -188,14 +188,14 @@ public class BackgroundJobsPageTests
         {
             var cut = await RenderLoaded(f);
             Assert.Contains(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Single(cut.FindComponents<PhotoOriginalMoveCard>());
+            Assert.Single(cut.FindComponents<BackfillMoveCard>());
         }
 
         await using (var f = NewFixture())
         {
             var cut = await RenderLoaded(f);
             Assert.DoesNotContain(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Empty(cut.FindComponents<PhotoOriginalMoveCard>());
+            Assert.Empty(cut.FindComponents<BackfillMoveCard>());
         }
     }
 
@@ -232,7 +232,7 @@ public class BackgroundJobsPageTests
 
         var items = OpenMenu(f, cut).Select(i => i.TextContent.Trim()).ToList();
 
-        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run photo original move", "Refresh"], items);
+        Assert.Equal(["Run exchange-rate sync", "Run weather", "Run file-storage maintenance", "Run photo thumbnails", "Run photo original move", "Run file move", "Refresh"], items);
         Assert.Equal("true", cut.Find("section[aria-label='Overview']").GetAttribute("aria-busy"));
     }
 
@@ -834,7 +834,7 @@ public class BackgroundJobsPageTests
         var available = Now.UtcDateTime.AddMinutes(1);
         await using var f = NewFixture(Overview(
             Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
-            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill)));
+            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill), Job(JobType.FileBlobBackfill)));
         var cut = await RenderLoaded(f);
         Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);
 

@@ -91,7 +91,12 @@
                         @if (loaded.WorkerHealth.PhotoOriginalBackfill is { } move)
                         {
                             <h2 class="bgj-h2">Photo original move</h2>
-                            <PhotoOriginalMoveCard Status="move" GeneratedAtUtc="GeneratedAt" />
+                            <BackfillMoveCard View="BackgroundJobPresentation.PhotoMoveView(move)" GeneratedAtUtc="GeneratedAt" />
+                        }
+                        @if (loaded.WorkerHealth.FileBlobBackfill is { } files)
+                        {
+                            <h2 class="bgj-h2">File move</h2>
+                            <BackfillMoveCard View="BackgroundJobPresentation.FileMoveView(files)" GeneratedAtUtc="GeneratedAt" />
                         }
                         @if (WorkerHealthLines(loaded.WorkerHealth) is { Count: > 0 } lines)
                         {
