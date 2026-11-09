@@ -30,7 +30,8 @@ public static class BackgroundJobPresentation
     /// <summary>The six jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
         [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-            JobType.FileAnalysis, JobType.FileBlobBackfill];
+            JobType.FileAnalysis, JobType.FileBlobBackfill,
+            JobType.InstrumentPriceSync];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -44,6 +45,7 @@ public static class BackgroundJobPresentation
         [JobType.FileAnalysis] = new("File analysis", "file analysis", "document_scanner", "file analysis", null, null),
         // Issue #449: the photo move's icon on purpose — the same kind of job, told apart by its name.
         [JobType.FileBlobBackfill] = new("File move", "file move", "drive_file_move", "file storage", "Run file move", MudBlazor.Icons.Material.Filled.DriveFileMove),
+        [JobType.InstrumentPriceSync] = new("Instrument-price sync", "instrument-price sync", "candlestick_chart", "instrument", "Run instrument-price sync", MudBlazor.Icons.Material.Filled.CandlestickChart),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);

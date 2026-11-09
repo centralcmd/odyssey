@@ -41,6 +41,10 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
+        // Instrument prices (issue #446): no production source is registered yet, so the job writes nothing but its
+        // heartbeat until one is.
+        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(services);
+        services.AddPeriodicJob<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncJob>();
         // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
         // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes
         // before its first pass, so a failing verdict holds it alone.

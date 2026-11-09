@@ -113,7 +113,8 @@ public class BackgroundJobsApiTests
 
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-                JobType.FileAnalysis, JobType.FileBlobBackfill],
+                JobType.FileAnalysis, JobType.FileBlobBackfill,
+                JobType.InstrumentPriceSync],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
