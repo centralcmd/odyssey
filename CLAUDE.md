@@ -803,8 +803,9 @@ a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey
   `NextAttemptAtUtc` as its resume time), and a manual run that ends a back-off. Its status card is
   `BackgroundJobsWorkerHealth.PhotoOriginalBackfill`, the same `PhotoBackfillStatus` as
   `GET /api/file-storage/photo-backfill`; both, and its counters, follow `file-storage.read`.
-- **`OdysseyApiFactory` binds both photo features to a per-factory temp volume.** A test that needs a host with no
-  volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoPhotoVolumeKey`; on EF
+- **`OdysseyApiFactory` binds every file feature (both photo features and the three file areas) to one
+  per-factory temp volume** (`FileVolumeRoot`, `FileVolumeSpace`). A test that needs a host with no
+  volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoFileVolumeKey`; on EF
   InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.
 
 **Every other file moves onto the object store too, by AREA** (issue #448). `FileMetadata` keeps its row and gains
