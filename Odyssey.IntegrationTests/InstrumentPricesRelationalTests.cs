@@ -37,7 +37,7 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         await AddRunAsync(context, JobRunTrigger.Scheduled);
 
         // Down refuses nothing about data it owns; the run row of the new type has to go first, as its CHECK does.
-        await context.Database.ExecuteSqlRawAsync("DELETE FROM `JobRuns` WHERE `JobType` = 6");
+        await context.Database.ExecuteSqlRawAsync("DELETE FROM `JobRuns` WHERE `JobType` = 8");
         await MigrationSeam.MigrateToAsync(context, PreviousMigration);
 
         foreach (var table in new[] { "Instruments", "InstrumentPrices", "InstrumentPriceSourceBindings", "InstrumentPriceSourceStates" })
@@ -120,6 +120,8 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     [SkippableTheory]
     [InlineData("UPDATE `InstrumentPrices` SET `Close` = 0")]
     [InlineData("UPDATE `InstrumentPrices` SET `SourceKey` = 'Bad Key'")]
+    [InlineData("UPDATE `InstrumentPrices` SET `SourceKey` = CONCAT('fake-primary', CHAR(10))")]
+    [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `SourceKey` = CONCAT('fake-primary', CHAR(10))")]
     [InlineData("UPDATE `Instruments` SET `Type` = 4")]
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 0")]
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 10")]

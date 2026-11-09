@@ -78,7 +78,7 @@ namespace Odyssey.Context.Migrations
                 table: "JobRuns",
                 type: "int",
                 nullable: true,
-                computedColumnSql: "IF(`Status` = 0 AND (`JobType` IN (1, 3, 6) OR `Trigger` = 1), `JobType`, NULL)",
+                computedColumnSql: "IF(`Status` = 0 AND (`JobType` IN (1, 3, 8) OR `Trigger` = 1), `JobType`, NULL)",
                 stored: false,
                 oldClrType: typeof(int),
                 oldType: "int",
@@ -185,7 +185,7 @@ namespace Odyssey.Context.Migrations
                 {
                     table.PrimaryKey("PK_InstrumentPrices", x => x.InstrumentPriceId);
                     table.CheckConstraint("CK_InstrumentPrices_ClosePositive", "`Close` > 0");
-                    table.CheckConstraint("CK_InstrumentPrices_SourceKeyFormat", "`SourceKey` IS NULL OR `SourceKey` REGEXP '^[a-z0-9-]{1,32}$'");
+                    table.CheckConstraint("CK_InstrumentPrices_SourceKeyFormat", "`SourceKey` IS NULL OR `SourceKey` REGEXP '^[a-z0-9-]{1,32}\\\\z'");
                     table.ForeignKey(
                         name: "FK_InstrumentPrices_AspNetUsers_CreatedByUserId",
                         column: x => x.CreatedByUserId,
@@ -228,7 +228,7 @@ namespace Odyssey.Context.Migrations
                     table.PrimaryKey("PK_InstrumentPriceSourceBindings", x => new { x.InstrumentId, x.SourceKey });
                     table.CheckConstraint("CK_InstrumentPriceSourceBindings_ConsecutiveFailures", "`ConsecutiveFailures` >= 0");
                     table.CheckConstraint("CK_InstrumentPriceSourceBindings_Priority", "`Priority` BETWEEN 1 AND 9");
-                    table.CheckConstraint("CK_InstrumentPriceSourceBindings_SourceKeyFormat", "`SourceKey` REGEXP '^[a-z0-9-]{1,32}$'");
+                    table.CheckConstraint("CK_InstrumentPriceSourceBindings_SourceKeyFormat", "`SourceKey` REGEXP '^[a-z0-9-]{1,32}\\\\z'");
                     table.ForeignKey(
                         name: "FK_InstrumentPriceSourceBindings_AspNetUsers_UpdatedByUserId",
                         column: x => x.UpdatedByUserId,
@@ -257,17 +257,17 @@ namespace Odyssey.Context.Migrations
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobRuns_CountersNonNegative",
                 table: "JobRuns",
-                sql: "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0");
+                sql: "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobRuns_JobType",
                 table: "JobRuns",
-                sql: "`JobType` IN (1, 2, 3, 4, 5, 6)");
+                sql: "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8)");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobHeartbeats_JobType",
                 table: "JobHeartbeats",
-                sql: "`JobType` IN (1, 2, 3, 4, 5, 6)");
+                sql: "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8)");
 
             migrationBuilder.CreateIndex(
                 name: "IX_InstrumentPrices_CreatedByUserId",
@@ -409,7 +409,7 @@ namespace Odyssey.Context.Migrations
                 oldClrType: typeof(int),
                 oldType: "int",
                 oldNullable: true,
-                oldComputedColumnSql: "IF(`Status` = 0 AND (`JobType` IN (1, 3, 6) OR `Trigger` = 1), `JobType`, NULL)",
+                oldComputedColumnSql: "IF(`Status` = 0 AND (`JobType` IN (1, 3, 8) OR `Trigger` = 1), `JobType`, NULL)",
                 oldStored: false);
 
             migrationBuilder.CreateIndex(
@@ -421,17 +421,17 @@ namespace Odyssey.Context.Migrations
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobRuns_CountersNonNegative",
                 table: "JobRuns",
-                sql: "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0");
+                sql: "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobRuns_JobType",
                 table: "JobRuns",
-                sql: "`JobType` IN (1, 2, 3, 4, 5)");
+                sql: "`JobType` IN (1, 2, 3, 4, 5, 6, 7)");
 
             migrationBuilder.AddCheckConstraint(
                 name: "CK_JobHeartbeats_JobType",
                 table: "JobHeartbeats",
-                sql: "`JobType` IN (1, 2, 3, 4, 5)");
+                sql: "`JobType` IN (1, 2, 3, 4, 5, 6, 7)");
         }
     }
 }

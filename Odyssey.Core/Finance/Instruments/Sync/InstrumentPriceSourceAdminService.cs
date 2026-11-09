@@ -109,7 +109,8 @@ public sealed class InstrumentPriceSourceAdminService(
             return null;
         }
 
-        if (instrument.Archived is not null)
+        // An archived instrument is not synced, so it may not gain bindings; clearing them is always allowed.
+        if (instrument.Archived is not null && update.Bindings.Count > 0)
         {
             throw new DomainUnprocessableException("Archived instruments are not synced.", "instrumentId");
         }

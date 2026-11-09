@@ -128,6 +128,126 @@ public class InstrumentPriceSyncTests
     }
 
     [Fact]
+    public async Task An_unreadable_credential_fails_the_run_instead_of_reporting_success()
+    {
+        await using var harness = new SyncHarness();
+        harness.Secrets.Result = SecretResult.Unreadable;
+        await harness.BindAsync(await harness.AddInstrumentAsync("EQNR"), FakePrimarySource.DeclaredKey, 1);
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.Equal(JobRunStatus.Failed, run.Status);
+        Assert.Equal(JobFailureCategory.Configuration, run.FailureCategory);
+    }
+
+    [Fact]
+    public async Task An_unset_credential_is_not_a_failure()
+    {
+        await using var harness = new SyncHarness();
+        harness.Secrets.Result = SecretResult.NotSet;
+        await harness.BindAsync(await harness.AddInstrumentAsync("EQNR"), FakePrimarySource.DeclaredKey, 1);
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.Equal(JobRunStatus.Succeeded, run.Status);
+        Assert.Equal(0, run.InstrumentsAttempted);
+    }
+
+    [Fact]
+    public async Task A_binding_whose_symbol_changes_mid_run_keeps_its_new_state_and_gets_no_rows()
+    {
+        await using var harness = new SyncHarness(historyDays: 5);
+        var instrument = await harness.AddInstrumentAsync("EQNR");
+        await harness.BindAsync(instrument, FakePrimarySource.DeclaredKey, 1, symbol: "OLD");
+        harness.Handler.Respond = request =>
+        {
+            // An Admin replaces the binding while the request is in flight.
+            harness.Mutate(store =>
+            {
+                var row = store.InstrumentPriceSourceBindings.Single();
+                store.InstrumentPriceSourceBindings.Remove(row);
+                store.SaveChanges();
+                store.InstrumentPriceSourceBindings.Add(new InstrumentPriceSourceBinding
+                {
+                    InstrumentId = instrument, SourceKey = FakePrimarySource.DeclaredKey, SourceSymbol = "NEW", Priority = 1, Enabled = true,
+                    UpdatedAtUtc = Now,
+                });
+                store.SaveChanges();
+            });
+            return ScriptedPriceHandler.WeekdayCloses("NOK")(request);
+        };
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.NotEqual(JobFailureCategory.Internal, run.FailureCategory);
+        Assert.Empty(await harness.Store.InstrumentPrices.ToListAsync());
+        var binding = await harness.BindingAsync(instrument, FakePrimarySource.DeclaredKey);
+        Assert.Equal("NEW", binding.SourceSymbol);
+        Assert.Null(binding.NewestFetched);
+        Assert.Null(binding.BackfilledFrom);
+    }
+
+    [Fact]
+    public async Task A_binding_removed_mid_run_does_not_fail_the_run_for_other_instruments()
+    {
+        await using var harness = new SyncHarness(historyDays: 5);
+        var removed = await harness.AddInstrumentAsync("AAA");
+        var kept = await harness.AddInstrumentAsync("BBB");
+        await harness.BindAsync(removed, FakePrimarySource.DeclaredKey, 1, symbol: "AAA");
+        await harness.BindAsync(kept, FakePrimarySource.DeclaredKey, 1, symbol: "BBB");
+        harness.Handler.Respond = request =>
+        {
+            if (request.RequestUri!.AbsolutePath.EndsWith("/AAA", StringComparison.Ordinal))
+            {
+                harness.Mutate(store =>
+                {
+                    store.InstrumentPriceSourceBindings.Remove(store.InstrumentPriceSourceBindings.Single(b => b.InstrumentId == removed));
+                    store.SaveChanges();
+                });
+            }
+
+            return ScriptedPriceHandler.WeekdayCloses("NOK")(request);
+        };
+
+        var run = await harness.RunAsync((await harness.Sync.RunScheduledIfDueAsync())!.Value);
+
+        Assert.NotEqual(JobFailureCategory.Internal, run.FailureCategory);
+        Assert.Empty(await harness.Store.InstrumentPrices.Where(p => p.InstrumentId == removed).ToListAsync());
+        Assert.NotEmpty(await harness.Store.InstrumentPrices.Where(p => p.InstrumentId == kept).ToListAsync());
+        Assert.Equal(Today, (await harness.BindingAsync(kept, FakePrimarySource.DeclaredKey)).NewestFetched);
+    }
+
+    [Fact]
+    public async Task Each_span_commits_its_watermark_so_a_run_that_dies_later_keeps_it()
+    {
+        await using var harness = new SyncHarness(historyDays: 40);
+        var instrument = await harness.AddInstrumentAsync("EQNR");
+        await harness.BindAsync(instrument, FakePrimarySource.DeclaredKey, 1);
+        using var stopping = new CancellationTokenSource();
+        var calls = 0;
+        harness.Handler.Respond = request =>
+        {
+            if (++calls == 1)
+            {
+                return ScriptedPriceHandler.WeekdayCloses("NOK")(request);
+            }
+
+            // The worker stops during the backfill span.
+            stopping.Cancel();
+            throw new OperationCanceledException(stopping.Token);
+        };
+
+        var runId = await harness.Sync.RunScheduledIfDueAsync(stopping.Token);
+
+        var run = await harness.RunAsync(runId!.Value);
+        Assert.Equal(JobFailureCategory.Cancelled, run.FailureCategory);
+        var binding = await harness.BindingAsync(instrument, FakePrimarySource.DeclaredKey);
+        Assert.Equal(Today, binding.NewestFetched);
+        Assert.Equal(Today.AddDays(-29), binding.BackfilledFrom);
+        Assert.NotEmpty(await harness.Store.InstrumentPrices.ToListAsync());
+    }
+
+    [Fact]
     public async Task A_failing_binding_falls_back_to_the_next_one()
     {
         await using var harness = new SyncHarness(historyDays: 5);
@@ -547,6 +667,13 @@ public class InstrumentPriceSyncTests
                 UpdatedAtUtc = Now,
             });
             await Store.SaveChangesAsync();
+        }
+
+        /// <summary>Changes the store from a fresh scope, as another request would while a run is in flight.</summary>
+        public void Mutate(Action<OdysseyContext> change)
+        {
+            using var other = provider.CreateScope();
+            change(other.ServiceProvider.GetRequiredService<OdysseyContext>());
         }
 
         public Task<InstrumentPriceSourceBinding> BindingAsync(Guid instrumentId, string sourceKey) =>

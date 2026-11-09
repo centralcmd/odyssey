@@ -131,7 +131,7 @@ public sealed class InstrumentService(
 
     public async Task<ExistingInstrument> CreateAsync(NewInstrument request, string? userId, CancellationToken cancellationToken = default)
     {
-        var fields = await NormalizeAsync(request, cancellationToken);
+        var fields = await NormalizeAsync(request, null, cancellationToken);
         await EnsureNoDuplicateAsync(fields.ListingKey, null, cancellationToken);
 
         var now = Now;
@@ -160,7 +160,11 @@ public sealed class InstrumentService(
     public async Task<ExistingInstrument?> UpdateAsync(
         Guid instrumentId, NewInstrument request, string? userId, CancellationToken cancellationToken = default)
     {
-        var fields = await NormalizeAsync(request, cancellationToken);
+        var storedCurrency = await context.Instruments.AsNoTracking()
+            .Where(i => i.InstrumentId == instrumentId)
+            .Select(i => i.CurrencyCode)
+            .FirstOrDefaultAsync(cancellationToken);
+        var fields = await NormalizeAsync(request, storedCurrency, cancellationToken);
         var updated = await InstrumentLocks.InTransactionAsync(context, async () =>
         {
             await InstrumentLocks.LockAsync(context, instrumentId, cancellationToken);
@@ -223,31 +227,43 @@ public sealed class InstrumentService(
 
     public async Task<bool> DeleteAsync(Guid instrumentId, string? userId, CancellationToken cancellationToken = default)
     {
-        var instrument = await context.Instruments.FirstOrDefaultAsync(i => i.InstrumentId == instrumentId, cancellationToken);
-        if (instrument is null)
+        // The count and the remove run under the instrument's row lock — the lock every price insert (manual and
+        // fetched) takes first — so a price committed between them cannot reach the RESTRICT key as a raw 500.
+        var deleted = await InstrumentLocks.InTransactionAsync(context, async () =>
         {
-            return false;
+            var instrument = await context.Instruments.FirstOrDefaultAsync(i => i.InstrumentId == instrumentId, cancellationToken);
+            if (instrument is null)
+            {
+                return false;
+            }
+
+            await InstrumentLocks.LockAsync(context, instrumentId, cancellationToken);
+            var priceCount = await context.InstrumentPrices.CountAsync(p => p.InstrumentId == instrumentId, cancellationToken);
+            if (priceCount > 0)
+            {
+                // priceCount is safe to return: every instruments.delete holder also reads prices (§7.2 invariant).
+                throw new DomainCodedConflictException(
+                    $"This instrument has {priceCount} prices. Delete its prices first.",
+                    InstrumentProblemCodes.InstrumentHasPrices,
+                    values: new Dictionary<string, object?> { ["priceCount"] = priceCount });
+            }
+
+            // Bindings cascade in the database; removed here too so the InMemory tiers behave the same.
+            var bindings = await context.InstrumentPriceSourceBindings
+                .Where(b => b.InstrumentId == instrumentId)
+                .ToListAsync(cancellationToken);
+            context.InstrumentPriceSourceBindings.RemoveRange(bindings);
+            context.Instruments.Remove(instrument);
+            await context.SaveChangesAsync(cancellationToken);
+            return true;
+        }, cancellationToken);
+
+        if (deleted)
+        {
+            logger.LogInformation("Instrument {InstrumentId} deleted by {UserId}.", instrumentId, userId);
         }
 
-        var priceCount = await context.InstrumentPrices.CountAsync(p => p.InstrumentId == instrumentId, cancellationToken);
-        if (priceCount > 0)
-        {
-            // priceCount is safe to return: every instruments.delete holder also reads prices (§7.2 invariant).
-            throw new DomainCodedConflictException(
-                $"This instrument has {priceCount} prices. Delete its prices first.",
-                InstrumentProblemCodes.InstrumentHasPrices,
-                values: new Dictionary<string, object?> { ["priceCount"] = priceCount });
-        }
-
-        // Bindings cascade in the database; removed here too so the InMemory tiers behave the same.
-        var bindings = await context.InstrumentPriceSourceBindings
-            .Where(b => b.InstrumentId == instrumentId)
-            .ToListAsync(cancellationToken);
-        context.InstrumentPriceSourceBindings.RemoveRange(bindings);
-        context.Instruments.Remove(instrument);
-        await context.SaveChangesAsync(cancellationToken);
-        logger.LogInformation("Instrument {InstrumentId} deleted by {UserId}.", instrumentId, userId);
-        return true;
+        return deleted;
     }
 
     /// <summary>Plain-text attributions of the registered sources among <paramref name="sourceKeys"/>.</summary>
@@ -329,7 +345,8 @@ public sealed class InstrumentService(
 
     private sealed record NormalizedFields(string Symbol, string? Mic, string? Isin, InstrumentType Type, string Currency, string ListingKey);
 
-    private async Task<NormalizedFields> NormalizeAsync(NewInstrument request, CancellationToken cancellationToken)
+    /// <param name="storedCurrency">The instrument's current currency on an update: keeping it is allowed after it was archived.</param>
+    private async Task<NormalizedFields> NormalizeAsync(NewInstrument request, string? storedCurrency, CancellationToken cancellationToken)
     {
         var type = request.Type ?? throw new DomainValidationException("Type is required.", null, nameof(NewInstrument.Type));
         var symbol = InstrumentIdentifierRules.Normalize(request.Symbol)
@@ -361,7 +378,8 @@ public sealed class InstrumentService(
                 "Enter an exchange code or an ISIN so the instrument can be told apart.", nameof(NewInstrument.MicCode));
         }
 
-        if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == currency && c.Archived == null, cancellationToken))
+        var keepsArchivedCurrency = string.Equals(currency, storedCurrency, StringComparison.Ordinal);
+        if (!await context.Currencies.AnyAsync(c => c.CurrencyCode == currency && (c.Archived == null || keepsArchivedCurrency), cancellationToken))
         {
             throw new DomainUnprocessableException($"Currency '{currency}' is not available.", nameof(NewInstrument.CurrencyCode));
         }
