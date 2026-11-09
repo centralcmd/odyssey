@@ -27,6 +27,13 @@ public enum FileAnalysisPhase
 
     /// <summary>The job ended <c>Cancelled</c> before anything was sent (issue #445).</summary>
     Cancelled,
+
+    /// <summary>
+    /// The analyze POST answered <c>503 configuration_unavailable</c>: the stored model or base URL could not be used,
+    /// so nothing was sent and there is nothing to retry until an administrator fixes it (Odyssey Design System ·
+    /// AnalyzeFileModal <c>configUnavailable</c>).
+    /// </summary>
+    ConfigurationUnavailable,
 }
 
 /// <summary>A sub-threshold match shown as a suggestion chip (name + confidence) rather than auto-linked.</summary>
@@ -246,7 +253,8 @@ public sealed class FileAnalysisSession
         FileAnalysisPhase.Analyzing => ("Analyzing statement", "Reading the document and extracting candidate transactions."),
         FileAnalysisPhase.Matching => ("Matching merchants and categories", "Comparing each candidate against your contacts and tags."),
         FileAnalysisPhase.Blocked => ("This file can’t be analyzed", "Analysis extracts transactions from bank statements."),
-        FileAnalysisPhase.Disabled => ("Analysis isn’t available", "The feature is not enabled on this server."),
+        FileAnalysisPhase.Disabled => ("AI document analysis is turned off", "No document can be sent for analysis on this instance."),
+        FileAnalysisPhase.ConfigurationUnavailable => ("Document analysis is unavailable", "A configuration problem is stopping analysis on this instance."),
         FileAnalysisPhase.Failed => ("Analysis failed", "The statement couldn’t be processed."),
         FileAnalysisPhase.Empty => ("No transactions found", "The analysis completed, but nothing looked like a transaction."),
         FileAnalysisPhase.Review => ("Review candidate transactions", "Edit any row, untick what you don’t want, then import the rest."),

@@ -311,7 +311,7 @@ public partial class AccountFilesSection
             if (state.Failure is { } failure)
                 menu.Add(new OdsMenuItem
                 {
-                    Icon = "error_outline",
+                    Icon = "report",
                     Label = state.FailureIsLastAttempt ? "View last attempt" : "View result",
                     OnClick = EventCallback.Factory.Create(this, () => OpenAnalysis(file, FileAnalysisDialog.StartMode.Result, null, failure.JobId)),
                 });

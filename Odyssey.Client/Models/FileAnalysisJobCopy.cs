@@ -66,10 +66,6 @@ public static class FileAnalysisJobCopy
     public static readonly FileAnalysisTerminalCopy PostUnavailable =
         new("Analysis is temporarily unavailable", "Try again in a few minutes.", FileAnalysisTerminalAction.Retry, ShowSent: false);
 
-    /// <summary>A POST <c>503 configuration_unavailable</c>: no job was created, so no sent line.</summary>
-    public static readonly FileAnalysisTerminalCopy PostConfigurationUnavailable =
-        Failed[FileAnalysisCodes.ConfigurationUnavailable] with { ShowSent = false };
-
     /// <summary>Any other POST refusal: no job exists, so no sent line.</summary>
     public static readonly FileAnalysisTerminalCopy PostRefused = GenericFailed with { ShowSent = false };
 

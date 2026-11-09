@@ -353,7 +353,8 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
 
     [Theory]
     [InlineData(null, "Analysis is temporarily unavailable")]
-    [InlineData("feature_disabled", "Analysis isn’t available")]
+    [InlineData("feature_disabled", "Nothing was sent")]
+    [InlineData("configuration_unavailable", "Nothing was sent")]
     public async Task A503_IsDisabledOnlyWithItsCode(string? code, string heading)
     {
         var json = code is null ? """{"status":503}""" : $$"""{"status":503,"code":"{{code}}"}""";
@@ -364,6 +365,41 @@ public sealed class FileAnalysisQueuedDialogTests : IAsyncDisposable
         await SendFromConsentAsync(cut);
 
         cut.WaitForAssertion(() => Assert.Contains(heading, cut.Find("h3").TextContent));
+    }
+
+    [Fact]
+    public async Task A503FeatureDisabled_IsTheTurnedOffState_SayingNothingWasSentOrRecorded()
+    {
+        accounts.Setup(a => a.AnalyzeFileAsync(AccountId, FileId, It.IsAny<AnalyzeFileRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AnalyzeFileResponse>.Failure(HttpStatusCode.ServiceUnavailable,
+                Problem($$"""{"status":503,"code":"feature_disabled","detail":"{{ServerText}}"}""")));
+        var cut = Render(FileAnalysisDialog.StartMode.Consent);
+
+        await SendFromConsentAsync(cut);
+
+        cut.WaitForAssertion(() => Assert.Contains("AI document analysis is turned off", Text(cut)));
+        Assert.Contains("No document can be sent for analysis on this instance.", Text(cut));
+        Assert.Contains("no consent was", cut.Find(".fan-state-text").TextContent);
+        Assert.DoesNotContain(ServerText, Text(cut));
+    }
+
+    [Fact]
+    public async Task A503ConfigurationUnavailable_IsItsOwnState_WithCloseOnly_AndNoServerText()
+    {
+        accounts.Setup(a => a.AnalyzeFileAsync(AccountId, FileId, It.IsAny<AnalyzeFileRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<AnalyzeFileResponse>.Failure(HttpStatusCode.ServiceUnavailable,
+                Problem($$"""{"status":503,"code":"configuration_unavailable","detail":"{{ServerText}}"}""")));
+        var cut = Render(FileAnalysisDialog.StartMode.Consent);
+
+        await SendFromConsentAsync(cut);
+
+        cut.WaitForAssertion(() => Assert.Contains("Document analysis is unavailable", Text(cut)));
+        Assert.Contains("A configuration problem is stopping analysis on this instance.", Text(cut));
+        Assert.Contains("the model and provider base URL in System settings", cut.Find(".fan-state-text").TextContent);
+        Assert.Empty(cut.FindAll(".fan-sent"));
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Trim() == "Retry");
+        Assert.Contains(cut.FindAll("button"), b => b.TextContent.Trim() == "Close");
+        Assert.DoesNotContain(ServerText, Text(cut));
     }
 
     [Fact]
