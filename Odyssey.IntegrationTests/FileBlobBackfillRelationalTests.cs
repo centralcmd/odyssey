@@ -97,25 +97,23 @@ public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         Task? attach = null;
         var entryId = Guid.Empty;
-        DateTime? attachDone = null;
+        bool? attachWaitedForTheLock = null;
         await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString, configureServices: services =>
             services.Replace(ServiceDescriptor.Scoped<IFileReferenceCounter>(sp => new RacingCounter(
                 new FileReferenceCounter(sp.GetRequiredService<OdysseyContext>()),
-                id => attach = Task.Run(async () =>
-                {
-                    await AttachAsync(id, entryId);
-                    attachDone = DateTime.UtcNow;
-                })))));
+                id => attach = Task.Run(() => AttachAsync(id, entryId)),
+                () => attachWaitedForTheLock = attach is { IsCompleted: false }))));
         var fileId = await StageLegacyAsync();
         entryId = await NewEntryAsync();
         await AttachAsync(fileId, await NewEntryAsync());
 
         var outcome = await Job(photos).MoveOneAsync(fileId, StoredFileArea.Journal, default);
-        var committed = DateTime.UtcNow;
 
         Assert.Equal(FileBackfillOutcome.MovedJournal, outcome);
+        // Probed while the commit still held the row: an attach not blocked by the lock finishes well inside the pause, so a
+        // slow runner can only make this pass for the wrong reason, never fail spuriously.
+        Assert.True(attachWaitedForTheLock, "The attach completed while the commit held the file row.");
         await attach!;
-        Assert.True(attachDone >= committed.AddMilliseconds(-50), "The attach finished before the commit released the row.");
         await using var context = NewContext();
         Assert.Equal(2, await context.JournalEntryAttachments.CountAsync(a => a.FileId == fileId));
         Assert.NotNull((await context.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == fileId)).JournalStoredObjectId);
@@ -196,7 +194,7 @@ public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
     }
 
     /// <summary>Starts a competing attach right after the commit's re-classification reads the links, then gives it a second to reach the lock.</summary>
-    private sealed class RacingCounter(IFileReferenceCounter inner, Action<Guid> startRace) : IFileReferenceCounter
+    private sealed class RacingCounter(IFileReferenceCounter inner, Action<Guid> startRace, Action probe) : IFileReferenceCounter
     {
         private bool started;
 
@@ -213,6 +211,7 @@ public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
                 started = true;
                 startRace(fileId);
                 await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
+                probe();
             }
 
             return result;
