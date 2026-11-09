@@ -216,7 +216,6 @@ public sealed class AccountFilesSaveOutcomeTests : IAsyncDisposable
             FileName = name,
             ContentType = "application/pdf",
             SizeBytes = 25_800,
-            FileBlobId = Guid.NewGuid(),
             UploadedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
         },
     };
@@ -544,7 +543,6 @@ public sealed class ContractFilesSaveOutcomeTests : IAsyncDisposable
                 FileName = Attachment.FileName,
                 ContentType = "application/pdf",
                 SizeBytes = 1,
-                FileBlobId = Guid.NewGuid(),
                 UploadedAtUtc = DateTime.UtcNow,
                 Description = description,
             },

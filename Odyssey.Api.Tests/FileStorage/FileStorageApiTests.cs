@@ -40,7 +40,7 @@ public class FileStorageApiTests
         Assert.Equal(["archive", "primary"], volumes.Select(v => v.Name));
         var primary = volumes.Single(v => v.Name == "primary");
         Assert.Equal(FileStorageVolumeState.Available, primary.State);
-        Assert.Equal(["PhotoOriginals", "PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
+        Assert.Equal(["ContactAvatars", "FinanceFiles", "JournalFiles", "PhotoOriginals", "PhotoThumbnails", "TestFiles", "TestSecrets"], primary.BoundFeatures);
         var usage = Assert.Single(primary.Features);
         Assert.Equal("TestFiles", usage.FeatureKey);
         Assert.Equal(1, usage.ObjectCount);
@@ -48,7 +48,7 @@ public class FileStorageApiTests
         Assert.NotNull(primary.FreeBytes);
         Assert.Contains("\"state\":\"Available\"", body, StringComparison.Ordinal);
         // Feature keys are canonical PascalCase on the wire, compared case-sensitively.
-        Assert.Contains("\"boundFeatures\":[\"PhotoOriginals\",\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"boundFeatures\":[\"ContactAvatars\",\"FinanceFiles\",\"JournalFiles\",\"PhotoOriginals\",\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
         Assert.Contains("\"featureKey\":\"TestFiles\"", body, StringComparison.Ordinal);
 
         Assert.DoesNotContain("/", body.Replace("\\u002F", "/"), StringComparison.Ordinal);
@@ -124,7 +124,7 @@ public class FileStorageApiTests
     public async Task With_no_volumes_configured_the_store_is_a_no_op_and_the_endpoint_returns_an_empty_list()
     {
         await using var factory = new OdysseyApiFactory([PermissionClaims.FileStorageRead],
-            configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoPhotoVolumeKey] = "true" });
+            configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoFileVolumeKey] = "true" });
         using var client = factory.CreateClient();
 
         var volumes = await client.GetFromJsonAsync<List<FileStorageVolumeStatus>>(VolumesPath);

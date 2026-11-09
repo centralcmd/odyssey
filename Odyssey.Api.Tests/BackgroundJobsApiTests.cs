@@ -113,7 +113,7 @@ public class BackgroundJobsApiTests
 
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-                JobType.FileAnalysis],
+                JobType.FileAnalysis, JobType.FileBlobBackfill],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
@@ -887,7 +887,7 @@ public class BackgroundJobsApiTests
             permissions,
             "background-jobs-actor",
             // No photo volume: the file-storage job's "not configured" state is the host with no volume at all.
-            configuration: new Dictionary<string, string?> { [NoPhotoVolumeKey] = "true" },
+            configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" },
             configureServices: services => services.AddSingleton<TimeProvider>(new FixedClock()),
             sharingStoreWith: sharingStoreWith)
     {

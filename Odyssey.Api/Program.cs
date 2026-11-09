@@ -1,3 +1,4 @@
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Api;
@@ -325,6 +326,8 @@ builder.Services.AddWeatherRateLimiter(builder.Configuration);
 builder.Services.AddBackgroundJobsRateLimiter(builder.Configuration);
 // The photo upload's per-user limit (issue #428 §7.9). Same composition rules.
 builder.Services.AddPhotoUploadRateLimiter(builder.Configuration);
+// The file upload's per-user limit (issue #448 §7.9), on POST /api/files and the contact image. Same composition rules.
+builder.Services.AddFileUploadRateLimiter(builder.Configuration);
 
 // The location map's basemap (issue #370): deploy-time, validated at start-up, served by MapStylesController.
 builder.Services.AddMapStyles(builder.Configuration);
@@ -557,6 +560,9 @@ builder.Services.AddPhotoThumbnails();
 // Photo originals (issue #428): the storage feature, the content source every reader uses and the writer. The
 // backfill that moves legacy originals out of FileBlob runs in the worker.
 builder.Services.AddPhotoOriginals();
+// Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
+// content source every download reads through. The move of the legacy FileBlobs runs in the worker.
+builder.Services.AddStoredFiles();
 
 builder.Services.AddScoped<AdminFileExportService>();
 

@@ -1,3 +1,5 @@
+using Odyssey.Testing.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.Icc;
@@ -109,19 +111,21 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
             await service.AttachAsync(contactId, ContactImageFixtures.BaselineJpeg(), "image/jpeg", UploaderId);
             var first = await AvatarFileIdAsync(context, contactId);
-            var firstBlobId = await BlobIdAsync(context, first!.Value);
+            var firstObjectId = await StoredObjectIdAsync(context, first!.Value);
 
             await service.AttachAsync(contactId, ContactImageFixtures.BaselinePng(), "image/png", UploaderId);
             var second = await AvatarFileIdAsync(context, contactId);
 
             Assert.NotEqual(first, second);
 
-            // Both rows, not just the reference: the image is personal data and the erasure has to reach
-            // the blob.
+            // Both, not just the reference: the image is personal data and the erasure has to reach the bytes — on
+            // disk since issue #448, released for erasure after the deletion grace.
             Assert.False(await context.FileMetadata.AnyAsync(fm => fm.Id == first));
-            Assert.False(await context.FileBlob.AnyAsync(b => b.Id == firstBlobId));
+            Assert.Equal(StoredObjectState.PendingDelete,
+                (await context.StoredObjects.AsNoTracking().SingleAsync(o => o.Id == firstObjectId)).State);
             Assert.Equal(1, await context.FileMetadata.CountAsync());
-            Assert.Equal(1, await context.FileBlob.CountAsync());
+            Assert.Equal(1, await CommittedImagesAsync(context));
+            Assert.Equal(0, await context.FileBlob.CountAsync());
         }
 
         await DropAsync();
@@ -145,7 +149,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
             Assert.Null(await AvatarFileIdAsync(context, contactId));
             Assert.Equal(0, await context.FileMetadata.CountAsync());
-            Assert.Equal(0, await context.FileBlob.CountAsync());
+            Assert.Equal(0, await CommittedImagesAsync(context));
 
             // The contact itself is unchanged: removal is not an archival and not a delete.
             Assert.True(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
@@ -173,7 +177,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
             Assert.False(await context.Contacts.AnyAsync(c => c.ContactId == contactId));
             Assert.Equal(0, await context.FileMetadata.CountAsync());
-            Assert.Equal(0, await context.FileBlob.CountAsync());
+            Assert.Equal(0, await CommittedImagesAsync(context));
         }
 
         await DropAsync();
@@ -199,7 +203,8 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
         {
             // The guard refuses partway through, INSIDE the transaction the delete opened — the shape
             // of a real refusal (a contact named as a contract beneficiary) without needing one.
-            var service = new ContactService(context, new ThrowingReferenceGuard(), logger: NullLogger<ContactService>.Instance);
+            var service = new ContactService(context, new ThrowingReferenceGuard(), logger: NullLogger<ContactService>.Instance,
+                objectStore: TestFileStores.For(context).Store);
 
             await Assert.ThrowsAsync<DomainConflictException>(() => service.Delete(contactId));
         }
@@ -209,7 +214,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
             // Nothing partially applied: the contact is still there and so are BOTH of its file rows.
             Assert.True(await verify.Contacts.AnyAsync(c => c.ContactId == contactId));
             Assert.True(await verify.FileMetadata.AnyAsync(fm => fm.Id == fileId));
-            Assert.Equal(1, await verify.FileBlob.CountAsync());
+            Assert.Equal(1, await CommittedImagesAsync(verify));
             Assert.Equal(fileId, await AvatarFileIdAsync(verify, contactId));
         }
 
@@ -377,7 +382,7 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
         // request is in when the first one commits underneath it.
         var stalled = await loser.Contacts.FirstAsync(c => c.ContactId == contactId);
         var released = await ContactAvatarRelease.StageAsync(
-            loser, stalled, logger: null, site: "replace-race");
+            loser, TestFileStores.For(loser).Store, stalled, logger: null, site: "replace-race");
         Assert.Equal(AvatarReleaseOutcome.Deleted, released);
 
         Assert.True(await AvatarServiceFor(winner).AttachAsync(
@@ -475,17 +480,29 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────
 
+    // Every image goes to disk since issue #448: the services get the Files store's writer, store and content source over a
+    // temp volume on the same database.
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
             FileServiceFor(context),
             new FixedUploadLimits(64L * 1024 * 1024),
-            logger: NullLogger<ContactAvatarService>.Instance);
+            logger: NullLogger<ContactAvatarService>.Instance,
+            writer: TestFileStores.For(context).Writer,
+            store: TestFileStores.For(context).Store,
+            source: TestFileStores.For(context).Source);
 
     private static FileService FileServiceFor(OdysseyContext context) =>
-        new(context, new FileValidationService());
+        new(context, new FileValidationService(), writer: TestFileStores.For(context).Writer,
+            store: TestFileStores.For(context).Store, source: TestFileStores.For(context).Source);
 
     private static ContactService ContactServiceFor(OdysseyContext context) =>
-        new(context, new ContactReferenceGuard(context), logger: NullLogger<ContactService>.Instance);
+        new(context, new ContactReferenceGuard(context), logger: NullLogger<ContactService>.Instance,
+            objectStore: TestFileStores.For(context).Store);
+
+    /// <summary>Committed contact images on the store: the issue #448 counterpart of counting <c>FileBlob</c> rows.</summary>
+    private static Task<int> CommittedImagesAsync(OdysseyContext context) =>
+        context.StoredObjects.AsNoTracking().CountAsync(o => o.FeatureKey == StoredFileAreas.ContactAvatarFeatureKey
+            && o.State == StoredObjectState.Committed);
 
     /// <summary>
     /// The principal a stored image is attributed to. <c>FileMetadata.UploadedByUserId</c> is a real
@@ -512,13 +529,17 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
         context.Contacts.AsNoTracking().Where(c => c.ContactId == contactId)
             .Select(c => c.AvatarFileId).SingleAsync();
 
-    private static Task<Guid> BlobIdAsync(OdysseyContext context, Guid fileId) =>
-        context.FileMetadata.AsNoTracking().Where(fm => fm.Id == fileId).Select(fm => fm.FileBlobId).SingleAsync();
+    private static Task<Guid?> StoredObjectIdAsync(OdysseyContext context, Guid fileId) =>
+        context.FileMetadata.AsNoTracking().Where(fm => fm.Id == fileId).Select(fm => fm.ContactAvatarStoredObjectId).SingleAsync();
 
     private static async Task<byte[]> StoredBytesAsync(OdysseyContext context, Guid contactId)
     {
         var fileId = (await AvatarFileIdAsync(context, contactId))!.Value;
-        return (await AvatarServiceFor(context).GetContentAsync(fileId))!;
+        var content = (await AvatarServiceFor(context).GetContentAsync(fileId))!;
+        await using var stream = content.Content;
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        return buffer.ToArray();
     }
 
     /// <summary>Points a contact at a non-image file — the anomaly the release rule exists to survive.</summary>

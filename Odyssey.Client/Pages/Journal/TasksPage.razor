@@ -207,7 +207,7 @@
 
 @if (_attachTask is not null)
 {
-    <AttachDocumentsDialog @key="_attachKey"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Journal" @key="_attachKey"
                            @bind-Open="_attachOpen"
                            Subtitle="@($"Keep supporting documents with {_attachTask.Title}. Files stay in Files; attaching links them here.")"
                            Announce="false"

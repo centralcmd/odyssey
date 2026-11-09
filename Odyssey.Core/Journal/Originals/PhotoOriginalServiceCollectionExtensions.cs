@@ -18,6 +18,7 @@ public static class PhotoOriginalServiceCollectionExtensions
     {
         services.AddSingleton(PhotoOriginalStorage.Feature);
         services.AddOptions<PhotoOriginalOptions>();
+        services.TryAddScoped<Odyssey.Core.FileStorage.Files.StoredFileContentSource>();
         services.TryAddScoped<IImageContentReader, ImageContentReader>();
         services.TryAddScoped<PhotoOriginalSource>();
         services.TryAddScoped<PhotoOriginalBucketAllocator>();

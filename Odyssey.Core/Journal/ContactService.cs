@@ -38,16 +38,20 @@ public class ContactService
     private readonly TimeProvider timeProvider;
     private readonly ILogger<ContactService>? logger;
 
+    private readonly Odyssey.Core.FileStorage.IObjectStore? objectStore;
+
     public ContactService(
         OdysseyContext context,
         IContactReferenceGuard referenceGuard,
         TimeProvider? timeProvider = null,
-        ILogger<ContactService>? logger = null)
+        ILogger<ContactService>? logger = null,
+        Odyssey.Core.FileStorage.IObjectStore? objectStore = null)
     {
         this.context = context;
         this.referenceGuard = referenceGuard;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.logger = logger;
+        this.objectStore = objectStore;
     }
 
     // The base read query, eagerly loading the 1:1 detail sub-records and the three contact
@@ -703,7 +707,7 @@ public class ContactService
             // foreign key — the FK runs the other way, Contact → FileMetadata with SET NULL — so it is
             // application code here, inside the same transaction, applying the shared release rule: a
             // file whose content type is not avatar-legal is detached rather than destroyed.
-            await ContactAvatarRelease.StageAsync(context, contact, logger, "contact-delete", cancellationToken);
+            await ContactAvatarRelease.StageAsync(context, objectStore, contact, logger, "contact-delete", cancellationToken);
 
             context.Contacts.Remove(contact);
             await context.SaveChangesAsync(cancellationToken);

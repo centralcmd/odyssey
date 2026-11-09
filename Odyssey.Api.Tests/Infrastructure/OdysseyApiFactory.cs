@@ -73,10 +73,14 @@ public class OdysseyApiFactory(
     /// <summary>
     /// A per-factory photo volume (issue #428 §3.7). A photo owns its original on the object store, and the upload
     /// has no database fallback, so every API host binds <c>PhotoOriginals</c> and <c>PhotoThumbnails</c> to a temp
-    /// volume — unless the factory configures its own volumes (<c>FileStorageApiFactory</c>). Deleted on dispose.
+    /// volume — and, since issue #448, the three file areas too — unless the factory configures its own volumes
+    /// (<c>FileStorageApiFactory</c>). Deleted on dispose.
     /// </summary>
-    private readonly string photoVolumePath =
-        Path.Combine(Path.GetTempPath(), $"odyssey-tests-photos-{Guid.NewGuid():N}");
+    private readonly string photoVolumePath = sharingStoreWith?.photoVolumePath
+        ?? Path.Combine(Path.GetTempPath(), $"odyssey-tests-photos-{Guid.NewGuid():N}");
+
+    /// <summary>A factory sharing another's store shares its volume too (files live there since issue #448); the owner deletes it.</summary>
+    private readonly bool sharesPhotoVolume = sharingStoreWith is not null;
 
     /// <summary>The free space the photo volume reports; a test sets it to exercise the upload reserve.</summary>
     public TestSpaceProbe PhotoVolumeSpace { get; } = new();
@@ -85,11 +89,11 @@ public class OdysseyApiFactory(
     public string PhotoVolumeRoot => photoVolumePath;
 
     /// <summary>Set to <c>"true"</c> in a factory's configuration for a host with no volume at all (the no-op store).</summary>
-    public const string NoPhotoVolumeKey = "Testing:NoPhotoVolume";
+    public const string NoFileVolumeKey = "Testing:NoFileVolume";
 
     private bool OwnsPhotoVolume =>
         configuration?.Keys.Any(k => k.StartsWith("FileStorage:Volumes:", StringComparison.Ordinal)) != true
-        && configuration?.GetValueOrDefault(NoPhotoVolumeKey) != "true";
+        && configuration?.GetValueOrDefault(NoFileVolumeKey) != "true";
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -110,6 +114,10 @@ public class OdysseyApiFactory(
                 settings["FileStorage:Volumes:photos:RootPath"] = photoVolumePath;
                 settings["FileStorage:Bindings:PhotoOriginals"] = "photos";
                 settings["FileStorage:Bindings:PhotoThumbnails"] = "photos";
+                // Files on the store (issue #448): every upload writes a real file, so every host binds the three areas.
+                settings["FileStorage:Bindings:FinanceFiles"] = "photos";
+                settings["FileStorage:Bindings:JournalFiles"] = "photos";
+                settings["FileStorage:Bindings:ContactAvatars"] = "photos";
             }
 
             if (configuration is not null)
@@ -181,7 +189,7 @@ public class OdysseyApiFactory(
                 Directory.Delete(dataProtectionKeysPath, recursive: true);
             }
 
-            if (Directory.Exists(photoVolumePath))
+            if (!sharesPhotoVolume && Directory.Exists(photoVolumePath))
             {
                 Directory.Delete(photoVolumePath, recursive: true);
             }

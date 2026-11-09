@@ -22,8 +22,6 @@ public sealed record ExistingFileMetadata
 
     // public required string Sha256Hash { get; set; }
 
-    public required Guid FileBlobId { get; set; }
-
     public string? Description { get; set; }
 
     public required DateTime UploadedAtUtc { get; set; }

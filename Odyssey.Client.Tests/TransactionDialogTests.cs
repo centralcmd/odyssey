@@ -53,7 +53,7 @@ public sealed class TransactionDialogTests : IAsyncLifetime
 
         // Any file call from this dialog is a regression: it no longer uploads, attaches or detaches. The
         // transaction is seeded WITH an attached file so the dialog has one it could wrongly touch.
-        files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+        files.Setup(f => f.UploadAsync(It.IsAny<ApiUpload>(), It.IsAny<Odyssey.Dtos.FileUploadArea>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("upload"))
             .ThrowsAsync(new InvalidOperationException("The dialog must not upload."));
 
@@ -108,7 +108,6 @@ public sealed class TransactionDialogTests : IAsyncLifetime
             FileName = "groceries-receipt.pdf",
             ContentType = "application/pdf",
             SizeBytes = 1_024,
-            FileBlobId = Guid.NewGuid(),
             UploadedAtUtc = new DateTime(2026, 6, 17, 12, 0, 0, DateTimeKind.Utc),
         },
     };

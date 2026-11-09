@@ -21,6 +21,9 @@ public interface IFileReferenceCounter
 
     /// <summary>Whether any row other than a photo's own <c>FileId</c> names <paramref name="fileId"/>.</summary>
     Task<bool> HasOtherReferencesAsync(Guid fileId, CancellationToken cancellationToken);
+
+    /// <summary>The referencing columns (of <see cref="References"/>) that name <paramref name="fileId"/> — the file move's classifier input.</summary>
+    Task<IReadOnlyList<FileReference>> ReferencesNamingAsync(Guid fileId, CancellationToken cancellationToken);
 }
 
 public sealed class FileReferenceCounter(OdysseyContext context) : IFileReferenceCounter
@@ -55,6 +58,23 @@ public sealed class FileReferenceCounter(OdysseyContext context) : IFileReferenc
         }
 
         return false;
+    }
+
+    public async Task<IReadOnlyList<FileReference>> ReferencesNamingAsync(Guid fileId, CancellationToken cancellationToken)
+    {
+        var naming = new List<FileReference>();
+        foreach (var reference in References)
+        {
+            var property = context.Model.FindEntityType(reference.EntityType)!.FindProperty(reference.PropertyName)!;
+            var task = (Task<bool>)AnyMethod.MakeGenericMethod(reference.EntityType)
+                .Invoke(null, [context, reference.PropertyName, property.ClrType, fileId, cancellationToken])!;
+            if (await task)
+            {
+                naming.Add(reference);
+            }
+        }
+
+        return naming;
     }
 
     /// <summary>

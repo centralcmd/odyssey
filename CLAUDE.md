@@ -807,6 +807,31 @@ a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey
   volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoPhotoVolumeKey`; on EF
   InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.
 
+**Every other file moves onto the object store too, by AREA** (issue #448). `FileMetadata` keeps its row and gains
+one nullable `RESTRICT` column per feature — `FinanceStoredObjectId` (`FinanceFiles`, `finance-files/`),
+`JournalStoredObjectId` (`JournalFiles`, `journal-files/`) and `ContactAvatarStoredObjectId` (`ContactAvatars`,
+`contact-avatars/`) — and `CK_FileMetadata_ExactlyOneSource` keeps exactly one of those and `FileBlobId` set. All
+of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that are easy to get backwards:
+
+- **The area is chosen at upload and never moves.** `POST /api/files` takes a required `area`
+  (`FileUploadArea`, `Odyssey.Dtos` root); each client host passes its own (`AttachDocumentsDialog.Area` is
+  `EditorRequired`). The avatar path always writes `ContactAvatars`, and no other writer may (source-lint).
+  Placement is not access: the claim of the referencing record still decides who reads a file.
+- **Read bytes through `StoredFileContentSource`, remove a row through `StoredFileRemoval`.** Both resolve a
+  legacy and a disk-backed file alike; a direct `FileBlob`/`FileBlobId` read or a `FileMetadata.Remove` outside
+  the allow-list fails `StoredFilesSourceLintTests`. Removal stages the store release in the same save.
+- **`FileBlobBackfillJob` classifies at move time, from the EF model** (`FileAreaClassifier`): no link or any
+  finance link → Finance, journal-only → Journal, avatar-only **with an image type** → Contacts, else Finance. A
+  photo-wrapped file waits for the photo move. The commit locks the row `FOR UPDATE` and re-classifies. Its
+  per-area health is checked per candidate, so one degraded area never stalls the others.
+- **`FileBlobBackfillFailures` has no foreign key**, so `FileReferenceCounter.Discover` is unchanged by it; an
+  orphan row is pruned on the next tick. It is `JobType.FileBlobBackfill = 7` on `/background-jobs`, status
+  `GET /api/file-storage/file-backfill` under `file-storage.read`.
+- **Every upload surface shares `UploadFailureText`** (`Odyssey.Client/Services/`): a `507`/`503`/`429` stops
+  the batch, anything else is the file's own; inside a dialog the alert line is the only failure channel.
+- **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
+  in the lint; the list may only shrink.
+
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
 version, source and re-check procedure); `wwwroot/js/location-map.js` is the only importer, and only on the

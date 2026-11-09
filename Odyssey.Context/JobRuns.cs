@@ -260,6 +260,36 @@ public class PhotoOriginalBackfillJobRun : JobRun
 }
 
 /// <summary>
+/// A burst or manual run of the file move (issue #448), or a held period of one process — storage unavailable, or the
+/// back-off after a storage or database error. <see cref="Interruptions"/> shares its column with
+/// <see cref="PhotoOriginalBackfillJobRun.Interruptions"/>.
+/// </summary>
+public class FileBlobBackfillJobRun : JobRun
+{
+    public FileBlobBackfillJobRun() : base(Dtos.Application.JobType.FileBlobBackfill)
+    {
+    }
+
+    /// <summary>Moved to <c>finance-files/</c>.</summary>
+    public int FinanceFilesMoved { get; set; }
+
+    /// <summary>Moved to <c>journal-files/</c>.</summary>
+    public int JournalFilesMoved { get; set; }
+
+    /// <summary>Moved to <c>contact-avatars/</c>.</summary>
+    public int ContactAvatarsMoved { get; set; }
+
+    /// <summary>Parked for a reason of their own (a <c>FileBlobBackfillFailures</c> code).</summary>
+    public int FilesParked { get; set; }
+
+    /// <summary>Ticks cut short by a storage or database error; the move then backs off.</summary>
+    public int Interruptions { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() =>
+        (FinanceFilesMoved + JournalFilesMoved + ContactAvatarsMoved, FilesParked);
+}
+
+/// <summary>
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes

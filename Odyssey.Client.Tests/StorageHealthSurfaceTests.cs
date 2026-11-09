@@ -373,13 +373,13 @@ public class StorageHealthSurfaceTests : IDisposable
             Volume(v => v.Features =
             [
                 new FileStorageFeatureUsage { FeatureKey = "PhotoThumbnails", ObjectCount = 2, CommittedBytes = 2048 },
-                new FileStorageFeatureUsage { FeatureKey = "ContactAvatars", ObjectCount = 96, CommittedBytes = 4404019 },
+                new FileStorageFeatureUsage { FeatureKey = "RetiredFeature", ObjectCount = 96, CommittedBytes = 4404019 },
             ]),
         ]));
 
         var features = panel.FindAll(".sth-feat");
         Assert.Equal(2, features.Count);
-        Assert.Equal("ContactAvatars", features[1].QuerySelector(".mono")!.TextContent);
+        Assert.Equal("RetiredFeature", features[1].QuerySelector(".mono")!.TextContent);
         Assert.Contains("96 · 4.2 MB", features[1].TextContent, StringComparison.Ordinal);
     }
 

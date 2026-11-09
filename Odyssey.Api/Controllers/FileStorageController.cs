@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
@@ -16,8 +17,18 @@ namespace Odyssey.Api.Controllers;
 [ApiController]
 [Route("api/file-storage")]
 [Authorize(Policy = PermissionClaims.FileStorageRead)]
-public sealed class FileStorageController(FileStorageStatusService status, PhotoBackfillStatusService photoBackfill) : ControllerBase
+public sealed class FileStorageController(
+    FileStorageStatusService status, PhotoBackfillStatusService photoBackfill, FileBackfillStatusService fileBackfill) : ControllerBase
 {
+    [HttpGet("file-backfill")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileBackfillStatus))]
+    [SwaggerOperation(
+        Summary = "Progress of the worker's move of the remaining files out of the database (issue #448).",
+        Description = "Counts only — never an id, a name, a path or a volume. toMove, waitingOnPhotos and failed are disjoint; "
+            + "remaining is their sum.")]
+    public async Task<ActionResult<FileBackfillStatus>> GetFileBackfill(CancellationToken cancellationToken) =>
+        Ok(await fileBackfill.GetAsync(cancellationToken));
+
     [HttpGet("photo-backfill")]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(PhotoBackfillStatus))]
     [SwaggerOperation(

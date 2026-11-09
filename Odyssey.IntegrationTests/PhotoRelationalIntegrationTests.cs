@@ -171,7 +171,7 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             var (photo, file) = PhotoTestData.StageLegacyPhoto(context, userId: "user");
             await context.SaveChangesAsync();
-            (photoId, fileId, blobId) = (photo.PhotoId, file.Id, file.FileBlobId);
+            (photoId, fileId, blobId) = (photo.PhotoId, file.Id, file.FileBlobId!.Value);
         }
 
         await using (var scope = provider.Scope())
@@ -406,6 +406,9 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
     private sealed class RacingCounter(IFileReferenceCounter inner, Action<Guid> startRace) : IFileReferenceCounter
     {
         public IReadOnlyList<FileReference> References => inner.References;
+
+        public Task<IReadOnlyList<FileReference>> ReferencesNamingAsync(Guid fileId, CancellationToken cancellationToken) =>
+            inner.ReferencesNamingAsync(fileId, cancellationToken);
 
         public async Task<bool> HasOtherReferencesAsync(Guid fileId, CancellationToken cancellationToken)
         {

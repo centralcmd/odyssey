@@ -7,6 +7,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -121,10 +122,31 @@ public partial class AttachDocumentsDialog
     /// <summary>Announces the attach in a snackbar. Off for a host that only stages the ids until its own save.</summary>
     [Parameter] public bool Announce { get; set; } = true;
 
+    /// <summary>
+    /// Which folder on the file store an upload goes to (issue #449): <c>Journal</c> from journal entries and tasks,
+    /// <c>Finance</c> from every finance surface. Chosen by the host, never by the user, and placement only.
+    /// </summary>
+    [Parameter, EditorRequired] public FileUploadArea Area { get; set; }
+
     private string _tab = UploadTab;
     private List<OdsUploadFile> _uploads = [];
     private string? _error;
     private bool _busy;
+
+    // The dialog's one announcement for a failure or warning while it is open (issue #449 §6): a role="alert" line,
+    // re-keyed per batch so an identical second message is announced again. No failure or warning toast is raised
+    // while the dialog is open — a toast sits outside the modal, is read twice and has a close control a keyboard user
+    // cannot reach.
+    private string? _notice;
+    private int _noticeKey;
+    private readonly string _noticeId = $"adm-notice-{Guid.NewGuid():N}";
+
+    private void Notice(string? text)
+    {
+        _notice = text;
+        if (text is not null)
+            _noticeKey++;
+    }
 
     // Picked library files, keyed by FileMetadata id, in the shape the validity editor edits.
     private readonly Dictionary<Guid, OdsUploadFile> _picked = [];
@@ -190,6 +212,10 @@ public partial class AttachDocumentsDialog
 
     protected override void OnParametersSet()
     {
+        // EditorRequired is a compile error under TreatWarningsAsErrors; this catches a value cast from 0.
+        if (!Enum.IsDefined(Area))
+            throw new InvalidOperationException("AttachDocumentsDialog needs an Area: Finance or Journal.");
+
         _fileKinds = Kinds is null
             ? null
             : [.. Kinds.Select(t => new OdsFileKind { Key = t.Key, Label = t.Label, Icon = t.Icon, Color = t.Color, Soft = t.Soft })];
@@ -239,6 +265,7 @@ public partial class AttachDocumentsDialog
     {
         _tab = tab == LibraryTab ? LibraryTab : UploadTab;
         _error = null;
+        Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
             await LoadLibraryAsync();
     }
@@ -320,19 +347,20 @@ public partial class AttachDocumentsDialog
     private void OnUploadsChanged(IReadOnlyList<OdsUploadFile> files)
     {
         var kept = new List<OdsUploadFile>();
+        var rejected = new List<string>();
         foreach (var f in files)
         {
             var ext = Path.GetExtension(f.Name).ToLowerInvariant();
             if (f.Source is not null && !Extensions.Contains(ext))
             {
-                Snackbar.Add(RestrictToDocumentTypes
-                    ? $"“{f.Name}” can’t be attached. Only {DocumentContentTypes.Label} files are accepted."
-                    : $"“{f.Name}” can’t be attached. Allowed: {ExtensionLabel}.", Severity.Warning);
+                rejected.Add(RestrictToDocumentTypes
+                    ? $"“{UploadFailureText.Clean(f.Name)}” can’t be attached. Only {DocumentContentTypes.Label} files are accepted."
+                    : $"“{UploadFailureText.Clean(f.Name)}” can’t be attached. Allowed: {ExtensionLabel}.");
                 continue;
             }
             if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
             {
-                Snackbar.Add($"“{f.Name}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
                 continue;
             }
             kept.Add(f);
@@ -341,6 +369,9 @@ public partial class AttachDocumentsDialog
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
             _error = null;
+
+        // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
+        Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
     }
 
     private void ToggleMeta(OdsUploadFile file)
@@ -412,22 +443,53 @@ public partial class AttachDocumentsDialog
 
         _busy = true;
         _error = null;
+        Notice(null);
         var attached = new List<AttachDocumentItem>();
         var failedUploads = new List<OdsUploadFile>();
+        var perFile = new List<string>();
+        var warnings = new List<string>();
+        string? stoppedText = null;
         try
         {
             if (_tab == UploadTab)
             {
-                foreach (var file in _uploads.Where(f => f.Source is not null))
+                var queue = _uploads.Where(f => f.Source is not null).ToList();
+                for (var i = 0; i < queue.Count; i++)
                 {
-                    var fileId = _stored.TryGetValue(file.Uid, out var stored) ? stored : await StoreAsync(file);
-                    if (fileId is not { } id)
+                    var file = queue[i];
+                    Guid id;
+                    if (_stored.TryGetValue(file.Uid, out var stored))
                     {
-                        failedUploads.Add(file);
-                        continue;
+                        id = stored;
                     }
+                    else
+                    {
+                        var upload = await StoreAsync(file);
+                        if (!upload.IsSuccess)
+                        {
+                            // 507 / 503 / 429 stop the batch (issue #449 §3.2): the cause applies to every later file, so
+                            // the failed file and every untried one stay in the list for a retry. Anything else is this
+                            // file's own failure and the batch goes on.
+                            var stop = UploadFailureText.StopOf(upload.Status);
+                            if (stop != UploadStop.None)
+                            {
+                                failedUploads.AddRange(queue.Skip(i));
+                                stoppedText = UploadFailureText.Stopped(stop, queue.Count - i, upload.RetryAfter);
+                                break;
+                            }
+
+                            perFile.Add(UploadFailureText.PerFile(upload.Status, upload.Problem?.Detail, file.Name, _uploadLimits.MaxUploadMegabytes));
+                            failedUploads.Add(file);
+                            continue;
+                        }
+
+                        id = upload.Value!.Id;
+                        _storedNames[file.Uid] = file.Source!.Name;
+                    }
+
                     _stored[file.Uid] = id;
-                    await ApplyNameAsync(id, file);
+                    if (await ApplyNameAsync(id, file) is { } warning)
+                        warnings.Add(warning);
 
                     var item = ItemFor(AttachDocumentSource.Upload, id, file);
                     if (await Attach(item))
@@ -449,6 +511,16 @@ public partial class AttachDocumentsDialog
                 }
             }
 
+            // One alert for the whole batch, so nothing in it overwrites another part: why it stopped, the files'
+            // own failures, then any rename warnings.
+            var parts = new List<string>();
+            if (stoppedText is not null)
+                parts.Add(stoppedText);
+            if (perFile.Count > 0)
+                parts.Add(UploadFailureText.Several(perFile, itemised: true));
+            parts.AddRange(warnings);
+            Notice(parts.Count > 0 ? string.Join(' ', parts) : null);
+
             if (attached.Count > 0)
             {
                 if (Announce)
@@ -457,9 +529,18 @@ public partial class AttachDocumentsDialog
             }
 
             var failed = _tab == UploadTab ? failedUploads.Count : _picked.Count;
-            if (failed == 0)
+            if (failed == 0 && _notice is null)
             {
                 await OpenChanged.InvokeAsync(false);
+                return;
+            }
+
+            // Everything attached but a rename failed: the warning belongs on the alert line (issue #449 §6), so the
+            // dialog stays open to show it, with nothing left to retry. Cancel closes it.
+            if (failed == 0)
+            {
+                if (_tab == UploadTab)
+                    _uploads = failedUploads;
                 return;
             }
 
@@ -467,11 +548,15 @@ public partial class AttachDocumentsDialog
             // that neither re-stores nor re-links what already worked.
             if (_tab == UploadTab)
                 _uploads = failedUploads;
-            // The error line is role="alert", which announces it; a second copy in the live region would
-            // read it twice.
-            _error = failed == 1
-                ? "One document wasn’t attached. Try again, or remove it."
-                : $"{failed} documents weren’t attached. Try again, or remove them.";
+            // An upload failure is already on the alert line; only an attach failure needs the generic one.
+            if (_notice is null)
+            {
+                // The error line is role="alert", which announces it; a second copy in the live region would
+                // read it twice.
+                _error = failed == 1
+                    ? "One document wasn’t attached. Try again, or remove it."
+                    : $"{failed} documents weren’t attached. Try again, or remove them.";
+            }
         }
         finally
         {
@@ -479,40 +564,28 @@ public partial class AttachDocumentsDialog
         }
     }
 
-    // Stores one upload under its picked file name. Null when the upload failed; the reason is on screen.
-    private async Task<Guid?> StoreAsync(OdsUploadFile file)
-    {
-        try
-        {
-            var id = (await FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes))).Id;
-            _storedNames[file.Uid] = file.Source!.Name;
-            return id;
-        }
-        catch (Exception)
-        {
-            Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
-            return null;
-        }
-    }
+    // Stores one upload under its picked file name, in the host's area. The caller words a failure.
+    private Task<ApiResult<FileUploadResponse>> StoreAsync(OdsUploadFile file) =>
+        FilesApi.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes), Area);
 
     // Applies an in-dropzone rename when the row's name differs from what the server holds — on the first
     // try and again on a retry after the reader edited it. A failed rename keeps the stored name, says so,
     // and does not block the attach.
-    private async Task ApplyNameAsync(Guid id, OdsUploadFile file)
+    private async Task<string?> ApplyNameAsync(Guid id, OdsUploadFile file)
     {
         var wanted = file.Name.Trim();
         var current = _storedNames.GetValueOrDefault(file.Uid, file.Source!.Name);
         if (string.IsNullOrEmpty(wanted) || wanted == current)
-            return;
+            return null;
 
         var renamed = await FilesApi.UpdateMetadataAsync(id, null, wanted);
         if (!renamed.IsSuccess)
         {
-            Snackbar.Add($"“{current}” was uploaded but couldn’t be renamed to “{wanted}”: {renamed.Error}", Severity.Warning);
             file.Name = current;
-            return;
+            return $"“{UploadFailureText.Clean(current)}” was uploaded but couldn’t be renamed to “{UploadFailureText.Clean(wanted)}”: {UploadFailureText.Clean(renamed.Error)}";
         }
         _storedNames[file.Uid] = wanted;
+        return null;
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);

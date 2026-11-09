@@ -40,8 +40,12 @@ public sealed class FileAnalysisExtractionRunner(
     IFileAnalysisPromptTemplate template,
     ISecretSettingsReader secrets,
     TimeProvider time,
-    ILogger<FileAnalysisExtractionRunner> logger)
+    ILogger<FileAnalysisExtractionRunner> logger,
+    Odyssey.Core.FileStorage.Files.StoredFileContentSource? source = null)
 {
+    private readonly Odyssey.Core.FileStorage.Files.StoredFileContentSource source =
+        source ?? new Odyssey.Core.FileStorage.Files.StoredFileContentSource(context, store: null);
+
     private DateTime Now => time.GetUtcNow().UtcDateTime;
 
     public async Task<FileAnalysisRunResult> RunAsync(Guid jobId, CancellationToken cancellationToken)
@@ -94,7 +98,7 @@ public sealed class FileAnalysisExtractionRunner(
             {
                 af.FileType,
                 af.FileMetadata!.ContentType,
-                af.FileMetadata.FileBlobId,
+                af.FileMetadataId,
                 CurrencyCode = af.Account!.CurrencyCode,
             })
             .FirstOrDefaultAsync(cancellationToken);
@@ -103,22 +107,12 @@ public sealed class FileAnalysisExtractionRunner(
             return await FinishAsync(job, FileAnalysisCodes.FileChanged, FileAnalysisRunResult.Refused);
         }
 
-        // The ceiling was enforced at enqueue against the metadata; re-check the stored bytes' length in the
-        // database before materialising them, so a blob swapped or edited since is never loaded whole here.
-        var storedLength = await context.FileBlob.AsNoTracking()
-            .Where(b => b.Id == file.FileBlobId)
-            .Select(b => (long?)b.Content.Length)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (storedLength is not { } length || length > FileAnalysisJobTiming.MaxAnalysisFileBytes)
-        {
-            return await FinishAsync(job, FileAnalysisCodes.FileChanged, FileAnalysisRunResult.Refused);
-        }
-
-        var content = await context.FileBlob.AsNoTracking()
-            .Where(b => b.Id == file.FileBlobId)
-            .Select(b => b.Content)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (content is null
+        // The ceiling was enforced at enqueue against the metadata; the one read path (issue #448) re-checks the stored
+        // bytes' length before materialising them — on disk or in a legacy blob — so a file swapped since is never
+        // loaded whole here.
+        var read = await source.ReadAllAsync(file.FileMetadataId, FileAnalysisJobTiming.MaxAnalysisFileBytes, cancellationToken);
+        if (read is not { TooLarge: false, Bytes: { } content }
+            || content is null
             || (job.FileSha256 is { } consented
                 && !string.Equals(consented, Convert.ToHexStringLower(SHA256.HashData(content)), StringComparison.OrdinalIgnoreCase)))
         {

@@ -1913,6 +1913,103 @@ every backup, copied after the database dump and within the grace (see [Backup a
 restore](#backup-and-restore)). A database restored without its volume makes every moved photo unreadable,
 and the disk check's breaker halts clean-up rather than quarantine the volume.
 
+## Files on the object store
+
+Issue #448 moves every other file out of the database (`FileBlob`) onto three file-storage features, one per
+area. Placement is not an access boundary: who may read a file is still decided by the claim of the record it is
+attached to.
+
+| Area | Feature | Root on the volume | What lands there |
+|---|---|---|---|
+| Finance | `FinanceFiles` | `finance-files/` | Account, transaction, contract, tax-statement and property documents; file-analysis uploads; anything not linked to a journal record |
+| Journal | `JournalFiles` | `journal-files/` | Journal-entry and task attachments |
+| Contacts | `ContactAvatars` | `contact-avatars/` | Contact images |
+
+Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<extension>`. The area is chosen once,
+at upload: the upload form sends `area` (`Finance` or `Journal`), the avatar path always writes `ContactAvatars`.
+A file later attached somewhere else stays where it was put.
+
+### Release note
+
+- **Bind the three features before you upgrade.** Add `FileStorage__Bindings__FinanceFiles`,
+  `FileStorage__Bindings__JournalFiles` and `FileStorage__Bindings__ContactAvatars` to **both** `api` and `worker`
+  (the base compose file and the AppHost bind all three to `primary`). Without them both refuse to start (check
+  B1). Keep the two services identical; `FileStorageDeploymentParityTests` enforces it for the shipped files.
+- **One migration**, `MoveFilesToObjectStore`: three nullable columns on `FileMetadata`
+  (`FinanceStoredObjectId`, `JournalStoredObjectId`, `ContactAvatarStoredObjectId`, each `RESTRICT` to
+  `StoredObjects`), `FileBlobId` becomes nullable, the check `CK_FileMetadata_ExactlyOneSource`, and three tables
+  (`StoredFileBuckets`, `FileBlobBackfillLeases` with its one row, `FileBlobBackfillFailures`, which has no
+  foreign key). The run log's checks widen for the new job type. **`Down()` only works before the backfill has
+  moved anything**; after that, rolling back is a **backup restore**.
+- **Uploads go to disk from the first request.** `POST /api/files` takes a required `area` form field and is
+  rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
+  shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor
+  plus 4 GB), `503` when it is degraded, and `429` past the limit — each with `Retry-After` where it applies.
+  Nothing is stored on a refusal, and no bucket slot is taken.
+- **Downloads are unchanged on the wire** (disposition, content type) and now carry `nosniff`, a strong `ETag`,
+  `Cache-Control: private, no-cache` and range support, whether the file is still in the database or on disk.
+- **`fileBlobId` is gone from every attachment DTO.** A client that read it must stop.
+- **`POST /api/files` validates `description`** at 256 characters and answers `400` where it used to cut the text
+  silently.
+- **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`.
+- **The `FileBlob` table stays** until a later release has seen every deployment report `remaining = 0`. Do
+  not drop it by hand.
+
+### The backfill
+
+The worker moves the remaining files on its own, oldest first, 25 per tick every 30 seconds within a 60-second
+budget, behind a single lease row. Each file's area is decided from what references it **at move time**:
+
+| References | Area |
+|---|---|
+| None, or any finance record | Finance |
+| Only journal entries or tasks | Journal |
+| Only a contact, as its image, with an image content type | Contacts |
+| Only a contact, with any other content type | Finance |
+
+For each file it writes the bytes, reads them back and compares the SHA-256, then, in one transaction that first
+locks the file row and re-classifies it, repoints the row and deletes the blob. A file still wrapped by a photo
+that has not moved yet is left for the photo move and counted as *waiting on photos*. The job skips an area whose
+volume is degraded or below the reserve and keeps moving the others; with nothing movable on a healthy area it
+holds as *storage unavailable*. A storage or database error backs off 1, 5, 15, then 60 minutes.
+
+A file that cannot be moved for a reason of its own is **parked** and never retried automatically:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete it. |
+| `read` | The bytes are missing or a different length from the recorded size. | Same. |
+| `too-large` | Larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the file in the database. |
+| `type` | The content type has no file extension the store accepts. | Leave it in the database, or delete and re-upload it as a supported type. |
+| `error` | An unexpected failure that is neither of the above nor an outage; the worker log names the exception type and the file id. | Fix the cause, then retry. |
+
+A parked file stays readable from the database exactly as before. **To retry**, delete its row:
+
+```sql
+DELETE FROM FileBlobBackfillFailures WHERE FileId = '{{ FILE_ID }}';
+```
+
+A failure row whose file has since been deleted is removed on the next tick. Progress — `remaining` (split into
+`toMove`, `waitingOnPhotos` and `failed`), `remainingBytes`, parked by code, files on disk per area and the
+back-off — is on `/background-jobs` (the *File move* card and its runs) and on `GET /api/file-storage/file-backfill`,
+both under `file-storage.read`. Counts and codes only, never a name or path. Size the volumes from
+`remainingBytes` **before** the upgrade.
+
+### Moving the finance area to its own volume
+
+Every area may bind to its own volume. Rebinding an area that already holds objects is not a configuration
+change: the rows name the volume they were written to, so the new binding applies to new writes only and the
+old volume must stay mounted. Plan the split before the upgrade, while the area is still empty.
+
+### Erasure and backup
+
+A deleted file waits for the deletion grace (default 24 h) before the hourly maintenance pass removes it from disk;
+for an erasure request that cannot wait, follow the procedure under [Erasure of a photo
+original](#erasure-of-a-photo-original). The file name on disk is the sanitized original name — personal data —
+so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
+must be in every backup, copied after the database dump and within the grace (see [Backup and
+restore](#backup-and-restore)).
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**

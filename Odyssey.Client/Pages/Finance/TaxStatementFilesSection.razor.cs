@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Components;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
@@ -96,21 +97,41 @@ public partial class TaxStatementFilesSection
 
         _isUploading = true;
         var uploaded = 0;
+        var perFile = new List<string>();
         try
         {
-            foreach (var file in valid)
+            for (var i = 0; i < valid.Count; i++)
             {
+                var file = valid[i];
+                var result = await FilesApi.UploadAsync(file.ToApiUpload(_uploadLimits.MaxUploadBytes), FileUploadArea.Finance);
+                if (!result.IsSuccess)
+                {
+                    // 507 / 503 / 429 stop the batch; no list keeps the rest, so the one toast says to pick them again.
+                    var stop = UploadFailureText.StopOf(result.Status);
+                    if (stop != UploadStop.None)
+                    {
+                        Snackbar.Add(UploadFailureText.Stopped(stop, valid.Count - i, result.RetryAfter, pickAgain: true), Severity.Error,
+                            o => o.RequireInteraction = true);
+                        break;
+                    }
+
+                    perFile.Add(UploadFailureText.PerFile(result.Status, result.Problem?.Detail, file.Name, _uploadLimits.MaxUploadMegabytes));
+                    continue;
+                }
+
                 try
                 {
-                    var result = await FilesApi.UploadAsync(file.ToApiUpload(_uploadLimits.MaxUploadBytes));
-                    await AttachAsync(result.Id);
+                    await AttachAsync(result.Value!.Id);
                     uploaded++;
                 }
                 catch (Exception ex)
                 {
-                    Snackbar.Add(ex.Message, Severity.Error);
+                    perFile.Add(UploadFailureText.Clean(ex.Message));
                 }
             }
+
+            if (perFile.Count > 0)
+                Snackbar.Add(UploadFailureText.Several(perFile, itemised: perFile.Count <= 3), Severity.Error, o => o.RequireInteraction = true);
 
             if (uploaded > 0)
             {

@@ -1,7 +1,10 @@
-/* Photo original move status card (Odyssey Design System · ui_kits/web/background-jobs.css, .bgj-move*). */
+/* Move status cards (Odyssey Design System · ui_kits/web/background-jobs.css, .bgj-move*): photo originals and files. */
 .bgj-move { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
 .bgj-move-lead { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
 .bgj-move-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: var(--space-3); }
+.bgj-move-detail { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.bgj-move-parked { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.bgj-move-cap { margin: 0; font: var(--fw-medium) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .bgj-move-codes { margin: 0; padding-inline-start: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .bgj-held { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--pending-text); }
 .bgj-caption { margin: 0; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }

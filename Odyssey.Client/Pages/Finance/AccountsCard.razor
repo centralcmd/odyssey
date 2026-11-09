@@ -380,7 +380,7 @@
 
 @if (_uploadAccount is not null)
 {
-    <AttachDocumentsDialog @key="_uploadKey"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Finance" @key="_uploadKey"
                            @bind-Open="_uploadOpen"
                            Subtitle="@($"Keep statements, receipts, or documents with {_uploadAccount.Name}. Files stay in Files; attaching links them here.")"
                            Kinds="OdsTypeRegistries.AccountFileTypes"

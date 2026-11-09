@@ -253,7 +253,9 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 var contacts = new ContactService(context, new ContactReferenceGuard(context));
                 var vCard = new ContactVCardService(
                     context, contacts,
-                    new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024)),
+                    new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+                writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+                source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
                     new UnlimitedLimits(),
                     NullLogger<ContactVCardService>.Instance);
 
@@ -417,7 +419,9 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         var contacts = new ContactService(context, new ContactReferenceGuard(context));
         var vCard = new ContactVCardService(
             context, contacts,
-            new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024)),
+            new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+                writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+                source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
             new UnlimitedLimits(),
             NullLogger<ContactVCardService>.Instance);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));

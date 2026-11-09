@@ -376,6 +376,7 @@ public static class JobRunOutcomes
             : analysis.AnalysesCompleted == 0
                 ? (JobRunStatus.Failed, JobFailureCategory.ProviderUnavailable)
                 : (JobRunStatus.PartiallySucceeded, JobFailureCategory.ProviderUnavailable),
+        FileBlobBackfillJobRun files => FileMove(files),
         FileStorageMaintenanceJobRun storage => storage.IntegrityFailures > 0
             ? (JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage)
             : (JobRunStatus.Succeeded, null),
@@ -411,6 +412,20 @@ public static class JobRunOutcomes
 
         var category = run.Interruptions > 0 ? JobFailureCategory.Storage : JobFailureCategory.UnsupportedInput;
         return run.PhotosMoved + run.PhotosCopiedShared == 0
+            ? (JobRunStatus.Failed, category)
+            : (JobRunStatus.PartiallySucceeded, category);
+    }
+
+    /// <summary>The photo move's rule, for the file move (issue #448): an interruption outranks a parked file.</summary>
+    private static (JobRunStatus, JobFailureCategory?) FileMove(FileBlobBackfillJobRun run)
+    {
+        if (run.Interruptions == 0 && run.FilesParked == 0)
+        {
+            return (JobRunStatus.Succeeded, null);
+        }
+
+        var category = run.Interruptions > 0 ? JobFailureCategory.Storage : JobFailureCategory.UnsupportedInput;
+        return run.FinanceFilesMoved + run.JournalFilesMoved + run.ContactAvatarsMoved == 0
             ? (JobRunStatus.Failed, category)
             : (JobRunStatus.PartiallySucceeded, category);
     }

@@ -33,6 +33,9 @@ internal sealed class FileStorageApiFactory : OdysseyApiFactory
                 // The production catalogue's features (issues #362, #428), bound like the test ones so B1 holds.
                 ["FileStorage:Bindings:PhotoThumbnails"] = "primary",
                 ["FileStorage:Bindings:PhotoOriginals"] = "primary",
+                ["FileStorage:Bindings:FinanceFiles"] = "primary",
+                ["FileStorage:Bindings:JournalFiles"] = "primary",
+                ["FileStorage:Bindings:ContactAvatars"] = "primary",
             },
             configureServices: services =>
             {

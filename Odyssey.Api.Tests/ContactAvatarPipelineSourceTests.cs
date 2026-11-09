@@ -202,7 +202,10 @@ public class ContactAvatarPipelineSourceTests
 
             Assert.True(
                 text.Contains("ContactAvatarRelease.StageAsync", StringComparison.Ordinal)
-                || text.Contains("StageReleaseAsync", StringComparison.Ordinal),
+                || text.Contains("StageReleaseAsync", StringComparison.Ordinal)
+                // ContactAvatarService.StageReplaceAsync writes the new image, then releases the old one through
+                // ContactAvatarRelease.StageAsync (issue #448) — the vCard import's one way to set an image.
+                || text.Contains("avatarService.StageReplaceAsync", StringComparison.Ordinal),
                 $"{Path.GetFileName(caller)} touches AvatarFileId without going through the shared "
                 + "release rule; a site that releases a file outside it can destroy a mis-pointed one.");
         }

@@ -47,7 +47,6 @@ public class ContractDocumentsSectionTests
             FileName = "maple-st-lease-signed.pdf",
             ContentType = "application/pdf",
             SizeBytes = 25_800,
-            FileBlobId = Guid.Parse("88888888-8888-8888-8888-888888888888"),
             UploadedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
         },
     };

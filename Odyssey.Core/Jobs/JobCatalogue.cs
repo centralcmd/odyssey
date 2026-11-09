@@ -1,3 +1,4 @@
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -115,6 +116,13 @@ public static class JobCatalogue
             ManualRunClaims: [PermissionClaims.FileAnalysisCreate],
             DetailReadClaim: PermissionClaims.FileAnalysisRead,
             ManualRunSupported: false),
+        // The file move (issue #448): every remaining FileBlob onto the file store. Work-driven, idle for good once the
+        // database holds no file bytes. Gated like the photo move, for the same reasons.
+        new(JobType.FileBlobBackfill, typeof(FileBlobBackfillJob), FileBlobBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: FileBlobBackfillJob.RunBudget + FileBlobBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.FileStorageRead],
+            DetailReadClaim: PermissionClaims.FileStorageRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

@@ -465,8 +465,8 @@ public class BackgroundJobsUnitTests
         Assert.Contains("Not shown — needs file storage access", hidden.Markup);
     }
 
-    private static IRenderedComponent<PhotoOriginalMoveCard> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
-        ctx.Render<PhotoOriginalMoveCard>(p => p.Add(x => x.Status, status).Add(x => x.GeneratedAtUtc, Now));
+    private static IRenderedComponent<BackfillMoveCard> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
+        ctx.Render<BackfillMoveCard>(p => p.Add(x => x.View, BackgroundJobPresentation.PhotoMoveView(status)).Add(x => x.GeneratedAtUtc, Now));
 
     [Fact]
     public async Task The_move_card_counts_what_is_left_apart_from_what_is_parked_and_lists_the_parked_by_reason()
@@ -487,7 +487,8 @@ public class BackgroundJobsUnitTests
         Assert.Equal(3, stats.Count);
         Assert.Contains(stats, t => t.Contains("Parked") && t.Contains('3'));
         Assert.Contains(stats, t => t.Contains("Copied and kept") && t.Contains('5'));
-        Assert.Equal("Parked photos by reason", cut.Find("ul.bgj-move-codes").GetAttribute("aria-label"));
+        var list = cut.Find("ul.bgj-move-codes");
+        Assert.Equal("Parked photos by reason", cut.Find($"#{list.GetAttribute("aria-labelledby")}").TextContent);
         Assert.Equal(["Checksum mismatch: 1", "Couldn’t be read: 2"], cut.FindAll("ul.bgj-move-codes li").Select(li => li.TextContent));
         Assert.Empty(cut.FindAll(".bgj-held"));
         Assert.Equal($"Last pass {RunTime.Absolute(Now.UtcDateTime.AddMinutes(-1))}", cut.Find(".bgj-caption").TextContent);

@@ -71,7 +71,6 @@ public class PropertyDocumentsSectionTests
             FileName = name,
             ContentType = "application/pdf",
             SizeBytes = 25_800,
-            FileBlobId = Guid.NewGuid(),
             UploadedAtUtc = new DateTime(2026, 8, 31, 12, 0, 0, DateTimeKind.Utc),
         },
     };

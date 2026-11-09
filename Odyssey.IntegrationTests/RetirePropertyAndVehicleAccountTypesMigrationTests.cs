@@ -455,15 +455,10 @@ public class RetirePropertyAndVehicleAccountTypesMigrationTests(MariaDbFixture f
             new AccountSmartTag { AccountId = seed.House, TransactionTagId = seed.TagOne, AddedAt = Anchor },
             new AccountSmartTag { AccountId = seed.Car, TransactionTagId = seed.TagTwo, AddedAt = Anchor.AddMinutes(1) });
 
+        // Raw SQL for the same reason as the contracts below: this runs below head.
         foreach (var file in new[] { seed.Deed, seed.Letter, seed.Registration })
         {
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-            context.FileBlob.Add(blob);
-            context.FileMetadata.Add(new FileMetadata
-            {
-                Id = file, FileName = "doc.pdf", ContentType = "application/pdf", SizeBytes = 3,
-                Sha256Hash = Guid.NewGuid().ToString("N"), FileBlobId = blob.Id, UploadedAtUtc = Anchor,
-            });
+            await LegacyFileRows.InsertAsync(context, file, Anchor);
         }
 
         context.AccountFiles.AddRange(

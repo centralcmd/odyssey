@@ -284,22 +284,9 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var metadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = uploaderId,
-            FileName = "agreement.pdf",
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = blob.Id,
-            UploadedAtUtc = Anchor,
-        };
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(metadata);
-        await context.SaveChangesAsync();
-        return metadata.Id;
+        var id = Guid.NewGuid();
+        await LegacyFileRows.InsertAsync(context, id, Anchor, "agreement.pdf", uploadedByUserId: uploaderId);
+        return id;
     }
 
     private static async Task<Guid> SeedContractFileAsync(

@@ -1,0 +1,18 @@
+@*
+    A file move run's detail (issue #449; Odyssey Design System · BackgroundJobs.jsx, BGJ_DETAIL FileBlobBackfill): the
+    files moved per area, parked, and the ticks a storage or database error cut short.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Finance files moved")">@N(Move.FinanceFilesMoved)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Journal files moved")">@N(Move.JournalFilesMoved)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Contact avatars moved")">@N(Move.ContactAvatarsMoved)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Parked")">@N(Move.FilesParked)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Interruptions")">@N(Move.Interruptions)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private FileBlobBackfillJobRunDetail Move => (FileBlobBackfillJobRunDetail)Run;
+}
