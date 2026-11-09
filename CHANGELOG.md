@@ -5,6 +5,44 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.0](https://github.com/centralcmd/odyssey/compare/v0.44.0...v0.45.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** POST /api/photos takes multipart form data; photo DTOs drop FileId; journal entries take photoIds. MovePhotoOriginalsToObjectStore's Down() works only before the backfill has moved a photo; afterwards a rollback is a backup restore.
+* send aliases, descriptions and admin guidance to file analysis ([#440](https://github.com/centralcmd/odyssey/issues/440))
+* **api:** remove the whole-database JSON export
+
+### Features
+
+* **api:** add instrument, price, purge and watchlist endpoints ([3890982](https://github.com/centralcmd/odyssey/commit/3890982b2b49aef8aa7c7bef99974a7a2c539655))
+* **api:** remove the whole-database JSON export ([cf2efbe](https://github.com/centralcmd/odyssey/commit/cf2efbea4867019cf8f71c9acb8d24af2b42a86f))
+* **client:** design-system sync — instruments UI, table extensions, copy drift ([#457](https://github.com/centralcmd/odyssey/issues/457)) ([b2e0882](https://github.com/centralcmd/odyssey/commit/b2e0882ecfcf6fa3df6e08aea0f98da479288d01))
+* **client:** streamline the background jobs overview ([#464](https://github.com/centralcmd/odyssey/issues/464)) ([64d7d96](https://github.com/centralcmd/odyssey/commit/64d7d961e66a4ae94cb1620e05bf299f922a7fb1))
+* **core:** add the multi-source instrument-price sync framework ([8312916](https://github.com/centralcmd/odyssey/commit/8312916e169aeb256a24569c5e42460893ca7bc6))
+* **core:** store every file on the object store, by area ([#454](https://github.com/centralcmd/odyssey/issues/454)) ([abd4c39](https://github.com/centralcmd/odyssey/commit/abd4c395f6f1a8979a14665273dd8fd8f227d689))
+* **core:** store photo originals on the object store ([#441](https://github.com/centralcmd/odyssey/issues/441)) ([c347014](https://github.com/centralcmd/odyssey/commit/c347014c8bb013ba7264cf5a8f6245b162dcf4f9))
+* **data:** add instrument and instrument-price schema ([4044ecd](https://github.com/centralcmd/odyssey/commit/4044ecda0058105468d853da75e4171c4114d311))
+* one tag chip for tags, albums and calendars ([#443](https://github.com/centralcmd/odyssey/issues/443)) ([00f056a](https://github.com/centralcmd/odyssey/commit/00f056a21481f5cb5554abba8a6123e623f802ef))
+* run statement analysis as a background job in the worker ([#450](https://github.com/centralcmd/odyssey/issues/450)) ([e88a1f4](https://github.com/centralcmd/odyssey/commit/e88a1f4bd487e56dc9ea994284bacd47d40e6abc))
+* send aliases, descriptions and admin guidance to file analysis ([#440](https://github.com/centralcmd/odyssey/issues/440)) ([c376f0a](https://github.com/centralcmd/odyssey/commit/c376f0a74041e42b1ca2cc8a8f6efa5b8de4ecff))
+* weather on calendar events and journal entries ([#438](https://github.com/centralcmd/odyssey/issues/438)) ([0b46460](https://github.com/centralcmd/odyssey/commit/0b46460c2f9d648edfab6c821070600a0f3af124))
+* weather point history windows ([#442](https://github.com/centralcmd/odyssey/issues/442)) ([0a18a1d](https://github.com/centralcmd/odyssey/commit/0a18a1de6156abfd9963f2bd7a5734351c8eb42a))
+
+
+### Bug Fixes
+
+* **client:** align instrument filter, add a status filter and type colours ([#465](https://github.com/centralcmd/odyssey/issues/465)) ([d755910](https://github.com/centralcmd/odyssey/commit/d755910b7e75a64183b17e5fa893032969de976d))
+* **client:** tag chips take their tag's colour instead of a dot ([#432](https://github.com/centralcmd/odyssey/issues/432)) ([d1e74e6](https://github.com/centralcmd/odyssey/commit/d1e74e6fc8438cce118025c9cee888f2228fba77))
+* **core:** address the first review round on instrument prices ([ddeda1f](https://github.com/centralcmd/odyssey/commit/ddeda1fe2d35bfc83b01ac054359966033df953f)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+* **core:** log price-source keys from the catalogue, not the request ([52d2e42](https://github.com/centralcmd/odyssey/commit/52d2e4240f007d0dd420e0ca103d51afd90ebe72)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+
+
+### Refactoring
+
+* **core:** keep the instrument module off the journal namespace ([c4fe816](https://github.com/centralcmd/odyssey/commit/c4fe8165a9b11a0d32911846ffad164205beb253)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+
 ## [0.44.0](https://github.com/centralcmd/odyssey/compare/v0.43.0...v0.44.0) (2026-11-07)
 
 
