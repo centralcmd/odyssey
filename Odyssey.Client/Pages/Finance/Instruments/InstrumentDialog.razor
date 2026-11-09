@@ -1,0 +1,91 @@
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Pages.Journal
+@inject IInstrumentsApiClient Instruments
+@inject IReferenceDataCache ReferenceData
+@inject ISnackbar Snackbar
+@inject IJSRuntime Js
+
+@*
+    InstrumentDialog — New / Edit instrument (issue #452 §3.3; design system · AddInstrumentModal,
+    components/DialogNewInstrument). A dialog rather than an add row, because which fields are required follows the
+    type: Exchange code for a stock or ETF, ISIN for a fund. Focus starts on the type picker.
+
+    When the instrument has prices or sources its identity is locked: Type, Symbol, Exchange code, ISIN and Currency
+    become READ-ONLY fields (readonly + aria-readonly, focusable and copyable), never disabled, with the lock line.
+    Validation is the shared InstrumentIdentifierRules the server runs. A failed submit lists every problem in a
+    focused summary whose entries link to their fields, and marks each field inline. Plain text throughout.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="candlestick_chart"
+               Title="@(IsEdit ? "Edit instrument" : "New instrument")"
+               Subtitle="@(IsEdit
+                   ? "Update this instrument’s name or dashboard setting."
+                   : "Add a stock, ETF or fund to follow its closing prices.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create instrument")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               ReturnFocusToId="@ReturnFocusToId"
+               OnSubmit="SaveAsync">
+
+    <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" Links="SummaryLinks" />
+
+    @if (_duplicate)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+            <span class="ins-server-error">
+                <span>@DuplicateMessage</span>
+                @if (CanGoTo && _existingId is { } existing)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="arrow_forward"
+                               OnClick="@(() => GoToAsync(existing))">Go to it</OdsButton>
+                }
+            </span>
+        </OdsAlert>
+    }
+
+    @if (Locked)
+    {
+        <p class="ins-record-line"><span class="material-icons" aria-hidden="true">lock</span>@LockedLine</p>
+        <OdsTextInputField Id="@FieldId("type")" Label="Type" Value="@InstrumentVisuals.TypeOf(_type).Label" @attributes="ReadOnlyAttributes" />
+    }
+    else
+    {
+        <OdsFieldShell Label="Type" Required="true" LabelId="@FieldId("type-label")">
+            <OdsCardSelect AriaLabelledBy="@FieldId("type-label")" Required="true" Value="@_type.ToString()"
+                           ValueChanged="OnTypeChanged" Columns="3" Options="TypeOptions" />
+        </OdsFieldShell>
+    }
+
+    <OdsTextInputField Id="@FieldId("symbol")" Label="Symbol" Value="@_symbol" ValueChanged="@(v => Set("symbol", () => _symbol = v))"
+                       Required="@(!Locked)" MaxLength="InstrumentIdentifierRules.SymbolMaxLength" AutoComplete="off"
+                       Help="Saved in capital letters." Error="@Err("symbol")" ErrorIsAlert="false"
+                       @attributes="LockAttributes" />
+
+    <OdsFormRow>
+        <OdsTextInputField Id="@FieldId("micCode")" Label="Exchange code" Value="@_mic" ValueChanged="@(v => Set("micCode", () => _mic = v))"
+                           Required="@(!Locked && RequiresMic(_type))" MaxLength="InstrumentIdentifierRules.MicLength" AutoComplete="off"
+                           Help="4 characters, e.g. XOSL for Oslo Børs. Saved in capital letters." Error="@Err("micCode")" ErrorIsAlert="false"
+                           @attributes="LockAttributes" />
+        <OdsTextInputField Id="@FieldId("isin")" Label="ISIN" Value="@_isin" ValueChanged="@(v => Set("isin", () => _isin = v))"
+                           Required="@(!Locked && RequiresIsin(_type))" MaxLength="InstrumentIdentifierRules.IsinLength" AutoComplete="off"
+                           Help="12 characters, e.g. NO0010096985. Saved in capital letters." Error="@Err("isin")" ErrorIsAlert="false"
+                           @attributes="LockAttributes" />
+    </OdsFormRow>
+
+    <OdsTextInputField Id="@FieldId("name")" Label="Name" Value="@_name" ValueChanged="@(v => Set("name", () => _name = v))"
+                       Required="true" MaxLength="InstrumentIdentifierRules.NameMaxLength"
+                       Error="@Err("name")" ErrorIsAlert="false" />
+
+    @if (Locked)
+    {
+        <OdsTextInputField Id="@FieldId("currencyCode")" Label="Currency" Value="@_currency" @attributes="ReadOnlyAttributes" />
+    }
+    else
+    {
+        <OdsCurrencySelect Id="@FieldId("currencyCode")" Required="true" Value="@_currency" ValueChanged="OnCurrencyChanged"
+                           Options="_currencyOptions" Help="The currency the instrument is quoted in."
+                           Error="@Err("currencyCode")" />
+    }
+
+    <OdsSwitch Label="Show on dashboard" Checked="_showOnDashboard" CheckedChanged="@(v => _showOnDashboard = v)" />
+</OdsFormDialog>

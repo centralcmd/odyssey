@@ -1,0 +1,54 @@
+@*
+    EnablePriceSourceDialog — "Turn on {Provider}?" (issue #452 §3.4; design system · EnablePriceSourceDialog,
+    components/DialogEnablePriceSource). Says what leaves the server before a source is switched on: the source
+    symbol and date ranges, sent from this server with the server's API key. It opens on Cancel; Cancel and Escape
+    leave the source off, and focus goes back to the switch either way (ReturnFocusToId). Plain text only — the
+    provider name and the symbol are server and user data.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OnOpenChanged"
+               Icon="cloud_download"
+               Title="@($"Turn on {ProviderName}?")"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               ReturnFocusToId="@ReturnFocusToId"
+               SubmitLabel="Turn on" SubmitIcon="cloud_download"
+               OnSubmit="ConfirmAsync">
+    <p class="ins-dialog-body">@Disclosure(ProviderName, SourceSymbol)</p>
+</OdsFormDialog>
+
+@code {
+    [Parameter] public bool Open { get; set; }
+
+    [Parameter, EditorRequired] public string ProviderName { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public string SourceSymbol { get; set; } = string.Empty;
+
+    /// <summary>The switch's host, so focus returns to the switch on every way out.</summary>
+    [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>Raised once: <see langword="true"/> on Turn on, <see langword="false"/> on Cancel or Escape.</summary>
+    [Parameter] public EventCallback<bool> OnDecided { get; set; }
+
+    private bool _confirmed;
+
+    /// <summary>The disclosure (§3.4): who receives what, from where, with which key, and how to stop it.</summary>
+    internal static string Disclosure(string provider, string symbol) =>
+        $"Turning on {provider} sends this instrument’s source symbol ({symbol}) and date ranges to {provider} from this server, " +
+        "using the server’s API key. Turn the source off at any time to stop.";
+
+    private Task<bool> ConfirmAsync()
+    {
+        _confirmed = true;
+        return Task.FromResult(true);
+    }
+
+    private async Task OnOpenChanged(bool open)
+    {
+        if (open)
+            return;
+        var confirmed = _confirmed;
+        _confirmed = false;
+        await OnDecided.InvokeAsync(confirmed);
+    }
+}
