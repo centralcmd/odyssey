@@ -13,7 +13,7 @@
 .pl-daycount { color: var(--mud-palette-text-secondary); font-size: 12px; background: var(--mud-palette-surface); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--mud-palette-divider); }
 
 /* ---- Album cards ---- */
-.pl-albgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.pl-albgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 16px; }
 
 .pl-albcard { position: relative; text-align: left; padding: 0; border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); border-radius: var(--radius-lg, 12px); overflow: hidden; cursor: pointer; transition: border-color var(--duration-base), transform var(--duration-base); }
 

@@ -42,6 +42,31 @@
     font-size: 1.75rem;
 }
 
+/* A phone (WCAG 1.4.10's 320px, issue #389): beside the 56px tile the title had ~118px, so a one-word
+   title ("Transactions", "Preferences") could not wrap and pushed the page sideways. The tile stacks
+   above the title, the title steps down to the h3 size, and as a last resort a word too long for the
+   line breaks inside itself rather than overflowing. */
+@media (max-width: 480px) {
+    .ph-lead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ph-titles {
+        max-width: 100%;
+    }
+
+    .ph-titles ::deep .ph-title {
+        font-size: var(--fs-h3);
+        overflow-wrap: anywhere;
+    }
+
+    .ph-sub {
+        overflow-wrap: anywhere;
+    }
+}
+
 /* Title + sub stacked with a small gap (sub sits 4px under the title). */
 .ph-titles {
     display: flex;
@@ -144,18 +169,20 @@
 
 .ph-root ::deep .ph-search {
     flex: 1;
-    min-width: 220px;
+    min-width: min(220px, 100%);
 }
 
+/* min(): each floor still sets the wrap rhythm, and caps at the bar's width on a 320px phone so no
+   control pushes the page sideways (WCAG 1.4.10, issue #389). */
 .ph-root ::deep .ph-select {
-    min-width: 170px;
+    min-width: min(170px, 100%);
 }
 
 /* An open-ended filter (accounts, merchants, tags) is as wide as its menu, which is its own width —
    so it takes a wider floor than a fitted one, enough for a typical name beside its checkbox and glyph
    before the row truncates. */
 .ph-root ::deep .ph-select.open-ended {
-    min-width: 240px;
+    min-width: min(240px, 100%);
 }
 
 /* The Search region's controls are recessed: the page-background fill the overview's

@@ -2,6 +2,11 @@
    text uses --mud-palette-text-secondary, which clears 4.5:1 on surface in both themes. */
 .wl {
     container-type: inline-size;
+    /* The table scrolls in its own frame on a phone, and the frame is positioned so the cells'
+       visually hidden text (.odc-sr-only, absolute) is clipped by it rather than escaping to widen the
+       page (WCAG 1.4.10, issue #389). */
+    position: relative;
+    overflow-x: auto;
 }
 
 .wl ::deep .odc-table td,
