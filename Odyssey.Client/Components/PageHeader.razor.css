@@ -167,6 +167,14 @@
     margin-bottom: 0;
 }
 
+/* A combobox filter (the Instrument prices "Any instrument" picker) sits inside its own wrapper, so the
+   direct-child rule above misses its MudAutocomplete's dense 4px margins — which pushed it 4px below its
+   neighbours and made its slot 48px tall. */
+.ph-root ::deep .ph-filter-bar .odc-combo-wrap .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
 .ph-root ::deep .ph-search {
     flex: 1;
     min-width: min(220px, 100%);

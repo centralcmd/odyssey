@@ -119,8 +119,7 @@ public partial class InstrumentPriceDialog
 
     private static string Label(string symbol, string name) => $"{symbol} · {name}";
 
-    private static OdsOption OptionFor(ExistingInstrument instrument) =>
-        new(instrument.InstrumentId.ToString(), Label(instrument.Symbol, instrument.Name));
+    private static OdsOption OptionFor(ExistingInstrument instrument) => InstrumentVisuals.OptionFor(instrument);
 
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 

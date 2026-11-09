@@ -239,6 +239,24 @@ public class InstrumentsApiTests
     }
 
     [Fact]
+    public async Task List_StatusNarrowsToActiveOrArchived_AndOverridesIncludeArchived()
+    {
+        await using var factory = new ApiFactory(Owner);
+        using var client = factory.CreateClient();
+        var kept = await CreateAsync(client, Stock("EQNR"));
+        var archived = await CreateAsync(client, Stock("TEL"));
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PostAsync($"/api/instruments/{archived.InstrumentId}/archive", null)).StatusCode);
+
+        async Task<IReadOnlyList<Guid>> IdsAsync(string query) =>
+            [.. (await client.GetFromJsonAsync<PagedResult<ExistingInstrument>>($"/api/instruments{query}"))!.Items.Select(i => i.InstrumentId)];
+
+        Assert.Equal([kept.InstrumentId], await IdsAsync("?status=Active&includeArchived=true"));
+        Assert.Equal([archived.InstrumentId], await IdsAsync("?status=Archived"));
+        Assert.Equal(2, (await IdsAsync("?includeArchived=true")).Count);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.GetAsync("/api/instruments?status=Gone")).StatusCode);
+    }
+
+    [Fact]
     public async Task Archive_HidesFromTheListAndTheWatchlist_AndUnarchiveRestores()
     {
         await using var factory = new ApiFactory(Owner);

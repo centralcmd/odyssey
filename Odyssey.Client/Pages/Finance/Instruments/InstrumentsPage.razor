@@ -61,7 +61,8 @@
                                 Options="OdsTypeRegistries.InstrumentOptions" Class="ph-select" />
                 <OdsMultiSelect Label="Currency" Values="_currencyFilter" ValuesChanged="OnCurrencyFilterChanged"
                                 Options="CurrencyFilterOptions" Class="ph-select" />
-                <OdsSwitch Label="Include archived" Checked="_includeArchived" CheckedChanged="OnIncludeArchivedChanged" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
+                                Options="StatusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingInstrument" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Instruments per batch"
                                    Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
@@ -159,11 +160,14 @@
 </OdsFormDialog>
 
 @code {
-    // ── One instrument (design system · InstrumentRecord). The mark is the decorative candlestick glyph and the
-    // name is the symbol; the meta line is the name, then the exchange, or the ISIN when there is no exchange. ──
+    // ── One instrument (design system · InstrumentRecord). The mark is the type's glyph in the type's colour, the
+    // one accent the record takes; the name is the symbol; the meta line is the name, then the exchange, or the
+    // ISIN when there is no exchange. ──
 
     private RenderFragment Record(ExistingInstrument instrument) => @<OdsRecordCard Id="@RecordIdFor(instrument.InstrumentId)"
-                   Icon="candlestick_chart"
+                   Icon="@InstrumentVisuals.TypeOf(instrument.Type).Icon"
+                   Accent="@InstrumentVisuals.TypeOf(instrument.Type).Color"
+                   AccentSoft="@InstrumentVisuals.TypeOf(instrument.Type).Soft"
                    Name="@instrument.Symbol"
                    Meta="MetaFor(instrument)"
                    Figure="@FigureFor(instrument)"
@@ -217,7 +221,9 @@
                     <Value>@(instrument.MicCode ?? InstrumentVisuals.Absent)</Value>
                 </OdsInfoTile>
                 <OdsInfoTile Icon="fingerprint" Label="ISIN" ValueVariant="OdsInfoTileVariant.Sm"><Value>@(instrument.Isin ?? InstrumentVisuals.Absent)</Value></OdsInfoTile>
-                <OdsInfoTile Icon="@InstrumentVisuals.TypeOf(instrument.Type).Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Sm">
+                <OdsInfoTile Icon="@InstrumentVisuals.TypeOf(instrument.Type).Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Sm"
+                             IconColor="@InstrumentVisuals.TypeOf(instrument.Type).Color"
+                             IconSoft="@InstrumentVisuals.TypeOf(instrument.Type).Soft">
                     <Value>@InstrumentVisuals.TypeOf(instrument.Type).Label</Value>
                 </OdsInfoTile>
                 <OdsInfoTile Icon="payments" Label="Currency" ValueVariant="OdsInfoTileVariant.Sm"><Value>@instrument.CurrencyCode</Value></OdsInfoTile>

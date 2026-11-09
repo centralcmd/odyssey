@@ -190,7 +190,7 @@ public partial class InstrumentPricesPage
             _from = null;
             _to = null;
             _instrumentFilter = instrument.InstrumentId.ToString();
-            _instrumentFilterOption = new(_instrumentFilter, $"{instrument.Symbol} · {instrument.Name}");
+            _instrumentFilterOption = InstrumentVisuals.OptionFor(instrument);
             return instrument;
         }
 
@@ -277,7 +277,7 @@ public partial class InstrumentPricesPage
             throw new InvalidOperationException(result.Error);
         }
 
-        var options = (result.Value?.Items ?? []).Select(i => new OdsOption(i.InstrumentId.ToString(), $"{i.Symbol} · {i.Name}")).ToList();
+        var options = (result.Value?.Items ?? []).Select(InstrumentVisuals.OptionFor).ToList();
         // Keep the picked one's label once the result list moves on.
         _instrumentFilterOption = options.FirstOrDefault(o => o.Value == _instrumentFilter) ?? _instrumentFilterOption;
         return options;

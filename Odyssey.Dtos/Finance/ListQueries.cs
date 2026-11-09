@@ -223,6 +223,13 @@ public sealed class InstrumentsQueryParams : QueryParams<InstrumentSortBy>
     [MaxLength(ListDefaults.MaxFilterArrayLength)]
     public string[]? CurrencyCodes { get; set; }
 
+    /// <summary>
+    /// Active-only or archived-only. When set it decides alone and <see cref="IncludeArchived"/> is ignored;
+    /// when absent, <see cref="IncludeArchived"/> keeps its original meaning (active only unless true).
+    /// </summary>
+    [EnumDataType(typeof(ArchivalStatus))]
+    public ArchivalStatus? Status { get; set; }
+
     public bool IncludeArchived { get; set; }
 }
 

@@ -24,6 +24,20 @@ public static class InstrumentVisuals
     /// <summary>The type's label, glyph and colour; an unknown ordinal reads as "Other".</summary>
     public static OdsTypeOption TypeOf(InstrumentType type) => OdsTypeRegistries.InstrumentTypeOf(type);
 
+    /// <summary>
+    /// An instrument as a picker option: "{symbol} · {name}" with its type's glyph in the type's colour, so the
+    /// Add price picker and the prices filter read the same as the Type filter.
+    /// </summary>
+    public static OdsOption OptionFor(ExistingInstrument instrument)
+    {
+        var type = TypeOf(instrument.Type);
+        return new OdsOption(instrument.InstrumentId.ToString(), $"{instrument.Symbol} · {instrument.Name}")
+        {
+            Icon = type.Icon,
+            IconColor = type.Color,
+        };
+    }
+
     /// <summary>"Current" (the newest-rule winner) or "Historical".</summary>
     public static InstrumentVocabInfo StatusOf(InstrumentPriceStatus status) => status switch
     {
