@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Builders;
+using MySqlConnector;
 using Odyssey.Testing;
 using Testcontainers.MySql;
 using Xunit;
@@ -51,6 +52,38 @@ public sealed class MariaDbFixture : IAsyncLifetime
     /// <summary>A connection string for an arbitrary (typically throwaway) database on the same server —
     /// for tests that need a private schema they fully own (the app user has server-wide privileges).</summary>
     public string ConnectionStringFor(string database) => BuildConnectionString(database);
+
+    /// <summary>
+    /// Drops <paramref name="database"/> if it exists and recreates it migrated to head, as a copy of a template the
+    /// collection migrates once (<see cref="MigratedSchemaTemplate"/>). Returns its connection string.
+    /// </summary>
+    /// <remarks>Use it wherever a test would otherwise drop, create and <c>MigrateAsync</c> a private database. A test
+    /// that needs a database before head (a <see cref="MigrationSeam"/> test) still migrates from empty.</remarks>
+    public async Task<string> CreateMigratedDatabaseAsync(string database)
+    {
+        var source = await TemplateAsync();
+        await using var server = new MySqlConnection(OdysseyConnectionString);
+        await server.OpenAsync();
+        await source.CopyToAsync(server, database);
+        return ConnectionStringFor(database);
+    }
+
+    private readonly SemaphoreSlim templateGate = new(1, 1);
+    private MigratedSchemaTemplate? template;
+
+    private async Task<MigratedSchemaTemplate> TemplateAsync()
+    {
+        await templateGate.WaitAsync();
+        try
+        {
+            return template ??= await MigratedSchemaTemplate.BuildAsync(
+                OdysseyConnectionString, ConnectionStringFor(MigratedSchemaTemplate.Database));
+        }
+        finally
+        {
+            templateGate.Release();
+        }
+    }
 
     public async Task InitializeAsync()
     {

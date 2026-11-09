@@ -342,14 +342,7 @@ public class ContractSmartTagTransactionRelationalTests(MariaDbFixture fixture)
 
     private async Task MigrateAsync()
     {
-        await using (var server = ServerContext())
-        {
-            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext(IInterceptor? interceptor = null)

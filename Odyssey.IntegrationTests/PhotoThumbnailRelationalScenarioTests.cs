@@ -53,16 +53,8 @@ internal sealed class RelationalScenarioDatabase(MariaDbFixture fixture)
         var version = new MariaDbServerVersion(new Version(11, 4));
         if (!created)
         {
-            using (var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseMySql(fixture.OdysseyConnectionString, version).Options))
-            {
-                server.Database.ExecuteSqlRaw($"CREATE DATABASE `{name}`");
-            }
-
-            using (var context = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseMySql(fixture.ConnectionStringFor(name), version).Options))
-            {
-                context.Database.Migrate();
-            }
-
+            // The scenarios configure their context synchronously; Task.Run keeps the copy off any test synchronization context.
+            Task.Run(() => fixture.CreateMigratedDatabaseAsync(name)).GetAwaiter().GetResult();
             created = true;
         }
 

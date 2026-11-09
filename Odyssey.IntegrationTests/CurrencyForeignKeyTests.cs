@@ -46,12 +46,11 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
     public async Task Every_currency_column_is_a_restrict_foreign_key_to_Currencies()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         try
         {
             await using var context = NewContext();
-            await context.Database.MigrateAsync();
 
             var rules = await ReadCurrencyForeignKeyRulesAsync(context);
 
@@ -83,12 +82,11 @@ public class CurrencyForeignKeyTests(MariaDbFixture fixture)
     public async Task A_raw_delete_of_a_referenced_currency_is_refused_by_the_database()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         try
         {
             await using var context = NewContext();
-            await context.Database.MigrateAsync();
 
             var accountId = Guid.NewGuid();
             await InsertAccountAsync(context, accountId, "NOK");

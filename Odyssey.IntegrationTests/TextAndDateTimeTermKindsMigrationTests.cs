@@ -92,7 +92,7 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
     public async Task A_date_time_value_round_trips_as_utc()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contractId = Guid.NewGuid();
         var termId = Guid.NewGuid();
@@ -102,7 +102,6 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
                 await SeedContractAsync(context, contractId);
                 context.Terms.Add(new Term
                 {
@@ -139,14 +138,13 @@ public class TextAndDateTimeTermKindsMigrationTests(MariaDbFixture fixture)
     public async Task Reverting_is_refused_while_a_fact_term_exists()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contractId = Guid.NewGuid();
 
         try
         {
             await using var context = NewContext();
-            await context.Database.MigrateAsync();
             await SeedContractAsync(context, contractId);
             await InsertAsync(context, contractId, unit: 2, value: "NULL", text: "'3 months'", instant: "NULL");
 

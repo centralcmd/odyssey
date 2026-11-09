@@ -332,9 +332,7 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
 
     private async Task MigratedAsync()
     {
-        await RecreateAsync();
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()

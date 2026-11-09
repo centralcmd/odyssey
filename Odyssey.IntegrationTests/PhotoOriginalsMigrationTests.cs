@@ -59,12 +59,11 @@ public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
     public async Task The_database_enforces_one_source_a_complete_original_restrict_and_the_failure_codes()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         try
         {
             await using var context = NewContext();
-            await context.Database.MigrateAsync();
             var volumeId = Guid.NewGuid();
             var objectId = Guid.NewGuid();
             await context.Database.ExecuteSqlRawAsync(

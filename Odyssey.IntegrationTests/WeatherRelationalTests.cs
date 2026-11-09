@@ -601,9 +601,8 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
 
     private async Task MigratedAsync()
     {
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
         await using var context = NewContext();
-        await context.Database.MigrateAsync();
         await AttributionUsers.EnsureAsync(context, AdminId);
     }
 

@@ -148,12 +148,11 @@ public class ChangeArchiveTablesDropTests(MariaDbFixture fixture)
     public async Task Reverting_past_issue_75_after_the_drop_still_succeeds_without_the_labels()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         try
         {
             await using var context = NewContext();
-            await context.Database.MigrateAsync();
             await SeedBudgetItemAsync(context);
 
             await MigrationSeam.MigrateToAsync(context, BeforeIssue75);

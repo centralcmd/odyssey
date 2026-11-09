@@ -446,19 +446,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
 
     private async Task<string> MigratedSchemaAsync()
     {
-        await using (var admin = AdminContext())
-        {
-            await admin.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var connectionString = fixture.ConnectionStringFor(Database);
-        await using (var context = new OdysseyContext(OptionsFor(connectionString)))
-        {
-            await context.Database.MigrateAsync();
-        }
-
-        return connectionString;
+        return await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private async Task DropAsync()

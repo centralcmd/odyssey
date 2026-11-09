@@ -207,19 +207,7 @@ public class LegalAcceptanceRelationalTests(MariaDbFixture fixture)
 
     private async Task<DbContextOptions<OdysseyContext>> MigratedSchemaAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{LegalDatabase}`");
-        }
-
-        var options = OptionsFor(fixture.ConnectionStringFor(LegalDatabase));
-        await using (var context = new OdysseyContext(options))
-        {
-            await context.Database.MigrateAsync();
-        }
-
+        var options = OptionsFor(await fixture.CreateMigratedDatabaseAsync(LegalDatabase));
         return options;
     }
 

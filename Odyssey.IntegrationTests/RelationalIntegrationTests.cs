@@ -1373,16 +1373,15 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         // Claim *identity* is (RoleId, ClaimType, ClaimValue), never Id: IdentityRoleClaim.Id is an int
         // identity the database assigns, and nothing may depend on which numbers the rows land at. This
-        // runs the real RoleClaimSeeder against a real, freshly-migrated MariaDB and proves each role
+        // runs the real RoleClaimSeeder against a real, migrated MariaDB and proves each role
         // ends up with exactly the claims RolePermissions says it should — a claim reconciled onto the
         // wrong role, or dropped entirely, would otherwise only surface as a 403 in production.
-        var connectionString = fixture.ConnectionStringFor("odyssey_roleclaims_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_roleclaims_it");
         var options = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options;
 
         await using var context = new OdysseyContext(options);
-        await context.Database.MigrateAsync();
 
         // The production seeder, resolved the way the migrations job resolves it, rather than a copy of
         // its logic — a reimplementation here would agree with itself while disagreeing with the job.
@@ -1422,16 +1421,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         // A private schema this test fully owns, so seeding AspNetUsers here never disturbs the shared
         // demo dataset the seeder test asserts exact counts against.
-        var connectionString = fixture.ConnectionStringFor("odyssey_userprofile_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_userprofile_it");
 
         OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options);
-
-        await using (var context = NewContext())
-        {
-            await context.Database.MigrateAsync();
-        }
 
         const string userId = "profile-it-user";
         await using (var context = NewContext())
@@ -1471,16 +1465,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         // UserPreference moved into OdysseyContext so UserId could become a real FK. Neither the
         // constraint nor its cascade is representable on EF InMemory, so this is the tier that proves it.
         // A private schema keeps the seeded AspNetUsers rows out of the shared demo dataset.
-        var connectionString = fixture.ConnectionStringFor("odyssey_userpreference_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_userpreference_it");
 
         OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options);
-
-        await using (var context = NewContext())
-        {
-            await context.Database.MigrateAsync();
-        }
 
         const string userId = "preference-it-user";
         await using (var context = NewContext())
