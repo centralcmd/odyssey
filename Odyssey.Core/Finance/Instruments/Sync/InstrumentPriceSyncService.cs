@@ -5,7 +5,6 @@ using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Core.Jobs;
-using Odyssey.Core.Journal;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 
@@ -140,7 +139,7 @@ public sealed class InstrumentPriceSyncService(
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (DbErrors.IsDuplicateKey(exception))
+        catch (DbUpdateException exception) when (InstrumentDbErrors.IsDuplicateKey(exception))
         {
             // Another replica took the ExclusiveGuard first.
             context.Entry(run).State = EntityState.Detached;

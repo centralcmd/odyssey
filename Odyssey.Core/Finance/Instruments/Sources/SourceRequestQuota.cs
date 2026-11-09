@@ -1,7 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Context;
-using Odyssey.Core.Journal;
 using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Core.Finance.Instruments.Sources;
@@ -59,7 +58,7 @@ public sealed class SourceRequestQuota(IServiceScopeFactory scopes, TimeProvider
             {
                 // Another replica reserved first: re-read and try again.
             }
-            catch (DbUpdateException exception) when (DbErrors.IsDuplicateKey(exception))
+            catch (DbUpdateException exception) when (InstrumentDbErrors.IsDuplicateKey(exception))
             {
                 // Another replica created the row first: re-read and try again.
             }
