@@ -131,6 +131,14 @@ public partial class InstrumentsPage : IDisposable
     internal static ArchivalStatus? StatusOf(IReadOnlyCollection<string> statuses) =>
         statuses.Count == 1 && Enum.TryParse<ArchivalStatus>(statuses.First(), out var status) ? status : null;
 
+    /// <summary>
+    /// The list request's archival half: <see cref="StatusOf"/>, and <c>includeArchived</c> always on, so that
+    /// "none or both" really lists archived instruments too rather than falling back to the server's active-only
+    /// default.
+    /// </summary>
+    internal static InstrumentsFilter ArchivalFilterFor(IReadOnlyCollection<string> statuses) =>
+        new() { Status = StatusOf(statuses), IncludeArchived = true };
+
     /// <summary>The list minus a pinned record, which renders once, above it.</summary>
     private IReadOnlyList<ExistingInstrument> ListedInstruments =>
         _pinned is { } pin ? [.. _instruments.Where(i => i.InstrumentId != pin.InstrumentId)] : _instruments;
@@ -280,8 +288,8 @@ public partial class InstrumentsPage : IDisposable
         Types = [.. _typeFilter.Select(t => Enum.TryParse<InstrumentType>(t, out var type) ? type : (InstrumentType?)null)
             .OfType<InstrumentType>()],
         CurrencyCodes = [.. _currencyFilter],
-        Status = StatusOf(_statusFilter),
-        IncludeArchived = true,
+        Status = ArchivalFilterFor(_statusFilter).Status,
+        IncludeArchived = ArchivalFilterFor(_statusFilter).IncludeArchived,
         SortBy = SortByOf(_sort.Key),
         Ascending = _sort.Dir == OdsSortDirection.Asc,
     };

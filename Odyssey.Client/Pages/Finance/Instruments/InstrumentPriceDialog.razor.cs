@@ -94,7 +94,7 @@ public partial class InstrumentPriceDialog
         ?? (_instrumentValue is { } id && _known.TryGetValue(id, out var picked) ? picked.CurrencyCode : null);
 
     private IReadOnlyList<OdsOption> InstrumentOptions =>
-        _instrumentValue is { } id && _known.TryGetValue(id, out var picked) ? [OptionFor(picked)] : [];
+        _instrumentValue is { } id && _known.TryGetValue(id, out var picked) ? [InstrumentVisuals.OptionFor(picked)] : [];
 
     private IReadOnlyList<KeyValuePair<string, string>> SummaryErrors =>
     [
@@ -119,7 +119,6 @@ public partial class InstrumentPriceDialog
 
     private static string Label(string symbol, string name) => $"{symbol} · {name}";
 
-    private static OdsOption OptionFor(ExistingInstrument instrument) => InstrumentVisuals.OptionFor(instrument);
 
     private string? Err(string key) => _errors.TryGetValue(key, out var message) ? message : null;
 
@@ -177,13 +176,13 @@ public partial class InstrumentPriceDialog
         var items = result.Value?.Items ?? [];
         foreach (var instrument in items)
             _known[instrument.InstrumentId.ToString()] = instrument;
-        return [.. items.Select(OptionFor)];
+        return [.. items.Select(InstrumentVisuals.OptionFor)];
     }
 
     private async Task<OdsOption?> ResolveInstrumentAsync(string value)
     {
         if (_known.TryGetValue(value, out var known))
-            return OptionFor(known);
+            return InstrumentVisuals.OptionFor(known);
         if (!Guid.TryParse(value, out var id))
             return null;
 
@@ -191,7 +190,7 @@ public partial class InstrumentPriceDialog
         if (result is not { IsSuccess: true, Value: { } instrument })
             return null;
         _known[value] = instrument;
-        return OptionFor(instrument);
+        return InstrumentVisuals.OptionFor(instrument);
     }
 
     private void OnInstrumentChanged(string? value)

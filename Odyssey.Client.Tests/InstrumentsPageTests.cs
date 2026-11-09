@@ -368,6 +368,26 @@ public sealed class InstrumentsPageTests : IDisposable
         Assert.Equal(ArchivalStatus.Archived, InstrumentsPage.StatusOf(["Archived"]));
     }
 
+    [Theory]
+    [InlineData(new string[0], null)]
+    [InlineData(new[] { "Active", "Archived" }, null)]
+    [InlineData(new[] { "Active" }, ArchivalStatus.Active)]
+    [InlineData(new[] { "Archived" }, ArchivalStatus.Archived)]
+    public void The_list_request_always_includes_archived_so_none_or_both_really_means_all(string[] picked, ArchivalStatus? expected)
+    {
+        var filter = InstrumentsPage.ArchivalFilterFor(picked);
+        Assert.Equal(expected, filter.Status);
+        Assert.True(filter.IncludeArchived);
+    }
+
+    [Fact]
+    public void A_saved_page_state_from_before_the_status_filter_restores_to_all_statuses()
+    {
+        const string legacy = "{\"IncludeArchived\":false,\"SearchOpen\":true}";
+        var restored = System.Text.Json.JsonSerializer.Deserialize<InstrumentsPage.InstrumentsPageState>(legacy)!;
+        Assert.Empty(InstrumentsPage.StatusOptions.KnownValues(restored.StatusFilter));
+    }
+
     [Fact]
     public void Each_named_type_draws_in_its_own_colour_everywhere_it_appears()
     {
