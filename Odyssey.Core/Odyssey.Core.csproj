@@ -37,6 +37,16 @@
       <!-- Recognise the MariaDB duplicate-key (1062) on the photo find-or-create hot paths so it can be
            caught + re-fetched rather than bubbling to the GlobalExceptionHandler as a 409. -->
       <PackageReference Include="MySqlConnector" />
+      <!-- The file-analysis provider's typed client and its resilience pipeline are registered here, once,
+           for both hosts (issue #444): the worker sends the document, the API still runs the match step. -->
+      <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <!-- The extraction prompt is compiled in beside its PromptVersion const (issue #444 §3), so the API
+           that stamps a job and the worker that sends it cannot hold different templates. -->
+      <EmbeddedResource Include="Finance\Prompts\transaction-extraction.txt"
+                        LogicalName="Odyssey.Core.Finance.Prompts.transaction-extraction.txt" />
     </ItemGroup>
 
 </Project>

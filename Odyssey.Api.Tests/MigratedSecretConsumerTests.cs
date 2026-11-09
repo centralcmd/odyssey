@@ -9,6 +9,7 @@ using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Xunit;
 using Odyssey.Core.Email;
+using Odyssey.Core.Finance;
 
 namespace Odyssey.Api.Tests;
 
@@ -91,19 +92,19 @@ public class MigratedSecretConsumerTests
     }
 
     /// <summary>
-    /// An absent row is HEALTHY, not degraded: the request goes out with no key, the provider rejects
-    /// it, and the job is recorded failed — byte-identical to the pre-migration behaviour with
-    /// <c>FileAnalysis:ApiKey</c> left empty.
+    /// Issue #444 AC 21 (security S1). An absent key used to send the request unauthenticated and let the
+    /// provider reject it — after the whole document had reached it. It now refuses before anything is sent,
+    /// on the extraction and the match path alike, because both use this handler.
     /// </summary>
     [Fact]
-    public async Task AnUnsetApiKey_SendsWithoutTheHeader_RatherThanThrowing()
+    public async Task AnUnsetApiKey_RefusesTheRequest_AndSendsNothing()
     {
         var (client, inner) = RecordingClientFor(new StubSecretSettingsReader());
 
-        await client.PostAsync("https://provider.test/v1/messages", new StringContent("{}"));
+        await Assert.ThrowsAsync<FileAnalysisCredentialException>(() =>
+            client.PostAsync("https://provider.test/v1/messages", new StringContent("{}")));
 
-        Assert.NotNull(inner.LastRequest);
-        Assert.False(inner.LastRequest!.Headers.Contains("x-api-key"));
+        Assert.Null(inner.LastRequest);
     }
 
     /// <summary>
@@ -371,7 +372,8 @@ public class MigratedSecretConsumerTests
     /// once instead of being retried twice at the far end of a circuit breaker.
     ///
     /// <para>
-    /// A source-lint, because the property is one of ordering in <c>Program.cs</c> and
+    /// A source-lint, because the property is one of ordering in the shared registration
+    /// (<c>FileAnalysisServiceCollectionExtensions</c>, since issue #444) and
     /// <c>IHttpClientFactory</c> exposes no way to inspect a built pipeline's handler order. Nothing
     /// depends on it today — <c>AddStandardResilienceHandler()</c>'s default predicates match
     /// <c>HttpRequestException</c> and timeouts, not a custom
@@ -384,10 +386,10 @@ public class MigratedSecretConsumerTests
     public void TheApiKeyHandler_IsRegisteredOutsideTheResiliencePipeline()
     {
         var program = RepositoryRoot.ReadAllText(
-            System.IO.Path.Combine("Odyssey.Api", "Program.cs"));
+            System.IO.Path.Combine("Odyssey.Core", "Finance", "FileAnalysisServiceCollectionExtensions.cs"));
 
         var handler = program.IndexOf(
-            ".AddHttpMessageHandler<Odyssey.Api.SystemSettings.FileAnalysisApiKeyHandler>()",
+            ".AddHttpMessageHandler<FileAnalysisApiKeyHandler>()",
             StringComparison.Ordinal);
         var resilience = program.IndexOf(".AddStandardResilienceHandler()", StringComparison.Ordinal);
 

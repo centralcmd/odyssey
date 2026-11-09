@@ -293,6 +293,29 @@ public class FileBlobBackfillJobRun : JobRun
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes
+/// <summary>
+/// A burst of the file-analysis queue (issue #444): one row covers the ticks that claimed work, like the
+/// thumbnail job's. Counts only.
+/// </summary>
+public class FileAnalysisJobRun : JobRun
+{
+    public FileAnalysisJobRun() : base(Dtos.Application.JobType.FileAnalysis)
+    {
+    }
+
+    public int AnalysesCompleted { get; set; }
+
+    public int AnalysesFailed { get; set; }
+
+    public int AnalysesRefused { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (AnalysesCompleted, AnalysesFailed);
+}
+
+/// <summary>
+/// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
+/// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
+/// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes
 /// them. No key to anything.
 /// </summary>
 [Table("JobHeartbeats")]

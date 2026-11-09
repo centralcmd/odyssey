@@ -33,6 +33,20 @@ public static class FileAnalysisDisclosureText
         || fields.Any(field => !FieldPhrases.ContainsKey(field))
         || !string.Equals(disclosure.MatchVocabularyCoverage, AllActiveCoverage, StringComparison.Ordinal);
 
+    /// <summary>
+    /// The attached review's notice (issue #445 §3): a job this dialog did not start reaches review unmatched, and
+    /// <b>Match names</b> says what it would send before it calls match. A <c>NamesOnly</c> job matches on names
+    /// alone; otherwise the disclosure's fields, falling back to names when the disclosure cannot be described.
+    /// </summary>
+    public static string NotMatchedYet(FileAnalysisDisclosureDto disclosure, FileAnalysisMatchVocabularyScope scope, string processor)
+    {
+        IReadOnlyList<string> fields = scope == FileAnalysisMatchVocabularyScope.NamesOnly || IsIncomplete(disclosure)
+            ? ["contactName", "tagName"]
+            : disclosure.MatchVocabularyFields;
+        var phrases = fields.Select(field => FieldPhrases[field]).ToList();
+        return $"Matching sends {Join(phrases)} to {processor}, under the consent this analysis was started with.";
+    }
+
     /// <summary>The matching bullet's body, or <see langword="null"/> when the disclosure is incomplete.</summary>
     public static string? MatchBullet(FileAnalysisDisclosureDto disclosure)
     {

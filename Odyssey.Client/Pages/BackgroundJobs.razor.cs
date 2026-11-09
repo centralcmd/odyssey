@@ -529,6 +529,10 @@ public partial class BackgroundJobs
             foreach (var job in BackgroundJobPresentation.Jobs)
             {
                 var visual = JobOf(job);
+                // A job with no Run label has no manual run at all (the file-analysis queue, issue #444).
+                if (visual.RunLabel is null)
+                    continue;
+
                 var summary = SummaryOf(job);
                 if (_overview is not null && summary is not { CanRunNow: true })
                     continue;

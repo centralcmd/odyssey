@@ -369,6 +369,13 @@ public static class JobRunOutcomes
         WeatherJobRun weather => Weather(weather),
         PhotoThumbnailJobRun thumbnails => Thumbnails(thumbnails),
         PhotoOriginalBackfillJobRun move => PhotoOriginalMove(move),
+        // A provider failure or interruption is what an operator acts on; a refusal before sending is the
+        // queue doing its job (consent re-checks), so it never fails a burst on its own.
+        FileAnalysisJobRun analysis => analysis.AnalysesFailed == 0
+            ? (JobRunStatus.Succeeded, null)
+            : analysis.AnalysesCompleted == 0
+                ? (JobRunStatus.Failed, JobFailureCategory.ProviderUnavailable)
+                : (JobRunStatus.PartiallySucceeded, JobFailureCategory.ProviderUnavailable),
         FileBlobBackfillJobRun files => FileMove(files),
         FileStorageMaintenanceJobRun storage => storage.IntegrityFailures > 0
             ? (JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage)

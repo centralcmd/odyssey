@@ -1,8 +1,9 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context.Secrets;
 using Odyssey.Dtos.Application;
-using Odyssey.Core.Finance;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// Attaches the file-analysis provider credential to each outbound request (issue #445 Wave 1).
@@ -38,12 +39,19 @@ namespace Odyssey.Api.SystemSettings;
 /// the request it is given, and to no request it has not seen; it additionally strips any
 /// <c>x-api-key</c> already present so a re-sent request cannot accumulate a second, stale value.
 /// </para>
+///
+/// <para>
+/// <strong>No key, no send (issue #444 S1).</strong> <c>NotSet</c> used to send the request without the
+/// header and let the provider reject it — which meant the whole document still left the deployment.
+/// It now refuses before the transfer, on both the extraction and the match path. The accepted
+/// consequence is that a keyless internal gateway needs a stored key (any value it ignores).
+/// </para>
 /// </summary>
 public sealed class FileAnalysisApiKeyHandler(
     IServiceScopeFactory scopeFactory,
     ILogger<FileAnalysisApiKeyHandler> logger) : DelegatingHandler
 {
-    internal const string HeaderName = "x-api-key";
+    public const string HeaderName = "x-api-key";
 
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request, CancellationToken cancellationToken)
@@ -79,13 +87,12 @@ public sealed class FileAnalysisApiKeyHandler(
                     + "the request was not sent.");
 
             default:
-                // NotSet — today's behaviour with an empty key: the request goes out unauthenticated,
-                // the provider rejects it, and the job is recorded failed. An absent row is a healthy
-                // "not configured", so it is not an error here.
+                // NotSet: refuse rather than send. Without a key the provider rejects the call — but only
+                // after the whole document has reached it, which is a transfer nobody needed to make.
                 logger.LogWarning(
-                    "No file-analysis provider credential is configured; the request will be sent without "
-                    + "{HeaderName} and the provider is expected to reject it.", HeaderName);
-                break;
+                    "No file-analysis provider credential is configured; the request was not sent.");
+                throw new FileAnalysisCredentialException(
+                    "No analysis provider credential is configured on this server, so the request was not sent.");
         }
 
         return await base.SendAsync(request, cancellationToken);

@@ -170,14 +170,15 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         await MigratedAsync();
         var id = Guid.NewGuid();
 
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 7, 0, 0, NOW(), NOW(), UUID())");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 8, 0, 0, NOW(), NOW(), UUID())");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `AnalysesFailed`) VALUES ('{id}', 6, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 5, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, 1, NOW(), NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PointsFailed`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `PhotosParked`) VALUES ('{id}', 5, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `HeldReason`, `WorkerId`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 5, 0, 5, 7, UUID(), NOW(), NOW(), UUID())");
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `FilesParked`) VALUES ('{id}', 6, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `FilesParked`) VALUES ('{id}', 7, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `PhotoThumbnailJobs` (`PhotoId`, `State`, `Generation`, `Attempts`, `LeaseExpiries`, `RerunRequested`, `Priority`, `AttemptedRecipeVersion`, `NextAttemptAtUtc`, `UpdatedAtUtc`, `ManualRequeues`) VALUES ('{id}', 3, 0, 0, 0, 0, 0, 0, NOW(), NOW(), 2)");
     }
 
@@ -202,6 +203,26 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         context.JobHeartbeats.Add(new JobHeartbeat { JobType = JobType.PhotoOriginalBackfill, WorkerId = Guid.NewGuid(), LastTickAtUtc = DateTime.UtcNow });
         await context.SaveChangesAsync();
         Assert.Equal(2, await context.Set<PhotoOriginalBackfillJobRun>().CountAsync());
+    }
+
+    /// <summary>Issue #444: the file-analysis queue's burst and heartbeat rows are accepted by the widened CHECKs.</summary>
+    [SkippableFact]
+    public async Task A_file_analysis_run_and_its_heartbeat_are_accepted()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var burst = Running<FileAnalysisJobRun>(JobRunTrigger.Scheduled);
+        burst.AnalysesCompleted = 2;
+        burst.AnalysesFailed = 1;
+        burst.AnalysesRefused = 1;
+        burst.Finish(JobRunStatus.PartiallySucceeded, JobFailureCategory.ProviderUnavailable, DateTime.UtcNow);
+
+        await AddAsync(burst);
+        await using var context = NewContext();
+        context.JobHeartbeats.Add(new JobHeartbeat { JobType = JobType.FileAnalysis, WorkerId = Guid.NewGuid(), LastTickAtUtc = DateTime.UtcNow });
+        await context.SaveChangesAsync();
+        var stored = await context.Set<FileAnalysisJobRun>().SingleAsync();
+        Assert.Equal((2, 1, 1), (stored.AnalysesCompleted, stored.AnalysesFailed, stored.AnalysesRefused));
     }
 
     /// <summary>AC 9 on real MariaDB: the second writer of one row loses on its Generation.</summary>

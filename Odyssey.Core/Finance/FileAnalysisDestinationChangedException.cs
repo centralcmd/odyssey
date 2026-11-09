@@ -16,7 +16,7 @@ namespace Odyssey.Core.Finance;
 public sealed class FileAnalysisDestinationChangedException : DomainException
 {
     /// <summary>The <c>code</c> extension the typed client keys on.</summary>
-    public const string DestinationChangedCode = "file_analysis_destination_changed";
+    public const string DestinationChangedCode = Odyssey.Dtos.Finance.FileAnalysisCodes.MatchDestinationChanged;
 
     public override int StatusCode => (int)HttpStatusCode.Conflict;
 

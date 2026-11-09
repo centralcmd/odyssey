@@ -17,6 +17,13 @@ public partial class OdsRecordTable<TRow>
     /// <summary>Stable row identity. Defaults to the row instance itself.</summary>
     [Parameter] public Func<TRow, object> RowKey { get; set; } = static r => r!;
 
+    /// <summary>
+    /// Optional stable id for a row's menu trigger, keyed on the row key. By default the id is a per-table slot,
+    /// stable only for this instance; a host that returns focus to the trigger from a dialog across a re-render
+    /// supplies one derived from the record (centralcmd/odyssey#445).
+    /// </summary>
+    [Parameter] public Func<object, string>? MenuTriggerIdFor { get; set; }
+
     /// <summary>Optional leading 36px cell (typically an OdsAvatar).</summary>
     [Parameter] public RenderFragment<TRow>? Leading { get; set; }
 
@@ -166,7 +173,7 @@ public partial class OdsRecordTable<TRow>
             _rowSlots.Remove(gone);
     }
 
-    private string MenuIdFor(object key) => $"{SlotFor(key)}-menu";
+    private string MenuIdFor(object key) => MenuTriggerIdFor?.Invoke(key) ?? $"{SlotFor(key)}-menu";
 
     private string ExpandIdFor(object key) => $"{SlotFor(key)}-expand";
 

@@ -1,4 +1,4 @@
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// Validation and canonicalisation for the admin-editable privacy-notice URL (issue #421 Wave 1).
@@ -18,10 +18,10 @@ namespace Odyssey.Api.SystemSettings;
 /// older build with weaker rules.
 /// </para>
 /// </summary>
-internal static class PrivacyNoticeUrl
+public static class PrivacyNoticeUrl
 {
     /// <summary>Returns an error message, or null when <paramref name="value"/> is acceptable.</summary>
-    internal static string? Validate(string value) =>
+    public static string? Validate(string value) =>
         TryCanonicalize(value, out _) ? null : "must be an absolute https:// URL.";
 
     /// <summary>
@@ -29,7 +29,7 @@ internal static class PrivacyNoticeUrl
     /// default when it is not. Never returns an unvalidated stored value, which is what makes a
     /// database-planted <c>javascript:</c> value unreachable from the rendered page.
     /// </summary>
-    internal static string Project(string storedValue, string fallback) =>
+    public static string Project(string storedValue, string fallback) =>
         TryCanonicalize(storedValue, out var canonical) ? canonical : fallback;
 
     private static bool TryCanonicalize(string value, out string canonical)

@@ -275,7 +275,7 @@ builder.Services.AddCors(options =>
                 // same reason: WASM's browser-hosted HttpClient strips any response header not on this
                 // list, so a header the client must read needs the same treatment here regardless of
                 // what the server actually sends.
-                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After");
+                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After", "Location");
         }
         else
         {
@@ -288,7 +288,7 @@ builder.Services.AddCors(options =>
                 // same reason: WASM's browser-hosted HttpClient strips any response header not on this
                 // list, so a header the client must read needs the same treatment here regardless of
                 // what the server actually sends.
-                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After");
+                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After", "Location");
         }
     });
 });
@@ -409,10 +409,8 @@ builder.Services.AddScoped<Odyssey.Core.Finance.ISystemSettingsLookup, Odyssey.A
 // services' home) instead.
 builder.Services.AddScoped<Odyssey.Core.Journal.IImportExportLimitsLookup, Odyssey.Api.SystemSettings.ImportExportLimitsLookup>();
 
-// The six AI file-analysis settings (issue #421 Wave 1), same 30s-cached-lookup shape. Its own cache
-// key rather than a method on ISystemSettingsLookup: that one's entry is shared with the Contracts
-// eviction path, so folding these in would make a contracts save evict the analysis settings.
-builder.Services.AddScoped<Odyssey.Core.Finance.IFileAnalysisSettingsLookup, Odyssey.Api.SystemSettings.FileAnalysisSettingsLookup>();
+// The AI file-analysis settings lookup (issue #421 Wave 1) is registered by AddFileAnalysis below, with its own
+// cache key: shared with the worker since issue #444, which reads it uncached before every transfer.
 
 // The photo/journal per-request caps (issue #421 Wave 3). A second lookup rather than a method on
 // ISystemSettingsLookup: the nine Wave 3 caps span two domain projects, and a lookup interface lives
@@ -572,67 +570,11 @@ builder.Services.AddScoped<AdminFileExportService>();
 // services are registered by each job's own registration above; the API runs no job and no sweep on a timer.
 builder.Services.AddScoped<Odyssey.Core.Jobs.BackgroundJobsService>();
 
-builder.Services.Configure<FileAnalysisOptions>(
-    builder.Configuration.GetSection(FileAnalysisOptions.SectionName));
-// Transient, like every DelegatingHandler: IHttpClientFactory owns its lifetime and pools it with the
-// handler chain, so it must resolve nothing scoped in its constructor.
-builder.Services.AddTransient<Odyssey.Api.SystemSettings.FileAnalysisApiKeyHandler>();
+// File analysis (issue #444): options, the settings lookup, the prompt template, the API-key handler, the provider's
+// typed client with its resilience pipeline, the enqueue service and the queue. ONE registration shared with the
+// worker, which performs the transfer — so the redirect, credential and retry posture cannot differ between hosts.
+builder.Services.AddFileAnalysis(builder.Configuration);
 builder.Services.AddScoped<FileAnalysisService>();
-builder.Services.AddHttpClient<IFileAnalysisProvider, ClaudeFileAnalysisProvider>((sp, client) =>
-{
-    var opts = sp.GetRequiredService<IOptions<FileAnalysisOptions>>().Value;
-
-    // No BaseAddress (issue #439): the destination is admin-editable now, so it is resolved per run
-    // from the settings snapshot and passed to the provider as part of FileAnalysisTarget. A
-    // registration-time BaseAddress would be fixed at startup and could not follow a repoint — and,
-    // worse, would be the value stamped on jobs while requests went somewhere else.
-    //
-    // The API key is NO LONGER set here (issue #445 Wave 1). It moved to the encrypted secret store,
-    // and this callback is synchronous — it cannot await a scoped OdysseyContext — while a
-    // DefaultRequestHeaders entry is evaluated once at client construction and so could never follow a
-    // rotation anyway. FileAnalysisApiKeyHandler attaches it per request instead. The accepted
-    // consequence is unchanged and still stated on the settings row: repointing the base URL sends the
-    // stored key to the new host.
-    client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-    // The resilience handler below owns every timeout: HttpClient.Timeout wraps the whole pipeline,
-    // so leaving it at the configured value would cut the retries off mid-flight. The per-call budget
-    // lives on AttemptTimeout instead, which is where it belongs once a call can be retried.
-    client.Timeout = Timeout.InfiniteTimeSpan;
-})
-    // Redirects are NOT followed (issue #439 §5.3a). Without this the client runs on the default
-    // handler with AllowAutoRedirect = true, and .NET strips only Authorization across origins — a
-    // custom x-api-key header survives, and a 307/308 preserves method and body, so the key and the
-    // whole document would be re-POSTed to whatever host the configured one names. That would make the
-    // bound this feature rests on ("the key goes to the host that is set") untrue, and would make
-    // FileAnalysisJob.AnalyzerBaseUrlHost record the configured host rather than the one the data
-    // reached. A 3xx becomes a provider error instead; see ClaudeFileAnalysisProvider.SendAsync.
-    //
-    // This is a fix to CURRENT behaviour, not only to what #439 adds: today's deploy-configured base
-    // URL can already redirect the API key onward.
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
-    // OUTSIDE the resilience pipeline, deliberately (issue #445 Wave 1): handlers registered earlier
-    // sit further out, so an unreadable credential throws once here rather than being retried twice
-    // and counted against the circuit breaker. A credential fault is not transient.
-    .AddHttpMessageHandler<Odyssey.Api.SystemSettings.FileAnalysisApiKeyHandler>()
-    // The slowest, most third-party-dependent path in the app: a transient 429/503 from the provider
-    // used to surface as a hard user-facing failure (issue #382). Retries are safe here because both
-    // call sites treat a failure as a recorded job/match failure, not a partial write.
-    .AddStandardResilienceHandler()
-    .Configure((resilience, sp) =>
-    {
-        var opts = sp.GetRequiredService<IOptions<FileAnalysisOptions>>().Value;
-        var attempt = TimeSpan.FromSeconds(opts.TimeoutSeconds);
-
-        // Keep the configured budget as the per-attempt one, so a single analysis call still gets its
-        // full 120s. Two attempts' worth caps the total, so a timed-out attempt can be retried exactly
-        // once rather than keeping the caller waiting for the full retry ladder. The sampling duration
-        // must be at least double the attempt timeout or the options validator rejects the pipeline.
-        resilience.AttemptTimeout.Timeout = attempt;
-        resilience.TotalRequestTimeout.Timeout = attempt * 2;
-        resilience.CircuitBreaker.SamplingDuration = attempt * 2;
-        resilience.Retry.MaxRetryAttempts = 2;
-    });
 
 // Data Protection, registered UNCONDITIONALLY (issue #444 §10). Before this it was registered only
 // when a keys path was configured, leaving the framework's implicit registration — an ephemeral or

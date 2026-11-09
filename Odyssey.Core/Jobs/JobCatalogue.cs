@@ -1,5 +1,6 @@
 using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
@@ -26,6 +27,10 @@ namespace Odyssey.Core.Jobs;
 /// <param name="StaleAfter">How long a <c>Running</c> row may go without activity before the sweep abandons it.</param>
 /// <param name="ManualRunClaims">The claims a manual run needs beyond <c>system-settings.update</c> (S1). Never sent.</param>
 /// <param name="DetailReadClaim">The claim beyond <c>system-settings.read</c> that reveals the job's own fields (A1/S5).</param>
+/// <param name="ManualRunSupported">
+/// Whether the page offers a manual run (issue #444). <c>false</c> for a job that only ever runs work a user consented
+/// to: <c>POST …/runs</c> answers <c>409 job-run.manual-run-unsupported</c> before any claim check or insert.
+/// </param>
 public sealed record JobCatalogueEntry(
     JobType JobType,
     Type JobClass,
@@ -34,7 +39,8 @@ public sealed record JobCatalogueEntry(
     bool DynamicCadence,
     TimeSpan StaleAfter,
     IReadOnlyList<string> ManualRunClaims,
-    string? DetailReadClaim)
+    string? DetailReadClaim,
+    bool ManualRunSupported = true)
 {
     /// <summary>Every job writes its heartbeat at most this often (§3.3 step 1).</summary>
     public TimeSpan HeartbeatInterval => JobRunRecorder.HeartbeatInterval;
@@ -101,6 +107,15 @@ public static class JobCatalogue
             ManualRunClaims: [PermissionClaims.FileStorageRead],
             DetailReadClaim: PermissionClaims.FileStorageRead),
 
+        // The file-analysis queue (issue #444). Work-driven, and never run by hand: every job it runs is one a user
+        // consented to, so a manual run would have nothing of its own to do. Counts follow file-analysis.read, the
+        // claim the analysis log and the job reads already sit behind.
+        new(JobType.FileAnalysis, typeof(FileAnalysisQueueJob), FileAnalysisJobTiming.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: FileAnalysisJobTiming.Lease(FileAnalysisJobTiming.MaxTimeoutSeconds) + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.FileAnalysisCreate],
+            DetailReadClaim: PermissionClaims.FileAnalysisRead,
+            ManualRunSupported: false),
         // The file move (issue #448): every remaining FileBlob onto the file store. Work-driven, idle for good once the
         // database holds no file bytes. Gated like the photo move, for the same reasons.
         new(JobType.FileBlobBackfill, typeof(FileBlobBackfillJob), FileBlobBackfillJob.Tick,

@@ -1214,7 +1214,10 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 Options.Create(new FileAnalysisOptions { Enabled = true }),
                 // The resumable-jobs read consults no setting; a defaults-only lookup is enough.
                 new StubFileAnalysisSettingsLookup(),
-                NullLogger<FileAnalysisService>.Instance);
+                NullLogger<FileAnalysisService>.Instance,
+                new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
+                    NullLogger<FileAnalysisJobQueue>.Instance),
+                new EmbeddedFileAnalysisPromptTemplate());
             summaries = await service.GetResumableJobsAsync(accountId);
         }
 
@@ -1618,6 +1621,9 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private sealed class StubFileAnalysisSettingsLookup : IFileAnalysisSettingsLookup
     {
+        public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+            GetAsync(cancellationToken);
+
         public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FileAnalysisSettings(
                 "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",

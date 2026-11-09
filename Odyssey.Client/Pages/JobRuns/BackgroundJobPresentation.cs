@@ -27,10 +27,10 @@ public sealed record JobChip(string Label, OdsChipTone Tone, string Icon);
 /// </summary>
 public static class BackgroundJobPresentation
 {
-    /// <summary>The five jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
+    /// <summary>The six jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
         [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-         JobType.FileBlobBackfill];
+            JobType.FileAnalysis, JobType.FileBlobBackfill];
 
     public static readonly IReadOnlyDictionary<JobType, JobVisual> JobVisuals = new Dictionary<JobType, JobVisual>
     {
@@ -39,6 +39,9 @@ public static class BackgroundJobPresentation
         [JobType.FileStorageMaintenance] = new("File-storage maintenance", "file-storage maintenance", "storage", "file storage", "Run file-storage maintenance", MudBlazor.Icons.Material.Filled.Storage),
         [JobType.PhotoThumbnails] = new("Photo thumbnails", "photo thumbnails", "photo_library", "photo", "Run photo thumbnails", MudBlazor.Icons.Material.Filled.PhotoLibrary),
         [JobType.PhotoOriginalBackfill] = new("Photo original move", "photo original move", "drive_file_move", "file storage", "Run photo original move", MudBlazor.Icons.Material.Filled.DriveFileMove),
+        // The statement-analysis queue (issue #444). No Run item: it only runs analyses a user consented to, and the
+        // server refuses a manual run (CanRunNow is false).
+        [JobType.FileAnalysis] = new("File analysis", "file analysis", "document_scanner", "file analysis", null, null),
         // Issue #449: the photo move's icon on purpose — the same kind of job, told apart by its name.
         [JobType.FileBlobBackfill] = new("File move", "file move", "drive_file_move", "file storage", "Run file move", MudBlazor.Icons.Material.Filled.DriveFileMove),
     };

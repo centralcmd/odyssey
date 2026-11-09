@@ -1,11 +1,11 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging;
 using Odyssey.Context;
-using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 
-namespace Odyssey.Api.SystemSettings;
+namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// Backs <see cref="IFileAnalysisSettingsLookup"/> (issue #421 Wave 1): a 30s
@@ -44,7 +44,7 @@ public sealed class FileAnalysisSettingsLookup(
     IMemoryCache cache,
     ILogger<FileAnalysisSettingsLookup> logger) : IFileAnalysisSettingsLookup
 {
-    internal const string CacheKey = "system-settings:file-analysis-settings";
+    public const string CacheKey = "system-settings:file-analysis-settings";
 
     /// <summary>
     /// The keys this entry serves. A named static rather than a method-local, so it is the one place
@@ -89,6 +89,20 @@ public sealed class FileAnalysisSettingsLookup(
             return cached;
         }
 
+        return await ReadAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// A fresh read that never answers from the cache (issue #444 §3 step 4.3). The worker's pre-send
+    /// check compares the job's consent stamps against this, because a settings save evicts only the
+    /// API process's cache: compared against a cached copy, a repointed destination could still match
+    /// the old stamps for up to the TTL. A healthy result still refreshes the cache.
+    /// </summary>
+    public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+        ReadAsync(cancellationToken);
+
+    private async Task<FileAnalysisSettings> ReadAsync(CancellationToken cancellationToken)
+    {
         Dictionary<string, string>? values = null;
         try
         {

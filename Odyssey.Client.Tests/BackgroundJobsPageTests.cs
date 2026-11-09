@@ -236,6 +236,17 @@ public class BackgroundJobsPageTests
         Assert.Equal("true", cut.Find("section[aria-label='Overview']").GetAttribute("aria-busy"));
     }
 
+    /// <summary>Issue #444: the file-analysis queue is listed but has no Run item — it only runs consented analyses.</summary>
+    [Fact]
+    public async Task The_file_analysis_queue_has_a_tile_but_no_run_item()
+    {
+        await using var f = NewFixture();
+        var cut = await RenderLoaded(f);
+
+        Assert.Contains(cut.FindAll("h3.bgj-tile-h"), h => h.TextContent.Contains("File analysis", StringComparison.Ordinal));
+        Assert.DoesNotContain(cut.Instance.RunItems, i => i.Job == JobType.FileAnalysis);
+    }
+
     [Fact]
     public async Task A_reader_without_system_settings_update_gets_no_run_items()
     {
@@ -834,7 +845,8 @@ public class BackgroundJobsPageTests
         var available = Now.UtcDateTime.AddMinutes(1);
         await using var f = NewFixture(Overview(
             Job(JobType.ExchangeRateSync), Job(JobType.Weather, j => j.ManualRunAvailableAtUtc = available),
-            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill), Job(JobType.FileBlobBackfill)));
+            Job(JobType.FileStorageMaintenance), Job(JobType.PhotoThumbnails), Job(JobType.PhotoOriginalBackfill),
+            Job(JobType.FileAnalysis, j => j.CanRunNow = false), Job(JobType.FileBlobBackfill)));
         var cut = await RenderLoaded(f);
         Assert.Contains(cut.Instance.RunItems, i => i.Job == JobType.Weather && i.Disabled);
 

@@ -48,6 +48,17 @@ public partial class OdsModal
     [Parameter] public string? ReturnFocusToId { get; set; }
 
     /// <summary>
+    /// Render the title as a heading of this level (2–6) — Odyssey Design System · Modal <c>titleLevel</c>
+    /// (centralcmd/odyssey#445). The look is unchanged. Default <c>null</c>: the title keeps the tag it always had,
+    /// so no existing dialog changes. A dialog whose body carries its own <c>h3</c> phase headings sets 2, so the
+    /// body never outranks the title.
+    /// </summary>
+    [Parameter] public int? TitleLevel { get; set; }
+
+    // MudText's own default for Typo.h6 when no level is asked for.
+    private string? TitleTag => TitleLevel is >= 2 and <= 6 ? $"h{TitleLevel}" : null;
+
+    /// <summary>
     /// The dialog's role (Odyssey Design System · Modal <c>role</c>, issue #383): <c>dialog</c> by default,
     /// <c>alertdialog</c> for a destructive confirmation — which then opens on Cancel
     /// (<see cref="InitialFocus"/>).

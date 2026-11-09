@@ -23,8 +23,10 @@ public enum JobType : byte
     /// <summary>The one-off move of legacy photo originals onto the photo store (issue #428).</summary>
     PhotoOriginalBackfill = 5,
 
+    /// <summary>The AI file-analysis extraction queue (issue #444): work-driven, never run by hand.</summary>
+    FileAnalysis = 6,
     /// <summary>The one-off move of every remaining <c>FileBlob</c> onto the file store (issue #448).</summary>
-    FileBlobBackfill = 6,
+    FileBlobBackfill = 7,
 
     Unknown = byte.MaxValue,
 }
@@ -362,6 +364,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.FileStorageMaintenance)] = typeof(FileStorageMaintenanceJobRunDetail),
         [nameof(Application.JobType.PhotoThumbnails)] = typeof(PhotoThumbnailJobRunDetail),
         [nameof(Application.JobType.PhotoOriginalBackfill)] = typeof(PhotoOriginalBackfillJobRunDetail),
+        [nameof(Application.JobType.FileAnalysis)] = typeof(FileAnalysisJobRunDetail),
         [nameof(Application.JobType.FileBlobBackfill)] = typeof(FileBlobBackfillJobRunDetail),
     };
 
@@ -549,6 +552,26 @@ public sealed record PhotoOriginalBackfillJobRunDetail : JobRunDetail
     public int? Interruptions { get; set; }
 }
 
+/// <summary>
+/// A file-analysis burst (issue #444): how many queued analyses it finished, failed, or refused before
+/// sending. Counts only — never a file, account or user.
+/// </summary>
+public sealed record FileAnalysisJobRunDetail : JobRunDetail
+{
+    /// <summary>Analyses that extracted their candidates.</summary>
+    public int? AnalysesCompleted { get; set; }
+
+    /// <summary>Analyses that failed after the document may have been sent (provider error, interruption).</summary>
+    public int? AnalysesFailed { get; set; }
+
+    /// <summary>Analyses refused before anything was sent (settings changed, analysis switched off, requester gone).</summary>
+    public int? AnalysesRefused { get; set; }
+}
+
+/// <summary>
+/// A file-move burst (issue #448): how many files it moved into each area, how many it parked, and how many ticks an
+/// outage cut short. Counts only — never a file, name or path.
+/// </summary>
 public sealed record FileBlobBackfillJobRunDetail : JobRunDetail
 {
     /// <summary>Moved to the finance area.</summary>
@@ -579,6 +602,9 @@ public static class JobRunConflictCodes
     public const string AlreadyRunning = "job-run.already-running";
 
     public const string Held = "job-run.held";
+
+    /// <summary>The job has no manual run (issue #444): it only ever runs work a user consented to.</summary>
+    public const string ManualRunUnsupported = "job-run.manual-run-unsupported";
 }
 
 /// <summary>
@@ -622,7 +648,7 @@ public sealed class JobRunsQueryParams : QueryParams<JobRunSortBy>, IValidatable
         Limit = DefaultLimit;
     }
 
-    [EnumFilter(typeof(JobType), 5)]
+    [EnumFilter(typeof(JobType), 6)]
     public JobType[]? JobTypes { get; set; }
 
     [EnumFilter(typeof(JobRunStatus), 6)]

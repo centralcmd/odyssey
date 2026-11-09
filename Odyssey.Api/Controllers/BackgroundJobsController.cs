@@ -75,6 +75,13 @@ public sealed class BackgroundJobsController(
             return this.NotFoundProblem("There is no such background job.");
         }
 
+        // Before any claim check or insert (issue #444): a job that only runs consented work has no manual run.
+        if (!entry.ManualRunSupported)
+        {
+            return this.ConflictProblem("This job has no manual run.",
+                new Dictionary<string, object?> { ["code"] = JobRunConflictCodes.ManualRunUnsupported });
+        }
+
         if (!CanRun(entry))
         {
             return this.ForbiddenProblem("You do not have permission to run this job.");
@@ -140,7 +147,7 @@ public sealed class BackgroundJobsController(
 
     private BackgroundJobAccess Access() => new(
         JobCatalogue.Entries.Where(CanReadDetail).Select(entry => entry.JobType).ToHashSet(),
-        JobCatalogue.Entries.Where(CanRun).Select(entry => entry.JobType).ToHashSet());
+        JobCatalogue.Entries.Where(entry => entry.ManualRunSupported && CanRun(entry)).Select(entry => entry.JobType).ToHashSet());
 
     private bool CanReadDetail(JobCatalogueEntry entry) =>
         entry.DetailReadClaim is not { } claim || User.HasPermission(claim);
