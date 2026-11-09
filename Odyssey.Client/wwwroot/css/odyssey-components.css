@@ -33,9 +33,9 @@
 .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
-/* Text on the pending tint takes --warning-text, not the design system's --pending-text: since the light
-   --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures ~4.4:1 on white
-   (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500 either way. */
+/* Text on the pending tint takes --warning-text, not --pending-text, as in the design system (issue #439):
+   since the light --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures
+   ~4.4:1 on white (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500. */
 .odc-chip.pending { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
