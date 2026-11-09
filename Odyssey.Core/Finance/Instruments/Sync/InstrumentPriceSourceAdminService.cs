@@ -121,6 +121,7 @@ public sealed class InstrumentPriceSourceAdminService(
         }
 
         var seen = new HashSet<string>(StringComparer.Ordinal);
+        var resolved = new List<IInstrumentPriceSource>(update.Bindings.Count);
         for (var i = 0; i < update.Bindings.Count; i++)
         {
             var input = update.Bindings[i];
@@ -142,6 +143,8 @@ public sealed class InstrumentPriceSourceAdminService(
             {
                 throw new DomainUnprocessableException($"{source.DisplayName} does not price this kind of instrument.", $"bindings[{i}]");
             }
+
+            resolved.Add(source);
         }
 
         await InstrumentLocks.InTransactionAsync(context, async () =>
@@ -189,7 +192,8 @@ public sealed class InstrumentPriceSourceAdminService(
 
         logger.LogInformation("Price sources of instrument {InstrumentId} set to [{Sources}] by {UserId}.",
             instrumentId,
-            string.Join(", ", update.Bindings.Select(b => $"{b.SourceKey.Trim()}:{(b.Enabled ? "on" : "off")}")),
+            // The keys come from the compiled catalogue, never from the request body, so nothing caller-typed reaches the log.
+            string.Join(", ", resolved.Select((source, i) => $"{source.Key}:{(update.Bindings[i].Enabled ? "on" : "off")}")),
             userId);
         return await GetBindingsAsync(instrumentId, cancellationToken);
     }
