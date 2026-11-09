@@ -1920,6 +1920,8 @@ A file later attached somewhere else stays where it was put.
 - **Downloads are unchanged on the wire** (disposition, content type) and now carry `nosniff`, a strong `ETag`,
   `Cache-Control: private, no-cache` and range support, whether the file is still in the database or on disk.
 - **`fileBlobId` is gone from every attachment DTO.** A client that read it must stop.
+- **`POST /api/files` validates `description`** at 256 characters and answers `400` where it used to cut the text
+  silently.
 - **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`.
 - **The `FileBlob` table stays** until a later release has seen every deployment report `remaining = 0`. Do
   not drop it by hand.

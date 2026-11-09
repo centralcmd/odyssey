@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Api;
+using Odyssey.Core.FileStorage;
 using Odyssey.Core.FileStorage.Files;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
@@ -101,6 +103,44 @@ public sealed class FileStoreUploadApiTests
         Assert.False(await context.FileMetadata.AnyAsync());
         // Checked before the bucket slot, so a refusal burns none (issue #448 §3.3).
         Assert.False(await context.StoredFileBuckets.AnyAsync());
+    }
+
+    [Fact]
+    public async Task On_a_degraded_volume_an_upload_is_a_503_with_retry_after_and_writes_nothing()
+    {
+        await using var factory = new OdysseyApiFactory(FilesClaims);
+        using var client = factory.CreateClient();
+        var registry = factory.Services.GetRequiredService<FileStorageVolumeRegistry>();
+        registry.MarkDegraded(registry.Find("photos")!, new IOException("disk gone"));
+
+        var response = await UploadAsync(client, "Finance");
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+        Assert.NotNull(response.Headers.RetryAfter);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.False(await context.FileMetadata.AnyAsync());
+        Assert.False(await context.StoredFileBuckets.AnyAsync());
+    }
+
+    [Fact]
+    public async Task Past_the_per_user_limit_an_upload_is_a_429_with_retry_after()
+    {
+        await using var factory = new OdysseyApiFactory(FilesClaims, configuration: new Dictionary<string, string?>
+        {
+            [$"{FileUploadRateLimitOptions.SectionName}:PermitLimit"] = "2",
+            [$"{FileUploadRateLimitOptions.SectionName}:WindowSeconds"] = "600",
+        });
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Created, (await UploadAsync(client, "Finance", "%PDF-1.7 one"u8.ToArray())).StatusCode);
+        Assert.Equal(HttpStatusCode.Created, (await UploadAsync(client, "Finance", "%PDF-1.7 two"u8.ToArray())).StatusCode);
+        var third = await UploadAsync(client, "Finance", "%PDF-1.7 three"u8.ToArray());
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, third.StatusCode);
+        Assert.NotNull(third.Headers.RetryAfter);
+        using var scope = factory.Services.CreateScope();
+        Assert.Equal(2, await scope.ServiceProvider.GetRequiredService<OdysseyContext>().FileMetadata.CountAsync());
     }
 
     [Fact]

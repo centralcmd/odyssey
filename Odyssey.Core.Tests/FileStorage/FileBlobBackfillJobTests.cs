@@ -182,6 +182,28 @@ public sealed class FileBlobBackfillJobTests : FileStorageTestBase
         Assert.Equal((1, 0, 1, 0), (status.Remaining, status.ToMove, status.WaitingOnPhotos, status.Failed));
     }
 
+    /// <summary>AC 33: a parked, photo-wrapped file counts once, in failed; remaining is the sum and its bytes are summed.</summary>
+    [Fact]
+    public async Task A_parked_photo_wrapped_file_counts_once_and_remaining_bytes_add_up()
+    {
+        var host = await NewFilesHostAsync();
+        var jpeg = PhotoTestData.Jpeg(6);
+        await InContextAsync(host, async c =>
+        {
+            var (_, file) = PhotoTestData.StageLegacyPhoto(c, jpeg, "IMG.jpg");
+            c.FileBlobBackfillFailures.Add(new FileBlobBackfillFailure { FileId = file.Id, Code = "read", RecordedAtUtc = DateTime.UtcNow });
+            await c.SaveChangesAsync();
+        });
+        await AddLegacyAsync(host);
+
+        var status = await InContextAsync(host, c => new FileBackfillStatusService(c).GetAsync(default));
+
+        Assert.Equal((2, 1, 0, 1), (status.Remaining, status.ToMove, status.WaitingOnPhotos, status.Failed));
+        Assert.Equal(status.Remaining, status.ToMove + status.WaitingOnPhotos + status.Failed);
+        Assert.Equal(jpeg.LongLength + PdfBytes.LongLength, status.RemainingBytes);
+        Assert.Equal(1, status.FailedByCode["read"]);
+    }
+
     [Fact]
     public async Task A_hash_mismatch_parks_the_file_which_stays_readable_and_is_not_retried()
     {

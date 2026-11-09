@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Core.Journal.Originals;
@@ -41,11 +42,15 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
             {
                 [PhotoOriginalStorage.FeatureKey] = "photos",
                 [PhotoThumbnailStorage.FeatureKey] = "photos",
+                [StoredFileAreas.FinanceFeatureKey] = "photos",
+                [StoredFileAreas.JournalFeatureKey] = "photos",
+                [StoredFileAreas.ContactAvatarFeatureKey] = "photos",
             },
             features: [],
             configureServices: services =>
             {
                 services.AddPhotoThumbnails().AddPhotoOriginals();
+                services.AddStoredFiles();
                 services.AddScoped<IContactLookup, ContactLookup>();
                 services.AddScoped<IFileLookup, FileLookup>();
                 services.AddScoped<IFileReferenceGuard, FileReferenceGuard>();
@@ -73,6 +78,11 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `PhotoOriginalBackfillFailures`");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `PhotoOriginalBuckets`");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `Photos` WHERE `StoredObjectId` IS NOT NULL");
+            // Files on the store (issue #448) reference an object through RESTRICT keys too.
+            await context.Database.ExecuteSqlRawAsync(
+                "DELETE FROM `FileMetadata` WHERE `FinanceStoredObjectId` IS NOT NULL OR `JournalStoredObjectId` IS NOT NULL OR `ContactAvatarStoredObjectId` IS NOT NULL");
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM `StoredFileBuckets`");
+            await context.Database.ExecuteSqlRawAsync("DELETE FROM `FileBlobBackfillFailures`");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `StoredObjects`");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `FileStorageOrphanSightings`");
             await context.Database.ExecuteSqlRawAsync("DELETE FROM `FileStorageVolumes`");
