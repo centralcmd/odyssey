@@ -99,14 +99,13 @@ public class ContractReferenceNumberMigrationTests(MariaDbFixture fixture)
     public async Task Search_escapes_like_metacharacters_and_non_bmp_values_round_trip()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         try
         {
             Guid literal;
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
                 var service = NewService(context);
                 await service.Create(new NewContract { Name = "Storage", ReferenceNumber = "1001" }, null);
                 literal = (await service.Create(new NewContract { Name = "Rebate", ReferenceNumber = "100%-rebate" }, null)).ContractId;

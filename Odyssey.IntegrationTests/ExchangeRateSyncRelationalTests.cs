@@ -400,9 +400,7 @@ public class ExchangeRateSyncRelationalTests(MariaDbFixture fixture)
 
     private async Task MigratedAsync()
     {
-        await RecreateAsync();
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext(Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor? interceptor = null)

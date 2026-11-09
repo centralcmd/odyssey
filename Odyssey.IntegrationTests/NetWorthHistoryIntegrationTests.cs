@@ -704,27 +704,9 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
 
     private async Task<DbContextOptions<OdysseyContext>> MigratedSchemaAsync(CommandCounter? counter = null)
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var options = OptionsFor(fixture.ConnectionStringFor(Database), counter);
-        await using (var context = new OdysseyContext(options))
-        {
-            await context.Database.MigrateAsync();
-        }
-
+        var options = OptionsFor(await fixture.CreateMigratedDatabaseAsync(Database), counter);
         counter?.Reset();
         return options;
-    }
-
-    private async Task DropAsync()
-    {
-        await using var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString));
-        await admin.Database.ExecuteSqlRawAsync("DROP DATABASE IF EXISTS `" + Database + "`");
     }
 
     private static DbContextOptions<OdysseyContext> OptionsFor(string connectionString, CommandCounter? counter = null)

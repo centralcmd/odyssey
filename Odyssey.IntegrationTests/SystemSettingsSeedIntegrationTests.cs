@@ -80,12 +80,7 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
     public async Task A_fresh_database_carries_every_known_key()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateDatabaseAsync();
-
-        await using (var context = new OdysseyContext(ApplicationOptions()))
-        {
-            await context.Database.MigrateAsync();
-        }
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         await using (var context = new OdysseyContext(ApplicationOptions()))
         {
@@ -113,14 +108,6 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         }
 
         await DropDatabaseAsync();
-    }
-
-    private async Task RecreateDatabaseAsync()
-    {
-        await using var admin = AdminContext();
-
-        await admin.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task DropDatabaseAsync()

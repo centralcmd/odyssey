@@ -130,16 +130,7 @@ public class AccountContractLinkRelationalTests(MariaDbFixture fixture)
 
     private async Task MigrateAsync()
     {
-        await using (var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options))
-        {
-            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext() =>

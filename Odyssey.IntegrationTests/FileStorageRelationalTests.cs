@@ -412,20 +412,17 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
 
     private async Task RecreateAsync(bool migrate = true)
     {
-        await using (var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, new MariaDbServerVersion(new Version(11, 4))).Options))
-        {
-            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
         if (!migrate)
         {
+            await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
+                .UseMySql(fixture.OdysseyConnectionString, new MariaDbServerVersion(new Version(11, 4))).Options);
+            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
+            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
             return;
         }
 
+        await fixture.CreateMigratedDatabaseAsync(Database);
         await using var context = NewContext();
-        await context.Database.MigrateAsync();
         foreach (var sql in TestStorageContext.CreateTablesSql)
         {
             await context.Database.ExecuteSqlRawAsync(sql);

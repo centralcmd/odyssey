@@ -139,9 +139,8 @@ public class WeatherPointsMigrationTests(MariaDbFixture fixture)
     public async Task Down_restores_the_old_schema()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
         await using var context = NewContext();
-        await context.Database.MigrateAsync();
 
         await MigrationSeam.MigrateToAsync(context, Baseline);
 

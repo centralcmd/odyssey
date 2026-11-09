@@ -224,18 +224,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
 
     private async Task<string> MigratedSchemaAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var connectionString = fixture.ConnectionStringFor(Database);
-        await using var context = new OdysseyContext(OptionsFor(connectionString));
-        await context.Database.MigrateAsync();
-
-        return connectionString;
+        return await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private async Task DropAsync()

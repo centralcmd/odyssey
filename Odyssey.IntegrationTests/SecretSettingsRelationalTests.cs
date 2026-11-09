@@ -49,12 +49,7 @@ public class SecretSettingsRelationalTests(MariaDbFixture fixture)
     public async Task A_maximum_length_secret_round_trips_through_the_real_column()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateDatabaseAsync();
-
-        await using (var context = new OdysseyContext(ApplicationOptions()))
-        {
-            await context.Database.MigrateAsync();
-        }
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var keysDirectory = Directory.CreateTempSubdirectory("odyssey-secrets-relational-");
         try
@@ -110,12 +105,7 @@ public class SecretSettingsRelationalTests(MariaDbFixture fixture)
     public async Task A_secret_protected_in_the_migrations_host_unprotects_in_the_api_host()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateDatabaseAsync();
-
-        await using (var context = new OdysseyContext(ApplicationOptions()))
-        {
-            await context.Database.MigrateAsync();
-        }
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var keysDirectory = Directory.CreateTempSubdirectory("odyssey-secrets-crosshost-");
         try
@@ -175,14 +165,9 @@ public class SecretSettingsRelationalTests(MariaDbFixture fixture)
     public async Task The_migration_creates_an_empty_table_and_seeds_no_rows()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateDatabaseAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var options = ApplicationOptions();
-
-        await using (var context = new OdysseyContext(options))
-        {
-            await context.Database.MigrateAsync();
-        }
 
         await using (var context = new OdysseyContext(options))
         {
@@ -213,14 +198,6 @@ public class SecretSettingsRelationalTests(MariaDbFixture fixture)
 
         var provider = services.BuildServiceProvider();
         return new SecretProtector(provider.GetRequiredService<IDataProtectionProvider>());
-    }
-
-    private async Task RecreateDatabaseAsync()
-    {
-        await using var admin = AdminContext();
-
-        await admin.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task DropDatabaseAsync()
