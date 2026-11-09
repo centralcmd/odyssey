@@ -117,8 +117,10 @@ public sealed class UploadFailureTextTests
             FailedByCode = new() { ["type"] = 1, ["hash"] = 0 },
         });
 
-        Assert.Equal([("To move", 4), ("Parked", 1), ("Waiting on photos", 2)], view.Tiles);
-        Assert.Equal("On disk: 1 finance file · 2 journal files · 3 contact avatars", view.DetailLine);
+        Assert.Equal(
+            [("To move", 4, null), ("Parked", 1, null), ("Waiting on photos", 2, null),
+             ("Finance files", 1, "on disk"), ("Journal files", 2, "on disk"), ("Contact avatars", 3, "on disk")],
+            view.Tiles.Select(t => (t.Label, t.Value, t.Foot)));
         Assert.Equal(["Unsupported type: 1"], view.ParkedLines);
         Assert.Equal("Parked files by reason", view.ParkedListCaption);
     }

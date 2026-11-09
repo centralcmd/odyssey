@@ -465,8 +465,8 @@ public class BackgroundJobsUnitTests
         Assert.Contains("Not shown — needs file storage access", hidden.Markup);
     }
 
-    private static IRenderedComponent<BackfillMoveCard> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
-        ctx.Render<BackfillMoveCard>(p => p.Add(x => x.View, BackgroundJobPresentation.PhotoMoveView(status)).Add(x => x.GeneratedAtUtc, Now));
+    private static IRenderedComponent<BackfillMoveStatus> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
+        ctx.Render<BackfillMoveStatus>(p => p.Add(x => x.View, BackgroundJobPresentation.PhotoMoveView(status)).Add(x => x.GeneratedAtUtc, Now));
 
     [Fact]
     public async Task The_move_card_counts_what_is_left_apart_from_what_is_parked_and_lists_the_parked_by_reason()
@@ -483,7 +483,7 @@ public class BackgroundJobsUnitTests
 
         Assert.Equal($"{2840.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)} photo originals still to move from the database to disk.",
             cut.Find(".bgj-move-lead").TextContent);
-        var stats = cut.FindAll(".odc-stat").Select(s => s.TextContent).ToList();
+        var stats = cut.FindAll(".odc-infotile").Select(s => s.TextContent).ToList();
         Assert.Equal(3, stats.Count);
         Assert.Contains(stats, t => t.Contains("Parked") && t.Contains('3'));
         Assert.Contains(stats, t => t.Contains("Copied and kept") && t.Contains('5'));

@@ -183,7 +183,9 @@ public static class BackgroundJobPresentation
         return lines;
     }
 
-    /// <summary>The photo move's card (issue #428). Its DTO is unchanged: <c>remaining</c> counts parked photos too.</summary>
+    private const string OnDisk = "on disk";
+
+    /// <summary>The photo move's status (issue #428). Its DTO is unchanged: <c>remaining</c> counts parked photos too.</summary>
     public static BackfillMoveView PhotoMoveView(PhotoBackfillStatus s)
     {
         var parked = Math.Max(0, s.Failed);
@@ -192,8 +194,11 @@ public static class BackgroundJobPresentation
             s.Remaining <= 0 ? "Every photo original is on disk."
             : waiting > 0 ? $"{Plural(waiting, "photo original", "photo originals")} still to move from the database to disk."
             : "Only parked photos are left. They stay readable from the database until an administrator clears them.",
-            [("To move", waiting), ("Parked", parked), ("Copied and kept", s.CopiedShared)],
-            null,
+            [
+                new MoveTile("To move", "drive_file_move", waiting),
+                new MoveTile("Parked", "pause_circle", parked),
+                new MoveTile("Copied and kept", "content_copy", s.CopiedShared),
+            ],
             ParkedLines(s.FailedByCode, parked, PhotoParkCodes),
             "Parked photos by reason",
             s.BackingOffUntilUtc,
@@ -201,7 +206,7 @@ public static class BackgroundJobPresentation
     }
 
     /// <summary>
-    /// The file move's card (issue #449 §4.2). The server sends <c>toMove</c>, <c>waitingOnPhotos</c> and <c>failed</c>
+    /// The file move's status (issue #449 §4.2). The server sends <c>toMove</c>, <c>waitingOnPhotos</c> and <c>failed</c>
     /// disjoint, so nothing is subtracted. State precedence: Done → Moving → Waiting on photos → Only parked left.
     /// </summary>
     public static BackfillMoveView FileMoveView(FileBackfillStatus s)
@@ -210,13 +215,17 @@ public static class BackgroundJobPresentation
             : s.ToMove > 0 ? $"{Plural(s.ToMove, "file", "files")} still to move from the database to disk."
             : s.WaitingOnPhotos > 0 ? $"{Plural(s.WaitingOnPhotos, "file is", "files are")} waiting for the photo move to finish."
             : "Only parked files are left. They stay readable from the database until an administrator clears them.";
-        var detail = $"On disk: {Plural(s.OnDisk.Finance, "finance file", "finance files")} · "
-            + $"{Plural(s.OnDisk.Journal, "journal file", "journal files")} · "
-            + $"{Plural(s.OnDisk.ContactAvatars, "contact avatar", "contact avatars")}";
         return new BackfillMoveView(
             lead,
-            [("To move", Math.Max(0, s.ToMove)), ("Parked", Math.Max(0, s.Failed)), ("Waiting on photos", Math.Max(0, s.WaitingOnPhotos))],
-            detail,
+            [
+                new MoveTile("To move", "drive_file_move", Math.Max(0, s.ToMove)),
+                new MoveTile("Parked", "pause_circle", Math.Max(0, s.Failed)),
+                new MoveTile("Waiting on photos", "hourglass_empty", Math.Max(0, s.WaitingOnPhotos)),
+                // The on-disk tiles show in every state, Done included; a zero is written as 0. Placement, not access.
+                new MoveTile("Finance files", "account_balance", s.OnDisk.Finance, OnDisk),
+                new MoveTile("Journal files", "menu_book", s.OnDisk.Journal, OnDisk),
+                new MoveTile("Contact avatars", "account_circle", s.OnDisk.ContactAvatars, OnDisk),
+            ],
             ParkedLines(s.FailedByCode, Math.Max(0, s.Failed), FileParkCodes),
             "Parked files by reason",
             s.BackingOffUntilUtc,
@@ -278,14 +287,16 @@ public static class BackgroundJobPresentation
 }
 
 /// <summary>
-/// What a move's status card renders (issue #449 §4.2): already chosen, worded and pluralised, so the card does no arithmetic
+/// What a move's status renders (issue #449 §4.2): already chosen, worded and pluralised, so the card does no arithmetic
 /// on counts. Built by <see cref="BackgroundJobPresentation.PhotoMoveView"/> and <see cref="BackgroundJobPresentation.FileMoveView"/>.
 /// </summary>
 public sealed record BackfillMoveView(
     string Lead,
-    IReadOnlyList<(string Label, int Value)> Tiles,
-    string? DetailLine,
+    IReadOnlyList<MoveTile> Tiles,
     IReadOnlyList<string> ParkedLines,
     string ParkedListCaption,
     DateTime? BackingOffUntilUtc,
     DateTime? LastRunAtUtc);
+
+/// <summary>One of a move's <see cref="OdsInfoTile"/>s: label, glyph, count and an optional foot caption.</summary>
+public sealed record MoveTile(string Label, string Icon, int Value, string? Foot = null);

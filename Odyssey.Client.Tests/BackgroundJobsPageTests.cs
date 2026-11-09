@@ -176,8 +176,9 @@ public class BackgroundJobsPageTests
         await using var f = NewFixture();
         var cut = Render(f);
 
-        cut.WaitForAssertion(() => Assert.Equal(6, cut.FindAll(".odc-stat").Count));
-        var success = cut.FindAll(".odc-stat").Single(s => s.TextContent.Contains("Success · 24 h"));
+        cut.WaitForAssertion(() => Assert.Equal(6, cut.FindAll(".odc-infotile").Count));
+        Assert.Empty(cut.FindAll(".odc-stat"));
+        var success = cut.FindAll(".odc-infotile").Single(s => s.TextContent.Contains("Success · 24 h"));
         Assert.Equal("true", success.QuerySelector("[aria-hidden]")!.GetAttribute("aria-hidden"));
         Assert.Contains("No runs", success.QuerySelector(".sr-only")!.TextContent);
     }
@@ -192,14 +193,16 @@ public class BackgroundJobsPageTests
         {
             var cut = await RenderLoaded(f);
             Assert.Contains(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Single(cut.FindComponents<BackfillMoveCard>());
+            Assert.Single(cut.FindComponents<BackfillMoveStatus>());
+            // No card around the move: the h2 frames it and its tiles sit straight in the Overview.
+            Assert.Null(cut.Find(".bgj-move").Closest(".odc-card"));
         }
 
         await using (var f = NewFixture())
         {
             var cut = await RenderLoaded(f);
             Assert.DoesNotContain(cut.FindAll("h2.bgj-h2"), h => h.TextContent == "Photo original move");
-            Assert.Empty(cut.FindComponents<BackfillMoveCard>());
+            Assert.Empty(cut.FindComponents<BackfillMoveStatus>());
         }
     }
 
@@ -273,7 +276,7 @@ public class BackgroundJobsPageTests
         Assert.Equal([JobType.Weather, JobType.PhotoThumbnails], first!.JobTypes);
         f.State.Verify(s => s.QueueSave(BackgroundJobs.PageKey, It.Is<BackgroundJobsPageState>(st =>
             st.Jobs!.SequenceEqual(new[] { "Weather", "PhotoThumbnails" }))), Times.Once);
-        Assert.Contains("Reset filters", cut.Markup);
+        Assert.Equal(["Weather", "PhotoThumbnails"], cut.FindComponents<OdsMultiSelect>()[0].Instance.Values);
     }
 
     [Fact]
@@ -684,15 +687,27 @@ public class BackgroundJobsPageTests
         f.Api.Verify(a => a.GetRunAsync(runId, It.IsAny<CancellationToken>()), Times.Exactly(36));
     }
 
-    // ── Show {job} runs (AC 15) ──────────────────────────────────────────────────────────────────
+    // ── Show {job} runs (AC 15): the Attention line's only; the job tile has no action ─────────────
 
     [Fact]
-    public async Task Show_job_runs_filters_to_that_job_and_focuses_the_run_history_heading()
+    public async Task A_job_tile_has_no_show_runs_button()
     {
         await using var f = NewFixture();
         var cut = await RenderLoaded(f);
 
-        cut.FindAll(".bgj-tile-foot button").Single(b => b.TextContent.Contains("Show weather runs")).Click();
+        Assert.NotEmpty(cut.FindAll(".bgj-tile"));
+        Assert.Empty(cut.FindAll(".bgj-tile button"));
+        Assert.DoesNotContain("Show weather runs", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Show_job_runs_filters_to_that_job_and_focuses_the_run_history_heading()
+    {
+        await using var f = NewFixture(Overview([.. BackgroundJobPresentation.Jobs.Select(t =>
+            Job(t, j => j.Health = t == JobType.Weather ? JobHealth.Failing : j.Health))]));
+        var cut = await RenderLoaded(f);
+
+        cut.FindAll("button.alert-fix").Single(b => b.TextContent.Contains("Show weather runs")).Click();
 
         cut.WaitForAssertion(() => Assert.Equal(BackgroundJobs.HistoryHeadingId, FocusCalls(f).LastOrDefault()));
         Assert.Equal([JobType.Weather], f.Requests[^1]!.JobTypes);
@@ -744,12 +759,16 @@ public class BackgroundJobsPageTests
     public async Task Reset_clears_the_stored_state_announces_focuses_the_first_filter_and_sends_no_zone()
     {
         await using var f = NewFixture(stored: new BackgroundJobsPageState { Jobs = ["Weather"], Statuses = ["Failed"], SortKey = "Duration", SortDir = "asc", PageSize = 50 });
+        // A narrowed list matches nothing, so the empty state's Reset filters is the way back — the bar has none.
+        f.ListRuns(filter => Page(filter?.JobTypes is { Count: > 0 } ? [] : [Run(JobType.Weather), Run(JobType.ExchangeRateSync)]));
         var cut = await RenderLoaded(f);
         await PickTo(cut, new DateTime(2026, 11, 5));
         cut.WaitForAssertion(() => Assert.Equal("Europe/Oslo", f.Requests[^1]!.TimeZone));
+        Assert.DoesNotContain("Reset filters", cut.Find(".bgj-filter-bar").TextContent);
         f.State.Invocations.Clear();
 
-        cut.FindAll(".bgj-filter-bar button").Single(b => b.TextContent.Contains("Reset filters")).Click();
+        cut.WaitForAssertion(() => Assert.Contains("No runs match these filters.", cut.Markup));
+        cut.FindAll(".bgj-empty button").Single(b => b.TextContent.Contains("Reset filters")).Click();
 
         cut.WaitForAssertion(() => Assert.Contains("Filters reset. 2 runs", cut.Instance.Announcements.Requested));
         var defaults = JobRunFilters.Default.ToState();
