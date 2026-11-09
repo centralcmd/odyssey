@@ -2,11 +2,20 @@
    text uses --mud-palette-text-secondary, which clears 4.5:1 on surface in both themes. */
 .wl {
     container-type: inline-size;
-    /* The table scrolls in its own frame on a phone, and the frame is positioned so the cells'
-       visually hidden text (.odc-sr-only, absolute) is clipped by it rather than escaping to widen the
-       page (WCAG 1.4.10, issue #389). */
+}
+
+/* The table scrolls in its own frame on a phone, and the frame is positioned so the cells' visually hidden
+   text (.odc-sr-only, absolute) is clipped by it rather than escaping to widen the page (WCAG 1.4.10, issue
+   #389). It is focusable (tabindex 0 in the markup), so the ring is drawn inside its edge, where the
+   frame's own clipping cannot cut it off. */
+.wl-scroll {
     position: relative;
     overflow-x: auto;
+}
+
+.wl-scroll:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: calc(-1 * var(--focus-ring-width));
 }
 
 .wl ::deep .odc-table td,

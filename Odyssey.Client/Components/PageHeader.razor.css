@@ -42,31 +42,6 @@
     font-size: 1.75rem;
 }
 
-/* A phone (WCAG 1.4.10's 320px, issue #389): beside the 56px tile the title had ~118px, so a one-word
-   title ("Transactions", "Preferences") could not wrap and pushed the page sideways. The tile stacks
-   above the title, the title steps down to the h3 size, and as a last resort a word too long for the
-   line breaks inside itself rather than overflowing. */
-@media (max-width: 480px) {
-    .ph-lead {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .ph-titles {
-        max-width: 100%;
-    }
-
-    .ph-titles ::deep .ph-title {
-        font-size: var(--fs-h3);
-        overflow-wrap: anywhere;
-    }
-
-    .ph-sub {
-        overflow-wrap: anywhere;
-    }
-}
-
 /* Title + sub stacked with a small gap (sub sits 4px under the title). */
 .ph-titles {
     display: flex;
@@ -95,6 +70,31 @@
     font-size: 0.8125rem;
     line-height: 1.4;
     color: var(--mud-palette-text-secondary);
+}
+
+/* A phone (WCAG 1.4.10's 320px, issue #389): beside the 56px tile the title had ~118px, so a one-word
+   title ("Transactions", "Preferences") could not wrap and pushed the page sideways. The tile stacks
+   above the title, the title steps down to the h3 size, and as a last resort a word too long for the
+   line breaks inside itself rather than overflowing. */
+@media (max-width: 480px) {
+    .ph-lead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ph-titles {
+        max-width: 100%;
+    }
+
+    .ph-titles ::deep .ph-title {
+        font-size: var(--fs-h3);
+        overflow-wrap: anywhere;
+    }
+
+    .ph-sub {
+        overflow-wrap: anywhere;
+    }
 }
 
 .ph-actions {

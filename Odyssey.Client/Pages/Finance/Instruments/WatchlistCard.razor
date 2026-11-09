@@ -53,8 +53,12 @@
             }
             else
             {
-                <OdsTable TRow="InstrumentWatchlistItem" Columns="Columns" Rows="Items"
-                          Caption="@Caption" CaptionHidden="true" RowHeader="symbol" />
+                @* The table scrolls in its own frame on a phone. A scrollable region needs a keyboard path, so the
+                   frame is a labelled, focusable region (WCAG 2.1.1, axe scrollable-region-focusable). *@
+                <div class="wl-scroll" role="region" tabindex="0" aria-label="@Caption">
+                    <OdsTable TRow="InstrumentWatchlistItem" Columns="Columns" Rows="Items"
+                              Caption="@Caption" CaptionHidden="true" RowHeader="symbol" />
+                </div>
             }
         </div>
         @if (_state == WatchlistState.Ready && Items.Count > 0 && (_watchlist!.Truncated || _watchlist.Attributions.Count > 0))
