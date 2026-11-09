@@ -269,6 +269,14 @@ public sealed record SystemSettingsDto
 
     public int ExchangeRateSyncIntervalHours { get; set; }
 
+    // ── Instrument prices (issue #446) ───────────────────────────────────────────────────────────
+
+    public int InstrumentPriceStaleAfterDays { get; set; }
+
+    public int InstrumentPriceSyncIntervalHours { get; set; }
+
+    public int InstrumentPriceSyncHistoryDays { get; set; }
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>

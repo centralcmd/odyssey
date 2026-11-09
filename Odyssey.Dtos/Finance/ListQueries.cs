@@ -213,3 +213,32 @@ public sealed class TransactionTagsQueryParams : QueryParams<TransactionTagSortB
 public sealed class ContractSmartTagTransactionsQueryParams : QueryParams<TransactionSortBy>
 {
 }
+
+/// <summary>Instruments list query (issue #446 §5 endpoint 1).</summary>
+public sealed class InstrumentsQueryParams : QueryParams<InstrumentSortBy>
+{
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public InstrumentType[]? Types { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public string[]? CurrencyCodes { get; set; }
+
+    public bool IncludeArchived { get; set; }
+}
+
+/// <summary>Instrument-prices list query (issue #446 §5 endpoint 8).</summary>
+public sealed class InstrumentPricesQueryParams : QueryParams<InstrumentPriceSortBy>
+{
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public Guid[]? InstrumentIds { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public InstrumentPriceStatus[]? Status { get; set; }
+
+    [MaxLength(ListDefaults.MaxFilterArrayLength)]
+    public InstrumentPriceSource[]? Sources { get; set; }
+
+    public DateOnly? From { get; set; }
+
+    public DateOnly? To { get; set; }
+}

@@ -65,6 +65,17 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
                 entry.Entity.Generation = Guid.NewGuid();
             }
         }
+
+        // The instrument-price source counter (issue #446 §4.4) uses the same rotate-on-save token, so two replicas
+        // reserving a request slot at once cannot both win.
+        foreach (var entry in ChangeTracker.Entries<InstrumentPriceSourceState>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Version == Guid.Empty
+                || entry.State == EntityState.Modified && !entry.Property(state => state.Version).IsModified)
+            {
+                entry.Entity.Version = Guid.NewGuid();
+            }
+        }
     }
 
     // The require-admin-approval rule (issue #349) moved from static config (RegistrationOptions,
@@ -371,6 +382,11 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         // Background-job runs (issue #409 §4.4): who asked for a manual run — the exchange-rate sync's declaration, moved.
         DeclareUserAttribution<JobRun>(modelBuilder, nameof(JobRun.RequestedByUserId));
+
+        // Instruments and their prices (issue #446): shared records that outlive their author.
+        DeclareUserAttribution<Instrument>(modelBuilder, nameof(Instrument.CreatedByUserId), nameof(Instrument.UpdatedByUserId));
+        DeclareUserAttribution<InstrumentPrice>(modelBuilder, nameof(InstrumentPrice.CreatedByUserId));
+        DeclareUserAttribution<InstrumentPriceSourceBinding>(modelBuilder, nameof(InstrumentPriceSourceBinding.UpdatedByUserId));
     }
 
     /// <summary>
@@ -593,6 +609,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     /// <inheritdoc cref="JobRuns" />
     public DbSet<JobHeartbeat> JobHeartbeats => Set<JobHeartbeat>();
+
+    // ── Instrument prices (issue #446) ─────────────────────────────────────────────────────────
+    public DbSet<Instrument> Instruments => Set<Instrument>();
+    public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
+    public DbSet<InstrumentPriceSourceBinding> InstrumentPriceSourceBindings => Set<InstrumentPriceSourceBinding>();
+    public DbSet<InstrumentPriceSourceState> InstrumentPriceSourceStates => Set<InstrumentPriceSourceState>();
 
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from

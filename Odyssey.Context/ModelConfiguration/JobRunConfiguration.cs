@@ -17,6 +17,7 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
             .HasValue<PhotoOriginalBackfillJobRun>(JobType.PhotoOriginalBackfill)
             .HasValue<FileAnalysisJobRun>(JobType.FileAnalysis)
             .HasValue<FileBlobBackfillJobRun>(JobType.FileBlobBackfill)
+            .HasValue<InstrumentPriceSyncJobRun>(JobType.InstrumentPriceSync)
             .IsComplete();
 
         entity.Property(run => run.OpenHeldGuard)
@@ -25,11 +26,11 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
         // Every exchange-rate sync and file-storage run is exclusive (a purge holds the sync's guard too); for the
         // work-driven jobs only a manual run is, so scheduled bursts of several processes can run side by side.
         entity.Property(run => run.ExclusiveGuard)
-            .HasComputedColumnSql("IF(`Status` = 0 AND (`JobType` IN (1, 3) OR `Trigger` = 1), `JobType`, NULL)", stored: false);
+            .HasComputedColumnSql("IF(`Status` = 0 AND (`JobType` IN (1, 3, 8) OR `Trigger` = 1), `JobType`, NULL)", stored: false);
 
         entity.ToTable(tb =>
         {
-            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7)");
+            tb.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8)");
             tb.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
             tb.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
             tb.HasCheckConstraint(
@@ -52,7 +53,11 @@ internal sealed class JobRunConfiguration : IEntityTypeConfiguration<JobRun>
                 + " AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0"
                 + " AND COALESCE(`AnalysesRefused`, 0) >= 0"
                 + " AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0"
-                + " AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0");
+                + " AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0"
+                + " AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0"
+                + " AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0"
+                + " AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0"
+                + " AND COALESCE(`PricesDeleted`, 0) >= 0");
             // FinishedAtUtc is NULL only on a Running row or an open held period, and always NULL on a Running one.
             tb.HasCheckConstraint(
                 "CK_JobRuns_FinishedMatchesStatus",

@@ -290,6 +290,35 @@ public class FileBlobBackfillJobRun : JobRun
 }
 
 /// <summary>
+/// An instrument-price sync run or a purge of an instrument's prices (issue #446 §4.6). The purge takes the same
+/// <see cref="JobRun.ExclusiveGuard"/>, so a purge and a sync never overlap.
+/// </summary>
+public class InstrumentPriceSyncJobRun : JobRun
+{
+    public InstrumentPriceSyncJobRun() : base(Dtos.Application.JobType.InstrumentPriceSync)
+    {
+    }
+
+    public int InstrumentsAttempted { get; set; }
+
+    public int InstrumentsSucceeded { get; set; }
+
+    public int InstrumentsFailed { get; set; }
+
+    public int PricesInserted { get; set; }
+
+    public int FallbacksUsed { get; set; }
+
+    public int RequestsMade { get; set; }
+
+    /// <summary>Rows removed by a purge run.</summary>
+    public int PricesDeleted { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() =>
+        (InstrumentsSucceeded + PricesDeleted, InstrumentsFailed);
+}
+
+/// <summary>
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes

@@ -222,6 +222,15 @@ public static class SystemSettingsKeys
     public const string ExchangeRateSyncIntervalHours = "ExchangeRateSyncIntervalHours";
 
     // ---------------------------------------------------------------------------------------------
+    // Instrument prices (issue #446 §8.4): when a watchlist price reads as stale, how long the price sync
+    // waits between scheduled runs, and how deep a new source binding backfills.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string InstrumentPriceStaleAfterDays = "InstrumentPriceStaleAfterDays";
+    public const string InstrumentPriceSyncIntervalHours = "InstrumentPriceSyncIntervalHours";
+    public const string InstrumentPriceSyncHistoryDays = "InstrumentPriceSyncHistoryDays";
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346). How long a released file stays on disk before the
     // worker's maintenance job removes it — the window a backup has to copy the file volumes after the
     // database dump. It is the retention period for deleted personal data, so it takes the security claim.
@@ -310,6 +319,9 @@ public static class SystemSettingsKeys
         WeatherDefaultPointId,
         ExchangeRateHistoryStartDate,
         ExchangeRateSyncIntervalHours,
+        InstrumentPriceStaleAfterDays,
+        InstrumentPriceSyncIntervalHours,
+        InstrumentPriceSyncHistoryDays,
         FileStorageDeletionGraceHours,
         JobRunRetentionDays,
     ];

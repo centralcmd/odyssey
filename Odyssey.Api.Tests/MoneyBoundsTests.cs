@@ -66,6 +66,13 @@ public class MoneyBoundsTests
         (typeof(Context.ExchangeRate), nameof(Context.ExchangeRate.Rate)),
     ];
 
+    // Instrument closing prices (issue #446): decimal(18, InstrumentPriceRules.MaxDecimals), bounded by
+    // MoneyBounds.InstrumentPriceMin/Max on the write DTOs.
+    private static readonly (Type Entity, string Property)[] PriceColumns =
+    [
+        (typeof(Context.InstrumentPrice), nameof(Context.InstrumentPrice.Close)),
+    ];
+
     // Decimal columns deliberately outside MoneyBounds, each with its reason. A new decimal column must
     // land in one of the three lists, which forces the question "does a request write this?" to be asked.
     private static readonly (Type Entity, string Property)[] OtherDecimalColumns =
@@ -144,10 +151,26 @@ public class MoneyBoundsTests
     }
 
     [Fact]
+    public void PriceColumns_HaveThePricePrecision_FromTheSharedDecimalRule()
+    {
+        using var context = CreateContext();
+        foreach (var (entity, property) in PriceColumns)
+        {
+            var column = ModelProperty(context, entity, property);
+            Assert.Equal(
+                $"{entity.Name}.{property} decimal({MoneyBounds.InstrumentPricePrecision},{InstrumentPriceRules.MaxDecimals})",
+                $"{entity.Name}.{property} decimal({column.GetPrecision()},{column.GetScale()})");
+        }
+
+        Assert.Equal(ColumnMax(MoneyBounds.InstrumentPricePrecision, InstrumentPriceRules.MaxDecimals), Parse(MoneyBounds.InstrumentPriceMax));
+        Assert.Equal(ColumnStep(InstrumentPriceRules.MaxDecimals), Parse(MoneyBounds.InstrumentPriceMin));
+    }
+
+    [Fact]
     public void EveryDecimalColumnInTheModel_IsClassified()
     {
         using var context = CreateContext();
-        var classified = AmountColumns.Concat(RateColumns).Concat(OtherDecimalColumns)
+        var classified = AmountColumns.Concat(RateColumns).Concat(PriceColumns).Concat(OtherDecimalColumns)
             .Select(c => $"{c.Entity.Name}.{c.Property}")
             .ToHashSet(StringComparer.Ordinal);
 
@@ -220,6 +243,13 @@ public class MoneyBoundsTests
     {
         $"{nameof(NewExchangeRate)}.{nameof(NewExchangeRate.Rate)}",
         $"{nameof(UpdateExchangeRate)}.{nameof(UpdateExchangeRate.Rate)}",
+    };
+
+    // The instrument-close members (issue #446); bounded by the price column, not the amount column.
+    private static readonly HashSet<string> PriceMembers = new(StringComparer.Ordinal)
+    {
+        $"{nameof(NewInstrumentPrice)}.{nameof(NewInstrumentPrice.Close)}",
+        $"{nameof(UpdateInstrumentPrice)}.{nameof(UpdateInstrumentPrice.Close)}",
     };
 
     // Write-side decimals that are neither a money amount nor a rate, each with its reason. Anything a
@@ -351,11 +381,12 @@ public class MoneyBoundsTests
     {
         var amount = Expected(MoneyBounds.AmountMin, MoneyBounds.AmountMax);
         var rate = Expected(MoneyBounds.ExchangeRateMin, MoneyBounds.ExchangeRateMax);
+        var price = Expected(MoneyBounds.InstrumentPriceMin, MoneyBounds.InstrumentPriceMax);
 
         // Each entry names the member, what it should carry and what it carries.
         var violations = WriteSideDecimalMembers()
             .Where(member => !DecimalMembersOutsideMoneyBounds.ContainsKey(member.Name))
-            .Select(member => (member.Name, Expected: RateMembers.Contains(member.Name) ? rate : amount, Actual: Describe(member.Range)))
+            .Select(member => (member.Name, Expected: RateMembers.Contains(member.Name) ? rate : PriceMembers.Contains(member.Name) ? price : amount, Actual: Describe(member.Range)))
             .Where(member => member.Expected != member.Actual)
             .Select(member => $"{member.Name}: expected {member.Expected}, found {member.Actual}")
             .ToList();

@@ -499,6 +499,19 @@ public sealed record SystemSettingsUpdate
     public int? ExchangeRateSyncIntervalHours { get; set; }
 
     // ---------------------------------------------------------------------------------------------
+    // Instrument prices (issue #446 §8.4).
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.InstrumentPriceStaleAfterDaysMin, SystemSettingsBounds.InstrumentPriceStaleAfterDaysMax)]
+    public int? InstrumentPriceStaleAfterDays { get; set; }
+
+    [Range(SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMin, SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMax)]
+    public int? InstrumentPriceSyncIntervalHours { get; set; }
+
+    [Range(SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMin, SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMax)]
+    public int? InstrumentPriceSyncHistoryDays { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
     // for deleted personal data, so every change is audited.
     // ---------------------------------------------------------------------------------------------

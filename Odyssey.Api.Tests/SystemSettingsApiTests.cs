@@ -164,7 +164,7 @@ public class SystemSettingsApiTests
         // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
         // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
         // and +2 for the extraction and match prompt guidance (issue #433).
-        Assert.Equal(74, rows.Count);
+        Assert.Equal(77, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

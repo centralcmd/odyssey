@@ -28,6 +28,9 @@ public enum JobType : byte
     /// <summary>The one-off move of every remaining <c>FileBlob</c> onto the file store (issue #448).</summary>
     FileBlobBackfill = 7,
 
+    /// <summary>The instrument-price sync and its purges (issue #446).</summary>
+    InstrumentPriceSync = 8,
+
     Unknown = byte.MaxValue,
 }
 
