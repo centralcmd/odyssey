@@ -227,6 +227,20 @@ public partial class OdsRecordTable<TRow>
 
     private string HeadIdFor(object key) => $"{SlotFor(key)}-head";
 
+    /// <summary>
+    /// Moves focus to a row's header cell (the <see cref="RowHeader"/> column, else the first) — the landing
+    /// spot a page picks after removing a row ("next row's header, else the previous one", issue #452 §3.3).
+    /// Returns false when the row is not rendered, so the caller can fall back (the page <c>h1</c>).
+    /// </summary>
+    public async Task<bool> FocusRowHeaderAsync(object key)
+    {
+        if (!_rowSlots.ContainsKey(key))
+            return false;
+        try
+        { return await Js.InvokeAsync<bool>("odsRecFocusCell", HeadIdFor(key)); }
+        catch (JSException) { return false; }
+    }
+
     // The row's menu items, or null when none is available — a read-only row renders no trigger at all.
     private IReadOnlyList<OdsMenuItem>? MenuItemsFor(TRow row, object key, bool expanded, bool editing)
     {

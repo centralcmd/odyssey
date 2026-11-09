@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using System.Globalization;
 using System.Net;
 using Microsoft.AspNetCore.Components;
@@ -432,6 +433,11 @@ public partial class InstrumentPricesPage
         if (!_canDelete || key is not Guid id || _prices.FirstOrDefault(p => p.InstrumentPriceId == id) is not { } price)
             return;
 
+        // Where focus lands if the row goes: the next row's header, else the previous one's, else the h1.
+        var index = _prices.IndexOf(price);
+        var candidates = _prices.Skip(index + 1).Concat(_prices.Take(index).Reverse())
+            .Select(p => p.InstrumentPriceId).ToList();
+
         _busy.Add(id);
         StateHasChanged();
         var result = await Prices.DeleteAsync(id);
@@ -439,6 +445,22 @@ public partial class InstrumentPricesPage
         ReportDelete(result, price);
         // The row count and the pager's total come from one fetch: refetch, never just drop the row.
         await RefreshAsync();
+        if (result.IsSuccess || result.Status == HttpStatusCode.NotFound)
+            await FocusAfterRemovalAsync(candidates);
+    }
+
+    private OdsRecordTable<ExistingInstrumentPrice>? _table;
+
+    private async Task FocusAfterRemovalAsync(IReadOnlyList<Guid> candidates)
+    {
+        await InvokeAsync(StateHasChanged);
+        var present = _prices.Select(p => p.InstrumentPriceId).ToHashSet();
+        if (_table is not null && candidates.FirstOrDefault(present.Contains) is var next && next != Guid.Empty
+            && await _table.FocusRowHeaderAsync(next))
+            return;
+        try
+        { await Js.InvokeVoidAsync("odsFocusChainOrHeading", Array.Empty<string>()); }
+        catch (JSException) { }
     }
 
     private void ReportDelete(ApiResult result, ExistingInstrumentPrice price)

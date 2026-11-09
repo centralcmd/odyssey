@@ -126,14 +126,14 @@
                         var focusTarget = RowBusy is not null && col.Key == headKey;
                         @if (RowHeader is not null && col.Key == RowHeader)
                         {
-                            <th scope="row" class="@CellClass(col)" id="@(focusTarget ? HeadIdFor(rk) : null)"
+                            <th scope="row" class="@CellClass(col)" id="@(col.Key == headKey ? HeadIdFor(rk) : null)"
                                 tabindex="@(focusTarget ? "-1" : null)" data-rt-focus="@(focusTarget ? "" : null)">
                                 @col.Cell?.Invoke(row, cellCtx)
                             </th>
                         }
                         else
                         {
-                            <td class="@CellClass(col)" id="@(focusTarget ? HeadIdFor(rk) : null)"
+                            <td class="@CellClass(col)" id="@(col.Key == headKey ? HeadIdFor(rk) : null)"
                                 tabindex="@(focusTarget ? "-1" : null)" data-rt-focus="@(focusTarget ? "" : null)">
                                 @col.Cell?.Invoke(row, cellCtx)
                             </td>

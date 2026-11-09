@@ -9,6 +9,7 @@
 @inject IInstrumentsApiClient Instruments
 @inject IInstrumentPricesApiClient Prices
 @inject TimeProvider Time
+@inject IJSRuntime Js
 
 <PageTitle>Instrument prices · Odyssey</PageTitle>
 
@@ -72,7 +73,7 @@
 
     @* tabindex=-1 so focus has somewhere to land when the last row on a page is deleted. *@
     <MudCard Outlined="true" id="ipp-prices-card" tabindex="-1">
-        <OdsRecordTable TRow="ExistingInstrumentPrice"
+        <OdsRecordTable TRow="ExistingInstrumentPrice" @ref="_table"
                         Caption="Instrument prices"
                         CaptionHidden="true"
                         RowHeader="instrument"

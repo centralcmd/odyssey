@@ -161,6 +161,38 @@ public class InstrumentPricesPageTests
     }
 
     [Fact]
+    public async Task Deleting_a_row_moves_focus_to_the_next_rows_header_else_the_heading()
+    {
+        var h = NewHarness(PermissionClaims.InstrumentPricesRead, PermissionClaims.InstrumentPricesDelete);
+        await using var _ = h.Ctx;
+        h.Ctx.JSInterop.Setup<bool>("odsRecFocusCell", _ => true).SetResult(true);
+        h.Prices.Setup(p => p.DeleteAsync(ManualId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        var cut = Render(h);
+        var nextHead = RowOf(cut, "5 Nov 2026").QuerySelector("th[scope=row]")!.Id;
+
+        // The refetch returns the remaining row.
+        h.Prices.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<InstrumentPricesFilter?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<ExistingInstrumentPrice>>.Success(
+                new PagedResult<ExistingInstrumentPrice> { Items = [Fetched], TotalCount = 1 }, HttpStatusCode.OK));
+        var table = cut.FindComponent<OdsRecordTable<ExistingInstrumentPrice>>();
+        await cut.InvokeAsync(() => table.Instance.OnDelete.InvokeAsync(ManualId));
+
+        cut.WaitForAssertion(() =>
+            Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsRecFocusCell" && (string?)i.Arguments[0] == nextHead));
+        Assert.DoesNotContain(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusChainOrHeading");
+
+        // The last row gone: focus falls back to the page heading.
+        h.Prices.Setup(p => p.DeleteAsync(FetchedId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult.Success(HttpStatusCode.NoContent));
+        h.Prices.Setup(p => p.ListAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<InstrumentPricesFilter?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<PagedResult<ExistingInstrumentPrice>>.Success(
+                new PagedResult<ExistingInstrumentPrice> { Items = [], TotalCount = 0 }, HttpStatusCode.OK));
+        await cut.InvokeAsync(() => table.Instance.OnDelete.InvokeAsync(FetchedId));
+        cut.WaitForAssertion(() => Assert.Contains(h.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusChainOrHeading"));
+    }
+
+    [Fact]
     public async Task The_sub_line_names_the_source_only_while_fetched_prices_exist()
     {
         var h = NewHarness(PermissionClaims.InstrumentPricesRead);
