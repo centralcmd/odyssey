@@ -49,6 +49,21 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     [Fact]
+    public void The_graph_hosts_the_instrument_price_sync_with_no_production_source()
+    {
+        using var provider = Build();
+
+        Assert.Contains(provider.GetServices<IHostedService>(),
+            service => service is PeriodicJobService<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncJob>);
+        using var scope = provider.CreateScope();
+        Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService>());
+
+        // Phase 1 ships the framework only (issue #446): no source client is registered in a production host.
+        Assert.Empty(provider.GetServices<Odyssey.Core.Finance.Instruments.Sources.IInstrumentPriceSource>());
+        Assert.True(provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.InstrumentPriceSourceCatalogue>().IsEmpty);
+    }
+
+    [Fact]
     public void The_graph_resolves_and_hosts_the_exchange_rate_sync_job()
     {
         using var provider = Build();

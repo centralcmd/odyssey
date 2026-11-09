@@ -327,6 +327,36 @@ public class AuthorizationPolicyTests
     }
 
     /// <summary>
+    /// Issue #446 §7.2: every role reads instruments and prices; only Admin and Owner write them. Source
+    /// administration is the Admin's <c>system-settings.*</c> pair, so it is not part of this table.
+    /// </summary>
+    [Theory]
+    [InlineData(PermissionClaims.InstrumentsRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.InstrumentPricesRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.InstrumentsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentsDelete, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesDelete, new[] { "Admin", "Owner" })]
+    public void The_instrument_claims_are_held_by_exactly_the_specified_roles(string claim, string[] expected)
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(claim))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected, holders);
+    }
+
+    /// <summary>Issue #446 §7.3: every price read embeds instrument fields, so a price reader must read instruments.</summary>
+    [Fact]
+    public void No_role_holds_InstrumentPricesRead_without_InstrumentsRead() =>
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.InstrumentPricesRead) && !role.Claims.Contains(PermissionClaims.InstrumentsRead));
+
+    /// <summary>
     /// Issue #380 decision 3 (S-R6): <c>locations.read</c> sees every address in the app, so the set of roles
     /// holding it is pinned exactly — widening it is a visible change, not a side effect.
     /// </summary>

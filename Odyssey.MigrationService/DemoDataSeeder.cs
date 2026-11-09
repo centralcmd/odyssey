@@ -401,6 +401,8 @@ public sealed class DemoDataSeeder(
         // were committed by SeedContactsAsync, which is why the caller runs it first.
         await context.TransactionTags.AddRangeAsync(data.Tags, cancellationToken);
         await context.ExchangeRates.AddRangeAsync(data.ExchangeRates, cancellationToken);
+        await context.Instruments.AddRangeAsync(data.Instruments, cancellationToken);
+        await context.InstrumentPrices.AddRangeAsync(data.InstrumentPrices, cancellationToken);
         await context.Accounts.AddRangeAsync(data.Accounts, cancellationToken);
         await context.AccountEstimates.AddRangeAsync(data.AccountEstimates, cancellationToken);
         await context.Terms.AddRangeAsync(data.Terms, cancellationToken);

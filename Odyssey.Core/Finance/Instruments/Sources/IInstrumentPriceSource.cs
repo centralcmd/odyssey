@@ -55,7 +55,7 @@ public sealed record SourceFetchResult
 /// </summary>
 public interface IInstrumentPriceSource
 {
-    /// <summary>Stable, persisted, <c>^[a-z0-9-]{1,32}$</c>. Never renamed.</summary>
+    /// <summary>Stable and persisted; matches <see cref="InstrumentIdentifierRules.SourceKeyPattern"/>. Never renamed.</summary>
     string Key { get; }
 
     string DisplayName { get; }
