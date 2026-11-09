@@ -71,27 +71,27 @@ public class OdysseyApiFactory(
         Path.Combine(Path.GetTempPath(), $"odyssey-tests-dp-{Guid.NewGuid():N}");
 
     /// <summary>
-    /// A per-factory photo volume (issue #428 §3.7). A photo owns its original on the object store, and the upload
-    /// has no database fallback, so every API host binds <c>PhotoOriginals</c> and <c>PhotoThumbnails</c> to a temp
-    /// volume — and, since issue #448, the three file areas too — unless the factory configures its own volumes
-    /// (<c>FileStorageApiFactory</c>). Deleted on dispose.
+    /// A per-factory file volume (issues #428 §3.7, #448). Photo originals and every Files-store upload live on the
+    /// object store with no database fallback, so every API host binds <c>PhotoOriginals</c>, <c>PhotoThumbnails</c>
+    /// and the three file areas (<c>FinanceFiles</c>, <c>JournalFiles</c>, <c>ContactAvatars</c>) to one temp volume,
+    /// unless the factory configures its own volumes (<c>FileStorageApiFactory</c>). Deleted on dispose.
     /// </summary>
-    private readonly string photoVolumePath = sharingStoreWith?.photoVolumePath
-        ?? Path.Combine(Path.GetTempPath(), $"odyssey-tests-photos-{Guid.NewGuid():N}");
+    private readonly string fileVolumePath = sharingStoreWith?.fileVolumePath
+        ?? Path.Combine(Path.GetTempPath(), $"odyssey-tests-files-{Guid.NewGuid():N}");
 
     /// <summary>A factory sharing another's store shares its volume too (files live there since issue #448); the owner deletes it.</summary>
-    private readonly bool sharesPhotoVolume = sharingStoreWith is not null;
+    private readonly bool sharesFileVolume = sharingStoreWith is not null;
 
-    /// <summary>The free space the photo volume reports; a test sets it to exercise the upload reserve.</summary>
-    public TestSpaceProbe PhotoVolumeSpace { get; } = new();
+    /// <summary>The free space the file volume reports; a test sets it to exercise the upload reserve.</summary>
+    public TestSpaceProbe FileVolumeSpace { get; } = new();
 
-    /// <summary>The temp photo volume's root, for a test that inspects the files written.</summary>
-    public string PhotoVolumeRoot => photoVolumePath;
+    /// <summary>The temp file volume's root, for a test that inspects the files written.</summary>
+    public string FileVolumeRoot => fileVolumePath;
 
     /// <summary>Set to <c>"true"</c> in a factory's configuration for a host with no volume at all (the no-op store).</summary>
     public const string NoFileVolumeKey = "Testing:NoFileVolume";
 
-    private bool OwnsPhotoVolume =>
+    private bool OwnsFileVolume =>
         configuration?.Keys.Any(k => k.StartsWith("FileStorage:Volumes:", StringComparison.Ordinal)) != true
         && configuration?.GetValueOrDefault(NoFileVolumeKey) != "true";
 
@@ -108,10 +108,10 @@ public class OdysseyApiFactory(
         builder.ConfigureAppConfiguration((_, config) =>
         {
             var settings = new Dictionary<string, string?> { ["UseInMemoryDatabase"] = "true" };
-            if (OwnsPhotoVolume)
+            if (OwnsFileVolume)
             {
-                Directory.CreateDirectory(photoVolumePath);
-                settings["FileStorage:Volumes:photos:RootPath"] = photoVolumePath;
+                Directory.CreateDirectory(fileVolumePath);
+                settings["FileStorage:Volumes:photos:RootPath"] = fileVolumePath;
                 settings["FileStorage:Bindings:PhotoOriginals"] = "photos";
                 settings["FileStorage:Bindings:PhotoThumbnails"] = "photos";
                 // Files on the store (issue #448): every upload writes a real file, so every host binds the three areas.
@@ -161,12 +161,12 @@ public class OdysseyApiFactory(
                 })
                 .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(TestAuthHandler.SchemeName, _ => { });
 
-            if (OwnsPhotoVolume)
+            if (OwnsFileVolume)
             {
                 // The temp volume lives under the temp directory, which check C4 forbids in a deployment, and its real
                 // free space is whatever the CI disk has — the reserve check reads the probe instead.
                 services.Replace(ServiceDescriptor.Singleton(new FileStorageForbiddenRoots([])));
-                services.Replace(ServiceDescriptor.Singleton<IFileStorageSpaceProbe>(PhotoVolumeSpace));
+                services.Replace(ServiceDescriptor.Singleton<IFileStorageSpaceProbe>(FileVolumeSpace));
             }
 
             configureServices?.Invoke(services);
@@ -189,9 +189,9 @@ public class OdysseyApiFactory(
                 Directory.Delete(dataProtectionKeysPath, recursive: true);
             }
 
-            if (!sharesPhotoVolume && Directory.Exists(photoVolumePath))
+            if (!sharesFileVolume && Directory.Exists(fileVolumePath))
             {
-                Directory.Delete(photoVolumePath, recursive: true);
+                Directory.Delete(fileVolumePath, recursive: true);
             }
         }
         catch (IOException)

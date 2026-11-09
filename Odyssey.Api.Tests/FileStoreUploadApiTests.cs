@@ -64,7 +64,7 @@ public sealed class FileStoreUploadApiTests
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var stored = await context.StoredObjects.AsNoTracking().SingleAsync(o => o.Id == StoredFileAreas.StoredObjectIdOf(row));
         Assert.StartsWith(root + DateTime.UtcNow.Year.ToString("D4") + "/1/", stored.RelativePath, StringComparison.Ordinal);
-        Assert.Equal(Pdf, await File.ReadAllBytesAsync(Path.Combine(factory.PhotoVolumeRoot, stored.RelativePath)));
+        Assert.Equal(Pdf, await File.ReadAllBytesAsync(Path.Combine(factory.FileVolumeRoot, stored.RelativePath)));
         Assert.False(await context.FileBlob.AnyAsync());
     }
 
@@ -93,7 +93,7 @@ public sealed class FileStoreUploadApiTests
     {
         await using var factory = new OdysseyApiFactory(FilesClaims);
         using var client = factory.CreateClient();
-        factory.PhotoVolumeSpace.Override = (1024L * 1024 * 1024, 1024L * 1024 * 1024 * 1024);
+        factory.FileVolumeSpace.Override = (1024L * 1024 * 1024, 1024L * 1024 * 1024 * 1024);
 
         var response = await UploadAsync(client, "Finance");
 
