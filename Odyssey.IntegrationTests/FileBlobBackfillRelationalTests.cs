@@ -125,28 +125,43 @@ public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await using var photos = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString);
+        // The shared database can hold other classes' legacy files, so these are the oldest by far (they move first)
+        // and carry unique bytes, so their hashes name only their own objects.
         var ids = new List<Guid>();
+        var hashes = new List<string>();
         for (var i = 0; i < 4; i++)
         {
-            ids.Add(await StageLegacyAsync(Pdf.Append((byte)i).ToArray()));
+            var bytes = Pdf.Concat(Guid.NewGuid().ToByteArray()).ToArray();
+            hashes.Add(Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant());
+            ids.Add(await StageLegacyAsync(bytes, new DateTime(1990, 1, 1, 0, 0, 0, DateTimeKind.Utc).AddMinutes(i)));
         }
 
         await Task.WhenAll(Job(photos).RunOnceAsync(default), Job(photos).RunOnceAsync(default));
-        await Job(photos).RunOnceAsync(default);
+        for (var pass = 0; pass < 5; pass++)
+        {
+            await using var check = NewContext();
+            if (!await check.FileMetadata.AnyAsync(f => ids.Contains(f.Id) && f.FileBlobId != null))
+            {
+                break;
+            }
+
+            await Job(photos).RunOnceAsync(default);
+        }
 
         await using var context = NewContext();
         var files = await context.FileMetadata.AsNoTracking().Where(f => ids.Contains(f.Id)).ToListAsync();
         Assert.All(files, f => Assert.Null(f.FileBlobId));
         var objectIds = files.Select(f => f.FinanceStoredObjectId!.Value).ToList();
         Assert.Equal(4, objectIds.Distinct().Count());
+        // Each file's bytes were committed exactly once: a losing runner's copy is never committed.
         Assert.Equal(4, await context.StoredObjects.CountAsync(o =>
-            o.FeatureKey == StoredFileAreas.FinanceFeatureKey && o.State == StoredObjectState.Committed));
+            hashes.Contains(o.Sha256Hash!) && o.State == StoredObjectState.Committed));
     }
 
     private static FileBlobBackfillJob Job(PhotoStoreHost photos) =>
         ActivatorUtilities.CreateInstance<FileBlobBackfillJob>(photos.Host.Services);
 
-    private async Task<Guid> StageLegacyAsync(byte[]? bytes = null)
+    private async Task<Guid> StageLegacyAsync(byte[]? bytes = null, DateTime? uploadedAt = null)
     {
         bytes ??= Pdf;
         await using var context = NewContext();
@@ -155,7 +170,7 @@ public class FileBlobBackfillRelationalTests(MariaDbFixture fixture)
         {
             Id = Guid.NewGuid(), FileName = "Lønnsslipp.pdf", ContentType = "application/pdf", SizeBytes = bytes.LongLength,
             Sha256Hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant(), FileBlobId = blob.Id,
-            UploadedAtUtc = new DateTime(2021, 3, 1, 0, 0, 0, DateTimeKind.Utc),
+            UploadedAtUtc = uploadedAt ?? new DateTime(2021, 3, 1, 0, 0, 0, DateTimeKind.Utc),
         };
         context.FileBlob.Add(blob);
         context.FileMetadata.Add(file);
