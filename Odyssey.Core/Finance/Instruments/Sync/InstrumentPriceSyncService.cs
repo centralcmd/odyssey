@@ -220,7 +220,10 @@ public sealed class InstrumentPriceSyncService(
         var now = Now;
 
         var keys = sources.All.Select(s => s.Key).ToList();
-        var bindings = await context.InstrumentPriceSourceBindings
+        // Untracked snapshots: each binding's watermark and failure state is written per span, under the instrument's
+        // lock and in the same transaction as that span's inserts, so a binding replaced or removed mid-run is
+        // detected rather than overwritten, and a run that ends early keeps every span it committed.
+        var bindings = await context.InstrumentPriceSourceBindings.AsNoTracking()
             .Where(b => b.Enabled && keys.Contains(b.SourceKey))
             .OrderBy(b => b.InstrumentId).ThenBy(b => b.Priority)
             .ToListAsync(cancellationToken);
@@ -229,7 +232,7 @@ public sealed class InstrumentPriceSyncService(
             .Where(i => instrumentIds.Contains(i.InstrumentId) && i.Archived == null)
             .ToDictionaryAsync(i => i.InstrumentId, cancellationToken);
 
-        var states = await context.InstrumentPriceSourceStates.Where(s => keys.Contains(s.SourceKey)).ToDictionaryAsync(s => s.SourceKey, cancellationToken);
+        var states = await context.InstrumentPriceSourceStates.AsNoTracking().Where(s => keys.Contains(s.SourceKey)).ToDictionaryAsync(s => s.SourceKey, cancellationToken);
         var runStates = new Dictionary<string, SourceRunState>(StringComparer.Ordinal);
         foreach (var source in sources.All)
         {
@@ -249,7 +252,9 @@ public sealed class InstrumentPriceSyncService(
                 }
                 else if (secret.State != SecretReadState.Found)
                 {
+                    // Unreadable is never quiet: the run cannot end Succeeded while a source's credential is unusable.
                     runState.Unusable = true;
+                    counters.UnreadableSources++;
                     counters.Fail(JobFailureCategory.Configuration);
                 }
             }
@@ -304,8 +309,6 @@ public sealed class InstrumentPriceSyncService(
                 counters.InstrumentsFailed++;
             }
         }
-
-        await context.SaveChangesAsync(CancellationToken.None);
     }
 
     /// <summary>Forward fill then one backfill span for one binding; <c>true</c> on a valid batch.</summary>
@@ -329,15 +332,17 @@ public sealed class InstrumentPriceSyncService(
 
             var to = MinDate(today, from.AddDays(maxDays - 1));
             runState.ForwardRequests++;
-            var ok = await FetchSpanAsync(instrument, binding, runState, from, to, counters, cancellationToken);
-            if (!ok)
+            var outcome = await FetchSpanAsync(instrument, binding, runState, from, to, counters, row =>
             {
-                return anySuccess;
+                row.NewestFetched = to;
+                row.BackfilledFrom ??= from;
+            }, cancellationToken);
+            if (outcome != SpanOutcome.Stored)
+            {
+                return anySuccess && outcome != SpanOutcome.BindingChanged;
             }
 
             anySuccess = true;
-            binding.NewestFetched = to;
-            binding.BackfilledFrom ??= from;
         }
 
         // Backfill, newest span first; BackfilledFrom only advances across complete spans.
@@ -346,18 +351,24 @@ public sealed class InstrumentPriceSyncService(
         {
             var to = backfilled.AddDays(-1);
             var from = MaxDate(start, to.AddDays(-(maxDays - 1)));
-            if (await FetchSpanAsync(instrument, binding, runState, from, to, counters, cancellationToken))
-            {
-                binding.BackfilledFrom = from;
-            }
+            await FetchSpanAsync(instrument, binding, runState, from, to, counters, row => row.BackfilledFrom = from, cancellationToken);
         }
 
         return anySuccess;
     }
 
-    private async Task<bool> FetchSpanAsync(
+    private enum SpanOutcome
+    {
+        Stored,
+        Failed,
+
+        /// <summary>The binding was removed, or its source symbol changed, while the run held a snapshot of it.</summary>
+        BindingChanged,
+    }
+
+    private async Task<SpanOutcome> FetchSpanAsync(
         Instrument instrument, InstrumentPriceSourceBinding binding, SourceRunState runState, DateOnly from, DateOnly to,
-        RunCounters counters, CancellationToken cancellationToken)
+        RunCounters counters, Action<InstrumentPriceSourceBinding> advance, CancellationToken cancellationToken)
     {
         var source = runState.Source;
         var request = new SourceFetchRequest(binding.SourceSymbol, from, to, instrument.CurrencyCode);
@@ -378,14 +389,14 @@ public sealed class InstrumentPriceSyncService(
         catch (SourceQuotaExhaustedException)
         {
             runState.Capped = true;
-            return false;
+            return SpanOutcome.Failed;
         }
         catch (SourceCredentialException credential)
         {
             if (credential.State == SecretReadState.NotSet)
             {
                 runState.Unconfigured = true;
-                return false;
+                return SpanOutcome.Failed;
             }
 
             result = SourceFetchResult.Failed(JobFailureCategory.Configuration);
@@ -424,32 +435,50 @@ public sealed class InstrumentPriceSyncService(
         if (!result.Succeeded)
         {
             await RecordFailureAsync(binding, runState, result, counters, cancellationToken);
-            return false;
+            return SpanOutcome.Failed;
         }
 
-        counters.PricesInserted += await InsertAsync(instrument.InstrumentId, source.Key, result.Closes!, cancellationToken);
+        var now = Now;
+        void Succeed(InstrumentPriceSourceBinding row)
+        {
+            advance(row);
+            row.LastSuccessUtc = now;
+            row.ConsecutiveFailures = 0;
+            row.LastFailure = null;
+        }
+
+        if (await InsertAsync(binding, result.Closes!, Succeed, cancellationToken) is not { } inserted)
+        {
+            return SpanOutcome.BindingChanged;
+        }
+
+        counters.PricesInserted += inserted;
         runState.ConsecutiveUnavailable = 0;
-        binding.LastSuccessUtc = Now;
-        binding.ConsecutiveFailures = 0;
-        binding.LastFailure = null;
-        return true;
+        Succeed(binding);
+        return SpanOutcome.Stored;
     }
 
-    private async Task<int> InsertAsync(Guid instrumentId, string sourceKey, IReadOnlyList<FetchedClose> closes, CancellationToken cancellationToken)
+    /// <summary>
+    /// Inserts a span's closes and advances its binding in one transaction under the instrument's lock. Returns
+    /// <c>null</c>, writing nothing, when the binding no longer exists with the symbol the run fetched for.
+    /// </summary>
+    private async Task<int?> InsertAsync(
+        InstrumentPriceSourceBinding snapshot, IReadOnlyList<FetchedClose> closes, Action<InstrumentPriceSourceBinding> advance,
+        CancellationToken cancellationToken)
     {
-        if (closes.Count == 0)
-        {
-            return 0;
-        }
-
         await using var scope = scopes.CreateAsyncScope();
         var writer = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         return await InstrumentLocks.InTransactionAsync(writer, async () =>
         {
-            await InstrumentLocks.LockAsync(writer, instrumentId, cancellationToken);
+            await InstrumentLocks.LockAsync(writer, snapshot.InstrumentId, cancellationToken);
+            if (await CurrentBindingAsync(writer, snapshot, cancellationToken) is not { } row)
+            {
+                return (int?)null;
+            }
+
             var dates = closes.Select(c => c.TradingDate).ToList();
             var existing = await writer.InstrumentPrices.AsNoTracking()
-                .Where(p => p.InstrumentId == instrumentId && p.SourceKey == sourceKey && dates.Contains(p.TradingDate))
+                .Where(p => p.InstrumentId == snapshot.InstrumentId && p.SourceKey == snapshot.SourceKey && dates.Contains(p.TradingDate))
                 .Select(p => p.TradingDate)
                 .ToListAsync(cancellationToken);
             var fresh = closes.Where(c => !existing.Contains(c.TradingDate)).ToList();
@@ -458,18 +487,43 @@ public sealed class InstrumentPriceSyncService(
                 writer.InstrumentPrices.Add(new InstrumentPrice
                 {
                     InstrumentPriceId = Guid.NewGuid(),
-                    InstrumentId = instrumentId,
+                    InstrumentId = snapshot.InstrumentId,
                     TradingDate = close.TradingDate,
                     Close = close.Close,
-                    SourceKey = sourceKey,
+                    SourceKey = snapshot.SourceKey,
                     CreatedAtUtc = Now,
                 });
             }
 
+            advance(row);
             await writer.SaveChangesAsync(cancellationToken);
             return fresh.Count;
         }, cancellationToken);
     }
+
+    /// <summary>Writes a binding's failure state under the instrument's lock; a binding replaced meanwhile is left alone.</summary>
+    private async Task PersistFailureAsync(InstrumentPriceSourceBinding snapshot, Action<InstrumentPriceSourceBinding> record, CancellationToken cancellationToken)
+    {
+        await using var scope = scopes.CreateAsyncScope();
+        var writer = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await InstrumentLocks.InTransactionAsync(writer, async () =>
+        {
+            await InstrumentLocks.LockAsync(writer, snapshot.InstrumentId, cancellationToken);
+            if (await CurrentBindingAsync(writer, snapshot, cancellationToken) is { } row)
+            {
+                record(row);
+                await writer.SaveChangesAsync(cancellationToken);
+            }
+
+            return true;
+        }, cancellationToken);
+    }
+
+    private static Task<InstrumentPriceSourceBinding?> CurrentBindingAsync(
+        OdysseyContext writer, InstrumentPriceSourceBinding snapshot, CancellationToken cancellationToken) =>
+        writer.InstrumentPriceSourceBindings.FirstOrDefaultAsync(
+            b => b.InstrumentId == snapshot.InstrumentId && b.SourceKey == snapshot.SourceKey && b.SourceSymbol == snapshot.SourceSymbol,
+            cancellationToken);
 
     private async Task RecordFailureAsync(
         InstrumentPriceSourceBinding binding, SourceRunState runState, SourceFetchResult result, RunCounters counters,
@@ -477,9 +531,15 @@ public sealed class InstrumentPriceSyncService(
     {
         var category = result.Failure!.Value;
         var now = Now;
-        binding.LastFailure = category;
-        binding.LastFailureUtc = now;
-        binding.ConsecutiveFailures++;
+        void Record(InstrumentPriceSourceBinding row)
+        {
+            row.LastFailure = category;
+            row.LastFailureUtc = now;
+            row.ConsecutiveFailures++;
+        }
+
+        await PersistFailureAsync(binding, Record, cancellationToken);
+        Record(binding);
         counters.Fail(category);
 
         switch (category)
@@ -531,6 +591,10 @@ public sealed class InstrumentPriceSyncService(
                 writer.ChangeTracker.Clear();
             }
         }
+
+        // Every attempt lost a race on the state row's token; the in-run flag still stops this run using the source.
+        logger.LogWarning("Price source {SourceKey} back-off was not recorded after {Attempts} conflicting writes.",
+            sourceKey, SourceRequestQuota.MaxConflicts);
     }
 
     private static DateOnly MaxDate(DateOnly a, DateOnly b) => a > b ? a : b;
@@ -553,6 +617,9 @@ public sealed class InstrumentPriceSyncService(
 
         public int RequestsMade { get; set; }
 
+        /// <summary>Sources skipped because their credential read <c>Unreadable</c>.</summary>
+        public int UnreadableSources { get; set; }
+
         public void Fail(JobFailureCategory category) => failures[category] = failures.GetValueOrDefault(category) + 1;
 
         public void ApplyTo(InstrumentPriceSyncJobRun run)
@@ -568,9 +635,16 @@ public sealed class InstrumentPriceSyncService(
         public (JobRunStatus, JobFailureCategory?) Outcome()
         {
             var category = failures.Count == 0 ? (JobFailureCategory?)null : failures.MaxBy(pair => pair.Value).Key;
-            if (InstrumentsFailed == 0)
+            if (InstrumentsFailed == 0 && UnreadableSources == 0)
             {
                 return (JobRunStatus.Succeeded, null);
+            }
+
+            if (InstrumentsFailed == 0)
+            {
+                return InstrumentsSucceeded == 0
+                    ? (JobRunStatus.Failed, JobFailureCategory.Configuration)
+                    : (JobRunStatus.PartiallySucceeded, JobFailureCategory.Configuration);
             }
 
             return InstrumentsSucceeded == 0

@@ -127,6 +127,21 @@ public class InstrumentPriceRulesTests
 
     // ── Identifiers ────────────────────────────────────────────────────────────────────────────
 
+    [Fact]
+    public void No_identifier_pattern_accepts_a_trailing_newline()
+    {
+        Assert.DoesNotMatch(InstrumentIdentifierRules.SymbolPattern, "EQNR\n");
+        Assert.DoesNotMatch(InstrumentIdentifierRules.MicPattern, "XOSL\n");
+        Assert.DoesNotMatch(InstrumentIdentifierRules.IsinPattern, "NO0010096985\n");
+        Assert.DoesNotMatch(InstrumentIdentifierRules.SourceSymbolPattern, "EQNR.OL\n");
+        Assert.DoesNotMatch(InstrumentIdentifierRules.SourceKeyPattern, "fake-primary\n");
+        Assert.Matches(InstrumentIdentifierRules.SourceSymbolPattern, "EQNR.OL");
+    }
+
+    [Fact]
+    public void The_sql_literal_doubles_each_backslash_for_mariadb() =>
+        Assert.Equal(@"^[a-z0-9-]{1,32}\\z", InstrumentIdentifierRules.AsSqlLiteral(InstrumentIdentifierRules.SourceKeyPattern));
+
     [Theory]
     [InlineData("NO0010096985", true)]
     [InlineData("US0378331005", true)]
@@ -245,6 +260,7 @@ public class InstrumentPriceRulesTests
     [Theory]
     [InlineData("https://evil.example/eod")]
     [InlineData("http://primary.prices.example/eod")]
+    [InlineData("https://primary.prices.example:8443/eod")]
     public async Task A_request_off_the_pinned_https_host_is_refused_before_it_is_sent(string target)
     {
         var (http, handler) = Transport(new FakePrimarySource());

@@ -55,6 +55,13 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // The location map's basemap configuration (issue #370) — locations.read, held by every role, so
         // all four seeded users get 200. An in-memory options read, safe on the shared stack.
         ("/api/map-styles", PermissionClaims.LocationsRead),
+        // Instruments and their prices (issue #446) — both reads held by every role.
+        ("/api/instruments", PermissionClaims.InstrumentsRead),
+        ("/api/instruments/summary", PermissionClaims.InstrumentsRead),
+        ("/api/instruments/watchlist?mainCurrency=NOK", PermissionClaims.InstrumentsRead),
+        ("/api/instrument-prices", PermissionClaims.InstrumentPricesRead),
+        // Price-source administration — system-settings.read, Admin only.
+        ("/api/system-settings/instrument-price-sources", PermissionClaims.SystemSettingsRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -89,6 +96,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/albums/{Guid.NewGuid()}", PermissionClaims.PhotoAlbumsDelete),
         ($"/api/photo-tags/{Guid.NewGuid()}", PermissionClaims.PhotoTagsDelete),
         ($"/api/users/{Guid.NewGuid()}", PermissionClaims.UsersDelete), // Admin-only discriminator.
+        ($"/api/instruments/{Guid.NewGuid()}", PermissionClaims.InstrumentsDelete),
+        ($"/api/instrument-prices/{Guid.NewGuid()}", PermissionClaims.InstrumentPricesDelete),
     ];
 
     // Write endpoints stacking two [Authorize] policies: a role must hold EVERY claim, so one holding

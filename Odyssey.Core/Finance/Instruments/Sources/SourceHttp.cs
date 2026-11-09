@@ -102,7 +102,8 @@ public sealed class SourceHttp(
     public async Task<SourceHttpResponse> GetAsync(Uri relativeUri, CancellationToken cancellationToken)
     {
         var absolute = relativeUri.IsAbsoluteUri ? relativeUri : new Uri(baseAddress, relativeUri);
-        if (absolute.Scheme != Uri.UriSchemeHttps || !string.Equals(absolute.Host, source.Host, StringComparison.OrdinalIgnoreCase))
+        if (absolute.Scheme != Uri.UriSchemeHttps || absolute.Port != 443
+            || !string.Equals(absolute.Host, source.Host, StringComparison.OrdinalIgnoreCase))
         {
             throw new SourceDestinationException();
         }

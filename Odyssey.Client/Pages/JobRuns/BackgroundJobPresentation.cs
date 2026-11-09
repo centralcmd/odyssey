@@ -27,7 +27,7 @@ public sealed record JobChip(string Label, OdsChipTone Tone, string Icon);
 /// </summary>
 public static class BackgroundJobPresentation
 {
-    /// <summary>The six jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
+    /// <summary>The seven jobs, in catalogue (ordinal) order — the tiles', the Run items' and the Job filter's order.</summary>
     public static readonly IReadOnlyList<JobType> Jobs =
         [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
             JobType.FileAnalysis, JobType.FileBlobBackfill,

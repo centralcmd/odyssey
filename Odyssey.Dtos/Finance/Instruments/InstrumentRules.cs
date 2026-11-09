@@ -10,20 +10,26 @@ namespace Odyssey.Dtos.Finance;
 /// </summary>
 public static class InstrumentIdentifierRules
 {
+    // Every pattern ends in \z, not $: in .NET (and PCRE) $ also matches before a trailing newline, so "EQNR\n"
+    // would pass and be stored (issue #446 PR security review).
+
+    /// <summary>A pattern as a MariaDB string literal for a <c>REGEXP</c> CHECK: the backslashes doubled.</summary>
+    public static string AsSqlLiteral(string pattern) => pattern.Replace(@"\", @"\\", StringComparison.Ordinal);
+
     /// <summary>A ticker as people write it: letters, digits, dots, hyphens and spaces, starting with a letter or digit.</summary>
-    public const string SymbolPattern = @"^[A-Za-z0-9][A-Za-z0-9.\- ]*$";
+    public const string SymbolPattern = @"^[A-Za-z0-9][A-Za-z0-9.\- ]*\z";
 
     /// <summary>An ISO 10383 Market Identifier Code: four letters or digits.</summary>
-    public const string MicPattern = "^[A-Za-z0-9]{4}$";
+    public const string MicPattern = @"^[A-Za-z0-9]{4}\z";
 
     /// <summary>An ISO 6166 ISIN's shape: 2 country letters, 9 alphanumerics, 1 check digit.</summary>
-    public const string IsinPattern = "^[A-Za-z]{2}[A-Za-z0-9]{9}[0-9]$";
+    public const string IsinPattern = @"^[A-Za-z]{2}[A-Za-z0-9]{9}[0-9]\z";
 
     /// <summary>A source's own symbol (e.g. <c>EQNR.OL</c>, <c>NO0010765134.EUFUND</c>).</summary>
-    public const string SourceSymbolPattern = @"^[A-Za-z0-9][A-Za-z0-9._\-]*$";
+    public const string SourceSymbolPattern = @"^[A-Za-z0-9][A-Za-z0-9._\-]*\z";
 
     /// <summary>A code-declared price source key.</summary>
-    public const string SourceKeyPattern = "^[a-z0-9-]{1,32}$";
+    public const string SourceKeyPattern = @"^[a-z0-9-]{1,32}\z";
 
     public const int SymbolMaxLength = 32;
     public const int MicLength = 4;
