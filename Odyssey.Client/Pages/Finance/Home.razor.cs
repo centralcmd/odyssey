@@ -44,6 +44,11 @@ public partial class Home
     private bool _canReadAccounts;
     private bool _canReadWeather;
     private bool _canReadTransactions;
+    private bool _canReadInstrumentPrices;
+
+    // The display currency, once resolved (issue #452 §3.5): null until then, so the Watchlist card makes no
+    // request with a currency the reader has not got.
+    private string? _resolvedMainCurrency;
 
     private string _firstName = string.Empty;
 
@@ -63,6 +68,14 @@ public partial class Home
             && range.Error is null)
         {
             _range = range.Normalized;
+        }
+
+        // The currency is resolved once, before the fan-out, for every surface that prices in it: the net-worth
+        // figures and the Watchlist. A failed lookup costs the minor units, never the code.
+        if (_canReadAccounts || _canReadInstrumentPrices)
+        {
+            _mainCurrencyMinorUnits = await ResolveMainCurrencyMinorUnitsAsync();
+            _resolvedMainCurrency = _mainCurrencyCode;
         }
 
         var work = new List<Task>();
@@ -91,6 +104,7 @@ public partial class Home
         _canReadAccounts = user.HasPermission(PermissionClaims.AccountsRead);
         _canReadWeather = user.HasPermission(PermissionClaims.WeatherRead);
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
+        _canReadInstrumentPrices = user.HasPermission(PermissionClaims.InstrumentPricesRead);
 
         var name = user.FindFirst(ClaimTypes.Name)?.Value ?? user.Identity?.Name ?? string.Empty;
         _firstName = FirstNameFrom(name);
@@ -98,12 +112,10 @@ public partial class Home
 
     private async Task LoadAccountsAsync()
     {
-        // The currency is resolved before the fan-out. It used to be resolved inside LoadTotalsAsync,
-        // so a totals failure left the dashboard with no denomination at all while the history call
-        // succeeded. The preference and the reference data are both client-side caches, so paying for
-        // them first costs a round trip only on the very first load.
-        _mainCurrencyMinorUnits = await ResolveMainCurrencyMinorUnitsAsync();
-
+        // The currency was resolved before the fan-out (OnInitializedAsync). It used to be resolved inside
+        // LoadTotalsAsync, so a totals failure left the dashboard with no denomination at all while the
+        // history call succeeded. The preference and the reference data are both client-side caches, so
+        // paying for them first costs a round trip only on the very first load.
         // The accounts list supplies the count and the earliest opening, the totals endpoint the
         // headline figure, and the history endpoint the series. The list and the totals go out
         // together; the history joins them unless its window starts at the earliest opening, which

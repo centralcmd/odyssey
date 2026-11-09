@@ -1,0 +1,119 @@
+@using Odyssey.Dtos.Finance
+@inject IInstrumentsApiClient Instruments
+@inject TimeProvider Time
+
+@*
+    WatchlistCard — the dashboard's followed instruments, priced in the reader's display currency (issue #452
+    §3.2, §3.5; design system · Dashboard.jsx WatchlistCard). Home renders it only for instrument-prices.read
+    holders and hands it the display currency once resolved; the card makes no request before that.
+
+    A DS Table with the hidden caption "Watchlist, prices in {CUR}" and Symbol as the row header. Every
+    direction and trend is said in text: the OdsDelta and the OdsSparkline sit inside aria-hidden wrappers, and
+    each row carries ONE hidden change string. A zero change is plain "0.00 %". At a card width of 480 px or
+    less, Name moves under Symbol and Trend under Change (a container query); nothing is dropped, and the
+    narrow copies are display:none at full width, so nothing is read twice. Every name, symbol and attribution
+    is plain text.
+*@
+
+<OdsCard Flush="true" Class="ods-outline wl-card" Style="overflow:hidden;">
+    <OdsCardHeader Title="Watchlist">
+        <Action>
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="candlestick_chart" Href="instruments">Manage instruments</OdsButton>
+        </Action>
+    </OdsCardHeader>
+    <OdsCardBody Style="padding:0;">
+        <div class="wl">
+            @if (_state == WatchlistState.Loading)
+            {
+                <div class="wl-loading" aria-busy="true">
+                    <span class="odc-sr-only" role="status">Loading watchlist</span>
+                    <OdsSkeleton Variant="OdsSkeletonVariant.Text" Lines="3" />
+                </div>
+            }
+            else if (_state == WatchlistState.Error)
+            {
+                <div class="wl-msg" role="alert">
+                    <span>Couldn’t load the watchlist.</span>
+                    <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="LoadAsync">Retry</OdsButton>
+                </div>
+            }
+            else if (_state == WatchlistState.CurrencyUnavailable)
+            {
+                <div class="wl-msg" role="alert">
+                    <span>Your display currency isn’t available. Change it in Preferences.</span>
+                    <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="tune" Href="preferences">Preferences</OdsButton>
+                </div>
+            }
+            else if (Items.Count == 0)
+            {
+                <div class="wl-msg">
+                    <span>No instruments on the dashboard yet.</span>
+                    <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="candlestick_chart" Href="instruments">Manage instruments</OdsButton>
+                </div>
+            }
+            else
+            {
+                <OdsTable TRow="InstrumentWatchlistItem" Columns="Columns" Rows="Items"
+                          Caption="@Caption" CaptionHidden="true" RowHeader="symbol" />
+            }
+        </div>
+        @if (_state == WatchlistState.Ready && Items.Count > 0 && (_watchlist!.Truncated || _watchlist.Attributions.Count > 0))
+        {
+            <div class="wl-foot">
+                @if (_watchlist.Truncated)
+                {
+                    <span>@TruncatedText(Items.Count)</span>
+                }
+                @if (_watchlist.Attributions.Count > 0)
+                {
+                    <span class="wl-attr">Prices from @string.Join(", ", _watchlist.Attributions)</span>
+                }
+            </div>
+        }
+    </OdsCardBody>
+</OdsCard>
+
+@code {
+    private RenderFragment SymbolCell(InstrumentWatchlistItem r) =>
+        @<span class="wl-sym"><a class="wl-link" href="@InstrumentHref(r.InstrumentId)">@r.Symbol</a><span class="wl-narrow wl-sub">@r.Name</span></span>;
+
+    private RenderFragment PriceCell(InstrumentWatchlistItem r) => NoPrice(r)
+        ? @<span class="wl-muted">No price yet</span>
+        : r.Unconvertible || r.Close is null
+            ? @<span class="wl-price"><span>@NativeClose(r)</span><span class="wl-native">No exchange rate to @DisplayCode</span></span>
+            : @<span class="wl-price"><span>@OdsMoney.Format(r.Close, DisplayCode, MinorUnits)</span>@if (!SameCurrency(r)){<span class="wl-native">@NativeClose(r)</span>}</span>;
+
+    private RenderFragment ChangeCell(InstrumentWatchlistItem r) =>
+        @<span class="wl-changecell">
+            <span class="wl-change">
+                @if (NoPrice(r) || r.ChangePercent is null)
+                {
+                    <span class="wl-muted" aria-hidden="true">—</span>
+                }
+                else if (InstrumentVisuals.IsZeroChange(r.ChangePercent.Value))
+                {
+                    <span class="wl-zero" aria-hidden="true">@InstrumentVisuals.FormatChangePercent(0m)</span>
+                }
+                else
+                {
+                    <span class="wl-change-vis" aria-hidden="true">
+                        <OdsDelta Mode="OdsDeltaMode.Directional" Value="r.ChangePercent" Format="InstrumentVisuals.FormatChangePercent" />
+                        @if (r.Change is { } amount)
+                        {
+                            <span class="@(amount < 0 ? "wl-change-amt neg" : "wl-change-amt")">@OdsMoney.Signed(amount, DisplayCode, MinorUnits)</span>
+                        }
+                    </span>
+                }
+                <span class="odc-sr-only">@ChangeText(r)</span>
+            </span>
+            <span class="wl-narrow">@TrendContent(r)</span>
+        </span>;
+
+    private RenderFragment TrendContent(InstrumentWatchlistItem r) => TrendValues(r) is { Count: >= 2 } values
+        ? @<span class="wl-trend"><span aria-hidden="true"><OdsSparkline Data="values" Width="96" Height="28" ShowDot="false" Area="false" /></span><span class="odc-sr-only">@TrendAnnouncement(r)</span></span>
+        : @<span class="wl-muted"><span aria-hidden="true">—</span><span class="odc-sr-only">@TrendAnnouncement(r)</span></span>;
+
+    private RenderFragment AsOfCell(InstrumentWatchlistItem r) => NoPrice(r)
+        ? @<span class="wl-muted">—</span>
+        : @<span class="wl-asof"><span>@FormatDate(r.LatestTradingDate!.Value)</span>@if (r.IsStale){<OdsChip Tone="OdsChipTone.Outline" Icon="schedule">@InstrumentVisuals.StaleText(r.LatestTradingDate, _today)</OdsChip>}</span>;
+}

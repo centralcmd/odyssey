@@ -194,4 +194,39 @@ public class NavModelTests
         Assert.Contains("finance", keys);
         Assert.Contains("dashboard", keys);
     }
+
+    // ── Instruments (issue #452 §3.1) ────────────────────────────────────────────
+    /// <summary>
+    /// Both instrument pages sit under Finance → Reference straight after Exchange rates, each gated by the
+    /// claim on its page's <c>[Authorize]</c>: the list by <c>instruments.read</c>, the prices by
+    /// <c>instrument-prices.read</c>.
+    /// </summary>
+    [Fact]
+    public void Instrument_pages_follow_exchange_rates_under_reference()
+    {
+        var reference = NavModel.All.Single(m => m.Key == "finance").Groups.Single(g => g.Label == "Reference").Items
+            .Select(p => p.Key).ToList();
+        var at = reference.IndexOf("exchange-rates");
+
+        Assert.Equal(["instruments", "instrument-prices"], reference.Skip(at + 1).Take(2));
+    }
+
+    [Theory]
+    [InlineData("instruments", "Instruments", "candlestick_chart", "instruments", PermissionClaims.InstrumentsRead)]
+    [InlineData("instrument-prices", "Instrument prices", "show_chart", "instrument-prices", PermissionClaims.InstrumentPricesRead)]
+    public void Instrument_pages_are_claim_gated(string key, string label, string icon, string href, string claim)
+    {
+        var page = Page(key);
+        Assert.Equal((label, icon, href, claim), (page.Label, page.Icon, page.Href, page.Claim));
+        Assert.DoesNotContain(key, NavModel.AllVisiblePages(NonAdmin).Select(h => h.Page.Key));
+    }
+
+    /// <summary>"instruments" must not light up on "/instrument-prices", nor the reverse.</summary>
+    [Fact]
+    public void Instrument_routes_do_not_cross_highlight()
+    {
+        Assert.False(NavModel.IsActive(Page("instruments"), "instrument-prices"));
+        Assert.False(NavModel.IsActive(Page("instrument-prices"), "instruments"));
+        Assert.True(NavModel.IsActive(Page("instrument-prices"), NavModel.NormalizePath("instrument-prices?instrument=1")));
+    }
 }
