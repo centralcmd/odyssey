@@ -124,7 +124,7 @@ public class FileStorageApiTests
     public async Task With_no_volumes_configured_the_store_is_a_no_op_and_the_endpoint_returns_an_empty_list()
     {
         await using var factory = new OdysseyApiFactory([PermissionClaims.FileStorageRead],
-            configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoPhotoVolumeKey] = "true" });
+            configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoFileVolumeKey] = "true" });
         using var client = factory.CreateClient();
 
         var volumes = await client.GetFromJsonAsync<List<FileStorageVolumeStatus>>(VolumesPath);

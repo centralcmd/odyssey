@@ -9,6 +9,8 @@ using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 
 using Odyssey.Core.Finance;
+using Microsoft.AspNetCore.RateLimiting;
+using System.ComponentModel.DataAnnotations;
 
 namespace Odyssey.Api.Controllers;
 
@@ -30,19 +32,28 @@ public sealed class FilesController : ControllerBase
     // per-request by the size-limit middleware; over-cap bodies are rejected with 413 before the action
     // runs. FileValidationService re-checks the same number on the parsed file.
     [UploadSizeLimit]
+    [EnableRateLimiting(FileUploadRateLimiting.UploadPolicy)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(FileUploadResponse))]
     [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status401Unauthorized, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Upload a file",
-        Description = "Upload a file with optional description. Returns file metadata.")]
+        Description = @"Upload a file with optional description. Returns file metadata. 'area' (Finance or Journal) is
+required and only decides which folder on the file store holds the bytes (issue #448); it never affects who may read or
+link the file. There is no contacts area here: contact images go through the avatar endpoint.")]
     public async Task<IActionResult> UploadFile(
         //[FromForm] // Swagger doesn't handle [FromForm] on IFormFile correctly, so we rely on the default binding behavior for multipart/form-data
         IFormFile file,
-        [FromForm] string? description,
+        // Nullable with [Required], so an omitted area reads as required rather than as an invalid enum value (the
+        // ContractPartyRequest.Role precedent); FileUploadArea has no 0 and no contacts member.
+        [FromForm, Required, EnumDataType(typeof(FileUploadArea))] FileUploadArea? area,
+        [FromForm, StringLength(256)] string? description,
         CancellationToken cancellationToken)
     {
         if (file is null)
@@ -55,7 +66,7 @@ public sealed class FilesController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var result = await fileService.UploadFileAsync(file.ToFileUpload(), userId, description, cancellationToken);
+        var result = await fileService.UploadFileAsync(file.ToFileUpload(), area!.Value, userId, description, cancellationToken);
         return CreatedAtAction(nameof(GetFileMetadata), new { id = result.Id }, result);
     }
 
@@ -126,16 +137,10 @@ public sealed class FilesController : ControllerBase
         }
 
         // nosniff stops the browser from re-interpreting a mislabeled upload (e.g. an SVG/HTML body)
-        // and rendering it inline in the app origin — alongside the forced attachment disposition.
-        // That disposition is written by File(..., fileDownloadName), never by hand (issue #247): the
-        // framework emits an escaped `filename` plus an RFC 5987 `filename*`, so a stored name holding a
-        // quote, CR/LF or non-ASCII text cannot break the header — including rows stored before rename
-        // was sanitized.
-        Response.Headers.ContentType = metadata.ContentType;
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";
-
-        return File(content, metadata.ContentType, metadata.FileName);
+        // and rendering it inline in the app origin — alongside the forced attachment disposition,
+        // written by File(..., fileDownloadName), never by hand (issue #247). The shared helper also
+        // hands the framework the strong ETag (304, If-Range) and range processing (issue #448 §5.3).
+        return this.ServeDocument(metadata, content);
     }
 
     [HttpPut("{id}/metadata", Name = "UpdateFileMetadata")]

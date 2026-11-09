@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using System.Security.Claims;
 using Odyssey.Api.Controllers;
 using Odyssey.Core.Finance;
@@ -95,7 +96,7 @@ public class FilesControllerProblemDetailsTests
             ContentType = "application/pdf",
         };
 
-        var result = await controller.UploadFile(file, description: null, CancellationToken.None);
+        var result = await controller.UploadFile(file, FileUploadArea.Finance, description: null, CancellationToken.None);
 
         AssertProblem(result, StatusCodes.Status401Unauthorized);
     }
@@ -106,7 +107,7 @@ public class FilesControllerProblemDetailsTests
         await using var context = NewContext();
         var controller = NewController(context);
 
-        var result = await controller.UploadFile(file: null!, description: null, CancellationToken.None);
+        var result = await controller.UploadFile(file: null!, area: FileUploadArea.Finance, description: null, cancellationToken: CancellationToken.None);
 
         AssertProblem(result, StatusCodes.Status400BadRequest);
     }

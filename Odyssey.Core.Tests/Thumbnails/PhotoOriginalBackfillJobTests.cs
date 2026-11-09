@@ -527,7 +527,9 @@ public sealed class PhotoOriginalBackfillJobTests : PhotoThumbnailTestBase
             .ToList();
 
         Assert.Equal(
-            [PhotoOriginalStorage.FeatureKey, Journal.Thumbnails.PhotoThumbnailStorage.FeatureKey],
+            [Odyssey.Core.FileStorage.Files.StoredFileAreas.ContactAvatarFeatureKey, Odyssey.Core.FileStorage.Files.StoredFileAreas.FinanceFeatureKey,
+             Odyssey.Core.FileStorage.Files.StoredFileAreas.JournalFeatureKey, PhotoOriginalStorage.FeatureKey,
+             Journal.Thumbnails.PhotoThumbnailStorage.FeatureKey],
             features.Select(f => f.Key).Order(StringComparer.Ordinal));
         Assert.All(features, f => Assert.Equal(StorageReleaseMode.Graced, f.ReleaseMode));
     }

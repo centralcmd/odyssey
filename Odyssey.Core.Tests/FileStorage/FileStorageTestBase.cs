@@ -62,7 +62,29 @@ public abstract class FileStorageTestBase : IAsyncLifetime
         return host;
     }
 
-    protected string PrimaryRoot => Path.Combine(Base.FullName, "volumes", "primary");
+    /// <summary>
+    /// A host with the Files store's three areas (issue #448) and the photo features bound to <c>primary</c> beside the test
+    /// features, the shape a production host has.
+    /// </summary>
+    protected Task<FileStorageTestHost> NewFilesHostAsync(int bucketCapacity = Odyssey.Core.FileStorage.Files.StoredFileAreas.BucketCapacity, Action<IServiceCollection>? configure = null) =>
+        NewHostAsync(
+            new Dictionary<string, string> { ["primary"] = Root("primary") },
+            TestStorageFeatures.All.Select(f => f.Key)
+                .Concat(Odyssey.Core.FileStorage.Files.StoredFileAreas.All.Select(f => f.Key))
+                .Append(Odyssey.Core.Journal.Thumbnails.PhotoThumbnailStorage.FeatureKey)
+                .Append(Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey)
+                .ToDictionary(k => k, _ => "primary"),
+            TestStorageFeatures.All,
+            configureServices: services =>
+            {
+                Odyssey.Core.Journal.Thumbnails.PhotoThumbnailServiceCollectionExtensions.AddPhotoThumbnails(services);
+                Odyssey.Core.Journal.Originals.PhotoOriginalServiceCollectionExtensions.AddPhotoOriginals(services);
+                Odyssey.Core.FileStorage.Files.StoredFilesServiceCollectionExtensions.AddStoredFiles(services);
+                services.Configure<Odyssey.Core.FileStorage.Files.StoredFileOptions>(o => o.BucketCapacity = bucketCapacity);
+                configure?.Invoke(services);
+            });
+
+        protected string PrimaryRoot => Path.Combine(Base.FullName, "volumes", "primary");
 
     protected static MemoryStream Bytes(int length, byte seed = 7)
     {

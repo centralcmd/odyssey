@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Imaging;
 using Odyssey.Dtos.Journal;
@@ -43,19 +45,30 @@ public class ContactAvatarService
     private readonly IUploadLimitsLookup uploadLimits;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<ContactAvatarService>? logger;
+    private readonly StoredFileWriter? writer;
+    private readonly IObjectStore? store;
+    private readonly StoredFileContentSource source;
 
+    /// <param name="writer">Writes the image to the <c>contact-avatars/</c> area (issue #448) — the only writer of that area.
+    /// Null only in a host with no file store, where an upload is a <c>503</c>.</param>
     public ContactAvatarService(
         OdysseyContext context,
         FileService fileService,
         IUploadLimitsLookup uploadLimits,
         TimeProvider? timeProvider = null,
-        ILogger<ContactAvatarService>? logger = null)
+        ILogger<ContactAvatarService>? logger = null,
+        StoredFileWriter? writer = null,
+        IObjectStore? store = null,
+        StoredFileContentSource? source = null)
     {
         this.context = context;
         this.fileService = fileService;
         this.uploadLimits = uploadLimits;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         this.logger = logger;
+        this.writer = writer;
+        this.store = store;
+        this.source = source ?? new StoredFileContentSource(context, store);
     }
 
     /// <summary>
@@ -106,13 +119,27 @@ public class ContactAvatarService
         return descriptor;
     }
 
-    /// <summary>The bytes, loaded only once a conditional request has failed to match.</summary>
-    public async Task<byte[]?> GetContentAsync(Guid fileId, CancellationToken cancellationToken = default) =>
-        await context.FileMetadata
-            .AsNoTracking()
-            .Where(fm => fm.Id == fileId)
-            .Select(fm => fm.FileBlob!.Content)
-            .FirstOrDefaultAsync(cancellationToken);
+    /// <summary>
+    /// The image, opened only once a conditional request has failed to match — from the store for an image on disk,
+    /// from its blob for a legacy one (issue #448 §3.4). The caller disposes the stream.
+    /// </summary>
+    public Task<StoredFileContent?> GetContentAsync(Guid fileId, CancellationToken cancellationToken = default) =>
+        source.OpenAsync(fileId, cancellationToken);
+
+    /// <summary>The image's bytes when it is avatar-legal, for the vCard export; null otherwise.</summary>
+    public async Task<(string ContentType, byte[] Bytes)?> ReadImageAsync(Guid fileId, CancellationToken cancellationToken = default)
+    {
+        var contentType = await context.FileMetadata.AsNoTracking()
+            .Where(fm => fm.Id == fileId).Select(fm => fm.ContentType).FirstOrDefaultAsync(cancellationToken);
+        if (contentType is null || !ContactAvatarLimits.IsAllowedContentType(contentType))
+        {
+            return null;
+        }
+
+        return await source.ReadAllAsync(fileId, ContactAvatarLimits.MaxAvatarBytes, cancellationToken) is ({ } bytes, false)
+            ? (contentType, bytes)
+            : null;
+    }
 
     // ── Write ─────────────────────────────────────────────────────────────────────────────────────
 
@@ -147,8 +174,7 @@ public class ContactAvatarService
 
         await ExecuteAtomicallyAsync(async () =>
         {
-            await StageReleaseAsync(contact, "replace", cancellationToken);
-            await StageAttachAsync(contact, validated, userId, cancellationToken);
+            await StageReplaceAsync(contact, validated, userId, "replace", cancellationToken);
             await SaveDetectingAvatarConflictAsync(cancellationToken);
         });
 
@@ -190,31 +216,45 @@ public class ContactAvatarService
     /// <see cref="ContactAvatarRelease"/> so the contact-delete cascade calls the same code.
     /// </summary>
     private Task<AvatarReleaseOutcome> StageReleaseAsync(Contact contact, string site, CancellationToken cancellationToken) =>
-        ContactAvatarRelease.StageAsync(context, contact, logger, site, cancellationToken);
+        ContactAvatarRelease.StageAsync(context, store, contact, logger, site, cancellationToken);
 
     /// <summary>
-    /// Stages the new file and repoints the contact at it — the second half of an attach, factored out
-    /// so the vCard import path can run the identical write inside its own transaction.
+    /// Writes the new image, releases the outgoing one and repoints the contact — all staged on the caller's context,
+    /// unsaved, so the caller's one save commits them together. Shared by the upload and the vCard import.
+    /// <para>
+    /// The <b>write comes first</b> (issue #448): it is the step that can fail for storage reasons (<c>503</c>/<c>507</c>,
+    /// a busy bucket), and it stages nothing on the caller's context until it succeeds, so a failure leaves no staged
+    /// release behind for a later save to apply.
+    /// </para>
     /// </summary>
-    public Task StageAttachAsync(
+    public async Task StageReplaceAsync(
         Contact contact,
         ValidatedImage validated,
         string? userId,
+        string site,
         CancellationToken cancellationToken = default)
     {
+        if (writer is null)
+        {
+            throw new FileStorageUnavailableException("File storage is not set up on this server.");
+        }
+
         // The extension follows the VALIDATED content type rather than being hardcoded, and the name
         // carries no personal data: not the user's original filename (which can itself carry some) and
         // not the contact's name.
         var fileName = $"contact-avatar-{contact.ContactId.ToString("N")[..8]}{ContactAvatarLimits.ExtensionFor(validated.ContentType)}";
 
-        var metadata = fileService.StageUpload(
-            validated.Bytes, fileName, validated.ContentType, userId, AvatarDescription);
+        FileMetadata metadata;
+        await using (var stream = new MemoryStream(validated.Bytes, writable: false))
+        {
+            metadata = await writer.StageNewFileAsync(
+                context, StoredFileArea.ContactAvatars, stream, fileName, validated.ContentType, userId, AvatarDescription,
+                Math.Max(1, validated.Bytes.LongLength), cancellationToken);
+        }
 
+        await StageReleaseAsync(contact, site, cancellationToken);
         contact.AvatarFileId = metadata.Id;
         contact.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
-
-        _ = cancellationToken;
-        return Task.CompletedTask;
     }
 
     /// <summary>

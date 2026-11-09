@@ -1,3 +1,4 @@
+using Odyssey.Core.FileStorage.Files;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
@@ -60,6 +61,7 @@ public sealed class BackgroundJobsService(
     FileStorageVolumeRegistry volumes,
     PhotoThumbnailService thumbnails,
     PhotoBackfillStatusService photoBackfill,
+    FileBackfillStatusService fileBackfill,
     JobRunSweeper sweeper,
     TimeProvider time)
 {
@@ -110,6 +112,7 @@ public sealed class BackgroundJobsService(
             FileStorage = access.CanRead(JobType.FileStorageMaintenance) ? await FileStorageHealthAsync(now, cancellationToken) : null,
             Thumbnails = access.CanRead(JobType.PhotoThumbnails) ? await ThumbnailHealthAsync(now, cancellationToken) : null,
             PhotoOriginalBackfill = access.CanRead(JobType.PhotoOriginalBackfill) ? await photoBackfill.GetAsync(cancellationToken) : null,
+            FileBlobBackfill = access.CanRead(JobType.FileBlobBackfill) ? await fileBackfill.GetAsync(cancellationToken) : null,
         };
         return overview;
     }
@@ -157,6 +160,13 @@ public sealed class BackgroundJobsService(
         if (canRead && liveHeld?.HeldReason == JobHeldReason.BreakerTripped)
         {
             heldUntil = await PhotoThumbnailBreaker.ResumesAtAsync(context, now, cancellationToken);
+        }
+        else if (canRead && liveHeld?.HeldReason == JobHeldReason.BackingOff && jobType == JobType.FileBlobBackfill)
+        {
+            heldUntil = await context.FileBlobBackfillLeases.AsNoTracking()
+                .Where(l => l.Id == FileBlobBackfillLease.SingletonId)
+                .Select(l => l.NextAttemptAtUtc)
+                .FirstOrDefaultAsync(cancellationToken);
         }
         else if (canRead && liveHeld?.HeldReason == JobHeldReason.BackingOff)
         {
@@ -513,6 +523,15 @@ public sealed class BackgroundJobsService(
                 Interruptions = move.Interruptions,
             },
             PhotoOriginalBackfillJobRun => new PhotoOriginalBackfillJobRunDetail(),
+            FileBlobBackfillJobRun files when canRead => new FileBlobBackfillJobRunDetail
+            {
+                FinanceFilesMoved = files.FinanceFilesMoved,
+                JournalFilesMoved = files.JournalFilesMoved,
+                ContactAvatarsMoved = files.ContactAvatarsMoved,
+                FilesParked = files.FilesParked,
+                Interruptions = files.Interruptions,
+            },
+            FileBlobBackfillJobRun => new FileBlobBackfillJobRunDetail(),
             _ => new JobRunDetail(),
         };
 
@@ -581,7 +600,7 @@ public sealed class BackgroundJobsService(
 
         // Held for storage in every live worker, the move cannot run; held only for its back-off it can, because a
         // manual run is what ends a back-off early.
-        if (jobType == JobType.PhotoOriginalBackfill
+        if (jobType is JobType.PhotoOriginalBackfill or JobType.FileBlobBackfill
             && await EveryLiveWorkerHeldAsync(entry, now, cancellationToken) is { } moveHeld
             && moveHeld != JobHeldReason.BackingOff)
         {
@@ -694,6 +713,8 @@ public sealed class BackgroundJobsService(
             case JobType.PhotoOriginalBackfill:
                 return await context.Photos.AnyAsync(p => p.StoredObjectId == null && p.FileId != null
                     && !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId), cancellationToken);
+            case JobType.FileBlobBackfill:
+                return await FileBlobBackfillJob.Movable(context).AnyAsync(cancellationToken);
             default:
                 return true;
         }
@@ -707,6 +728,7 @@ public sealed class BackgroundJobsService(
             JobType.FileStorageMaintenance => new FileStorageMaintenanceJobRun(),
             JobType.PhotoThumbnails => new PhotoThumbnailJobRun(),
             JobType.PhotoOriginalBackfill => new PhotoOriginalBackfillJobRun(),
+            JobType.FileBlobBackfill => new FileBlobBackfillJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

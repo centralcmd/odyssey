@@ -572,6 +572,19 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<PhotoOriginalBackfillFailure> PhotoOriginalBackfillFailures => Set<PhotoOriginalBackfillFailure>();
 
     /// <summary>
+    /// Files on the object store (issue #448): the per-feature bucket counter, the file move's lease and its parked
+    /// failures. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
+    /// three stored-object columns.
+    /// </summary>
+    public DbSet<StoredFileBucket> StoredFileBuckets => Set<StoredFileBucket>();
+
+    /// <inheritdoc cref="StoredFileBuckets" />
+    public DbSet<FileBlobBackfillLease> FileBlobBackfillLeases => Set<FileBlobBackfillLease>();
+
+    /// <inheritdoc cref="StoredFileBuckets" />
+    public DbSet<FileBlobBackfillFailure> FileBlobBackfillFailures => Set<FileBlobBackfillFailure>();
+
+    /// <summary>
     /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and
     /// each process's last tick per job. Operational, out of scope for every export. Reach a job's own rows with
     /// <c>Set&lt;TRun&gt;()</c>.

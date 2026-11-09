@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Core.Journal.Avatar;
@@ -57,8 +59,11 @@ public static class ContactAvatarRelease
     /// </para>
     /// </summary>
     /// <param name="site">Which of the three release paths is calling, for the warning log only.</param>
+    /// <param name="store">Releases an image on disk for erasure after the deletion grace (issue #448); the same scoped
+    /// context's store. May be null only where no image on disk can exist.</param>
     public static async Task<AvatarReleaseOutcome> StageAsync(
         OdysseyContext context,
+        IObjectStore? store,
         Contact contact,
         ILogger? logger,
         string site,
@@ -70,7 +75,6 @@ public static class ContactAvatarRelease
         }
 
         var metadata = await context.FileMetadata
-            .Include(fm => fm.FileBlob)
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
         if (metadata is null)
@@ -93,12 +97,8 @@ public static class ContactAvatarRelease
             return AvatarReleaseOutcome.DetachedOnly;
         }
 
-        if (metadata.FileBlob is not null)
-        {
-            context.FileBlob.Remove(metadata.FileBlob);
-        }
-
-        context.FileMetadata.Remove(metadata);
+        // The shared removal: a legacy blob goes with the row, an image on disk is released (issue #448).
+        await StoredFileRemoval.StageRemoveAsync(context, store, metadata, cancellationToken);
         return AvatarReleaseOutcome.Deleted;
     }
 }

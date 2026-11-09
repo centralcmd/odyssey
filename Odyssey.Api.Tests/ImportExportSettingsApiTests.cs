@@ -543,5 +543,5 @@ public class ImportExportSettingsApiTests
     // rows), and verifying a volume ensures the store is created.
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId,
-            configuration: new Dictionary<string, string?> { [NoPhotoVolumeKey] = "true" });
+            configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
 }

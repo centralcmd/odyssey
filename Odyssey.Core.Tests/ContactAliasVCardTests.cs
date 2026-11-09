@@ -31,7 +31,10 @@ public class ContactAliasVCardTests
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
             new FileService(context, new FileValidationService()),
-            new FixedUploadLimits(64L * 1024 * 1024));
+            new FixedUploadLimits(64L * 1024 * 1024),
+            writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
+            store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+            source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source);
 
     private static (ContactService Service, ContactVCardService VCard) CreateServices(OdysseyContext context)
     {

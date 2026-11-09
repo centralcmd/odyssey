@@ -1,75 +1,22 @@
-using Microsoft.EntityFrameworkCore;
-using Odyssey.Context;
+using Odyssey.Core.FileStorage.Files;
 
 namespace Odyssey.Core.Finance;
 
-public sealed class ImageContentReader(OdysseyContext context) : IImageContentReader
+/// <summary>
+/// The legacy-photo image reader, by file id, over the one read path to a file's bytes (issue #448 §3.4): a file still in
+/// <c>FileBlob</c> or one the file move has put on disk alike.
+/// </summary>
+public sealed class ImageContentReader(StoredFileContentSource source) : IImageContentReader
 {
-    public async Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken = default)
-    {
-        if (maxBytes <= 0)
+    public Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken = default) =>
+        source.ReadPrefixAsync(fileId, maxBytes, cancellationToken);
+
+    public async Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default) =>
+        await source.ReadAllAsync(fileId, maxBytes, cancellationToken) switch
         {
-            return null;
-        }
-
-        if (context.Database.IsRelational())
-        {
-            // Read only a bounded prefix of the blob, projected in SQL, so a potentially large image is
-            // never fully materialised just to parse its metadata headers (§5.4/§11). This needs raw
-            // SQL: EF/LINQ can't express a byte-range read of a varbinary column — selecting b.Content
-            // would pull the whole blob, and there's no EF.Functions SUBSTRING for byte[]. (SqlQuery
-            // requires the projected scalar column be aliased "Value".)
-            var prefixes = await context.Database
-                .SqlQuery<byte[]>(
-                    $@"SELECT SUBSTRING(b.`Content`, 1, {maxBytes}) AS `Value`
-                       FROM `FileMetadata` m
-                       JOIN `FileBlob` b ON m.`FileBlobId` = b.`Id`
-                       WHERE m.`Id` = {fileId}")
-                .ToListAsync(cancellationToken);
-
-            return prefixes.Count == 0 ? null : prefixes[0];
-        }
-
-        // Non-relational (InMemory tests): materialise the blob and slice in memory.
-        var content = await context.FileMetadata
-            .Where(m => m.Id == fileId)
-            .Join(context.FileBlob, m => m.FileBlobId, b => b.Id, (_, b) => b.Content)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (content is null)
-        {
-            return null;
-        }
-
-        return content.Length <= maxBytes ? content : content[..maxBytes];
-    }
-
-    public async Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default)
-    {
-        // The stored size first, from metadata alone, so a blob over the limit is refused without being read.
-        var size = await context.FileMetadata
-            .Where(m => m.Id == fileId)
-            .Select(m => (long?)m.SizeBytes)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (size is null)
-        {
-            return null;
-        }
-
-        if (size > maxBytes)
-        {
-            return ImageContent.OverLimit;
-        }
-
-        var content = await context.FileMetadata
-            .Where(m => m.Id == fileId)
-            .Join(context.FileBlob, m => m.FileBlobId, b => b.Id, (_, b) => b.Content)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (content is null)
-        {
-            return null;
-        }
-
-        return content.Length > maxBytes ? ImageContent.OverLimit : new ImageContent(content, TooLarge: false);
-    }
+            null => null,
+            (_, true) => ImageContent.OverLimit,
+            ({ } bytes, false) => new ImageContent(bytes, TooLarge: false),
+            _ => null,
+        };
 }

@@ -1,12 +1,15 @@
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 
 namespace Odyssey.Core.Finance;
 
 /// <summary>
 /// <see cref="IFileReferenceGuard"/> over <see cref="OdysseyContext"/>.
 /// </summary>
-public sealed class FileReferenceGuard(OdysseyContext context) : IFileReferenceGuard
+/// <param name="store">Releases a file on disk for erasure (issue #448); null only where no file on disk can exist.</param>
+public sealed class FileReferenceGuard(OdysseyContext context, IObjectStore? store = null) : IFileReferenceGuard
 {
     public async Task<IReadOnlyList<string>> DescribeNonPhotoReferencesAsync(
         Guid fileId, CancellationToken cancellationToken = default)
@@ -58,7 +61,6 @@ public sealed class FileReferenceGuard(OdysseyContext context) : IFileReferenceG
     public async Task DeleteFileAndBlobAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
         var metadata = await context.FileMetadata
-            .Include(fm => fm.FileBlob)
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
         if (metadata is null)
@@ -66,12 +68,7 @@ public sealed class FileReferenceGuard(OdysseyContext context) : IFileReferenceG
             return;
         }
 
-        if (metadata.FileBlob is not null)
-        {
-            context.FileBlob.Remove(metadata.FileBlob);
-        }
-
-        context.FileMetadata.Remove(metadata);
+        await StoredFileRemoval.StageRemoveAsync(context, store, metadata, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 }

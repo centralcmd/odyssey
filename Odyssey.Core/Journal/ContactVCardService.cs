@@ -103,18 +103,13 @@ public class ContactVCardService
             return null;
         }
 
-        var row = await context.FileMetadata
-            .AsNoTracking()
-            .Where(fm => fm.Id == fileId)
-            .Select(fm => new { fm.ContentType, Content = fm.FileBlob!.Content })
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (row is null || !ContactAvatarLimits.IsAllowedContentType(row.ContentType))
+        // Through the one read path (issue #448): an image on disk or a legacy blob alike; null unless avatar-legal.
+        if (await avatarService.ReadImageAsync(fileId, cancellationToken) is not { } image)
         {
             return null;
         }
 
-        return $"data:{row.ContentType};base64,{Convert.ToBase64String(row.Content)}";
+        return $"data:{image.ContentType};base64,{Convert.ToBase64String(image.Bytes)}";
     }
 
     /// <summary>
@@ -842,8 +837,18 @@ public class ContactVCardService
 
             // A valid image REPLACES an existing one — and that replace applies the shared release rule
             // like any other, so the outgoing file is deleted unless it is not avatar-legal.
-            await ContactAvatarRelease.StageAsync(context, contact, logger, "vcard-import", cancellationToken);
-            await avatarService.StageAttachAsync(contact, validated, userId: null, cancellationToken);
+            try
+            {
+                // The write first, then the release of the outgoing image, staged together (issue #448).
+                await avatarService.StageReplaceAsync(contact, validated, userId: null, "vcard-import", cancellationToken);
+            }
+            catch (Exception ex) when (ex is FileStorage.FileStorageUnavailableException or FileStorage.FileStorageFullException)
+            {
+                // A storage fault never fails the import (issue #448 §3.3): the contact keeps no new image and the image
+                // is reported skipped. The write stages nothing until it succeeds, so nothing is left for a later save.
+                return (ImageOutcome.Skipped, "File storage isn't available, so the image wasn't saved.");
+            }
+
             await context.SaveChangesAsync(cancellationToken);
 
             return (ImageOutcome.Attached, null);

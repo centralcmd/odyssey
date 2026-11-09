@@ -41,7 +41,7 @@ public static class PhotoOriginalLimits
     /// Photo uploads and the backfill stop this far above the store's own 1 GB floor (§7.9), so a full library
     /// cannot starve thumbnails, which keep the store's floor.
     /// </summary>
-    public const long UploadReserveBytes = 4L * 1024 * 1024 * 1024;
+    public const long UploadReserveBytes = FileStorage.FileStorageReserves.UploadReserveBytes;
 
     /// <summary>The bucket row's lock wait, bounded per statement (§3.5).</summary>
     public const int BucketLockWaitSeconds = 5;

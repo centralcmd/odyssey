@@ -1,3 +1,4 @@
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Originals;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
@@ -51,6 +52,10 @@ public static class WorkerHost
         // legacy originals out of FileBlob. The lease elects one runner per tick across replicas.
         services.AddPhotoOriginals();
         services.AddPeriodicJob<PhotoOriginalBackfillJob>();
+        // Files on the store (issue #448): the three file areas and the move of every remaining FileBlob onto them. The
+        // lease elects one runner per tick; a file a legacy photo wraps waits for the photo move above.
+        services.AddStoredFiles();
+        services.AddPeriodicJob<FileBlobBackfillJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();

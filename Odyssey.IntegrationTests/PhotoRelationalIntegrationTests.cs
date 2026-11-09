@@ -407,6 +407,9 @@ public class PhotoRelationalIntegrationTests(MariaDbFixture fixture)
     {
         public IReadOnlyList<FileReference> References => inner.References;
 
+        public Task<IReadOnlyList<FileReference>> ReferencesNamingAsync(Guid fileId, CancellationToken cancellationToken) =>
+            inner.ReferencesNamingAsync(fileId, cancellationToken);
+
         public async Task<bool> HasOtherReferencesAsync(Guid fileId, CancellationToken cancellationToken)
         {
             var result = await inner.HasOtherReferencesAsync(fileId, cancellationToken);

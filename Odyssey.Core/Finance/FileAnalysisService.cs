@@ -22,6 +22,7 @@ namespace Odyssey.Core.Finance;
 public class FileAnalysisService
 {
     private readonly OdysseyContext context;
+    private readonly Odyssey.Core.FileStorage.Files.StoredFileContentSource source;
     private readonly IFileAnalysisProvider provider;
     private readonly IContactLookup contactLookup;
     private readonly FileAnalysisOptions options;
@@ -36,8 +37,10 @@ public class FileAnalysisService
         IOptions<FileAnalysisOptions> options,
         IFileAnalysisSettingsLookup settingsLookup,
         ILogger<FileAnalysisService> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        Odyssey.Core.FileStorage.Files.StoredFileContentSource? source = null)
     {
+        this.source = source ?? new Odyssey.Core.FileStorage.Files.StoredFileContentSource(context, store: null);
         this.context = context;
         this.provider = provider;
         this.contactLookup = contactLookup;
@@ -59,7 +62,6 @@ public class FileAnalysisService
         // Find the AccountFile joining this account to this file
         var accountFile = await context.AccountFiles
             .Include(af => af.FileMetadata)
-                .ThenInclude(fm => fm!.FileBlob)
             .Include(af => af.Account)
             .FirstOrDefaultAsync(
                 af => af.AccountId == accountId && af.FileMetadataId == fileId,
@@ -78,7 +80,9 @@ public class FileAnalysisService
 
         var fileMetadata = accountFile.FileMetadata
             ?? throw new InvalidOperationException("File metadata could not be loaded.");
-        var fileBlob = fileMetadata.FileBlob
+        // Through the one read path (issue #448): the statement on disk, or its legacy blob. The deploy-time ceiling bounds
+        // the read; an upload never exceeds it.
+        var fileContent = (await source.ReadAllAsync(fileMetadata.Id, long.MaxValue, cancellationToken))?.Bytes
             ?? throw new InvalidOperationException("File content could not be loaded.");
 
         var promptTemplate = await LoadPromptTemplateAsync(cancellationToken);
@@ -157,7 +161,7 @@ public class FileAnalysisService
             var accountCurrency = accountFile.Account?.CurrencyCode ?? "USD";
 
             var extracted = await provider.ExtractTransactionsAsync(
-                fileBlob.Content,
+                fileContent,
                 fileMetadata.ContentType,
                 accountCurrency,
                 promptTemplate,

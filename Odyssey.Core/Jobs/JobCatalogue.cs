@@ -1,3 +1,4 @@
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Journal.Originals;
@@ -97,6 +98,14 @@ public static class JobCatalogue
         new(JobType.PhotoOriginalBackfill, typeof(PhotoOriginalBackfillJob), PhotoOriginalBackfillJob.Tick,
             Cadence: null, DynamicCadence: false,
             StaleAfter: PhotoOriginalBackfillJob.RunBudget + PhotoOriginalBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.FileStorageRead],
+            DetailReadClaim: PermissionClaims.FileStorageRead),
+
+        // The file move (issue #448): every remaining FileBlob onto the file store. Work-driven, idle for good once the
+        // database holds no file bytes. Gated like the photo move, for the same reasons.
+        new(JobType.FileBlobBackfill, typeof(FileBlobBackfillJob), FileBlobBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: FileBlobBackfillJob.RunBudget + FileBlobBackfillJob.LeaseDuration + TimeSpan.FromMinutes(5),
             ManualRunClaims: [PermissionClaims.FileStorageRead],
             DetailReadClaim: PermissionClaims.FileStorageRead),
     ];

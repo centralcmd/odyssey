@@ -30,7 +30,10 @@ public class ContactVCardImageTests
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
             new FileService(context, new FileValidationService()),
-            new FixedUploadLimits(64L * 1024 * 1024));
+            new FixedUploadLimits(64L * 1024 * 1024),
+            writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
+            store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+            source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source);
 
     private static (ContactService Service, ContactVCardService VCard) CreateServices(OdysseyContext context)
     {
@@ -365,9 +368,15 @@ public class ContactVCardImageTests
     private static async Task<byte[]?> AvatarBytesAsync(OdysseyContext context, Guid contactId)
     {
         var contact = context.Contacts.Single(c => c.ContactId == contactId);
-        return contact.AvatarFileId is not { } fileId
-            ? null
-            : await AvatarServiceFor(context).GetContentAsync(fileId);
+        if (contact.AvatarFileId is not { } fileId || await AvatarServiceFor(context).GetContentAsync(fileId) is not { } content)
+        {
+            return null;
+        }
+
+        await using var stream = content.Content;
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        return buffer.ToArray();
     }
 
     private static async Task<ExistingContact> FindByUidAsync(ContactService service, string externalUid) =>

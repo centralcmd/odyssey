@@ -21,6 +21,7 @@ public static class PhotoThumbnailServiceCollectionExtensions
         services.TryAddSingleton(_ => PhotoThumbnailWorkerIdentity.FromMachine());
         services.TryAddSingleton<PhotoThumbnailProcessHooks>();
         services.TryAddSingleton<IPhotoMetadataExtractor, PhotoMetadataExtractor>();
+        services.TryAddScoped<Odyssey.Core.FileStorage.Files.StoredFileContentSource>();
         services.TryAddScoped<IImageContentReader, ImageContentReader>();
         services.TryAddScoped<PhotoThumbnailService>();
         services.AddScoped<IFileRenameObserver, PhotoThumbnailRenameObserver>();
