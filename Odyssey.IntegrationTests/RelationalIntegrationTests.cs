@@ -1579,14 +1579,19 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             .UseMySql(fixture.RelationalConnectionString, ServerVersion.AutoDetect(fixture.RelationalConnectionString))
             .Options);
 
+    /// <summary>
+    /// The seeder test asserts exact row counts, so it runs against a database it owns. The shared <c>odyssey</c>
+    /// database is written by dozens of other classes in this collection (<see cref="AttributionUsers"/> alone adds
+    /// users), and xUnit's class order is not declaration order: adding a test elsewhere reshuffles it, and the counts
+    /// then see another class's rows.
+    /// </summary>
     private ServiceProvider BuildSeederProvider()
     {
+        var connectionString = fixture.ConnectionStringFor("odyssey_seeder_it");
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<OdysseyContext>(options =>
-            options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
-        services.AddDbContext<OdysseyContext>(options =>
-            options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<OdysseyContext>();
