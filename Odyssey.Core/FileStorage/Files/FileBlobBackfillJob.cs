@@ -314,6 +314,19 @@ public sealed class FileBlobBackfillJob(
         var skipped = 0;
         var examined = 0;
 
+        // Every area unhealthy: nothing can move, so classifying up to ScanLimit rows (several queries each) would be
+        // pure cost (architect review on PR #454). Report the hold from one existence query instead.
+        foreach (var each in Enum.GetValues<StoredFileArea>())
+        {
+            health[each] = await AreaHealthyAsync(writer, each, cancellationToken);
+        }
+
+        if (!health.Values.Any(h => h))
+        {
+            var any = await Movable(context).AnyAsync(cancellationToken);
+            return new CandidateScan(eligible, any ? 1 : 0, 0);
+        }
+
         while (eligible.Count < BatchSize && examined < ScanLimit)
         {
             var page = await Movable(context)

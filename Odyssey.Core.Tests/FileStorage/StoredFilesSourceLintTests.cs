@@ -59,6 +59,8 @@ public partial class StoredFilesSourceLintTests
 
         Assert.NotEmpty(removers);
         Assert.All(removers, path => Assert.True(MetadataRemovalAllowList.Contains(path), $"{path} removes FileMetadata without StoredFileRemoval."));
+        // An exemption may not outlive the removal it excuses.
+        Assert.All(MetadataRemovalAllowList, path => Assert.Contains(path, removers));
     }
 
     [Fact]
@@ -84,12 +86,41 @@ public partial class StoredFilesSourceLintTests
         Assert.NotEmpty(files);
         var offenders = files.Where(f => JournalReference().IsMatch(f.Code)).Select(f => f.Path).ToList();
         Assert.All(offenders, path => Assert.True(FinanceToJournalAllowList.Contains(path), $"{path} references Odyssey.Core.Journal."));
+        Assert.All(FinanceToJournalAllowList, path => Assert.Contains(path, offenders));
+    }
+
+    /// <summary>Each pattern matches the shapes it exists to catch and skips its look-alikes, so a lint cannot pass by never matching.</summary>
+    [Theory]
+    [InlineData("LegacyRead", "var b = context.FileBlob.First();", true)]
+    [InlineData("LegacyRead", "if (file.FileBlobId is { } id) {}", true)]
+    [InlineData("LegacyRead", "var x = context.FileBlobBackfillLeases;", false)]
+    [InlineData("MetadataRemoval", "context.FileMetadata.Remove(file);", true)]
+    [InlineData("MetadataRemoval", "context.FileMetadata.RemoveRange(files);", true)]
+    [InlineData("MetadataRemoval", "context.Set<FileMetadata>().Remove(file);", true)]
+    [InlineData("MetadataRemoval", "await context.FileMetadata.Where(f => f.Id == id).ExecuteDeleteAsync();", true)]
+    [InlineData("MetadataRemoval", "context.Contacts.Remove(contact);", false)]
+    [InlineData("AvatarWrite", "await writer.StageNewFileAsync(\n context, StoredFileArea.ContactAvatars, s);", true)]
+    [InlineData("AvatarWrite", "await writer.StageNewFileAsync(context, StoredFileArea.Finance, s);", false)]
+    [InlineData("JournalReference", "using Odyssey.Core.Journal;", true)]
+    [InlineData("JournalReference", "var x = new Journal.ContactService();", true)]
+    [InlineData("JournalReference", "using Odyssey.Dtos.Journal;", false)]
+    public void Each_pattern_catches_what_it_guards(string pattern, string code, bool matches)
+    {
+        var regex = pattern switch
+        {
+            "LegacyRead" => LegacyRead(),
+            "MetadataRemoval" => MetadataRemoval(),
+            "AvatarWrite" => AvatarWrite(),
+            _ => JournalReference(),
+        };
+
+        Assert.Equal(matches, regex.IsMatch(code));
     }
 
     [GeneratedRegex(@"\.FileBlob\b|\bFileBlobId\b")]
     private static partial Regex LegacyRead();
 
-    [GeneratedRegex(@"FileMetadata\s*\.\s*Remove(Range)?\s*\(")]
+    [GeneratedRegex(@"FileMetadata\s*(>\s*\(\s*\))?\s*\.\s*Remove(Range)?\s*\(|FileMetadata\b[^;]*\.\s*ExecuteDelete(Async)?\s*\(")]
     private static partial Regex MetadataRemoval();
 
     [GeneratedRegex(@"StageNewFileAsync\s*\([^;]*StoredFileArea\.ContactAvatars", RegexOptions.Singleline)]

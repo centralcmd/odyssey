@@ -845,7 +845,7 @@ public class ContactVCardService
             catch (Exception ex) when (ex is FileStorage.FileStorageUnavailableException or FileStorage.FileStorageFullException)
             {
                 // A storage fault never fails the import (issue #448 §3.3): the contact keeps no new image and the image
-                // is reported skipped. The write stages nothing until it succeeds, so nothing is left for a later save.
+                // is reported skipped. A failed write stages nothing (the row is added only after the bytes are stored), so nothing is left for a later save.
                 return (ImageOutcome.Skipped, "File storage isn't available, so the image wasn't saved.");
             }
 

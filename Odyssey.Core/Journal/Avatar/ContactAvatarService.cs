@@ -172,9 +172,13 @@ public class ContactAvatarService
         var effectiveMaxBytes = await GetEffectiveMaxBytesAsync(cancellationToken);
         var validated = ContactAvatarValidator.Validate(bytes, declaredContentType, effectiveMaxBytes);
 
+        // The disk write happens ONCE, outside the retrying strategy (architect review on PR #454): a retried lambda
+        // that wrote again would leave the first attempt's file and row staged, and one save would persist both. The
+        // staged row and stored object stay Added across a failed save, so a retry only re-runs the repoint and save.
+        var metadata = await WriteImageAsync(contact, validated, userId, cancellationToken);
         await ExecuteAtomicallyAsync(async () =>
         {
-            await StageReplaceAsync(contact, validated, userId, "replace", cancellationToken);
+            await RepointAsync(contact, metadata, "replace", cancellationToken);
             await SaveDetectingAvatarConflictAsync(cancellationToken);
         });
 
@@ -223,8 +227,8 @@ public class ContactAvatarService
     /// unsaved, so the caller's one save commits them together. Shared by the upload and the vCard import.
     /// <para>
     /// The <b>write comes first</b> (issue #448): it is the step that can fail for storage reasons (<c>503</c>/<c>507</c>,
-    /// a busy bucket), and it stages nothing on the caller's context until it succeeds, so a failure leaves no staged
-    /// release behind for a later save to apply.
+    /// a busy bucket), and the release is staged only after it succeeds, so a failed write leaves no staged release
+    /// behind for a later save to apply.
     /// </para>
     /// </summary>
     public async Task StageReplaceAsync(
@@ -233,6 +237,14 @@ public class ContactAvatarService
         string? userId,
         string site,
         CancellationToken cancellationToken = default)
+    {
+        var metadata = await WriteImageAsync(contact, validated, userId, cancellationToken);
+        await RepointAsync(contact, metadata, site, cancellationToken);
+    }
+
+    /// <summary>Writes the image to the <c>ContactAvatars</c> feature and stages its row; stages nothing on failure.</summary>
+    private async Task<FileMetadata> WriteImageAsync(
+        Contact contact, ValidatedImage validated, string? userId, CancellationToken cancellationToken)
     {
         if (writer is null)
         {
@@ -252,6 +264,12 @@ public class ContactAvatarService
                 Math.Max(1, validated.Bytes.LongLength), cancellationToken);
         }
 
+        return metadata;
+    }
+
+    /// <summary>Releases the outgoing image through the shared rule and points the contact at the new one.</summary>
+    private async Task RepointAsync(Contact contact, FileMetadata metadata, string site, CancellationToken cancellationToken)
+    {
         await StageReleaseAsync(contact, site, cancellationToken);
         contact.AvatarFileId = metadata.Id;
         contact.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
