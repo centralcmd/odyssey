@@ -33,9 +33,9 @@
 .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
-/* Text on the pending tint takes --warning-text, not the design system's --pending-text: since the light
-   --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures ~4.4:1 on white
-   (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500 either way. */
+/* Text on the pending tint takes --warning-text, not --pending-text, as in the design system (issue #439):
+   since the light --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures
+   ~4.4:1 on white (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500. */
 .odc-chip.pending { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
@@ -666,6 +666,14 @@
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
     outline-offset: var(--focus-ring-offset);
 }
+/* Every MudButton, as the design system's `.odc-btn:focus-visible`: MudBlazor sets `outline: 0` on
+   .mud-button-root and draws keyboard focus as a background tint alone, which no variant clears 3:1 with
+   (WCAG 2.4.7 / 1.4.11). The outlined variant's primary focus edge was the last stronger cue, and it is
+   --control-border in every state since issue #419, so the ring is what marks focus on every variant. */
+.mud-button-root.mud-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
 
 /* The page-header filter bar (.ph-filter-bar / .ph-search / .ph-select) now has a
    single definition in Components/PageHeader.razor.css — the header renders the
@@ -712,10 +720,12 @@
   display: flex; align-items: flex-start; gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   margin-bottom: 0;
-  background: rgba(20, 30, 50, 0.04);
+  /* The design system's 0.02 wash (bundle.css .odc-modal-head/-foot). At 0.04 a text button's hover in the
+     footer took --brand-text under 4.5:1 in light (4.47:1); at 0.02 it is 4.65:1 (issue #419). */
+  background: rgba(20, 30, 50, 0.02);
   border-bottom: 1px solid var(--mud-palette-divider);
 }
-[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.02); }
 
 /* Optional leading icon tile — brand-tide by default; warning / error tints for
    destructive or confirm dialogs. */
@@ -741,13 +751,13 @@
   gap: var(--space-3);
   margin: 0;
   padding: var(--space-4) var(--space-5);
-  background: rgba(20, 30, 50, 0.04);
+  background: rgba(20, 30, 50, 0.02);
   border-top: 1px solid var(--mud-palette-divider);
 }
 /* Normalize action heights — MudBlazor text buttons (e.g. Cancel) render shorter
    than filled ones, which reads as a vertical mismatch in the row. */
 .mud-dialog .mud-dialog-actions.ods-modal-foot > .mud-button-root { margin: 0; min-height: 40px; }
-[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.02); }
 /* Footer legend explaining the required marker, once per dialog (DS .odc-modal-legend). Always
    rendered, shown only while the body holds a required field — a hand-labelled .odc-field-req or a
    MudBlazor control carrying .mud-input-required — so it tracks conditionally-rendered fields
@@ -882,6 +892,31 @@
 }
 .mud-button-root.mud-button-text.odc-btn-aria-disabled,
 .mud-button-root.mud-button-outlined.odc-btn-aria-disabled { background-color: transparent; }
+/* Outlined and text buttons (design system · bundle.css `.odc-btn.outlined` / `.odc-btn.text`, issue #419).
+   MudBlazor paints both labels in --mud-palette-primary, which in light is tide-600 on white: 2.49:1,
+   under WCAG 1.4.3's 4.5:1. The design system draws the outlined label in text-primary on the control
+   border, and the text label in --brand-text. Hover tints with the neutral action hover, and the
+   outlined edge stays --control-border in every state, where MudBlazor's state rules re-draw it in primary.
+   :where() keeps both disabled states out at no specificity cost, so these stay three classes (one more
+   for a state) and still out-rank MudBlazor's later sheet; its native-disabled colour is !important. */
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--mud-palette-text-primary);
+    border-color: var(--control-border);
+}
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    border-color: var(--control-border);
+    background-color: var(--mud-palette-action-default-hover);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--brand-text);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    background-color: var(--mud-palette-action-default-hover);
+}
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
    A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
@@ -4490,8 +4525,8 @@ tr:focus-within > .odc-rowactions.reveal,
 /* On a phone the figure column (a nowrap amount + caption) left the identity column a few pixels,
    so the name ellipsised to one letter and its status chips — which never shrink — ran on under the
    amount (a tax statement's "Flagged" over "26,722 USD"). There the figure drops to a second row under
-   the identity instead; wider screens keep the three-column row. The design system has no narrow
-   layout for the record card yet, so this is the implementation's until it does. */
+   the identity instead; wider screens keep the three-column row. Mirrors the design system's
+   bundle.css rule beside .odc-record-figure (issue #289). */
 @media (max-width: 600px) {
     .odc-record-trigger { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-2); }
     .odc-record-figure { grid-column: 2; align-items: flex-start; text-align: left; }

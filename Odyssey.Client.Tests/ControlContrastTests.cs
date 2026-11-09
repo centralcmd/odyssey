@@ -507,6 +507,193 @@ public class ControlContrastTests
         Assert.Equal(design, client, StringComparer.OrdinalIgnoreCase);
     }
 
+    // ── Outlined and text button labels (issue #419) ────────────────────────────────────────────
+
+    private const string ClientOutlinedButton =
+        ".mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled,.odc-btn-aria-disabled))";
+
+    private const string ClientTextButton =
+        ".mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled,.odc-btn-aria-disabled))";
+
+    /// <summary>
+    /// MudBlazor draws both labels in <c>--mud-palette-primary</c>, which in light is tide-600 on white: 2.49:1.
+    /// The design system draws the outlined label in text-primary and the text label in <c>--brand-text</c>. Both
+    /// must clear 4.5:1 on every ground a button sits on — Surface, Background, and the hover tint over either.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void Outlined_and_text_button_labels_clear_text_contrast_at_rest_and_on_hover(Theme theme)
+    {
+        var palette = Palette(theme);
+        var labels = new Dictionary<string, string>
+        {
+            ["Outlined label (text-primary)"] = Hex(palette.TextPrimary),
+            ["Text label (--brand-text)"] = Resolve(AppCss, Declarations(AppCss, "--brand-text")[theme]),
+        };
+
+        foreach (var (what, label) in labels)
+        {
+            foreach (var (groundName, ground) in new[] { ("Surface", Hex(palette.Surface)), ("Background", Hex(palette.Background)) })
+            {
+                AssertRatio(label, ground, TextContrastMinimum, $"{what} on {groundName} ({theme})");
+                AssertRatio(label, Over(palette.ActionDefault, palette.HoverOpacity, ground), TextContrastMinimum,
+                    $"{what} on the hover tint over {groundName} ({theme})");
+            }
+        }
+    }
+
+    /// <summary>
+    /// A dialog's Cancel is a text button on the footer's wash, so the hover tint stacks on that wash. At the old 0.04
+    /// light wash the label fell to 4.47:1; the design system's 0.02 keeps it at 4.65:1. The header carries the same
+    /// wash and may hold a text action too. Read from the rules, so thickening either wash fails here.
+    /// </summary>
+    [Theory]
+    [InlineData(Theme.Light, ".mud-dialog .mud-dialog-actions.ods-modal-foot")]
+    [InlineData(Theme.Dark, "[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot")]
+    [InlineData(Theme.Light, ".mud-dialog .mud-dialog-title.ods-modal-head")]
+    [InlineData(Theme.Dark, "[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head")]
+    public void The_text_button_label_clears_text_contrast_when_hovered_on_a_dialog_wash(Theme theme, string footer)
+    {
+        var palette = Palette(theme);
+        var wash = Regex.Match(Rule(ComponentsCss, footer),
+            @"background:\s*rgba\(\s*(?<r>\d+),\s*(?<g>\d+),\s*(?<b>\d+),\s*(?<a>[\d.]+)\s*\)\s*;");
+        Assert.True(wash.Success, $"{footer} has no rgba() background.");
+
+        var washColour = new MudColor(int.Parse(wash.Groups["r"].Value, CultureInfo.InvariantCulture),
+            int.Parse(wash.Groups["g"].Value, CultureInfo.InvariantCulture),
+            int.Parse(wash.Groups["b"].Value, CultureInfo.InvariantCulture), 255);
+        var ground = Over(washColour, double.Parse(wash.Groups["a"].Value, CultureInfo.InvariantCulture), Hex(palette.Surface));
+        var label = Resolve(AppCss, Declarations(AppCss, "--brand-text")[theme]);
+
+        AssertRatio(label, ground, TextContrastMinimum, $"Text label on {footer} ({theme})");
+        AssertRatio(label, Over(palette.ActionDefault, palette.HoverOpacity, ground), TextContrastMinimum,
+            $"Text label hovered on {footer} ({theme})");
+    }
+
+    /// <summary>
+    /// MudBlazor sets <c>outline: 0</c> on every <c>.mud-button-root</c> and marks keyboard focus with a background tint
+    /// alone, under 3:1 on any variant. The client draws the design system's <c>.odc-btn:focus-visible</c> ring on every
+    /// MudButton (WCAG 2.4.7); without it the outlined variant, whose edge no longer turns primary on focus (#419),
+    /// would show focus only as that tint.
+    /// </summary>
+    [Fact]
+    public void Every_MudButton_draws_the_focus_ring_on_focus_visible()
+    {
+        var body = Rule(ComponentsCss, ".mud-button-root.mud-button:focus-visible");
+
+        Assert.Matches(@"outline:\s*var\(--focus-ring-width\)\s+solid\s+var\(--focus-ring\b", body);
+        Assert.Matches(@"outline-offset:\s*var\(--focus-ring-offset\)\s*;", body);
+        Assert.Contains(MudRules(), r => r.Selector == ".mud-button-root" && Regex.IsMatch(r.Body, @"outline:\s*0"));
+        Assert.True(Specificity(".mud-button-root.mud-button:focus-visible").CompareTo(Specificity(".mud-button-root")) > 0);
+    }
+
+    /// <summary>The ring sits outside the button, on the surface or background around it: 3:1 there (WCAG 1.4.11).</summary>
+    [Theory]
+    [InlineData(Theme.Light)]
+    [InlineData(Theme.Dark)]
+    public void The_focus_ring_clears_three_to_one_on_the_grounds_a_button_sits_on(Theme theme)
+    {
+        var palette = Palette(theme);
+        var declared = Declarations(AppCss, "--focus-ring")[theme];
+        var ring = declared == "var(--mud-palette-primary)" ? Hex(palette.Primary) : Resolve(AppCss, declared);
+
+        AssertRatio(ring, Hex(palette.Surface), NonTextContrastMinimum, $"--focus-ring on Surface ({theme})");
+        AssertRatio(ring, Hex(palette.Background), NonTextContrastMinimum, $"--focus-ring on Background ({theme})");
+    }
+
+    /// <summary>The rules themselves, so a later edit cannot swap the label back to the primary fill colour.</summary>
+    [Theory]
+    [InlineData(ClientOutlinedButton, "color", "--mud-palette-text-primary")]
+    [InlineData(ClientOutlinedButton, "border-color", "--control-border")]
+    [InlineData(ClientTextButton, "color", "--brand-text")]
+    public void Outlined_and_text_buttons_paint_the_design_systems_tokens(string selector, string property, string token)
+    {
+        var body = Rule(ComponentsCss, selector);
+
+        Assert.Matches(@"(?<![-\w])" + Regex.Escape(property) + @":\s*var\(" + Regex.Escape(token) + @"\)\s*;", body);
+    }
+
+    /// <summary>
+    /// MudBlazor.min.css loads after the client's sheet, so each client rule must be strictly more specific than the
+    /// MudBlazor rule it replaces — at rest and in the hover / focus / active states that re-draw the edge in primary.
+    /// </summary>
+    [Theory]
+    [InlineData(ClientOutlinedButton, "", ".mud-button-outlined.mud-button-outlined-primary")]
+    [InlineData(ClientOutlinedButton, ":hover", ".mud-button-outlined.mud-button-outlined-primary:hover")]
+    [InlineData(ClientOutlinedButton, ":focus-visible", ".mud-button-outlined.mud-button-outlined-primary:focus-visible")]
+    [InlineData(ClientOutlinedButton, ":active", ".mud-button-outlined.mud-button-outlined-primary:active")]
+    [InlineData(ClientTextButton, "", ".mud-button-text.mud-button-text-primary")]
+    [InlineData(ClientTextButton, ":hover", ".mud-button-text.mud-button-text-primary:hover")]
+    [InlineData(ClientTextButton, ":focus-visible", ".mud-button-text.mud-button-text-primary:focus-visible")]
+    [InlineData(ClientTextButton, ":active", ".mud-button-text.mud-button-text-primary:active")]
+    public void Outlined_and_text_button_rules_outrank_MudBlazors(string clientBase, string state, string mudSelector)
+    {
+        var client = clientBase + state;
+        Assert.Contains(Rules(File.ReadAllText(ComponentsCss)), r => SelectorList(r.Selector).Contains(client, StringComparer.Ordinal));
+        Assert.Contains(MudRules(), r => r.Selector == mudSelector);
+
+        var ours = Specificity(client);
+        var theirs = Specificity(mudSelector);
+        Assert.True(ours.CompareTo(theirs) > 0, $"{client} {ours} must out-rank MudBlazor's {mudSelector} {theirs}.");
+    }
+
+    /// <summary>
+    /// Neither disabled state may be restyled: native disabled keeps MudBlazor's own look, and AriaDisabled keeps
+    /// the client's <c>.odc-btn-aria-disabled</c> rule, which is less specific than these and would otherwise lose.
+    /// </summary>
+    [Theory]
+    [InlineData(ClientOutlinedButton)]
+    [InlineData(ClientTextButton)]
+    public void Outlined_and_text_button_rules_leave_both_disabled_states_alone(string selector)
+    {
+        Assert.EndsWith(":where(:not(:disabled,.odc-btn-aria-disabled))", selector, StringComparison.Ordinal);
+        Assert.Equal((0, 3, 0), Specificity(selector));
+    }
+
+    /// <summary>The client adopts the design system's rule rather than restating its own (issue #419).</summary>
+    [SkippableTheory]
+    [InlineData(".odc-btn.outlined", "color", "--mud-palette-text-primary")]
+    [InlineData(".odc-btn.outlined", "border-color", "--control-border")]
+    [InlineData(".odc-btn.text", "color", "--brand-text")]
+    public void The_design_system_specifies_the_same_button_label_tokens(string selector, string property, string token)
+    {
+        var body = Rule(DesignSystemSource.File("components/bundle.css"), selector);
+
+        Assert.Matches(@"(?<![-\w])" + Regex.Escape(property) + @":\s*var\(" + Regex.Escape(token) + @"\)\s*;", body);
+    }
+
+    /// <summary>A selector list split at its top-level commas — never at one inside <c>:where(...)</c> or <c>:not(...)</c>.</summary>
+    private static IEnumerable<string> SelectorList(string selectorList)
+    {
+        var depth = 0;
+        var start = 0;
+        for (var i = 0; i < selectorList.Length; i++)
+        {
+            switch (selectorList[i])
+            {
+                case '(': depth++; break;
+                case ')': depth--; break;
+                case ',' when depth == 0:
+                    yield return selectorList[start..i];
+                    start = i + 1;
+                    break;
+            }
+        }
+        yield return selectorList[start..];
+    }
+
+    /// <summary>
+    /// <paramref name="top"/>'s RGB at <paramref name="alpha"/> composited over an opaque <c>#RRGGBB</c> ground. MudBlazor
+    /// generates <c>--mud-palette-action-default-hover</c> as <c>ActionDefault</c>'s RGB at <c>HoverOpacity</c>.
+    /// </summary>
+    private static string Over(MudColor top, double alpha, string ground)
+    {
+        int Channel(byte fg, int offset) =>
+            (int)Math.Round(fg * alpha + Convert.ToByte(ground.Substring(offset, 2), 16) * (1 - alpha));
+        return $"#{Channel(top.R, 1):X2}{Channel(top.G, 3):X2}{Channel(top.B, 5):X2}";
+    }
+
     // ── CSS parsing ─────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
