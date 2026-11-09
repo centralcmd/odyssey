@@ -42,6 +42,8 @@ public partial class BackgroundJobs
 
     [Inject] private IJSRuntime Js { get; set; } = default!;
 
+    [Inject] private IClipboardService Clipboard { get; set; } = default!;
+
     /// <summary><c>?job=</c> — repeatable; each value passes the allow-list (F13, FS3, S-N4).</summary>
     [SupplyParameterFromQuery(Name = "job")]
     public string[]? JobQuery { get; set; }
@@ -449,6 +451,16 @@ public partial class BackgroundJobs
     // Seconds, not minutes: a manual run beside a scheduled one can start in the same minute, and two rows sharing one
     // "Show details for …" name could not be told apart (frontend review on PR #418).
     internal static string RowLabel(ExistingJobRun run) => $"{JobOf(run.JobType).Name} run started {RunTime.Precise(run.StartedAtUtc)}";
+
+    private IReadOnlyList<OdsMenuItem> RunActions(ExistingJobRun run, OdsRecordActionContext _) =>
+    [
+        new()
+        {
+            Icon = "fingerprint",
+            Label = "Copy run ID",
+            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(run.Id.ToString(), "Run ID copied.")),
+        },
+    ];
 
     private IReadOnlyList<OdsRecordColumn<ExistingJobRun>> Columns =>
     [

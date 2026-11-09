@@ -48,7 +48,8 @@
       • Recent transactions are the eight newest rows from api/transactions, drawn
         with the design's Description · Tag · Status · Amount · Date columns.
       • Each region is permission-gated: the chart needs accounts.read, the table
-        needs transactions.read; either is dropped (not 403'd) when not granted.
+        needs transactions.read, the Watchlist instrument-prices.read; each is dropped
+        (not 403'd) when not granted.
 *@
 
 <MudStack Spacing="6">
@@ -143,6 +144,15 @@
                 <LiabilitiesSub>@DashboardFigures.AllocationLiabilitiesSub(liabilitySlices)</LiabilitiesSub>
             </OdsAllocationDonuts>
         }
+    }
+
+    @* 2c · Watchlist (issue #452) — instrument-prices.read only; it fetches once Home has resolved the
+       display currency, below the chart and the donuts and above Recent transactions, as in the design system. *@
+    @if (_canReadInstrumentPrices)
+    {
+        <Odyssey.Client.Pages.Finance.Instruments.WatchlistCard DisplayCurrencyCode="@_resolvedMainCurrency"
+                                                                MinorUnits="@(_mainCurrencyMinorUnits ?? OdsMoney.DefaultMinorUnits)"
+                                                                MinorUnitsByCode="_minorUnitsByCode" />
     }
 
     @* 3 · Recent transactions — an excerpt of the shared transactions table *@

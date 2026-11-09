@@ -67,6 +67,8 @@ public static class NavModel
                 new("tags", "Transaction Tags", "local_offer", "transaction-tags"),
                 new("currencies", "Currencies", "attach_money", "currencies"),
                 new("exchange-rates", "Exchange rates", "currency_exchange", "exchange-rates"),
+                new("instruments", "Instruments", "candlestick_chart", "instruments", PermissionClaims.InstrumentsRead),
+                new("instrument-prices", "Instrument prices", "show_chart", "instrument-prices", PermissionClaims.InstrumentPricesRead),
             ], NoDivider: true),
         ]),
         // The photo library and Contacts live under Journal (design-system app shell): the /photos page

@@ -83,7 +83,10 @@ public sealed class UploadFailureTextTests
     [InlineData(60, "in 1 minute")]
     [InlineData(61, "in 2 minutes")]
     [InlineData(3600, "in 60 minutes")]
-    [InlineData(3601, "in more than an hour")]
+    [InlineData(3601, "in over an hour")]
+    [InlineData(31536000, "in over an hour")]
+    [InlineData(31536001, "shortly")]
+    [InlineData(int.MaxValue, "shortly")]
     public void Retry_after_rounds_up_to_whole_minutes(int? seconds, string expected) =>
         Assert.Equal(expected, UploadRetryWording.When(seconds is { } s ? TimeSpan.FromSeconds(s) : null));
 

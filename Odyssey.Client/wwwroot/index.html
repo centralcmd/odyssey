@@ -391,6 +391,38 @@
                 table.dataset.recInteractive = hit && table.contains(hit) ? '1' : '0';
             }, true);
         };
+        window.odsRecFocusInMenu = function (menuId) {
+            // OdsRecordTable RowBusy: was focus on this row's menu trigger, or inside its open menu
+            // (MudMenu portals its list, so "inside" is an open popover's menu item while the trigger
+            // reports aria-expanded)?
+            const wrap = document.getElementById(menuId);
+            const active = document.activeElement;
+            if (!wrap || !active) return false;
+            if (wrap.contains(active)) return true;
+            const trigger = wrap.querySelector('[aria-expanded="true"]');
+            return !!trigger && !!active.closest && !!active.closest('[role="menu"]');
+        };
+        window.odsRecFocusEl = function (id) {
+            const el = document.getElementById(id);
+            if (el) el.focus();
+        };
+        window.odsRecFocusCell = function (id) {
+            // OdsRecordTable.FocusRowHeaderAsync: a header cell is focusable programmatically only.
+            const el = document.getElementById(id);
+            if (!el) return false;
+            if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+            el.focus();
+            return document.activeElement === el;
+        };
+        window.odsRecFocusMenuFromHead = function (headId, menuId) {
+            // Back to the row's menu trigger once the row is idle — only if focus is still where the
+            // busy state put it.
+            const head = document.getElementById(headId);
+            const wrap = document.getElementById(menuId);
+            if (!head || !wrap || document.activeElement !== head) return;
+            const btn = wrap.querySelector('button');
+            if (btn) btn.focus();
+        };
         window.odsRecClickWasInteractive = function (tableId) {
             const table = document.getElementById(tableId);
             return !!table && table.dataset.recInteractive === '1';

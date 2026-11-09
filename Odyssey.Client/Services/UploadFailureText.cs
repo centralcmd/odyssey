@@ -131,21 +131,24 @@ public static class UploadFailureText
 
 /// <summary>
 /// <c>Retry-After</c> in words for an upload (issue #449 §7) — its own rule, not the file-analysis wording: 1 s to 60 min
-/// rounds <b>up</b> to whole minutes; more than an hour says so rather than understating; zero, negative or missing (the client
-/// reads both header forms into one <see cref="TimeSpan"/>) is "shortly".
+/// rounds <b>up</b> to whole minutes; more than an hour says so rather than understating; zero, negative, missing (the client
+/// reads both header forms into one <see cref="TimeSpan"/>) or more than a year — a garbage or overflowed value, not a real
+/// wait — is "shortly" (Odyssey Design System · AttachDocumentsModal <c>odsUploadRetryWhen</c>).
 /// </summary>
 public static class UploadRetryWording
 {
+    private static readonly TimeSpan MaxPlausibleWait = TimeSpan.FromDays(365);
+
     public static string When(TimeSpan? wait)
     {
-        if (wait is not { } span || span <= TimeSpan.Zero)
+        if (wait is not { } span || span <= TimeSpan.Zero || span > MaxPlausibleWait)
         {
             return "shortly";
         }
 
         if (span > TimeSpan.FromHours(1))
         {
-            return "in more than an hour";
+            return "in over an hour";
         }
 
         var minutes = (int)Math.Ceiling(span.TotalMinutes);

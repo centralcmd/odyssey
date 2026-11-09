@@ -1778,6 +1778,45 @@
    surface says so in its own copy — a section notice (.odc-recordsection-notice) or a helper line,
    never a menu row. */
 
+/* ---------- Table (OdsTable · Odyssey DS components/Table) ---------- */
+.odc-table {
+    width: 100%; border-collapse: collapse;
+    font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.odc-table th, .odc-table td {
+    text-align: left; padding: var(--cell-pad-y) var(--space-3);
+    height: var(--row-h);
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+    vertical-align: middle;
+}
+.odc-table thead th {
+    font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap; user-select: none;
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+.odc-table tbody tr { transition: background-color var(--duration-base) var(--ease-standard); }
+.odc-table tbody tr:hover { background: var(--mud-palette-action-default-hover); }
+.odc-table tbody tr:last-child td { border-bottom: none; }
+.odc-table.clickable tbody tr { cursor: pointer; }
+.odc-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-table thead th.num { font-family: var(--font-sans); }
+.odc-table.dense th, .odc-table.dense td { padding: var(--space-2) var(--space-3); height: var(--row-h-dense); }
+.odc-table-empty { text-align: center !important; color: var(--mud-palette-text-secondary); padding: var(--space-12) var(--space-4) !important; }
+.odc-th-btn {
+    appearance: none; background: none; border: none; cursor: pointer; padding: var(--space-1) 0; margin: calc(-1 * var(--space-1)) 0;
+    display: inline-flex; align-items: center; gap: var(--space-1);
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.odc-th.num .odc-th-btn { flex-direction: row-reverse; }
+.odc-th-btn:hover { color: var(--mud-palette-text-primary); }
+.odc-th-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
+.material-icons.odc-th-sort { font-size: var(--icon-sm); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
+.odc-th-btn:hover .odc-th-sort { opacity: 0.5; }
+.odc-th-btn[data-active] .odc-th-sort { opacity: 1; color: var(--brand-text); }
+
 /* ---------- Record table (sortable · expandable · editable) ---------- */
 /* The record table's scroll frame: on a phone a table's columns need more than the page is wide,
    and without a frame of its own that width becomes the page's (Transactions: 1071 px at 420). */
@@ -1800,7 +1839,7 @@
 .odc-rec.odc-rec-flat tbody tr:hover { cursor: default; }
 .odc-rec .odc-rec-numeric { text-align: right; white-space: nowrap; }
 .odc-rec thead th.odc-rec-numeric { font-family: var(--font-sans); }
-.odc-rec td.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-rec td.odc-rec-numeric, .odc-rec tbody th.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Signed-money tone for amount cells / meta tiles (income mint · expense coral).
    A client-only class under the ods- prefix: the design system has since claimed
    .odc-money for MoneyField's control box, and this is a colored number, not a
@@ -1824,6 +1863,30 @@
 .odc-rec-sort:hover .odc-rec-sort-ic { opacity: 0.45; }
 .material-icons.odc-rec-sort-ic.active { opacity: 1; color: var(--brand-text); }
 .material-icons.odc-rec-sort-ic.desc { transform: rotate(180deg); }
+
+/* Caption + row header + busy row (Odyssey DS · Table / RecordTable, issue #451).
+   A row header is a <th scope="row"> that must read exactly like the <td>s beside it, so the UA's
+   bold / centred th defaults are undone. OdsRecordTable is the DS .tbl/.ua-tbl. */
+.odc-table-caption {
+    caption-side: top; text-align: left;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.odc-rec tbody th[scope="row"] { font-weight: inherit; text-align: left; border-bottom: 1px solid var(--mud-palette-table-lines); }
+.odc-rec tbody th[scope="row"].odc-rec-numeric { text-align: right; }
+.odc-rec tbody tr.expanded > th { border-bottom-color: transparent; }
+.odc-table tbody th[scope="row"] { font-weight: inherit; text-align: left; }
+.odc-table tbody th[scope="row"].num { text-align: right; }
+.odc-table tbody tr:last-child th { border-bottom: none; }
+/* The programmatic focus target while a row is busy (the row header cell). */
+[data-rt-focus]:focus { outline: none; }
+[data-rt-focus]:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; border-radius: 2px; }
+.odc-rt-menu { display: inline-flex; }
+.odc-rt-busy {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: var(--iconbtn-size, 40px); height: var(--iconbtn-size, 40px);
+}
 
 /* Trailing actions cell: overflow kebab + expand chevron. */
 .odc-rec-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }

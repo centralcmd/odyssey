@@ -1,0 +1,7 @@
+/* The duplicate-price alert: its text, then "Edit that price" (design system · instruments.css .ins-server-error). */
+.ipd-server-error {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1) var(--space-2);
+}

@@ -44,6 +44,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICurrenciesApiClient, CurrenciesApiClient>();
         services.AddScoped<IExchangeRatesApiClient, ExchangeRatesApiClient>();
         services.AddScoped<IExchangeRateSyncApiClient, ExchangeRateSyncApiClient>();
+        services.AddScoped<IInstrumentsApiClient, InstrumentsApiClient>();
+        services.AddScoped<IInstrumentPricesApiClient, InstrumentPricesApiClient>();
+        services.AddScoped<IInstrumentPriceSourcesApiClient, InstrumentPriceSourcesApiClient>();
         services.AddScoped<IBackgroundJobsApiClient, BackgroundJobsApiClient>();
         services.AddScoped<IFileStorageApiClient, FileStorageApiClient>();
         services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();

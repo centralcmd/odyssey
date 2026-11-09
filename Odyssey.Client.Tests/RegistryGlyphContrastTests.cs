@@ -44,7 +44,7 @@ public sealed class RegistryGlyphContrastTests
     /// The number of registries, pinned EXACTLY. A registry added (or removed) must change this number
     /// deliberately, which is the moment to check it renders through <see cref="OdsGlyphInk"/>.
     /// </summary>
-    private const int RegistryCount = 15;
+    private const int RegistryCount = 16;
 
     /// <summary>
     /// The authored band, as the design system states it (handoff/README.md → "Registry glyph
@@ -101,7 +101,7 @@ public sealed class RegistryGlyphContrastTests
     /// found the family rather than passing over nothing.
     /// </summary>
     [Fact]
-    public void The_sweep_covers_exactly_the_fifteen_registries()
+    public void The_sweep_covers_exactly_the_sixteen_registries()
     {
         Assert.Equal(RegistryCount, Registries.Count);
         Assert.All(Registries, r => Assert.NotEmpty(r.Items));

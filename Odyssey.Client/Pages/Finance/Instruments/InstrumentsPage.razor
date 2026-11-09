@@ -1,0 +1,261 @@
+@page "/instruments"
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Pages.Finance.ExchangeRateSync
+@attribute [Authorize(Policy = PermissionClaims.InstrumentsRead)]
+@implements IDisposable
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject Odyssey.Client.Services.IPageStateService PageState
+@inject IInstrumentsApiClient Instruments
+@inject IInstrumentPriceSourcesApiClient PriceSources
+@inject IReferenceDataCache ReferenceData
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+@*
+    Instruments (issue #452 §3; design system · ui_kits/web/Instruments.jsx, components/PageInstruments). A record
+    list built from Currencies: one OdsRecordCard per instrument, one open at a time, the whole filtered set loaded
+    and revealed N at a time. A control the caller cannot use is ABSENT, never greyed (§3.1); every symbol, name,
+    ISIN, source name and attribution is plain text (§9).
+*@
+
+<PageTitle>Instruments · Odyssey</PageTitle>
+
+<OdsLiveAnnouncer @ref="_polite" />
+<OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
+
+@if (_sourcesDirty)
+{
+    @* Leaving the page with unsaved price-source edits asks first (§3.4). *@
+    <NavigationLock OnBeforeInternalNavigation="OnBeforeInternalNavigation" ConfirmExternalNavigation="true" />
+}
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Instruments"
+                Icon="@Icons.Material.Filled.CandlestickChart"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="New instrument"
+                OnPrimaryAction="NewClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By type" Rows="TypeRows" Empty="No instruments." />
+                @if (_canReadPrices && _summary is { } summary)
+                {
+                    <OdsInfoTile Icon="event" Label="Newest price" ValueVariant="OdsInfoTileVariant.Sm"
+                                 Foot="@OdsInfoTile.Caption(AttributionText(summary))">
+                        <Value>@(summary.NewestPriceDate is { } newest ? RunTime.Date(newest) : "No prices yet")</Value>
+                    </OdsInfoTile>
+                }
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="Search symbol, name or ISIN…" Class="ph-search" />
+                <OdsMultiSelect Label="Type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                                Options="OdsTypeRegistries.InstrumentOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Currency" Values="_currencyFilter" ValuesChanged="OnCurrencyFilterChanged"
+                                Options="CurrencyFilterOptions" Class="ph-select" />
+                <OdsSwitch Label="Include archived" Checked="_includeArchived" CheckedChanged="OnIncludeArchivedChanged" />
+                <OdsSortSelect TRow="ExistingInstrument" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Instruments per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @if (_pinned is { } pinned)
+    {
+        @* A deep-linked instrument outside the current filters (archived included), pinned above the list (§3.3). *@
+        <section class="ins-pin" aria-label="Shown from a link">
+            <div class="ins-pin-head">
+                <span class="ins-pin-label"><span class="material-icons" aria-hidden="true">link</span>Shown from a link</span>
+                <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="close" OnClick="ClearPinAsync">Clear</OdsButton>
+            </div>
+            <div class="acct-list ins-list">
+                @Record(pinned)
+            </div>
+        </section>
+    }
+
+    <div class="acct-list ins-list">
+        <OdsInfiniteList TItem="ExistingInstrument" Items="ListedInstruments" BatchSize="_batch"
+                         ItemKey="@(i => (object)i.InstrumentId)" Noun="instruments"
+                         RevealKey="@(_revealId is { } reveal ? (object)reveal : null)"
+                         Loading="_isLoading" Refetching="_refetching" Error="_loadError" OnRetry="ReloadAsync"
+                         ErrorDescription="Check your connection and try again."
+                         HasFilters="HasFilters" OnClearFilters="ClearFilters"
+                         FilteredEmptyTitle="No instruments match these filters."
+                         EmptyIcon="candlestick_chart"
+                         EmptyTitle="No instruments yet. Add the stocks, ETFs and funds you follow.">
+            <RenderItem Context="instrument">
+                @Record(instrument)
+            </RenderItem>
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="NewClicked">New instrument</OdsButton>
+                }
+            </CreateAction>
+            <Trailing>
+                @if (_canCreate)
+                {
+                    <OdsAddRow Title="New instrument" Sub="Add a stock, ETF or fund to follow." OnClick="NewClicked" />
+                }
+            </Trailing>
+        </OdsInfiniteList>
+    </div>
+</MudStack>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <InstrumentDialog @key="_dialogKey"
+                      @bind-Open="_dialogOpen"
+                      Instrument="_editing"
+                      CanGoTo="true"
+                      ReturnFocusToId="@_dialogReturnFocusId"
+                      OnCreated="OnCreatedAsync"
+                      OnUpdated="OnUpdatedAsync"
+                      OnGoTo="GoToAsync" />
+}
+
+@if (_purging is { } purge)
+{
+    <PurgeInstrumentPricesDialog @key="purge.InstrumentId"
+                                 Open="_purgeOpen"
+                                 OpenChanged="@(open => _purgeOpen = open)"
+                                 Instrument="purge"
+                                 CanPurgeFetched="_canPurgeFetched"
+                                 ReturnFocusToId="@RecordIdFor(purge.InstrumentId)"
+                                 OnPurged="OnPurgedAsync" />
+}
+
+@if (_deleting is { } doomed)
+{
+    <ConfirmDeleteDialog @key="@($"delete-{doomed.InstrumentId}")"
+                         Open="_deleteOpen"
+                         OpenChanged="@(open => _deleteOpen = open)"
+                         Title="@($"Delete {doomed.Symbol}?")"
+                         Body="@($"{doomed.Name} is removed from your instruments, with its price sources.")"
+                         ConfirmLabel="Delete instrument"
+                         ReturnFocusToId="@_deleteReturnFocusIds"
+                         OnConfirm="ConfirmDeleteAsync" />
+}
+
+<OdsFormDialog Open="_discardOpen" OpenChanged="OnDiscardOpenChanged"
+               Icon="undo" IconTone="OdsModalTone.Warning"
+               Title="Discard changes to price sources?"
+               RequiredLegend="false"
+               InitialFocus="OdsModalInitialFocus.Cancel"
+               CancelLabel="Keep editing"
+               SubmitLabel="Discard changes" SubmitIcon="undo" SubmitVariant="OdsButtonVariant.Danger"
+               OnSubmit="DiscardSourcesAsync">
+    <p class="ins-dialog-body">Your edits to this instrument’s price sources haven’t been saved.</p>
+</OdsFormDialog>
+
+@code {
+    // ── One instrument (design system · InstrumentRecord). The mark is the decorative candlestick glyph and the
+    // name is the symbol; the meta line is the name, then the exchange, or the ISIN when there is no exchange. ──
+
+    private RenderFragment Record(ExistingInstrument instrument) => @<OdsRecordCard Id="@RecordIdFor(instrument.InstrumentId)"
+                   Icon="candlestick_chart"
+                   Name="@instrument.Symbol"
+                   Meta="MetaFor(instrument)"
+                   Figure="@FigureFor(instrument)"
+                   FigureCaption="@FigureCaptionFor(instrument)"
+                   FigureTone="@(instrument.LatestClose is null ? OdsRecordFigureTone.Muted : OdsRecordFigureTone.Neutral)"
+                   Dimmed="@(instrument.Archived is not null)"
+                   Open="@(_openId == instrument.InstrumentId)"
+                   OnToggle="@(open => RequestToggle(instrument.InstrumentId, open))">
+        <Chips>
+            <OdsChip Tone="OdsChipTone.Outline" Icon="@InstrumentVisuals.TypeOf(instrument.Type).Icon" Class="sm">@InstrumentVisuals.TypeOf(instrument.Type).Label</OdsChip>
+            @if (instrument.Archived is not null)
+            {
+                <OdsChip Tone="OdsChipTone.Outline" Icon="inventory_2" Class="sm">Archived</OdsChip>
+            }
+            else
+            {
+                @if (instrument.ShowOnDashboard)
+                {
+                    <OdsChip Tone="OdsChipTone.Info" Icon="space_dashboard" Class="sm">On dashboard</OdsChip>
+                }
+                @if (instrument.HasEnabledSource)
+                {
+                    <OdsChip Tone="OdsChipTone.Default" Icon="cloud_download" Class="sm">Auto-fetch</OdsChip>
+                }
+            }
+            @if (_busy.Contains(instrument.InstrumentId))
+            {
+                <OdsChip Tone="OdsChipTone.Outline" Class="sm">Saving…</OdsChip>
+            }
+        </Chips>
+
+        <Actions>
+            @if (_busy.Contains(instrument.InstrumentId))
+            {
+                @* A saving row shows a labelled spinner INSTEAD of the menu, never an empty menu (§3.2). *@
+                <span class="ins-row-busy"><OdsSpinner Size="OdsSize.Sm" AriaLabel="@($"Saving {instrument.Symbol}")" /></span>
+            }
+            else if (BuildActions(instrument) is { Count: > 0 } items)
+            {
+                <span id="@MenuIdFor(instrument.InstrumentId)">
+                    <OdsMenu Items="items" AriaLabel="@($"Actions for {instrument.Symbol}")" />
+                </span>
+            }
+        </Actions>
+
+        <Details>
+            <OdsInfoTileGrid>
+                <OdsInfoTile Icon="tag" Label="Symbol" ValueVariant="OdsInfoTileVariant.Sm"><Value>@instrument.Symbol</Value></OdsInfoTile>
+                <OdsInfoTile Icon="account_balance" Label="Exchange" ValueVariant="OdsInfoTileVariant.Sm"
+                             Foot="@OdsInfoTile.Caption(string.IsNullOrEmpty(instrument.MicCode) ? null : "MIC")">
+                    <Value>@(instrument.MicCode ?? InstrumentVisuals.Absent)</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="fingerprint" Label="ISIN" ValueVariant="OdsInfoTileVariant.Sm"><Value>@(instrument.Isin ?? InstrumentVisuals.Absent)</Value></OdsInfoTile>
+                <OdsInfoTile Icon="@InstrumentVisuals.TypeOf(instrument.Type).Icon" Label="Type" ValueVariant="OdsInfoTileVariant.Sm">
+                    <Value>@InstrumentVisuals.TypeOf(instrument.Type).Label</Value>
+                </OdsInfoTile>
+                <OdsInfoTile Icon="payments" Label="Currency" ValueVariant="OdsInfoTileVariant.Sm"><Value>@instrument.CurrencyCode</Value></OdsInfoTile>
+                @if (_canReadPrices)
+                {
+                    <OdsInfoTile Icon="candlestick_chart" Label="Latest close" ValueVariant="OdsInfoTileVariant.Sm"
+                                 Foot="@OdsInfoTile.Caption(instrument.LatestTradingDate is { } latest ? RunTime.Date(latest) : null)">
+                        <Value>@(instrument.LatestClose is null ? NoPriceYet : CloseText(instrument))</Value>
+                    </OdsInfoTile>
+                    <OdsInfoTile Icon="format_list_numbered" Label="Price count" Foot="@OdsInfoTile.Caption("closing prices")">
+                        <Value>@((instrument.PriceCount ?? 0).ToString("N0"))</Value>
+                    </OdsInfoTile>
+                }
+            </OdsInfoTileGrid>
+            @if (instrument.IdentityLocked)
+            {
+                <p class="ins-record-line"><span class="material-icons" aria-hidden="true">lock</span>@IdentityLockedLine</p>
+            }
+            @if (HasPrices(instrument) && _canDelete)
+            {
+                <p class="ins-record-line"><span class="material-icons" aria-hidden="true">info</span>@DeletePricesFirstLine</p>
+            }
+        </Details>
+
+        <Sections>
+            @if (_canReadSources)
+            {
+                <OdsRecordSection Label="Price sources" Meta="@SourcesMeta(instrument)">
+                    <InstrumentPriceSourcesPanel Instrument="instrument"
+                                                 Status="_sourcesStatus"
+                                                 StatusFailed="_sourcesFailed"
+                                                 OnRetryStatus="LoadSourcesStatusAsync"
+                                                 CanEdit="_canEditSources"
+                                                 OnDirtyChanged="OnSourcesDirtyChanged"
+                                                 OnBindingCountChanged="@(count => OnBindingCountChanged(instrument.InstrumentId, count))"
+                                                 OnSaved="@(() => OnSourcesSavedAsync(instrument.InstrumentId))" />
+                </OdsRecordSection>
+            }
+        </Sections>
+    </OdsRecordCard>;
+}

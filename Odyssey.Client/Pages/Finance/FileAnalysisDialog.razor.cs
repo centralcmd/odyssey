@@ -114,6 +114,8 @@ public partial class FileAnalysisDialog : IDisposable
     private string? _terminalProcessor;
     private long? _tooLargeLimit;
     private bool _tooLarge;
+    // Disabled reached from the match step: the statement had already been sent, so the gate-time body is not shown.
+    private bool _disabledAfterSend;
 
     // The second-transfer alert's subject: the latest job's sent status.
     private FileAnalysisDocumentSent? _priorSent;
@@ -154,6 +156,7 @@ public partial class FileAnalysisDialog : IDisposable
         FileAnalysisPhase.NoLongerAvailable => "unpublished",
         FileAnalysisPhase.Disabled or FileAnalysisPhase.Cancelled => "block",
         FileAnalysisPhase.Blocked when _tooLarge => "block",
+        FileAnalysisPhase.ConfigurationUnavailable => "error_outline",
         _ => "document_scanner",
     };
 
@@ -478,11 +481,15 @@ public partial class FileAnalysisDialog : IDisposable
                 await RepromptForChangedDisclosureAsync();
                 return;
             case HttpStatusCode.ServiceUnavailable when analyzed.Problem.IsFileAnalysisFeatureDisabled():
+                _disabledAfterSend = false;
                 _session.SetPhase(FileAnalysisPhase.Disabled);
                 return;
             case HttpStatusCode.ServiceUnavailable
                 when analyzed.Problem?.Code == FileAnalysisCodes.ConfigurationUnavailable:
-                ShowTerminal(FileAnalysisJobCopy.PostConfigurationUnavailable);
+                // Its own state, Close only: nothing to retry until an administrator fixes the stored model or base
+                // URL, and the copy is static — never the stored value, the host or the parse error.
+                StopPolling();
+                _session.SetPhase(FileAnalysisPhase.ConfigurationUnavailable);
                 return;
             case HttpStatusCode.ServiceUnavailable:
                 // No code (a proxy during a redeploy) is never the disabled state (R2-S N5).
@@ -772,7 +779,9 @@ public partial class FileAnalysisDialog : IDisposable
             else if (!matched.IsSuccess && matched.Status == HttpStatusCode.ServiceUnavailable
                      && matched.Problem.IsFileAnalysisFeatureDisabled())
             {
-                // Analysis was switched off while this review was open (R2-F N2): the disabled state, as today.
+                // Analysis was switched off while this review was open (R2-F N2): the disabled state, but the
+                // document WAS sent, so the "Nothing was sent" body would be false here.
+                _disabledAfterSend = true;
                 _session.SetPhase(FileAnalysisPhase.Disabled);
                 return;
             }

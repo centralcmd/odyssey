@@ -88,6 +88,34 @@ public sealed record ApiProblem
         }
     }
 
+    /// <summary>
+    /// Reads the named extension member as a value type (a <see cref="Guid"/>, an <see cref="int"/>…) — the
+    /// counterpart of the class-only <see cref="Extension{T}"/>, for e.g. the id a <c>409</c> duplicate collided with
+    /// (issue #452 §5.2). <see langword="false"/> when the member is absent, <c>null</c> or does not deserialize into
+    /// <typeparamref name="T"/>; never throws.
+    /// </summary>
+    public bool TryGetExtensionValue<T>(string name, out T value)
+        where T : struct
+    {
+        value = default;
+        if (Extensions is null || !Extensions.TryGetValue(name, out var element)
+            || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return false;
+        }
+
+        try
+        {
+            value = element.Deserialize<T>(ApiProblemExtensions.SerializerOptions);
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException or FormatException)
+        {
+            value = default;
+            return false;
+        }
+    }
+
     /// <summary>The HTTP reason phrase, captured at parse time as a fallback when <see cref="Detail"/> is absent.</summary>
     [JsonIgnore]
     public string? ReasonFallback { get; init; }

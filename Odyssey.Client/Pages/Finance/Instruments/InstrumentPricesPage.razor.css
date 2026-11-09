@@ -1,0 +1,16 @@
+/* Instrument column: the symbol, then the name in secondary text (≥ 4.5:1 in both themes)
+   (design system · instruments.css .ins-cell-id). */
+.ipp-cell-id {
+    display: inline-flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.ipp-symbol {
+    font-family: var(--font-mono);
+}
+
+.ipp-cell-sub {
+    font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}

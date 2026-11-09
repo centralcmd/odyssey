@@ -30,6 +30,8 @@ public class ListPageContractTests
         "Pages/Finance/ContractsCard.razor",
         "Pages/Finance/CurrenciesCard.razor",
         "Pages/Finance/ExchangeRatesCard.razor",
+        "Pages/Finance/Instruments/InstrumentPricesPage.razor",
+        "Pages/Finance/Instruments/InstrumentsPage.razor",
         "Pages/Finance/PropertiesCard.razor",
         "Pages/Finance/TaxStatementsCard.razor",
         "Pages/Finance/TransactionsCard.razor",

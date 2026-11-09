@@ -71,6 +71,8 @@ public class BackgroundJobsPageTests
 
         public FakeTimeProvider Time { get; } = time;
 
+        public Mock<IClipboardService> Clipboard { get; } = new();
+
         public IRenderedComponent<MudPopoverProvider> Popover { get; set; } = default!;
 
         /// <summary>Every run-list request's filter, in order.</summary>
@@ -112,6 +114,8 @@ public class BackgroundJobsPageTests
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims ?? Admin));
 
         var fixture = new Fixture(ctx, api, state, time);
+        fixture.Clipboard.Setup(c => c.CopyAsync(It.IsAny<string>(), It.IsAny<string?>())).ReturnsAsync(true);
+        ctx.Services.AddSingleton(fixture.Clipboard.Object);
         var rows = runs ?? [Run(JobType.Weather), Run(JobType.ExchangeRateSync)];
         fixture.ListRuns(_ => Page(rows));
         fixture.Popover = ctx.Render<MudPopoverProvider>();
@@ -908,5 +912,21 @@ public class BackgroundJobsPageTests
         var names = cut.FindAll("button.odc-rec-expand").Select(b => b.GetAttribute("aria-label")).ToList();
 
         Assert.Equal(2, names.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Every_run_row_has_a_copy_run_id_action_that_copies_its_id()
+    {
+        var run = Run(JobType.Weather);
+        await using var f = NewFixture(runs: [run]);
+        var cut = await RenderLoaded(f);
+
+        cut.Find("button[aria-label='Row actions']").Click();
+        f.Popover.WaitForAssertion(() => Assert.Contains("Copy run ID", f.Popover.Markup));
+        var item = f.Popover.FindAll(".mud-menu-item").Single(i => i.TextContent.Contains("Copy run ID"));
+        Assert.Contains("fingerprint", item.TextContent);
+        await item.ClickAsync(new());
+
+        f.Clipboard.Verify(c => c.CopyAsync(run.Id.ToString(), "Run ID copied."), Times.Once);
     }
 }

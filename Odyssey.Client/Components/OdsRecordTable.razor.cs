@@ -140,6 +140,37 @@ public partial class OdsRecordTable<TRow>
     /// </summary>
     [Parameter] public Func<TRow, string>? RowLabel { get; set; }
 
+    /// <summary>
+    /// The table's accessible name from its own content, rendered as a <c>&lt;caption&gt;</c> (Odyssey Design
+    /// System · RecordTable <c>caption</c>, issue #451). Prefer it over <see cref="AriaLabel"/>.
+    /// </summary>
+    [Parameter] public string? Caption { get; set; }
+
+    /// <summary>Keep the <see cref="Caption"/> visually hidden (still read by assistive technology).</summary>
+    [Parameter] public bool CaptionHidden { get; set; }
+
+    /// <summary>
+    /// Key of the ONE column whose body cells render as <c>&lt;th scope="row"&gt;</c>, styled like a normal cell
+    /// (issue #451) — the row's identity, announced as a screen reader moves across the other cells.
+    /// </summary>
+    [Parameter] public string? RowHeader { get; set; }
+
+    /// <summary>
+    /// Marks a row whose save is in flight (Odyssey Design System · RecordTable <c>rowBusy</c>, issue #451).
+    /// While true the actions cell shows a small spinner named "Saving {RowLabel}" instead of the menu — never
+    /// an empty or disabled one — and the chevron stays. Focus on that row's menu moves to the row header
+    /// cell (the <see cref="RowHeader"/> column, else the first) and back to the menu trigger once idle.
+    /// Pass <see cref="RowLabel"/> with it so the spinner names its record.
+    /// </summary>
+    [Parameter] public Func<TRow, bool>? RowBusy { get; set; }
+
+    // Rows rendered busy. Updated only after the focus check below, so the render that drops a row's menu
+    // happens after the check has read where focus was.
+    private HashSet<object> _busyKeys = [];
+    private readonly HashSet<object> _focusToHead = [];
+    private readonly HashSet<object> _movedToHead = [];
+    private readonly HashSet<object> _focusBackToMenu = [];
+
     private OdsTableSort? _sort;
     private readonly HashSet<object> _openIds = [];
 
@@ -173,6 +204,50 @@ public partial class OdsRecordTable<TRow>
             _rowSlots.Remove(gone);
     }
 
+    protected override async Task OnParametersSetAsync()
+    {
+        var next = RowBusy is null ? [] : Rows.Where(RowBusy).Select(RowKey).ToHashSet();
+        if (next.SetEquals(_busyKeys))
+            return;
+        foreach (var key in next.Where(k => !_busyKeys.Contains(k)))
+        {
+            // Read where focus sits while the row's menu is still in the DOM.
+            try
+            {
+                if (await Js.InvokeAsync<bool>("odsRecFocusInMenu", MenuIdFor(key)))
+                    _focusToHead.Add(key);
+            }
+            catch (JSException) { }
+        }
+        foreach (var key in _busyKeys.Where(k => !next.Contains(k)))
+            if (_movedToHead.Remove(key))
+                _focusBackToMenu.Add(key);
+        _busyKeys = next;
+    }
+
+    private string HeadIdFor(object key) => $"{SlotFor(key)}-head";
+
+    /// <summary>
+    /// Moves focus to a row's header cell (the <see cref="RowHeader"/> column, else the first) — the landing
+    /// spot a page picks after removing a row ("next row's header, else the previous one", issue #452 §3.3).
+    /// Returns false when the row is not rendered, so the caller can fall back (the page <c>h1</c>).
+    /// </summary>
+    public async Task<bool> FocusRowHeaderAsync(object key)
+    {
+        if (!_rowSlots.ContainsKey(key))
+            return false;
+        try
+        { return await Js.InvokeAsync<bool>("odsRecFocusCell", HeadIdFor(key)); }
+        catch (JSException) { return false; }
+    }
+
+    // The row's menu items, or null when none is available — a read-only row renders no trigger at all.
+    private IReadOnlyList<OdsMenuItem>? MenuItemsFor(TRow row, object key, bool expanded, bool editing)
+    {
+        var items = Actions!(row, ActionCtx(key, expanded, editing));
+        return items.Any(i => !i.Disabled && !i.Divider && string.IsNullOrEmpty(i.Header)) ? items : null;
+    }
+
     private string MenuIdFor(object key) => MenuTriggerIdFor?.Invoke(key) ?? $"{SlotFor(key)}-menu";
 
     private string ExpandIdFor(object key) => $"{SlotFor(key)}-expand";
@@ -194,6 +269,8 @@ public partial class OdsRecordTable<TRow>
             { await Js.InvokeVoidAsync("odsRecTrackClicks", _tableId); }
             catch (JSException) { }
         }
+
+        await MoveBusyFocusAsync();
 
         var (move, key) = _pendingFocus;
         if (move == FocusMove.None || key is null)
@@ -217,6 +294,28 @@ public partial class OdsRecordTable<TRow>
                     await Js.InvokeVoidAsync("odsFocusFirstIn", MenuIdFor(key), false, 0);
                     break;
             }
+        }
+        catch (JSException) { }
+    }
+
+    private async Task MoveBusyFocusAsync()
+    {
+        if (_focusToHead.Count == 0 && _focusBackToMenu.Count == 0)
+            return;
+        var toHead = _focusToHead.ToList();
+        var toMenu = _focusBackToMenu.ToList();
+        _focusToHead.Clear();
+        _focusBackToMenu.Clear();
+        try
+        {
+            foreach (var key in toHead)
+            {
+                await Js.InvokeVoidAsync("odsRecFocusEl", HeadIdFor(key));
+                _movedToHead.Add(key);
+            }
+            // Back to the trigger only if focus is still where the busy state put it.
+            foreach (var key in toMenu)
+                await Js.InvokeVoidAsync("odsRecFocusMenuFromHead", HeadIdFor(key), MenuIdFor(key));
         }
         catch (JSException) { }
     }

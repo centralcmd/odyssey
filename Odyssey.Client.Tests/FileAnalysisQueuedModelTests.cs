@@ -75,7 +75,6 @@ public class FileAnalysisQueuedModelTests
     {
         Assert.False(FileAnalysisJobCopy.PostTimeout.ShowSent);
         Assert.False(FileAnalysisJobCopy.PostUnavailable.ShowSent);
-        Assert.False(FileAnalysisJobCopy.PostConfigurationUnavailable.ShowSent);
         Assert.False(FileAnalysisJobCopy.PostRefused.ShowSent);
         Assert.False(FileAnalysisJobCopy.PollForbidden.ShowSent);
     }

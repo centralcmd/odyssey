@@ -1,0 +1,45 @@
+/* Instruments (design system · ui_kits/web/instruments.css, ins- prefix). Page layout only: every colour is a token
+   and every control an Ods component. Muted text is text-secondary, which clears 4.5:1 on surface in both themes. */
+
+/* Record targets clear the sticky page chrome when scrolled to or focused (a deep link, "Go to it"). */
+.ins-list ::deep .odc-record { scroll-margin-top: var(--space-16); scroll-margin-bottom: var(--space-6); }
+
+.ins-record-line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.ins-record-line .material-icons {
+    font-size: var(--icon-sm);
+    color: var(--mud-palette-text-secondary);
+    margin-top: calc(var(--space-1) / 2);
+}
+
+.ins-row-busy {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--iconbtn-size);
+    height: var(--iconbtn-size);
+}
+
+.ins-dialog-body {
+    margin: 0;
+    font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+
+/* "Shown from a link": a deep-linked record outside the current filters, above the list. */
+.ins-pin { display: flex; flex-direction: column; gap: var(--space-2); }
+.ins-pin-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.ins-pin-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-secondary);
+}
+.ins-pin-label .material-icons { font-size: var(--icon-sm); }

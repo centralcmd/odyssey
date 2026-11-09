@@ -200,12 +200,40 @@
                         </p>
                     </div>
                 }
-                else if (Phase == FileAnalysisPhase.Disabled)
+                else if (Phase == FileAnalysisPhase.Disabled && _disabledAfterSend)
                 {
+                    @* Switched off while a review was open: the statement was already sent, so "Nothing was sent" would be false. *@
                     <div class="fan-state">
-                        <span class="fan-state-ic warn"><OdsMIcon Name="cloud_off" Size="30" /></span>
+                        <span class="fan-state-ic warn"><OdsMIcon Name="block" Size="30" /></span>
                         <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Analysis isn’t available</h3>
                         <p class="fan-state-text" id="@BodyId">The AI statement-analysis feature is not enabled on this server.</p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.Disabled)
+                {
+                    @* 503 feature_disabled on the analyze POST (DS AnalyzeFileModal featureDisabled). *@
+                    <div class="fan-state">
+                        <span class="fan-state-ic warn"><OdsMIcon Name="block" Size="30" /></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Nothing was sent</h3>
+                        <p class="fan-state-text" id="@BodyId">
+                            An administrator has turned AI document analysis off for this instance, so
+                            “@(string.IsNullOrEmpty(FileName) ? "this statement" : FileName)” was not transferred anywhere and no consent was
+                            recorded. You can still add its transactions by hand, or ask an administrator to turn
+                            analysis back on in System settings.
+                        </p>
+                    </div>
+                }
+                else if (Phase == FileAnalysisPhase.ConfigurationUnavailable)
+                {
+                    @* 503 configuration_unavailable (DS AnalyzeFileModal configUnavailable): static copy, never the stored value or host. *@
+                    <div class="fan-state">
+                        <span class="fan-state-ic err"><OdsMIcon Name="error_outline" Size="30" /></span>
+                        <h3 class="fan-state-title" id="@HeadingId" tabindex="-1" @ref="_phaseHeading" aria-describedby="@BodyId">Nothing was sent</h3>
+                        <p class="fan-state-text" id="@BodyId">
+                            Document analysis is temporarily unavailable while the server recovers a configuration
+                            problem. “@(string.IsNullOrEmpty(FileName) ? "This statement" : FileName)” was not transferred anywhere and no consent
+                            was recorded. An administrator can check the model and provider base URL in System settings.
+                        </p>
                     </div>
                 }
                 else if (Phase is FileAnalysisPhase.Failed or FileAnalysisPhase.Cancelled)
@@ -314,7 +342,7 @@
                     <MudButton Variant="@(Phase == FileAnalysisPhase.Cancelled ? Variant.Filled : Variant.Text)"
                                Color="@(Phase == FileAnalysisPhase.Cancelled ? Color.Primary : Color.Default)" OnClick="CloseAsync">Close</MudButton>
                 }
-                else if (Phase is FileAnalysisPhase.Blocked or FileAnalysisPhase.Disabled)
+                else if (Phase is FileAnalysisPhase.Blocked or FileAnalysisPhase.Disabled or FileAnalysisPhase.ConfigurationUnavailable)
                 {
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CloseAsync">Close</MudButton>
                 }

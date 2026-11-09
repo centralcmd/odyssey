@@ -36,6 +36,15 @@
     (Currencies, Exchange rates, tag admin, Files) is a flat table, not a
     collapsed one. Rows that DO expand are unchanged.
 
+    CAPTION, ROW HEADER, BUSY ROW (issue #451). Caption renders a <caption> (CaptionHidden keeps it
+    visually hidden); RowHeader names one column key whose body cells render as <th scope="row">.
+    RowBusy(row) marks a row whose save is in flight: its actions cell shows a small spinner named
+    "Saving {RowLabel}" INSTEAD of the menu. If focus was on that row's menu when it went busy, it
+    moves to the row header cell (the RowHeader column, else the first column — focusable with
+    tabindex=-1 only when RowBusy is given) and back to the menu trigger once the row is idle.
+
+    NO EMPTY MENUS. A row whose Actions yields no available item gets no menu trigger at all.
+
     ROW NAMES. RowLabel(row) names each record for its chevron — "Show details for {label}" /
     "Hide details for {label}" — and points the chevron's aria-controls at a role="group" labelled
     "Details for {label}" inside the panel. Without it the toggle reads "Expand row" / "Collapse row".
@@ -66,6 +75,10 @@
    every row carries focusable controls, and focusing one scrolls it into view. *@
 <div class="odc-rec-scroll">
     <table id="@_tableId" class="odc-rec @(CanExpand ? null : "odc-rec-flat") @Class" aria-label="@AriaLabel" aria-busy="@(Loading ? "true" : "false")">
+        @if (!string.IsNullOrEmpty(Caption))
+        {
+            <caption class="@(CaptionHidden ? "odc-sr-only" : "odc-table-caption")">@Caption</caption>
+        }
         <thead>
             <tr>
                 @if (Leading is not null)
@@ -101,6 +114,8 @@
                 var editing = _editIds.Contains(rk);
                 var cellCtx = new OdsRecordCellContext(expanded, editing, _savedIds.Contains(rk));
                 var label = RowLabel?.Invoke(row);
+                var busy = _busyKeys.Contains(rk);
+                var headKey = RowHeader ?? Columns.FirstOrDefault()?.Key;
                 <tr class="@RowClass(expanded, editing)" @onclick="@(() => OnRowClickAsync(rk, editing))">
                     @if (Leading is not null)
                     {
@@ -108,16 +123,34 @@
                     }
                     @foreach (var col in Columns)
                     {
-                        <td class="@CellClass(col)">
-                            @col.Cell?.Invoke(row, cellCtx)
-                        </td>
+                        var focusTarget = RowBusy is not null && col.Key == headKey;
+                        @if (RowHeader is not null && col.Key == RowHeader)
+                        {
+                            <th scope="row" class="@CellClass(col)" id="@(col.Key == headKey ? HeadIdFor(rk) : null)"
+                                tabindex="@(focusTarget ? "-1" : null)" data-rt-focus="@(focusTarget ? "" : null)">
+                                @col.Cell?.Invoke(row, cellCtx)
+                            </th>
+                        }
+                        else
+                        {
+                            <td class="@CellClass(col)" id="@(col.Key == headKey ? HeadIdFor(rk) : null)"
+                                tabindex="@(focusTarget ? "-1" : null)" data-rt-focus="@(focusTarget ? "" : null)">
+                                @col.Cell?.Invoke(row, cellCtx)
+                            </td>
+                        }
                     }
                     <td>
                         <div class="odc-rec-actions" @onclick:stopPropagation="true">
-                            @if (Actions is not null)
+                            @if (busy)
                             {
-                                <span id="@MenuIdFor(rk)" class="odc-rec-menu">
-                                    <OdsMenu Items="@Actions(row, ActionCtx(rk, expanded, editing))" AriaLabel="Row actions" />
+                                <span class="odc-rt-busy">
+                                    <OdsSpinner Size="OdsSize.Sm" AriaLabel="@($"Saving {label ?? "row"}")" />
+                                </span>
+                            }
+                            else if (Actions is not null && MenuItemsFor(row, rk, expanded, editing) is { } items)
+                            {
+                                <span id="@MenuIdFor(rk)" class="odc-rec-menu odc-rt-menu">
+                                    <OdsMenu Items="@items" AriaLabel="Row actions" />
                                 </span>
                             }
                             @if (CanExpand)

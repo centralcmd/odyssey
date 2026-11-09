@@ -1,0 +1,170 @@
+@page "/instrument-prices"
+@using Odyssey.Dtos.Finance
+@attribute [Authorize(Policy = PermissionClaims.InstrumentPricesRead)]
+@implements IDisposable
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IPageStateService PageState
+@inject IReferenceDataCache ReferenceData
+@inject IInstrumentsApiClient Instruments
+@inject IInstrumentPricesApiClient Prices
+@inject TimeProvider Time
+@inject IJSRuntime Js
+
+<PageTitle>Instrument prices · Odyssey</PageTitle>
+
+@*
+    Instrument prices — every recorded daily close, as Exchange rates is every recorded rate (issue #452 §3;
+    design system · InstrumentPrices.jsx). A server-paged OdsRecordTable with a hidden caption and the
+    Instrument column as the row header. A fetched row is read-only: it has NO menu, and its Source cell says
+    so. A manual row's menu is Edit and Delete, by claim. While a row's write is in flight RowBusy swaps its
+    menu for a labelled spinner. ?instrument={id} filters to one instrument for this visit only, and &add=1
+    opens Add price locked to it (the Instruments page's "Add price"). Every symbol, name, source and
+    attribution renders as plain text.
+*@
+
+<OdsLiveAnnouncer @ref="_polite" />
+<OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
+
+<MudStack Spacing="4">
+
+    <PageHeader Title="Instrument prices"
+                Icon="@Icons.Material.Filled.QueryStats"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled"
+                PrimaryActionText="Add price"
+                OnPrimaryAction="AddClicked"
+                ShowPrimaryAction="_canCreate">
+        <SubLine>@SubLineText</SubLine>
+        <OverviewContent>
+            <div class="odc-summary-grid">
+                <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No prices." />
+                <OdsBreakdownTile Label="By source" Rows="SourceRows" Empty="No prices." />
+            </div>
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
+                                DebounceInterval="300" OnSearch="ReloadAsync"
+                                Placeholder="Search symbol or name…" Class="ph-search" />
+                <div class="ph-select">
+                    <OdsCombobox Value="@_instrumentFilter" ValueChanged="OnInstrumentFilterChanged"
+                                 Options="InstrumentFilterOptions"
+                                 AriaLabel="Instrument"
+                                 Placeholder="Any instrument"
+                                 Clearable="true"
+                                 ClearLabel="Clear instrument filter"
+                                 SearchAsync="SearchFilterInstrumentsAsync"
+                                 DebounceMs="300"
+                                 MinChars="1"
+                                 ResultsText="@(n => $"{n} {(n == 1 ? "instrument" : "instruments")} found")"
+                                 EmptyText="No instruments found"
+                                 ErrorText="Couldn’t load instruments" />
+                </div>
+                <OdsMultiSelect Label="Source" Values="_sourceFilter" ValuesChanged="OnSourceFilterChanged" Options="SourceOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="StatusOptions" Class="ph-select" />
+                <OdsDateRangePicker Label="Trading date" AriaLabel="Filter by trading date"
+                                    From="_from" FromChanged="OnFromChanged" To="_to" ToChanged="OnToChanged"
+                                    Max="@MaxDate" />
+                <OdsSortSelect TRow="ExistingInstrumentPrice" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Value="_pageSize" ValueChanged="OnPageSizeChanged" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @* tabindex=-1 so focus has somewhere to land when the last row on a page is deleted. *@
+    <MudCard Outlined="true" id="ipp-prices-card" tabindex="-1">
+        <OdsRecordTable TRow="ExistingInstrumentPrice" @ref="_table"
+                        Caption="Instrument prices"
+                        CaptionHidden="true"
+                        RowHeader="instrument"
+                        RowLabel="RowLabelFor"
+                        RowBusy="IsBusy"
+                        Rows="@_prices"
+                        Loading="_isLoading"
+                        Refetching="_refetching"
+                        Error="_loadError"
+                        OnRetry="GetPrices"
+                        HasFilters="_hasFilters"
+                        OnClearFilters="ClearFilters"
+                        Noun="prices"
+                        EmptyIcon="candlestick_chart"
+                        EmptyTitle="No prices yet."
+                        ServerSort="true"
+                        RowKey="@(r => (object)r.InstrumentPriceId)"
+                        Columns="@Columns"
+                        DefaultSort="@DefaultSort"
+                        Sort="_sort"
+                        SortChanged="OnSortChanged"
+                        KeepDirOnColumnChange="true"
+                        Actions="BuildActions"
+                        OnDelete="HandleDelete">
+            <CreateAction>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">Add price</OdsButton>
+                }
+            </CreateAction>
+        </OdsRecordTable>
+        @if (_totalCount > 0)
+        {
+            <OdsPager Page="_page" PageChanged="OnPageChanged"
+                      PageSize="_pageSize" PageSizeChanged="OnPageSizeChanged"
+                      TotalCount="_totalCount" Loading="@(_isLoading || _refetching)" />
+        }
+    </MudCard>
+</MudStack>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <InstrumentPriceDialog @key="_dialogKey"
+                           @bind-Open="_dialogOpen"
+                           Price="_dialogPrice"
+                           LockedInstrumentId="_dialogLockedId"
+                           FocusClose="_dialogFocusClose"
+                           ReturnFocusToId="@_dialogReturnFocusId"
+                           OnSaved="OnPriceSaved"
+                           OnEditExisting="EditExistingAsync"
+                           OnBusyChanged="OnDialogBusyChanged" />
+}
+
+@code {
+    private IReadOnlyList<OdsRecordColumn<ExistingInstrumentPrice>> Columns =>
+    [
+        new()
+        {
+            Key = "instrument", HeaderText = "Instrument", Sortable = true, SortType = OdsSortType.Text,
+            SortValue = p => p.Symbol,
+            Cell = (p, ctx) => @<span class="ipp-cell-id"><span class="ipp-symbol">@p.Symbol</span><span class="ipp-cell-sub">@p.InstrumentName</span></span>
+        },
+        new()
+        {
+            Key = "date", HeaderText = "Trading date", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Date,
+            SortValue = p => p.TradingDate,
+            Cell = (p, ctx) => @<text>@FormatDate(p.TradingDate)</text>
+        },
+        new()
+        {
+            Key = "close", HeaderText = "Close", Sortable = true, Align = OdsAlign.End, SortType = OdsSortType.Number,
+            SortValue = p => p.Close,
+            Cell = (p, ctx) => @<text>@FormatClose(p)</text>
+        },
+        new()
+        {
+            Key = "source", HeaderText = "Source",
+            Cell = (p, ctx) => @<text>@InstrumentVisuals.SourceCellText(p.Source, p.SourceDisplayName)</text>
+        },
+        new()
+        {
+            Key = "status", HeaderText = "Status",
+            Cell = (p, ctx) => StatusChip(p.Status)
+        },
+    ];
+
+    private static RenderFragment StatusChip(InstrumentPriceStatus status)
+    {
+        var info = InstrumentVisuals.StatusOf(status);
+        var tone = status == InstrumentPriceStatus.Current ? OdsChipTone.Income : OdsChipTone.Outline;
+        return @<OdsChip Tone="tone" Icon="@info.Icon">@info.Label</OdsChip>;
+    }
+}
