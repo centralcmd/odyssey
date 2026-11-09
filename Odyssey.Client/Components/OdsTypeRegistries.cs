@@ -629,16 +629,18 @@ public static partial class OdsTypeRegistries
 
     /// <summary>
     /// InstrumentType — Stock · ETF · Fund · Other (issue #446 §4.1; design system ·
-    /// <c>ui_kits/web/instruments-data.js</c> <c>INS_VOCAB.types</c>). The design system draws every type in the
-    /// neutral outline tone rather than a category hue, so all four carry the shared neutral colour the other
-    /// registries use for <c>Other</c>; the glyph and the label tell the types apart. <c>Other</c> (ordinal 9) is
-    /// on the wire but not in the kit's vocabulary, and takes the generic <c>category</c> glyph.
+    /// <c>ui_kits/web/instruments-data.js</c> <c>INS_VOCAB.types</c>). Each type carries its own category hue,
+    /// as account and property types do — sky for Stock, violet for ETF, green for Fund — drawn on the record
+    /// mark, the Type chip and tile, the By type breakdown, the Type filter, the instrument pickers and the
+    /// New / Edit card select. The glyph and the label still tell the types apart without colour.
+    /// <c>Other</c> (ordinal 9) is on the wire but not in the kit's vocabulary, and keeps the shared neutral
+    /// colour and the generic <c>category</c> glyph.
     /// </summary>
     public static readonly IReadOnlyList<OdsTypeOption> InstrumentTypes =
     [
-        new() { Key = "Stock", Label = "Stock", Icon = "show_chart",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Etf",   Label = "ETF",   Icon = "stacked_line_chart", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
-        new() { Key = "Fund",  Label = "Fund",  Icon = "savings",            Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Stock", Label = "Stock", Icon = "show_chart",         Color = "oklch(0.76 0.13 225)", Soft = "oklch(0.76 0.13 225 / 0.16)" },
+        new() { Key = "Etf",   Label = "ETF",   Icon = "stacked_line_chart", Color = "oklch(0.72 0.16 295)", Soft = "oklch(0.72 0.16 295 / 0.16)" },
+        new() { Key = "Fund",  Label = "Fund",  Icon = "savings",            Color = "oklch(0.80 0.15 150)", Soft = "oklch(0.80 0.15 150 / 0.16)" },
         new() { Key = "Other", Label = "Other", Icon = "category",           Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
     ];
 

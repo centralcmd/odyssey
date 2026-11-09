@@ -2,6 +2,7 @@ using System.Net;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 using Xunit;
 
@@ -75,6 +76,19 @@ public class InstrumentsApiClientTests
         Assert.Contains("includeArchived=true", query);
         Assert.Contains("sortBy=LatestDate", query);
         Assert.Contains("sortDir=desc", query);
+    }
+
+    [Fact]
+    public async Task Instruments_list_sends_the_archival_status_only_when_set()
+    {
+        var (api, handler) = Create();
+        var client = new InstrumentsApiClient(api);
+
+        await client.ListAsync(1, 20, new InstrumentsFilter { Status = ArchivalStatus.Archived });
+        Assert.Contains("status=Archived", Query(handler));
+
+        await client.ListAsync(1, 20, new InstrumentsFilter());
+        Assert.DoesNotContain("status=", Query(handler));
     }
 
     [Fact]

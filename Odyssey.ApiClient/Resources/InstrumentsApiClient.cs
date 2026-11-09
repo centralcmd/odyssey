@@ -15,6 +15,9 @@ public sealed record InstrumentsFilter
 
     public bool IncludeArchived { get; init; }
 
+    /// <summary>Active-only or archived-only; when set the server ignores <see cref="IncludeArchived"/>.</summary>
+    public ArchivalStatus? Status { get; init; }
+
     /// <summary><see cref="InstrumentSortBy.LatestDate"/> is a <c>403</c> without <c>instrument-prices.read</c>.</summary>
     public InstrumentSortBy? SortBy { get; init; }
 
@@ -87,6 +90,7 @@ public sealed class InstrumentsApiClient(IOdysseyApi api) : IInstrumentsApiClien
                 .AddMany("types", filter.Types?.Select(type => type.ToString()))
                 .AddMany("currencyCodes", filter.CurrencyCodes)
                 .AddBool("includeArchived", filter.IncludeArchived ? true : null)
+                .Add("status", filter.Status?.ToString())
                 .Sort(filter.SortBy?.ToString(), filter.Ascending);
         }
 

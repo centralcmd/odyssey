@@ -94,7 +94,10 @@ public partial class InstrumentDialog
             .Select(t =>
             {
                 var type = InstrumentVisuals.TypeOf(t);
-                return new OdsCardSelectOption { Value = t.ToString(), Label = type.Label, Icon = type.Icon };
+                return new OdsCardSelectOption
+                {
+                    Value = t.ToString(), Label = type.Label, Icon = type.Icon, Color = type.Color, Soft = type.Soft,
+                };
             }),
     ];
 

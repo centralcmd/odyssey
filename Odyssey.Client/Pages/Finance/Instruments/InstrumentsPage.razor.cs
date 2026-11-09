@@ -8,6 +8,7 @@ using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 
@@ -61,7 +62,7 @@ public partial class InstrumentsPage : IDisposable
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _currencyFilter = [];
-    private bool _includeArchived;
+    private IReadOnlyCollection<string> _statusFilter = [];
     private int _batch = OdsPageSizes.Batch[0];
     private static readonly OdsTableSort DefaultSort = new("symbol", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
@@ -112,7 +113,31 @@ public partial class InstrumentsPage : IDisposable
     };
 
     private bool HasFilters =>
-        !string.IsNullOrWhiteSpace(_search) || _typeFilter.Count > 0 || _currencyFilter.Count > 0;
+        !string.IsNullOrWhiteSpace(_search) || _typeFilter.Count > 0 || _currencyFilter.Count > 0 || _statusFilter.Count > 0;
+
+    /// <summary>The Status filter's two archival states — the Budgets and Accounts shape; none or both means all.</summary>
+    internal static readonly IReadOnlyList<OdsBreakdownDef<ArchivalStatus>> StatusDefs =
+    [
+        new(ArchivalStatus.Active, "Active", "income", "task_alt"),
+        new(ArchivalStatus.Archived, "Archived", "outline", "inventory_2"),
+    ];
+
+    internal static readonly IReadOnlyList<OdsOption> StatusOptions = OdsBreakdown.Options(StatusDefs, s => s.ToString());
+
+    /// <summary>
+    /// The server's archival filter from the Status selection: exactly one state narrows to it; none or both
+    /// ask for every instrument, archived included.
+    /// </summary>
+    internal static ArchivalStatus? StatusOf(IReadOnlyCollection<string> statuses) =>
+        statuses.Count == 1 && Enum.TryParse<ArchivalStatus>(statuses.First(), out var status) ? status : null;
+
+    /// <summary>
+    /// The list request's archival half: <see cref="StatusOf"/>, and <c>includeArchived</c> always on, so that
+    /// "none or both" really lists archived instruments too rather than falling back to the server's active-only
+    /// default.
+    /// </summary>
+    internal static InstrumentsFilter ArchivalFilterFor(IReadOnlyCollection<string> statuses) =>
+        new() { Status = StatusOf(statuses), IncludeArchived = true };
 
     /// <summary>The list minus a pinned record, which renders once, above it.</summary>
     private IReadOnlyList<ExistingInstrument> ListedInstruments =>
@@ -144,7 +169,7 @@ public partial class InstrumentsPage : IDisposable
                     var type = InstrumentVisuals.TypeOf(t);
                     return new OdsBreakdownRow
                     {
-                        Key = t, Icon = type.Icon, IconColor = OdsBreakdown.Tone("outline"), Label = type.Label,
+                        Key = t, Icon = type.Icon, IconColor = type.Color, Label = type.Label,
                         Count = counts.GetValueOrDefault(t),
                     };
                 }),
@@ -203,7 +228,7 @@ public partial class InstrumentsPage : IDisposable
         _search = state.Search ?? string.Empty;
         _typeFilter = OdsTypeRegistries.InstrumentOptions.KnownValues(state.TypeFilter);
         _currencyFilter = [.. (state.CurrencyFilter ?? []).Where(c => !string.IsNullOrWhiteSpace(c))];
-        _includeArchived = state.IncludeArchived;
+        _statusFilter = StatusOptions.KnownValues(state.StatusFilter);
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
@@ -215,7 +240,7 @@ public partial class InstrumentsPage : IDisposable
         Search = _search,
         TypeFilter = [.. _typeFilter],
         CurrencyFilter = [.. _currencyFilter],
-        IncludeArchived = _includeArchived,
+        StatusFilter = [.. _statusFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         BatchSize = _batch,
@@ -228,7 +253,7 @@ public partial class InstrumentsPage : IDisposable
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); }
     private async Task OnTypeFilterChanged(IReadOnlyCollection<string> values) { _typeFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnCurrencyFilterChanged(IReadOnlyCollection<string> values) { _currencyFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
-    private async Task OnIncludeArchivedChanged(bool value) { _includeArchived = value; PersistPageState(); await ReloadAsync(); }
+    private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await ReloadAsync(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await ReloadAsync(); }
     private void OnBatchChanged(int size) { _batch = size; PersistPageState(); }
 
@@ -237,6 +262,7 @@ public partial class InstrumentsPage : IDisposable
         _search = string.Empty;
         _typeFilter = [];
         _currencyFilter = [];
+        _statusFilter = [];
         PersistPageState();
         await ReloadAsync();
     }
@@ -248,7 +274,7 @@ public partial class InstrumentsPage : IDisposable
         public string Search { get; set; } = string.Empty;
         public List<string> TypeFilter { get; set; } = [];
         public List<string> CurrencyFilter { get; set; } = [];
-        public bool IncludeArchived { get; set; }
+        public List<string> StatusFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
@@ -262,7 +288,8 @@ public partial class InstrumentsPage : IDisposable
         Types = [.. _typeFilter.Select(t => Enum.TryParse<InstrumentType>(t, out var type) ? type : (InstrumentType?)null)
             .OfType<InstrumentType>()],
         CurrencyCodes = [.. _currencyFilter],
-        IncludeArchived = _includeArchived,
+        Status = ArchivalFilterFor(_statusFilter).Status,
+        IncludeArchived = ArchivalFilterFor(_statusFilter).IncludeArchived,
         SortBy = SortByOf(_sort.Key),
         Ascending = _sort.Dir == OdsSortDirection.Asc,
     };

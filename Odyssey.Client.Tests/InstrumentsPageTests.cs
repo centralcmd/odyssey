@@ -359,6 +359,56 @@ public sealed class InstrumentsPageTests : IDisposable
     }
 
     [Fact]
+    public void The_status_filter_narrows_only_when_exactly_one_state_is_picked()
+    {
+        Assert.Equal(["Active", "Archived"], InstrumentsPage.StatusOptions.Select(o => o.Label));
+        Assert.Null(InstrumentsPage.StatusOf([]));
+        Assert.Null(InstrumentsPage.StatusOf(["Active", "Archived"]));
+        Assert.Equal(ArchivalStatus.Active, InstrumentsPage.StatusOf(["Active"]));
+        Assert.Equal(ArchivalStatus.Archived, InstrumentsPage.StatusOf(["Archived"]));
+    }
+
+    [Theory]
+    [InlineData(new string[0], null)]
+    [InlineData(new[] { "Active", "Archived" }, null)]
+    [InlineData(new[] { "Active" }, ArchivalStatus.Active)]
+    [InlineData(new[] { "Archived" }, ArchivalStatus.Archived)]
+    public void The_list_request_always_includes_archived_so_none_or_both_really_means_all(string[] picked, ArchivalStatus? expected)
+    {
+        var filter = InstrumentsPage.ArchivalFilterFor(picked);
+        Assert.Equal(expected, filter.Status);
+        Assert.True(filter.IncludeArchived);
+    }
+
+    [Fact]
+    public void A_saved_page_state_from_before_the_status_filter_restores_to_all_statuses()
+    {
+        const string legacy = "{\"IncludeArchived\":false,\"SearchOpen\":true}";
+        var restored = System.Text.Json.JsonSerializer.Deserialize<InstrumentsPage.InstrumentsPageState>(legacy)!;
+        Assert.Empty(InstrumentsPage.StatusOptions.KnownValues(restored.StatusFilter));
+    }
+
+    [Fact]
+    public void Each_named_type_draws_in_its_own_colour_everywhere_it_appears()
+    {
+        var named = new[] { InstrumentType.Stock, InstrumentType.Etf, InstrumentType.Fund }.Select(InstrumentVisuals.TypeOf).ToList();
+        Assert.Equal(named.Count, named.Select(t => t.Color).Distinct().Count());
+        Assert.DoesNotContain(named, t => t.Color == InstrumentVisuals.TypeOf(InstrumentType.Other).Color);
+
+        var rows = InstrumentsPage.TypeRowsFor(new InstrumentSummary { ByType = [] });
+        Assert.Equal(named.Select(t => t.Color), rows.Select(r => r.IconColor));
+        Assert.Equal(named.Select(t => t.Color), OdsTypeRegistries.InstrumentOptions.Take(3).Select(o => o.IconColor));
+
+        var option = InstrumentVisuals.OptionFor(new ExistingInstrument
+        {
+            InstrumentId = Guid.NewGuid(), Symbol = "VWCE", Name = "All-World", Type = InstrumentType.Etf, CurrencyCode = "EUR",
+        });
+        Assert.Equal("VWCE · All-World", option.Label);
+        Assert.Equal(named[1].Icon, option.Icon);
+        Assert.Equal(named[1].Color, option.IconColor);
+    }
+
+    [Fact]
     public void The_attribution_is_plain_text_from_the_summary()
     {
         Assert.Equal("Prices from EODHD", InstrumentsPage.AttributionText(new InstrumentSummary { Attributions = ["EODHD"] }));

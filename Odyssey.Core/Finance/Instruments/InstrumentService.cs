@@ -35,10 +35,13 @@ public sealed class InstrumentService(
         }
 
         var q = context.Instruments.AsNoTracking();
-        if (!query.IncludeArchived)
+        q = query.Status switch
         {
-            q = q.Where(instrument => instrument.Archived == null);
-        }
+            ArchivalStatus.Active => q.Where(instrument => instrument.Archived == null),
+            ArchivalStatus.Archived => q.Where(instrument => instrument.Archived != null),
+            _ when !query.IncludeArchived => q.Where(instrument => instrument.Archived == null),
+            _ => q,
+        };
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
