@@ -48,7 +48,7 @@ public class FileStorageApiTests
         Assert.NotNull(primary.FreeBytes);
         Assert.Contains("\"state\":\"Available\"", body, StringComparison.Ordinal);
         // Feature keys are canonical PascalCase on the wire, compared case-sensitively.
-        Assert.Contains("\"boundFeatures\":[\"PhotoOriginals\",\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
+        Assert.Contains("\"boundFeatures\":[\"ContactAvatars\",\"FinanceFiles\",\"JournalFiles\",\"PhotoOriginals\",\"PhotoThumbnails\",\"TestFiles\",\"TestSecrets\"]", body, StringComparison.Ordinal);
         Assert.Contains("\"featureKey\":\"TestFiles\"", body, StringComparison.Ordinal);
 
         Assert.DoesNotContain("/", body.Replace("\\u002F", "/"), StringComparison.Ordinal);
