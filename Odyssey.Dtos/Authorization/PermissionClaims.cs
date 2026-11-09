@@ -65,6 +65,18 @@ public static class PermissionClaims
     public const string ExchangeRatesUpdate = "exchangerates.update";
     public const string ExchangeRatesDelete = "exchangerates.delete";
 
+    // Instruments and their daily closing prices (issue #446). Every holder of instrument-prices.read also holds
+    // instruments.read, and no role holds a write claim of either without both reads — AuthorizationPolicyTests pins it.
+    public const string InstrumentsCreate = "instruments.create";
+    public const string InstrumentsRead = "instruments.read";
+    public const string InstrumentsUpdate = "instruments.update";
+    public const string InstrumentsDelete = "instruments.delete";
+
+    public const string InstrumentPricesCreate = "instrument-prices.create";
+    public const string InstrumentPricesRead = "instrument-prices.read";
+    public const string InstrumentPricesUpdate = "instrument-prices.update";
+    public const string InstrumentPricesDelete = "instrument-prices.delete";
+
     public const string UserPreferencesCreate = "user-preferences.create";
     public const string UserPreferencesRead = "user-preferences.read";
     public const string UserPreferencesUpdate = "user-preferences.update";

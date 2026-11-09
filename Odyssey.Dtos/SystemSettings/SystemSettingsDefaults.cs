@@ -331,6 +331,17 @@ public static class SystemSettingsDefaults
     /// <summary>Hours between scheduled runs once nothing is left to catch up on.</summary>
     public const int ExchangeRateSyncIntervalHours = 24;
 
+    // ── Instrument prices (issue #446 §8.4) ─────────────────────────────────────────────────────
+
+    /// <summary>A watchlist price older than this many days reads as stale — a long weekend plus a holiday.</summary>
+    public const int InstrumentPriceStaleAfterDays = 5;
+
+    /// <summary>Hours between scheduled price-sync runs once every binding has caught up.</summary>
+    public const int InstrumentPriceSyncIntervalHours = 24;
+
+    /// <summary>How many days back a new source binding backfills, unless it names its own start date.</summary>
+    public const int InstrumentPriceSyncHistoryDays = 365;
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>

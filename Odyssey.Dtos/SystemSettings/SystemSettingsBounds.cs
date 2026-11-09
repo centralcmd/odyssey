@@ -279,6 +279,21 @@ public static class SystemSettingsBounds
 
     public const int ExchangeRateSyncIntervalHoursMax = 168;
 
+    /// <summary>One day to two months (issue #446 §8.4).</summary>
+    public const int InstrumentPriceStaleAfterDaysMin = 1;
+
+    public const int InstrumentPriceStaleAfterDaysMax = 60;
+
+    /// <summary>One hour to one week, the exchange-rate sync's range.</summary>
+    public const int InstrumentPriceSyncIntervalHoursMin = 1;
+
+    public const int InstrumentPriceSyncIntervalHoursMax = 168;
+
+    /// <summary>No backfill to ten years. A deep backfill costs provider quota over several runs.</summary>
+    public const int InstrumentPriceSyncHistoryDaysMin = 0;
+
+    public const int InstrumentPriceSyncHistoryDaysMax = 3660;
+
     /// <summary>
     /// One hour to one week (issue #346 §4.3). Below 24 h the advisory warns that a backup may outrun it;
     /// above 72 h, that deleted personal data stays on disk that long.

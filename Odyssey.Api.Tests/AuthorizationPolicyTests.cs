@@ -79,7 +79,7 @@ public class AuthorizationPolicyTests
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(107, DeclaredClaims().Count());
+        Assert.Equal(115, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).

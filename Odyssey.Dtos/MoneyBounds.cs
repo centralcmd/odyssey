@@ -60,4 +60,13 @@ public static class MoneyBounds
 
     /// <summary>The largest rate a <c>decimal(18,8)</c> column holds.</summary>
     public const string ExchangeRateMax = "9999999999.99999999";
+
+    /// <summary>Precision of the instrument closing-price column: <c>decimal(18,8)</c>.</summary>
+    public const int InstrumentPricePrecision = 18;
+
+    /// <summary>The smallest positive instrument close a <c>decimal(18,8)</c> column holds.</summary>
+    public const string InstrumentPriceMin = "0.00000001";
+
+    /// <summary>The largest instrument close a <c>decimal(18,8)</c> column holds.</summary>
+    public const string InstrumentPriceMax = "9999999999.99999999";
 }

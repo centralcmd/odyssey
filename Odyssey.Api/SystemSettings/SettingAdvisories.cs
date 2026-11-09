@@ -52,6 +52,16 @@ internal static class SettingAdvisories
             : null;
 
     /// <summary>
+    /// The instrument-price backfill depth (issue #446 §8.4): a deep history is fetched over several runs and
+    /// counts against each source's daily request limit, so raising it delays the history, it does not lose it.
+    /// </summary>
+    public static string? InstrumentHistoryCostsQuota(SystemSettingsDto dto, AdvisoryContext context) =>
+        dto.InstrumentPriceSyncHistoryDays > SystemSettingsDefaults.InstrumentPriceSyncHistoryDays
+            ? $"Set to {dto.InstrumentPriceSyncHistoryDays.ToString(CultureInfo.InvariantCulture)} days. A new price "
+              + "source fetches this much history over several runs, within its daily request limit."
+            : null;
+
+    /// <summary>
     /// The cost advisory shape: fires only when the saved value is strictly above the shipped default,
     /// and names both numbers plus what the extra costs.
     ///

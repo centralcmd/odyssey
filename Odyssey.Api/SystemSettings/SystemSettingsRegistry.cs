@@ -937,6 +937,45 @@ internal static class SystemSettingsRegistry
             Advise = SettingAdvisories.SyncIntervalBelowPublication,
         },
 
+        // ── Instrument prices (issue #446 §8.4) ──────────────────────────────────────────────────
+        //
+        // No cache key: the API reads the stale window through InstrumentPriceSettingsLookup, which reads live
+        // and caches only its watermark, like the exchange-rate sync's lookup.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.InstrumentPriceStaleAfterDays,
+            Min = SystemSettingsBounds.InstrumentPriceStaleAfterDaysMin,
+            Max = SystemSettingsBounds.InstrumentPriceStaleAfterDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.InstrumentPriceStaleAfterDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.InstrumentPriceStaleAfterDays),
+            Read = r => r.InstrumentPriceStaleAfterDays,
+            Write = (dto, v) => dto.InstrumentPriceStaleAfterDays = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.InstrumentPriceSyncIntervalHours,
+            Min = SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMin,
+            Max = SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMax,
+            FieldName = nameof(SystemSettingsUpdate.InstrumentPriceSyncIntervalHours),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.InstrumentPriceSyncIntervalHours),
+            Read = r => r.InstrumentPriceSyncIntervalHours,
+            Write = (dto, v) => dto.InstrumentPriceSyncIntervalHours = v,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.InstrumentPriceSyncHistoryDays,
+            Min = SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMin,
+            Max = SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMax,
+            FieldName = nameof(SystemSettingsUpdate.InstrumentPriceSyncHistoryDays),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.InstrumentPriceSyncHistoryDays),
+            Read = r => r.InstrumentPriceSyncHistoryDays,
+            Write = (dto, v) => dto.InstrumentPriceSyncHistoryDays = v,
+            Advise = SettingAdvisories.InstrumentHistoryCostsQuota,
+        },
+
         // ── Filesystem object storage (issue #346 §3.9) ──────────────────────────────────────────
         //
         // The SECURITY claim, so AuditChanges is true and every change writes an audit line: the grace
