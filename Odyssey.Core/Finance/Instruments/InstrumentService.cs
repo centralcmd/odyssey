@@ -3,7 +3,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Finance.Instruments.Sources;
-using Odyssey.Core.Journal;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
@@ -327,7 +326,7 @@ public sealed class InstrumentService(
         {
             await context.SaveChangesAsync(cancellationToken);
         }
-        catch (DbUpdateException exception) when (DbErrors.IsDuplicateKey(exception))
+        catch (DbUpdateException exception) when (InstrumentDbErrors.IsDuplicateKey(exception))
         {
             var existing = await context.Instruments.AsNoTracking()
                 .Where(i => i.ListingKey == listingKey)

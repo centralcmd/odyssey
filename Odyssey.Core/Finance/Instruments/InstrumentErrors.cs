@@ -1,4 +1,6 @@
 using System.Net;
+using Microsoft.EntityFrameworkCore;
+using MySqlConnector;
 
 namespace Odyssey.Core;
 
@@ -32,4 +34,14 @@ public static class InstrumentProblemCodes
     public const string PriceDuplicate = "price-duplicate";
     public const string InstrumentHasPrices = "instrument-has-prices";
     public const string PurgeCountMismatch = "purge-count-mismatch";
+}
+
+/// <summary>
+/// MariaDB's duplicate-key error (1062) for the instrument module. A local copy of the one predicate it needs, because
+/// the shared helper sits in <c>Odyssey.Core.Journal</c> and Finance takes no new dependency on Journal.
+/// </summary>
+internal static class InstrumentDbErrors
+{
+    public static bool IsDuplicateKey(DbUpdateException exception) =>
+        exception.InnerException is MySqlException { Number: 1062 };
 }
