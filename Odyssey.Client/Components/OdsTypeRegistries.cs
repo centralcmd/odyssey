@@ -628,6 +628,25 @@ public static partial class OdsTypeRegistries
     ];
 
     /// <summary>
+    /// InstrumentType — Stock · ETF · Fund · Other (issue #446 §4.1; design system ·
+    /// <c>ui_kits/web/instruments-data.js</c> <c>INS_VOCAB.types</c>). The design system draws every type in the
+    /// neutral outline tone rather than a category hue, so all four carry the shared neutral colour the other
+    /// registries use for <c>Other</c>; the glyph and the label tell the types apart. <c>Other</c> (ordinal 9) is
+    /// on the wire but not in the kit's vocabulary, and takes the generic <c>category</c> glyph.
+    /// </summary>
+    public static readonly IReadOnlyList<OdsTypeOption> InstrumentTypes =
+    [
+        new() { Key = "Stock", Label = "Stock", Icon = "show_chart",         Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Etf",   Label = "ETF",   Icon = "stacked_line_chart", Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Fund",  Label = "Fund",  Icon = "savings",            Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+        new() { Key = "Other", Label = "Other", Icon = "category",           Color = "oklch(0.74 0.02 250)", Soft = "oklch(0.74 0.02 250 / 0.16)" },
+    ];
+
+    /// <summary>The InstrumentType descriptor for an enum value; an ordinal this build does not know falls back to "Other".</summary>
+    public static OdsTypeOption InstrumentTypeOf(InstrumentType type) =>
+        InstrumentTypes.FirstOrDefault(t => t.Key == type.ToString()) ?? InstrumentTypes[^1];
+
+    /// <summary>
     /// The PropertyType descriptor for an enum value. An unrecognised ordinal falls back to the first
     /// entry rather than the last: there is no "Other" type, and a stale client still has to draw a card.
     /// </summary>
@@ -820,6 +839,7 @@ public static partial class OdsTypeRegistries
     public static readonly IReadOnlyList<OdsOption> TaxStatementFileOptions = ToOptions(TaxStatementFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractOptions = ToOptions(ContractTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyOptions = ToOptions(PropertyTypes);
+    public static readonly IReadOnlyList<OdsOption> InstrumentOptions = ToOptions(InstrumentTypes);
     public static readonly IReadOnlyList<OdsOption> ContractFileOptions = ToOptions(ContractFileTypes);
     public static readonly IReadOnlyList<OdsOption> PropertyFileOptions = ToOptions(PropertyFileTypes);
     public static readonly IReadOnlyList<OdsOption> ContractPartyRoleOptions = ToOptions(ContractPartyRoles);
