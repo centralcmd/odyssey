@@ -391,22 +391,6 @@
                 table.dataset.recInteractive = hit && table.contains(hit) ? '1' : '0';
             }, true);
         };
-        window.odsTableCaption = function (hostId, text, hidden) {
-            // OdsTable: MudTable has no caption slot, so the <caption> (Odyssey DS · Table, issue #451)
-            // is kept here as the table's first child. Idempotent; an empty text removes it.
-            const host = document.getElementById(hostId);
-            const table = host && (host.tagName === 'TABLE' ? host : host.querySelector('table'));
-            if (!table) return;
-            let cap = table.querySelector(':scope > caption[data-ods-caption]');
-            if (!text) { if (cap) cap.remove(); return; }
-            if (!cap) {
-                cap = document.createElement('caption');
-                cap.setAttribute('data-ods-caption', '');
-                table.insertBefore(cap, table.firstChild);
-            }
-            cap.className = hidden ? 'odc-sr-only' : 'odc-table-caption';
-            cap.textContent = text;
-        };
         window.odsRecFocusInMenu = function (menuId) {
             // OdsRecordTable RowBusy: was focus on this row's menu trigger, or inside its open menu
             // (MudMenu portals its list, so "inside" is an open popover's menu item while the trigger

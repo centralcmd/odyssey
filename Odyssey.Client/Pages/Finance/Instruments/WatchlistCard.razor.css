@@ -4,7 +4,8 @@
     container-type: inline-size;
 }
 
-.wl ::deep .mud-table-cell {
+.wl ::deep .odc-table td,
+.wl ::deep .odc-table th[scope="row"] {
     vertical-align: top;
 }
 

@@ -4,7 +4,8 @@ namespace Odyssey.ApiClient.Resources;
 
 /// <summary>
 /// Typed client for price-source administration (issue #446 §5 endpoints 16–18). The whole surface is
-/// <c>system-settings.read</c>-gated; replacing an instrument's bindings needs <c>system-settings.update</c>. Run-now
+/// <c>system-settings.read</c>-gated; reading an instrument's bindings also needs <c>instruments.read</c>, and
+/// replacing them needs <c>system-settings.update</c>. Run-now
 /// and run history are the background-jobs endpoints (<see cref="IBackgroundJobsApiClient"/>).
 /// </summary>
 public interface IInstrumentPriceSourcesApiClient

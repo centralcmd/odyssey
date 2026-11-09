@@ -144,7 +144,7 @@ public class OdsTableCaptionRowHeaderBusyTests
     }
 
     [Fact]
-    public async Task Table_row_header_column_renders_th_scope_row_and_the_caption_goes_through_interop()
+    public async Task Table_renders_a_native_caption_and_row_header_cells()
     {
         await using var ctx = NewContext();
         OdsTableColumn<Row>[] columns =
@@ -157,10 +157,54 @@ public class OdsTableCaptionRowHeaderBusyTests
             .Add(t => t.RowHeader, "symbol")
             .Add(t => t.Caption, "Watchlist, prices in NOK").Add(t => t.CaptionHidden, true));
 
+        var caption = cut.Find("table > caption");
+        Assert.Equal("Watchlist, prices in NOK", caption.TextContent);
+        Assert.Contains("odc-sr-only", caption.ClassList);
         Assert.Equal(["EQNR", "NHY"], cut.FindAll("tbody th[scope=row]").Select(h => h.TextContent.Trim()));
         Assert.Equal(2, cut.FindAll("tbody td").Count);
-        var call = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsTableCaption");
-        Assert.Equal("Watchlist, prices in NOK", call.Arguments[1]);
-        Assert.Equal(true, call.Arguments[2]);
+        Assert.Empty(ctx.JSInterop.Invocations);
+
+        cut.Render(p => p.Add(t => t.Caption, null));
+        Assert.Empty(cut.FindAll("caption"));
+    }
+
+    [Fact]
+    public async Task Table_sortable_header_reports_aria_sort_and_raises_the_key()
+    {
+        await using var ctx = NewContext();
+        string? sorted = null;
+        OdsTableColumn<Row>[] columns =
+        [
+            new() { Key = "symbol", HeaderText = "Symbol", Sortable = true, Cell = r => b => b.AddContent(0, r.Symbol) },
+            new() { Key = "name", HeaderText = "Name", Sortable = true, Cell = r => b => b.AddContent(0, r.Name) },
+        ];
+        var cut = ctx.Render<OdsTable<Row>>(p => p
+            .Add(t => t.Rows, Rows).Add(t => t.Columns, columns)
+            .Add(t => t.Sort, new OdsTableSort("symbol", OdsSortDirection.Asc))
+            .Add(t => t.OnSort, k => sorted = k));
+
+        var heads = cut.FindAll("thead th");
+        Assert.Equal("ascending", heads[0].GetAttribute("aria-sort"));
+        Assert.Equal("none", heads[1].GetAttribute("aria-sort"));
+        heads[1].QuerySelector("button")!.Click();
+        Assert.Equal("name", sorted);
+    }
+
+    [Fact]
+    public async Task Table_with_no_rows_renders_its_empty_content_across_every_column()
+    {
+        await using var ctx = NewContext();
+        OdsTableColumn<Row>[] columns =
+        [
+            new() { Key = "symbol", HeaderText = "Symbol", Cell = r => b => b.AddContent(0, r.Symbol) },
+            new() { Key = "name", HeaderText = "Name", Cell = r => b => b.AddContent(0, r.Name) },
+        ];
+        var cut = ctx.Render<OdsTable<Row>>(p => p
+            .Add(t => t.Rows, Array.Empty<Row>()).Add(t => t.Columns, columns)
+            .Add(t => t.Empty, b => b.AddContent(0, "Nothing yet")));
+
+        var cell = cut.Find("tbody td.odc-table-empty");
+        Assert.Equal("2", cell.GetAttribute("colspan"));
+        Assert.Equal("Nothing yet", cell.TextContent.Trim());
     }
 }

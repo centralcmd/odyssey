@@ -73,11 +73,16 @@ public partial class WatchlistCard
         if (string.IsNullOrWhiteSpace(DisplayCurrencyCode))
             return;
 
-        _requested = DisplayCurrencyCode;
+        var requested = DisplayCurrencyCode;
+        _requested = requested;
         _state = WatchlistState.Loading;
         StateHasChanged();
 
-        var result = await Instruments.GetWatchlistAsync(DisplayCurrencyCode, SparklineDays);
+        var result = await Instruments.GetWatchlistAsync(requested, SparklineDays);
+        // A newer display currency was requested while this one was in flight: its response wins, so a slow
+        // reply for the old currency must not overwrite it (PR #457 frontend review).
+        if (requested != _requested)
+            return;
         if (result is { IsSuccess: true, Value: { } watchlist })
         {
             _watchlist = watchlist;
@@ -125,7 +130,7 @@ public partial class WatchlistCard
         if (percent == 0m)
             return $"{SparklineDays}-day trend: unchanged";
 
-        var magnitude = Math.Abs(percent).ToString("0.0", CultureInfo.CurrentCulture);
+        var magnitude = Math.Abs(percent).ToString("0.0", CultureInfo.InvariantCulture);
         return $"{SparklineDays}-day trend: {(percent > 0 ? "up" : "down")} {magnitude} %";
     }
 }

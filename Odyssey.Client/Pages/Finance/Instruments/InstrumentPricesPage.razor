@@ -23,7 +23,8 @@
     attribution renders as plain text.
 *@
 
-<OdsLiveAnnouncer Message="@_announce" />
+<OdsLiveAnnouncer @ref="_polite" />
+<OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
 
 <MudStack Spacing="4">
 

@@ -1,82 +1,89 @@
 @*
     OdsTable — the data-driven table primitive (Odyssey Design System · components/Table).
 
-    The table behind every ledger screen (Transactions, Files, Users). A
-    MudTable driven declaratively: pass Columns (each with a Cell renderer) and
-    Rows. Sorting is CONTROLLED — give Sort ({Key,Dir}) and an OnSort handler;
-    the component renders the indicator, you own the sort. A column with
-    Align=End right-aligns and renders monospace tabular figures (amounts,
-    dates). Dense for nav-embedded tables; OnRowClick for expand-in-place records.
+    Pass Columns (each with a Cell renderer) and Rows. Sorting is CONTROLLED — give Sort ({Key,Dir})
+    and an OnSort handler; the component renders the indicator and aria-sort, you own the sort. A
+    column with Align=End right-aligns and renders monospace tabular figures (amounts, dates). Dense
+    for nav-embedded tables; OnRowClick for expand-in-place records.
 
     CAPTION AND ROW HEADER (issue #451). Caption names the table by its own content — a real
-    <caption>, visually hidden with CaptionHidden. MudTable has no caption slot, so odsTableCaption
-    (wwwroot/index.html) inserts it as the <table>'s first child after render; that is the accepted
-    trade-off for staying on MudTable (the caption is absent until the first render's interop runs).
-    RowHeader names ONE column key whose body cells render as <th scope="row">, styled exactly like a
-    cell, so a screen reader announces the row's identity as it moves across the other cells.
+    <caption>, visually hidden with CaptionHidden. RowHeader names ONE column key whose body cells
+    render as <th scope="row">, styled exactly like a cell, so a screen reader announces the row's
+    identity as it moves across the other cells.
+
+    NATIVE MARKUP, NOT MudTable. MudTable 9 has no caption slot, and inserting one from JS puts a
+    node Blazor does not own at the front of a <table> whose children Blazor patches by position
+    (PR #457 review). So this renders the design system's own .odc-table markup, as OdsRecordTable
+    already does.
 *@
 
 @typeparam TRow
-@inject IJSRuntime Js
 
-<MudTable Items="@Rows"
-          Dense="@Dense"
-          Hover="@(OnRowClick.HasDelegate)"
-          OnRowClick="@((TableRowClickEventArgs<TRow> args) => HandleRowClick(args))"
-          Breakpoint="Breakpoint.None"
-          Elevation="0"
-          Class="@Class"
-          id="@_hostId">
-    <HeaderContent>
-        @foreach (var col in Columns)
-        {
-            <MudTh scope="col" Style="@HeaderStyle(col)">
-                @if (col.Sortable && OnSort.HasDelegate)
-                {
-                    <MudButton Variant="Variant.Text" Size="Size.Small"
-                               Class="px-1"
-                               EndIcon="@SortIcon(col)"
-                               OnClick="@(() => OnSort.InvokeAsync(col.Key))">
-                        @HeaderFor(col)
-                    </MudButton>
-                }
-                else
-                {
-                    @HeaderFor(col)
-                }
-            </MudTh>
-        }
-    </HeaderContent>
-    <RowTemplate>
-        @foreach (var col in Columns)
-        {
-            @if (RowHeader is not null && col.Key == RowHeader)
+<table class="odc-table @(Dense ? "dense" : null) @(OnRowClick.HasDelegate ? "clickable" : null) @Class">
+    @if (!string.IsNullOrEmpty(Caption))
+    {
+        <caption class="@(CaptionHidden ? "odc-sr-only" : "odc-table-caption")">@Caption</caption>
+    }
+    <thead>
+        <tr>
+            @foreach (var col in Columns)
             {
-                @* MudTd only renders a <td>; the row header is the same cell as a <th>, with MudTd's class. *@
-                <th scope="row" data-label="@(col.HeaderText)" style="@CellStyle(col)"
-                    class="@RowHeaderClass(col)">
-                    @col.Cell?.Invoke(context)
+                <th scope="col" class="@HeaderClass(col)" style="@(col.Width is not null ? $"width:{col.Width}" : null)"
+                    aria-sort="@AriaSort(col)">
+                    @if (col.Sortable && OnSort.HasDelegate)
+                    {
+                        var active = IsActive(col);
+                        <button type="button" class="odc-th-btn" data-active="@(active ? "" : null)"
+                                @onclick="@(() => OnSort.InvokeAsync(col.Key))">
+                            <span>@HeaderFor(col)</span>
+                            <span class="material-icons odc-th-sort" aria-hidden="true">@(active && Sort!.Dir == OdsSortDirection.Asc ? "arrow_upward" : "arrow_downward")</span>
+                        </button>
+                    }
+                    else
+                    {
+                        @HeaderFor(col)
+                    }
                 </th>
             }
-            else
-            {
-                <MudTd DataLabel="@(col.HeaderText)" Style="@CellStyle(col)" Class="@col.CellClass">
-                    @col.Cell?.Invoke(context)
-                </MudTd>
-            }
-        }
-    </RowTemplate>
-    <NoRecordsContent>
-        @if (Empty is not null)
+        </tr>
+    </thead>
+    <tbody>
+        @if (!Rows.Any())
         {
-            @Empty
+            <tr>
+                <td class="odc-table-empty" colspan="@Columns.Count">
+                    @if (Empty is not null)
+                    {
+                        @Empty
+                    }
+                    else
+                    {
+                        <span>No records.</span>
+                    }
+                </td>
+            </tr>
         }
         else
         {
-            <MudText Typo="Typo.body2" Class="mud-text-secondary pa-4">No records.</MudText>
+            @foreach (var row in Rows)
+            {
+                <tr @onclick="@(() => HandleRowClick(row))">
+                    @foreach (var col in Columns)
+                    {
+                        @if (RowHeader is not null && col.Key == RowHeader)
+                        {
+                            <th scope="row" class="@CellClass(col)">@col.Cell?.Invoke(row)</th>
+                        }
+                        else
+                        {
+                            <td class="@CellClass(col)">@col.Cell?.Invoke(row)</td>
+                        }
+                    }
+                </tr>
+            }
         }
-    </NoRecordsContent>
-</MudTable>
+    </tbody>
+</table>
 
 @code {
     /// <summary>The column definitions.</summary>
@@ -100,15 +107,11 @@
     /// <summary>Rendered when Rows is empty (e.g. an OdsEmptyState).</summary>
     [Parameter] public RenderFragment? Empty { get; set; }
 
-    // No AriaLabel param: MudTable splats unmatched attributes onto its outer wrapper
-    // <div>, not the inner <table>, so an aria-label here never reaches the table's
-    // semantics (a silent no-op). A table that needs its own accessible name should use
-    // the native-<table> OdsRecordTable / OdsTxnTable, whose aria-label lands correctly.
     [Parameter] public string? Class { get; set; }
 
     /// <summary>
     /// The table's accessible name, from its own content: rendered as a <c>&lt;caption&gt;</c>
-    /// (Odyssey Design System · Table <c>caption</c>, issue #451). Prefer it over an aria-label.
+    /// (Odyssey Design System · Table <c>caption</c>, issue #451).
     /// </summary>
     [Parameter] public string? Caption { get; set; }
 
@@ -121,53 +124,23 @@
     /// </summary>
     [Parameter] public string? RowHeader { get; set; }
 
-    private readonly string _hostId = $"ods-table-{Guid.NewGuid():N}";
-    private (string? Text, bool Hidden)? _renderedCaption;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        // Re-applied whenever the caption changes (and on first render); MudTable keeps its <table>
-        // element across renders, so a caption inserted once stays put.
-        var wanted = (Caption, CaptionHidden);
-        var unchanged = firstRender ? string.IsNullOrEmpty(Caption) : _renderedCaption == wanted;
-        _renderedCaption = wanted;
-        if (unchanged)
-            return;
-        try
-        { await Js.InvokeVoidAsync("odsTableCaption", _hostId, Caption ?? "", CaptionHidden); }
-        catch (JSException) { }
-        catch (JSDisconnectedException) { }
-    }
-
-    private static string RowHeaderClass(OdsTableColumn<TRow> col) =>
-        string.IsNullOrEmpty(col.CellClass) ? "mud-table-cell ods-table-rowheader" : $"mud-table-cell ods-table-rowheader {col.CellClass}";
-
     private RenderFragment HeaderFor(OdsTableColumn<TRow> col) =>
         col.Header ?? (builder => builder.AddContent(0, col.HeaderText));
 
-    private string? HeaderStyle(OdsTableColumn<TRow> col)
+    private bool IsActive(OdsTableColumn<TRow> col) => Sort is not null && Sort.Key == col.Key;
+
+    private string? AriaSort(OdsTableColumn<TRow> col) => !col.Sortable || !OnSort.HasDelegate
+        ? null
+        : IsActive(col) ? (Sort!.Dir == OdsSortDirection.Asc ? "ascending" : "descending") : "none";
+
+    private static string HeaderClass(OdsTableColumn<TRow> col) => col.Align == OdsAlign.End ? "odc-th num" : "odc-th";
+
+    private static string? CellClass(OdsTableColumn<TRow> col)
     {
-        var parts = new List<string>(2);
-        if (!string.IsNullOrEmpty(col.Width)) parts.Add($"width:{col.Width};");
-        if (col.Align == OdsAlign.End) parts.Add("text-align:right;");
-        return parts.Count == 0 ? null : string.Concat(parts);
+        var num = col.Align == OdsAlign.End ? "num" : null;
+        return string.IsNullOrEmpty(col.CellClass) ? num : num is null ? col.CellClass : $"num {col.CellClass}";
     }
 
-    private string? CellStyle(OdsTableColumn<TRow> col) =>
-        col.Align == OdsAlign.End
-            ? "text-align:right;font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap;"
-            : null;
-
-    private string SortIcon(OdsTableColumn<TRow> col)
-    {
-        var active = Sort is not null && Sort.Key == col.Key;
-        return active && Sort!.Dir == OdsSortDirection.Asc
-            ? Icons.Material.Filled.ArrowUpward
-            : Icons.Material.Filled.ArrowDownward;
-    }
-
-    private Task HandleRowClick(TableRowClickEventArgs<TRow> args) =>
-        OnRowClick.HasDelegate && args.Item is not null
-            ? OnRowClick.InvokeAsync(args.Item)
-            : Task.CompletedTask;
+    private Task HandleRowClick(TRow row) =>
+        OnRowClick.HasDelegate ? OnRowClick.InvokeAsync(row) : Task.CompletedTask;
 }

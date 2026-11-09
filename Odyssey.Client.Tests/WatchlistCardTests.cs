@@ -76,6 +76,26 @@ public class WatchlistCardTests
     }
 
     [Fact]
+    public async Task A_slow_reply_for_an_earlier_currency_does_not_overwrite_the_newer_one()
+    {
+        var (ctx, api) = NewContext(Ok(Item("EQNR")));
+        await using var _ = ctx;
+        var slowNok = new TaskCompletionSource<ApiResult<InstrumentWatchlist>>();
+        api.Setup(a => a.GetWatchlistAsync("NOK", It.IsAny<int>(), It.IsAny<CancellationToken>())).Returns(slowNok.Task);
+        api.Setup(a => a.GetWatchlistAsync("USD", It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<InstrumentWatchlist>.Success(
+                new InstrumentWatchlist { DisplayCurrencyCode = "USD", Items = [Item("AAPL")] }, HttpStatusCode.OK));
+
+        var cut = Render(ctx, "NOK");
+        cut.Render(p => p.Add(c => c.DisplayCurrencyCode, "USD"));
+        cut.WaitForAssertion(() => Assert.Contains("AAPL", cut.Find("tbody th[scope=row]").TextContent));
+
+        await cut.InvokeAsync(() => slowNok.SetResult(Ok(Item("EQNR"))));
+        cut.WaitForAssertion(() => Assert.Contains("AAPL", cut.Find("tbody th[scope=row]").TextContent));
+        Assert.DoesNotContain("EQNR", cut.Find("tbody").TextContent);
+    }
+
+    [Fact]
     public async Task The_table_is_captioned_with_the_currency_and_rows_are_headed_by_a_linked_symbol()
     {
         var (ctx, _) = NewContext(Ok(Item("EQNR")));
@@ -83,9 +103,9 @@ public class WatchlistCardTests
         var cut = Render(ctx);
 
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll("tbody th[scope=row]")));
-        var call = Assert.Single(ctx.JSInterop.Invocations, i => i.Identifier == "odsTableCaption");
-        Assert.Equal("Watchlist, prices in NOK", call.Arguments[1]);
-        Assert.Equal(true, call.Arguments[2]);
+        var caption = cut.Find("table > caption");
+        Assert.Equal("Watchlist, prices in NOK", caption.TextContent);
+        Assert.Contains("odc-sr-only", caption.ClassList);
 
         var head = cut.Find("tbody th[scope=row]");
         var link = head.QuerySelector("a")!;

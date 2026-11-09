@@ -28,7 +28,13 @@ public partial class InstrumentPricesPage
     private bool _isLoading = true;
     private bool _refetching;
     private bool _loadError;
-    private string _announce = string.Empty;
+    // Announced through Announce() so a repeated message ("Couldn't delete the price." twice) is spoken
+    // again — a bound Message is silent when the text does not change (PR #457 accessibility review).
+    private OdsLiveAnnouncer? _polite;
+    private OdsLiveAnnouncer? _assertive;
+
+    // A write announces its own outcome; the refetch after it must not replace that with the list count.
+    private bool _suppressListAnnouncement;
     // Latest-request-wins for the list fetch (issue #249): a superseded response touches nothing.
     private readonly ListLoader _listLoader = new();
 
@@ -189,7 +195,7 @@ public partial class InstrumentPricesPage
         }
 
         Snackbar.Add(MissingInstrumentMessage, Severity.Warning);
-        _announce = MissingInstrumentMessage;
+        Announce(MissingInstrumentMessage);
         return null;
     }
 
@@ -299,9 +305,14 @@ public partial class InstrumentPricesPage
     };
 
     // Full refresh: the whole-table counts and attribution, then the display slice. Used on load and after any write.
-    private async Task RefreshAsync()
+    // A write passes announceList: false — it announces its own outcome, which the list count must not replace.
+    private async Task RefreshAsync(bool announceList = true)
     {
-        await Task.WhenAll(LoadCountsAsync(), GetPrices());
+        _suppressListAnnouncement = !announceList;
+        try
+        { await Task.WhenAll(LoadCountsAsync(), GetPrices()); }
+        finally
+        { _suppressListAnnouncement = false; }
     }
 
     private async Task LoadCountsAsync()
@@ -337,13 +348,14 @@ public partial class InstrumentPricesPage
             _prices = [.. load.Items];
             _totalCount = load.TotalCount;
             _loadError = false;
-            _announce = _totalCount == 0 ? "No prices match your filters."
-                : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} price{(_totalCount == 1 ? "" : "s")}.";
+            if (!_suppressListAnnouncement)
+                Announce(_totalCount == 0 ? "No prices match your filters."
+                : $"Showing {OdsPagerMath.FirstShown(_page, _pageSize, _totalCount)}–{OdsPagerMath.LastShown(_page, _pageSize, _totalCount)} of {_totalCount} price{(_totalCount == 1 ? "" : "s")}.");
         }
         else
         {
             _loadError = true;
-            _announce = "Couldn't load instrument prices.";
+            AnnounceAssertive("Couldn't load instrument prices.");
         }
 
         _isLoading = false;
@@ -439,12 +451,13 @@ public partial class InstrumentPricesPage
             .Select(p => p.InstrumentPriceId).ToList();
 
         _busy.Add(id);
+        Announce($"Deleting price {RowLabelFor(price)}");
         StateHasChanged();
         var result = await Prices.DeleteAsync(id);
         _busy.Remove(id);
-        ReportDelete(result, price);
         // The row count and the pager's total come from one fetch: refetch, never just drop the row.
-        await RefreshAsync();
+        await RefreshAsync(announceList: false);
+        ReportDelete(result, price);
         if (result.IsSuccess || result.Status == HttpStatusCode.NotFound)
             await FocusAfterRemovalAsync(candidates);
     }
@@ -468,17 +481,17 @@ public partial class InstrumentPricesPage
         if (result.IsSuccess)
         {
             Snackbar.Add("Price deleted.", Severity.Success);
-            _announce = $"Price {RowLabelFor(price)} deleted";
+            Announce($"Price {RowLabelFor(price)} deleted");
         }
         else if (result.Status == HttpStatusCode.NotFound)
         {
             Snackbar.Add("This price no longer exists.", Severity.Warning);
-            _announce = "This price no longer exists";
+            Announce("This price no longer exists");
         }
         else
         {
             result.Toast(Snackbar, "Delete failed");
-            _announce = "Couldn't delete the price.";
+            AnnounceAssertive("Couldn't delete the price.");
         }
     }
 
@@ -512,7 +525,10 @@ public partial class InstrumentPricesPage
         if (_dialogPrice is not { } price)
             return;
         if (busy)
+        {
             _busy.Add(price.InstrumentPriceId);
+            Announce($"Saving price {RowLabelFor(price)}");
+        }
         else
             _busy.Remove(price.InstrumentPriceId);
         StateHasChanged();
@@ -520,8 +536,8 @@ public partial class InstrumentPricesPage
 
     private async Task OnPriceSaved(ExistingInstrumentPrice saved)
     {
-        _announce = _dialogPrice is null ? $"Price {RowLabelFor(saved)} created" : $"Price {RowLabelFor(saved)} saved";
-        await RefreshAsync();
+        await RefreshAsync(announceList: false);
+        Announce(_dialogPrice is null ? $"Price {RowLabelFor(saved)} created" : $"Price {RowLabelFor(saved)} saved");
     }
 
     /// <summary>"Edit that price" after a duplicate: the existing manual price opens for editing, focus on Close.</summary>
@@ -539,8 +555,12 @@ public partial class InstrumentPricesPage
         }
 
         Snackbar.Add("That price no longer exists.", Severity.Warning);
-        _announce = "That price no longer exists";
+        Announce("That price no longer exists");
     }
+
+    private void Announce(string message) => _ = _polite?.Announce(message);
+
+    private void AnnounceAssertive(string message) => _ = _assertive?.Announce(message);
 
     public void Dispose() => _listLoader.Dispose();
 }
