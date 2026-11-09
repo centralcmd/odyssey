@@ -31,12 +31,21 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
 
     public string VolumeRoot => volume.FullName;
 
+    /// <param name="retryOnFailure">Runs the host's contexts with <c>EnableRetryOnFailure</c>, as the API and the worker do
+    /// in production — for a test whose outcome depends on how a transient error (a deadlock, a lock wait) is handled.</param>
     public static async Task<PhotoStoreHost> CreateAsync(
-        string connectionString, IPhotoMetadataExtractor? extractor = null, Action<IServiceCollection>? configureServices = null)
+        string connectionString, IPhotoMetadataExtractor? extractor = null, Action<IServiceCollection>? configureServices = null,
+        bool retryOnFailure = false)
     {
         var volume = Directory.CreateTempSubdirectory("odyssey-it-photos-");
         var host = FileStorageTestHost.Create(
-            options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)),
+            options => options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), mySql =>
+            {
+                if (retryOnFailure)
+                {
+                    mySql.EnableRetryOnFailure();
+                }
+            }),
             new Dictionary<string, string> { ["photos"] = volume.FullName },
             new Dictionary<string, string>
             {

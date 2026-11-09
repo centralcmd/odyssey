@@ -348,7 +348,7 @@ public class PhotosApiTests
     }
 
     private static List<string> OriginalFiles(OdysseyApiFactory factory) =>
-        [.. Directory.EnumerateFiles(factory.PhotoVolumeRoot, "*", SearchOption.AllDirectories)
+        [.. Directory.EnumerateFiles(factory.FileVolumeRoot, "*", SearchOption.AllDirectories)
             .Where(f => f.Contains($"{System.IO.Path.DirectorySeparatorChar}photo-originals{System.IO.Path.DirectorySeparatorChar}", StringComparison.Ordinal))
             .Order()];
 
@@ -631,7 +631,7 @@ public class PhotosApiTests
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             var storedObjectId = (await context.Photos.SingleAsync(p => p.PhotoId == created.PhotoId)).StoredObjectId!.Value;
             var stored = await context.StoredObjects.SingleAsync(o => o.Id == storedObjectId);
-            File.Delete(System.IO.Path.Combine(factory.PhotoVolumeRoot, stored.RelativePath));
+            File.Delete(System.IO.Path.Combine(factory.FileVolumeRoot, stored.RelativePath));
         }
 
         var response = await client.GetAsync($"{Path}/{created.PhotoId}/content");
@@ -818,7 +818,7 @@ public class PhotosApiTests
     public async Task Upload_BelowTheUploadReserve_Is507_AndWritesNothing()
     {
         await using var factory = new ApiFactory(ReadWrite);
-        factory.PhotoVolumeSpace.Override = (2L * 1024 * 1024 * 1024, 100L * 1024 * 1024 * 1024);
+        factory.FileVolumeSpace.Override = (2L * 1024 * 1024 * 1024, 100L * 1024 * 1024 * 1024);
         using var client = factory.CreateClient();
 
         var post = await PhotoTestSupport.PostPhotoAsync(client);

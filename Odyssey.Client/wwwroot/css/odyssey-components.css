@@ -143,7 +143,7 @@
 .odc-breakdown-total .material-icons { color: var(--mud-palette-text-secondary); }
 /* Summary grid — the auto-fitting row of tiles a page's Overview lays out
    (BreakdownTile "By type" / "By status", stat tiles, donut cards). */
-.odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
 
 /* ---------- Badge ---------- */
 .odc-badge {
@@ -508,7 +508,7 @@
    ends at 968, so percentage padding tracks both edges as the SVG scales.
    Left-aligned — the rows read as a list, not a caption. */
 .odc-sc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 3.2% 2px 6.4%; }
-.odc-sc-leg { display: inline-flex; align-items: center; gap: 7px; }
+.odc-sc-leg { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; max-width: 100%; }
 .odc-sc-swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .odc-sc-leg-name { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-sc-leg-val { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -547,7 +547,8 @@
 .odc-legend-figs { display: flex; align-items: baseline; gap: 14px; flex: none; }
 .odc-legend-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
 .odc-legend-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
-.odc-donut-total { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider); }
+/* flex-wrap: a long total drops its figures under the label rather than past the card's edge (issue #389). */
+.odc-donut-total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider); }
 .odc-donut-total-lab { min-width: 0; padding-left: 21px; font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-donut-total-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
 .odc-donut-total-amt { font: var(--fw-medium) var(--fs-h6)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
@@ -1001,7 +1002,8 @@
   flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere;
 }
 /* An open-ended list (user data: tags, accounts, people) keeps a 240px trigger wherever it sits. */
-.odc-ms.open-ended { min-width: 240px; }
+/* min(): the floor sets the wide-screen rhythm and never pushes a 320px page sideways (WCAG 1.4.10, issue #389). */
+.odc-ms.open-ended { min-width: min(240px, 100%); }
 .odc-ms.open-ended > .odc-ms-trigger { flex: 1; }
 /* Custom checkbox (.odc-check) — scoped to the generic class, not .odc-ms-opt, so it
    styles every check row (OdsMultiSelect AND OdsTagMultiSelect). Hide the native input
@@ -1613,7 +1615,10 @@
 /* The direction toggle drops under the field rather than past the edge when the two do not fit
    side by side (a filter bar on a phone). */
 .odc-sortsel.split { flex-wrap: wrap; max-width: 100%; }
-.odc-sortsel-field { position: relative; }
+/* The field may shrink inside a narrow filter bar: the value ellipsises (.odc-sortsel-val) and stays in the
+   menu, so a 320px page never scrolls sideways (WCAG 1.4.10, issue #389). */
+.odc-sortsel-field { position: relative; min-width: 0; max-width: 100%; }
+.odc-sortsel-field > *, .odc-sortsel-trigger { max-width: 100%; }
 .odc-sortsel-trigger, .odc-sortsel-dir, .odc-sortsel-static {
   display: inline-flex; align-items: center; gap: 8px;
   box-sizing: border-box; height: var(--control-h); padding: 0 10px 0 12px;
@@ -2225,7 +2230,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
 
 /* ---- CURRENT TERMS — summary tiles (the /terms/current view) ---- */
-.trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(168px, 100%), 1fr)); gap: 10px; }
 .trm-tile { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 13px 14px; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-surface); }
 .trm-tile-top { display: flex; align-items: center; gap: 9px; }
 /* A term is NAMED by its label, as text, so no meaning rides on the glyph or its hue
@@ -2689,7 +2694,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Portfolio summary strip (header Overview region) */
 .ins-summary { display: flex; flex-direction: column; gap: 14px; }
-.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .ins-stat {
   border: 1px solid var(--mud-palette-divider); border-radius: 10px;
   background: var(--mud-palette-background); padding: 14px 16px;
@@ -2794,7 +2799,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
    InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */
 .ins-tiles {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px;
   --odc-infotile-accent: var(--ins-accent);
   --odc-infotile-accent-soft: var(--ins-accent-soft);
 }
@@ -2897,7 +2902,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Summary strip (header Overview region) */
 .con-summary { display: flex; flex-direction: column; gap: 14px; }
-.con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
 
 /* Run-rate stat tiles — FLAT, like the sibling breakdown tiles beneath them, so an elevated surface
    never floats one pair of figures above the rest of the Overview. The figures are recurring spend,
@@ -2905,7 +2910,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Run-rate stat tiles — flat, like the sibling breakdown tiles, so an elevated surface tile never
    floats above them. FOUR tiles: each period's two grosses, coloured by the finance semantics of
    their own side. The net is not a tile; it closes each by-type breakdown instead. */
-.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
 .con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
@@ -3463,6 +3468,12 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dpr .mud-input.mud-input-outlined { background: transparent; }
 .odc-dpr .mud-input.mud-input-outlined .mud-input-outlined-border { border: none; }
 .odc-dpr .mud-input-slot { width: 96px; padding: 0 2px; font: var(--fw-regular) 13px/1 var(--font-sans); }
+/* Too narrow for both dates on one line (a 320px phone): the range wraps inside its own border instead of
+   pushing the page sideways (WCAG 1.4.10, issue #389). */
+.odc-dpr { max-width: 100%; }
+@media (max-width: 480px) {
+  .odc-dpr { flex-wrap: wrap; height: auto; min-height: var(--control-h); padding-block: 4px; row-gap: 2px; }
+}
 .odc-dpr .mud-input-adornment { margin: 0; }
 .odc-dpr .mud-input-adornment .mud-icon-root { font-size: 18px; color: var(--mud-palette-text-secondary); }
 .odc-dpr-clear { flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard); }
@@ -3474,7 +3485,7 @@ tr:focus-within > .odc-rowactions.reveal,
    of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
 /* 48px cells, 24px glyphs; the grid scrolls inside a seven-row window (the catalogue is 110 keys). */
-.odc-iconpick-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: var(--space-1); padding: var(--space-2); max-height: calc(7 * 48px + 6 * var(--space-1) + 2 * var(--space-2)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--space-2); }
+.odc-iconpick-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(48px, 100%), 1fr)); gap: var(--space-1); padding: var(--space-2); max-height: calc(7 * 48px + 6 * var(--space-1) + 2 * var(--space-2)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--space-2); }
 .odc-iconpick-cell { appearance: none; position: relative; height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
 .odc-iconpick-cell .material-icons { font-size: var(--icon-xl); }
 .odc-iconpick-cell:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
@@ -3614,7 +3625,7 @@ tr:focus-within > .odc-rowactions.reveal,
    alpha fails 4.5:1. */
 .odc-aliases { min-width: 0; margin-top: 20px; }
 .odc-aliases-empty { margin: 2px 2px 8px; font: 400 13px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-alias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 10px; }
+.odc-alias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(196px, 100%), 1fr)); gap: 10px; }
 .odc-alias-tile {
   position: relative; display: flex; flex-direction: column; gap: 7px; min-width: 0;
   padding: 12px 40px 12px 14px; border: 1px solid var(--mud-palette-divider);
@@ -3732,7 +3743,18 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---------- Calendar toolbar ---------- */
 .cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.cal-toolbar-nav { display: flex; align-items: center; gap: 8px; }
+.cal-toolbar-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+/* On a phone the view switcher takes its own full line and splits it evenly, one column per view (issue #291): the
+   shared segmented control is built for 2–3 short options and cannot shrink, so it ran past the edge.
+   Below 400px the glyphs go and the labels — the accessible names — stay. Scoped to the calendar, as
+   .trm-kind-seg is, so no other segmented control changes. */
+@media (max-width: 600px) {
+  .cal-toolbar .odc-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; box-sizing: border-box; }
+  .cal-toolbar .odc-seg-btn { justify-content: center; padding-inline: 6px; min-width: 0; }
+}
+@media (max-width: 400px) {
+  .cal-toolbar .odc-seg-btn .material-icons { display: none; }
+}
 
 /* ---------- Week / Day time-grid (OdsCalTimeGrid, issue #329) ---------- */
 .cal-tg { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; background: var(--mud-palette-surface); display: flex; flex-direction: column; }
@@ -4108,7 +4130,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .pl-toolbtn .material-icons { font-size: 17px; }
 
 /* ---- Uniform thumbnail grid (PhotosCard, AlbumsPage) ---- */
-.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 10px; }
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(158px, 100%), 1fr)); gap: 10px; }
 
 /* ---- Selection bar (PhotosCard, AlbumsPage) ---- */
 .pl-selbar { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -4579,11 +4601,11 @@ tr:focus-within > .odc-rowactions.reveal,
    Auto-fit, so a full-width card body gets three or four tiles per row instead of two;
    .dense drops the icon chips for records with seven or more facts. */
 .odc-tilegrid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px;
     --odc-infotile-accent: var(--rec, var(--brand-text));
     --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
 }
-.odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: var(--space-2); }
+.odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(min(152px, 100%), 1fr)); gap: var(--space-2); }
 .odc-tilegrid.dense .odc-infotile { padding: 11px var(--space-3); gap: 7px; }
 .odc-tilegrid.dense .odc-infotile-ic { display: none; }
 .odc-tilegrid.dense .odc-infotile-v { font-size: var(--fs-body1); }
@@ -4827,7 +4849,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .prop-type-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .prop-sort-note { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .prop-sort-note .material-icons { font-size: var(--fs-body2); }
-.prop-stats { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.prop-stats { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
 .prop-excl { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
 .prop-del-list { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3) var(--space-4); list-style: none; border-radius: 10px; background: var(--mud-palette-background-gray); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
 .prop-del-list > li { display: flex; align-items: center; gap: var(--space-3); }
@@ -4858,7 +4880,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---------- SmartTagScopeField / SmartTagScopeSyncPrompt (a contract's smart-tag date range) ---------- */
 .odc-stscope { display: flex; flex-direction: column; gap: var(--space-3); }
-.odc-stscope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+.odc-stscope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--space-4); }
 .odc-stscope-strip { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background-gray, var(--mud-palette-background)); }
 .odc-stscope-strip-lab { font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .odc-stscope-track { position: relative; height: 10px; border-radius: var(--radius-pill); background: var(--mud-palette-action-default-hover); }

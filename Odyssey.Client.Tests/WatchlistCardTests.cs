@@ -114,6 +114,25 @@ public class WatchlistCardTests
         Assert.Contains(cut.FindAll("a"), a => a.TextContent.Contains("Manage instruments") && a.GetAttribute("href") == "instruments");
     }
 
+    /// <summary>
+    /// The table scrolls in its own frame on a phone (issue #389), and a scrollable region needs a keyboard
+    /// path: the frame is a focusable region named like the table, holding the table itself.
+    /// </summary>
+    [Fact]
+    public async Task The_table_scrolls_in_a_focusable_region_named_like_the_table()
+    {
+        var (ctx, _) = NewContext(Ok(Item("EQNR")));
+        await using var __ = ctx;
+        var cut = Render(ctx);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("tbody th[scope=row]")));
+        var frame = cut.Find(".wl-scroll");
+        Assert.Equal("region", frame.GetAttribute("role"));
+        Assert.Equal("0", frame.GetAttribute("tabindex"));
+        Assert.Equal("Watchlist, prices in NOK", frame.GetAttribute("aria-label"));
+        Assert.NotNull(frame.QuerySelector("table"));
+    }
+
     [Fact]
     public async Task The_change_and_trend_are_announced_once_with_the_visuals_hidden()
     {
