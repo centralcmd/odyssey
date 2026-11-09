@@ -210,7 +210,7 @@ public static class BackgroundJobPresentation
             + $"{Plural(s.OnDisk.ContactAvatars, "contact avatar", "contact avatars")}";
         return new BackfillMoveView(
             lead,
-            [("To move", s.ToMove), ("Parked", s.Failed), ("Waiting on photos", s.WaitingOnPhotos)],
+            [("To move", Math.Max(0, s.ToMove)), ("Parked", Math.Max(0, s.Failed)), ("Waiting on photos", Math.Max(0, s.WaitingOnPhotos))],
             detail,
             ParkedLines(s.FailedByCode, Math.Max(0, s.Failed), FileParkCodes),
             "Parked files by reason",

@@ -16,6 +16,7 @@ public sealed class UploadFailureTextTests
     [InlineData(HttpStatusCode.InsufficientStorage, UploadStop.StorageFull)]
     [InlineData(HttpStatusCode.ServiceUnavailable, UploadStop.StorageUnavailable)]
     [InlineData(HttpStatusCode.TooManyRequests, UploadStop.TooManyUploads)]
+    [InlineData((HttpStatusCode)0, UploadStop.ConnectionFailed)]
     [InlineData(HttpStatusCode.BadRequest, UploadStop.None)]
     [InlineData(HttpStatusCode.RequestEntityTooLarge, UploadStop.None)]
     [InlineData(HttpStatusCode.Conflict, UploadStop.None)]
@@ -32,6 +33,8 @@ public sealed class UploadFailureTextTests
             UploadFailureText.Stopped(UploadStop.StorageUnavailable, 3, null));
         Assert.Equal("You’ve uploaded a lot of files in a short time, so 2 files weren’t uploaded. Try again in 4 minutes.",
             UploadFailureText.Stopped(UploadStop.TooManyUploads, 2, TimeSpan.FromSeconds(181)));
+        Assert.Equal("Couldn’t reach the server, so 1 file wasn’t uploaded. Check your connection and try again.",
+            UploadFailureText.Stopped(UploadStop.ConnectionFailed, 1, null));
         Assert.Equal("File storage is full, so 2 files weren’t uploaded. Ask an administrator. Pick the 2 remaining files again.",
             UploadFailureText.Stopped(UploadStop.StorageFull, 2, null, pickAgain: true));
     }
@@ -53,6 +56,7 @@ public sealed class UploadFailureTextTests
         Assert.Equal("only", UploadFailureText.Several(["only"], itemised: true));
         Assert.Equal("5 files couldn’t be uploaded.", UploadFailureText.Several(["a", "b", "c", "d", "e"], itemised: false));
         Assert.Equal("5 files couldn’t be uploaded. a b c And 2 more.", UploadFailureText.Several(["a", "b", "c", "d", "e"], itemised: true));
+        Assert.Equal("2 files can’t be added. a b", UploadFailureText.Several(["a", "b"], itemised: true, "can’t be added"));
     }
 
     [Fact]
@@ -68,6 +72,7 @@ public sealed class UploadFailureTextTests
         Assert.Equal(UploadFailureText.MaxEchoLength, clean.Length);
         Assert.EndsWith("…", clean, StringComparison.Ordinal);
         Assert.Equal(string.Empty, UploadFailureText.Clean(null));
+        Assert.Equal("ab.pdf", UploadFailureText.Clean("a\u200Eb\u200F\u061C\u200B\u2067.pdf"));
     }
 
     [Theory]
@@ -78,7 +83,7 @@ public sealed class UploadFailureTextTests
     [InlineData(60, "in 1 minute")]
     [InlineData(61, "in 2 minutes")]
     [InlineData(3600, "in 60 minutes")]
-    [InlineData(3601, "in over an hour")]
+    [InlineData(3601, "in more than an hour")]
     public void Retry_after_rounds_up_to_whole_minutes(int? seconds, string expected) =>
         Assert.Equal(expected, UploadRetryWording.When(seconds is { } s ? TimeSpan.FromSeconds(s) : null));
 

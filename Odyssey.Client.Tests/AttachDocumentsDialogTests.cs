@@ -635,6 +635,39 @@ public class AttachDocumentsDialogTests
         Assert.Empty(h.Toasts);
     }
 
+    /// <summary>Every rejection of one pick is in the one alert, not just the last (accessibility review, WCAG 3.3.1).</summary>
+    [Fact]
+    public async Task Every_rejected_file_of_a_pick_is_named_in_one_alert()
+    {
+        var h = Render(canUpload: true);
+
+        await h.Pick(Upload("listing.html"), Upload("notes.exe"), Upload("deed.pdf"));
+
+        var alert = h.Host.Find("[role=alert]").TextContent;
+        Assert.Contains("2 files can’t be added.", alert, StringComparison.Ordinal);
+        Assert.Contains("listing.html", alert, StringComparison.Ordinal);
+        Assert.Contains("notes.exe", alert, StringComparison.Ordinal);
+        Assert.Equal(["deed.pdf"], h.Uploads.Select(u => u.Name));
+    }
+
+    /// <summary>A pick with nothing rejected, or a tab change, clears a stale alert (accessibility review, WCAG 3.3.1).</summary>
+    [Fact]
+    public async Task A_corrected_pick_or_a_tab_change_clears_the_alert()
+    {
+        var h = Render(canUpload: true, canBrowse: true);
+
+        await h.Pick(Upload("listing.html"));
+        Assert.NotEmpty(h.Host.FindAll("[role=alert]"));
+
+        await h.Pick(Upload("deed.pdf"));
+        Assert.Empty(h.Host.FindAll("[role=alert]"));
+
+        await h.Pick(Upload("listing.html"));
+        var tabs = h.Host.FindComponent<OdsSegmentedControl>();
+        await h.Host.InvokeAsync(() => tabs.Instance.ValueChanged.InvokeAsync(AttachDocumentsDialog.LibraryTab));
+        Assert.Empty(h.Host.FindAll("[role=alert]"));
+    }
+
     /// <summary>A surface without the allow-list filters by its own extensions instead.</summary>
     [Fact]
     public async Task A_surface_filters_uploads_by_its_own_extensions()

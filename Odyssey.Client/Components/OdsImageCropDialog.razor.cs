@@ -388,11 +388,12 @@ public partial class OdsImageCropDialog : IAsyncDisposable
                 // Storage full, unavailable or rate-limited: the shared upload wording (issue #449), on this dialog's own
                 // alert line and never a toast. Otherwise the server's own ProblemDetails text — it names the actual
                 // limit or the accepted types — rather than a generic client string.
-                var stop = Odyssey.Client.Services.UploadFailureText.StopOf(result.Status);
-                _serverError = stop != Odyssey.Client.Services.UploadStop.None
-                    ? Odyssey.Client.Services.UploadFailureText.Stopped(stop, 1, result.RetryAfter)
-                    : result.Problem?.Detail
-                        ?? $"Unable to save the {Subject}. The server could not be reached. Check your connection and try again.";
+                var stop = UploadFailureText.StopOf(result.Status);
+                _serverError = stop != UploadStop.None
+                    ? UploadFailureText.Stopped(stop, 1, result.RetryAfter)
+                    : string.IsNullOrWhiteSpace(result.Problem?.Detail)
+                        ? $"Unable to save the {Subject}. Try again."
+                        : UploadFailureText.Clean(result.Problem.Detail);
                 return false;
             }
 

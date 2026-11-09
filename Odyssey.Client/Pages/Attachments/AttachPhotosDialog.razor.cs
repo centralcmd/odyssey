@@ -145,6 +145,7 @@ public partial class AttachPhotosDialog
     {
         _tab = tab == LibraryTab ? LibraryTab : UploadTab;
         _error = null;
+        Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
             await LoadLibraryAsync();
     }
@@ -206,17 +207,18 @@ public partial class AttachPhotosDialog
     private void OnUploadsChanged(IReadOnlyList<OdsUploadFile> files)
     {
         var kept = new List<OdsUploadFile>();
+        var rejected = new List<string>();
         foreach (var f in files)
         {
             var ext = Path.GetExtension(f.Name).ToLowerInvariant();
             if (f.Source is not null && !AllowedExtensions.Contains(ext))
             {
-                Notice($"“{UploadFailureText.Clean(f.Name)}” isn’t a JPEG, PNG, GIF or WebP image.");
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” isn’t a JPEG, PNG, GIF or WebP image.");
                 continue;
             }
             if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
             {
-                Notice($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
                 continue;
             }
             kept.Add(f);
@@ -225,6 +227,9 @@ public partial class AttachPhotosDialog
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
             _error = null;
+
+        // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
+        Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
     }
 
     private async Task SubmitAsync()
@@ -256,6 +261,7 @@ public partial class AttachPhotosDialog
         var added = new List<AttachPhotoItem>();
         var failed = new List<OdsUploadFile>();
         var perFile = new List<string>();
+        string? stoppedText = null;
         try
         {
             var queue = _uploads.Where(f => f.Source is not null).ToList();
@@ -282,8 +288,7 @@ public partial class AttachPhotosDialog
                 if (stop != UploadStop.None)
                 {
                     failed.AddRange(queue.Skip(i));
-                    var stopped = UploadFailureText.Stopped(stop, queue.Count - i, created.RetryAfter);
-                    perFile.Insert(0, stopped);
+                    stoppedText = UploadFailureText.Stopped(stop, queue.Count - i, created.RetryAfter);
                     break;
                 }
 
@@ -308,11 +313,13 @@ public partial class AttachPhotosDialog
                 await OnSubmit.InvokeAsync(added);
             _uploads = failed;
             // The alert line carries the reasons (issue #449 §6); no toast while the dialog is open.
-            Notice(perFile.Count == 0
+            Notice(stoppedText is not null
+                ? (perFile.Count == 0 ? stoppedText : $"{stoppedText} {UploadFailureText.Several(perFile, itemised: true)}")
+                : perFile.Count == 0
                 ? (failed.Count == 1
                     ? $"“{UploadFailureText.Clean(failed[0].Name)}” wasn’t added. Try again, or remove it."
                     : $"{failed.Count} photos weren’t added. Try again, or remove them.")
-                : string.Join(' ', perFile));
+                : UploadFailureText.Several(perFile, itemised: true));
         }
         finally
         {

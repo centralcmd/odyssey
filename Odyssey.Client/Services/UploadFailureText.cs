@@ -17,6 +17,9 @@ public enum UploadStop
 
     /// <summary><c>429</c>: the per-user upload limit.</summary>
     TooManyUploads,
+
+    /// <summary>No answer at all (status 0): the connection failed, so every later file would fail the same way.</summary>
+    ConnectionFailed,
 }
 
 /// <summary>
@@ -39,6 +42,7 @@ public static class UploadFailureText
         HttpStatusCode.InsufficientStorage => UploadStop.StorageFull,
         HttpStatusCode.ServiceUnavailable => UploadStop.StorageUnavailable,
         HttpStatusCode.TooManyRequests => UploadStop.TooManyUploads,
+        0 => UploadStop.ConnectionFailed,
         _ => UploadStop.None,
     };
 
@@ -54,6 +58,7 @@ public static class UploadFailureText
             UploadStop.StorageFull => $"File storage is full, so {files}. Ask an administrator.",
             UploadStop.StorageUnavailable => $"File storage isn’t available right now, so {files}. Try again in a moment.",
             UploadStop.TooManyUploads => $"You’ve uploaded a lot of files in a short time, so {files}. Try again {UploadRetryWording.When(retryAfter)}.",
+            UploadStop.ConnectionFailed => $"Couldn’t reach the server, so {files}. Check your connection and try again.",
             _ => throw new ArgumentOutOfRangeException(nameof(stop)),
         };
         return pickAgain ? $"{text} Pick the {Plural(notUploaded, "remaining file", "remaining files")} again." : text;
@@ -71,14 +76,14 @@ public static class UploadFailureText
     /// The one summary of a batch whose files failed on their own: one file's line as is; several as a count, followed —
     /// where <paramref name="itemised"/> — by at most three of the lines, then "and {k} more".
     /// </summary>
-    public static string Several(IReadOnlyList<string> perFile, bool itemised)
+    public static string Several(IReadOnlyList<string> perFile, bool itemised, string countLead = "couldn’t be uploaded")
     {
         if (perFile.Count == 1)
         {
             return perFile[0];
         }
 
-        var text = new StringBuilder($"{perFile.Count} files couldn’t be uploaded.");
+        var text = new StringBuilder($"{perFile.Count} files {countLead}.");
         if (itemised)
         {
             foreach (var line in perFile.Take(3))
@@ -95,7 +100,7 @@ public static class UploadFailureText
         return text.ToString();
     }
 
-    /// <summary>Removes C0/C1 controls and bidi overrides and cuts to <see cref="MaxEchoLength"/>.</summary>
+    /// <summary>Removes control and format (Cf) characters and cuts to <see cref="MaxEchoLength"/>.</summary>
     public static string Clean(string? value)
     {
         if (string.IsNullOrEmpty(value))
@@ -106,7 +111,9 @@ public static class UploadFailureText
         var kept = new StringBuilder(value.Length);
         foreach (var c in value)
         {
-            if (char.IsControl(c) || c is >= '‪' and <= '‮' || c is >= '⁦' and <= '⁩')
+            // Controls, and every format character (Cf): the bidi embeddings, overrides and isolates, LRM/RLM/ALM and the
+            // zero-width ones — none of them belongs in an echoed name.
+            if (char.IsControl(c) || char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.Format)
             {
                 continue;
             }
@@ -124,7 +131,7 @@ public static class UploadFailureText
 
 /// <summary>
 /// <c>Retry-After</c> in words for an upload (issue #449 §7) — its own rule, not the file-analysis wording: 1 s to 60 min
-/// rounds <b>up</b> to whole minutes; over an hour says so rather than understating; zero, negative or missing (the client
+/// rounds <b>up</b> to whole minutes; more than an hour says so rather than understating; zero, negative or missing (the client
 /// reads both header forms into one <see cref="TimeSpan"/>) is "shortly".
 /// </summary>
 public static class UploadRetryWording
@@ -138,7 +145,7 @@ public static class UploadRetryWording
 
         if (span > TimeSpan.FromHours(1))
         {
-            return "in over an hour";
+            return "in more than an hour";
         }
 
         var minutes = (int)Math.Ceiling(span.TotalMinutes);

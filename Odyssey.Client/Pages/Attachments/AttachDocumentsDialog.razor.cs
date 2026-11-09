@@ -265,6 +265,7 @@ public partial class AttachDocumentsDialog
     {
         _tab = tab == LibraryTab ? LibraryTab : UploadTab;
         _error = null;
+        Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
             await LoadLibraryAsync();
     }
@@ -346,19 +347,20 @@ public partial class AttachDocumentsDialog
     private void OnUploadsChanged(IReadOnlyList<OdsUploadFile> files)
     {
         var kept = new List<OdsUploadFile>();
+        var rejected = new List<string>();
         foreach (var f in files)
         {
             var ext = Path.GetExtension(f.Name).ToLowerInvariant();
             if (f.Source is not null && !Extensions.Contains(ext))
             {
-                Notice(RestrictToDocumentTypes
+                rejected.Add(RestrictToDocumentTypes
                     ? $"“{UploadFailureText.Clean(f.Name)}” can’t be attached. Only {DocumentContentTypes.Label} files are accepted."
                     : $"“{UploadFailureText.Clean(f.Name)}” can’t be attached. Allowed: {ExtensionLabel}.");
                 continue;
             }
             if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
             {
-                Notice($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
                 continue;
             }
             kept.Add(f);
@@ -367,6 +369,9 @@ public partial class AttachDocumentsDialog
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
             _error = null;
+
+        // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
+        Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
     }
 
     private void ToggleMeta(OdsUploadFile file)
@@ -442,6 +447,8 @@ public partial class AttachDocumentsDialog
         var attached = new List<AttachDocumentItem>();
         var failedUploads = new List<OdsUploadFile>();
         var perFile = new List<string>();
+        var warnings = new List<string>();
+        string? stoppedText = null;
         try
         {
             if (_tab == UploadTab)
@@ -467,9 +474,7 @@ public partial class AttachDocumentsDialog
                             if (stop != UploadStop.None)
                             {
                                 failedUploads.AddRange(queue.Skip(i));
-                                var stopped = UploadFailureText.Stopped(stop, queue.Count - i, upload.RetryAfter);
-                                Notice(perFile.Count == 0 ? stopped : $"{stopped} {UploadFailureText.Several(perFile, itemised: true)}");
-                                perFile.Clear();
+                                stoppedText = UploadFailureText.Stopped(stop, queue.Count - i, upload.RetryAfter);
                                 break;
                             }
 
@@ -483,7 +488,8 @@ public partial class AttachDocumentsDialog
                     }
 
                     _stored[file.Uid] = id;
-                    await ApplyNameAsync(id, file);
+                    if (await ApplyNameAsync(id, file) is { } warning)
+                        warnings.Add(warning);
 
                     var item = ItemFor(AttachDocumentSource.Upload, id, file);
                     if (await Attach(item))
@@ -504,6 +510,16 @@ public partial class AttachDocumentsDialog
                     }
                 }
             }
+
+            // One alert for the whole batch, so nothing in it overwrites another part: why it stopped, the files'
+            // own failures, then any rename warnings.
+            var parts = new List<string>();
+            if (stoppedText is not null)
+                parts.Add(stoppedText);
+            if (perFile.Count > 0)
+                parts.Add(UploadFailureText.Several(perFile, itemised: true));
+            parts.AddRange(warnings);
+            Notice(parts.Count > 0 ? string.Join(' ', parts) : null);
 
             if (attached.Count > 0)
             {
@@ -532,8 +548,6 @@ public partial class AttachDocumentsDialog
             // that neither re-stores nor re-links what already worked.
             if (_tab == UploadTab)
                 _uploads = failedUploads;
-            if (perFile.Count > 0)
-                Notice(UploadFailureText.Several(perFile, itemised: true));
             // An upload failure is already on the alert line; only an attach failure needs the generic one.
             if (_notice is null)
             {
@@ -557,21 +571,21 @@ public partial class AttachDocumentsDialog
     // Applies an in-dropzone rename when the row's name differs from what the server holds — on the first
     // try and again on a retry after the reader edited it. A failed rename keeps the stored name, says so,
     // and does not block the attach.
-    private async Task ApplyNameAsync(Guid id, OdsUploadFile file)
+    private async Task<string?> ApplyNameAsync(Guid id, OdsUploadFile file)
     {
         var wanted = file.Name.Trim();
         var current = _storedNames.GetValueOrDefault(file.Uid, file.Source!.Name);
         if (string.IsNullOrEmpty(wanted) || wanted == current)
-            return;
+            return null;
 
         var renamed = await FilesApi.UpdateMetadataAsync(id, null, wanted);
         if (!renamed.IsSuccess)
         {
-            Notice($"“{UploadFailureText.Clean(current)}” was uploaded but couldn’t be renamed to “{UploadFailureText.Clean(wanted)}”: {UploadFailureText.Clean(renamed.Error)}");
             file.Name = current;
-            return;
+            return $"“{UploadFailureText.Clean(current)}” was uploaded but couldn’t be renamed to “{UploadFailureText.Clean(wanted)}”: {UploadFailureText.Clean(renamed.Error)}";
         }
         _storedNames[file.Uid] = wanted;
+        return null;
     }
 
     private Task CloseAsync() => OpenChanged.InvokeAsync(false);
