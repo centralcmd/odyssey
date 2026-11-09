@@ -42,7 +42,7 @@ internal sealed class InstrumentPriceConfiguration : IEntityTypeConfiguration<In
             tb.HasCheckConstraint("CK_InstrumentPrices_ClosePositive", "`Close` > 0");
             tb.HasCheckConstraint(
                 "CK_InstrumentPrices_SourceKeyFormat",
-                "`SourceKey` IS NULL OR `SourceKey` REGEXP '^[a-z0-9-]{1,32}$'");
+                $"`SourceKey` IS NULL OR `SourceKey` REGEXP '{InstrumentIdentifierRules.SourceKeyPattern}'");
         });
     }
 
@@ -66,7 +66,7 @@ internal sealed class InstrumentPriceSourceBindingConfiguration : IEntityTypeCon
                 "CK_InstrumentPriceSourceBindings_Priority",
                 $"`Priority` BETWEEN 1 AND {InstrumentPriceBindingLimits.MaxBindingsPerInstrument}");
             tb.HasCheckConstraint(
-                "CK_InstrumentPriceSourceBindings_SourceKeyFormat", "`SourceKey` REGEXP '^[a-z0-9-]{1,32}$'");
+                "CK_InstrumentPriceSourceBindings_SourceKeyFormat", $"`SourceKey` REGEXP '{InstrumentIdentifierRules.SourceKeyPattern}'");
             tb.HasCheckConstraint(
                 "CK_InstrumentPriceSourceBindings_ConsecutiveFailures", "`ConsecutiveFailures` >= 0");
         });

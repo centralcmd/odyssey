@@ -32,6 +32,12 @@ public class DomainExceptionHierarchyGuardTests
         // A failed file-storage startup check (issue #346 §3.6): it stops the host before it listens, so it
         // never reaches a request and has no status to map to.
         "Odyssey.Core.FileStorage.FileStorageMisconfiguredException",
+        // The instrument-price source transport's refusals (issue #446 §3.2). They run only inside the worker's
+        // sync, which records each on the binding and the run as a failure category; no request reaches them.
+        "Odyssey.Core.Finance.Instruments.Sources.SourceCredentialException",
+        "Odyssey.Core.Finance.Instruments.Sources.SourceDestinationException",
+        "Odyssey.Core.Finance.Instruments.Sources.SourceQuotaExhaustedException",
+        "Odyssey.Core.Finance.Instruments.Sources.SourceResponseMalformedException",
     ];
 
     [Fact]

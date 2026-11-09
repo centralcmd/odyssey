@@ -149,6 +149,38 @@ public class DemoDataSeederTests
     }
 
     [Fact]
+    public async Task Seeds_instruments_with_valid_identities_and_manual_closes_only()
+    {
+        await using var provider = BuildProvider(out var seeder);
+
+        await seeder.ExecuteAsync(CancellationToken.None);
+        await seeder.ExecuteAsync(CancellationToken.None);
+
+        using var scope = provider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var expected = DemoDataSet.Build();
+        var instruments = await context.Instruments.ToListAsync();
+        var prices = await context.InstrumentPrices.ToListAsync();
+
+        Assert.Equal(expected.Instruments.Count, instruments.Count);
+        Assert.Equal(expected.InstrumentPrices.Count, prices.Count);
+        Assert.Contains(instruments, i => i.CurrencyCode != Odyssey.TestData.DemoDataDefaults.Currencies.Nok);
+        Assert.All(instruments, i =>
+        {
+            Assert.Equal(Odyssey.Dtos.Finance.InstrumentIdentifierRules.ListingKey(i.Symbol, i.MicCode, i.Isin, i.CurrencyCode), i.ListingKey);
+            Assert.True(i.Isin is null || Odyssey.Dtos.Finance.InstrumentIdentifierRules.IsValidIsinCheckDigit(i.Isin));
+        });
+        Assert.All(prices, p =>
+        {
+            Assert.Null(p.SourceKey);
+            Assert.True(p.Close > 0);
+            Assert.True(Odyssey.Dtos.Finance.InstrumentPriceRules.HasAtMostDecimals(p.Close));
+        });
+        Assert.Equal(prices.Count, prices.Select(p => (p.InstrumentId, p.TradingDate)).Distinct().Count());
+        Assert.Empty(await context.InstrumentPriceSourceBindings.ToListAsync());
+    }
+
+    [Fact]
     public async Task Seeds_a_travel_card_whose_six_named_fees_are_all_in_force()
     {
         // Before the term label these were four fee kinds that resolved to TWO in-force values, with
