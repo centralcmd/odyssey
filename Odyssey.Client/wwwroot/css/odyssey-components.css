@@ -1800,7 +1800,7 @@
 .odc-rec.odc-rec-flat tbody tr:hover { cursor: default; }
 .odc-rec .odc-rec-numeric { text-align: right; white-space: nowrap; }
 .odc-rec thead th.odc-rec-numeric { font-family: var(--font-sans); }
-.odc-rec td.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-rec td.odc-rec-numeric, .odc-rec tbody th.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Signed-money tone for amount cells / meta tiles (income mint · expense coral).
    A client-only class under the ods- prefix: the design system has since claimed
    .odc-money for MoneyField's control box, and this is a colored number, not a
@@ -1824,6 +1824,29 @@
 .odc-rec-sort:hover .odc-rec-sort-ic { opacity: 0.45; }
 .material-icons.odc-rec-sort-ic.active { opacity: 1; color: var(--brand-text); }
 .material-icons.odc-rec-sort-ic.desc { transform: rotate(180deg); }
+
+/* Caption + row header + busy row (Odyssey DS · Table / RecordTable, issue #451).
+   A row header is a <th scope="row"> that must read exactly like the <td>s beside it, so the UA's
+   bold / centred th defaults are undone. OdsRecordTable is the DS .tbl/.ua-tbl; OdsTable's MudTable
+   row header carries .ods-table-rowheader. */
+.odc-table-caption {
+    caption-side: top; text-align: left;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.odc-rec tbody th[scope="row"] { font-weight: inherit; text-align: left; border-bottom: 1px solid var(--mud-palette-table-lines); }
+.odc-rec tbody th[scope="row"].odc-rec-numeric { text-align: right; }
+.odc-rec tbody tr.expanded > th { border-bottom-color: transparent; }
+.mud-table th.ods-table-rowheader[scope="row"] { font-weight: inherit; text-align: left; }
+/* The programmatic focus target while a row is busy (the row header cell). */
+[data-rt-focus]:focus { outline: none; }
+[data-rt-focus]:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; border-radius: 2px; }
+.odc-rt-menu { display: inline-flex; }
+.odc-rt-busy {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: var(--iconbtn-size, 40px); height: var(--iconbtn-size, 40px);
+}
 
 /* Trailing actions cell: overflow kebab + expand chevron. */
 .odc-rec-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }

@@ -7,9 +7,17 @@
     the component renders the indicator, you own the sort. A column with
     Align=End right-aligns and renders monospace tabular figures (amounts,
     dates). Dense for nav-embedded tables; OnRowClick for expand-in-place records.
+
+    CAPTION AND ROW HEADER (issue #451). Caption names the table by its own content — a real
+    <caption>, visually hidden with CaptionHidden. MudTable has no caption slot, so odsTableCaption
+    (wwwroot/index.html) inserts it as the <table>'s first child after render; that is the accepted
+    trade-off for staying on MudTable (the caption is absent until the first render's interop runs).
+    RowHeader names ONE column key whose body cells render as <th scope="row">, styled exactly like a
+    cell, so a screen reader announces the row's identity as it moves across the other cells.
 *@
 
 @typeparam TRow
+@inject IJSRuntime Js
 
 <MudTable Items="@Rows"
           Dense="@Dense"
@@ -17,7 +25,8 @@
           OnRowClick="@((TableRowClickEventArgs<TRow> args) => HandleRowClick(args))"
           Breakpoint="Breakpoint.None"
           Elevation="0"
-          Class="@Class">
+          Class="@Class"
+          id="@_hostId">
     <HeaderContent>
         @foreach (var col in Columns)
         {
@@ -41,9 +50,20 @@
     <RowTemplate>
         @foreach (var col in Columns)
         {
-            <MudTd DataLabel="@(col.HeaderText)" Style="@CellStyle(col)" Class="@col.CellClass">
-                @col.Cell?.Invoke(context)
-            </MudTd>
+            @if (RowHeader is not null && col.Key == RowHeader)
+            {
+                @* MudTd only renders a <td>; the row header is the same cell as a <th>, with MudTd's class. *@
+                <th scope="row" data-label="@(col.HeaderText)" style="@CellStyle(col)"
+                    class="@RowHeaderClass(col)">
+                    @col.Cell?.Invoke(context)
+                </th>
+            }
+            else
+            {
+                <MudTd DataLabel="@(col.HeaderText)" Style="@CellStyle(col)" Class="@col.CellClass">
+                    @col.Cell?.Invoke(context)
+                </MudTd>
+            }
         }
     </RowTemplate>
     <NoRecordsContent>
@@ -85,6 +105,42 @@
     // semantics (a silent no-op). A table that needs its own accessible name should use
     // the native-<table> OdsRecordTable / OdsTxnTable, whose aria-label lands correctly.
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>
+    /// The table's accessible name, from its own content: rendered as a <c>&lt;caption&gt;</c>
+    /// (Odyssey Design System · Table <c>caption</c>, issue #451). Prefer it over an aria-label.
+    /// </summary>
+    [Parameter] public string? Caption { get; set; }
+
+    /// <summary>Keep the <see cref="Caption"/> visually hidden (still read by assistive technology).</summary>
+    [Parameter] public bool CaptionHidden { get; set; }
+
+    /// <summary>
+    /// Key of the ONE column whose body cells render as <c>&lt;th scope="row"&gt;</c> — the row's identity
+    /// (a symbol, a name), announced as a screen reader moves across the other cells.
+    /// </summary>
+    [Parameter] public string? RowHeader { get; set; }
+
+    private readonly string _hostId = $"ods-table-{Guid.NewGuid():N}";
+    private (string? Text, bool Hidden)? _renderedCaption;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Re-applied whenever the caption changes (and on first render); MudTable keeps its <table>
+        // element across renders, so a caption inserted once stays put.
+        var wanted = (Caption, CaptionHidden);
+        var unchanged = firstRender ? string.IsNullOrEmpty(Caption) : _renderedCaption == wanted;
+        _renderedCaption = wanted;
+        if (unchanged)
+            return;
+        try
+        { await Js.InvokeVoidAsync("odsTableCaption", _hostId, Caption ?? "", CaptionHidden); }
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+    }
+
+    private static string RowHeaderClass(OdsTableColumn<TRow> col) =>
+        string.IsNullOrEmpty(col.CellClass) ? "mud-table-cell ods-table-rowheader" : $"mud-table-cell ods-table-rowheader {col.CellClass}";
 
     private RenderFragment HeaderFor(OdsTableColumn<TRow> col) =>
         col.Header ?? (builder => builder.AddContent(0, col.HeaderText));
