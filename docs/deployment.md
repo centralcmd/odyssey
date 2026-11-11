@@ -1450,6 +1450,9 @@ records a per-binding failure and is retried the next day.
   A batch whose derived currency differs from the instrument's is rejected whole.
 - **Not detected:** a source symbol that points at a **different instrument in the same currency** (say `VTI`
   bound to an instrument meant to be `VOO`) fetches that other instrument's prices. Check the symbol when binding.
+- **Also not detected:** a ticker **listed after 2026-11-11** on a mapped US venue but priced by Tiingo in another
+  currency. The AUD exception list is a snapshot of `supported_tickers.zip` on that date; such a ticker bound to a USD
+  instrument would store its closes as USD. Check Tiingo's `priceCurrency` for an unusual listing before binding it.
 - A fund's close is its **NAV**. Only the unadjusted close is stored; adjusted prices, dividends and splits are
   ignored.
 
@@ -1484,7 +1487,9 @@ own household is permitted, or limit who holds the read claim. *The product deci
 
 - **One additive migration** (`AddInstrumentPriceHourlyCap`): two columns on `InstrumentPriceSourceStates` (the
   hourly request counter) and one counter column on `JobRuns` (`InstrumentsDeferred`). Schema only; `Down()` drops
-  them.
+  them. It also drops and re-adds `CK_JobRuns_CountersNonNegative` to cover the new column, which re-validates
+  that CHECK over every `JobRuns` row and holds the table for that long (brief at the run log's retained size; the
+  worker's jobs wait on it).
 - **The sync's forward watermark now records the newest date the source returned** (#468) rather than the date it
   asked up to, so a close published after a run is fetched by the next one. Days more than five days old count as
   fetched whether or not they came back.

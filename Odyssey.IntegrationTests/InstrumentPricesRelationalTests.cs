@@ -285,22 +285,42 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigratedAsync();
         var limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, MaxRequestsPerRun: 10, MaxRequestsPerDay: 15, MaxRequestsPerHour: 10);
-        var replicas = Enumerable.Range(0, 2).Select(_ =>
+        int reserved;
+        var providers = Enumerable.Range(0, 2).Select(_ => new ServiceCollection().AddScoped(_ => NewContext()).BuildServiceProvider()).ToList();
+        try
         {
-            var provider = new ServiceCollection().AddScoped(_ => NewContext()).BuildServiceProvider();
-            return new SourceRequestQuota(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
-        }).ToList();
+            // Two replicas race each other; each replica's own reservations are sequential, as one run's requests are.
+            var streams = await Task.WhenAll(providers.Select(provider => Task.Run(async () =>
+            {
+                var quota = new SourceRequestQuota(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+                var outcomes = new List<QuotaReservation>();
+                for (var i = 0; i < 12; i++)
+                {
+                    outcomes.Add(await quota.TryReserveAsync("tiingo", limits, CancellationToken.None));
+                }
 
-        var outcomes = await Task.WhenAll(replicas.SelectMany(quota => Enumerable.Range(0, 12).Select(_ =>
-            quota.TryReserveAsync("tiingo", limits, CancellationToken.None))));
+                return outcomes;
+            })));
+            var all = streams.SelectMany(o => o).ToList();
 
-        var reserved = outcomes.Count(o => o == QuotaReservation.Reserved);
-        Assert.InRange(reserved, 1, 10);
+            // A reservation that loses five races in a row fails closed (Contended) and sends nothing; every other
+            // attempt reserves until the hourly cap, then is refused by it. So the count is exact, never above the cap.
+            var contended = all.Count(o => o == QuotaReservation.Contended);
+            reserved = all.Count(o => o == QuotaReservation.Reserved);
+            Assert.Equal(Math.Min(10, all.Count - contended), reserved);
+            Assert.All(all, o => Assert.Contains(o, new[] { QuotaReservation.Reserved, QuotaReservation.HourCapReached, QuotaReservation.Contended }));
+        }
+        finally
+        {
+            foreach (var provider in providers)
+            {
+                await provider.DisposeAsync();
+            }
+        }
         await using var context = NewContext();
         var state = await context.InstrumentPriceSourceStates.AsNoTracking().SingleAsync(s => s.SourceKey == "tiingo");
         Assert.Equal(reserved, state.RequestHourCount);
         Assert.Equal(reserved, state.RequestCount);
-        Assert.DoesNotContain(outcomes, o => o == QuotaReservation.DayCapReached);
     }
 
     [SkippableFact]

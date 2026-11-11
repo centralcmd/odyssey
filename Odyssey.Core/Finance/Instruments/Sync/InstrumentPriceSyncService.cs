@@ -474,7 +474,12 @@ public sealed class InstrumentPriceSyncService(
         {
             var to = backfilled.AddDays(-1);
             var from = MaxDate(start, to.AddDays(-(maxDays - 1)));
-            await FetchSpanAsync(instrument, binding, runState, from, to, forward: false, counters, (row, _) => row.BackfilledFrom = from, cancellationToken);
+            if (await FetchSpanAsync(instrument, binding, runState, from, to, forward: false, counters, (row, _) => row.BackfilledFrom = from, cancellationToken)
+                == SpanOutcome.Deferred)
+            {
+                // The instrument is current, but its history waits for the quota: the next run is due at the next hour.
+                counters.BackfillsDeferred++;
+            }
         }
 
         return anySuccess ? BindingOutcome.Succeeded : BindingOutcome.Failed;
@@ -775,6 +780,9 @@ public sealed class InstrumentPriceSyncService(
 
         public int InstrumentsDeferred { get; set; }
 
+        /// <summary>Instruments brought up to date whose backfill span a cap stopped; counted as deferred on the run row.</summary>
+        public int BackfillsDeferred { get; set; }
+
         /// <summary>Sources skipped because their credential read <c>Unreadable</c>.</summary>
         public int UnreadableSources { get; set; }
 
@@ -788,7 +796,7 @@ public sealed class InstrumentPriceSyncService(
             run.PricesInserted = PricesInserted;
             run.FallbacksUsed = FallbacksUsed;
             run.RequestsMade = RequestsMade;
-            run.InstrumentsDeferred = InstrumentsDeferred;
+            run.InstrumentsDeferred = InstrumentsDeferred + BackfillsDeferred;
         }
 
         public (JobRunStatus, JobFailureCategory?) Outcome()
