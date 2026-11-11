@@ -21,6 +21,7 @@
 
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="MySqlConnector" />
