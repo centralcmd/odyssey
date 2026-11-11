@@ -60,8 +60,9 @@ public class InstrumentPriceSourcesApiTests
 
         var status = await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route);
 
-        var source = Assert.Single(status!.Sources);
-        Assert.Equal(FakePrimarySource.DeclaredKey, source.Key);
+        // The production host registers Tiingo (issue #447); the test adds the fake beside it.
+        Assert.Equal(["fake-primary", "tiingo"], status!.Sources.Select(s => s.Key).Order(StringComparer.Ordinal));
+        var source = status.Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey);
         Assert.False(source.Configured);
         Assert.Equal(new FakePrimarySource().Limits.MaxRequestsPerDay, source.MaxRequestsPerDay);
         Assert.Equal(InstrumentPriceBindingLimits.MaxBindingsPerInstrument, status.MaxBindingsPerInstrument);
@@ -69,15 +70,23 @@ public class InstrumentPriceSourcesApiTests
     }
 
     [Fact]
-    public async Task With_no_source_registered_the_status_is_empty_and_a_binding_is_refused()
+    public async Task The_production_catalogue_is_exactly_tiingo_and_an_unregistered_key_is_refused()
     {
         await using var factory = new ApiFactory(Admin, withSource: false);
         using var client = factory.CreateClient();
         var instrument = await CreateAsync(client);
 
-        Assert.Empty((await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route))!.Sources);
+        var tiingo = Assert.Single((await client.GetFromJsonAsync<InstrumentPriceSourcesStatus>(Route))!.Sources);
+        Assert.Equal("tiingo", tiingo.Key);
+        Assert.False(tiingo.Configured);
+        Assert.Equal(600, tiingo.MaxRequestsPerDay);
+
         var response = await client.PutAsJsonAsync($"{Route}/bindings/{instrument.InstrumentId}", Bindings(("fake-primary", "EQNR.OL")));
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
+
+        // The real source is bindable through the same list replace.
+        var bound = await client.PutAsJsonAsync($"{Route}/bindings/{instrument.InstrumentId}", Bindings(("tiingo", "BRK-B")));
+        Assert.Equal(HttpStatusCode.OK, bound.StatusCode);
     }
 
     [Fact]

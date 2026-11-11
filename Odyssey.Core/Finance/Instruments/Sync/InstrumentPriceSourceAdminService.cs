@@ -169,7 +169,8 @@ public sealed class InstrumentPriceSourceAdminService(
                 var input = update.Bindings[i];
                 var key = input.SourceKey.Trim();
                 var row = new InstrumentPriceSourceBinding { InstrumentId = instrumentId, SourceKey = key, SourceSymbol = input.SourceSymbol };
-                if (previous.TryGetValue(key, out var kept) && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal))
+                previous.TryGetValue(key, out var kept);
+                if (kept is not null && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal))
                 {
                     row.NewestFetched = kept.NewestFetched;
                     row.BackfilledFrom = kept.BackfilledFrom;
@@ -184,6 +185,16 @@ public sealed class InstrumentPriceSourceAdminService(
                 row.HistoryStartDate = input.HistoryStartDate;
                 row.UpdatedAtUtc = now;
                 row.UpdatedByUserId = userId;
+
+                // An unchanged binding keeps its edit stamp: the stamp is what clears a binding skipped for the rest of
+                // the day after an UnsupportedInput failure (issue #447 A9), and re-saving the list must not do that
+                // for a binding nobody touched.
+                if (kept is not null && string.Equals(kept.SourceSymbol, input.SourceSymbol, StringComparison.Ordinal)
+                    && kept.Priority == row.Priority && kept.Enabled == row.Enabled && kept.HistoryStartDate == row.HistoryStartDate)
+                {
+                    row.UpdatedAtUtc = kept.UpdatedAtUtc;
+                    row.UpdatedByUserId = kept.UpdatedByUserId;
+                }
                 context.InstrumentPriceSourceBindings.Add(row);
             }
 

@@ -49,7 +49,7 @@ public sealed class WorkerHostTests : IDisposable
     }
 
     [Fact]
-    public void The_graph_hosts_the_instrument_price_sync_with_no_production_source()
+    public void The_graph_hosts_the_instrument_price_sync_with_exactly_the_tiingo_source()
     {
         using var provider = Build();
 
@@ -58,9 +58,26 @@ public sealed class WorkerHostTests : IDisposable
         using var scope = provider.CreateScope();
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncService>());
 
-        // Phase 1 ships the framework only (issue #446): no source client is registered in a production host.
-        Assert.Empty(provider.GetServices<Odyssey.Core.Finance.Instruments.Sources.IInstrumentPriceSource>());
-        Assert.True(provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.InstrumentPriceSourceCatalogue>().IsEmpty);
+        // Issue #447: Tiingo is the one production source, registered through the framework's transport.
+        var catalogue = provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.InstrumentPriceSourceCatalogue>();
+        var source = Assert.Single(catalogue.All);
+        Assert.Equal(Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource.SourceKey, source.Key);
+        Assert.IsType<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>(source);
+        var client = provider.GetRequiredService<IHttpClientFactory>()
+            .CreateClient(Odyssey.Core.Finance.Instruments.Sources.SourceHttpLimits.ClientName(source.Key));
+        Assert.Equal(new Uri("https://api.tiingo.com/"), client.BaseAddress);
+
+        // AC 7: the transport follows no redirect and carries no certificate callback that could weaken TLS.
+        var handler = provider.GetRequiredService<IHttpMessageHandlerFactory>()
+            .CreateHandler(Odyssey.Core.Finance.Instruments.Sources.SourceHttpLimits.ClientName(source.Key));
+        while (handler is DelegatingHandler delegating)
+        {
+            handler = delegating.InnerHandler!;
+        }
+
+        var sockets = Assert.IsType<System.Net.Http.SocketsHttpHandler>(handler);
+        Assert.False(sockets.AllowAutoRedirect);
+        Assert.Null(sockets.SslOptions.RemoteCertificateValidationCallback);
     }
 
     [Fact]

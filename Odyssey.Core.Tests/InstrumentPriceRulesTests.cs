@@ -246,7 +246,7 @@ public class InstrumentPriceRulesTests
 
     private sealed class UnlimitedQuota : ISourceRequestQuota
     {
-        public Task<bool> TryReserveAsync(string sourceKey, int maxPerDay, CancellationToken cancellationToken) => Task.FromResult(true);
+        public Task<QuotaReservation> TryReserveAsync(string sourceKey, InstrumentPriceSourceLimits limits, CancellationToken cancellationToken) => Task.FromResult(QuotaReservation.Reserved);
     }
 
     private static (SourceHttp Http, ScriptedPriceHandler Handler) Transport(IInstrumentPriceSource source, SecretResult? secret = null)
