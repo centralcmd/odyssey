@@ -21,7 +21,7 @@ public class ExchangeRateInversionTests
     private static readonly Guid Low = Guid.Parse("00000000-0000-0000-0000-000000000001");
     private static readonly Guid High = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff");
 
-    private readonly ExchangeRateSyncTests.MutableClock Clock = new(Now);
+    private readonly ExchangeRateSyncTests.MutableClock clock = new(Now);
 
     private static OdysseyContext Create()
     {
@@ -53,9 +53,9 @@ public class ExchangeRateInversionTests
         return context;
     }
 
-    private CurrencyConversionService Conversion(OdysseyContext context) => new(context, Clock);
+    private CurrencyConversionService Conversion(OdysseyContext context) => new(context, clock);
 
-    private ExchangeRateService Service(OdysseyContext context) => new(context, Clock);
+    private ExchangeRateService Service(OdysseyContext context) => new(context, clock);
 
     private async Task<Dictionary<Guid, ExchangeRateStatus>> StatusesAsync(OdysseyContext context) =>
         (await Service(context).ListAsync(new ExchangeRatesQueryParams { Limit = 100 })).Items
@@ -138,6 +138,8 @@ public class ExchangeRateInversionTests
         // Its inverse wins NOK → USD, but that never makes it Current inside its own pair (§8.12).
         Assert.Equal(ExchangeRateStatus.Historical, statuses[fetched.ExchangeRateId]);
         await AssertStatusSurfacesAgree(context);
+        await AssertTimelineMatchesLatest(context, "NOK", "USD", D.AddDays(-5));
+        await AssertTimelineMatchesLatest(context, "USD", "NOK", D.AddDays(-5));
     }
 
     [Fact] // AC 7
@@ -152,6 +154,7 @@ public class ExchangeRateInversionTests
         Assert.Equal(ExchangeRateStatus.Historical, statuses[manual.ExchangeRateId]);
         Assert.Equal(ExchangeRateStatus.Current, statuses[fetched.ExchangeRateId]);
         await AssertStatusSurfacesAgree(context);
+        await AssertTimelineMatchesLatest(context, "NOK", "USD", D.AddDays(-5));
     }
 
     [Fact] // AC 8
@@ -164,6 +167,7 @@ public class ExchangeRateInversionTests
         Assert.Equal(0.2m, await Conversion(context).ConvertAsync(1m, "NOK", "USD"));
         Assert.Equal(ExchangeRateStatus.Current, (await StatusesAsync(context))[manual.ExchangeRateId]);
         await AssertStatusSurfacesAgree(context);
+        await AssertTimelineMatchesLatest(context, "NOK", "USD", D.AddDays(-5));
     }
 
     [Theory] // AC 9
@@ -182,6 +186,8 @@ public class ExchangeRateInversionTests
         Assert.Equal(manual.ExchangeRateId, latest.ExchangeRateId);
         Assert.Equal(ExchangeRateStatus.Current, (await StatusesAsync(context))[manual.ExchangeRateId]);
         await AssertStatusSurfacesAgree(context);
+        await AssertTimelineMatchesLatest(context, "NOK", "USD", D.AddDays(-5));
+        Assert.Equal(0.2m, Assert.Single((await Conversion(context).GetRateTimelineToAsync("USD", ["NOK"], D.AddDays(-5), Now))["NOK"]).Rate);
     }
 
     [Fact] // AC 9, first half
@@ -195,6 +201,7 @@ public class ExchangeRateInversionTests
         Assert.True((await Service(context).GetLatest("NOK", "USD"))!.Inverted);
         Assert.Equal(ExchangeRateStatus.Historical, (await StatusesAsync(context))[manual.ExchangeRateId]);
         await AssertStatusSurfacesAgree(context);
+        await AssertTimelineMatchesLatest(context, "NOK", "USD", D.AddDays(-5));
     }
 
     [Fact] // AC 10
@@ -238,6 +245,8 @@ public class ExchangeRateInversionTests
             Rate("USD", "NOK", 9m, window.AddDays(4), fetched: true),
             Rate("USD", "EUR", 0.95m, window.AddDays(6)),
             Rate("EUR", "NOK", 12m, window.AddDays(8), fetched: true),
+            // A full tie between a stored and an inverted candidate, compared across both paths.
+            Rate("NOK", "EUR", 0.07m, window.AddDays(8), createdAt: Now.AddDays(-30)),
         };
         await using var context = await Seed(rates);
         var conversion = Conversion(context);
@@ -268,6 +277,23 @@ public class ExchangeRateInversionTests
         Assert.Null(await Service(context).GetLatest("NOK", "USD"));
         Assert.Null(await Service(context).ResolveAsync("USD", "EUR"));
         await Service(context).GetSummaryAsync();
+    }
+
+    [Fact] // AC 12, the in-memory filter (PR #478 deviation from spec §8.7)
+    public async Task A_newer_zero_rate_is_never_divided_by_and_the_two_paths_are_pinned()
+    {
+        await using var context = await Seed(
+            Rate("USD", "NOK", 10m, D.AddDays(-2), fetched: true),
+            Rate("USD", "NOK", 0m, D, fetched: true));
+
+        // The latest path reads "no rate": the zero row wins its instant and is dropped, never divided by.
+        Assert.Null(await Conversion(context).ConvertAsync(1m, "NOK", "USD"));
+        Assert.Null(await Service(context).GetLatest("NOK", "USD"));
+
+        // A step series cannot express a gap, so the timeline keeps the older rate in force. Both shapes are
+        // unreachable while CK_ExchangeRates_RatePositive holds; this pins them so neither starts throwing.
+        var point = Assert.Single((await Conversion(context).GetRateTimelineToAsync("USD", ["NOK"], D.AddDays(-5), Now))["NOK"]);
+        Assert.Equal(0.1m, point.Rate);
     }
 
     [Fact] // AC 14
@@ -308,7 +334,8 @@ public class ExchangeRateInversionTests
 
         Assert.Null(await service.GetLatest("USD", "EUR"));
         Assert.Null(await service.GetLatest("NOK", "NOK"));
-        Assert.Null(await service.GetLatest("XXX", "NOK"));
+        var unknown = await Assert.ThrowsAsync<DomainNotFoundException>(() => service.GetLatest("xxx", "NOK"));
+        Assert.Equal("Currency XXX not found.", unknown.Message);
     }
 
     [Fact] // AC 17
@@ -369,8 +396,9 @@ public class ExchangeRateInversionTests
         await context.SaveChangesAsync();
         var service = Service(context);
 
-        Assert.Null(await service.ResolveAsync("XXX", "XXX"));
-        Assert.Null(await service.ResolveAsync("XXX", "NOK"));
+        await Assert.ThrowsAsync<DomainNotFoundException>(() => service.ResolveAsync("XXX", "XXX"));
+        await Assert.ThrowsAsync<DomainNotFoundException>(() => service.ResolveAsync("NOK", "XXX"));
+        Assert.Null(await service.ResolveAsync("NOK", "SEK"));
         Assert.Equal(ExchangeRateResolutionMethod.Inverted, (await service.ResolveAsync("NOK", "USD"))!.Method);
         Assert.True((await service.GetLatest("NOK", "USD"))!.Inverted);
     }
@@ -396,6 +424,10 @@ public class ExchangeRateInversionTests
         Assert.Equal(9.3601m * 0.09534706m, await conversion.ConvertAsync(1m, "USD", "EUR"));
         Assert.Equal(0.10683647m,
             Assert.Single((await conversion.GetRateTimelineToAsync("USD", ["NOK"], D.AddDays(-1), Now))["NOK"]).Rate);
+        foreach (var (from, to) in new[] { ("NOK", "USD"), ("USD", "NOK"), ("NOK", "EUR"), ("USD", "EUR"), ("EUR", "USD") })
+        {
+            await AssertTimelineMatchesLatest(context, from, to, D.AddDays(-5));
+        }
 
         var latest = (await service.GetLatest("NOK", "USD"))!;
         Assert.Equal((false, fromHub.ExchangeRateId), (latest.Inverted, latest.ExchangeRateId));
@@ -423,6 +455,23 @@ public class ExchangeRateInversionTests
         Assert.Equal(1, summary.ByStatus.Upcoming);
         Assert.Equal(2, summary.ByStatus.Historical);
         await AssertStatusSurfacesAgree(context);
+    }
+
+    /// <summary>
+    /// AC 10/11: at every instant across the window, the timeline's point in force equals the latest lookup bounded
+    /// at that instant, so the two paths cannot resolve a tie or an inversion differently.
+    /// </summary>
+    private async Task AssertTimelineMatchesLatest(OdysseyContext context, string from, string to, DateTime window)
+    {
+        var conversion = Conversion(context);
+        var timeline = (await conversion.GetRateTimelineToAsync(to, [from], window, Now)).GetValueOrDefault(from) ?? [];
+        Assert.NotEmpty(timeline);
+        for (var instant = window; instant <= Now; instant = instant.AddHours(6))
+        {
+            var expected = timeline.LastOrDefault(p => p.AsOf < instant);
+            var latest = (await conversion.GetLatestRatesToAsync(to, [from], instant)).GetValueOrDefault(from);
+            Assert.True(expected.Rate == latest, $"{from} → {to} at {instant:O}: timeline {expected.Rate}, latest {latest}");
+        }
     }
 
     /// <summary>

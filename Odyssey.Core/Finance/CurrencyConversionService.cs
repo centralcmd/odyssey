@@ -32,13 +32,22 @@ namespace Odyssey.Core.Finance;
 /// "Latest" is <see cref="ExchangeRateOrdering"/>, and it is bounded: the unbounded lookups take
 /// <c>AsOf ≤ now</c>, so a future-dated rate is ignored until its date arrives; the bounded ones keep
 /// their exclusive <c>AsOf &lt; bound</c> (issue #90 AC2). The hop is never stored, and its composite is
-/// the unrounded product of its legs. A row with <c>Rate ≤ 0</c> is never used: the CHECK forbids one,
-/// and a row that slipped past it makes its pair read as "no rate" rather than a divide-by-zero.
+/// the unrounded product of its legs. A row with <c>Rate ≤ 0</c> is never divided by: the CHECK forbids
+/// one, and a row that slipped past it is dropped where it wins. The latest lookups then read "no rate" for that
+/// pair; the timeline, whose step series cannot express a gap, keeps the previous rate in force.
 /// </para>
 /// </remarks>
 public class CurrencyConversionService(OdysseyContext context, TimeProvider? injectedTimeProvider = null)
 {
     private const string Hub = ExchangeRateSyncConstants.BaseCurrencyCode;
+
+    /// <summary>
+    /// Every provider, as an equality list rather than <c>Provider IS NOT NULL</c>: an equality on
+    /// <c>Provider</c> lets the <c>(From, To, Provider, AsOf)</c> index answer branch R's grouped MAX with a loose
+    /// index scan, which a range on it does not.
+    /// </summary>
+    internal static readonly List<ExchangeRateProvider?> FetchedProviders =
+        [.. Enum.GetValues<ExchangeRateProvider>().Select(provider => (ExchangeRateProvider?)provider)];
 
     private readonly TimeProvider timeProvider = injectedTimeProvider ?? TimeProvider.System;
 
@@ -286,8 +295,9 @@ public class CurrencyConversionService(OdysseyContext context, TimeProvider? inj
         // CK_ExchangeRates_RatePositive forbids one in the first place.
         var stored = rates.Where(rate =>
             froms.Contains(rate.FromCurrencyCode) && tos.Contains(rate.ToCurrencyCode));
+        var providers = FetchedProviders;
         var reversed = rates.Where(rate =>
-            rate.Provider != null
+            providers.Contains(rate.Provider)
             && tos.Contains(rate.FromCurrencyCode) && froms.Contains(rate.ToCurrencyCode));
 
         return (stored, reversed);
@@ -511,7 +521,8 @@ public class CurrencyConversionService(OdysseyContext context, TimeProvider? inj
 
         /// <summary>
         /// False for a non-positive rate, which only a hand edit around <c>CK_ExchangeRates_RatePositive</c> can
-        /// leave. It is never divided by, and the pair reads as "no rate" where it would have won.
+        /// leave. It is never divided by: the latest lookups read "no rate" where it wins, the timeline keeps the
+        /// previous rate (see the class remarks).
         /// </summary>
         public bool Usable => Rate > 0;
 

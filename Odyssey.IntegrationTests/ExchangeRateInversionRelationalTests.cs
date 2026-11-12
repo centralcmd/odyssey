@@ -58,17 +58,23 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
 
         try
         {
+            var bad = Enumerable.Range(0, 25).Select(_ => Guid.NewGuid()).ToList();
+            var good = Enumerable.Range(0, 5).Select(_ => Guid.NewGuid()).ToList();
             await using (var context = NewContext())
             {
                 await context.Database.MigrateAsync(PreviousMigration(context));
-                for (var i = 0; i < 25; i++)
+                var i = 0;
+                foreach (var (id, rate) in bad.Select((id, n) => (id, n == 0 ? -1m : 0m)).Concat(good.Select(id => (id, 1.5m))))
                 {
                     await context.Database.ExecuteSqlRawAsync(
                         "INSERT INTO ExchangeRates (ExchangeRateId, FromCurrencyCode, ToCurrencyCode, Rate, AsOf, CreatedAt) " +
-                        "VALUES (UUID(), 'USD', 'EUR', {0}, UTC_TIMESTAMP(6) - INTERVAL {1} SECOND, UTC_TIMESTAMP(6))",
-                        i == 0 ? -1m : 0m, i);
+                        "VALUES ({0}, 'USD', 'EUR', {1}, UTC_TIMESTAMP(6) - INTERVAL {2} SECOND, UTC_TIMESTAMP(6))",
+                        id.ToString(), rate, i++);
                 }
             }
+
+            // The 20 lowest of the bad ids, in the column's own (string) order; never a good one.
+            var expectedIds = bad.Select(id => id.ToString()).Order(StringComparer.Ordinal).Take(20).ToList();
 
             await using (var context = NewContext())
             {
@@ -78,11 +84,14 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
                     () => MigrationRunner.MigrateAsync(context, CancellationToken.None));
 
                 Assert.Equal(25, error.TotalCount);
-                Assert.Equal(MigrationRunner.NonPositiveRateIdLimit, error.ExchangeRateIds.Count);
+                Assert.Equal(expectedIds, error.ExchangeRateIds);
                 Assert.Contains("CK_ExchangeRates_RatePositive", error.Message);
-                Assert.Contains(error.ExchangeRateIds[0], error.Message);
-                Assert.Contains("25", error.Message);
+                Assert.Contains("but 25 row(s) in ExchangeRates have Rate <= 0", error.Message);
+                Assert.Contains("The first 20 ids", error.Message);
+                Assert.All(expectedIds, id => Assert.Contains(id, error.Message));
+                Assert.All(good, id => Assert.DoesNotContain(id.ToString(), error.Message));
                 Assert.DoesNotContain("-1.0", error.Message); // ids only, never a rate
+                Assert.DoesNotContain("1.5", error.Message);
                 Assert.Equal(pendingBefore, await context.Database.GetPendingMigrationsAsync());
             }
 
@@ -119,48 +128,38 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact] // AC 29, plus the release-1 dual-write state on the real engine (AC 25)
-    public async Task The_summary_issues_a_fixed_number_of_commands_whatever_the_row_count()
+    public async Task The_summary_issues_a_fixed_number_of_commands_and_no_correlated_subquery()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await RecreateAsync();
 
         try
         {
-            var asOf = DateTime.UtcNow.AddDays(-1);
             await using (var context = NewContext())
             {
                 await MigrationRunner.MigrateAsync(context, CancellationToken.None);
-                foreach (var (code, day) in new[] { "USD", "EUR", "SEK" }.SelectMany(code => Enumerable.Range(0, 40).Select(day => (code, day))))
-                {
-                    var created = asOf.AddDays(-day);
-                    context.ExchangeRates.AddRange(
-                        new ExchangeRate { FromCurrencyCode = code, ToCurrencyCode = "NOK", Rate = 10m + day, AsOf = created, CreatedAt = created, Provider = ExchangeRateProvider.NorgesBank },
-                        new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = code, Rate = Math.Round(1m / (10m + day), 8), AsOf = created, CreatedAt = created, Provider = ExchangeRateProvider.NorgesBank });
-                }
-
-                await context.SaveChangesAsync();
             }
 
-            var counter = new CommandCounter();
-            await using (var context = NewContext(counter))
-            {
-                var service = new ExchangeRateService(context);
-                var summary = await service.GetSummaryAsync();
+            // Small, then four times the pairs and ten times the rows: a per-pair or per-row query would grow.
+            await SeedDualWriteAsync(["USD"], days: 4);
+            var small = await SummaryCommandsAsync();
+            Assert.Equal((8, 2), (small.Summary.TotalCount, small.Summary.ByStatus.Current));
 
-                Assert.Equal(240, summary.TotalCount);
-                // One Current row per stored pair: six pairs, the stored row winning every dual-write tie.
-                Assert.Equal(6, summary.ByStatus.Current);
-                Assert.Equal(234, summary.ByStatus.Historical);
-                var commands = counter.Count;
-                Assert.True(commands < 10, $"The summary issued {commands} commands.");
+            await SeedDualWriteAsync(["EUR", "SEK", "GBP"], days: 40);
+            var large = await SummaryCommandsAsync();
+            Assert.Equal(8 + 240, large.Summary.TotalCount);
+            // One Current row per stored pair: eight pairs, the stored row winning every dual-write tie.
+            Assert.Equal(8, large.Summary.ByStatus.Current);
+            Assert.Equal(large.Summary.TotalCount - 8, large.Summary.ByStatus.Historical);
 
-                var current = await service.ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current], Limit = 50 });
-                Assert.Equal(6, current.TotalCount);
-                Assert.All(current.Items, row => Assert.Equal(ExchangeRateStatus.Current, row.Status));
+            Assert.Equal(small.Commands.Count, large.Commands.Count);
+            Assert.All(large.Commands, sql => Assert.DoesNotContain("EXISTS", sql, StringComparison.OrdinalIgnoreCase));
 
-                var nokToUsd = await new CurrencyConversionService(context).ConvertAsync(1m, "NOK", "USD");
-                Assert.Equal(Math.Round(1m / 10m, 8), nokToUsd);
-            }
+            await using var check = NewContext();
+            var current = await new ExchangeRateService(check).ListAsync(new ExchangeRatesQueryParams { Status = [ExchangeRateStatus.Current], Limit = 50 });
+            Assert.Equal(8, current.TotalCount);
+            Assert.All(current.Items, row => Assert.Equal(ExchangeRateStatus.Current, row.Status));
+            Assert.Equal(Math.Round(1m / 10m, 8), await new CurrencyConversionService(check).ConvertAsync(1m, "NOK", "USD"));
         }
         finally
         {
@@ -168,17 +167,41 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
         }
     }
 
+    private async Task SeedDualWriteAsync(IEnumerable<string> codes, int days)
+    {
+        var asOf = DateTime.UtcNow.AddDays(-1);
+        await using var context = NewContext();
+        foreach (var code in codes)
+        {
+            for (var day = 0; day < days; day++)
+            {
+                var created = asOf.AddDays(-day);
+                context.ExchangeRates.AddRange(
+                    new ExchangeRate { FromCurrencyCode = code, ToCurrencyCode = "NOK", Rate = 10m + day, AsOf = created, CreatedAt = created, Provider = ExchangeRateProvider.NorgesBank },
+                    new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = code, Rate = Math.Round(1m / (10m + day), 8), AsOf = created, CreatedAt = created, Provider = ExchangeRateProvider.NorgesBank });
+            }
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private async Task<(ExchangeRateSummary Summary, List<string> Commands)> SummaryCommandsAsync()
+    {
+        var counter = new CommandCounter();
+        await using var context = NewContext(counter);
+        var summary = await new ExchangeRateService(context).GetSummaryAsync();
+        return (summary, counter.Commands);
+    }
+
     private sealed class CommandCounter : DbCommandInterceptor
     {
-        private int count;
-
-        public int Count => count;
+        public List<string> Commands { get; } = [];
 
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(
             DbCommand command, CommandEventData eventData, InterceptionResult<DbDataReader> result,
             CancellationToken cancellationToken = default)
         {
-            Interlocked.Increment(ref count);
+            Commands.Add(command.CommandText);
             return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
         }
 
@@ -186,7 +209,7 @@ public class ExchangeRateInversionRelationalTests(MariaDbFixture fixture)
             DbCommand command, CommandEventData eventData, InterceptionResult<object> result,
             CancellationToken cancellationToken = default)
         {
-            Interlocked.Increment(ref count);
+            Commands.Add(command.CommandText);
             return base.ScalarExecutingAsync(command, eventData, result, cancellationToken);
         }
     }

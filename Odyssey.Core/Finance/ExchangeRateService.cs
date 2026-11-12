@@ -161,8 +161,8 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     /// <c>B → A</c> rows, inverted (issue #472 §5.2), under the shared ordering, so a stored row wins a full tie.
     /// An inverted winner comes back with the codes swapped, <c>1 / Rate</c> unrounded, the source row's id and
     /// dates, and <see cref="ExistingExchangeRate.Inverted"/> set. No NOK hop: this returns a row, and a hop is
-    /// not one; <see cref="ResolveAsync"/> covers that. Null too when either currency does not exist (an
-    /// archived one does) or the two are the same.
+    /// not one; <see cref="ResolveAsync"/> covers that, so the same currency twice is null too. An unknown
+    /// currency (an archived one is known) is a <see cref="DomainNotFoundException"/> naming it.
     /// </summary>
     public async Task<ExistingExchangeRate?> GetLatest(string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
     {
@@ -170,10 +170,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
         var now = Now;
 
-        if (!await CurrenciesExistAsync(from, to, cancellationToken))
-        {
-            return null;
-        }
+        await EnsureCurrenciesExistAsync(from, to, cancellationToken);
 
         var rates = context.ExchangeRates.AsNoTracking();
         var stored = await rates
@@ -209,7 +206,8 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
 
     /// <summary>
     /// The rate a conversion of <c>from</c> into <c>to</c> would use right now, with its method and legs
-    /// (issue #472 §5.3). Null when either currency does not exist (an archived one does) or nothing resolves.
+    /// (issue #472 §5.3). Null when nothing resolves; an unknown currency (an archived one is known) is a
+    /// <see cref="DomainNotFoundException"/> naming it, so a caller can tell the two apart.
     /// </summary>
     public async Task<ResolvedExchangeRate?> ResolveAsync(
         string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
@@ -217,10 +215,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         var from = CurrencyValidationService.Normalize(fromCurrencyCode);
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
 
-        if (!await CurrenciesExistAsync(from, to, cancellationToken))
-        {
-            return null;
-        }
+        await EnsureCurrenciesExistAsync(from, to, cancellationToken);
 
         var resolution = await new CurrencyConversionService(context, timeProvider)
             .ResolveAsync(from, to, cancellationToken);
@@ -248,16 +243,21 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     }
 
     /// <summary>
-    /// Whether both codes name a <c>Currencies</c> row, archived ones included — their rates stay readable and
+    /// Both codes must name a <c>Currencies</c> row, archived ones included — their rates stay readable and
     /// conversions still use them. Deliberately not <see cref="CurrencyValidationService.EnsureSupportedAndActive"/>,
-    /// which refuses archived currencies with a <c>400</c>.
+    /// which refuses archived currencies with a <c>400</c>. The message names only the validated, normalised code.
     /// </summary>
-    private async Task<bool> CurrenciesExistAsync(string from, string to, CancellationToken cancellationToken)
+    private async Task EnsureCurrenciesExistAsync(string from, string to, CancellationToken cancellationToken)
     {
         var codes = new[] { from, to }.Distinct(StringComparer.Ordinal).ToList();
         var found = await context.Currencies.AsNoTracking()
-            .CountAsync(currency => codes.Contains(currency.CurrencyCode), cancellationToken);
-        return found == codes.Count;
+            .Where(currency => codes.Contains(currency.CurrencyCode))
+            .Select(currency => currency.CurrencyCode)
+            .ToListAsync(cancellationToken);
+        if (codes.FirstOrDefault(code => !found.Contains(code)) is { } missing)
+        {
+            throw new DomainNotFoundException($"Currency {missing} not found.");
+        }
     }
 
     public async Task<ExistingExchangeRate> Create(NewExchangeRate newExchangeRate, CancellationToken cancellationToken = default)
@@ -409,7 +409,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         var stored = await LatestCandidatesAsync(
             storedScope.Where(r => r.AsOf <= now), cancellationToken);
         var reversed = await LatestCandidatesAsync(
-            reversedScope.Where(r => r.Provider != null && r.AsOf <= now), cancellationToken);
+            reversedScope.Where(r => CurrencyConversionService.FetchedProviders.Contains(r.Provider) && r.AsOf <= now), cancellationToken);
 
         return stored
             .Concat(reversed.Select(c => c with { From = c.To, To = c.From, Inverted = true }))

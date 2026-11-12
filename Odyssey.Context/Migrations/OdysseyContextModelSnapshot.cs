@@ -2075,6 +2075,8 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "AsOf", "Provider")
                         .IsUnique();
 
+                    b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "Provider", "AsOf");
+
                     b.ToTable("ExchangeRates", t =>
                         {
                             t.HasCheckConstraint("CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
