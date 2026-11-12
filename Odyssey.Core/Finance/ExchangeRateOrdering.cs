@@ -73,7 +73,7 @@ public static class ExchangeRateOrdering
                     && reversed.ToCurrencyCode == rate.FromCurrencyCode
                     && reversed.AsOf >= rate.AsOf
                     && reversed.AsOf <= now
-                    && reversed.Provider != null
+                    && CurrencyConversionService.FetchedProviders.Contains(reversed.Provider)
                     && (reversed.AsOf > rate.AsOf
                         || (reversed.UpdatedAt ?? reversed.CreatedAt) > (rate.UpdatedAt ?? rate.CreatedAt)))
                     ? (int)ExchangeRateStatus.Historical
