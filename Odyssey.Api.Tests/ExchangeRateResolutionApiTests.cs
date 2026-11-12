@@ -80,8 +80,12 @@ public class ExchangeRateResolutionApiTests
         var unknown = await client.GetAsync("/api/exchange-rates/latest?from=xxx&to=nok");
         Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
         var text = await unknown.Content.ReadAsStringAsync();
-        Assert.Contains("XXX -> NOK", text);
+        Assert.Contains("Currency XXX not found.", text);
         Assert.DoesNotContain("xxx", text);
+
+        var nothing = await (await client.GetAsync("/api/exchange-rates/latest?from=eur&to=sek")).Content.ReadAsStringAsync();
+        Assert.Contains("No exchange rate found for EUR -> SEK.", nothing);
+        Assert.DoesNotContain("eur", nothing);
     }
 
     [Theory] // AC 21, AC 26
@@ -137,13 +141,56 @@ public class ExchangeRateResolutionApiTests
         Assert.Equal(HttpStatusCode.OK, same.StatusCode);
         Assert.Equal(ExchangeRateResolutionMethod.SameCurrency, (await same.Content.ReadFromJsonAsync<ResolvedExchangeRate>())!.Method);
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/exchange-rates/resolved?from=XXX&to=XXX")).StatusCode);
+        var unknown = await client.GetAsync("/api/exchange-rates/resolved?from=XXX&to=XXX");
+        Assert.Equal(HttpStatusCode.NotFound, unknown.StatusCode);
+        Assert.Contains("Currency XXX not found.", await unknown.Content.ReadAsStringAsync());
 
+        // Both currencies exist; nothing converts EUR into SEK. The message says which 404 this is.
         var unconvertible = await client.GetAsync("/api/exchange-rates/resolved?from=EUR&to=SEK");
         Assert.Equal(HttpStatusCode.NotFound, unconvertible.StatusCode);
-        var text = await unconvertible.Content.ReadAsStringAsync();
-        Assert.DoesNotContain("rate\"", text);
-        Assert.DoesNotContain("exchangeRateId", text);
+        using var problem = JsonDocument.Parse(await unconvertible.Content.ReadAsStringAsync());
+        Assert.Equal("No exchange rate resolves EUR -> SEK.", problem.RootElement.GetProperty("detail").GetString());
+        Assert.False(problem.RootElement.TryGetProperty("rate", out _));
+        Assert.False(problem.RootElement.TryGetProperty("legs", out _));
+    }
+
+    [Fact] // AC 17
+    public async Task Every_other_endpoint_returns_inverted_false_over_HTTP()
+    {
+        await using var factory = new ApiFactory([
+            PermissionClaims.ExchangeRatesRead, PermissionClaims.ExchangeRatesCreate, PermissionClaims.ExchangeRatesUpdate]);
+        var fetched = await SeedFetchedAsync(factory, "USD", 10m);
+        using var client = factory.CreateClient();
+
+        static async Task AssertNotInverted(HttpResponseMessage response)
+        {
+            Assert.True(response.IsSuccessStatusCode, $"{(int)response.StatusCode}");
+            using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            var rows = json.RootElement.TryGetProperty("items", out var items) ? items.EnumerateArray().ToList() : [json.RootElement];
+            Assert.NotEmpty(rows);
+            Assert.All(rows, row => Assert.False(row.GetProperty("inverted").GetBoolean()));
+        }
+
+        await AssertNotInverted(await client.GetAsync("/api/exchange-rates"));
+        await AssertNotInverted(await client.GetAsync($"/api/exchange-rates/{fetched}"));
+        await AssertNotInverted(await client.GetAsync("/api/exchange-rates/latest?from=USD&to=NOK"));
+
+        var created = await client.PostAsJsonAsync("/api/exchange-rates", new NewExchangeRate
+        {
+            FromCurrencyCode = "NOK",
+            ToCurrencyCode = "USD",
+            Rate = 0.2m,
+            AsOf = DateTime.UtcNow.AddDays(-1),
+        });
+        var createdBody = await created.Content.ReadAsStringAsync();
+        await AssertNotInverted(new HttpResponseMessage(created.StatusCode) { Content = new StringContent(createdBody) });
+        var createdId = JsonDocument.Parse(createdBody).RootElement.GetProperty("exchangeRateId").GetGuid();
+
+        await AssertNotInverted(await client.PutAsJsonAsync($"/api/exchange-rates/{createdId}", new UpdateExchangeRate
+        {
+            Rate = 0.3m,
+            AsOf = DateTime.UtcNow.AddDays(-1),
+        }));
     }
 
     [Theory] // AC 22
