@@ -448,6 +448,7 @@ public sealed class ExchangeRateSyncService(
             .ToHashSet();
 
         var now = Now;
+        var rounded = new Dictionary<string, (int Count, DateOnly First, DateOnly Last)>(StringComparer.Ordinal);
         foreach (var observation in observations)
         {
             // fromHub is computed and range-checked but never stored (issue #472 §8.1): readers invert the
@@ -460,21 +461,19 @@ public sealed class ExchangeRateSyncService(
                 continue;
             }
 
-            if (!IsStoredExactly(observation, toHub))
-            {
-                // Norges Bank has never published more than 8 decimals after scaling (issue #472 §7.11), so the
-                // stored rate — and every reciprocal read from it — would be off in the last place. Named by
-                // currency and date only, never a rate.
-                logger.LogWarning(
-                    "Exchange-rate sync stored a rounded {CurrencyCode} rate for {Date}: the published value needs more than {Scale} decimals.",
-                    observation.CurrencyCode, observation.Date, MoneyBounds.ExchangeRateScale);
-            }
-
             var asOf = ExchangeRateSyncClock.FetchedAsOf(observation.Date, oslo);
             if (!existing.Add((observation.CurrencyCode, Hub, asOf)))
             {
                 outcome.RowsSkipped++;
                 continue;
+            }
+
+            if (!IsStoredExactly(observation, toHub))
+            {
+                rounded[observation.CurrencyCode] = rounded.TryGetValue(observation.CurrencyCode, out var seen)
+                    ? (seen.Count + 1, seen.First < observation.Date ? seen.First : observation.Date,
+                        seen.Last > observation.Date ? seen.Last : observation.Date)
+                    : (1, observation.Date, observation.Date);
             }
 
             // The published direction only (issue #472 release 2): NOK → X is 1 / this row, inverted at read time.
@@ -488,6 +487,17 @@ public sealed class ExchangeRateSyncService(
                 Provider = ExchangeRateProvider.NorgesBank,
             });
             outcome.RowsInserted++;
+        }
+
+        // Norges Bank has never published more than 8 decimals after scaling (issue #472 §7.11), so a rounded row
+        // means the stored rate — and every reciprocal read from it — is off in the last place. Only rows this
+        // request inserts count, and each currency logs once per request: a deep backfill would otherwise log one
+        // line per business day. Named by currency, count and dates only, never a rate.
+        foreach (var (code, (count, first, last)) in rounded)
+        {
+            logger.LogWarning(
+                "Exchange-rate sync stored {Count} rounded {CurrencyCode} rate(s) between {First:yyyy-MM-dd} and {Last:yyyy-MM-dd}: the published values need more than {Scale} decimals.",
+                count, code, first, last, MoneyBounds.ExchangeRateScale);
         }
 
         if (backfill)

@@ -265,6 +265,33 @@ public class ExchangeRateSyncTests
         Assert.DoesNotContain("0.12345", warning.Message);
     }
 
+    [Fact] // issue #472 AC 33, a deep backfill
+    public async Task Rounded_values_log_one_warning_per_currency_per_request_and_only_for_rows_inserted()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 19));
+        await harness.EnableAsync("USD");
+        harness.Provider.ValueFor = code => code == "USD" ? "0.123456789" : null;
+
+        var run = await harness.RunManualAsync();
+
+        Assert.Equal(5, run.RowsInserted);
+        var warning = Assert.Single(harness.SyncLog.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("stored 5 rounded USD", warning.Message);
+        Assert.Contains("2026-10-19", warning.Message);
+        Assert.Contains("2026-10-23", warning.Message);
+
+        // A re-requested day that is already stored is skipped, and a skipped row is never warned about.
+        (await harness.Context.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom = new DateOnly(2026, 10, 23);
+        await harness.Context.SaveChangesAsync();
+        harness.SyncLog.Entries.Clear();
+        harness.Clock.Advance(TimeSpan.FromMinutes(2)); // past the manual-run cooldown
+        var again = await harness.RunManualAsync();
+
+        Assert.Equal(0, again.RowsInserted);
+        Assert.True(again.RowsSkipped > 0);
+        Assert.DoesNotContain(harness.SyncLog.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
     [Fact] // issue #472 AC 33, the ordinary case
     public async Task A_value_that_fits_eight_decimals_is_stored_exactly_and_logs_no_warning()
     {
