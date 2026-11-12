@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
@@ -193,7 +194,7 @@ public class ExchangeRateSyncTests
     // ── The run ───────────────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task A_first_run_backfills_from_today_and_stores_both_directions_at_16_Oslo()
+    public async Task A_first_run_backfills_from_today_and_stores_the_published_direction_at_16_Oslo()
     {
         await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 19));
         await harness.EnableAsync("USD");
@@ -202,8 +203,9 @@ public class ExchangeRateSyncTests
 
         Assert.Equal(JobRunStatus.Succeeded, run.Status);
         Assert.Null(run.ErrorKind);
-        // 2026-10-19 … 2026-10-23 is five business days, two rows each.
-        Assert.Equal(10, run.RowsInserted);
+        // 2026-10-19 … 2026-10-23 is five business days, one row each: the published USD → NOK direction only
+        // (issue #472 release 2); NOK → USD is read as its reciprocal.
+        Assert.Equal(5, run.RowsInserted);
         Assert.Equal("USD", run.CurrencyCodes);
 
         var rows = await harness.Context.ExchangeRates.AsNoTracking().ToListAsync();
@@ -211,8 +213,8 @@ public class ExchangeRateSyncTests
         Assert.All(rows, row => Assert.Equal(new TimeSpan(14, 0, 0), row.AsOf.TimeOfDay));
         var toNok = Assert.Single(rows, row => row.FromCurrencyCode == "USD" && row.AsOf.Date == new DateTime(2026, 10, 19));
         Assert.Equal(10.5m, toNok.Rate);
-        var fromNok = Assert.Single(rows, row => row.FromCurrencyCode == "NOK" && row.AsOf.Date == new DateTime(2026, 10, 19));
-        Assert.Equal(Math.Round(1m / 10.5m, 8), fromNok.Rate);
+        Assert.DoesNotContain(rows, row => row.FromCurrencyCode == "NOK");
+        Assert.All(rows, row => Assert.Equal("NOK", row.ToCurrencyCode));
 
         var sync = await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync();
         Assert.Equal(new DateOnly(2026, 10, 19), sync.BackfilledFrom);
@@ -226,16 +228,68 @@ public class ExchangeRateSyncTests
         await harness.EnableAsync("USD");
         var asOf = ExchangeRateSyncClock.FetchedAsOf(new DateOnly(2026, 10, 22), ExchangeRateSyncClock.Oslo!);
         harness.Context.ExchangeRates.AddRange(
-            // The NOK → USD leg only, so the currency still has no fetched extent and is backfilled whole.
-            new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 1m, AsOf = asOf, CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank },
-            new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 2m, AsOf = asOf, CreatedAt = Now });
+            new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 1m, AsOf = asOf, CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank },
+            new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "NOK", Rate = 2m, AsOf = asOf, CreatedAt = Now },
+            // A reverse row in the pre-release-2 shape: the sync never writes, skips or removes one.
+            new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 3m, AsOf = asOf, CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank });
+        // A watermark later than the fetched row (an interrupted backfill), so the backfill asks for that day again.
+        (await harness.Context.ExchangeRateSyncCurrencies.SingleAsync()).BackfilledFrom = new DateOnly(2026, 10, 23);
         await harness.Context.SaveChangesAsync();
 
         var run = await harness.RunManualAsync();
 
         Assert.Equal(1, run.RowsSkipped);
-        Assert.Equal(3, run.RowsInserted);
+        Assert.Equal(1, run.RowsInserted);
         Assert.Equal(2m, (await harness.Context.ExchangeRates.AsNoTracking().SingleAsync(r => r.Provider == null)).Rate);
+        Assert.Equal(3m, (await harness.Context.ExchangeRates.AsNoTracking().SingleAsync(r => r.FromCurrencyCode == "NOK")).Rate);
+        Assert.Equal(1m, (await harness.Context.ExchangeRates.AsNoTracking()
+            .SingleAsync(r => r.Provider != null && r.FromCurrencyCode == "USD" && r.AsOf == asOf)).Rate);
+    }
+
+    [Fact] // issue #472 AC 33
+    public async Task A_value_needing_more_than_eight_decimals_is_stored_rounded_and_warned_about_without_the_rate()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 23));
+        await harness.EnableAsync("USD");
+        // 0.123456789 needs nine decimals; the column holds eight.
+        harness.Provider.ValueFor = code => code == "USD" ? "0.123456789" : null;
+
+        var run = await harness.RunManualAsync();
+
+        Assert.Equal(1, run.RowsInserted);
+        var stored = await harness.Context.ExchangeRates.AsNoTracking().SingleAsync();
+        Assert.Equal(("USD", "NOK", 0.12345679m), (stored.FromCurrencyCode, stored.ToCurrencyCode, stored.Rate));
+        var warning = Assert.Single(harness.SyncLog.Entries, entry => entry.Level == LogLevel.Warning);
+        Assert.Contains("USD", warning.Message);
+        Assert.Contains("2026", warning.Message);
+        Assert.DoesNotContain("0.12345", warning.Message);
+    }
+
+    [Fact] // issue #472 AC 33, the ordinary case
+    public async Task A_value_that_fits_eight_decimals_is_stored_exactly_and_logs_no_warning()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 23));
+        await harness.EnableAsync("USD");
+        // The stub publishes at a unit multiplier of 1, so six decimals fit as they are.
+        harness.Provider.ValueFor = code => code == "USD" ? "0.051783" : null;
+
+        await harness.RunManualAsync();
+
+        Assert.Equal(0.051783m, (await harness.Context.ExchangeRates.AsNoTracking().SingleAsync()).Rate);
+        Assert.DoesNotContain(harness.SyncLog.Entries, entry => entry.Level == LogLevel.Warning);
+    }
+
+    [Theory] // issue #472 AC 33
+    [InlineData("10.5", "0", true)]
+    [InlineData("0.051783", "2", true)]
+    [InlineData("0.0517831", "2", false)]
+    [InlineData("0.123456789", "0", false)]
+    public void IsStoredExactly_compares_the_rounded_rate_with_the_scaled_published_value(string value, string unitMult, bool exact)
+    {
+        var observation = new ProviderObservation("IDR", new DateOnly(2026, 10, 15), value, unitMult);
+
+        Assert.True(ExchangeRateSyncService.TryNormalise(observation, out var toHub, out _));
+        Assert.Equal(exact, ExchangeRateSyncService.IsStoredExactly(observation, toHub));
     }
 
     [Fact]
@@ -315,8 +369,8 @@ public class ExchangeRateSyncTests
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
         Assert.Equal("startPeriod=2026-10-24&endPeriod=2026-10-27", Regex.Match(harness.Provider.DataRequests.Single(), "startPeriod=.*").Value);
-        // Monday and Tuesday.
-        Assert.Equal(4, run.RowsInserted);
+        // Monday and Tuesday, one row each.
+        Assert.Equal(2, run.RowsInserted);
     }
 
     [Fact]
@@ -685,7 +739,7 @@ public class ExchangeRateSyncTests
         Assert.True(nok.Locked);
         Assert.True(nok.Enabled);
         var usd = Assert.Single(page.Items, item => item.CurrencyCode == "USD");
-        Assert.Equal(4, usd.FetchedRowCount);
+        Assert.Equal(2, usd.FetchedRowCount);
         Assert.Equal(new DateOnly(1980, 12, 10), usd.FirstAvailableDate);
         Assert.Equal(new DateOnly(2026, 10, 23), usd.NewestFetchedDate);
 
@@ -848,7 +902,10 @@ public class ExchangeRateSyncTests
         await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 22));
         await harness.EnableAsync("USD");
         await harness.RunManualAsync();
-        harness.Context.ExchangeRates.Add(new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 0.9m, AsOf = Now, CreatedAt = Now });
+        harness.Context.ExchangeRates.AddRange(
+            new ExchangeRate { FromCurrencyCode = "USD", ToCurrencyCode = "EUR", Rate = 0.9m, AsOf = Now, CreatedAt = Now },
+            // A fetched reverse row the release-2 migration left behind (no partner): the purge still takes it.
+            new ExchangeRate { FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 0.1m, AsOf = Now.AddDays(-30), CreatedAt = Now, Provider = ExchangeRateProvider.NorgesBank });
         await harness.Context.SaveChangesAsync();
 
         var stillEnabled = await Assert.ThrowsAsync<DomainUnprocessableException>(() => harness.Currencies.PurgeAsync("USD", "admin"));
@@ -858,13 +915,13 @@ public class ExchangeRateSyncTests
         await harness.Currencies.UpdateAsync("USD", new ExchangeRateSyncCurrencyUpdate { Enabled = false }, "admin");
         var result = await harness.Currencies.PurgeAsync("usd", "admin");
 
-        Assert.Equal(4, result.RowsDeleted);
+        Assert.Equal(3, result.RowsDeleted);
         var left = Assert.Single(await harness.Context.ExchangeRates.AsNoTracking().ToListAsync());
         Assert.Null(left.Provider);
         Assert.Null((await harness.Context.ExchangeRateSyncCurrencies.AsNoTracking().SingleAsync()).BackfilledFrom);
         var purge = await harness.Context.Set<ExchangeRateSyncJobRun>().AsNoTracking().SingleAsync(r => r.Trigger == JobRunTrigger.Purge);
         Assert.Equal(JobRunStatus.Succeeded, purge.Status);
-        Assert.Equal(4, purge.RowsDeleted);
+        Assert.Equal(3, purge.RowsDeleted);
     }
 
     [Fact]
@@ -1062,7 +1119,7 @@ public class ExchangeRateSyncTests
         Assert.Equal(JobRunStatus.PartiallySucceeded, run.Status);
         Assert.Equal(new DateOnly(2026, 10, 19), await WatermarkAsync(harness, "USD"));
         Assert.Null(await WatermarkAsync(harness, "EUR"));
-        Assert.Equal(10, run.RowsInserted);
+        Assert.Equal(5, run.RowsInserted);
     }
 
     [Fact]
@@ -1075,7 +1132,7 @@ public class ExchangeRateSyncTests
         var run = await harness.RunAsync(ExchangeRateSyncTrigger.Scheduled);
 
         Assert.Contains("EXR/B.EUR+USD.NOK.SP", Assert.Single(harness.Provider.DataRequests));
-        Assert.Equal(20, run.RowsInserted);
+        Assert.Equal(10, run.RowsInserted);
     }
 
     [Theory]
@@ -1476,6 +1533,18 @@ public class ExchangeRateSyncTests
         Assert.Equal(EntityState.Added, h.Context.Entry(h.Context.Currencies.Local.Single(c => c.CurrencyCode == "ZZZ")).State);
     }
 
+    internal sealed class RecordingLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
+            Entries.Add((logLevel, formatter(state, exception)));
+    }
+
     private sealed class Harness : IAsyncDisposable
     {
         private Harness(OdysseyContext context, StubProvider provider, MutableClock clock, FakeSettings settings)
@@ -1488,11 +1557,14 @@ public class ExchangeRateSyncTests
                 new HttpClient(provider) { BaseAddress = new Uri(NorgesBankClient.BaseAddress) }, ExchangeRateSyncPacing.None);
             SupportedList = new ExchangeRateSupportedList(context, client, new MemoryCache(new MemoryCacheOptions()), clock, NullLogger<ExchangeRateSupportedList>.Instance);
             Sync = new ExchangeRateSyncService(
-                context, client, SupportedList, settings, ExchangeRateSyncPacing.None, new JobWorkerIdentity(), clock, NullLogger<ExchangeRateSyncService>.Instance);
+                context, client, SupportedList, settings, ExchangeRateSyncPacing.None, new JobWorkerIdentity(), clock, SyncLog);
             Currencies = new ExchangeRateSyncCurrencyService(context, SupportedList, settings, Sync, clock, NullLoggerFactory.Instance);
         }
 
         public OdysseyContext Context { get; }
+
+        /// <summary>Every message the sync service logged, rendered, with its level.</summary>
+        public RecordingLogger<ExchangeRateSyncService> SyncLog { get; } = new();
 
         public StubProvider Provider { get; }
 
@@ -1643,13 +1715,16 @@ public class ExchangeRateSyncTests
 
             var codes = Regex.Match(uri, @"EXR/B\.([A-Z+]+)\.NOK").Groups[1].Value.Split('+');
             var (from, to) = Span(uri);
-            return Json(Sdmx(codes, from, to));
+            return Json(Sdmx(codes, from, to, ValueFor));
         }
 
         private static HttpResponseMessage Json(string body) =>
             new(HttpStatusCode.OK) { Content = new StringContent(body, Encoding.UTF8, "application/json") };
 
-        private static string Sdmx(string[] codes, DateOnly from, DateOnly to)
+        /// <summary>Overrides the published value per currency code; USD is 10.5 and every other code 1 otherwise.</summary>
+        public Func<string, string?>? ValueFor { get; set; }
+
+        private static string Sdmx(string[] codes, DateOnly from, DateOnly to, Func<string, string?>? valueFor)
         {
             var days = new List<DateOnly>();
             for (var day = from; day <= to; day = day.AddDays(1))
@@ -1663,7 +1738,7 @@ public class ExchangeRateSyncTests
             var series = new Dictionary<string, object>();
             for (var i = 0; i < codes.Length; i++)
             {
-                var value = codes[i] == "USD" ? "10.5" : "1";
+                var value = valueFor?.Invoke(codes[i]) ?? (codes[i] == "USD" ? "10.5" : "1");
                 series[$"0:{i}:0:0"] = new
                 {
                     attributes = new[] { 0 },

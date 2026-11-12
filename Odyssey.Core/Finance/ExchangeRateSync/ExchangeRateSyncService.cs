@@ -13,8 +13,8 @@ namespace Odyssey.Core.Finance.ExchangeRateSync;
 
 /// <summary>
 /// Runs the exchange-rate sync (issue #349 §3 "Processing pipeline"): plans forward fill and backfill per
-/// enabled currency, fetches each span from Norges Bank, writes <c>X → NOK</c> and <c>NOK → X</c> rows
-/// idempotently, and records the run. It holds no schedule state: everything the worker's job and the status
+/// enabled currency, fetches each span from Norges Bank, writes the published <c>X → NOK</c> row idempotently
+/// (readers invert it for <c>NOK → X</c>, issue #472), and records the run. It holds no schedule state: everything the worker's job and the status
 /// endpoint need is derived from the run log and the rows on every call.
 /// </summary>
 /// <remarks>
@@ -450,37 +450,44 @@ public sealed class ExchangeRateSyncService(
         var now = Now;
         foreach (var observation in observations)
         {
+            // fromHub is computed and range-checked but never stored (issue #472 §8.1): readers invert the
+            // published X → NOK row instead, and a reciprocal outside the stored bounds would hand them a
+            // rate no manual entry could hold.
             if (!requested.Contains(observation.CurrencyCode)
-                || !TryNormalise(observation, out var toHub, out var fromHub))
+                || !TryNormalise(observation, out var toHub, out _))
             {
                 outcome.RowsRejected++;
                 continue;
             }
 
-            var asOf = ExchangeRateSyncClock.FetchedAsOf(observation.Date, oslo);
-            foreach (var (from, to, rate) in new[]
+            if (!IsStoredExactly(observation, toHub))
             {
-                (observation.CurrencyCode, Hub, toHub),
-                (Hub, observation.CurrencyCode, fromHub),
-            })
-            {
-                if (!existing.Add((from, to, asOf)))
-                {
-                    outcome.RowsSkipped++;
-                    continue;
-                }
-
-                context.ExchangeRates.Add(new ExchangeRate
-                {
-                    FromCurrencyCode = from,
-                    ToCurrencyCode = to,
-                    Rate = rate,
-                    AsOf = asOf,
-                    CreatedAt = now,
-                    Provider = ExchangeRateProvider.NorgesBank,
-                });
-                outcome.RowsInserted++;
+                // Norges Bank has never published more than 8 decimals after scaling (issue #472 §7.11), so the
+                // stored rate — and every reciprocal read from it — would be off in the last place. Named by
+                // currency and date only, never a rate.
+                logger.LogWarning(
+                    "Exchange-rate sync stored a rounded {CurrencyCode} rate for {Date}: the published value needs more than {Scale} decimals.",
+                    observation.CurrencyCode, observation.Date, MoneyBounds.ExchangeRateScale);
             }
+
+            var asOf = ExchangeRateSyncClock.FetchedAsOf(observation.Date, oslo);
+            if (!existing.Add((observation.CurrencyCode, Hub, asOf)))
+            {
+                outcome.RowsSkipped++;
+                continue;
+            }
+
+            // The published direction only (issue #472 release 2): NOK → X is 1 / this row, inverted at read time.
+            context.ExchangeRates.Add(new ExchangeRate
+            {
+                FromCurrencyCode = observation.CurrencyCode,
+                ToCurrencyCode = Hub,
+                Rate = toHub,
+                AsOf = asOf,
+                CreatedAt = now,
+                Provider = ExchangeRateProvider.NorgesBank,
+            });
+            outcome.RowsInserted++;
         }
 
         if (backfill)
@@ -548,6 +555,22 @@ public sealed class ExchangeRateSyncService(
         }
 
         return toHub >= RateMin && toHub <= RateMax && fromHub >= RateMin && fromHub <= RateMax;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="toHub"/> — already rounded to <see cref="MoneyBounds.ExchangeRateScale"/> — is the
+    /// published value exactly, after scaling. Only meaningful once <see cref="TryNormalise"/> has accepted it.
+    /// </summary>
+    internal static bool IsStoredExactly(ProviderObservation observation, decimal toHub)
+    {
+        var value = decimal.Parse(observation.Value!, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture);
+        var scale = 1m;
+        for (var i = 0; i < int.Parse(observation.UnitMult!, NumberStyles.None, CultureInfo.InvariantCulture); i++)
+        {
+            scale *= 10m;
+        }
+
+        return toHub * scale == value;
     }
 
     // ── Reading state ─────────────────────────────────────────────────────────────────────────────

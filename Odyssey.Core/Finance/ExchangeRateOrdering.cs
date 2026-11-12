@@ -17,9 +17,9 @@ namespace Odyssey.Core.Finance;
 /// <para>
 /// <b>Inverted candidates (issue #472).</b> A fetched <c>B → A</c> row competes for the logical pair
 /// <c>A → B</c> as <c>1 / Rate</c>. On a FULL tie — same <c>AsOf</c>, same <c>UpdatedAt ?? CreatedAt</c> — the
-/// stored row wins. That is what keeps a deployment whose sync still stores both directions (each observation's
-/// two rows share one save, so one <c>CreatedAt</c>) giving exactly the results it gave before inversion
-/// existed. The key sits before the id because a <see cref="Guid"/> order is arbitrary.
+/// stored row wins. That is what kept a database still holding both directions (each observation's two rows
+/// share one save, so one <c>CreatedAt</c>) giving exactly the results it gave before inversion existed. Since
+/// release 2 the sync writes only <c>X → NOK</c>; the rule still decides a fetched row against a manual one. The key sits before the id because a <see cref="Guid"/> order is arbitrary.
 /// </para>
 /// <para>
 /// The SQL predicates stop at the <c>UpdatedAt ?? CreatedAt</c> key: a <see cref="Guid"/> has no translatable
