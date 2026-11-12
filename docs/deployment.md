@@ -369,6 +369,40 @@ sample counts, the mail throttle's tracked-address table, and the per-account sm
 | Max repeated fields per contact | lower only | Each field costs a sibling query and its own save, multiplied by an import entry cap that ships unlimited. Any number above the shipped 200 would be a guess about a product of three unbounded terms. |
 | Tracked recipient addresses | raise only | The per-recipient mail throttle fails **open** once its table is full, so a smaller table weakens the control instead of tightening it. |
 
+### Release note: fetched exchange rates are stored in one direction (issue #472)
+
+This ships in **two releases, and their order is the whole safety argument.** Nothing in the code enforces
+it, so check it before upgrading.
+
+**Release 1 (PR #478) — readers.** Every conversion, status and `/latest` read now uses a fetched
+`X → NOK` row as `1 / Rate` for `NOK → X`; manual rates are never inverted. The sync still stores both
+directions, and on a tie the stored row wins, so results are unchanged. It adds two migrations:
+`CK_ExchangeRates_RatePositive` and a `(From, To, Provider, AsOf)` index. **If any `Rate <= 0` row
+exists, the migration service stops before migrating** and names up to 20 row ids; correct each rate
+or delete the row, then start it again. Also new: `GET /api/exchange-rates/resolved`, and `/latest`
+answers a malformed currency code with `400` (it used to be a `404` echoing the input). An inverted
+`/latest` response carries the id and dates of the opposite pair's stored row.
+
+**Release 2 (PR #480) — storage.** The sync stores only the published `X → NOK` row, and the
+`StoreFetchedRatesInPublishedDirectionOnly` migration deletes every fetched `NOK → X` row that has its
+fetched `X → NOK` partner on the same date. Manual rows and partnerless fetched rows are kept.
+
+1. **Deploy release 1 everywhere first.** A release-1 reader is what keeps `NOK → X` conversions
+   working once those rows are gone. An API or worker still on an older release would find no
+   `NOK → X` rate after the migration.
+2. **Take a database backup before upgrading to release 2.** This is a data migration. Its `Down`
+   re-derives the deleted rows from their partners, so it is **approximate**: a rate can differ in
+   the last decimal where the published value needed more than eight. The backup is the exact restore.
+3. **Stop the API and the worker, run the migration, then start them.** A release-1 worker left running
+   through the migration may write `NOK → X` rows again; they are harmless (readers prefer the stored
+   row on a tie, which is today's value) but are not removed until the next purge of that currency.
+4. **Expect the numbers to halve:** a sync run's inserted rows, and the purge preview's fetched-row
+   count. The Exchange rates list stops showing fetched `NOK → X` lines; the Inverse column already
+   shows the reciprocal.
+5. **A warning to know about:** `Exchange-rate sync stored N rounded XXX rate(s) between … and …`
+   means Norges Bank published a value needing more than eight decimals, which it has not done so far.
+   The stored rate is rounded, so its reciprocal is off in the last place.
+
 ### Release note: file-analysis matching sends more, and the vocabulary cap is gone (issue #433)
 
 - **The match vocabulary cap is retired.** The `FileAnalysisMatchMaxVocabulary` setting (default 500) no

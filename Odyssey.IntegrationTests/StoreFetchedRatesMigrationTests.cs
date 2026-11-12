@@ -29,6 +29,11 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
         {
             var manualReverse = Guid.NewGuid();
             var partnerless = Guid.NewGuid();
+            // Fetched reverse rows whose only "partner" fails one join clause each: a MANUAL X → NOK on the same
+            // AsOf (p.Provider = r.Provider) and a fetched X → NOK one day later (p.AsOf = r.AsOf). Readers invert
+            // only fetched rows on their own date, so deleting either would leave that pair with no rate.
+            var manualPartner = Guid.NewGuid();
+            var laterPartner = Guid.NewGuid();
             var partnerCreated = new Dictionary<(string Code, DateTime AsOf), DateTime>();
 
             await using (var context = NewContext())
@@ -53,7 +58,11 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
                 // A manual NOK → USD on the same AsOf as a fetched partner, and a fetched NOK → SEK with no partner.
                 context.ExchangeRates.AddRange(
                     new ExchangeRate { ExchangeRateId = manualReverse, FromCurrencyCode = "NOK", ToCurrencyCode = "USD", Rate = 0.2m, AsOf = Day, CreatedAt = Day },
-                    new ExchangeRate { ExchangeRateId = partnerless, FromCurrencyCode = "NOK", ToCurrencyCode = "SEK", Rate = 1.05m, AsOf = Day, CreatedAt = Day, Provider = ExchangeRateProvider.NorgesBank });
+                    new ExchangeRate { ExchangeRateId = partnerless, FromCurrencyCode = "NOK", ToCurrencyCode = "SEK", Rate = 1.05m, AsOf = Day, CreatedAt = Day, Provider = ExchangeRateProvider.NorgesBank },
+                    new ExchangeRate { ExchangeRateId = manualPartner, FromCurrencyCode = "NOK", ToCurrencyCode = "GBP", Rate = 0.075m, AsOf = Day, CreatedAt = Day, Provider = ExchangeRateProvider.NorgesBank },
+                    new ExchangeRate { FromCurrencyCode = "GBP", ToCurrencyCode = "NOK", Rate = 13.3m, AsOf = Day, CreatedAt = Day },
+                    new ExchangeRate { ExchangeRateId = laterPartner, FromCurrencyCode = "NOK", ToCurrencyCode = "DKK", Rate = 0.64m, AsOf = Day, CreatedAt = Day, Provider = ExchangeRateProvider.NorgesBank },
+                    Fetched("DKK", "NOK", 1.56m, Day.AddDays(1), Day.AddDays(1)));
                 await context.SaveChangesAsync();
             }
 
@@ -63,12 +72,13 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
                 Assert.Empty(await context.Database.GetPendingMigrationsAsync());
 
                 var rows = await context.ExchangeRates.AsNoTracking().ToListAsync();
-                var fetched = rows.Where(r => r.Provider != null && r.ExchangeRateId != partnerless).ToList();
-                Assert.Equal(6, fetched.Count);
+                var kept = new[] { partnerless, manualPartner, laterPartner };
+                var fetched = rows.Where(r => r.Provider != null && !kept.Contains(r.ExchangeRateId)).ToList();
+                Assert.Equal(7, fetched.Count); // the 6 USD/EUR partners plus the later DKK → NOK
                 Assert.All(fetched, r => Assert.Equal("NOK", r.ToCurrencyCode));
                 Assert.Contains(rows, r => r.ExchangeRateId == manualReverse);
-                Assert.Contains(rows, r => r.ExchangeRateId == partnerless);
-                Assert.Equal(8, rows.Count);
+                Assert.All(kept, id => Assert.Contains(rows, r => r.ExchangeRateId == id));
+                Assert.Equal(12, rows.Count);
             }
 
             await using (var context = NewContext())
@@ -78,7 +88,7 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
                 await context.Database.MigrateAsync(all[all.IndexOf(thisMigration) - 1]);
 
                 var rows = await context.ExchangeRates.AsNoTracking().ToListAsync();
-                var restored = rows.Where(r => r.Provider != null && r.FromCurrencyCode == "NOK" && r.ToCurrencyCode != "SEK").ToList();
+                var restored = rows.Where(r => r.Provider != null && r.FromCurrencyCode == "NOK" && r.ToCurrencyCode is "USD" or "EUR").ToList();
                 Assert.Equal(6, restored.Count);
                 foreach (var row in restored)
                 {
@@ -91,7 +101,13 @@ public class StoreFetchedRatesMigrationTests(MariaDbFixture fixture)
                 // The partnerless row is not duplicated, and the manual row is untouched.
                 Assert.Single(rows, r => r.FromCurrencyCode == "NOK" && r.ToCurrencyCode == "SEK");
                 Assert.Equal(0.2m, rows.Single(r => r.ExchangeRateId == manualReverse).Rate);
-                Assert.Equal(14, rows.Count);
+                // NOT EXISTS: GBP's kept reverse row is not doubled (its partner is manual, so Down skips it), and the
+                // later DKK partner re-derives a NOK → DKK on ITS date beside the kept one, never on top of it.
+                Assert.Single(rows, r => r.FromCurrencyCode == "NOK" && r.ToCurrencyCode == "GBP");
+                Assert.Equal(
+                    [Day, Day.AddDays(1)],
+                    rows.Where(r => r.FromCurrencyCode == "NOK" && r.ToCurrencyCode == "DKK").Select(r => r.AsOf).Order());
+                Assert.Equal(19, rows.Count);
             }
         }
         finally
