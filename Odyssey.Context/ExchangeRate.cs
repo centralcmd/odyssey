@@ -22,7 +22,8 @@ namespace Odyssey.Context;
 /// non-unique index existed for. The <c>(AsOf)</c> index serves the list's default sort.
 /// </para>
 /// <para>
-/// Readers invert FETCHED rows, never manual ones (issue #472): a fetched <c>B → A</c> row also serves
+/// Fetched rows are stored in the published <c>X → NOK</c> direction only (issue #472 release 2).
+/// Readers invert FETCHED rows, never manual ones: a fetched <c>B → A</c> row also serves
 /// <c>A → B</c> as <c>1 / Rate</c>. <c>CK_ExchangeRates_RatePositive</c> keeps that division safe. The
 /// <c>(From, To, Provider, AsOf)</c> index serves the fetched-only lookup: with an equality on <c>Provider</c> it lets
 /// that grouped MAX use a loose index scan, which the unique index — <c>Provider</c> after <c>AsOf</c> — cannot.

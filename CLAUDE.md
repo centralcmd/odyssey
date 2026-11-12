@@ -609,9 +609,11 @@ point. Rules that are easy to get backwards:
 - **A converted point kept its location's GUID.** Nothing may resolve a bare id across `Locations` and
   `WeatherPoints`.
 
-**Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
-through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
-fetched one; there is no separate source column. Five rules are easy to get backwards:
+**Exchange rates sync from Norges Bank, stored as the published currency → NOK direction only, and every
+other pair converts through NOK** (issues #349, #472). `ExchangeRate.Provider` is `NULL` for a manual row and
+`NorgesBank` for a fetched one; there is no separate source column. The sync writes one row per observation
+and never the reciprocal: `StoreFetchedRatesInPublishedDirectionOnly` deleted every fetched `NOK → X` row that
+had its `X → NOK` partner (manual and partnerless rows were kept), and readers invert instead. Five rules are easy to get backwards:
 
 - **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
   `UpdatedAt ?? CreatedAt`, then a stored row before an inverted one, then the id — and source plays no
