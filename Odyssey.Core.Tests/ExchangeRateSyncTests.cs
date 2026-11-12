@@ -179,6 +179,9 @@ public class ExchangeRateSyncTests
     // Below decimal's reciprocal range once scaled: 10 / 1e-28 would overflow rather than reject.
     [InlineData("0.0000000000000000000000000001", "1")]
     [InlineData("0.0000000000000000000000000001", "6")]
+    // issue #472 AC 32: the published rate is in range, but its reciprocal rounds to zero. Only the fromHub
+    // bound catches this one, and the sync no longer stores fromHub, so this case is what keeps that check.
+    [InlineData("5000000000", "0")]
     public void Normalise_rejects_a_structurally_unusable_observation(string? value, string? unitMult)
     {
         Assert.False(ExchangeRateSyncService.TryNormalise(new ProviderObservation("USD", new DateOnly(2026, 10, 15), value, unitMult), out _, out _));
@@ -263,6 +266,41 @@ public class ExchangeRateSyncTests
         Assert.Contains("USD", warning.Message);
         Assert.Contains("2026", warning.Message);
         Assert.DoesNotContain("0.12345", warning.Message);
+    }
+
+    [Fact] // issue #472 AC 32
+    public async Task An_observation_whose_reciprocal_falls_outside_the_stored_bounds_is_rejected_and_not_stored()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 23));
+        await harness.EnableAsync("USD");
+        // In range as USD → NOK, but 1 / 5e9 rounds to zero: a reader inverting it would get a rate no manual
+        // entry could hold, so the observation is refused even though only X → NOK is stored.
+        harness.Provider.ValueFor = code => code == "USD" ? "5000000000" : null;
+
+        var run = await harness.RunManualAsync();
+
+        Assert.Equal((1, 0), (run.RowsRejected, run.RowsInserted));
+        Assert.Empty(await harness.Context.ExchangeRates.AsNoTracking().ToListAsync());
+    }
+
+    [Fact] // issue #472 AC 31
+    public async Task A_second_run_over_the_same_days_inserts_nothing_and_stores_no_second_direction()
+    {
+        await using var harness = await Harness.CreateAsync(start: new DateOnly(2026, 10, 19));
+        await harness.EnableAsync("USD");
+        var first = await harness.RunManualAsync();
+        harness.Clock.Advance(TimeSpan.FromMinutes(2)); // past the manual-run cooldown
+        harness.Provider.DataRequests.Clear();
+
+        var second = await harness.RunManualAsync();
+
+        Assert.Equal(5, first.RowsInserted);
+        // Forward fill starts after the newest fetched day, which is today, so nothing is requested at all.
+        Assert.Equal(0, second.RowsInserted);
+        Assert.Empty(harness.Provider.DataRequests);
+        var rows = await harness.Context.ExchangeRates.AsNoTracking().ToListAsync();
+        Assert.Equal(5, rows.Count);
+        Assert.All(rows, row => Assert.Equal(("USD", "NOK"), (row.FromCurrencyCode, row.ToCurrencyCode)));
     }
 
     [Fact] // issue #472 AC 33, a deep backfill
