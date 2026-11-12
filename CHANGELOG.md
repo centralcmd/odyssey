@@ -5,6 +5,28 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0](https://github.com/centralcmd/odyssey/compare/v0.45.0...v0.46.0) (2026-11-12)
+
+
+### Features
+
+* **core:** invert fetched exchange rates at read time ([3aa881a](https://github.com/centralcmd/odyssey/commit/3aa881a193666cb983d593ddb7d34c4835782398))
+
+
+### Performance
+
+* **core:** index the fetched-only lookup and tighten the tests ([d62a54f](https://github.com/centralcmd/odyssey/commit/d62a54f3c51e0b1d176127215eb5e60f10a4945e))
+
+
+### Refactoring
+
+* **core:** use the provider equality in the status rank too ([e7a7119](https://github.com/centralcmd/odyssey/commit/e7a711951aa7f77389a22b607e03e1c6ae730a5f))
+
+
+### Documentation
+
+* **config:** allow up to four review rounds in agent review loops ([f0a330d](https://github.com/centralcmd/odyssey/commit/f0a330dab539e0cea422c69a6ce4956fbaf6ce41))
+
 ## [0.45.0](https://github.com/centralcmd/odyssey/compare/v0.44.0...v0.45.0) (2026-11-09)
 
 
