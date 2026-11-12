@@ -3,17 +3,19 @@ name: pr-review
 description: >
   Run the full multi-agent review on a GitHub pull request: dispatch the senior architect/backend
   reviewer, senior frontend reviewer, accessibility auditor, security auditor, and test agent at the
-  PR, then report their consolidated findings to the user. Trigger on "review this PR", "review pull
+  PR, fix what they find and re-review, up to four rounds, then report their consolidated findings to
+  the user. Trigger on "review this PR", "review pull
   request N", "run the review agents on the PR", "get a full review of PR N", "architecture/frontend/
   security/accessibility/test review of a PR", or "what do the reviewers think of this PR". The
-  orchestrator does NOT add its own review — it only relays the five agents' verdicts.
+  orchestrator does NOT add its own review — it acts on and relays the five agents' verdicts.
 ---
 
 # PR Review (multi-agent)
 
-This skill runs Odyssey's five specialist review agents against one pull request and reports back what
-**they** found. It is pure orchestration: **you (the orchestrator) do not review the PR yourself, do
-not add your own findings, and do not override an agent's verdict.** You dispatch, collect, and relay.
+This skill runs Odyssey's five specialist review agents against one pull request, fixes what **they**
+found, and re-reviews — up to **four rounds** — then reports back. **You (the orchestrator) do not
+review the PR yourself, do not add your own findings, and do not override an agent's verdict.** You
+dispatch, fix or rebut, re-dispatch, and relay.
 
 The "harness" is the **Agent tool** — there is no driver script and nothing to launch, because the
 thing being driven is a set of subagents, not a running binary. Each agent does its own PR-review
@@ -68,24 +70,44 @@ Prompt skeleton for each agent (fill in N / URL / file summary):
 > `<short file summary>`. Review within your specialty, post your verdict comment on the PR per your
 > normal workflow, and return a concise summary of your verdict and findings to me.
 
-## Step 3 — Report findings to the user
+## Step 3 — Triage: fix or rebut
 
-Relay the consolidated report per the shared mechanics. **Do not** approve, merge, or change the PR —
-unlike the spec-writer skills' loops, this skill never edits the artifact under review.
+After each round, for every finding, do exactly one of:
 
-## Step 4 — Hand off
+- **Fix it** — change the code on the PR's head branch, run the affected test tiers, and push a **new
+  commit** (Conventional Commits, naming the finding it addresses in the body). Never amend, rebase or
+  force-push. This is the default for valid findings.
+- **Rebut it** — where a finding is wrong, inapplicable, or conflicts with an explicit user decision,
+  reply on the PR with the reasoning rather than silently ignoring it.
 
-Close with what happens next, rather than leaving the user holding five verdicts:
+Only push to a branch this session may push to (the session's development branch, or a branch the user
+named). If the PR's head branch is someone else's, do not push: report the findings and stop after
+round 1, offering the fixes instead.
 
-- If anything requested changes, **offer** to address the findings — naming which ones you would take
-  and which need their call. Acting on them is a separate request; don't start pushing on the strength
-  of having run the review.
-- If the author pushes changes and wants another pass, resume the same agents by `agentId` (they retain
-  their first-round context) rather than spawning fresh ones.
+## Step 4 — Re-review, up to four rounds
+
+A round is one pass of the reviewers followed by your triage. Round 1 is Step 2; rounds 2–4 resume the
+same agents by `agentId` and ask each to re-verify its prior findings against the new commits (and
+review anything they changed), posting a follow-up verdict. Re-dispatch only the agents that did not
+approve in the previous round; an approval stands unless a later commit touches that agent's area, in
+which case resume it too. Four is a ceiling, not a target.
+
+**Stop condition** — check after each round, in this order:
+
+- **All agents approve** (or self-skip) → report the consensus with links to the verdict comments.
+- **A finding needs user input** — a product decision, two agents disagreeing, or a conflict with an
+  explicit user decision a rebuttal cannot settle → stop and consult the user, whatever the round.
+- **Not all approve after round 4** → **stop. Do not start a fifth round automatically.** Summarize who
+  still requests changes and why, and consult the user.
+
+## Step 5 — Report
+
+Relay the consolidated result per the shared mechanics, plus a per-round line: what was fixed (commit
+SHAs), what was rebutted, and who approved in that round. **Never** approve or merge the PR.
 
 ## Notes & gotchas
 
 - **You are not a sixth reviewer.** The user was explicit: report the agents' findings, don't add your
   own. Resist the urge to "also notice" things — that's the agents' job.
-- This is the PR-stage analog of the spec-writer skills' review loop; the difference is
-  scope (a PR diff vs. a spec issue) and that this skill never edits the artifact under review.
+- This is the PR-stage analog of the spec-writer skills' review loop; the difference is scope (a PR
+  diff vs. a spec issue) and that fixes land as commits rather than a new spec draft.
