@@ -453,7 +453,7 @@ public sealed class InstrumentDialogsTests
             Source("tiingo", "Tiingo") with
             {
                 SymbolExample = "BRK-B",
-                DataProcessingNote = "Tiingo is a US company. It receives these requests as its own controller.",
+                DataProcessingNote = "Tiingo is a US company. It handles these requests under its own terms.",
             },
         ],
         MaxBindingsPerInstrument = 3,
@@ -529,6 +529,79 @@ public sealed class InstrumentDialogsTests
 
         cut.WaitForAssertion(() => Assert.Contains(InstrumentPriceSourcesPanel.RetryText(new DateOnly(2026, 11, 10)), cut.Markup));
         Assert.Contains("Next try", cut.Markup);
+    }
+
+    [Fact]
+    public async Task A_data_processing_note_carrying_markup_renders_as_literal_text()
+    {
+        await using var ctx = Context(out _);
+        const string hostile = "<b>bold</b> <img src=x onerror=alert(1)> & co";
+        var status = Tiingo;
+        status.Sources[0] = status.Sources[0] with { DataProcessingNote = hostile };
+        var cut = RenderPanel(ctx, Bindings(Binding("tiingo", 1)), status);
+        cut.WaitForAssertion(() => Assert.Equal(["Tiingo"], Order(cut)));
+
+        cut.Find(".ins-src-ctl input[type=checkbox]").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("p.ins-dialog-body").Count));
+        var note = cut.FindAll("p.ins-dialog-body")[1];
+        Assert.Empty(note.Children);
+        Assert.Equal(hostile, note.TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.ins-dialog-body img"));
+    }
+
+    [Fact]
+    public async Task Adding_a_source_turned_on_uses_its_symbol_help_and_its_note()
+    {
+        await using var ctx = Context(out _);
+        var cut = RenderPanel(ctx, Bindings(), Tiingo);
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.TextContent.Contains("Add source", StringComparison.Ordinal)));
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Add source", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("The symbol as Tiingo writes it, e.g. BRK-B", cut.Markup));
+        cut.Find("input[id$='-add-symbol']").Input("BRK-B");
+        cut.Find("span[id$='-add-on'] input[type=checkbox]").Change(true);
+        cut.FindAll(".ins-src-add-actions button").Last().Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Turn on Tiingo?", cut.Markup));
+        var paragraphs = cut.FindAll("p.ins-dialog-body").Select(p => p.TextContent.Trim()).ToList();
+        Assert.Equal(EnablePriceSourceDialog.Disclosure("Tiingo", "BRK-B"), paragraphs[0]);
+        Assert.Equal(Tiingo.Sources[0].DataProcessingNote, paragraphs[1]);
+    }
+
+    [Fact]
+    public async Task The_next_try_line_reads_exactly_and_hides_once_the_symbol_is_edited()
+    {
+        await using var ctx = Context(out _);
+        var skipped = Binding("tiingo", 1, enabled: true) with
+        {
+            LastFailure = JobFailureCategory.UnsupportedInput,
+            LastFailureUtc = new DateTime(2026, 11, 9, 7, 0, 0, DateTimeKind.Utc),
+            RetryOn = new DateOnly(2026, 11, 10),
+        };
+        var cut = RenderPanel(ctx, Bindings(skipped), Tiingo);
+
+        var expected = $"Not asked again until {new DateOnly(2026, 11, 10).ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)}. "
+            + "Change the symbol, or turn the source off and on, to try now.";
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".ins-src-facts dd"), dd => dd.TextContent.Trim() == expected));
+
+        cut.Find(".ins-src-symfield input").Input("BRK-B");
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Next try", cut.Markup));
+    }
+
+    [Fact]
+    public void The_symbol_help_falls_back_to_the_key_and_the_hourly_state_ends_at_its_reset()
+    {
+        Assert.Equal("The symbol as tiingo writes it, e.g. BRK-B",
+            InstrumentPriceSourcesPanel.SymbolHelp(Source("tiingo", " ") with { SymbolExample = "BRK-B" }));
+
+        var resets = new DateTime(2026, 11, 9, 11, 0, 0, DateTimeKind.Utc);
+        var capped = Source("tiingo", "Tiingo") with { MaxRequestsPerHour = 25, RequestsThisHour = 25, HourlyLimitResetsAtUtc = resets };
+        Assert.Equal("Active", InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, resets));
+        Assert.StartsWith("Hourly request limit reached",
+            InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, resets.AddTicks(-1)), StringComparison.Ordinal);
     }
 
     [Fact]

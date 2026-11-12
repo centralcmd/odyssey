@@ -1,6 +1,6 @@
 {
  "artifact": "https://claude.ai/artifact/VkrcragM9HGn1cXKkANizr",
- "version": "1794511266-e186",
+ "version": "1794512258-201a",
  "syncedOn": "2026-11-12",
  "pending": [
   "project/README.md",
@@ -833,7 +833,7 @@
   "project/docs/components-event-rail.md": "24ee46b155841dfcdcefb88ce4ae35f70ff5649d77f0925aeaec40f1392a54b9",
   "project/docs/components-exchange-rate-sync.md": "aa900b42f0709c63082b29e31d245f4efaa5a2d148035beedde061733c90bbd2",
   "project/docs/components-files-and-file-analysis.md": "7099f47fe9807f4099672b3bb049a56c1c3fcbf6b72afa92ecb85d3696a22e6c",
-  "project/docs/components-instruments.md": "256d0ae0ce44d985c9e72682d74253ab7c55a9cbf3dcd1373ea5b9c574ab391b",
+  "project/docs/components-instruments.md": "ee40b42ca74ef0f7d88f46fc94eb13bc693c10e5f6da5fab0d015e4a3ae711ba",
   "project/docs/components-locations.md": "001e3f8a57bb98acfda44334eca6931e8fb9fe46bafb75a85c0d1c80712bdf47",
   "project/docs/components-mail-transport-settings.md": "2886047404af125541d98bf8461b90d5e67f9b8db3db0eb25c046620e5d15f89",
   "project/docs/components-net-worth-history-chart.md": "d40fe0880aee111608346f6fc80bc55b7214df343dc12677d7c8b7164182dc52",
@@ -1034,7 +1034,7 @@
   "project/ui_kits/web/exchange-rate-sync-data.js": "f70b35ac7c9303b66421e0cfc4e0b1f659fe72c10c4efb16cab8084fc2dc7356",
   "project/ui_kits/web/exchange-rate-sync.css": "1c8173b8d919e8241b8ca1a371117954a78a9695ac84374378eb9487c1303ff1",
   "project/ui_kits/web/index.html": "566a3375e7afc259091b9b00181199a345548229d1973038d27ed7a86320f2c4",
-  "project/ui_kits/web/instruments-data.js": "9150cae9a7d3c8fe8dbe56c9133bfb436ca74e37fe845579070ba5a8ee930463",
+  "project/ui_kits/web/instruments-data.js": "20d9ef61db9f1e37bd665f359d504fb507d99f73fb1d54673c64e18465e394f3",
   "project/ui_kits/web/instruments.css": "63b0d2067074391d8507727e2764f621dd050f85ffb33f0e5e59af6afa74d7a2",
   "project/ui_kits/web/journal-data.js": "ba31b245526815614e9fc589a9c286d3a3d6cc0dc03ed0f25a025e463a472c08",
   "project/ui_kits/web/journal.css": "c2f9d7b66fe979fb3249145f3b1dd03d6f14149800743b923e99257150f6589d",

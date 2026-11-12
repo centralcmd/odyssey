@@ -88,11 +88,12 @@ public sealed class TiingoPriceSource : IInstrumentPriceSource, IInstrumentPrice
     public string SymbolExample => "BRK-B";
 
     /// <summary>
-    /// Shown in the enable disclosure. It states only what holds whatever Tiingo's policy says in detail — where the
-    /// company is, that it acts on its own account, and the licence the free plan carries; docs/deployment.md has the rest.
+    /// Shown in the enable disclosure. It states only what is known without reading Tiingo's privacy policy — where the
+    /// company is, that its own terms govern, and the licence the free plan carries. Its role under the GDPR is not
+    /// verified, so it is left to docs/deployment.md, which says so.
     /// </summary>
     public string DataProcessingNote =>
-        "Tiingo is a US company. It receives these requests as its own controller, under its own privacy policy, "
+        "Tiingo is a US company. It handles these requests under its own terms and privacy policy, "
         + "and its free plan licenses the prices for personal use.";
 
     /// <summary>The per-process metadata store; exposed for tests.</summary>
