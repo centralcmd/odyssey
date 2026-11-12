@@ -20,6 +20,7 @@ public partial class InstrumentPriceSourcesPanel
     internal const string SymbolRequired = "Enter the symbol as the source writes it.";
     internal const string SymbolFormat = "Use letters, digits, dots, hyphens and underscores, without '..'.";
     internal const string DailyLimitReached = "Daily request limit reached";
+    internal const string GenericSymbolHelp = "The symbol as the source writes it, e.g. EQNR.OL";
     internal const string BackgroundJobsHref = "/background-jobs?job=InstrumentPriceSync";
 
     [Parameter, EditorRequired] public ExistingInstrument Instrument { get; set; } = default!;
@@ -89,7 +90,7 @@ public partial class InstrumentPriceSourcesPanel
         public string? SymbolError { get; set; }
     }
 
-    private sealed record PendingEnable(Guid Key, SourceDraft? Item, string ProviderName, string Symbol, string ReturnFocusToId);
+    private sealed record PendingEnable(Guid Key, SourceDraft? Item, string ProviderName, string Symbol, string ReturnFocusToId, string? DataProcessingNote);
 
     private bool Editable => CanEdit && Instrument.Archived is null;
 
@@ -121,6 +122,23 @@ public partial class InstrumentPriceSourcesPanel
 
     internal static string MaximumText(int max) => $"This instrument has the maximum of {max} sources.";
 
+    private InstrumentPriceSourceInfo? InfoOf(string? key) =>
+        Status?.Sources.FirstOrDefault(s => string.Equals(s.Key, key, StringComparison.Ordinal));
+
+    private string? NoteOf(string key) => InfoOf(key)?.DataProcessingNote is { Length: > 0 } note ? note.Trim() : null;
+
+    /// <summary>The source-symbol help line, in the provider's own notation when it declares one (issue #447).</summary>
+    internal static string SymbolHelp(InstrumentPriceSourceInfo? info) =>
+        info?.SymbolExample is { Length: > 0 } example
+            ? $"The symbol as {(string.IsNullOrWhiteSpace(info.DisplayName) ? info.Key : info.DisplayName.Trim())} writes it, e.g. {example.Trim()}"
+            : GenericSymbolHelp;
+
+    private string SymbolHelp(string? key) => SymbolHelp(InfoOf(key));
+
+    /// <summary>"Not asked again until {date}…" — the server's date for a binding skipped after a definitive failure (A9).</summary>
+    internal static string RetryText(DateOnly retryOn) =>
+        $"Not asked again until {RunTime.Date(retryOn)}. Change the symbol, or turn the source off and on, to try now.";
+
     private string NameOf(string key) => NameOf(Status, key);
 
     internal static string NameOf(InstrumentPriceSourcesStatus? status, string key) =>
@@ -149,6 +167,8 @@ public partial class InstrumentPriceSourcesPanel
             return "Not configured";
         if (info.MaxRequestsPerDay > 0 && info.RequestsToday >= info.MaxRequestsPerDay)
             return DailyLimitReached;
+        if (info.HourlyLimitResetsAtUtc is { } resets && resets > nowUtc)
+            return $"Hourly request limit reached · resumes at {RunTime.Clock(resets)}";
         if (info.BackOffUntilUtc is { } until && until > nowUtc)
             return $"Paused until {RunTime.Clock(until)}";
         return "Active";
@@ -249,7 +269,7 @@ public partial class InstrumentPriceSourcesPanel
             return;
         }
 
-        _confirm = new PendingEnable(Guid.NewGuid(), item, NameOf(item.SourceKey), item.SourceSymbol.Trim(), SwitchHostId(item));
+        _confirm = new PendingEnable(Guid.NewGuid(), item, NameOf(item.SourceKey), item.SourceSymbol.Trim(), SwitchHostId(item), NoteOf(item.SourceKey));
     }
 
     private async Task OnEnableDecided(bool confirmed)
@@ -344,7 +364,7 @@ public partial class InstrumentPriceSourcesPanel
 
         if (adding.Enabled)
         {
-            _confirm = new PendingEnable(Guid.NewGuid(), null, NameOf(adding.SourceKey!), adding.Symbol!.Trim(), $"{_uid}-add-on {AddButtonId}");
+            _confirm = new PendingEnable(Guid.NewGuid(), null, NameOf(adding.SourceKey!), adding.Symbol!.Trim(), $"{_uid}-add-on {AddButtonId}", NoteOf(adding.SourceKey!));
             return;
         }
 

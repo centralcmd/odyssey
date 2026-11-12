@@ -141,6 +141,48 @@ public class InstrumentPriceSyncAmendmentTests
     }
 
     [Fact]
+    public async Task The_status_reports_the_hourly_count_and_when_a_reached_cap_resets()
+    {
+        await using var harness = new SyncHarness(historyDays: 5);
+        harness.Primary.Limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, MaxRequestsPerRun: 2, MaxRequestsPerDay: 100, MaxRequestsPerHour: 2);
+        for (var i = 0; i < 5; i++)
+        {
+            await harness.BindAsync(await harness.AddInstrumentAsync($"I{i}"), FakePrimarySource.DeclaredKey, 1, symbol: $"I{i}");
+        }
+
+        var before = (await harness.Admin.GetStatusAsync()).Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey);
+        Assert.Equal(2, before.MaxRequestsPerHour);
+        Assert.Equal(0, before.RequestsThisHour);
+        Assert.Null(before.HourlyLimitResetsAtUtc);
+
+        await harness.Sync.RunScheduledIfDueAsync();
+        harness.Clock.Now = Now.AddMinutes(5);
+        await harness.ExecuteManualAsync();
+
+        var capped = (await harness.Admin.GetStatusAsync()).Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey);
+        Assert.Equal(2, capped.RequestsThisHour);
+        Assert.Equal(Now.AddHours(1), capped.HourlyLimitResetsAtUtc);
+
+        harness.Clock.Now = Now.AddHours(1);
+        var next = (await harness.Admin.GetStatusAsync()).Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey);
+        Assert.Equal(0, next.RequestsThisHour);
+        Assert.Null(next.HourlyLimitResetsAtUtc);
+    }
+
+    [Fact]
+    public async Task The_status_carries_tiingos_symbol_example_and_data_processing_note()
+    {
+        await using var harness = new SyncHarness(tiingo: true);
+
+        var tiingo = (await harness.Admin.GetStatusAsync()).Sources.Single(s => s.Key == TiingoPriceSource.SourceKey);
+
+        Assert.Equal("BRK-B", tiingo.SymbolExample);
+        Assert.StartsWith("Tiingo is a US company.", tiingo.DataProcessingNote, StringComparison.Ordinal);
+        Assert.Equal(25, tiingo.MaxRequestsPerHour);
+        Assert.Null((await harness.Admin.GetStatusAsync()).Sources.Single(s => s.Key == FakePrimarySource.DeclaredKey).SymbolExample);
+    }
+
+    [Fact]
     public void The_catalogue_refuses_an_hourly_cap_below_the_per_run_budget()
     {
         var source = new FakePrimarySource { Limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, 10, 100, MaxRequestsPerHour: 5) };
@@ -430,6 +472,8 @@ public class InstrumentPriceSyncAmendmentTests
         harness.Clock.Now = Now.AddHours(6);
         await harness.ExecuteManualAsync();
         Assert.Single(harness.Handler.Requests);
+        // The Admin surface says when it is asked again.
+        Assert.Equal(Today.AddDays(1), (await harness.Admin.GetBindingsAsync(instrument))!.Single().RetryOn);
 
         // Re-saving an untouched list keeps the skip.
         var list = new InstrumentPriceBindingsUpdate
@@ -448,6 +492,7 @@ public class InstrumentPriceSyncAmendmentTests
         list.Bindings[0].Enabled = true;
         await harness.Admin.ReplaceBindingsAsync(instrument, list, "admin");
         harness.Store.ChangeTracker.Clear();
+        Assert.Null((await harness.Admin.GetBindingsAsync(instrument))!.Single().RetryOn);
         await harness.ExecuteManualAsync();
         Assert.Equal(2, harness.Handler.Requests.Count);
 

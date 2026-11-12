@@ -84,6 +84,17 @@ public sealed class TiingoPriceSource : IInstrumentPriceSource, IInstrumentPrice
 
     public IReadOnlyList<string> SecretKeys { get; } = [SecretSettingKeys.TiingoApiToken];
 
+    /// <summary>Tiingo writes share classes with a dash.</summary>
+    public string SymbolExample => "BRK-B";
+
+    /// <summary>
+    /// Shown in the enable disclosure. It states only what holds whatever Tiingo's policy says in detail — where the
+    /// company is, that it acts on its own account, and the licence the free plan carries; docs/deployment.md has the rest.
+    /// </summary>
+    public string DataProcessingNote =>
+        "Tiingo is a US company. It receives these requests as its own controller, under its own privacy policy, "
+        + "and its free plan licenses the prices for personal use.";
+
     /// <summary>The per-process metadata store; exposed for tests.</summary>
     public TiingoMetadataCache Metadata { get; }
 

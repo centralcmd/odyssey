@@ -27,6 +27,7 @@ public sealed class InstrumentPriceSourceAdminService(
     public async Task<InstrumentPriceSourcesStatus> GetStatusAsync(CancellationToken cancellationToken = default)
     {
         var today = OsloDate.Today(timeProvider);
+        var hour = SourceRequestQuota.HourOf(Now);
         var keys = sources.All.Select(s => s.Key).ToList();
         var states = await context.InstrumentPriceSourceStates.AsNoTracking()
             .Where(s => keys.Contains(s.SourceKey))
@@ -36,6 +37,8 @@ public sealed class InstrumentPriceSourceAdminService(
         foreach (var source in sources.All.OrderBy(s => s.DisplayName, StringComparer.Ordinal))
         {
             states.TryGetValue(source.Key, out var state);
+            // A bucket for a later hour (another replica's clock ran ahead) still counts: the bucket only moves forward.
+            var requestsThisHour = state?.RequestHourUtc is { } bucket && bucket >= hour ? state.RequestHourCount : 0;
             var configured = true;
             foreach (var key in source.SecretKeys)
             {
@@ -53,6 +56,13 @@ public sealed class InstrumentPriceSourceAdminService(
                 BackOffReason = state?.BackOffUntilUtc > Now ? state.BackOffReason : null,
                 RequestsToday = state?.RequestDay == today ? state.RequestCount : 0,
                 MaxRequestsPerDay = source.Limits.MaxRequestsPerDay,
+                MaxRequestsPerHour = source.Limits.MaxRequestsPerHour,
+                RequestsThisHour = requestsThisHour,
+                HourlyLimitResetsAtUtc = source.Limits.MaxRequestsPerHour is { } perHour && requestsThisHour >= perHour
+                    ? hour.AddHours(1)
+                    : null,
+                SymbolExample = source.SymbolExample,
+                DataProcessingNote = source.DataProcessingNote,
             });
         }
 
@@ -224,6 +234,7 @@ public sealed class InstrumentPriceSourceAdminService(
         LastFailure = binding.LastFailure,
         LastFailureUtc = binding.LastFailureUtc,
         ConsecutiveFailures = binding.ConsecutiveFailures,
+        RetryOn = InstrumentPriceSyncService.IsSkippedToday(binding, today) ? today.AddDays(1) : null,
         SourceRegistered = sources.Find(binding.SourceKey) is not null,
     };
 }

@@ -550,6 +550,7 @@ public sealed class BackgroundJobsService(
                 InstrumentsAttempted = prices.InstrumentsAttempted,
                 InstrumentsSucceeded = prices.InstrumentsSucceeded,
                 InstrumentsFailed = prices.InstrumentsFailed,
+                InstrumentsDeferred = prices.InstrumentsDeferred,
                 PricesInserted = prices.PricesInserted,
                 FallbacksUsed = prices.FallbacksUsed,
                 RequestsMade = prices.RequestsMade,

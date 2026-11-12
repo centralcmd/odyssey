@@ -2334,7 +2334,7 @@ public partial class Settings : IDisposable
             Consequence:
             "Tiingo prices are not fetched. That is a supported configuration: nothing is sent to Tiingo, and "
             + "manual prices and other sources are unaffected.",
-            Affects: "Tiingo prices are not being fetched — every Tiingo binding records a credential problem."),
+            Affects: "Tiingo prices are not being fetched — every Tiingo source records a credential problem."),
 
         new(SecretSettingKeys.LegalPseudonymizationSecret, "Data", "gavel", "Pseudonymisation secret",
             "HMACs the subject of a consent record when an account is deleted, so acceptance stays "

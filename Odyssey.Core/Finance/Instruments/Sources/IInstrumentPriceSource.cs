@@ -92,6 +92,15 @@ public interface IInstrumentPriceSource
     /// <summary>The secret keys the source needs; may be empty.</summary>
     IReadOnlyList<string> SecretKeys { get; }
 
+    /// <summary>A symbol as this provider writes it, for the source-symbol help line; plain text, a compiled constant.</summary>
+    string? SymbolExample => null;
+
+    /// <summary>
+    /// The provider's own data-processing note (issue #447), a compiled plain-text constant the enable disclosure
+    /// shows beside what is sent. <c>null</c> when the source declares none.
+    /// </summary>
+    string? DataProcessingNote => null;
+
     /// <summary>
     /// Fetches closes for one window through <paramref name="http"/> — the framework-built transport, which pins the
     /// host, attaches the credential, reserves the daily quota and bounds the response. A source never builds its
