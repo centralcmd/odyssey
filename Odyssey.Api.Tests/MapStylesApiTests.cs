@@ -228,8 +228,9 @@ public class MapStylesApiTests
         foreach (var file in files)
         {
             var url = "/maps/" + System.IO.Path.GetFileName(file);
-            var found = System.Text.RegularExpressions.Regex.Matches(File.ReadAllText(file), @"""(?<u>https?://[^""]+)""")
-                .Select(m => new Uri(m.Groups["u"].Value).GetLeftPart(UriPartial.Authority))
+            var found = ResourceUrls(file)
+                .Where(u => u.StartsWith("http://", StringComparison.Ordinal) || u.StartsWith("https://", StringComparison.Ordinal))
+                .Select(u => new Uri(u.Replace("{", "%7B", StringComparison.Ordinal).Replace("}", "%7D", StringComparison.Ordinal)).GetLeftPart(UriPartial.Authority))
                 .Distinct()
                 .Order(StringComparer.Ordinal)
                 .ToList();
@@ -239,6 +240,42 @@ public class MapStylesApiTests
 
             Assert.True(found.SequenceEqual(declared),
                 $"{url} loads from [{string.Join(", ", found)}] but MapOptions.ShippedStyleRemoteOrigins declares [{string.Join(", ", declared)}].");
+        }
+    }
+
+    /// <summary>
+    /// The URLs a style makes the browser fetch: each source's <c>url</c>, <c>tiles</c> and string <c>data</c>, <c>glyphs</c>
+    /// and <c>sprite</c>. Provenance links in <c>metadata</c> are not fetched, so they are not counted
+    /// (issue #384 AC 9).
+    /// </summary>
+    internal static IEnumerable<string> ResourceUrls(string file)
+    {
+        using var style = JsonDocument.Parse(File.ReadAllText(file));
+        var root = style.RootElement;
+        if (root.TryGetProperty("sources", out var sources))
+        {
+            foreach (var source in sources.EnumerateObject())
+            {
+                if (source.Value.TryGetProperty("url", out var url))
+                    yield return url.GetString()!;
+                // A GeoJSON source's data may be a URL the browser fetches, or inline JSON it does not.
+                if (source.Value.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.String)
+                    yield return data.GetString()!;
+                if (source.Value.TryGetProperty("tiles", out var tiles))
+                    foreach (var tile in tiles.EnumerateArray())
+                        yield return tile.GetString()!;
+            }
+        }
+
+        if (root.TryGetProperty("glyphs", out var glyphs))
+            yield return glyphs.GetString()!;
+        if (root.TryGetProperty("sprite", out var sprite))
+        {
+            if (sprite.ValueKind == JsonValueKind.String)
+                yield return sprite.GetString()!;
+            else
+                foreach (var entry in sprite.EnumerateArray())
+                    yield return entry.GetProperty("url").GetString()!;
         }
     }
 

@@ -14,6 +14,7 @@ const offlineAssetsInclude = [ /\.dll$/, /\.pdb$/, /\.wasm/, /\.html/, /\.js$/, 
 const offlineAssetsExclude = [
     /^service-worker\.js$/,
     /^lib\/maplibre-gl\//,
+    /^lib\/pmtiles\//,
     /^js\/location-map(\.[^/]+)?\.js$/,
     /^css\/location-map(\.[^/]+)?\.css$/,
     /^maps\//,

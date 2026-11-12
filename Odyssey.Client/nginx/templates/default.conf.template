@@ -15,6 +15,32 @@ map $http_x_forwarded_proto $forwarded_proto {
     ''      $scheme;
 }
 
+# ── The self-hosted basemap (issue #384) ─────────────────────────────────────────────────────────────────
+# The access check's answers: a 204 per complete Cookie header, for 60 s, in memory (/var/cache/nginx is a
+# tmpfs in the production overlay). The key is the WHOLE header, never one cookie: ASP.NET splits the large
+# identity cookie into a base cookie whose value is the literal "chunks-N" — the same in every session — plus
+# C1, C2, …, so any single-cookie key would let a forged base cookie ride another session's cached answer.
+proxy_cache_path /var/cache/nginx/basemap_auth levels=1 keys_zone=basemap_auth:1m max_size=8m inactive=2m use_temp_path=off;
+
+# 1 when the request carries no identity cookie: such a request is never stored and never served from the
+# cache, so it always reaches the API and gets its 401.
+map $http_cookie $basemap_no_session {
+    "~(?:^|;\s*)\.AspNetCore\.Identity\.Application=" 0;
+    default 1;
+}
+
+# The real client, for the rate limits. Behind Caddy every connection comes from Caddy's address, so keying on
+# it would make one budget for every user. Caddy's reverse_proxy OVERWRITES X-Forwarded-For with the address
+# it saw, so the last element is the client; any other front proxy must do the same (docs/deployment.md).
+# Without a header (the dev stack) the connection address is used.
+map $http_x_forwarded_for $basemap_client {
+    "~(?<last>[^,\s]+)\s*$" $last;
+    default $binary_remote_addr;
+}
+
+limit_req_zone  $basemap_client zone=basemap:10m rate=30r/s;
+limit_conn_zone $basemap_client zone=basemap_conn:10m;
+
 server {
     # 8080, not 80: the container runs as the non-root nginx user (unprivileged image), which
     # can't bind privileged ports. Caddy and the compose port mappings forward to 8080.
@@ -122,6 +148,86 @@ server {
         proxy_buffer_size 16k;
         proxy_buffers 8 16k;
         proxy_busy_buffers_size 32k;
+    }
+
+    # ── The self-hosted basemap (issue #384 §5.2) ──────────────────────────────────────────────────────
+    # The one file on the read-only basemap volume, to a signed-in session holding locations.read. NO add_header
+    # in these locations: one would silently drop every server-level header above, the CSP and nosniff
+    # included. Cache headers come from `expires`; the ETag is nginx's default, strong.
+    location = /basemap/basemap.pmtiles {
+        access_log off;
+        disable_symlinks on;
+
+        # Checked before anything else, so a refused request never costs an access-check call. The one form
+        # the pmtiles library sends; no header, bytes=0-, a suffix range, a non-bytes unit (which nginx would
+        # otherwise ignore and answer with the whole file) and every multi-range value are refused.
+        if ($request_method != GET) {
+            return 405;
+        }
+        if ($http_range !~ "^bytes=[0-9]+-[0-9]+$") {
+            return 416;
+        }
+        max_ranges 1;
+
+        limit_req zone=basemap burst=120 nodelay;
+        limit_conn basemap_conn 16;
+        limit_req_status 429;
+        limit_conn_status 429;
+        # A tile or directory range is far below 512 KB; a wide range drains at 1 MB/s per connection.
+        limit_rate_after 512k;
+        limit_rate 1m;
+
+        auth_request /_basemap_access;
+
+        default_type application/octet-stream;
+        types { }
+        expires epoch;
+    }
+
+    # Anything else under /basemap — and /basemap itself, which would otherwise reach the SPA fallback — is
+    # unreachable, whatever is on the volume.
+    location ^~ /basemap {
+        access_log off;
+        return 404;
+    }
+
+    # The access check (§5.1). Every line closes a failure a review found: Host and X-Forwarded-Proto, or
+    # Production's HTTPS redirect becomes a 500; ignore the probe's no-store and Set-Cookie, or nothing is
+    # ever cached.
+    location = /_basemap_access {
+        internal;
+        access_log off;
+        proxy_pass http://api:8080/api/map-styles/basemap-access;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Range "";
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_connect_timeout 5s;
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_cache basemap_auth;
+        proxy_cache_key $http_cookie;
+        proxy_no_cache $basemap_no_session;
+        proxy_cache_bypass $basemap_no_session;
+        proxy_cache_valid 204 60s;
+        proxy_cache_lock on;
+        proxy_ignore_headers Cache-Control Expires Set-Cookie;
+        proxy_hide_header Set-Cookie;
+        proxy_hide_header X-Content-Type-Options;
+    }
+
+    # The self-hosted styles' glyphs: a shipped range as is, any other range as an empty glyph file, so a
+    # label in an unshipped script draws without those characters instead of failing the map.
+    location ^~ /maps/self-hosted/fonts/ {
+        try_files $uri /maps/self-hosted/fonts/empty.pbf;
+    }
+
+    # The sprite: a missing file is a 404, never the SPA's index.html with a 200.
+    location ^~ /maps/self-hosted/ {
+        try_files $uri =404;
     }
 
     # Everything else is a client-side Blazor route. Fall back to index.html so hard

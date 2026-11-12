@@ -1232,8 +1232,119 @@ MAP_ALLOWED_ORIGINS=
 
 The CSP then admits nothing but the deployment itself, nothing leaves it, and the map shows a plain
 background with the pin. This is configuration, not a feature flag: access is still governed by
-`locations.read`. A self-hosted basemap (a same-origin PMTiles style, say) later replaces the blank
-styles the same way, with `MAP_ALLOWED_ORIGINS` left empty.
+`locations.read`. To keep a real map with the same privacy posture, self-host it instead (below).
+
+### Self-hosting the basemap
+
+Issue #384 lets the deployment serve the whole basemap itself: a regional extract in **one PMTiles file**,
+read by the browser with HTTP range requests, drawn with two styles, glyphs and a sprite that ship in the
+client image. With it selected nothing leaves the deployment — no third party learns a viewer's IP address or
+the tiles around a household — and the map works on a deployment with no outbound internet. The browser still
+needs to reach the deployment: this is not an offline map on the viewer's device.
+
+**How it is served.** The client container's nginx serves exactly `/basemap/basemap.pmtiles` from the
+read-only `basemap` volume, and nothing else on that volume. Every request needs a signed-in session holding
+`locations.read`: nginx asks the API (`GET /api/map-styles/basemap-access`) and caches the answer for 60
+seconds per session, so a map view costs the API at most one check a minute per user. The API checks the file
+at start-up and never serves its bytes.
+
+**1. Build an extract.** It must use the **OpenMapTiles** schema (the shipped styles are OpenMapTiles styles;
+a Protomaps-schema file renders an empty map). The supported route is
+[Planetiler](https://github.com/onthegomap/planetiler) with its default profile, on any machine with Docker:
+
+```bash
+# Pin the image: take the digest of the release you choose from its GitHub packages page.
+PLANETILER_IMAGE="ghcr.io/onthegomap/planetiler@sha256:<digest of the chosen release>"
+docker run --rm -e JAVA_TOOL_OPTIONS="-Xmx4g" -v "$PWD/data":/data "$PLANETILER_IMAGE" \
+  --download --area=norway --output=/data/basemap.pmtiles
+sha256sum data/basemap.pmtiles | cut -d' ' -f1 > data/basemap.pmtiles.sha256
+```
+
+Replace the `<…>` in `PLANETILER_IMAGE` before running it: an unpinned image is a build step you cannot
+reproduce. Keep `basemap.pmtiles.sha256` with your deployment notes; step 3 checks against it. `--download` fetches the
+Geofabrik extract plus water polygons and Natural Earth once, from the operator's machine. For a smaller area
+pass `--bounds=<minlon>,<minlat>,<maxlon>,<maxlat>`, or cut a national file with the `pmtiles` CLI
+(`pmtiles extract basemap-norway.pmtiles basemap.pmtiles --bbox=…`). Tiles must be gzip-compressed or
+uncompressed (Planetiler's default is gzip); the API refuses Brotli or Zstd, which the browser library cannot
+decode. *Sizes are estimates until measured on a real build:* mainland Norway at zoom 0–14 is in the order of
+1–2 GB, a county a few hundred MB. The browser fetches only the ranges in view, so the size costs disk, not
+page weight.
+
+**2. Choose the area deliberately.** Every location outside the extract shows a plain background with its pin.
+The extract's bounds are visible to any signed-in user with `locations.read`, and to no one else.
+
+**3. Install or refresh it.** Both service mounts are read-only, so copy the file in with a one-off helper
+container; the checksum is verified before the atomic swap, and a failed check leaves the old file in place:
+
+```bash
+docker run --rm -v odyssey_basemap:/dst -v "$PWD/data":/src:ro alpine:3.22 sh -euc '
+  cp /src/basemap.pmtiles /dst/.incoming.pmtiles
+  echo "$(cat /src/basemap.pmtiles.sha256)  /dst/.incoming.pmtiles" | sha256sum -c -
+  chmod 0755 /dst
+  chmod 0644 /dst/.incoming.pmtiles
+  mv /dst/.incoming.pmtiles /dst/basemap.pmtiles'
+docker compose restart api client
+```
+
+The volume is `<project>_basemap` (`odyssey_basemap` by default). The file must be a **regular file**,
+world-readable (`0644`) in a world-searchable volume (`0755`): the API (`app`) and nginx (UID 101) both read
+it, and neither follows a symlink.
+Open maps pick up a refreshed file through its ETag.
+
+**4. Select it** (existing variables, nothing new):
+
+```bash
+MAP_STYLE_URL_LIGHT=/maps/self-hosted-light.json
+MAP_STYLE_URL_DARK=/maps/self-hosted-dark.json
+MAP_ALLOWED_ORIGINS=
+MAP_ATTRIBUTION=© OpenMapTiles © OpenStreetMap contributors
+MAP_ATTRIBUTION_URL=https://www.openstreetmap.org/copyright
+```
+
+`Map__BasemapFilePath` is set by the base compose file; do not set it yourself. One theme may stay on a
+remote style while the other is self-hosted, as long as the remote one's origin is listed.
+
+**What stops the stack.** A bad file **refuses to start the API**, and with it the whole application, until it
+is fixed — the same fail-closed rule as every other map setting. The message names `Map:BasemapFilePath` and
+the rule, never the path: missing, a symlink or directory, unreadable, truncated (any of its four sections
+past the end of the file), not PMTiles v3, not vector tiles, an undecodable compression, invalid bounds or
+zoom. The client container refuses to start if nginx cannot read the file or cannot write its cache
+directory (`16-check-basemap-readable.sh`). The checksum step in 3 is what keeps a refresh from reaching
+this. An attribution that does not credit both OpenStreetMap and OpenMapTiles, or still credits OpenFreeMap,
+only logs a warning.
+
+**Licences you take on.** The data is OpenStreetMap, **ODbL 1.0**: the caption must credit "© OpenStreetMap
+contributors", and the file you serve stays under the ODbL. The schema is OpenMapTiles, **CC-BY 4.0**: credit
+"© OpenMapTiles". The styles, sprite and glyphs that ship in the image carry their own notices
+(`THIRD-PARTY-NOTICES.md`).
+
+**Access and limits.**
+
+- Without a session the file answers `401`; nothing about the extract, not even its coverage, is visible
+  before sign-in.
+- **Revocation is not instant.** A password change or an administrator disable stops a session's map reads
+  within about two minutes (the one-minute security-stamp check plus the 60-second cache). A removed
+  `locations.read` claim applies at the session's next sign-in at the latest. Signing out deletes the
+  browser's cookie but does not invalidate a copy of it.
+- Only closed byte ranges (`Range: bytes=a-b`) are served; everything else is `416`, `HEAD` is `405`.
+  Per client: 30 requests a second with a burst of 120, 16 connections, and 1 MB/s per connection after the
+  first 512 KB (`429` when exceeded). A signed-in user can still read the whole file, slowly; it is public
+  OpenStreetMap data they are entitled to view.
+- **Any proxy in front of the client container must overwrite `X-Forwarded-For`**, never append to it.
+  The limits key on its last element, the real client behind Caddy, and Caddy's `reverse_proxy` overwrites
+  the header. The client container must publish no port in production (the overlay does not).
+- The basemap and its access check write no access-log line: a log would record which session read a
+  household's map, and when.
+- The access-check cache keys on the complete `Cookie` header, so it holds session credentials. It lives
+  under `/var/cache/nginx`, a tmpfs in the production overlay: in memory only, gone on restart.
+
+**What leaves the deployment: nothing**, at runtime. The OpenFreeMap row of the data-flow table no longer
+applies; update your privacy notice to say the map is served by the deployment itself. The one outbound step
+is building the extract, on the operator's machine.
+
+The Compose test overlay `docker-compose.selfhosted-basemap.yml` serves a 2 × 2 km fixture
+(`TestShared/Basemap/`) the same way, for the end-to-end tests. It is not a production recipe. The Aspire stack
+has no nginx and cannot serve the self-hosted basemap.
 
 ### The client's site config is rendered at start
 

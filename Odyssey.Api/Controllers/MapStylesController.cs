@@ -49,4 +49,26 @@ public sealed class MapStylesController : ControllerBase
             AttributionUrl = map.AttributionUrl,
         });
     }
+
+    /// <summary>
+    /// The access check nginx's <c>auth_request</c> makes before serving the self-hosted basemap file (issue
+    /// #384 §5.1). Reads nothing and writes nothing: the authorization policy is the whole answer. It exists
+    /// whichever basemap is configured, so the route cannot tell configurations apart.
+    /// </summary>
+    /// <remarks>
+    /// <c>no-store</c> keeps every HTTP cache away from it; nginx's own cache holds the 204 for 60 s and is
+    /// told to ignore this header. Not on the identity rate limiter: every call comes from the client
+    /// container's address, so a per-address limiter would throttle all users together.
+    /// </remarks>
+    [HttpGet("basemap-access", Name = "GetBasemapAccess")]
+    [Authorize(Policy = PermissionClaims.LocationsRead)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [SwaggerOperation(Summary = "204 when the caller may read the self-hosted basemap file; nginx's access check.")]
+    public IActionResult GetBasemapAccess()
+    {
+        Response.Headers.CacheControl = "no-store";
+        return NoContent();
+    }
 }

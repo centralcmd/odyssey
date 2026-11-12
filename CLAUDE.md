@@ -856,6 +856,17 @@ first map. Rules that are easy to get backwards:
   under `wwwroot/maps/` that loads from a remote host must be listed there; `MapStylesApiTests` fails if not.
   `OdysseyDarkBasemapTests` pins the contrast, the tile host and the licence (full text beside the file).
   Nothing under `maps/` is precached.
+- **The self-hosted basemap (issue #384) is one PMTiles file nginx serves behind `auth_request`.** The
+  client container serves exactly `/basemap/basemap.pmtiles` from the read-only `basemap` volume; nginx asks
+  `GET /api/map-styles/basemap-access` (`locations.read`) and caches the 204 for 60 s. Rules that are easy to
+  get backwards: the cache key is the **whole `Cookie` header** — the identity cookie is chunked and its base
+  value is the literal `chunks-N` in every session, so any single-cookie key is an auth bypass; the `Range`
+  check is an **allow-list** (`^bytes=[0-9]+-[0-9]+$`), because nginx answers an unknown unit or an
+  over-`max_ranges` request with the whole file; the rate limits key on the **last `X-Forwarded-For`
+  element** (behind Caddy every connection has one address); and **no `add_header`** in those locations.
+  `pmtiles` is vendored like MapLibre (`lib/pmtiles/`, `PmtilesBundleIntegrityTests`) as its classic build,
+  whose ESM build imports a bare `"fflate"` the CSP cannot map. `MapOptionsValidator` checks the file's
+  header at start (V1–V11) and fails closed. `BasemapNginxTests` exercises the template in the real image.
 - **The service worker must not precache the map's files** (`offlineAssetsExclude`), or the first visit
   downloads MapLibre for a page the user may never open.
 
