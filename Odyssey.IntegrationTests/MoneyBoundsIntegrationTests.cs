@@ -137,8 +137,13 @@ public class MoneyBoundsIntegrationTests(MariaDbFixture fixture)
         }
     }
 
+    /// <summary>
+    /// The silent failure the floor pre-empts used to land here: the column rounded the value to zero and every
+    /// conversion through it was zero. Since issue #472, <c>CK_ExchangeRates_RatePositive</c> refuses the
+    /// rounded row instead, so a write that bypasses the DTO's <c>[Range]</c> fails loudly.
+    /// </summary>
     [SkippableFact]
-    public async Task ARateBelowTheFloor_IsStoredAsZero()
+    public async Task ARateBelowTheFloor_IsRefusedRatherThanStoredAsZero()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await EnsureSchemaAsync();
@@ -147,15 +152,13 @@ public class MoneyBoundsIntegrationTests(MariaDbFixture fixture)
         await using (var context = NewContext())
         {
             context.ExchangeRates.Add(rate);
-            await context.SaveChangesAsync();
+            var error = await Assert.ThrowsAsync<DbUpdateException>(() => context.SaveChangesAsync());
+            Assert.Contains("CK_ExchangeRates_RatePositive", error.ToString());
         }
 
-        // The silent failure the floor pre-empts: accepted, and every conversion through it is zero.
         await using (var context = NewContext())
         {
-            var stored = await context.ExchangeRates.AsNoTracking()
-                .SingleAsync(r => r.ExchangeRateId == rate.ExchangeRateId);
-            Assert.Equal(0m, stored.Rate);
+            Assert.False(await context.ExchangeRates.AnyAsync(r => r.ExchangeRateId == rate.ExchangeRateId));
         }
     }
 }

@@ -21,6 +21,10 @@ namespace Odyssey.Context;
 /// unaffected. Its <c>(From, To, AsOf)</c> prefix also serves the "latest rate" lookup the old
 /// non-unique index existed for. The <c>(AsOf)</c> index serves the list's default sort.
 /// </para>
+/// <para>
+/// Readers invert FETCHED rows, never manual ones (issue #472): a fetched <c>B → A</c> row also serves
+/// <c>A → B</c> as <c>1 / Rate</c>. <c>CK_ExchangeRates_RatePositive</c> keeps that division safe.
+/// </para>
 /// </remarks>
 [Index(nameof(FromCurrencyCode), nameof(ToCurrencyCode), nameof(AsOf), nameof(Provider), IsUnique = true)]
 [Index(nameof(AsOf))]

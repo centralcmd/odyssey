@@ -108,10 +108,10 @@ and a few months of transactions per account.
    stays clean.
 8. **Exchange rates are seeded so accounts convert.** Unlike currencies, exchange
    rates are *not* reference data — without them, multi-currency accounts can't be
-   converted to the display currency and the UI flags every one. The conversion
-   service does **no inversion or triangulation** (a `(to,from)` rate does not satisfy
-   a `(from,to)` request), so the seeder inserts a **direct rate for every directed
-   pair** among the demo currencies — the account currencies (USD/EUR/SEK/GBP) **plus
+   converted to the display currency and the UI flags every one. Demo rates are
+   **manual**, and the conversion service inverts only *fetched* rows (issue #472), so a
+   manual `(to,from)` rate does not satisfy a `(from,to)` request; the seeder therefore
+   inserts a **direct rate for every directed pair** among the demo currencies — the account currencies (USD/EUR/SEK/GBP) **plus
    `NOK`**, which has no account but is the default display/main currency
    (`AccountsController.DefaultMainCurrency`) that the totals/net-worth view converts
    into. (Miss it and *every* account is flagged unconvertible, since none is NOK.)

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -13,6 +14,12 @@ namespace Odyssey.MigrationService;
 /// </summary>
 public static class MigrationRunner
 {
+    /// <summary>The migration that adds <c>CK_ExchangeRates_RatePositive</c> (issue #472).</summary>
+    internal const string RatePositiveMigration = "AddExchangeRatePositiveCheck";
+
+    /// <summary>The most row ids a <see cref="NonPositiveExchangeRateException"/> lists.</summary>
+    internal const int NonPositiveRateIdLimit = 20;
+
     /// <summary>
     /// Checks for migration-history drift, then applies the context's pending migrations.
     /// </summary>
@@ -91,6 +98,9 @@ public static class MigrationRunner
         {
             await GuardAgainstDriftAsync(dbContext, cancellationToken, stage);
 
+            // After the drift guard, so a drifted database is reported as drift first.
+            await GuardAgainstNonPositiveRatesAsync(dbContext, stage, cancellationToken);
+
             await migrate();
         });
     }
@@ -118,6 +128,73 @@ public static class MigrationRunner
 
         var expandAt = pending.ToList().FindIndex(id => IsNamed(id, ILocationConversion.ExpandMigration));
         return new StagePlan(expandAt >= 0 ? pending.Take(expandAt + 1).ToList() : null, true);
+    }
+
+    /// <summary>
+    /// Stops before <see cref="RatePositiveMigration"/> when <c>ExchangeRates</c> holds a row its CHECK forbids
+    /// (issue #472 §11), naming at most <see cref="NonPositiveRateIdLimit"/> ids and the total. Reports and never
+    /// repairs, like <see cref="GuardAgainstDriftAsync"/>.
+    /// </summary>
+    /// <remarks>
+    /// It runs only while that migration is in the stage about to run, and does nothing on a non-relational
+    /// provider or when the table does not exist yet — a fresh database has <c>InitialCreate</c> in the same stage
+    /// and must migrate normally.
+    /// </remarks>
+    internal static async Task GuardAgainstNonPositiveRatesAsync(
+        DbContext dbContext, IReadOnlyCollection<string> stage, CancellationToken cancellationToken)
+    {
+        if (!dbContext.Database.IsRelational() || !stage.Any(id => IsNamed(id, RatePositiveMigration)))
+        {
+            return;
+        }
+
+        await dbContext.Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            var connection = dbContext.Database.GetDbConnection();
+
+            await using (var exists = connection.CreateCommand())
+            {
+                exists.CommandText = """
+                    SELECT COUNT(*) FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ExchangeRates'
+                    """;
+                if (Convert.ToInt64(await exists.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture) == 0)
+                {
+                    return;
+                }
+            }
+
+            long total;
+            await using (var count = connection.CreateCommand())
+            {
+                count.CommandText = "SELECT COUNT(*) FROM ExchangeRates WHERE Rate <= 0";
+                total = Convert.ToInt64(await count.ExecuteScalarAsync(cancellationToken), CultureInfo.InvariantCulture);
+            }
+
+            if (total == 0)
+            {
+                return;
+            }
+
+            var ids = new List<string>();
+            await using (var select = connection.CreateCommand())
+            {
+                select.CommandText =
+                    $"SELECT ExchangeRateId FROM ExchangeRates WHERE Rate <= 0 ORDER BY ExchangeRateId LIMIT {NonPositiveRateIdLimit}";
+                await using DbDataReader reader = await select.ExecuteReaderAsync(cancellationToken);
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    ids.Add(Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)!);
+                }
+            }
+
+            throw new NonPositiveExchangeRateException(ids, total);
+        }
+        finally
+        {
+            await dbContext.Database.CloseConnectionAsync();
+        }
     }
 
     private static bool IsNamed(string migrationId, string name) =>

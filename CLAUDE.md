@@ -611,12 +611,23 @@ point. Rules that are easy to get backwards:
 
 **Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
 through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
-fetched one; there is no separate source column. Four rules are easy to get backwards:
+fetched one; there is no separate source column. Five rules are easy to get backwards:
 
 - **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
-  `UpdatedAt ?? CreatedAt`, then the id — and source plays no part. `CurrencyConversionService` (direct
-  vs. hop: the later UTC date wins, the same date goes to direct) and every status rule in
-  `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
+  `UpdatedAt ?? CreatedAt`, then a stored row before an inverted one, then the id — and source plays no
+  part. `CurrencyConversionService` (direct vs. hop: the later UTC date wins, the same date goes to direct)
+  and every status rule in `ExchangeRateService` read it; a source-lint fails on a second copy in
+  `Odyssey.Core`.
+- **Readers invert FETCHED rows, never manual ones** (issue #472). A fetched `B → A` row competes for
+  `A → B` as `1 / Rate`, unrounded, through a second, fetched-only branch whose `Provider` filter runs
+  *before* its grouped MAX, so a newer manual row of the same stored pair cannot hide it. A manual rate may
+  be a buy or sell quote and is never turned around. On a full tie the stored row wins, which is what keeps
+  a database still holding both directions giving exactly the results it gave before. A row's Current
+  badge, the `status=` filter and the summary count only a winner that is a stored row **of its own pair**:
+  an inverted winner names the other pair's row and must never mark it Current. `GET
+  /api/exchange-rates/resolved` reports the rate a conversion uses and its legs; `/latest` returns an
+  inverted row with `inverted: true` and the stored row's id. `CK_ExchangeRates_RatePositive` keeps the
+  division safe.
 - **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
   date; the bounded lookups keep their exclusive `AsOf < bound`.
 - **The run guard is the `JobRuns.ExclusiveGuard` generated column's unique index**, real MariaDB only; a purge
@@ -1313,8 +1324,9 @@ cleanup to do afterwards.
 single source of truth for demo data — reused by the seeder *and* the tests. They build four
 role-based login users (Admin/Owner/User/Guest; shared password `Odyssey!Demo1`), tags,
 contacts, a 19-account portfolio, per-year budgets, recurring transactions, and exchange
-rates for every currency pair in use (so multi-currency accounts convert — the conversion service
-does no inversion/triangulation, so each directed pair needs a direct rate). Currencies and roles are
+rates for every currency pair in use (so multi-currency accounts convert — demo rates are manual, and
+the conversion service inverts only fetched rows, so each directed pair needs a direct rate; it hops
+through NOK only when both legs exist). Currencies and roles are
 reference data (seeded by the initial migration) and permission claims are reconciled by
 `RoleClaimSeeder`; the demo data references all three and never recreates them.
 

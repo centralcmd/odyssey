@@ -103,9 +103,11 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     }
 
     /// <summary>
-    /// The unfiltered aggregates for <c>GET /api/exchange-rates/summary</c> (issue #349 §5.10). Each pair
-    /// with a row in force has exactly one Current row, so Current is the count of such pairs, and the
-    /// three status buckets sum to the total.
+    /// The unfiltered aggregates for <c>GET /api/exchange-rates/summary</c> (issue #349 §5.10). Current is the
+    /// number of stored pairs whose winner is one of their OWN rows (issue #472 §5.4): a pair beaten by an
+    /// inverted fetched row of the swapped pair has no Current row. It is counted from the per-pair winners —
+    /// the same lookup the row badges use — so the summary and the badges cannot disagree, its cost grows with
+    /// the pairs rather than the rows, and the three status buckets still sum to the total.
     /// </summary>
     public async Task<ExchangeRateSummary> GetSummaryAsync(CancellationToken cancellationToken = default)
     {
@@ -115,11 +117,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         var total = await rates.CountAsync(cancellationToken);
         var fetched = await rates.CountAsync(r => r.Provider != null, cancellationToken);
         var upcoming = await rates.CountAsync(r => r.AsOf > now, cancellationToken);
-        var currentPairs = await rates
-            .Where(r => r.AsOf <= now)
-            .Select(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
-            .Distinct()
-            .CountAsync(cancellationToken);
+        var currentPairs = (await CurrentWinnersAsync(rates, rates, now, cancellationToken)).Count;
         var pairs = await rates
             .Select(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
             .Distinct()
@@ -158,8 +156,13 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
     }
 
     /// <summary>
-    /// Returns the rate in force for the given pair — the newest with <c>AsOf ≤ now</c>, so a
-    /// future-dated row is ignored until its date arrives — or null. Direct pairs only.
+    /// Returns the row in force for <c>A → B</c> — the newest with <c>AsOf ≤ now</c>, so a future-dated row is
+    /// ignored until its date arrives — or null. The candidates are the stored <c>A → B</c> rows and the FETCHED
+    /// <c>B → A</c> rows, inverted (issue #472 §5.2), under the shared ordering, so a stored row wins a full tie.
+    /// An inverted winner comes back with the codes swapped, <c>1 / Rate</c> unrounded, the source row's id and
+    /// dates, and <see cref="ExistingExchangeRate.Inverted"/> set. No NOK hop: this returns a row, and a hop is
+    /// not one; <see cref="ResolveAsync"/> covers that. Null too when either currency does not exist (an
+    /// archived one does) or the two are the same.
     /// </summary>
     public async Task<ExistingExchangeRate?> GetLatest(string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
     {
@@ -167,12 +170,94 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         var to = CurrencyValidationService.Normalize(toCurrencyCode);
         var now = Now;
 
-        var rate = await context.ExchangeRates.AsNoTracking()
+        if (!await CurrenciesExistAsync(from, to, cancellationToken))
+        {
+            return null;
+        }
+
+        var rates = context.ExchangeRates.AsNoTracking();
+        var stored = await rates
             .Where(value => value.FromCurrencyCode == from && value.ToCurrencyCode == to && value.AsOf <= now)
             .NewestFirst()
             .FirstOrDefaultAsync(cancellationToken);
+        var reversed = await rates
+            .Where(value => value.FromCurrencyCode == to && value.ToCurrencyCode == from
+                && value.Provider != null && value.AsOf <= now)
+            .NewestFirst()
+            .FirstOrDefaultAsync(cancellationToken);
 
-        return rate is null ? null : ToDto(rate, now, new HashSet<Guid> { rate.ExchangeRateId });
+        var candidates = new List<LatestCandidate>();
+        if (stored is not null)
+        {
+            candidates.Add(new LatestCandidate(stored, Inverted: false));
+        }
+
+        if (reversed is not null)
+        {
+            candidates.Add(new LatestCandidate(reversed, Inverted: true));
+        }
+
+        return ExchangeRateOrdering.Newest(candidates) switch
+        {
+            null => null,
+            { Inverted: false } winner => ToDto(winner.Rate, now, new HashSet<Guid> { winner.ExchangeRateId }),
+            // A non-positive rate is never divided by: only a hand edit around the CHECK can leave one.
+            { Rate.Rate: <= 0 } => null,
+            var winner => ToInvertedDto(winner.Rate),
+        };
+    }
+
+    /// <summary>
+    /// The rate a conversion of <c>from</c> into <c>to</c> would use right now, with its method and legs
+    /// (issue #472 §5.3). Null when either currency does not exist (an archived one does) or nothing resolves.
+    /// </summary>
+    public async Task<ResolvedExchangeRate?> ResolveAsync(
+        string fromCurrencyCode, string toCurrencyCode, CancellationToken cancellationToken = default)
+    {
+        var from = CurrencyValidationService.Normalize(fromCurrencyCode);
+        var to = CurrencyValidationService.Normalize(toCurrencyCode);
+
+        if (!await CurrenciesExistAsync(from, to, cancellationToken))
+        {
+            return null;
+        }
+
+        var resolution = await new CurrencyConversionService(context, timeProvider)
+            .ResolveAsync(from, to, cancellationToken);
+
+        return resolution is null
+            ? null
+            : new ResolvedExchangeRate
+            {
+                FromCurrencyCode = from,
+                ToCurrencyCode = to,
+                Rate = resolution.Rate,
+                AsOf = resolution.AsOf,
+                Method = resolution.Method,
+                Legs = resolution.Legs.Select(leg => new ResolvedExchangeRateLeg
+                {
+                    ExchangeRateId = leg.ExchangeRateId,
+                    FromCurrencyCode = leg.FromCurrencyCode,
+                    ToCurrencyCode = leg.ToCurrencyCode,
+                    Rate = leg.Rate,
+                    AsOf = leg.AsOf,
+                    Source = leg.Fetched ? ExchangeRateSource.Fetched : ExchangeRateSource.Manual,
+                    Inverted = leg.Inverted,
+                }).ToList(),
+            };
+    }
+
+    /// <summary>
+    /// Whether both codes name a <c>Currencies</c> row, archived ones included — their rates stay readable and
+    /// conversions still use them. Deliberately not <see cref="CurrencyValidationService.EnsureSupportedAndActive"/>,
+    /// which refuses archived currencies with a <c>400</c>.
+    /// </summary>
+    private async Task<bool> CurrenciesExistAsync(string from, string to, CancellationToken cancellationToken)
+    {
+        var codes = new[] { from, to }.Distinct(StringComparer.Ordinal).ToList();
+        var found = await context.Currencies.AsNoTracking()
+            .CountAsync(currency => codes.Contains(currency.CurrencyCode), cancellationToken);
+        return found == codes.Count;
     }
 
     public async Task<ExistingExchangeRate> Create(NewExchangeRate newExchangeRate, CancellationToken cancellationToken = default)
@@ -285,7 +370,7 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         return query.Where(Expression.Lambda<Func<ExchangeRate, bool>>(contains, parameter));
     }
 
-    /// <summary>The ids of the rows in force for the pairs on a page — one per pair, by the shared ordering.</summary>
+    /// <summary>The ids of the rows in force for the pairs on a page — at most one per pair, by the shared ordering.</summary>
     private async Task<HashSet<Guid>> CurrentIdsAsync(
         IReadOnlyCollection<ExchangeRate> rows, DateTime now, CancellationToken cancellationToken)
     {
@@ -296,26 +381,60 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
 
         var froms = rows.Select(r => r.FromCurrencyCode).Distinct().ToList();
         var tos = rows.Select(r => r.ToCurrencyCode).Distinct().ToList();
-        var inForce = context.ExchangeRates.AsNoTracking()
-            .Where(r => froms.Contains(r.FromCurrencyCode) && tos.Contains(r.ToCurrencyCode) && r.AsOf <= now);
+        var rates = context.ExchangeRates.AsNoTracking();
 
+        var winners = await CurrentWinnersAsync(
+            rates.Where(r => froms.Contains(r.FromCurrencyCode) && tos.Contains(r.ToCurrencyCode)),
+            rates.Where(r => tos.Contains(r.FromCurrencyCode) && froms.Contains(r.ToCurrencyCode)),
+            now,
+            cancellationToken);
+
+        return winners.Select(winner => winner.ExchangeRateId).ToHashSet();
+    }
+
+    /// <summary>
+    /// The Current row of every stored pair in <paramref name="storedScope"/> (issue #472 §8.12). Each pair's
+    /// candidates are its own in-force rows and the in-force FETCHED rows of the swapped pair (from
+    /// <paramref name="reversedScope"/>), inverted, each branch resolved by its own grouped <c>MAX(AsOf)</c> with
+    /// its filters applied BEFORE the grouping. A pair whose winner is an inverted row has NO Current row: that
+    /// row's id names a row of the other stored pair, and letting it in would mark that row Current inside its
+    /// own pair. This is the in-memory form of <see cref="ExchangeRateOrdering.StatusRank"/>, which ranks only
+    /// stored rows and counts a reversed competitor only when strictly newer.
+    /// </summary>
+    private static async Task<List<Candidate>> CurrentWinnersAsync(
+        IQueryable<ExchangeRate> storedScope, IQueryable<ExchangeRate> reversedScope, DateTime now,
+        CancellationToken cancellationToken)
+    {
+        // Index columns only, so each grouped MAX stays a loose index scan (see CurrencyConversionService).
+        var stored = await LatestCandidatesAsync(
+            storedScope.Where(r => r.AsOf <= now), cancellationToken);
+        var reversed = await LatestCandidatesAsync(
+            reversedScope.Where(r => r.Provider != null && r.AsOf <= now), cancellationToken);
+
+        return stored
+            .Concat(reversed.Select(c => c with { From = c.To, To = c.From, Inverted = true }))
+            .GroupBy(c => (c.From, c.To))
+            .Select(g => ExchangeRateOrdering.Newest(g)!)
+            .Where(winner => !winner.Inverted)
+            .ToList();
+    }
+
+    /// <summary>The rows at each pair's latest instant: one grouped <c>MAX(AsOf)</c> joined back.</summary>
+    private static Task<List<Candidate>> LatestCandidatesAsync(
+        IQueryable<ExchangeRate> inForce, CancellationToken cancellationToken)
+    {
         var instants = inForce
             .GroupBy(r => new { r.FromCurrencyCode, r.ToCurrencyCode })
             .Select(g => new { g.Key.FromCurrencyCode, g.Key.ToCurrencyCode, AsOf = g.Max(r => r.AsOf) });
 
-        var candidates = await (
+        return (
                 from rate in inForce
                 join instant in instants
                     on new { rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf }
                     equals new { instant.FromCurrencyCode, instant.ToCurrencyCode, instant.AsOf }
                 select new Candidate(rate.FromCurrencyCode, rate.ToCurrencyCode, rate.AsOf,
-                    rate.UpdatedAt ?? rate.CreatedAt, rate.ExchangeRateId))
+                    rate.UpdatedAt ?? rate.CreatedAt, rate.ExchangeRateId, false))
             .ToListAsync(cancellationToken);
-
-        return candidates
-            .GroupBy(c => (c.From, c.To))
-            .Select(g => ExchangeRateOrdering.Newest(g)!.ExchangeRateId)
-            .ToHashSet();
     }
 
     private async Task<ExistingExchangeRate> ToDtoAsync(ExchangeRate rate, CancellationToken cancellationToken)
@@ -334,6 +453,35 @@ public class ExchangeRateService(OdysseyContext context, TimeProvider? injectedT
         return dto;
     }
 
-    private sealed record Candidate(string From, string To, DateTime AsOf, DateTime Tiebreak, Guid ExchangeRateId)
+    /// <summary>
+    /// A fetched <c>B → A</c> row served for <c>A → B</c> (issue #472 §5.2): codes swapped, <c>1 / Rate</c>
+    /// unrounded, everything else the stored row's. It is the pair's winner, so it reads Current.
+    /// </summary>
+    private static ExistingExchangeRate ToInvertedDto(ExchangeRate rate) => new()
+    {
+        ExchangeRateId = rate.ExchangeRateId,
+        FromCurrencyCode = rate.ToCurrencyCode,
+        ToCurrencyCode = rate.FromCurrencyCode,
+        Rate = 1m / rate.Rate,
+        AsOf = rate.AsOf,
+        CreatedAt = rate.CreatedAt,
+        UpdatedAt = rate.UpdatedAt,
+        Provider = rate.Provider,
+        Source = ExchangeRateSource.Fetched,
+        Status = ExchangeRateStatus.Current,
+        Inverted = true,
+    };
+
+    private sealed record Candidate(
+        string From, string To, DateTime AsOf, DateTime Tiebreak, Guid ExchangeRateId, bool Inverted)
         : IRateCandidate;
+
+    private sealed record LatestCandidate(ExchangeRate Rate, bool Inverted) : IRateCandidate
+    {
+        public DateTime AsOf => Rate.AsOf;
+
+        public DateTime Tiebreak => ExchangeRateOrdering.Tiebreak(Rate);
+
+        public Guid ExchangeRateId => Rate.ExchangeRateId;
+    }
 }

@@ -13,8 +13,13 @@ internal sealed class ExchangeRateConfiguration : IEntityTypeConfiguration<Excha
             .HasPrecision(18, 8);
 
         // NULL is a manual row. Widened by the migration that adds a provider (issue #349 §4).
-        entity.ToTable(tb => tb.HasCheckConstraint(
-            "CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)"));
+        // Readers invert fetched rows as 1 / Rate (issue #472), so a zero rate would be a divide-by-zero on
+        // every conversion path. Every write path already refuses one; this closes a hand edit or a restore.
+        entity.ToTable(tb =>
+        {
+            tb.HasCheckConstraint("CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+            tb.HasCheckConstraint("CK_ExchangeRates_RatePositive", "`Rate` > 0");
+        });
 
         // FK to the currency table for both ends of the pair. No cascade delete: rate rows are
         // never removed as a side effect of another change (only in-place Rate/AsOf corrections

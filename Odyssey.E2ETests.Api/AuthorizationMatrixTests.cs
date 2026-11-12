@@ -62,6 +62,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/instrument-prices", PermissionClaims.InstrumentPricesRead),
         // Price-source administration — system-settings.read, Admin only.
         ("/api/system-settings/instrument-price-sources", PermissionClaims.SystemSettingsRead),
+        // The rate a conversion would use (issue #472) — exchange-rates.read, held by every role. A
+        // currency to itself is a flat 200 whatever rates the stack holds.
+        ("/api/exchange-rates/resolved?from=NOK&to=NOK", PermissionClaims.ExchangeRatesRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -72,6 +75,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
     private static readonly (string Endpoint, string RequiredClaim)[] ReadBoundaryEndpoints =
     [
         ($"/api/accounts/{Guid.NewGuid()}/files/analysis/resumable", PermissionClaims.FileAnalysisRead),
+        // Issue #472: 200 or 404 depending on the seeded rates, so the boundary only.
+        ("/api/exchange-rates/latest?from=NOK&to=USD", PermissionClaims.ExchangeRatesRead),
+        ("/api/exchange-rates/resolved?from=USD&to=EUR", PermissionClaims.ExchangeRatesRead),
     ];
 
     // Write-gated endpoints and the write claim each requires. Probed with DELETE against a random,
