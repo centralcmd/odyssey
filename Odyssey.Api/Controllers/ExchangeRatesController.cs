@@ -43,22 +43,39 @@ public sealed class ExchangeRatesController : ControllerBase
     [HttpGet("latest", Name = "GetLatestExchangeRate")]
     [Authorize(Policy = PermissionClaims.ExchangeRatesRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingExchangeRate))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Get the latest rate for a currency pair.")]
+    [SwaggerOperation(Summary = "Get the latest rate for a currency pair.", Description = @"Returns the newest row in force for from -> to: a stored from -> to row, or a fetched to -> from row returned as its inverse. An inverted response has inverted = true, the codes swapped and rate = 1 / the stored rate, unrounded, so it can carry more than 8 decimals (a JavaScript Number keeps about 15-17 significant digits). Its exchangeRateId, asOf, createdAt and updatedAt are the STORED row's, so GET /api/exchange-rates/{id} with that id returns the to -> from row; a caller that follows ids must check inverted. No NOK hop: use /api/exchange-rates/resolved for the rate a conversion would use. 400 for a code that is not exactly three letters; 404 when nothing is in force, a currency does not exist, or from equals to.")]
     public async Task<IActionResult> GetLatest(
-        [FromQuery(Name = "from")] [SwaggerParameter("From", Required = true,
-            Description = @"The source currency code.")] string from,
-        [FromQuery(Name = "to")] [SwaggerParameter("To", Required = true,
-            Description = @"The target currency code.")] string to, CancellationToken cancellationToken = default)
+        [FromQuery] CurrencyPairQuery query, CancellationToken cancellationToken = default)
     {
-        var rate = await exchangeRateService.GetLatest(from, to, cancellationToken);
+        var rate = await exchangeRateService.GetLatest(query.From!, query.To!, cancellationToken);
         if (rate is null)
         {
-            return this.NotFoundProblem($"No exchange rate found for {from?.ToUpperInvariant()} -> {to?.ToUpperInvariant()}.");
+            return this.NotFoundProblem($"No exchange rate found for {query.From!.ToUpperInvariant()} -> {query.To!.ToUpperInvariant()}.");
         }
 
         return Ok(rate);
+    }
+
+    [HttpGet("resolved", Name = "GetResolvedExchangeRate")]
+    [Authorize(Policy = PermissionClaims.ExchangeRatesRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ResolvedExchangeRate))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Get the rate a conversion would use right now, and how it was built.", Description = @"The same resolution the account totals use: a direct row, a fetched reverse row inverted, or a hop through NOK (method 0 SameCurrency, 1 Direct, 2 Inverted, 3 ViaNok). Each leg is shown in the logical direction with the rate actually multiplied in; its exchangeRateId names the stored row, whose own pair is the reverse when inverted is true. Rates are unrounded and can carry more than 8 decimals (a JavaScript Number keeps about 15-17 significant digits). asOf is the older leg's date for a hop. 400 for a code that is not exactly three letters; 404 when a currency does not exist or nothing resolves.")]
+    public async Task<IActionResult> GetResolved(
+        [FromQuery] CurrencyPairQuery query, CancellationToken cancellationToken = default)
+    {
+        var resolved = await exchangeRateService.ResolveAsync(query.From!, query.To!, cancellationToken);
+        if (resolved is null)
+        {
+            return this.NotFoundProblem($"No exchange rate resolves {query.From!.ToUpperInvariant()} -> {query.To!.ToUpperInvariant()}.");
+        }
+
+        return Ok(resolved);
     }
 
     [HttpGet("summary", Name = "GetExchangeRateSummary")]

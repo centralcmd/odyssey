@@ -84,7 +84,7 @@ public class DemoDataSetTests
         // what the totals/net-worth view uses out of the box.
         var displayCurrencies = accountCurrencies.Append("NOK").Distinct().ToList();
 
-        // The conversion service does no inversion/triangulation, so every directed
+        // Demo rates are manual and only fetched rows are inverted (issue #472), so every directed
         // (account currency → display currency) pair must have a direct rate, or those accounts warn.
         foreach (var from in accountCurrencies)
         {

@@ -2078,6 +2078,8 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("ExchangeRates", t =>
                         {
                             t.HasCheckConstraint("CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_ExchangeRates_RatePositive", "`Rate` > 0");
                         });
                 });
 
