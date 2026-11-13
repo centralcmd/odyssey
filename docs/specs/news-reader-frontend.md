@@ -145,8 +145,7 @@ feed in `NeedsAttention` (`Failing`, `Gone`, `Quarantined` and `QuotaReached`, t
 | `Gone`, `Quarantined` | Error |
 | `Failing`, `QuotaReached` | Warning |
 
-- Each row's text names the feed and its health text (see §15, conflict 5, for the separator), and its
-  action is **Review →** to `/news-feeds?state=All&reveal=<id>`. The Feeds page uses `OdsInfiniteList`'s
+- Each row's text is "‹feed›. ‹health text›", the component's existing format, and its action is **Review →** to `/news-feeds?state=All&reveal=<id>`. The Feeds page uses `OdsInfiniteList`'s
   existing `RevealKey` to scroll to and expand that feed, as Accounts does for jump-to.
 - **Quota rows** (text or image quota full, Warning) appear only for a caller with `file-storage.read`,
   which is what `GET /api/news-status` requires. Their **Settings →** action is rendered only with
@@ -291,8 +290,9 @@ only in the `⋯` menu. In-card sections set `OdsRecordSection` `HeadingLevel = 
 #### 3.2.9 Mark all read
 
 - A confirm `OdsModal`. It shows a number **only** when an exact count is known: Status is Unread, no
-  search is active, the list total is not capped, and the selection is one feed or one tag alone; the
-  number then comes from `unread-counts`. See §15, conflict 3, for the unfiltered case. With a number,
+  search is active, the list total is not capped, and the selection is either no feed and no tag filter (the overall
+  unread total) or exactly one feed alone or exactly one tag alone. The number then comes from
+  `unread-counts`. Any other combination shows no number. With a number,
   it reads "Mark 42 unread articles matching these filters as read?"; otherwise "Mark all unread
   articles matching these filters as read?".
 - The scope sentence names the selection in words:
@@ -316,8 +316,9 @@ only in the `⋯` menu. In-card sections set `OdsRecordSection` `HeadingLevel = 
   - **If a later call fails:** the counts are refreshed and the snackbar says "Some articles were marked
     as read; try again to finish." It stays until the user dismisses it, as all error snackbars do.
 - **When it finishes**, the list takes a fresh first page and the snackbar reports the **total** of
-  every `markedCount`: "1,234 articles marked as read." The total is reported by the snackbar alone
-  (see §15, conflict 2).
+  every `markedCount`: "1,234 articles marked as read." The total is announced exactly once, by the page's
+  `OdsLiveAnnouncer` with the same text as the snackbar (§6.7). The snackbar itself is not a live
+  region. The partial-total and stopped snackbars follow the same rule.
 - After the dialog closes, whether the run finished, was stopped or failed, focus moves as §6.6 says
   for Mark all read.
 
@@ -337,9 +338,10 @@ An `OdsModal` titled *Tags for "‹title›"*:
 - the inherited tags as read-only chips, captioned "From the feed. Change them on the Feeds page.";
 - **Save**, which sends `PUT …/tags`.
 
-**Removing a single own tag** (`DELETE …/tags/{tagId}`) was specified as a remove button on each
-own-tag chip, named "Remove tag *Name*", ≥ 24 px. The chips render inside the card's expand button,
-where nothing interactive may render. This is unresolved: see §15, conflict 1.
+**Removing a single own tag** is done only in this dialog, reached from **Tags…** in the `⋯` menu:
+clearing the tag and pressing **Save** removes it with one `PUT …/tags`. There is no per-chip remove
+button, because the chips render inside the card's expand button, where nothing interactive may
+render. The client does not call `DELETE …/tags/{tagId}` from the card.
 
 ### 3.3 `/news-feeds` — feed management
 
@@ -495,9 +497,12 @@ built from existing pieces:
 - A visible `h2` *Tags*, to which the list's caption is visually tied.
 - The list reads the unpaged `GET /api/news-tags` and shows each tag with an icon avatar, the name and
   a description line, its *Feeds* and *Articles* counts, its *Status* ("Archived" as text), and the row
-  menu. A "Load N at a time" select (presets 25 · 50 · 100, default 50) sits in the bar. Whether the
-  list is an `OdsRecordTable` (caption "News tags") or the in-memory `OdsInfiniteList` is unresolved:
-  see §15, conflict 4.
+  menu.
+- The list is an **`OdsRecordTable`** with the caption "News tags", windowed by the in-memory "Load N
+  at a time" pattern: `OdsInfiniteList` in its table-body rendering mode (§4.2), as the design system's
+  `NewsTags` does with `InfiniteList`'s `renderAll`/table form (v227). A "Load N at a time" select
+  (presets 25 · 50 · 100, default 50) sits in the bar. At 320 px the table switches to its stacked
+  layout.
 - The create and edit dialog (`OdsFormDialog`) with **`OdsTagIconPicker`** and **`OdsTagColorPicker`**,
   reused unchanged, plus the name and description fields.
 - **Archive** and **Unarchive** call the dedicated endpoints.
@@ -621,7 +626,7 @@ Each change is opt-in or invisible to existing pages unless stated.
 
 | Component | Change |
 |---|---|
-| `OdsInfiniteList` | Gains a **remote mode** (§4.4). Off by default; every existing page stays in the in-memory mode and is unchanged |
+| `OdsInfiniteList` | Gains a **remote mode** (§4.4), and a **table-body rendering mode** so an `OdsRecordTable` can be windowed by the in-memory "Load N at a time" pattern (News Tags, §3.4; the design system's `InfiniteList` `renderAll`/table form). Both are off by default; every existing page stays in the in-memory card mode and is unchanged |
 | `OdsMultiSelect` | Gains an optional `int? MaxSelected`. When the cap is reached, the unselected options become `aria-disabled` and a `role="status"` line in the popover states the cap (the page supplies the text). **Select all** is hidden while `MaxSelected` is lower than the option count. Pages that do not set it are unchanged |
 | `PageHeader` | `PageHeaderProblem` gains an optional `ActionAriaLabel`, which overrides the action's accessible name when set. The action's trailing " →" is wrapped `aria-hidden` on **every** page. The problems toggle's name stays the existing "‹label›, ‹count›" |
 | `OdsSortSelect` | Its field menu opens at exactly the field's width on every page. Long option labels **wrap**, never clip (1.4.10, 1.4.4). (The 180 px minimum on the split and segmented variants existed in the design-system kit only and is removed there.) Checked on the narrow Background jobs and weather filter bars |
@@ -632,7 +637,7 @@ Each change is opt-in or invisible to existing pages unless stated.
 |---|---|
 | `OdsSearchField`, `OdsSelect`, `OdsSwitch`, `OdsPageSizeSelect`, `OdsListStatus` | |
 | `OdsRecordCard` + `OdsRecordBody` + `OdsInfoTileGrid` + `OdsRecordSection` | The fixed body order is used as is. Cards use `HeadingLevel = 3`; sections `HeadingLevel = 4` |
-| `OdsRecordTable` | News Tags, subject to §15, conflict 4 |
+| `OdsRecordTable` | News Tags, caption "News tags", windowed through `OdsInfiniteList`'s table-body mode |
 | `OdsTagIconPicker`, `OdsTagColorPicker`, `OdsTagChips`, `OdsTagMultiSelect`, `OdsChip` | |
 | `OdsModal`, `OdsFormDialog`, `OdsCheckbox`, `OdsErrorSummary` | |
 | `OdsAlert`, `OdsProblemAlert`, `OdsEmptyState`, `OdsSkeleton`, `OdsSkeletonRow`, `OdsProgressBar`, `OdsLiveAnnouncer` | |
@@ -702,7 +707,7 @@ follow the existing naming: `INewsArticlesApiClient`, `INewsFeedsApiClient`, `IN
 | `GET /api/news-articles/{id}` | First expand | Body, images, `bodyUnavailable` and `bodyOmittedReason`. Cached for the card's lifetime |
 | `PUT …/{id}/read-state` | Expand (when unread), Mark read or unread, Undo | Optimistic with rollback, serialised per article |
 | `POST /api/news-articles/mark-read` | Mark all read | The list's filters plus the echoed `asOfUtc`; repeated while `hasMore` (§3.2.9) |
-| `PUT …/{id}/tags`, `DELETE …/{id}/tags/{tagId}` | The tag dialog; single-tag removal (§15, conflict 1) | |
+| `PUT …/{id}/tags` | The tag dialog, including removing a single tag | One call per Save. `DELETE …/{id}/tags/{tagId}` is not called from the card |
 | `GET …/{id}/revisions` | Show earlier versions | Lazy; metadata only |
 | `GET …/{id}/revisions/{n}` | Selecting a version | One body at a time; superseded responses discarded |
 | `GET …/{id}/images/{imageId}/content` | Carousel `<img src>` | Built with the same API-base helper `PhotoImageSources` uses, from the two ids only. The URL is used **only** as an `<img src>`, never as a link, a new-tab target, an `<object>`, `<embed>` or `<iframe>` |
@@ -734,7 +739,7 @@ follow the existing naming: `INewsArticlesApiClient`, `INewsFeedsApiClient`, `IN
 | Default check interval | `NewsDefaultFetchIntervalMinutes` | `OdsNumberField` in `OdsSettingField`, unit *min* |
 | Maximum feeds | `NewsMaxFeeds` | `OdsNumberField` |
 | Images per article | `NewsImageMaxPerArticle` | `OdsNumberField` |
-| Largest image | `NewsImageMaxSizeKb` | `OdsNumberField`, unit *KB*. Its maximum is `min(range max, NewsImageMaxSizeKbCeiling)` from `SystemSettingsDto`, and the help line interpolates the effective number |
+| Image size limit | `NewsImageMaxSizeKb` | `OdsNumberField`, unit *KB*. Its maximum is `min(range max, NewsImageMaxSizeKbCeiling)` from `SystemSettingsDto`, and the help line interpolates the effective number |
 | Image storage quota | `NewsImageStoreMaxGiB` | `OdsNumberField`, unit *GiB* |
 | Text storage quota | `NewsTextStoreMaxGiB` | `OdsNumberField`, unit *GiB* |
 | Articles per feed per day | `NewsFeedMaxArticlesPerDay` | `OdsNumberField` |
@@ -790,7 +795,7 @@ All other interactive parts are existing accessible `Ods*` components. Specific 
 
 - `OdsRecordCard` keeps its disclosure (`aria-expanded`) and uses `HeadingLevel = 3`. Its `Actions`
   sit outside the trigger.
-- The News Tags table, if a table, has the caption "News tags".
+- The News Tags `OdsRecordTable` has the caption "News tags".
 - The Version select is labelled "Version".
 - The acknowledgement checkboxes are real labelled `OdsCheckbox`es.
 
@@ -876,8 +881,8 @@ Focus is never left on `<body>` after an action.
 One polite `OdsLiveAnnouncer` per page. **Announcements never rely on the snackbar.**
 
 - Every status change the snackbar shows is announced **once** by the page's announcer: "Marked as
-  read", "Feed deleted…", "Couldn't update. Changed back." and the like. The Mark all read result total
-  is the stated exception (§3.2.9; §15, conflict 2).
+  read", "Feed deleted…", "Couldn't update. Changed back.", "1,234 articles marked as read." and the
+  like, with the same text as the snackbar.
 - A bare `MudSnackbarProvider` cannot be assumed to announce, and the repo's own `ContactAliasSection`
   notes it. A component test asserts that the snackbar container is **not** a live region. If MudBlazor
   makes it one, the announcer call is skipped, so the message is never spoken twice.
@@ -923,10 +928,10 @@ failed-update, busy, network and Mark all read partial-failure snackbars.
   - The filter bar stacks.
   - Dialogs go full-screen below `sm`.
   - The Version select replaces any tab strip.
-  - The News Tags list switches to its stacked layout.
+  - The News Tags record table switches to its stacked layout.
   - The carousel frame scales.
   - `OdsSortSelect` option labels wrap.
-- Target sizes are ≥ 24×24 CSS px for every control, including chip remove buttons and icon buttons,
+- Target sizes are ≥ 24×24 CSS px for every control, including icon buttons,
   with an aim of 40.
 
 ## 7. Loading, Empty and Error States
@@ -1096,7 +1101,7 @@ through `odyssey-design-system-changes`.
 - **Pagination** is server-side and cursor-based, through the remote `OdsInfiniteList`. Previous rows
   stay visible on a fresh first page.
 - **Skeletons** on first load only.
-- **Optimistic writes** for read state and single-tag removal:
+- **Optimistic writes** for read state:
   - On failure the change rolls back, the counts revert and the snackbar reads "Couldn't update. Changed
     back." Focus does not move.
   - Writes are serialised per article, and the last one wins.
@@ -1134,7 +1139,7 @@ through `odyssey-design-system-changes`.
 6. **Layout and reflow.**
    - At ≥ 960 px the carousel sits beside the text (8/4). Below that it sits underneath.
    - At 320 px, and at 400 % zoom on a 1280 px viewport, no news page or dialog scrolls horizontally.
-     The filter bar stacks, dialogs go full-screen, the News Tags list stacks and long URLs wrap.
+     The filter bar stacks, dialogs go full-screen, the News Tags record table stacks and long URLs wrap.
 7. **Publisher text.** The hostile-payload test (§8.2) renders every payload as visible text, with no
    element created. The source lint finds no `MarkupString`, `AddMarkupContent` or `innerHTML` in the
    listed paths.
@@ -1165,8 +1170,9 @@ through `odyssey-design-system-changes`.
 12. **Tags.**
     - The dialog saves own tags with one `PUT`.
     - Inherited tags show as read-only with "(from feed)", the outlined variant and the glyph.
-    - Single-tag removal sends one `DELETE` from a control named "Remove tag *Name*", ≥ 24 px, placed
-      per the resolution of §15, conflict 1.
+    - Removing a single own tag happens only in the dialog, opened from **Tags…** in the `⋯` menu, and
+      takes one `PUT` on Save. No `DELETE …/tags/{tagId}` is sent from the card.
+    - Nothing interactive renders inside the card's expand button; the chips carry no remove button.
 13. **Feeds.**
     - Create validates on the client and lets a server error win.
     - It focuses the new pending card, polls at most 2 min, and offers **Stop checking** and **Check
@@ -1204,7 +1210,7 @@ through `odyssey-design-system-changes`.
     dark and light. Read cards use the normal text tokens.
 23. **Settings.**
     - The News group shows nine rows (eight for a caller without `system-settings.security.update`),
-      with bounds served by the API. The *Largest image* maximum is
+      with bounds served by the API. The *Image size limit* maximum is
       `min(range max, NewsImageMaxSizeKbCeiling)` and its help line shows that number.
     - The allow-list Save lists the added and removed hosts before writing.
 24. **Admin panel.** The panel renders in the `Ready`, `Degraded` and `Unconfigured` storage states. The
@@ -1220,8 +1226,9 @@ through `odyssey-design-system-changes`.
     live region, and error snackbars stay until they are dismissed.
 30. **Undo withdrawn.** After **Hide read** or any fresh first page, an open Undo snackbar loses its
     action and shows the Mark-unread sentence.
-31. **Mark all read count.** The confirm shows a number only under Status = Unread, with no search, an
-    uncapped total and one feed or one tag alone (§15, conflict 3).
+31. **Mark all read count.** Under Status = Unread, with no search and an uncapped total, the confirm
+    shows a number with no feed or tag filter (the overall unread total), with exactly one feed alone, and
+    with exactly one tag alone. Every other combination shows no number.
 32. **Unavailable menu items.**
     - No row menu on the news pages contains a disabled item.
     - Every non-archived feed, including a quarantined one, shows the visible "archive it first"
@@ -1235,8 +1242,9 @@ through `odyssey-design-system-changes`.
     `429` re-sends once after `Retry-After`.
 36. **Feed edit conflict.** On a `409`, focus moves to the alert. Reload stores the new version, keeps
     the user-only fields, lists the server-updated fields and moves focus as §3.3 says.
-37. **Mark all read cancelled.** Cancelling stops after the in-flight call and reports the partial total
-    in the snackbar only.
+37. **Mark all read cancelled.** Cancelling stops after the in-flight call. The partial total is shown
+    in the snackbar and announced once, never twice: by the page's `OdsLiveAnnouncer`, with the
+    snackbar container not a live region.
 38. **Quota bars.** Both quota bars have an accessible name, a clamped value and "Full" in
     `aria-valuetext` at the quota.
 39. **Text quota source.** The text bar and the warning line read only `GET /api/news-status`. A
@@ -1363,39 +1371,23 @@ through `odyssey-design-system-changes`.
 - That `GET /api/news-status` keeps its `file-storage.read` gate.
 - Whether the image endpoint also sends `Content-Security-Policy: sandbox`.
 
-## 15. Conflicts Found While Merging
+## 15. Decisions Taken at Merge
 
-These were not settled by the order of the source amendments and need a decision before implementation.
+Each was a conflict the source amendments did not settle. All are resolved.
 
-1. **Single-tag remove buttons.** The original card spec gives each own-tag chip on the expanded card a
-   remove button ("Remove tag *Name*", ≥ 24 px, one `DELETE`), and AC 12 tests it. The later expanded-
-   card cleanup says tags are shown only as the header's `Chips`, the expanded body never repeats them,
-   and nothing interactive renders inside the card's expand button (AC 51). In `OdsRecordCard` the
-   `Chips` slot renders inside the trigger button, so the chips cannot carry a remove button. The
-   cleanup did not withdraw single-tag removal explicitly. Options: remove a tag only through the
-   **Tags…** dialog (and drop `DELETE …/tags/{tagId}` from the client), or give it another surface.
-2. **Who announces the Mark all read total.** The general rule is that the snackbar is not a live region
-   and every status change it shows is announced once by the page's `OdsLiveAnnouncer` (AC 29). The
-   later Mark all read amendment says the final total, and the partial total on cancel, are reported by
-   "the snackbar alone" and withdraws the announcer call (AC 37), citing an earlier rule that the
-   announcement amendment had itself replaced. Taken together, the total would not be announced at all
-   unless MudBlazor's snackbar is a live region. Which channel announces it needs a decision.
-3. **Mark all read number with no feed or tag filter.** The earlier rule showed a number under Unread
-   with no search, taken from `unread-counts` "the total, by feed or by tag", which includes the
-   unfiltered total. The later filter-bar amendment says the number is shown "only for one feed or one
-   tag alone". It is not stated whether the unfiltered case (no feed, no tag) still shows the total.
-   This document and AC 31 follow the later wording; confirm the unfiltered case.
-4. **News Tags list component.** The original spec builds `/news-tags` on `OdsRecordTable` (columns,
-   caption "News tags", focus on the new row's name button, stacked table at 320 px), and the design kit
-   is "`NewsTags.jsx` on `RecordTable`". The scrolling-list amendments say the Tags page uses
-   `OdsInfiniteList` in the in-memory mode with a "Load N at a time" select. `OdsInfiniteList` renders
-   card items, not table rows. Which component the Tags list uses, and whether the size select applies
-   to a table, needs a decision.
-5. **Attention row text format.** The header-overview amendment says each problem row's text is
-   "‹feed›: ‹health text›" and, in the same amendment, that rows keep the component's existing
-   "‹feed›. ‹health text›" format.
-6. **Image size row label (minor).** The settings table names the `NewsImageMaxSizeKb` row *Largest
-   image*; the later ceiling rule calls it *Image size limit*. This document keeps *Largest image*.
+1. **Single-tag removal: resolved.** Only through the `⋯` menu's **Tags…** dialog, with no per-chip
+   remove button and no `DELETE …/tags/{tagId}` from the card, because the chips render inside the
+   expand button, where nothing interactive may render.
+2. **Mark all read total: resolved.** Announced exactly once by the page's `OdsLiveAnnouncer`, with the
+   snackbar's text, because the general rule (AC 29) keeps the snackbar out of the live regions.
+3. **Mark all read number: resolved.** Shown with no feed or tag filter and with exactly one feed or one
+   tag alone, because only those have an exact count; no number for any other combination.
+4. **News Tags list: resolved.** An `OdsRecordTable` windowed by the in-memory "Load N at a time"
+   pattern, through a new `OdsInfiniteList` table-body mode, because design system v227's `NewsTags`
+   uses `InfiniteList`'s `renderAll`/table form.
+5. **Attention row text: resolved.** "‹feed›. ‹health text›", because it is the component's existing
+   format; the colon variant is removed.
+6. **Settings row label: resolved.** "Image size limit", because the later wording wins.
 
 ## 16. Acceptance Criteria Mapping
 
@@ -1411,10 +1403,10 @@ Old ids are the issue's numbering. Ids 33–40 were never assigned.
 | 6 | 6 | 28 | 28 | 57 | 49 |
 | 7 | 7 | 29 | 29 | 58 | 50 |
 | 8 | 8 | 30 | 30 | 59 | 51 |
-| 9 | 9 | 31 | 31 | 60 | 52 |
+| 9 | 9 | 31 (number rule settled) | 31 | 60 | 52 |
 | 10 | 10 | 32 (replaced: absent items) | 32 | 61 | 53 |
 | 11 | 11 | 41 (pager versions withdrawn; scrolling-list version) | 33 | 62 | 54 |
-| 12 (see conflict 1) | 12 | 42 | 34 | 63 | 55 |
+| 12 (rewritten: dialog-only removal) | 12 | 42 | 34 | 63 | 55 |
 | 13 | 13 | 43 | 35 | 64 | 56 |
 | 14 (replaced: absent items) | 14 | 44 | 36 | 65 | 57 |
 | 15 | 15 | 45 (focus sentence withdrawn) | 37 | 66 | 58 |
