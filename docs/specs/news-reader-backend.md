@@ -170,67 +170,95 @@ Shared Core helpers named in this spec, each the single definition of its rule: 
   - **Inode use.** About 2–7 files per article is the price of the one-folder-per-article layout.
     `docs/deployment.md` advises sizing a volume's inodes for it.
 
-### 3.3 Concurrency: two tokens and column ownership
+### 3.3 Concurrency: two rows, two tokens, and column ownership
 
-`NewsFeeds` has **two** concurrency tokens, following the weather precedent
-(`WeatherPoint.SettingsVersion` and `WeatherPointSchedule.Version`).
+A feed is **two rows**: `NewsFeeds`, which holds the API-owned settings and carries `SettingsVersion`,
+and its 1:1 `NewsFeedFetchStates` row, which holds everything the worker writes and carries
+`FetchFence`. This follows the weather precedent, where the two tokens also sit on two tables
+(`WeatherPoint.SettingsVersion` and `WeatherPointSchedule.Version`). It matters because EF Core puts
+**every** concurrency token of an entity into an `UPDATE`'s `WHERE` clause: two tokens on one row would
+make each side's save check the other side's token, so an API `PUT` during a fetch would fail with a
+spurious `409`, and a fetch completion after an API edit would read as "lease lost".
 
-**`SettingsVersion`** (`Guid`, concurrency token):
-- Rotated by API writes to user-owned columns: `Url`, `CustomTitle`, `FetchIntervalMinutes`,
-  `DownloadImages`, `IsActive`, archive and delete requests, tags, release from quarantine, and applying
-  a `SuggestedUrl` on `PUT`.
+**`SettingsVersion`** (`Guid`, concurrency token on `NewsFeeds`):
+- Rotated by API writes to `NewsFeeds`: `Url`, `CustomTitle`, `FetchIntervalMinutes`, `DownloadImages`,
+  `IsActive`, archive and delete requests, tags, and accepting a `SuggestedUrl` on `PUT`.
 - `ExistingNewsFeed` carries it as `version`, and `UpdateNewsFeed` requires it (`[Required] Guid?`). A
   mismatch is `409 news-feed-changed`.
-- **The one exception where the worker rotates it:** the worker's hourly maintenance applying a
-  `SuggestedUrl`. An edit dialog open at that moment then saves into `409 news-feed-changed`, as #473
-  expects. The worker writes this token nowhere else.
+- **The worker never writes `NewsFeeds`**, so it never rotates this token and never writes `Url` or
+  `UrlKeyHash`.
 
-**`FetchFence`** (`Guid`, concurrency token):
-- Rotated **only** by the worker's claim, lease renewal, item-batch saves and completion.
-- The API never writes this token.
+**`FetchFence`** (`Guid`, concurrency token on `NewsFeedFetchStates`):
+- Rotated **only** by the worker's claim, lease renewal, item-batch saves and completion (the purge's
+  claim included).
+- The API never writes this token, and no API write checks it.
 
 **Who writes which column.** Each side updates only the columns it owns, as tracked entities, so EF
-writes only modified properties.
+writes only modified properties. The worker never marks a cross-boundary flag modified on its tracked
+fetch-state entity; it clears those flags only through the conditional writes below.
 
-| Column(s) | Writer | Token rotated |
-|---|---|---|
-| `Url`, `UrlKeyHash`, `CustomTitle`, `FetchIntervalMinutes`, `DownloadImages`, `IsActive` | API (`POST`, `PUT`) | `SettingsVersion` |
-| `ArchivedAtUtc`, `DeletionRequestedAtUtc` | API (archive, unarchive, delete) | `SettingsVersion` |
-| feed tags (`NewsFeedTags`) | API (`PUT …/tags`) | `SettingsVersion` |
-| `RefreshRequestedAtUtc` | API sets (refresh); worker clears on completion | API: `SettingsVersion`; worker: `FetchFence` |
-| `ValidatorsResetRequested` | API sets (URL change); worker clears on completion | API: `SettingsVersion`; worker: `FetchFence` |
-| `QuarantinedAtUtc`, `CrashSuspectCount` | worker sets (quarantine, crash accounting); API clears (`release-quarantine`) | worker: `FetchFence`; API: `SettingsVersion` |
-| validators (`ETag`, `LastModified`, `LastBodySha256`) | worker | `FetchFence` |
-| `LastFetchAttemptAtUtc`, `LastSuccessAtUtc`, `LastErrorAtUtc`, `LastHttpStatus`, `LastErrorKind`, `LastErrorMessage`, `ConsecutiveFailures`, `RedirectedFromHttps` | worker | `FetchFence` |
-| `NextFetchAtUtc` | worker only | `FetchFence` |
-| `LeaseOwner`, `LeaseExpiresAtUtc` | worker (the purge included) | `FetchFence` |
-| `Title`, `SiteUrl`, `Description`, `Language`, `Format`, `FeedTtlMinutes` (parsed from the feed) | worker | `FetchFence` |
-| `DailyQuotaDate`, `ArticlesToday`, `ImageBytesToday` | worker | `FetchFence` |
-| `QuotaReachedAtUtc`, `QuotaReason` | worker (completion; maintenance under the §6.3 conditional write) | `FetchFence` on completion |
-| `SuggestedUrl` | worker records it; worker maintenance or API `PUT` applies or clears it | recording: `FetchFence`; applying: `SettingsVersion` |
-| `SettingsVersion` | API; the worker only when maintenance applies a `SuggestedUrl` | — |
-| `FetchFence` | worker only | — |
+| Column(s) | Table | Writer | Token / mechanism |
+|---|---|---|---|
+| `Url`, `UrlKeyHash`, `CustomTitle`, `FetchIntervalMinutes`, `DownloadImages`, `IsActive` | `NewsFeeds` | API (`POST`, `PUT`) | `SettingsVersion` |
+| `ArchivedAtUtc`, `DeletionRequestedAtUtc` | `NewsFeeds` | API (archive, unarchive, delete) | `SettingsVersion` |
+| feed tags (`NewsFeedTags`) | — | API (`PUT …/tags`) | `SettingsVersion` |
+| `SettingsVersion` | `NewsFeeds` | API only | — |
+| `RefreshRequestedAtUtc` | `NewsFeedFetchStates` | API sets (refresh, manual run); worker clears | both conditional single-column writes, no `FetchFence` check (below) |
+| `ValidatorsResetRequestedAtUtc` | `NewsFeedFetchStates` | API sets (URL change); worker clears | both conditional single-column writes, no `FetchFence` check (below) |
+| `QuarantinedAtUtc`, `CrashSuspectCount` | `NewsFeedFetchStates` | worker sets (quarantine, crash accounting); API clears (`release-quarantine`) | worker: `FetchFence`; API: a conditional `UPDATE` (below) |
+| validators (`ETag`, `LastModified`, `LastBodySha256`) | `NewsFeedFetchStates` | worker | `FetchFence` |
+| `LastFetchAttemptAtUtc`, `LastSuccessAtUtc`, `LastErrorAtUtc`, `LastHttpStatus`, `LastErrorKind`, `LastErrorMessage`, `ConsecutiveFailures`, `RedirectedFromHttps` | `NewsFeedFetchStates` | worker | `FetchFence` |
+| `NextFetchAtUtc` | `NewsFeedFetchStates` | worker only | `FetchFence` |
+| `LeaseOwner`, `LeaseExpiresAtUtc` | `NewsFeedFetchStates` | worker (the purge included) | `FetchFence` |
+| `Title`, `SiteUrl`, `Description`, `Language`, `Format`, `FeedTtlMinutes` (parsed from the feed) | `NewsFeedFetchStates` | worker | `FetchFence` |
+| `DailyQuotaDate`, `ArticlesToday`, `ImageBytesToday` | `NewsFeedFetchStates` | worker | `FetchFence` |
+| `QuotaReachedAtUtc`, `QuotaReason` | `NewsFeedFetchStates` | worker (completion; maintenance under the §6.3 conditional write) | `FetchFence` on completion |
+| `SuggestedUrl` | `NewsFeedFetchStates` | worker records it; API `PUT` clears it when it accepts or overrides it | worker: `FetchFence`; API: a conditional `UPDATE` (below) |
+| `FetchFence` | `NewsFeedFetchStates` | worker only | — |
 
-- **Two requests cross the boundary, and each is a worker-read flag:**
+**API writes to the fetch-state row.** The API sets a flag, or clears quarantine or a suggestion, with
+a **conditional single-column `UPDATE`** that does not check `FetchFence`, through one seam,
+`INewsFetchStateFlags` (relational: a raw conditional `UPDATE`; EF InMemory: a tracked write behind the
+same predicate, the `INewsCounterWriter` pattern). So none of them can fail a running fetch, and a
+running fetch cannot fail them.
+- Refresh: `SET RefreshRequestedAtUtc = @now WHERE NewsFeedId = @id`.
+- URL change: `SET ValidatorsResetRequestedAtUtc = @now WHERE NewsFeedId = @id`.
+- Release from quarantine: `SET QuarantinedAtUtc = NULL, CrashSuspectCount = 0 WHERE NewsFeedId = @id
+  AND QuarantinedAtUtc IS NOT NULL`. A quarantined feed holds no lease, so no fetch races it.
+- Accepting or overriding a suggestion: `SET SuggestedUrl = NULL WHERE NewsFeedId = @id AND
+  SuggestedUrl = @seen`, in the same transaction as the `NewsFeeds` save.
+
+**Worker clears are conditional too**, so a flag re-set during a fetch survives:
+- `RefreshRequestedAtUtc` is cleared `WHERE RefreshRequestedAtUtc <= @claimTime`.
+- `ValidatorsResetRequestedAtUtc` is cleared, together with the validators, `WHERE
+  ValidatorsResetRequestedAtUtc <= @claimTime`.
+
+These run in the completion's transaction, beside its fenced save.
+
+- **Two requests cross the boundary:**
   - **Refresh** sets `RefreshRequestedAtUtc`. The next claim treats the feed as due once
-    `max(RefreshRequestedAtUtc, LastFetchAttemptAtUtc + 60 s) ≤ now`. Completion clears the flag
-    **only if it was requested before the fetch started** (`RefreshRequestedAtUtc ≤` the claim time). A
-    refresh requested during the fetch survives, so the feed is due again after the 60 s floor.
-  - **A URL change** sets only `ValidatorsResetRequested = true`. Completion clears the validators and
-    the flag. A URL change does not reschedule the feed: `NextFetchAtUtc` stays worker-owned, and the
-    per-host throttle (§3.6) spaces the requests.
+    `max(RefreshRequestedAtUtc, LastFetchAttemptAtUtc + 60 s) ≤ now`. Completion clears it only if it
+    was requested before the fetch started. A refresh requested during the fetch survives, so the feed
+    is due again after the 60 s floor.
+  - **A URL change** sets only `ValidatorsResetRequestedAtUtc`. The next completion whose claim
+    followed it clears the validators and the flag. A URL change does not reschedule the feed:
+    `NextFetchAtUtc` stays worker-owned, and the per-host throttle (§3.6) spaces the requests.
 
-  So a refresh or URL edit made during a fetch is never overwritten.
+  So a refresh or URL edit made during a fetch is never overwritten, and an API `PUT` during a fetch
+  neither fails nor fails the fetch.
 
 **A same-host `301`/`308` never rewrites the URL directly.**
-- The worker records `SuggestedUrl` and logs it.
-- `SuggestedUrl` is applied **only** by the worker's hourly maintenance step and by an API feed `PUT`.
-  Either save checks `UrlKeyHash` uniqueness and rotates `SettingsVersion`. On a duplicate,
-  `SuggestedUrl` is dropped and logged.
+- The worker records `SuggestedUrl` on the fetch-state row and logs it. The worker never applies it:
+  the process handling untrusted network responses never writes `Url`.
+- `SuggestedUrl` is applied **only** by an API feed `PUT` whose `url` equals the suggestion, which is how
+  the user accepts it ("Use new address", #473). That `PUT` runs the same URL validation
+  (`NewsFeedUrlRules`, `NewsUrlKey`) and the same `UrlKeyHash` uniqueness check as any other URL change,
+  rotates `SettingsVersion`, and clears the suggestion. A duplicate is `409 news-feed-duplicate`; a
+  suggestion found to be a duplicate when the worker records it is dropped and logged.
+- A `PUT` that changes `url` to anything else clears the suggestion; the user's value wins. A `PUT` that
+  leaves `url` unchanged leaves the suggestion pending. The response's `url` is the stored value.
+- Until it is accepted, the feed keeps following its same-host redirect, which costs one hop per fetch.
 - **Feed `GET` and list endpoints never write.**
-- On a `PUT`: if the request leaves `url` unchanged and a suggestion is pending, the `PUT` applies the
-  suggestion. If the request changes `url`, the user's value wins and the suggestion is cleared. Either
-  way, the response's `url` is the stored value.
 
 **Fence mechanics.**
 - The fetch holds the feed's current `FetchFence` in memory.
@@ -239,8 +267,9 @@ writes only modified properties.
 - Every fenced save **marks `FetchFence` modified and rotates it**. EF puts a concurrency token in the
   `WHERE` clause only for a modified entity, so this is what makes the check real. The fetch then keeps
   the new value.
-- **Every item-batch save checks the fence.** The batch includes the feed row, re-read with its fence as
-  a concurrency check. If the lease was lost, or `DeletionRequestedAtUtc` is set, the fetch aborts
+- **Every item-batch save checks the fence.** The batch includes the fetch-state row, re-read with its
+  fence as a concurrency check, and reads `NewsFeeds.DeletionRequestedAtUtc` in the same transaction. If
+  the lease was lost, or `DeletionRequestedAtUtc` is set, the fetch aborts
   cleanly and nothing more is written. A lease overrun therefore cannot double-ingest, and the
   `IdentityKeyHash` unique index stays an ordinary-path guarantee.
 - Completion succeeds only if `LeaseOwner = me` and the fence matches.
@@ -268,7 +297,8 @@ writes only modified properties.
      consistent** and an index aid only; the authoritative filter is always the join to the feed row.
 2. **Claim due feeds (multi-replica).** Take due feeds (active, not archived, not pending deletion, not
    quarantined, `NextFetchAtUtc <= now` or a refresh due under §3.3, no live lease), oldest first.
-   - Each claim is a **tracked per-feed update**, the `WeatherScheduleJob` pattern. It never uses
+   - Each claim is a **tracked per-feed update of the `NewsFeedFetchStates` row**, the
+     `WeatherScheduleJob` pattern; the `NewsFeeds` conditions are read through the join. It never uses
      `ExecuteUpdate`, so it runs on the in-memory tiers.
    - A process claims only as many feeds as it has **free slots** (4 minus the fetches it already has in
      flight).
@@ -309,9 +339,9 @@ writes only modified properties.
    - **Success.** Update the metadata and validators, set `ConsecutiveFailures = 0` and
      `NextFetchAtUtc = now + effective interval`.
    - **Handled failure.** The back-off in §9.3.
-   - **Either way.** Clear the lease and reset `CrashSuspectCount`. Clear `RefreshRequestedAtUtc` under
-     the §3.3 rule. Honour `ValidatorsResetRequested`. Recompute `QuotaReachedAtUtc` and `QuotaReason`
-     (§6.3).
+   - **Either way.** Clear the lease and reset `CrashSuspectCount`. Clear `RefreshRequestedAtUtc` and
+     `ValidatorsResetRequestedAtUtc` with the conditional writes in §3.3. Recompute `QuotaReachedAtUtc`
+     and `QuotaReason` (§6.3).
    - **Transient skips** (the daily cap, the text quota, the disk threshold or a `507`/reserve refusal, a
      lock timeout) also clear `ETag`, `LastModified` and `LastBodySha256`, so the next poll re-parses.
      Deterministic item failures are retried on at most the next 3 full parses.
@@ -334,7 +364,6 @@ writes only modified properties.
    quota and daily caps apply (§6).
 9. **Maintenance (hourly, per replica, idempotent).**
    - Recompute `NewsFeedCounters` and `NewsStorageTotals`, and log any drift.
-   - Apply pending `SuggestedUrl` values (§3.3).
    - Recompute `QuotaReachedAtUtc`/`QuotaReason` for feeds not fetched since, under the conditional-write
      rule in §6.3.
    - **Image repair.** Candidates come from two sources only:
@@ -408,8 +437,8 @@ All of these are in **`OdysseyContext`**, namespace `Odyssey.Context`, with **GU
 (Odyssey's convention) and `DateTime` UTC columns.
 
 - Every table has its own primary key, link tables included. There are no base tables. The exceptions
-  are `NewsFeedCounters` (keyed on its feed), `NewsHostThrottle` (keyed on the host hash) and the
-  single-row `NewsStorageTotals` (`Id = 1`).
+  are `NewsFeedFetchStates` and `NewsFeedCounters` (each keyed on its feed), `NewsHostThrottle` (keyed
+  on the host hash) and the single-row `NewsStorageTotals` (`Id = 1`).
 - Bounded strings carry `[StringLength]`, and every one has a clamp rule in §8.7, so a length overflow
   is never the first line of defence.
 - **No user ids** anywhere; acting-user attribution goes to logs only.
@@ -417,33 +446,44 @@ All of these are in **`OdysseyContext`**, namespace `Odyssey.Context`, with **GU
   characters. So the long natural keys get a **SHA-256 key column** (`BINARY(32)`), and that column
   carries the unique index.
 
-### 4.1 `NewsFeeds`
+### 4.1 `NewsFeeds` — API-owned settings
 
 | Column | Type / constraint | Note |
 |---|---|---|
 | `NewsFeedId` | `Guid` PK | |
-| `Url` | `string(2048)` | original text; API-owned |
-| `UrlKeyHash` | `binary(32)`, **unique** | SHA-256 of `UrlKey` (§8.2); API-owned |
-| `Title`, `CustomTitle` | `string(256)?` | |
+| `Url` | `string(2048)` | original text |
+| `UrlKeyHash` | `binary(32)`, **unique** | SHA-256 of `UrlKey` (§8.2) |
+| `CustomTitle` | `string(256)?` | |
+| `FetchIntervalMinutes` | `int`, `[Range]` from `NewsLimits` | |
+| `DownloadImages`, `IsActive` | `bool` | |
+| `CreatedAtUtc` | `DateTime` | serves `createdAtUtc` and `SortBy=CreatedAt` |
+| `ArchivedAtUtc`, `DeletionRequestedAtUtc` | `DateTime?` | |
+| `SettingsVersion` | `Guid`, **concurrency token** | rotated by API writes only (§3.3) |
+
+Only the API writes this table (§3.3).
+
+### 4.2 `NewsFeedFetchStates` — worker-owned fetch state (1:1)
+
+| Column | Type / constraint | Note |
+|---|---|---|
+| `NewsFeedId` | `Guid` PK and FK → `NewsFeeds`, **CASCADE** | |
+| `FetchFence` | `Guid`, **concurrency token** | rotated only by the worker (§3.3) |
+| `Title` | `string(256)?` | parsed from the feed |
 | `SiteUrl` | `string(2048)?` | http(s) only |
 | `Description` | `string(1024)?` | |
 | `Language` | `string(35)?` | validated BCP 47, else `null` |
 | `Format` | `byte` enum | `0` Unknown, `1` Rss, `2` Atom, `3` RssRdf, `4` JsonFeed, `5` Unsupported |
-| `FetchIntervalMinutes` | `int`, `[Range]` from `NewsLimits` | |
 | `FeedTtlMinutes` | `int?` | RSS `ttl`, or `sy:updatePeriod` ÷ `sy:updateFrequency` |
-| `DownloadImages`, `IsActive` | `bool` | |
-| `CreatedAtUtc` | `DateTime` | serves `createdAtUtc` and `SortBy=CreatedAt` |
-| `ArchivedAtUtc`, `DeletionRequestedAtUtc`, `QuarantinedAtUtc`, `QuotaReachedAtUtc` | `DateTime?` | |
-| `QuotaReason` | `tinyint?`, enum `NewsFeedQuotaReason` | `1` DailyCap, `2` TextQuota; set and cleared with `QuotaReachedAtUtc` (§6.3) |
 | `NextFetchAtUtc` | `DateTime` | worker-owned |
-| `RefreshRequestedAtUtc` | `DateTime?` | API sets, worker clears (§3.3) |
-| `ValidatorsResetRequested` | `bool` | API sets, worker clears (§3.3) |
-| `SuggestedUrl` | `string(2048)?` | same type and length as `Url`; recorded by the worker, applied by worker maintenance or `PUT` (§3.3) |
+| `RefreshRequestedAtUtc` | `DateTime?` | API sets, worker clears, both conditionally (§3.3) |
+| `ValidatorsResetRequestedAtUtc` | `DateTime?` | API sets, worker clears, both conditionally (§3.3) |
+| `SuggestedUrl` | `string(2048)?` | same type and length as `Url`; recorded by the worker, accepted or cleared by an API `PUT` (§3.3) |
 | `LeaseOwner` | `Guid?` | per process (§3.4 step 2) |
 | `LeaseExpiresAtUtc` | `DateTime?` | |
 | `CrashSuspectCount` | `byte` | |
-| `SettingsVersion` | `Guid`, **concurrency token** | rotated by API writes, and by worker maintenance applying a `SuggestedUrl` (§3.3) |
-| `FetchFence` | `Guid`, **concurrency token** | rotated only by the worker (§3.3) |
+| `QuarantinedAtUtc` | `DateTime?` | set by the worker; cleared by `release-quarantine` (§3.3) |
+| `QuotaReachedAtUtc` | `DateTime?` | |
+| `QuotaReason` | `tinyint?`, enum `NewsFeedQuotaReason` | `1` DailyCap, `2` TextQuota; set and cleared with `QuotaReachedAtUtc` (§6.3) |
 | `LastFetchAttemptAtUtc`, `LastSuccessAtUtc`, `LastErrorAtUtc` | `DateTime?` | |
 | `LastHttpStatus` | `int?` | |
 | `LastErrorKind` | `byte` enum | see below |
@@ -457,6 +497,9 @@ All of these are in **`OdysseyContext`**, namespace `Odyssey.Context`, with **GU
 | `ArticlesToday` | `int` | |
 | `ImageBytesToday` | `long` | |
 
+The row is inserted **in the same save that creates the feed** (`POST /api/news-feeds`), with a new
+`FetchFence` and `NextFetchAtUtc` = the create time, so the feed is due on the next tick (AC 1).
+
 **`LastErrorKind`**: `0` None · `1` Network · `2` Timeout · `3` HttpStatus · `4` TooLarge · `5`
 ParseError · `6` BlockedAddress · `7` TooManyRedirects · `8` Gone · `9` Tls · `10` Unsupported · `11`
 NotAFeed · `12` Quarantined. Reaching a daily cap is not an error: it is shown through
@@ -464,19 +507,26 @@ NotAFeed · `12` Quarantined. Reaching a daily cap is not an error: it is shown 
 
 **`NewsFeedHealth`** is derived at read time and **never stored**: `Pending`, `Healthy`, `Failing`,
 `Gone`, `Paused`, `Archived`, `Quarantined`, `QuotaReached`.
+- A feed has **one** health value, decided by this precedence, highest first: **`Archived` >
+  `Quarantined` > `Paused` > `Gone` > `QuotaReached` > `Failing` > `Pending` > `Healthy`**.
+- The rule lives in one Core helper, `NewsFeedHealthRules.Derive`, used by every projection and by the
+  `health` list filter, which matches the **derived** value (not the raw conditions).
+- `quotaReason` is projected only when the derived health is `QuotaReached`, and is `null` otherwise,
+  even while `QuotaReachedAtUtc` is still set.
 
 **`NewsFeedQuotaReason`** is its own enum (`DailyCap = 1`, `TextQuota = 2`), separate from the image
 `DeferredReason`, whose ordinal 2 means something else.
 
-- `CK_NewsFeeds_QuotaReason`: `(QuotaReachedAtUtc IS NULL) = (QuotaReason IS NULL) AND (QuotaReason IS
-  NULL OR QuotaReason IN (1, 2))`.
+- `CK_NewsFeedFetchStates_QuotaReason`: `(QuotaReachedAtUtc IS NULL) = (QuotaReason IS NULL) AND
+  (QuotaReason IS NULL OR QuotaReason IN (1, 2))`.
 
-### 4.2 `NewsFeedCounters`
+### 4.3 `NewsFeedCounters`
 
 `NewsFeedId` PK and FK → `NewsFeeds`, **CASCADE** · `ArticleCount` int · `UnreadCount` int. No
-concurrency token. Written by relative increments (§3.5); recounted hourly.
+concurrency token. The row is inserted, with zero counts, **in the same save that creates the feed**.
+Written by relative increments (§3.5); recounted hourly.
 
-### 4.3 `NewsStorageTotals`
+### 4.4 `NewsStorageTotals`
 
 A single row. `Id` `tinyint` PK, always `1` · `ImageBytes` long · `TextAndSourceBytes` long. No
 concurrency token.
@@ -485,17 +535,17 @@ concurrency token.
 - Written by relative increments as the last statement of each transaction (§3.5). The image quota and
   the text quota read it.
 
-### 4.4 `NewsFeedBuckets`
+### 4.5 `NewsFeedBuckets`
 
 `NewsFeedBucketId` PK · `NewsFeedId` (FK, **CASCADE**, unique) · `CurrentBucket` int ·
 `ArticlesInBucket` int · `UpdatedAtUtc`.
 
-### 4.5 `NewsHostThrottle`
+### 4.6 `NewsHostThrottle`
 
 `HostKeyHash` `binary(32)` PK · `NextAllowedAtUtc` `DateTime`. The row is its own concurrency token
 (§3.6).
 
-### 4.6 `NewsArticles`
+### 4.7 `NewsArticles`
 
 | Column | Type / constraint | Note |
 |---|---|---|
@@ -524,11 +574,11 @@ concurrency token.
 - `CK_NewsArticles_ReadState`: `(IsRead = 0 AND ReadAtUtc IS NULL) OR (IsRead = 1 AND ReadAtUtc IS NOT
   NULL)`.
 - `CK_NewsArticles_BodyOmittedReason`: `BodyOmittedReason IS NULL OR BodyOmittedReason IN (1, 2)`.
-- A unique index on `(NewsArticleId, NewsFeedId)` backs the identity composite key (§4.7).
+- A unique index on `(NewsArticleId, NewsFeedId)` backs the identity composite key (§4.8).
 - A **`FULLTEXT`** index on `(Title, Author, Excerpt)` (InnoDB), declared in the model with Pomelo's
   `HasIndex(...).IsFullText()` (§11.1).
 
-### 4.7 `NewsArticleIdentities`
+### 4.8 `NewsArticleIdentities`
 
 `NewsArticleIdentityId` PK · `NewsArticleId` · `NewsFeedId` FK → `NewsFeeds`, **RESTRICT** · `Kind` byte
 (`1` Guid, `2` Link, `3` ContentHash) · `IdentityKey` `string(2100)` · `IdentityKeyHash` `binary(32)` ·
@@ -539,7 +589,7 @@ concurrency token.
 - **Unique** on `(NewsFeedId, IdentityKeyHash)`.
 - At most 32 per article (`MaxIdentitiesPerArticle`).
 
-### 4.8 `NewsArticleRevisions`
+### 4.9 `NewsArticleRevisions`
 
 `NewsArticleRevisionId` PK · `NewsArticleId` FK **CASCADE** · `RevisionNumber` int (1 = the original),
 unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `IdentityHash` · `BodyLength` ·
@@ -553,7 +603,7 @@ unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `Identity
 - The cap is 20 per article, and the original is always kept. A second change within 1 h overwrites
   without a new revision.
 
-### 4.9 `NewsArticleFiles` — the feature's one referencing table
+### 4.10 `NewsArticleFiles` — the feature's one referencing table
 
 | Column | Type / constraint |
 |---|---|
@@ -577,7 +627,7 @@ unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `Identity
   purge also stages releases explicitly (§3.4 step 1).
 - A **source lint** allows only the ingestor's namespace to open `Kind = Source` files.
 
-### 4.10 `NewsArticleImages` — image references and state
+### 4.11 `NewsArticleImages` — image references and state
 
 | Column | Type / constraint |
 |---|---|
@@ -603,7 +653,7 @@ unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `Identity
   `SET NULL`. The `NewsArticleFileId`/`State` consistency is enforced by the image service and covered
   by a test.
 
-### 4.11 Tags
+### 4.12 Tags
 
 - **`NewsTags`**: `NewsTagId` PK · `Name(64)` · `NameKey(64)` unique · `Description(256)?` · `Icon(64)?`
   · `Color(7)?` · `ArchivedAtUtc` · `CreatedAtUtc` · `UpdatedAtUtc`. Same shape and guards as
@@ -616,12 +666,12 @@ unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `Identity
     maintenance.
   - It serves `IX_NewsArticleTags_Tag_Sort (NewsTagId, SortAtUtc DESC, NewsArticleId)` (§5.3).
 
-### 4.12 `NewsFeedCrashEvents`
+### 4.13 `NewsFeedCrashEvents`
 
 `NewsFeedCrashEventId` PK · `LeaseOwner` · `DetectedAtUtc` · `FeedsInFlight` int. There is deliberately
 no feed id. Rows are pruned after 7 days.
 
-### 4.13 `CHECK` constraints
+### 4.14 `CHECK` constraints
 
 | Constraint | Rule |
 |---|---|
@@ -1100,7 +1150,7 @@ to raise it.
         that one passes, else it is empty.
 
       `ContentHash` for an omitted body is computed over the raw fragment bytes (§8.8). A revision
-      records its own `BodyOmittedReason` and then has no revision text file (§4.8). Every refusal is
+      records its own `BodyOmittedReason` and then has no revision text file (§4.9). Every refusal is
       logged with the article id only.
     - XML and JSON nested 100,000 deep still fail at their existing depth-capped readers.
 11. **Packages.**
