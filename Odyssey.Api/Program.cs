@@ -366,8 +366,9 @@ builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();
 // Instrument prices (issue #446): the watchlist, manual prices and the price-source catalogue.
-// AddInstrumentPriceSync adds the source status, binding list and run-now; the worker runs the sync itself.
-Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(builder.Services);
+// The production sources (Tiingo, issue #447) are registered in both hosts: the API reads their metadata for the
+// status, bindings and run-now and never calls one; the worker runs the sync itself.
+Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddProductionInstrumentPriceSources(builder.Services);
 builder.Services.AddScoped<AccountTotalsService>();
 builder.Services.AddScoped<NetWorthHistoryService>();
 builder.Services.AddScoped<FileService>();

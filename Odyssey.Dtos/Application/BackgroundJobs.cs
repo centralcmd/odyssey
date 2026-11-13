@@ -717,6 +717,9 @@ public sealed record InstrumentPriceSyncJobRunDetail : JobRunDetail
 
     public int? InstrumentsFailed { get; set; }
 
+    /// <summary>Instruments a request limit left for the next hour (issue #447 A8) — not a failure.</summary>
+    public int? InstrumentsDeferred { get; set; }
+
     public int? PricesInserted { get; set; }
 
     public int? FallbacksUsed { get; set; }

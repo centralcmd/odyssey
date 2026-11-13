@@ -5,26 +5,45 @@ using Odyssey.Dtos.Finance;
 
 namespace Odyssey.Core.Finance.Instruments.Sources;
 
-/// <summary>Reserves one wire request against a source's daily cap (issue #446 §4.4).</summary>
+/// <summary>The outcome of one reservation: reserved, or which cap stopped it.</summary>
+public enum QuotaReservation
+{
+    Reserved,
+
+    /// <summary>The per-Oslo-day cap (<see cref="InstrumentPriceSourceLimits.MaxRequestsPerDay"/>) is reached.</summary>
+    DayCapReached,
+
+    /// <summary>The per-UTC-hour cap (<see cref="InstrumentPriceSourceLimits.MaxRequestsPerHour"/>) is reached.</summary>
+    HourCapReached,
+
+    /// <summary>Every attempt lost a race on the state row's token; nothing was reserved, so nothing may be sent.</summary>
+    Contended,
+}
+
+/// <summary>Reserves one wire request against a source's daily and hourly caps (issue #446 §4.4, issue #447 A1).</summary>
 public interface ISourceRequestQuota
 {
-    Task<bool> TryReserveAsync(string sourceKey, int maxPerDay, CancellationToken cancellationToken);
+    Task<QuotaReservation> TryReserveAsync(string sourceKey, InstrumentPriceSourceLimits limits, CancellationToken cancellationToken);
 }
 
 /// <summary>
-/// The daily counter on <see cref="InstrumentPriceSourceState"/>: ensure the row, roll over to today's Oslo date,
-/// reserve if under the cap, save with the <c>Version</c> token; a conflict re-reads and retries up to five
-/// times, then fails closed (an unsent request is the safe outcome). A tracked update, never
-/// <c>ExecuteUpdateAsync</c>, so the same code runs on EF InMemory and MariaDB. Each reservation uses its own
-/// scope, so a reservation commits whatever the caller's own context does.
+/// The request counters on <see cref="InstrumentPriceSourceState"/>: ensure the row, roll the day over to today's Oslo
+/// date and the hour forward to the current UTC hour, reserve if under <strong>both</strong> caps, save once with the
+/// <c>Version</c> token; a conflict re-reads and retries up to five times, then fails closed (an unsent request is
+/// the safe outcome). The hour bucket <strong>only moves forward</strong>: a replica whose clock lags the one that
+/// last wrote counts against the newer bucket instead of resetting it, so a skewed clock cannot buy a fresh hourly
+/// allowance. A tracked update, never <c>ExecuteUpdateAsync</c>, so the same code runs on EF InMemory and MariaDB.
+/// Each reservation uses its own scope, so a reservation commits whatever the caller's own context does.
 /// </summary>
 public sealed class SourceRequestQuota(IServiceScopeFactory scopes, TimeProvider timeProvider) : ISourceRequestQuota
 {
     public const int MaxConflicts = 5;
 
-    public async Task<bool> TryReserveAsync(string sourceKey, int maxPerDay, CancellationToken cancellationToken)
+    public async Task<QuotaReservation> TryReserveAsync(
+        string sourceKey, InstrumentPriceSourceLimits limits, CancellationToken cancellationToken)
     {
         var today = OsloDate.Today(timeProvider);
+        var hour = HourOf(timeProvider.GetUtcNow().UtcDateTime);
         for (var attempt = 0; attempt < MaxConflicts; attempt++)
         {
             await using var scope = scopes.CreateAsyncScope();
@@ -42,17 +61,29 @@ public sealed class SourceRequestQuota(IServiceScopeFactory scopes, TimeProvider
                 state.RequestCount = 0;
             }
 
-            if (state.RequestCount >= maxPerDay)
+            if (state.RequestHourUtc is not { } stored || hour > stored)
             {
-                return false;
+                state.RequestHourUtc = hour;
+                state.RequestHourCount = 0;
+            }
+
+            if (state.RequestCount >= limits.MaxRequestsPerDay)
+            {
+                return QuotaReservation.DayCapReached;
+            }
+
+            if (limits.MaxRequestsPerHour is { } perHour && state.RequestHourCount >= perHour)
+            {
+                return QuotaReservation.HourCapReached;
             }
 
             state.RequestCount++;
+            state.RequestHourCount++;
             state.UpdatedAtUtc = Now;
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
-                return true;
+                return QuotaReservation.Reserved;
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -64,8 +95,11 @@ public sealed class SourceRequestQuota(IServiceScopeFactory scopes, TimeProvider
             }
         }
 
-        return false;
+        return QuotaReservation.Contended;
     }
+
+    /// <summary>The UTC clock hour <paramref name="utc"/> falls in.</summary>
+    public static DateTime HourOf(DateTime utc) => new(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Utc);
 
     private DateTime Now => timeProvider.GetUtcNow().UtcDateTime;
 }

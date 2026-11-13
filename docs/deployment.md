@@ -1391,6 +1391,113 @@ log under the System settings audit category (`Odyssey.Api.SystemSettings.System
 manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
 user's id.
 
+## Instrument prices: what leaves the deployment, and how to stop it
+
+Issue #446 added a watchlist of instruments with manual prices and a sync framework; issue #447 adds the first
+price source, **Tiingo** (`api.tiingo.com`): end-of-day closes for US-listed stocks, ETFs and mutual funds, on
+Tiingo's free *Starter* plan. Nothing is sent until an Admin **both** pastes a Tiingo token (*System settings* →
+*Instrument prices* → *Tiingo API token*) **and** enables a Tiingo binding on an instrument (*Instruments* → the
+instrument's price sources).
+
+### What leaves the deployment
+
+- **From the worker only**, over HTTPS to `api.tiingo.com` (a compile-time constant; no setting names it, redirects
+  are not followed): the **source symbol** of each enabled Tiingo binding (for example `AAPL`, `BRK-B`), the
+  **date range** asked for, and the **token** in an `Authorization: Token …` header. Nothing else — no user,
+  account, holding, amount or instrument name. The API container never calls Tiingo.
+- **The followed list is personal data where the household is identifiable.** Together with the operator's Tiingo
+  account and the server's IP address, the set of symbols discloses a household's investment interests. Tiingo
+  most likely receives it as an **independent controller** in the US (a third country), not as a processor for
+  the operator.
+- **Tiingo's privacy policy and EU-US Data Privacy Framework status: verify before enabling.** Read Tiingo's
+  privacy policy (linked from the footer of tiingo.com) and check whether Tiingo appears on the Data Privacy
+  Framework list (dataprivacyframework.gov). *These two facts were not confirmed when this section was written —
+  tiingo.com renders its legal pages client-side and they could not be read from the build environment.* Whether
+  the GDPR household exemption covers a given deployment depends on that deployment, not on Odyssey.
+- **One token per deployment.** Tiingo counts its limits **per account**, so a token shared between deployments
+  (or with another tool) makes each one run into limits the other spent.
+
+### Limits
+
+Tiingo's free plan allows 50 requests an hour, 1,000 a day (reset at midnight US Eastern) and 500 **unique symbols
+a month**. Odyssey stays well inside the first two on its own, across all worker replicas:
+
+| Cap | Value | Why |
+|---|---|---|
+| Per UTC hour | 25 | half of 50, so two adjacent clock hours stay within 50 even if Tiingo's window is rolling |
+| Per run | 25 | equal to the hourly cap |
+| Per Oslo day | 600 | 25 × 25 h (the US fall-back day) = 625 < 1,000, so any Tiingo day is bounded by the hourly cap |
+| Spacing | 2 s | between consecutive requests of one worker process, retries included |
+| Days per request | 1,461 | four years per price request |
+
+A first fetch of a symbol costs two requests (its venue, then its prices); later spans cost one for a week. A run
+spends at most half its budget on bringing bindings up to date and the rest on backfilling history, so **a large
+watchlist fills over several hours**: about 6 new symbols an hour on the first day, all of 50 current within about
+5 h of the first run after the US close (~23:30 Oslo time) once their venues are known. A run that reaches a cap
+**defers** the rest — they are not failures, nothing is written on them, and the next run starts at the next hour.
+
+The 500-unique-symbols-a-month limit is Tiingo's, and Odyssey does not count it; a symbol Tiingo refuses for it
+records a per-binding failure and is retried the next day.
+
+### Symbols and currencies
+
+- **Symbol format is Tiingo's**: share classes use a dash (`BRK-B`, not `BRK.B`). A symbol Odyssey cannot bind
+  (outside `[A-Za-z0-9._-]`) cannot be used.
+- **Tiingo states no currency**, so Odyssey derives it from the **listing venue** Tiingo states, through a fixed
+  map: `NYSE`, `NASDAQ`, `NYSE ARCA`, `NYSE MKT`, `AMEX`, `BATS` and `NMFQS` (mutual funds) → USD. Any other venue
+  — OTC markets, Shanghai and Shenzhen (whose tickers quote in more than one currency) — is refused for that
+  binding, as are the five tickers Tiingo lists on a US venue but prices in AUD (`AYA`, `CSF`, `FDV`, `MPG`, `NYM`).
+  A batch whose derived currency differs from the instrument's is rejected whole.
+- **Not detected:** a source symbol that points at a **different instrument in the same currency** (say `VTI`
+  bound to an instrument meant to be `VOO`) fetches that other instrument's prices. Check the symbol when binding.
+- **Also not detected:** a ticker **listed after 2026-11-11** on a mapped US venue but priced by Tiingo in another
+  currency. The AUD exception list is a snapshot of `supported_tickers.zip` on that date; such a ticker bound to a USD
+  instrument would store its closes as USD. Check Tiingo's `priceCurrency` for an unusual listing before binding it.
+- A fund's close is its **NAV**. Only the unadjusted close is stored; adjusted prices, dividends and splits are
+  ignored.
+
+### Entering the token
+
+Paste the **bare token** from your Tiingo account page — **without** the word `Token` in front. Odyssey adds the
+`Token ` prefix itself; a pasted prefix becomes `Token Token …`, which Tiingo refuses, and the source then records a
+credential problem on every binding (it fails closed and nothing is fetched). A replaced token takes effect on the
+next request without a restart. An unset token means "not configured" (nothing is sent, nothing fails); a token
+the deployment cannot decrypt (a lost Data Protection key) fails closed, records *Configuration* on every Tiingo
+binding and fails the run.
+
+### Stopping it
+
+- **Stop sending:** disable the Tiingo bindings, or clear the token (*Clear* on its row). Either takes effect on
+  the next run.
+- **Remove what was fetched:** *Delete prices* on the instrument (*Instruments*), choosing fetched prices, removes
+  Tiingo's rows as a purge run; manual prices can be kept.
+
+### Licence (Tiingo's terms) — the operator's to satisfy
+
+Tiingo's free plan is licensed for **internal, personal use**: its terms say the data may be used "for your own
+personal use" and not displayed or shared "with another person or organization". Odyssey shows prices to **every
+household member** who holds the instrument-prices read claim, and does **not** restrict that display to the token
+owner. Each operator supplies their own token — the project ships none — and **satisfying Tiingo's licence for
+their household is the operator's responsibility**: confirm with Tiingo that showing prices to the members of your
+own household is permitted, or limit who holds the read claim. *The product decision recorded on issue #447
+(§7.5) is authoritative where it differs from this paragraph.* Odyssey shows the credit
+*End-of-day prices from Tiingo (tiingo.com).* wherever Tiingo prices appear.
+
+### Release note (issue #447)
+
+- **One additive migration** (`AddInstrumentPriceHourlyCap`): two columns on `InstrumentPriceSourceStates` (the
+  hourly request counter) and one counter column on `JobRuns` (`InstrumentsDeferred`). Schema only; `Down()` drops
+  them. It also drops and re-adds `CK_JobRuns_CountersNonNegative` to cover the new column, which re-validates
+  that CHECK over every `JobRuns` row and holds the table for that long (brief at the run log's retained size; the
+  worker's jobs wait on it).
+- **The sync's forward watermark now records the newest date the source returned** (#468) rather than the date it
+  asked up to, so a close published after a run is fetched by the next one. Days more than five days old count as
+  fetched whether or not they came back.
+- **`MinRequestInterval` is now enforced** (#469), per source and per worker process.
+- **A binding whose last attempt failed as unsupported** (unknown symbol, unmapped venue, currency mismatch) is
+  not retried until the next Oslo day; editing it (symbol, enabled flag, start date) clears that at once.
+- **No new claims, no new setting, no feature switch.** The token is a new secret with no default.
+
 ## File storage (filesystem volumes)
 
 Issue #346 adds a **filesystem object store**: files kept on one or more deploy-time *volumes* instead of

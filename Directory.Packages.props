@@ -82,7 +82,7 @@
     <!-- Test-only: Odyssey.ApiClient.Tests builds a real container to exercise AddOdysseyApiClient. -->
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
     <!-- Pins transitive MessagePack (Aspire.Hosting -> StreamJsonRpc) against high-severity
-         GHSA-hv8m-jj95-wg3x, patched in 2.5.301. As of Aspire 13.6.4 the transitive floor has
+         GHSA-hv8m-jj95-wg3x, patched in 2.5.301. As of Aspire 13.6.4 (still so in 13.6.5) the transitive floor has
          caught up (StreamJsonRpc 2.25.29 asks for 2.5.302 itself), so this is now defence in
          depth rather than the only thing holding the CVE off. Keep it, and keep it on the 2.5.x
          line: StreamJsonRpc targets the MessagePack 2.x API, so a 3.x bump risks runtime

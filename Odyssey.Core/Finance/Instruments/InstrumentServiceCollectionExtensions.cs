@@ -54,6 +54,13 @@ public static class InstrumentPriceSyncServiceCollectionExtensions
         return services.AddInstrumentPriceSync();
     }
 
+    /// <summary>
+    /// The production price sources (issue #447) and the sync. Both hosts call this one registration, so the API's
+    /// catalogue (status, bindings) and the worker's (fetching) cannot disagree.
+    /// </summary>
+    public static IServiceCollection AddProductionInstrumentPriceSources(this IServiceCollection services) =>
+        services.AddInstrumentPriceSource<Sources.Tiingo.TiingoPriceSource>();
+
     /// <summary>The sync's services, shared by the API (status, bindings, run-now) and the worker (running it). Idempotent.</summary>
     public static IServiceCollection AddInstrumentPriceSync(this IServiceCollection services)
     {

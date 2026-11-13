@@ -541,12 +541,65 @@ public class InstrumentPriceSyncTests
         return days;
     }
 
-    /// <summary>A clock fixed at a settable instant whose timers are real, so the transport's short retry delays elapse.</summary>
+    /// <summary>
+    /// A clock fixed at a settable instant. Its timers are real, so the transport's short retry delays elapse — unless
+    /// <see cref="Jumping"/> is set: then every timer fires at once and moves the clock forward by its due time, so a
+    /// paced run (issue #447 A7) takes no wall time and the spacing it kept can be read off the clock.
+    /// </summary>
     internal sealed class SettableClock(DateTime now) : TimeProvider
     {
-        public DateTime Now { get; set; } = now;
+        private readonly object sync = new();
+        private DateTime current = now;
+
+        public DateTime Now
+        {
+            get
+            {
+                lock (sync)
+                {
+                    return current;
+                }
+            }
+
+            set
+            {
+                lock (sync)
+                {
+                    current = value;
+                }
+            }
+        }
+
+        public bool Jumping { get; set; }
 
         public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
+
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+        {
+            if (!Jumping || dueTime == Timeout.InfiniteTimeSpan)
+            {
+                return base.CreateTimer(callback, state, dueTime, period);
+            }
+
+            lock (sync)
+            {
+                current += dueTime;
+            }
+
+            ThreadPool.QueueUserWorkItem(_ => callback(state));
+            return new FiredTimer();
+        }
+
+        private sealed class FiredTimer : ITimer
+        {
+            public bool Change(TimeSpan dueTime, TimeSpan period) => false;
+
+            public void Dispose()
+            {
+            }
+
+            public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        }
     }
 
     /// <summary>Captures every formatted log line, scopes and exception text included.</summary>
@@ -595,7 +648,7 @@ public class InstrumentPriceSyncTests
         private readonly ServiceProvider provider;
         private readonly AsyncServiceScope scope;
 
-        public SyncHarness(bool registerSources = true, int historyDays = 30, int intervalHours = 24)
+        public SyncHarness(bool registerSources = true, int historyDays = 30, int intervalHours = 24, bool tiingo = false)
         {
             var services = new ServiceCollection();
             var store = Guid.NewGuid().ToString();
@@ -603,12 +656,17 @@ public class InstrumentPriceSyncTests
             services.AddSingleton<TimeProvider>(Clock);
             services.AddSingleton<ISecretSettingsReader>(Secrets);
             services.AddSingleton<IInstrumentPriceSettingsLookup>(new FixedSettings(new InstrumentPriceSettings(5, intervalHours, historyDays, false)));
-            services.AddLogging(logging => logging.AddProvider(Logs));
+            services.AddLogging(logging => logging.AddProvider(Logs).SetMinimumLevel(LogLevel.Trace));
             if (registerSources)
             {
                 services.AddInstrumentPriceSource<FakePrimarySource>();
                 services.AddInstrumentPriceSource<FakeSecondarySource>();
-                foreach (var key in new[] { FakePrimarySource.DeclaredKey, FakeSecondarySource.DeclaredKey })
+                if (tiingo)
+                {
+                    services.AddInstrumentPriceSource<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>();
+                }
+
+                foreach (var key in new[] { FakePrimarySource.DeclaredKey, FakeSecondarySource.DeclaredKey, "tiingo" })
                 {
                     services.AddHttpClient(SourceHttpLimits.ClientName(key)).ConfigurePrimaryHttpMessageHandler(() => Handler);
                 }
@@ -632,11 +690,18 @@ public class InstrumentPriceSyncTests
 
         public FakePrimarySource Primary => provider.GetRequiredService<FakePrimarySource>();
 
+        public FakeSecondarySource Secondary => provider.GetRequiredService<FakeSecondarySource>();
+
+        public Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource Tiingo =>
+            provider.GetRequiredService<Odyssey.Core.Finance.Instruments.Sources.Tiingo.TiingoPriceSource>();
+
+        public InstrumentPriceSourceAdminService Admin => scope.ServiceProvider.GetRequiredService<InstrumentPriceSourceAdminService>();
+
         public OdysseyContext Store => scope.ServiceProvider.GetRequiredService<OdysseyContext>();
 
         public InstrumentPriceSyncService Sync => scope.ServiceProvider.GetRequiredService<InstrumentPriceSyncService>();
 
-        public async Task<Guid> AddInstrumentAsync(string symbol, bool archived = false)
+        public async Task<Guid> AddInstrumentAsync(string symbol, bool archived = false, string currency = "NOK")
         {
             var id = Guid.NewGuid();
             Store.Instruments.Add(new Instrument
@@ -646,7 +711,7 @@ public class InstrumentPriceSyncTests
                 MicCode = "XOSL",
                 Name = symbol,
                 Type = InstrumentType.Stock,
-                CurrencyCode = "NOK",
+                CurrencyCode = currency,
                 ListingKey = $"{symbol}@XOSL",
                 Archived = archived ? Now : null,
                 CreatedAtUtc = Now,

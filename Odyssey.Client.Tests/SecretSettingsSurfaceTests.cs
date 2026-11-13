@@ -264,6 +264,7 @@ public class SecretSettingsSurfaceTests : IDisposable
     [InlineData(SecretSettingKeys.EmailPassword, "Email")]
     [InlineData(SecretSettingKeys.EmailRecipientHashKey, "Email")]
     [InlineData(SecretSettingKeys.LegalPseudonymizationSecret, "Data")]
+    [InlineData(SecretSettingKeys.TiingoApiToken, "Instrument prices")]
     public void EachCredential_SitsInItsSubjectCard(string key, string group)
     {
         Assert.Equal(group, Settings.SecretCatalogue.Single(item => item.Key == key).Group);

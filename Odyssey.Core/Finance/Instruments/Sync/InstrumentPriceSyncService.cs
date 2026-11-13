@@ -35,14 +35,22 @@ public static class InstrumentPriceSyncConstants
     public static readonly TimeSpan RateLimitMinBackoff = TimeSpan.FromSeconds(60);
 
     public static readonly TimeSpan RateLimitMaxBackoff = TimeSpan.FromHours(24);
+
+    /// <summary>
+    /// Days after which a forward window counts as settled (issue #447 A6, #468): the watermark records the newest
+    /// <em>returned</em> date, but never trails a window's end by more than this, so a long holiday or a delisted
+    /// symbol does not re-request the same days forever.
+    /// </summary>
+    public const int WatermarkSettleDays = 5;
 }
 
 /// <summary>
 /// The instrument-price sync (issue #446 §3), modelled on <c>ExchangeRateSyncService</c>: a scheduled run is due
 /// <c>InstrumentPriceSyncIntervalHours</c> after the last, a catch-up five minutes after a run that inserted rows
-/// while any binding is still behind, and the interval doubles after three failed runs (capped at 168 h). With no
-/// enabled binding to a registered source it writes nothing at all. Each binding forward-fills from its newest
-/// fetched date to today, then backfills toward its start date; a failure falls back to the next binding.
+/// while any binding is still behind, the start of the next quota hour after a run that deferred bindings (issue
+/// #447 A8), and the interval doubles after three failed runs (capped at 168 h). With no enabled binding to a
+/// registered source it writes nothing at all. Each binding forward-fills from its newest fetched date to today, then
+/// backfills toward its start date; a failure falls back to the next binding, a reached cap defers it.
 /// </summary>
 public sealed class InstrumentPriceSyncService(
     OdysseyContext context,
@@ -97,6 +105,14 @@ public sealed class InstrumentPriceSyncService(
             var hours = Math.Min(interval.TotalHours * Math.Pow(2, failures - InstrumentPriceSyncConstants.BackoffAfterFailures + 1),
                 InstrumentPriceSyncConstants.MaxBackoffHours);
             return finished + TimeSpan.FromHours(hours);
+        }
+
+        if (last.InstrumentsDeferred > 0 && await AnyBindingBehindAsync(cancellationToken))
+        {
+            // A cap or the forward budget stopped the run: resume when the quota does. Hourly caps are UTC clock hours.
+            return sources.All.Any(s => s.Limits.MaxRequestsPerHour is not null)
+                ? SourceRequestQuota.HourOf(finished).AddHours(1)
+                : finished + TimeSpan.FromMinutes(InstrumentPriceSyncConstants.CatchUpDelayMinutes);
         }
 
         if (last.PricesInserted > 0 && await AnyBindingBehindAsync(cancellationToken))
@@ -191,25 +207,63 @@ public sealed class InstrumentPriceSyncService(
     private static DateOnly StartOf(InstrumentPriceSourceBinding binding, DateOnly today, int historyDays) =>
         binding.HistoryStartDate ?? today.AddDays(-historyDays);
 
-    private sealed class SourceRunState(IInstrumentPriceSource source)
+    /// <summary>
+    /// One source's state for one run. Budgets count <strong>wire requests</strong> (issue #447 A8): the pacer asks
+    /// <see cref="MayRequest"/> before every request, so a span of several requests cannot overshoot either budget.
+    /// </summary>
+    private sealed class SourceRunState
     {
-        public IInstrumentPriceSource Source { get; } = source;
+        private int forwardBefore;
+        private int forwardSpanStart = -1;
+
+        public SourceRunState(IInstrumentPriceSource source, TimeProvider timeProvider)
+        {
+            Source = source;
+            Pacer = new SourceRequestPacer(source.Limits.MinRequestInterval, timeProvider) { Budget = MayRequest };
+        }
+
+        public IInstrumentPriceSource Source { get; }
+
+        public SourceRequestPacer Pacer { get; }
 
         public bool Unusable { get; set; }
 
         public bool Unconfigured { get; set; }
 
+        /// <summary>The credential read <c>Unreadable</c>: every binding of the source records <c>Configuration</c>.</summary>
+        public bool CredentialUnreadable { get; set; }
+
+        /// <summary>A shared cap or the run's whole budget is reached: every later binding of this source is deferred.</summary>
         public bool Capped { get; set; }
-
-        public int Requests { get; set; }
-
-        public int ForwardRequests { get; set; }
 
         public int ConsecutiveUnavailable { get; set; }
 
+        public int Requests => Pacer.Sent;
+
         public bool BudgetLeft => Requests < Source.Limits.MaxRequestsPerRun;
 
+        public int ForwardRequests => forwardBefore + (forwardSpanStart < 0 ? 0 : Pacer.Sent - forwardSpanStart);
+
         public bool ForwardBudgetLeft => ForwardRequests < Math.Max(1, (Source.Limits.MaxRequestsPerRun + 1) / 2);
+
+        public void BeginSpan(bool forward) => forwardSpanStart = forward ? Pacer.Sent : -1;
+
+        public void EndSpan()
+        {
+            forwardBefore = ForwardRequests;
+            forwardSpanStart = -1;
+        }
+
+        private bool MayRequest() => BudgetLeft && (forwardSpanStart < 0 || ForwardBudgetLeft);
+    }
+
+    private enum BindingOutcome
+    {
+        Succeeded,
+        Failed,
+
+        /// <summary>Not attempted, or stopped before anything was stored, because a cap or the forward budget was reached.</summary>
+        Deferred,
     }
 
     private async Task SyncAsync(RunCounters counters, CancellationToken cancellationToken)
@@ -224,7 +278,6 @@ public sealed class InstrumentPriceSyncService(
         // detected rather than overwritten, and a run that ends early keeps every span it committed.
         var bindings = await context.InstrumentPriceSourceBindings.AsNoTracking()
             .Where(b => b.Enabled && keys.Contains(b.SourceKey))
-            .OrderBy(b => b.InstrumentId).ThenBy(b => b.Priority)
             .ToListAsync(cancellationToken);
         var instrumentIds = bindings.Select(b => b.InstrumentId).Distinct().ToList();
         var instruments = await context.Instruments.AsNoTracking()
@@ -235,7 +288,7 @@ public sealed class InstrumentPriceSyncService(
         var runStates = new Dictionary<string, SourceRunState>(StringComparer.Ordinal);
         foreach (var source in sources.All)
         {
-            var runState = new SourceRunState(source);
+            var runState = new SourceRunState(source, timeProvider);
             if (states.TryGetValue(source.Key, out var stored) && stored.BackOffUntilUtc > now)
             {
                 runState.Unusable = true;
@@ -253,6 +306,7 @@ public sealed class InstrumentPriceSyncService(
                 {
                     // Unreadable is never quiet: the run cannot end Succeeded while a source's credential is unusable.
                     runState.Unusable = true;
+                    runState.CredentialUnreadable = true;
                     counters.UnreadableSources++;
                     counters.Fail(JobFailureCategory.Configuration);
                 }
@@ -261,22 +315,50 @@ public sealed class InstrumentPriceSyncService(
             runStates[source.Key] = runState;
         }
 
-        foreach (var group in bindings.GroupBy(b => b.InstrumentId))
+        // Most behind first (issue #447 A8), so a capped run never starves the same instruments: the oldest forward
+        // watermark (never fetched first), then the least recently attempted — a watermark A6 left unchanged must not
+        // keep an instrument at the head of every run — then the id.
+        var groups = bindings.GroupBy(b => b.InstrumentId)
+            .Select(g => g.OrderBy(b => b.Priority).ToList())
+            .OrderBy(g => g.Min(b => b.NewestFetched ?? DateOnly.MinValue))
+            .ThenBy(g => g.Max(LastAttemptUtc) ?? DateTime.MinValue)
+            .ThenBy(g => g[0].InstrumentId)
+            .ToList();
+        foreach (var group in groups)
         {
-            if (!instruments.TryGetValue(group.Key, out var instrument))
+            if (!instruments.TryGetValue(group[0].InstrumentId, out var instrument))
             {
                 continue;
             }
 
             var attemptedAny = false;
-            var succeeded = false;
+            var outcome = BindingOutcome.Failed;
             foreach (var binding in group)
             {
                 var runState = runStates[binding.SourceKey];
-                if (runState.Unusable || runState.Unconfigured || runState.Capped || !runState.BudgetLeft
-                    || !runState.Source.SupportedTypes.Contains(instrument.Type))
+                if (runState.CredentialUnreadable)
+                {
+                    // Fails closed, and says so where an Admin looks first: on the binding. Nothing is sent.
+                    await PersistFailureAsync(binding, row =>
+                    {
+                        row.LastFailure = JobFailureCategory.Configuration;
+                        row.LastFailureUtc = now;
+                        row.ConsecutiveFailures++;
+                    }, cancellationToken);
+                    continue;
+                }
+
+                if (runState.Unusable || runState.Unconfigured || !runState.Source.SupportedTypes.Contains(instrument.Type)
+                    || IsSkippedToday(binding, today))
                 {
                     continue;
+                }
+
+                if (runState.Capped || !runState.BudgetLeft)
+                {
+                    // A deferral never falls back: the next source is not a substitute for a quota that resets.
+                    outcome = BindingOutcome.Deferred;
+                    break;
                 }
 
                 if (attemptedAny)
@@ -285,12 +367,17 @@ public sealed class InstrumentPriceSyncService(
                 }
 
                 attemptedAny = true;
-                var result = await SyncBindingAsync(instrument, binding, runState, today, resolved.SyncHistoryDays, counters, cancellationToken);
-                if (result)
+                outcome = await SyncBindingAsync(instrument, binding, runState, today, resolved.SyncHistoryDays, counters, cancellationToken);
+                if (outcome != BindingOutcome.Failed)
                 {
-                    succeeded = true;
                     break;
                 }
+            }
+
+            if (outcome == BindingOutcome.Deferred)
+            {
+                counters.InstrumentsDeferred++;
+                continue;
             }
 
             if (!attemptedAny)
@@ -299,7 +386,7 @@ public sealed class InstrumentPriceSyncService(
             }
 
             counters.InstrumentsAttempted++;
-            if (succeeded)
+            if (outcome == BindingOutcome.Succeeded)
             {
                 counters.InstrumentsSucceeded++;
             }
@@ -310,8 +397,22 @@ public sealed class InstrumentPriceSyncService(
         }
     }
 
-    /// <summary>Forward fill then one backfill span for one binding; <c>true</c> on a valid batch.</summary>
-    private async Task<bool> SyncBindingAsync(
+    private static DateTime? LastAttemptUtc(InstrumentPriceSourceBinding binding) =>
+        binding.LastSuccessUtc > binding.LastFailureUtc || binding.LastFailureUtc is null ? binding.LastSuccessUtc : binding.LastFailureUtc;
+
+    /// <summary>
+    /// A binding whose last span failed <see cref="JobFailureCategory.UnsupportedInput"/> today (Oslo) is not retried
+    /// until tomorrow (issue #447 A9) — an unknown symbol or an unmapped venue would otherwise spend capped requests
+    /// on every run. An edit since the failure (<see cref="InstrumentPriceSourceBinding.UpdatedAtUtc"/>) clears it.
+    /// </summary>
+    internal static bool IsSkippedToday(InstrumentPriceSourceBinding binding, DateOnly today) =>
+        binding.LastFailure == JobFailureCategory.UnsupportedInput
+        && binding.LastFailureUtc is { } failedAt
+        && failedAt >= binding.UpdatedAtUtc
+        && OsloDate.FromUtc(failedAt) == today;
+
+    /// <summary>Forward fill then one backfill span for one binding.</summary>
+    private async Task<BindingOutcome> SyncBindingAsync(
         Instrument instrument, InstrumentPriceSourceBinding binding, SourceRunState runState, DateOnly today, int historyDays,
         RunCounters counters, CancellationToken cancellationToken)
     {
@@ -320,7 +421,7 @@ public sealed class InstrumentPriceSyncService(
         var anySuccess = false;
 
         // Forward fill, oldest span first so NewestFetched stays a contiguous watermark.
-        while (runState.BudgetLeft && runState.ForwardBudgetLeft && !runState.Unusable && !runState.Capped)
+        while (!runState.Unusable)
         {
             var from = binding.NewestFetched is { } newest ? newest.AddDays(1) : MaxDate(start, today.AddDays(-(maxDays - 1)));
             if (from > today)
@@ -329,19 +430,42 @@ public sealed class InstrumentPriceSyncService(
                 break;
             }
 
-            var to = MinDate(today, from.AddDays(maxDays - 1));
-            runState.ForwardRequests++;
-            var outcome = await FetchSpanAsync(instrument, binding, runState, from, to, counters, row =>
+            if (runState.Capped || !runState.BudgetLeft || !runState.ForwardBudgetLeft)
             {
-                row.NewestFetched = to;
+                if (anySuccess)
+                {
+                    break;
+                }
+
+                return BindingOutcome.Deferred;
+            }
+
+            var to = MinDate(today, from.AddDays(maxDays - 1));
+            var outcome = await FetchSpanAsync(instrument, binding, runState, from, to, forward: true, counters, (row, closes) =>
+            {
+                if (ForwardWatermark(row.NewestFetched, closes, from, to, today) is { } mark)
+                {
+                    row.NewestFetched = mark;
+                }
+
                 row.BackfilledFrom ??= from;
             }, cancellationToken);
+            if (outcome == SpanOutcome.Deferred)
+            {
+                return anySuccess ? BindingOutcome.Succeeded : BindingOutcome.Deferred;
+            }
+
             if (outcome != SpanOutcome.Stored)
             {
-                return anySuccess && outcome != SpanOutcome.BindingChanged;
+                return anySuccess && outcome != SpanOutcome.BindingChanged ? BindingOutcome.Succeeded : BindingOutcome.Failed;
             }
 
             anySuccess = true;
+            if (binding.NewestFetched is null || binding.NewestFetched < to)
+            {
+                // The provider has nothing newer yet (#468): the rest of the window is asked for again on a later run.
+                break;
+            }
         }
 
         // Backfill, newest span first; BackfilledFrom only advances across complete spans.
@@ -350,10 +474,36 @@ public sealed class InstrumentPriceSyncService(
         {
             var to = backfilled.AddDays(-1);
             var from = MaxDate(start, to.AddDays(-(maxDays - 1)));
-            await FetchSpanAsync(instrument, binding, runState, from, to, counters, row => row.BackfilledFrom = from, cancellationToken);
+            if (await FetchSpanAsync(instrument, binding, runState, from, to, forward: false, counters, (row, _) => row.BackfilledFrom = from, cancellationToken)
+                == SpanOutcome.Deferred)
+            {
+                // The instrument is current, but its history waits for the quota: the next run is due at the next hour.
+                counters.BackfillsDeferred++;
+            }
         }
 
-        return anySuccess;
+        return anySuccess ? BindingOutcome.Succeeded : BindingOutcome.Failed;
+    }
+
+    /// <summary>
+    /// The forward watermark after a stored span (issue #447 A6, #468): the newest <em>returned</em> date, so a close
+    /// published after the run is fetched by the next one; an empty batch leaves it unchanged; and it is never left
+    /// more than <see cref="InstrumentPriceSyncConstants.WatermarkSettleDays"/> behind the window's end, which bounds
+    /// the re-requests for a long holiday or a delisted symbol. <c>null</c> means unchanged.
+    /// </summary>
+    internal static DateOnly? ForwardWatermark(
+        DateOnly? current, IReadOnlyList<FetchedClose> closes, DateOnly from, DateOnly to, DateOnly today)
+    {
+        DateOnly? mark = closes.Count > 0 ? closes.Max(c => c.TradingDate) : null;
+
+        // Every day of the window more than WatermarkSettleDays old counts as fetched, returned or not.
+        var settled = MinDate(to, today.AddDays(-(InstrumentPriceSyncConstants.WatermarkSettleDays + 1)));
+        if (settled >= from && (mark is null || settled > mark))
+        {
+            mark = settled;
+        }
+
+        return mark is { } m && (current is null || m > current) ? m : null;
     }
 
     private enum SpanOutcome
@@ -363,11 +513,14 @@ public sealed class InstrumentPriceSyncService(
 
         /// <summary>The binding was removed, or its source symbol changed, while the run held a snapshot of it.</summary>
         BindingChanged,
+
+        /// <summary>A request limit stopped the span before it was stored; nothing was written (issue #447 A8).</summary>
+        Deferred,
     }
 
     private async Task<SpanOutcome> FetchSpanAsync(
-        Instrument instrument, InstrumentPriceSourceBinding binding, SourceRunState runState, DateOnly from, DateOnly to,
-        RunCounters counters, Action<InstrumentPriceSourceBinding> advance, CancellationToken cancellationToken)
+        Instrument instrument, InstrumentPriceSourceBinding binding, SourceRunState runState, DateOnly from, DateOnly to, bool forward,
+        RunCounters counters, Action<InstrumentPriceSourceBinding, IReadOnlyList<FetchedClose>> advance, CancellationToken cancellationToken)
     {
         var source = runState.Source;
         var request = new SourceFetchRequest(binding.SourceSymbol, from, to, instrument.CurrencyCode);
@@ -378,17 +531,24 @@ public sealed class InstrumentPriceSyncService(
             scope.ServiceProvider.GetRequiredService<ISecretSettingsReader>(),
             scope.ServiceProvider.GetRequiredService<ISourceRequestQuota>(),
             logger,
-            timeProvider);
+            timeProvider,
+            runState.Pacer);
 
         SourceFetchResult result;
+        runState.BeginSpan(forward);
         try
         {
             result = await source.FetchClosesAsync(request, http, cancellationToken);
         }
-        catch (SourceQuotaExhaustedException)
+        catch (SourceQuotaExhaustedException exhausted)
         {
-            runState.Capped = true;
-            return SpanOutcome.Failed;
+            // Only the forward half of the run's budget being spent leaves the source usable for backfill.
+            if (exhausted.Limit != SourceQuotaLimit.Run || !runState.BudgetLeft)
+            {
+                runState.Capped = true;
+            }
+
+            return SpanOutcome.Deferred;
         }
         catch (SourceCredentialException credential)
         {
@@ -420,7 +580,7 @@ public sealed class InstrumentPriceSyncService(
         }
         finally
         {
-            runState.Requests += http.RequestsMade;
+            runState.EndSpan();
             counters.RequestsMade += http.RequestsMade;
         }
 
@@ -428,6 +588,7 @@ public sealed class InstrumentPriceSyncService(
         {
             logger.LogWarning("Price source {SourceKey} batch for instrument {InstrumentId} rejected by rule {Rule}.",
                 source.Key, instrument.InstrumentId, rejected.Rule);
+            source.OnBatchRejected(request, rejected.Rule);
             result = SourceFetchResult.Failed(rejected.Category);
         }
 
@@ -438,15 +599,16 @@ public sealed class InstrumentPriceSyncService(
         }
 
         var now = Now;
+        var closes = result.Closes!;
         void Succeed(InstrumentPriceSourceBinding row)
         {
-            advance(row);
+            advance(row, closes);
             row.LastSuccessUtc = now;
             row.ConsecutiveFailures = 0;
             row.LastFailure = null;
         }
 
-        if (await InsertAsync(binding, result.Closes!, Succeed, cancellationToken) is not { } inserted)
+        if (await InsertAsync(binding, closes, Succeed, cancellationToken) is not { } inserted)
         {
             return SpanOutcome.BindingChanged;
         }
@@ -616,6 +778,11 @@ public sealed class InstrumentPriceSyncService(
 
         public int RequestsMade { get; set; }
 
+        public int InstrumentsDeferred { get; set; }
+
+        /// <summary>Instruments brought up to date whose backfill span a cap stopped; counted as deferred on the run row.</summary>
+        public int BackfillsDeferred { get; set; }
+
         /// <summary>Sources skipped because their credential read <c>Unreadable</c>.</summary>
         public int UnreadableSources { get; set; }
 
@@ -629,6 +796,7 @@ public sealed class InstrumentPriceSyncService(
             run.PricesInserted = PricesInserted;
             run.FallbacksUsed = FallbacksUsed;
             run.RequestsMade = RequestsMade;
+            run.InstrumentsDeferred = InstrumentsDeferred + BackfillsDeferred;
         }
 
         public (JobRunStatus, JobFailureCategory?) Outcome()
@@ -636,7 +804,10 @@ public sealed class InstrumentPriceSyncService(
             var category = failures.Count == 0 ? (JobFailureCategory?)null : failures.MaxBy(pair => pair.Value).Key;
             if (InstrumentsFailed == 0 && UnreadableSources == 0)
             {
-                return (JobRunStatus.Succeeded, null);
+                // A deferral is a shortfall, not a failure: it names no category and never counts toward the back-off.
+                return InstrumentsDeferred > 0 && InstrumentsSucceeded > 0
+                    ? (JobRunStatus.PartiallySucceeded, null)
+                    : (JobRunStatus.Succeeded, null);
             }
 
             if (InstrumentsFailed == 0)

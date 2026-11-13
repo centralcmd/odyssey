@@ -444,6 +444,166 @@ public sealed class InstrumentDialogsTests
                 enabled: true, registered: true, now));
     }
 
+    // ── Issue #447: the provider's symbol help, data-processing note, hourly limit and next try ─────────────────
+
+    private static InstrumentPriceSourcesStatus Tiingo => new()
+    {
+        Sources =
+        [
+            Source("tiingo", "Tiingo") with
+            {
+                SymbolExample = "BRK-B",
+                DataProcessingNote = "Tiingo is a US company. It handles these requests under its own terms.",
+            },
+        ],
+        MaxBindingsPerInstrument = 3,
+    };
+
+    [Fact]
+    public void The_symbol_help_uses_the_providers_own_example_and_falls_back_to_the_generic_one()
+    {
+        Assert.Equal("The symbol as Tiingo writes it, e.g. BRK-B", InstrumentPriceSourcesPanel.SymbolHelp(Tiingo.Sources[0]));
+        Assert.Equal(InstrumentPriceSourcesPanel.GenericSymbolHelp, InstrumentPriceSourcesPanel.SymbolHelp(Source("e", "E")));
+        Assert.Equal(InstrumentPriceSourcesPanel.GenericSymbolHelp, InstrumentPriceSourcesPanel.SymbolHelp(null));
+    }
+
+    [Fact]
+    public void The_hourly_limit_is_a_state_with_the_hour_it_resumes_and_goes_once_it_has_passed()
+    {
+        var now = new DateTime(2026, 11, 9, 10, 20, 0, DateTimeKind.Utc);
+        var capped = Source("tiingo", "Tiingo") with { MaxRequestsPerHour = 25, RequestsThisHour = 25, HourlyLimitResetsAtUtc = now.AddMinutes(40) };
+
+        Assert.Equal($"Hourly request limit reached · resumes at {RunTime.Clock(now.AddMinutes(40))}",
+            InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, now));
+        Assert.Equal("Active", InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, now.AddHours(1)));
+    }
+
+    [Fact]
+    public async Task The_symbol_field_carries_the_providers_example()
+    {
+        await using var ctx = Context(out _);
+        var cut = RenderPanel(ctx, Bindings(Binding("tiingo", 1)), Tiingo);
+
+        cut.WaitForAssertion(() => Assert.Contains("The symbol as Tiingo writes it, e.g. BRK-B", cut.Markup));
+        Assert.DoesNotContain("e.g. EQNR.OL", cut.Markup);
+    }
+
+    [Fact]
+    public async Task Turning_tiingo_on_adds_its_data_processing_note_as_plain_text()
+    {
+        await using var ctx = Context(out _);
+        var cut = RenderPanel(ctx, Bindings(Binding("tiingo", 1)), Tiingo);
+        cut.WaitForAssertion(() => Assert.Equal(["Tiingo"], Order(cut)));
+
+        cut.Find(".ins-src-ctl input[type=checkbox]").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Contains(EnablePriceSourceDialog.Disclosure("Tiingo", "EQNR.OL"), cut.Markup));
+        var paragraphs = cut.FindAll("p.ins-dialog-body").Select(p => p.TextContent.Trim()).ToList();
+        Assert.Equal(2, paragraphs.Count);
+        Assert.Equal(Tiingo.Sources[0].DataProcessingNote, paragraphs[1]);
+    }
+
+    [Fact]
+    public async Task A_provider_without_a_note_shows_the_disclosure_alone()
+    {
+        await using var ctx = Context(out _);
+        var cut = RenderPanel(ctx, Bindings(Binding("eodhd", 1)), TwoSources);
+        cut.WaitForAssertion(() => Assert.Equal(["EODHD"], Order(cut)));
+
+        cut.Find(".ins-src-ctl input[type=checkbox]").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Single(cut.FindAll("p.ins-dialog-body")));
+    }
+
+    [Fact]
+    public async Task A_source_skipped_until_tomorrow_says_when_it_is_asked_again()
+    {
+        await using var ctx = Context(out _);
+        var skipped = Binding("tiingo", 1, enabled: true) with
+        {
+            LastFailure = JobFailureCategory.UnsupportedInput,
+            LastFailureUtc = new DateTime(2026, 11, 9, 7, 0, 0, DateTimeKind.Utc),
+            RetryOn = new DateOnly(2026, 11, 10),
+        };
+        var cut = RenderPanel(ctx, Bindings(skipped), Tiingo);
+
+        cut.WaitForAssertion(() => Assert.Contains(InstrumentPriceSourcesPanel.RetryText(new DateOnly(2026, 11, 10)), cut.Markup));
+        Assert.Contains("Next try", cut.Markup);
+    }
+
+    [Fact]
+    public async Task A_data_processing_note_carrying_markup_renders_as_literal_text()
+    {
+        await using var ctx = Context(out _);
+        const string hostile = "<b>bold</b> <img src=x onerror=alert(1)> & co";
+        var status = Tiingo;
+        status.Sources[0] = status.Sources[0] with { DataProcessingNote = hostile };
+        var cut = RenderPanel(ctx, Bindings(Binding("tiingo", 1)), status);
+        cut.WaitForAssertion(() => Assert.Equal(["Tiingo"], Order(cut)));
+
+        cut.Find(".ins-src-ctl input[type=checkbox]").Change(true);
+
+        cut.WaitForAssertion(() => Assert.Equal(2, cut.FindAll("p.ins-dialog-body").Count));
+        var note = cut.FindAll("p.ins-dialog-body")[1];
+        Assert.Empty(note.Children);
+        Assert.Equal(hostile, note.TextContent.Trim());
+        Assert.Empty(cut.FindAll("p.ins-dialog-body img"));
+    }
+
+    [Fact]
+    public async Task Adding_a_source_turned_on_uses_its_symbol_help_and_its_note()
+    {
+        await using var ctx = Context(out _);
+        var cut = RenderPanel(ctx, Bindings(), Tiingo);
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("button"), b => b.TextContent.Contains("Add source", StringComparison.Ordinal)));
+
+        cut.FindAll("button").First(b => b.TextContent.Contains("Add source", StringComparison.Ordinal)).Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("The symbol as Tiingo writes it, e.g. BRK-B", cut.Markup));
+        cut.Find("input[id$='-add-symbol']").Input("BRK-B");
+        cut.Find("span[id$='-add-on'] input[type=checkbox]").Change(true);
+        cut.FindAll(".ins-src-add-actions button").Last().Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("Turn on Tiingo?", cut.Markup));
+        var paragraphs = cut.FindAll("p.ins-dialog-body").Select(p => p.TextContent.Trim()).ToList();
+        Assert.Equal(EnablePriceSourceDialog.Disclosure("Tiingo", "BRK-B"), paragraphs[0]);
+        Assert.Equal(Tiingo.Sources[0].DataProcessingNote, paragraphs[1]);
+    }
+
+    [Fact]
+    public async Task The_next_try_line_reads_exactly_and_hides_once_the_symbol_is_edited()
+    {
+        await using var ctx = Context(out _);
+        var skipped = Binding("tiingo", 1, enabled: true) with
+        {
+            LastFailure = JobFailureCategory.UnsupportedInput,
+            LastFailureUtc = new DateTime(2026, 11, 9, 7, 0, 0, DateTimeKind.Utc),
+            RetryOn = new DateOnly(2026, 11, 10),
+        };
+        var cut = RenderPanel(ctx, Bindings(skipped), Tiingo);
+
+        var expected = $"Not asked again until {new DateOnly(2026, 11, 10).ToString("d MMM yyyy", System.Globalization.CultureInfo.CurrentCulture)}. "
+            + "Change the symbol, or turn the source off and on, to try now.";
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll(".ins-src-facts dd"), dd => dd.TextContent.Trim() == expected));
+
+        cut.Find(".ins-src-symfield input").Input("BRK-B");
+
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Next try", cut.Markup));
+    }
+
+    [Fact]
+    public void The_symbol_help_falls_back_to_the_key_and_the_hourly_state_ends_at_its_reset()
+    {
+        Assert.Equal("The symbol as tiingo writes it, e.g. BRK-B",
+            InstrumentPriceSourcesPanel.SymbolHelp(Source("tiingo", " ") with { SymbolExample = "BRK-B" }));
+
+        var resets = new DateTime(2026, 11, 9, 11, 0, 0, DateTimeKind.Utc);
+        var capped = Source("tiingo", "Tiingo") with { MaxRequestsPerHour = 25, RequestsThisHour = 25, HourlyLimitResetsAtUtc = resets };
+        Assert.Equal("Active", InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, resets));
+        Assert.StartsWith("Hourly request limit reached",
+            InstrumentPriceSourcesPanel.StateText(capped, enabled: true, registered: true, resets.AddTicks(-1)), StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_source_symbol_follows_the_shared_rule()
     {

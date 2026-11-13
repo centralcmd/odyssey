@@ -311,6 +311,14 @@ public class InstrumentPriceSyncJobRun : JobRun
 
     public int RequestsMade { get; set; }
 
+    /// <summary>
+    /// Instruments not attempted, or whose backfill span was stopped, because a request cap or the run's forward budget
+    /// was reached (issue #447 A8). A
+    /// deferral is not a failure: it triggers no fallback, writes nothing on the binding, and makes the next run due
+    /// at the start of the next quota hour while a binding is behind.
+    /// </summary>
+    public int InstrumentsDeferred { get; set; }
+
     /// <summary>Rows removed by a purge run.</summary>
     public int PricesDeleted { get; set; }
 

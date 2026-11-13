@@ -3,8 +3,10 @@
 #pragma warning disable EF1002
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
 using Odyssey.Context;
+using Odyssey.Core.Finance.Instruments.Sources;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -126,6 +128,7 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 0")]
     [InlineData("UPDATE `InstrumentPriceSourceBindings` SET `Priority` = 10")]
     [InlineData("UPDATE `InstrumentPriceSourceStates` SET `RequestCount` = -1")]
+    [InlineData("UPDATE `InstrumentPriceSourceStates` SET `RequestHourCount` = -1")]
     public async Task The_checks_refuse_an_out_of_contract_value(string sql)
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -274,6 +277,74 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
                  ({id}, 'prices@instruments.test', 'PRICES@INSTRUMENTS.TEST', 'prices@instruments.test', 'PRICES@INSTRUMENTS.TEST', 1,
                   'hash', 'stamp', 'concurrency', 0, 0, 1, 0, 0)
              """);
+
+    /// <summary>Issue #447 A1: two replicas reserving at once never exceed either cap, and every reservation is counted.</summary>
+    [SkippableFact]
+    public async Task Two_replicas_reserving_concurrently_never_exceed_either_cap()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        var limits = new InstrumentPriceSourceLimits(30, TimeSpan.Zero, MaxRequestsPerRun: 10, MaxRequestsPerDay: 15, MaxRequestsPerHour: 10);
+        int reserved;
+        var providers = Enumerable.Range(0, 2).Select(_ => new ServiceCollection().AddScoped(_ => NewContext()).BuildServiceProvider()).ToList();
+        try
+        {
+            // Two replicas race each other; each replica's own reservations are sequential, as one run's requests are.
+            var streams = await Task.WhenAll(providers.Select(provider => Task.Run(async () =>
+            {
+                var quota = new SourceRequestQuota(provider.GetRequiredService<IServiceScopeFactory>(), TimeProvider.System);
+                var outcomes = new List<QuotaReservation>();
+                for (var i = 0; i < 12; i++)
+                {
+                    outcomes.Add(await quota.TryReserveAsync("tiingo", limits, CancellationToken.None));
+                }
+
+                return outcomes;
+            })));
+            var all = streams.SelectMany(o => o).ToList();
+
+            // A reservation that loses five races in a row fails closed (Contended) and sends nothing; every other
+            // attempt reserves until the hourly cap, then is refused by it. So the count is exact, never above the cap.
+            var contended = all.Count(o => o == QuotaReservation.Contended);
+            reserved = all.Count(o => o == QuotaReservation.Reserved);
+            Assert.Equal(Math.Min(10, all.Count - contended), reserved);
+            Assert.All(all, o => Assert.Contains(o, new[] { QuotaReservation.Reserved, QuotaReservation.HourCapReached, QuotaReservation.Contended }));
+        }
+        finally
+        {
+            foreach (var provider in providers)
+            {
+                await provider.DisposeAsync();
+            }
+        }
+        await using var context = NewContext();
+        var state = await context.InstrumentPriceSourceStates.AsNoTracking().SingleAsync(s => s.SourceKey == "tiingo");
+        Assert.Equal(reserved, state.RequestHourCount);
+        Assert.Equal(reserved, state.RequestCount);
+    }
+
+    [SkippableFact]
+    public async Task The_hourly_cap_migration_reverts_and_reapplies_cleanly()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await MigratedAsync();
+        await using var context = NewContext();
+        context.InstrumentPriceSourceStates.Add(new InstrumentPriceSourceState
+        {
+            SourceKey = "tiingo", RequestHourUtc = Now, RequestHourCount = 3, UpdatedAtUtc = Now,
+        });
+        await context.SaveChangesAsync();
+
+        await MigrationSeam.MigrateToAsync(context, Migration);
+        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
+            $"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{Database}' AND COLUMN_NAME IN ('RequestHourUtc', 'RequestHourCount', 'InstrumentsDeferred')"));
+
+        await context.Database.MigrateAsync();
+        Assert.True(await MigrationSeam.HasRunAsync(context, "_AddInstrumentPriceHourlyCap"));
+        // The kept row reads the column default.
+        Assert.Equal(0L, await MigrationSeam.CountAsync(context,
+            "SELECT COUNT(*) FROM `InstrumentPriceSourceStates` WHERE `RequestHourCount` <> 0 OR `RequestHourUtc` IS NOT NULL"));
+    }
 
     private async Task MigratedAsync()
     {

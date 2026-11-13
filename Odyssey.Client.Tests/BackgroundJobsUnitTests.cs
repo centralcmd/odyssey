@@ -465,6 +465,29 @@ public class BackgroundJobsUnitTests
         Assert.Contains("Not shown — needs file storage access", hidden.Markup);
     }
 
+    [Fact]
+    public async Task An_instrument_price_sync_runs_detail_shows_its_deferred_count()
+    {
+        await using var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddMudServices();
+        var run = new ExistingJobRun { Id = Guid.NewGuid(), JobType = JobType.InstrumentPriceSync, Status = JobRunStatus.PartiallySucceeded, StartedAtUtc = Now.UtcDateTime };
+
+        var cut = ctx.Render<JobRunDetailPanel>(p => p
+            .Add(x => x.Run, run)
+            .Add(x => x.CanReadDetail, true)
+            .Add(x => x.OnLoad, _ => Task.CompletedTask)
+            .Add(x => x.State, new JobRunDetailState(JobRunDetailStatus.Loaded, new InstrumentPriceSyncJobRunDetail
+            {
+                Id = run.Id, JobType = JobType.InstrumentPriceSync, Status = JobRunStatus.PartiallySucceeded, StartedAtUtc = Now.UtcDateTime,
+                InstrumentsAttempted = 6, InstrumentsSucceeded = 6, InstrumentsFailed = 0, InstrumentsDeferred = 44, RequestsMade = 25,
+            })));
+
+        var tiles = cut.FindAll(".odc-meta-tile").Select(t => t.TextContent).ToList();
+        Assert.Contains(tiles, t => t.Contains("Deferred") && t.Contains("44"));
+        Assert.Contains(tiles, t => t.Contains("Failed") && t.Contains('0'));
+    }
+
     private static IRenderedComponent<BackfillMoveStatus> MoveCard(BunitContext ctx, PhotoBackfillStatus status) =>
         ctx.Render<BackfillMoveStatus>(p => p.Add(x => x.View, BackgroundJobPresentation.PhotoMoveView(status)).Add(x => x.GeneratedAtUtc, Now));
 

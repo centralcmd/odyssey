@@ -2326,6 +2326,16 @@ public partial class Settings : IDisposable
             "Measured history is not being collected — every Frost fetch is skipped and an error is "
             + "logged hourly."),
 
+        new(SecretSettingKeys.TiingoApiToken, "Instrument prices", "vpn_key", "Tiingo API token",
+            "Lets the price sync fetch end-of-day prices from Tiingo. Sent to api.tiingo.com only. Paste the bare "
+            + "token from your Tiingo account, without the word \"Token\" in front. Use a token for this "
+            + "deployment alone: Tiingo counts its limits per account.",
+            IsDerivationKey: false,
+            Consequence:
+            "Tiingo prices are not fetched. That is a supported configuration: nothing is sent to Tiingo, and "
+            + "manual prices and other sources are unaffected.",
+            Affects: "Tiingo prices are not being fetched — every Tiingo source records a credential problem."),
+
         new(SecretSettingKeys.LegalPseudonymizationSecret, "Data", "gavel", "Pseudonymisation secret",
             "HMACs the subject of a consent record when an account is deleted, so acceptance stays "
             + "attributable without holding an identity. There is no provider to re-issue this from: "

@@ -83,7 +83,7 @@
                                     <OdsTextInputField Id="@SymbolId(item)" Label="@($"{name} source symbol")" Value="@item.SourceSymbol"
                                                        ValueChanged="@(v => OnSymbolChanged(item, v))" Required="true"
                                                        MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength" AutoComplete="off"
-                                                       Help="The symbol as the source writes it, e.g. EQNR.OL"
+                                                       Help="@SymbolHelp(item.SourceKey)"
                                                        Error="@ItemError(item)" ErrorIsAlert="false" />
                                     @if (item.SymbolChanged)
                                     {
@@ -99,6 +99,10 @@
                                     @if (saved.LastFailure is { } failure)
                                     {
                                         <div><dt>Last failure</dt><dd>@FailureText(failure, saved.LastFailureUtc)</dd></div>
+                                    }
+                                    @if (saved.RetryOn is { } retryOn && !item.SymbolChanged)
+                                    {
+                                        <div><dt>Next try</dt><dd>@RetryText(retryOn)</dd></div>
                                     }
                                     <div><dt>History</dt><dd>@HistoryText(saved)</dd></div>
                                 }
@@ -147,7 +151,7 @@
                                    Options="AddableOptions" Placeholder="Choose a source" Error="@adding.SourceError" />
                         <OdsTextInputField Id="@($"{_uid}-add-symbol")" Label="Source symbol" Required="true" Value="@adding.Symbol"
                                            ValueChanged="OnAddSymbolChanged" MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength"
-                                           AutoComplete="off" Help="The symbol as the source writes it, e.g. EQNR.OL"
+                                           AutoComplete="off" Help="@SymbolHelp(adding.SourceKey)"
                                            Error="@adding.SymbolError" ErrorIsAlert="false" />
                         <OdsDateField Label="History start" Value="adding.HistoryStart" ValueChanged="@(d => adding.HistoryStart = d)"
                                       Max="TodayMax" Placeholder="Source’s full history"
@@ -199,6 +203,7 @@
 {
     <EnablePriceSourceDialog @key="confirm.Key" Open="true"
                              ProviderName="@confirm.ProviderName" SourceSymbol="@confirm.Symbol"
+                             DataProcessingNote="@confirm.DataProcessingNote"
                              ReturnFocusToId="@confirm.ReturnFocusToId"
                              OnDecided="OnEnableDecided" />
 }
