@@ -133,6 +133,8 @@ public class OdysseyApiFactory(
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveBuiltInLoggingProviders();
+            services.DisposeRateLimitersOnStop();
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options =>
                 options.UseInMemoryDatabase(applicationDatabaseName, DatabaseRoot)
