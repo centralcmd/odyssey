@@ -109,7 +109,8 @@ one set of news tags.
 Shared Core helpers named in this spec, each the single definition of its rule: `NewsUrlKey` (§8.2),
 `NewsText.Clean` (§8.7), `NewsTextQuota.IsReached` (§6.3), `NewsDailyCap.IsReached` (§6.3),
 `NewsImageSizeCeiling.Kb` (§11.1), `GlobalizationGuard` (§8.2), `INewsCounterWriter` (§3.5),
-`INewsArticleSearch` (§8.4), `NewsSearchLimiter` (§8.4).
+`INewsArticleSearch` (§8.4), `NewsSearchLimiter` (§8.4), `INewsFetchStateFlags` (§3.3),
+`NewsFeedHealthRules.Derive` (§4.2).
 
 ### 3.2 Files on the object store
 
@@ -203,7 +204,7 @@ fetch-state entity; it clears those flags only through the conditional writes be
 | `ArchivedAtUtc`, `DeletionRequestedAtUtc` | `NewsFeeds` | API (archive, unarchive, delete) | `SettingsVersion` |
 | feed tags (`NewsFeedTags`) | — | API (`PUT …/tags`) | `SettingsVersion` |
 | `SettingsVersion` | `NewsFeeds` | API only | — |
-| `RefreshRequestedAtUtc` | `NewsFeedFetchStates` | API sets (refresh, manual run); worker clears | both conditional single-column writes, no `FetchFence` check (below) |
+| `RefreshRequestedAtUtc` | `NewsFeedFetchStates` | API sets (refresh); the worker running a manual run sets; completion clears | both conditional single-column writes, no `FetchFence` check (below) |
 | `ValidatorsResetRequestedAtUtc` | `NewsFeedFetchStates` | API sets (URL change); worker clears | both conditional single-column writes, no `FetchFence` check (below) |
 | `QuarantinedAtUtc`, `CrashSuspectCount` | `NewsFeedFetchStates` | worker sets (quarantine, crash accounting); API clears (`release-quarantine`) | worker: `FetchFence`; API: a conditional `UPDATE` (below) |
 | validators (`ETag`, `LastModified`, `LastBodySha256`) | `NewsFeedFetchStates` | worker | `FetchFence` |
@@ -532,6 +533,9 @@ A single row. `Id` `tinyint` PK, always `1` · `ImageBytes` long · `TextAndSour
 concurrency token.
 
 - `CK_NewsStorageTotals_SingleRow`: `Id = 1`.
+- **The migration seeds the row** (`Id = 1`, both totals `0`) with `InsertData`, matched by `HasData` in
+  the model. Without it, every relative `UPDATE` would affect no row and raise no error, so both quotas
+  would read `0` and never trigger.
 - Written by relative increments as the last statement of each transaction (§3.5). The image quota and
   the text quota read it.
 
@@ -580,12 +584,15 @@ concurrency token.
 
 ### 4.8 `NewsArticleIdentities`
 
-`NewsArticleIdentityId` PK · `NewsArticleId` · `NewsFeedId` FK → `NewsFeeds`, **RESTRICT** · `Kind` byte
+`NewsArticleIdentityId` PK · `NewsArticleId` · `NewsFeedId` · `Kind` byte
 (`1` Guid, `2` Link, `3` ContentHash) · `IdentityKey` `string(2100)` · `IdentityKeyHash` `binary(32)` ·
 `FirstSeenAtUtc`, `LastSeenAtUtc`.
 
 - Feed consistency is a **composite FK** `(NewsArticleId, NewsFeedId)` → `NewsArticles (NewsArticleId,
-  NewsFeedId)`, **CASCADE** with the article, backed by the unique index on the article side.
+  NewsFeedId)`, **CASCADE** with the article, backed by the unique index on the article side. It is the
+  only foreign key: there is no separate key to `NewsFeeds`, because `NewsArticles.NewsFeedId` already
+  cascades from the feed, and a second key would make a cascading feed delete depend on InnoDB's
+  constraint-check order.
 - **Unique** on `(NewsFeedId, IdentityKeyHash)`.
 - At most 32 per article (`MaxIdentitiesPerArticle`).
 
@@ -679,7 +686,7 @@ no feed id. Rows are pruned after 7 days.
 | `CK_NewsArticles_BodyOmittedReason` | `BodyOmittedReason IS NULL OR BodyOmittedReason IN (1, 2)` |
 | `CK_NewsArticleRevisions_BodyOmittedReason` | `BodyOmittedReason IS NULL OR BodyOmittedReason IN (1, 2)` |
 | `CK_NewsArticleFiles_RevisionKind` | a row with a revision id is a Source or a PlainText file |
-| `CK_NewsFeeds_QuotaReason` | `(QuotaReachedAtUtc IS NULL) = (QuotaReason IS NULL) AND (QuotaReason IS NULL OR QuotaReason IN (1, 2))` |
+| `CK_NewsFeedFetchStates_QuotaReason` | `(QuotaReachedAtUtc IS NULL) = (QuotaReason IS NULL) AND (QuotaReason IS NULL OR QuotaReason IN (1, 2))` |
 | `CK_NewsStorageTotals_SingleRow` | `Id = 1` |
 | `CK_JobRuns_JobType`, `CK_JobHeartbeats_JobType` | widened to admit `9` |
 | `CK_JobRuns_CountersNonNegative` | gains the `NewsFeedJobRun` counter columns |
@@ -724,14 +731,18 @@ General rules:
      "health": "Healthy", "quotaReason": null, "unreadCount": 4, "articleCount": 311, "tagIds": ["…"],
      "management": { "url": "…", "lastErrorKind": "None", "lastHttpStatus": 200, "lastErrorAtUtc": null,
        "lastErrorMessage": null, "consecutiveFailures": 0, "quarantinedAtUtc": null,
-       "redirectedFromHttps": false, "articlesToday": 12, "imageBytesToday": 3145728 } }
+       "redirectedFromHttps": false, "suggestedUrl": null, "articlesToday": 12,
+       "imageBytesToday": 3145728 } }
    ```
 
    - `displayTitle` = `CustomTitle ?? Title ?? host(SiteUrl) ?? "Untitled feed"`. It **never** uses the
      fetch URL's host.
    - **`management` is `null` without `news-feeds.update`.**
-   - `quotaReason` is `DailyCap` | `TextQuota` | `null`, non-null exactly when `health` is
+   - `health` is the single derived value (precedence in §4.2), and the `health` filter matches it.
+   - `quotaReason` is `DailyCap` | `TextQuota` | `null`, non-null exactly when the derived `health` is
      `QuotaReached`.
+   - The settings fields come from `NewsFeeds` and the fetch fields (`title`, `siteUrl`, `description`,
+     `language`, `format`, the timestamps and `management`) from `NewsFeedFetchStates`.
    - `unreadCount` and `articleCount` come from `NewsFeedCounters`.
    - "Needs attention" is `NewsFeedHealthSets.NeedsAttention` = `Failing`, `Gone`, `Quarantined`,
      `QuotaReached`.
@@ -751,6 +762,8 @@ General rules:
    counts effective tags. Archived feeds and feeds pending deletion are excluded.
 5. `POST /api/news-feeds` — `news-feeds.create`. Takes `{ url, customTitle, fetchIntervalMinutes,
    downloadImages, tagIds }`. The API makes **no** outbound request.
+   - The feed's `NewsFeedFetchStates` and `NewsFeedCounters` rows are inserted **in the same save** that
+     creates the feed (§4.2, §4.3).
    - `201`.
    - `409 news-feed-duplicate`, with `existingFeedId`.
    - `422` keyed `url`: the scheme, user info, length, a refused IP literal, or a port not granted.
@@ -758,12 +771,17 @@ General rules:
    - `422 news-feed-limit`. Archived feeds count toward the limit.
 6. `PUT /api/news-feeds/{id:guid}` — `news-feeds.update`. Not an upsert.
    - Requires `version` (the feed's `SettingsVersion`). A mismatch is `409 news-feed-changed`.
-   - A changed URL sets only `ValidatorsResetRequested` (§3.3). It does not reschedule the feed.
-   - Applies or clears a pending `SuggestedUrl` under the §3.3 rule. The response's `url` is the stored
-     value.
+   - A changed URL sets only `ValidatorsResetRequestedAtUtc` (§3.3). It does not reschedule the feed.
+   - **Every URL change**, accepting a `SuggestedUrl` included, runs the URL validation
+     (`NewsFeedUrlRules`, `NewsUrlKey`) and the `UrlKeyHash` uniqueness check; a duplicate is
+     `409 news-feed-duplicate`.
+   - A `url` equal to the pending `SuggestedUrl` accepts it; any other changed `url` overrides it. Either
+     way the suggestion is cleared. An unchanged `url` leaves it pending (§3.3). The response's `url` is
+     the stored value.
+   - Never fails because a fetch is running: the worker's columns are on another row (§3.3).
 7. `PUT /api/news-feeds/{id:guid}/tags` — `news-feeds.update`. Replaces the feed's tags.
 8. `POST /api/news-feeds/{id:guid}/refresh` — `news-feeds.update`. Returns `202` and sets
-   `RefreshRequestedAtUtc`; the feed is due once `max(RefreshRequestedAtUtc, LastFetchAttemptAtUtc +
+   `RefreshRequestedAtUtc` with the conditional write in §3.3; the feed is due once `max(RefreshRequestedAtUtc, LastFetchAttemptAtUtc +
    60 s) ≤ now` (§3.3). Answers `422 news-feed-inactive` for a feed that cannot be fetched.
 9. `POST /api/news-feeds/{id:guid}/archive` and `POST /api/news-feeds/{id:guid}/unarchive` —
    `news-feeds.update`.
@@ -771,8 +789,9 @@ General rules:
     first, otherwise `422 news-feed-not-archived`. Sets `DeletionRequestedAtUtc`; the purge is batched
     (§3.4 step 1).
 11. `POST /api/news-feeds/{id:guid}/release-quarantine` — `news-feeds.update`. Clears
-    `QuarantinedAtUtc` and `CrashSuspectCount` and rotates `SettingsVersion` (§3.3). A feed that is not
-    quarantined is `422` (`NewsFeedNotQuarantined`).
+    `QuarantinedAtUtc` and `CrashSuspectCount` with the conditional `UPDATE` in §3.3. It writes no
+    `NewsFeeds` column, so it does not rotate `SettingsVersion`. A feed that is not quarantined is `422`
+    (`NewsFeedNotQuarantined`).
 
 ### 5.2 Articles
 
@@ -965,7 +984,7 @@ ids would read and sort every matching row instead. So:
     - **The manual run** needs `news-feeds.update`. The live `ExclusiveGuard` treats `Trigger = 1` as
       exclusive, so only one manual news run exists at a time. The API inserts the `Running` row,
       unclaimed. The first worker to claim it marks every eligible feed (last attempt ≥ 15 min ago) due
-      by setting `RefreshRequestedAtUtc`, in tracked chunks. It then finishes the run as `Succeeded`,
+      by setting `RefreshRequestedAtUtc` with the conditional write in §3.3, in chunks. It then finishes the run as `Succeeded`,
       with `FeedsMarked` as its counter. The ordinary ticks then fetch those feeds under their per-feed
       leases. Under `Testing`, the run executes inline.
     - The news card is gated on `news-feeds.update`. It shows a **warning line** while
@@ -1094,7 +1113,7 @@ to raise it.
    - There are no cookies.
    - The browser never contacts publishers.
 6. **Secrets.** None.
-7. **Audit.** Feed create, update, URL change, automatic rewrite (a `SuggestedUrl` applied), archive,
+7. **Audit.** Feed create, update, URL change, a suggested URL accepted, archive,
    delete request, purge completion and quarantine release, and tag delete are logged with ids, the
    acting user id and hosts only. Every allow-list change goes through the security-update registry's
    derived audit line.
@@ -1132,8 +1151,18 @@ to raise it.
       a linear pre-scan (no tree) tracks nesting depth:
       - non-void start tags push, and matching end tags pop;
       - void elements never push;
+      - an unmatched end tag is a no-op;
+      - comments, CDATA sections, attribute values and the content of the raw-text and RCDATA elements
+        (`script`, `style`, `textarea`, `title`, `xmp`, `iframe`, `noembed`, `noframes`, `plaintext`)
+        are **opaque**: nothing inside them is counted as a tag;
       - the HTML implied-end-tag set (`p`, `li`, `dt`, `dd`, `option`, `optgroup`, `tr`, `td`, `th`,
-        `rp`, `rt`) closes an open element of the same kind rather than nesting.
+        `rp`, `rt`) closes an open element of the same kind rather than nesting, and only where the
+        HTML tree builder would do the same.
+
+      The scan **must never count shallower than the tree AngleSharp would build.** Over-counting is
+      safe (a fragment is refused early); under-counting is not. Where the tree builder can nest deeper
+      than the tags suggest (reconstruction of unclosed formatting elements, table foster-parenting), the
+      scan counts at least as deep, or refuses.
 
       If the depth would exceed `NewsLimits.MaxHtmlDepth` = 256 (the same number as the DOM-walk depth
       cap), the fragment is **not parsed**. A fragment over the 2 MiB HTML input cap gets the same
@@ -1145,7 +1174,9 @@ to raise it.
         else it is empty. The article records `BodyOmittedReason` (`TooLarge` for the size cap,
         `TooComplex` for the depth cap), and the article detail DTO carries it as
         `bodyOmittedReason`. **Only the body sets `BodyOmittedReason`.**
-      - **Title or author.** Stored empty. The client already shows "(untitled)".
+      - **Title or author.** Stored empty. The client already shows "(untitled)". An empty stored value
+        would drop out of the change hash, so `ContentHash` uses the raw refused fragment in its place
+        (§8.8), and an edit confined to a refused title or author is still detected.
       - **Summary.** Follows the same excerpt fallback: the excerpt comes from the other text field if
         that one passes, else it is empty.
 
@@ -1279,7 +1310,9 @@ the database.
 
 ### 8.4 Search (MariaDB `FULLTEXT`)
 
-v1 search covers **title, author and excerpt** only (decided, §17.1 A).
+v1 search covers **title, author and excerpt** only (decided, §17.1 A). The excerpt is the summary,
+else the body's opening text (§8.3, §7.10), so body words near the start can match; body text past
+the excerpt cannot.
 
 **Terms.**
 - The input is split into words of Unicode letters and digits only. All other characters are
@@ -1376,6 +1409,8 @@ Anything else becomes `NULL`, or an image `Rejected`.
 - **An omitted body** (§7.10): `BodyLength` is `0`, and `ContentHash` uses the **raw fragment bytes** in
   place of the body, so a later change to an omitted body is still detected as an edit. `IdentityHash`
   uses the empty body.
+- **A refused title or author** (§7.10) is stored empty, and `ContentHash` uses the **raw fragment
+  bytes** in its place, for the same reason.
 
 **Candidate keys.** **G** (`g:` or `g#`), **L** (`l:<LinkKey>`), **H** (`h:<IdentityHash>`). Before
 matching, each fetch marks GUIDs that repeat within it as *unreliable*, and LinkKeys that repeat within
@@ -1496,13 +1531,17 @@ dotnet ef migrations add AddNewsModule \
 The migration contains:
 
 1. **Tables:**
-   - `NewsFeeds`, `NewsFeedCounters`, `NewsStorageTotals`, `NewsFeedBuckets`, `NewsHostThrottle`,
+   - `NewsFeeds`, `NewsFeedFetchStates`, `NewsFeedCounters`, `NewsStorageTotals`, `NewsFeedBuckets`,
+     `NewsHostThrottle`,
      `NewsArticles`, `NewsArticleIdentities`, `NewsArticleRevisions`, `NewsArticleFiles` and
      `NewsArticleImages`;
    - `NewsTags`, `NewsFeedTags` and `NewsArticleTags`;
    - `NewsFeedCrashEvents`.
 
    Each has the keys, `CHECK` constraints and indexes listed in §4 and §16.
+   - **Seed:** the single `NewsStorageTotals` row (`Id = 1`, zero totals), by `InsertData` with the
+     matching `HasData`. `NewsFeedFetchStates` and `NewsFeedCounters` rows are not seeded; each is
+     inserted in the save that creates its feed.
 2. **The `FULLTEXT` index** on `NewsArticles (Title, Author, Excerpt)`, declared with Pomelo's
    `HasIndex(...).IsFullText()`, so it is part of the model and visible to `CreatedBy`. **No change to
    `MigrationRunner`** is needed.
@@ -1654,7 +1693,10 @@ The migration contains:
     100,000 deep still fail at their existing depth-capped readers (the raw-capture path included). A
     title, author or summary nested 257 deep is refused too: the title or author is stored empty, the
     summary follows the excerpt fallback, and `BodyOmittedReason` stays `null` unless the body itself was
-    refused.
+    refused. A later fetch that changes only a refused title is detected as an edit. **Adversarial
+    cases**, each either refused or parsed within the walk's depth cap: 300 repeated unclosed `<b>` tags
+    (and `<b><i><b><i>…`, which exercise formatting-element reconstruction), table foster-parenting, and
+    100,000-deep nesting hidden inside a comment or a `<textarea>`, which must not count.
 19. **Crash handling:**
     - a crash fixture leaves the feed's next fetch ≥ 1 h out;
     - three solo crash events quarantine the feed, and release clears it;
@@ -1741,8 +1783,8 @@ The migration contains:
 42. The status endpoint answers `200` with the store's volume state in every condition.
 43. **Polyglot.** An image with bytes appended after its end marker is stored as the validator's
     stripped output, with the appended bytes absent, and a second validation pass accepts it.
-44. Feed and image claims, the purge, mark-read with filters and the counter writes all run under EF
-    InMemory, with no `ExecuteUpdate` or `ExecuteDelete` anywhere on these paths.
+44. Feed and image claims, the purge, mark-read with filters, the counter writes and the fetch-state flag
+    writes all run under EF InMemory, with no `ExecuteUpdate` or `ExecuteDelete` anywhere on these paths.
 45. An edit and a within-1-hour overwrite never raise a duplicate key, and never leave two current
     Source or PlainText files.
 46. Detail, revisions and images for a feed pending deletion all return `404`.
@@ -1752,8 +1794,9 @@ The migration contains:
 50. Worker memory stays at or below its news budget (200 MiB) under a 4-feed load with 10 MiB bodies.
 51. A lease renewal during ingest: no conflict, and every item batch is saved.
 52. A parser that hangs past 90 s counts as a crash event once its lease expires.
-53. A same-host `301` sets `SuggestedUrl`. It is applied by the hourly maintenance step or a feed `PUT`,
-    never by a `GET`, and a duplicate is dropped.
+53. A same-host `301` sets `SuggestedUrl`. Only a feed `PUT` applies it, through the same URL validation
+    and `UrlKeyHash` uniqueness check as any URL change (a duplicate is `409 news-feed-duplicate`). The
+    worker, maintenance and `GET` never write `Url`, `UrlKeyHash` or `SettingsVersion`.
 54. The image `GET` never writes. Maintenance re-queues a missing image at most once per 24 h, from
     either source (store integrity findings or the bounded probe), and a reader's `GET` never triggers a
     re-queue.
@@ -1775,8 +1818,9 @@ The migration contains:
 63. With `MaxFileSizeBytes` below 64 KiB, the ceiling is 64. The `PUT` check and the worker clamp both
     use `NewsImageSizeCeiling`.
 64. `AuthorizationPolicyTests`: every role holding `file-storage.read` also holds `news.read`.
-65. A `PUT` with an unchanged `url` and a pending suggestion returns the suggested URL. A `PUT` with a
-    changed `url` returns the user's value and clears the suggestion.
+65. A `PUT` with `url` equal to the pending suggestion stores and returns it and clears the suggestion. A
+    `PUT` with another changed `url` returns the user's value and clears the suggestion. A `PUT` with an
+    unchanged `url` leaves the suggestion pending.
 66. With `isRead=false`, marking the first page's rows read and then requesting `nextCursor` returns the
     next unseen rows. Nothing is skipped or repeated, for both `Newest` and `Oldest`.
 67. An article ingested well after the first page (beyond the commit edge) is not returned by later
@@ -1800,6 +1844,15 @@ The migration contains:
     `BodyOmittedReason`, has a source file and no revision text file, and `revisions/{n}` returns it with
     `body: null` and its `bodyOmittedReason`. On real MariaDB,
     `CK_NewsArticleRevisions_BodyOmittedReason` rejects the value `3`.
+77. **API writes during a fetch.** With a fetch running (lease held, fence rotating), an API `PUT`,
+    refresh and release-from-quarantine each succeed without a `409`, and the fetch's completion still
+    commits. A refresh or URL change made mid-fetch survives the completion's conditional clear.
+78. **Seeded totals.** On a freshly migrated database, `NewsStorageTotals` holds one row (`Id = 1`), and
+    one article write moves `TextAndSourceBytes`. A feed `POST` creates its `NewsFeedFetchStates` and
+    `NewsFeedCounters` rows in the same save.
+79. **Health precedence.** A feed that is archived and quarantined with `QuotaReachedAtUtc` set reports
+    `Archived` with `quotaReason: null`; each pair in the §4.2 precedence resolves to the higher value,
+    and the `health` filter matches the derived value.
 
 **Test tiers.**
 - `Odyssey.Core.Tests` and `Odyssey.Api.Tests` (EF InMemory) cover the services, the `LIKE` search
@@ -1846,8 +1899,9 @@ stated conditions. Every key an article has ever had is kept, looked up by hash.
 - Metadata is in MariaDB. Each article's files are on the existing object store, under
   `news/<feedId>/<bucket>/<articleId>/`, with opaque GUID names.
 - One additive migration, and no second chain.
-- Concurrency uses per-feed leases with a `FetchFence` token for the worker and a `SettingsVersion`
-  token for the API, so worker replicas are safe.
+- Concurrency uses per-feed leases with a `FetchFence` token on the worker's `NewsFeedFetchStates` row
+  and a `SettingsVersion` token on the API's `NewsFeeds` row, so worker replicas are safe and neither
+  side's save checks the other's token.
 - Backups follow the existing database-plus-volume order in `docs/deployment.md`. There is no extra
   procedure.
 
@@ -1867,8 +1921,9 @@ and `feedTagIds` are returned separately.
 | Table | Index | Serves |
 |---|---|---|
 | `NewsFeeds` | `UNIQUE (UrlKeyHash)` | duplicates |
-| `NewsFeeds` | `(IsActive, ArchivedAtUtc, DeletionRequestedAtUtc, QuarantinedAtUtc, NextFetchAtUtc)` | claiming due feeds |
-| `NewsFeeds` | `(LeaseExpiresAtUtc)` | crash detection |
+| `NewsFeedFetchStates` | PK `(NewsFeedId)` | the 1:1 fetch state |
+| `NewsFeedFetchStates` | `(QuarantinedAtUtc, NextFetchAtUtc)`; `(RefreshRequestedAtUtc)` | claiming due feeds (the `NewsFeeds` conditions are read through the join; at most `NewsMaxFeeds` rows) |
+| `NewsFeedFetchStates` | `(LeaseExpiresAtUtc)` | crash detection |
 | `NewsFeedCounters` | PK `(NewsFeedId)` | counters |
 | `NewsFeedBuckets` | `UNIQUE (NewsFeedId)` | the allocator |
 | `NewsHostThrottle` | PK `(HostKeyHash)` | per-host spacing |
@@ -1946,11 +2001,9 @@ in §17.1.
 
 Each settles a point the source order left open, or fills a gap in the sources.
 
-1. **A URL change sets only `ValidatorsResetRequested`**, with no 15-minute floor. Reason: Part 3 makes
+1. **A URL change sets only `ValidatorsResetRequestedAtUtc`**, with no 15-minute floor. Reason: Part 3 makes
    `NextFetchAtUtc` worker-owned, and the per-host throttle already spaces the requests.
-2. **The worker's hourly maintenance or an API `PUT` applies `SuggestedUrl`, and the worker rotating
-   `SettingsVersion` there is the one documented exception.** Reason: it is the only hourly maintenance
-   step in the spec, and an open edit dialog should then save into `409 news-feed-changed` (#473).
+2. **Only an API `PUT` applies `SuggestedUrl`** (review-driven, R2; see decision 24).
 3. **Old AC 5 stays, and Part 4e's "AC 5 amended" text becomes AC 6.** Reason: old AC 5 is about
    annotations and has nothing to amend.
 4. **The egress AC replacement covers the address lists only.** Reason: Part 4 split the address list;
@@ -1963,24 +2016,28 @@ Each settles a point the source order left open, or fills a gap in the sources.
    pointer was a stale cross-reference.
 8. **Column ownership is the complete table in §3.3.** Reason: the source list omitted
    `QuarantinedAtUtc`, the crash count and the daily counters. The worker writes them under
-   `FetchFence`; `release-quarantine` is an API write that rotates `SettingsVersion`.
+   `FetchFence`; `release-quarantine` is an API conditional `UPDATE` (decision 25).
 9. **`NewsFeeds.CreatedAtUtc` is added.** Reason: `createdAtUtc` and `SortBy=CreatedAt` need it.
 10. **`NewsArticles.BodyOmittedReason` is persisted, with `CK_NewsArticles_BodyOmittedReason`, and no
     PlainText file is written when it is set.** AC 1 is amended to match. Reason: decision B puts it on
     the detail DTO, so it has to be stored.
 11. **The allow-list setting uses `system-settings.security.update` and the other eight use
-    `system-settings.update`.** This is inferred: the backend sources name only two claims, and the
-    frontend spec's settings table makes the allow-list the one row hidden without the security claim.
-12. **The identity composite FK cascades with the article**, and `NewsFeedId` keeps its own `RESTRICT`
-    key to `NewsFeeds`. Reason: it replaces the article key, which was `CASCADE`.
+    `system-settings.update`.** Reason: stated in the source. The issue body's security section (§7.2)
+    says "the allow-list uses `system-settings.security.update`", Part 2 §11.1 lists
+    `NewsPrivateHostAllowList` "under `system-settings.security.update`", and Part 3 gives
+    `NewsTextStoreMaxGiB` `system-settings.update`; the frontend's settings table agrees.
+12. **The identity composite FK cascades with the article, and is the only key** (review-driven). The
+    separate `RESTRICT` key to `NewsFeeds` is dropped. Reason: it was redundant with the article's own
+    cascade from the feed, and made a feed delete depend on InnoDB's constraint-check order.
 13. **`SuggestedUrl` is `string(2048)?`.** Reason: it holds a URL that may replace `Url`.
 14. **`NewsFeedHealth` is derived and never stored: `Pending`, `Healthy`, `Failing`, `Gone`, `Paused`,
-    `Archived`, `Quarantined`, `QuotaReached`.** Reason: the full list was only in Draft v5.
+    `Archived`, `Quarantined`, `QuotaReached`.** Reason: the full list was only in Draft v5. Its
+    precedence is decision 27.
 15. **`GET /api/news-tags` returns every `NewsTags` field plus the counts.** Reason: the tag editor needs
     `description` and `icon`, and the shorter shape had dropped them.
 16. **The search limit is `429 news-search-limited`, with `Retry-After`.** Reason: no code was given.
 17. **`NewsStorageTotals` is a single row, `Id tinyint = 1`, with `CK_NewsStorageTotals_SingleRow`.**
-    Reason: no key was given.
+    Reason: no key was given. The migration seeds it (decision 26).
 18. **The lost quota and recount clauses are restored** in AC 30 and AC 40. Reason: they were dropped
     only because whole ACs were replaced. The 15-minute and 60-second URL-edit spacing is **not**
     restored (decision 1).
@@ -1991,11 +2048,46 @@ Each settles a point the source order left open, or fills a gap in the sources.
     and §6.2 already fixes the order.
 21. **The nesting pre-scan and the 2 MiB cap apply to every HTML fragment.** A refused title or author is
     stored empty, a refused summary follows the excerpt fallback, and only the body sets
-    `BodyOmittedReason` (AC 18). Reason: the parser hazard is the same in every field.
+    `BodyOmittedReason` (AC 18). Reason: the parser hazard is the same in every field. A refused title
+    or author stored empty would drop out of `ContentHash`, so the hash uses the raw refused fragment
+    instead and an edit confined to it is still detected (review-driven).
 22. **Revisions carry their own `BodyOmittedReason`**, with the same `CHECK`, and an omitted revision has
     no revision text file (AC 76). Reason: a revision must describe its own body.
 23. **An omitted body has `BodyLength = 0`, and `ContentHash` is computed over the raw fragment bytes**
     (AC 75). Reason: so a later change to an omitted body is still detected as an edit.
+
+Review-driven decisions (architecture review of PR #483):
+
+24. **`SuggestedUrl` is applied only by an API `PUT`**, when the user accepts it ("Use new address",
+    #473). The worker never writes `Url`/`UrlKeyHash` and never rotates `SettingsVersion`; the
+    accepting `PUT` runs the same URL validation and uniqueness check as any URL change (AC 53, AC 65).
+    An unchanged `url` now leaves the suggestion pending instead of applying it. Reason: `SuggestedUrl`
+    exists so the process handling untrusted responses never writes `Url` (security S-N2).
+25. **The worker's columns live on a 1:1 `NewsFeedFetchStates` row** (PK/FK `NewsFeedId`, `CASCADE`)
+    with `FetchFence`; `NewsFeeds` keeps the API's settings with `SettingsVersion`. The API sets
+    `RefreshRequestedAtUtc` and `ValidatorsResetRequestedAtUtc`, and clears quarantine and a suggestion,
+    with conditional single-column `UPDATE`s that do not check `FetchFence`; the worker clears the flags
+    only `WHERE … <= @claimTime`. `release-quarantine` therefore no longer rotates `SettingsVersion`.
+    `ValidatorsResetRequested` became the timestamp `ValidatorsResetRequestedAtUtc`, because a boolean
+    cannot tell whether it was re-set since the claim. The claim index moves to the fetch-state table
+    (AC 77). Reason: EF puts every concurrency token of an entity in the `WHERE` clause, so two tokens
+    on one row made each side's save fail on the other side's writes.
+26. **The migration seeds `NewsStorageTotals` (`Id = 1`, zero totals) by `InsertData` + `HasData`**, and
+    a feed's `NewsFeedFetchStates` and `NewsFeedCounters` rows are inserted in the save that creates it
+    (AC 78). Reason: with no row, the relative `UPDATE`s change nothing silently and both quotas never
+    trigger.
+27. **Health has one derived value, by precedence `Archived` > `Quarantined` > `Paused` > `Gone` >
+    `QuotaReached` > `Failing` > `Pending` > `Healthy`**, in `NewsFeedHealthRules.Derive`. `quotaReason`
+    is non-null exactly when the derived health is `QuotaReached`, and the `health` filter matches the
+    derived value (AC 79). Reason: no source fixed an order, and without one a feed could be
+    `Archived` with a non-null `quotaReason`.
+28. **The nesting pre-scan treats comments, CDATA, attribute values and raw-text/RCDATA elements as
+    opaque, ignores unmatched end tags, and must never count shallower than AngleSharp's tree**, with
+    adversarial cases in AC 18. Reason: under-counting would let a fragment past the cap.
+29. **§8.4 says the excerpt can come from the body's opening text.** Reason: so nobody reads "summary
+    only" as a guarantee that body text is never matched.
+30. **A new feed's fetch state is due at once** (`NextFetchAtUtc` = the create time). Reason: AC 1
+    expects a feed to be healthy after one tick, and no source set an initial value.
 
 Nothing remains open.
 
@@ -2032,6 +2124,7 @@ Old numbers are those used across the issue body and its comments.
 | 16b | 18 |
 | 17–72 | 19–74 (old *n* → new *n* + 2) |
 | — (added at merge) | 75, 76 (omitted body and omitted revision body) |
+| — (added by the PR #483 architecture review) | 77, 78, 79 (writes during a fetch, seeded totals, health precedence) |
 
 Notable entries: old 18 → 20 (two workers), 19 → 21 (egress), 26 → 28 (search), 28 → 30 (quotas),
 38 → 40 (query plans), 41 → 43 (polyglot), 48 → 50 (memory), 52 → 54 (image repair), 57 → 59 (quota
