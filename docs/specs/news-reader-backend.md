@@ -196,7 +196,7 @@ writes only modified properties.
   - the lease;
   - the feed metadata parsed from the feed (`Title`, `SiteUrl`, `Description`, `Language`, `Format`,
     `FeedTtlMinutes`);
-  - `SuggestedUrl` (§3.3 below) and the quota columns `QuotaReachedAtUtc`/`QuotaReason` (§6.3).
+  - `SuggestedUrl` (below) and the quota columns `QuotaReachedAtUtc`/`QuotaReason` (§6.3).
 - The API owns everything else. `Url` and `UrlKeyHash` stay API-owned. (Columns the ownership list does
   not name, such as `QuarantinedAtUtc`, are discussed in §19.)
 - **Two requests cross the boundary, and each is a worker-read flag:**
@@ -1853,32 +1853,39 @@ Each needs a reviewer's confirmation.
    news memory budget, while old AC 48 is the criterion that states it. The merged doc points at AC 50
    (old 48) and leaves AC 39 (old 37) as written.
 
+8. **Column ownership is incomplete.** The ownership rule lists the worker's columns and gives "the API
+   everything else", but the worker also writes `QuarantinedAtUtc` (on quarantine), `RedirectedFromHttps`,
+   `CrashSuspectCount`, `DailyQuotaDate`, `ArticlesToday` and `ImageBytesToday`, and
+   `release-quarantine` is an API write to `QuarantinedAtUtc` and the crash count. The merged §3.3 adds
+   only what later text assigns explicitly (`SuggestedUrl`, the quota columns). Which token
+   `release-quarantine` rotates, and how it avoids racing the worker, is not stated.
+
 Gaps filled or left open while merging:
 
-8. **`NewsFeeds.CreatedAtUtc`** is not in any source table, but `ExistingNewsFeed.createdAtUtc` and
+9. **`NewsFeeds.CreatedAtUtc`** is not in any source table, but `ExistingNewsFeed.createdAtUtc` and
    `SortBy=CreatedAt` need it. Added.
-9. **`SuggestedUrl` type and length** are not stated. The merged table says "a URL"; `string(2048)?`
+10. **`SuggestedUrl` type and length** are not stated. The merged table says "a URL"; `string(2048)?`
    like `Url` is the obvious reading.
-10. **The claim for seven of the nine settings** is stated only for `NewsTextStoreMaxGiB`
+11. **The claim for seven of the nine settings** is stated only for `NewsTextStoreMaxGiB`
     (`system-settings.update`) and the allow-list (`system-settings.security.update`). The others are
     shown as `system-settings.update`, inferred.
-11. **Persisting `bodyOmittedReason`.** Decision B puts it on the detail DTO, so the merged doc adds
+12. **Persisting `bodyOmittedReason`.** Decision B puts it on the detail DTO, so the merged doc adds
     `NewsArticles.BodyOmittedReason` (`tinyint?`, `1` TooLarge, `2` TooComplex). Not stated: whether a
     PlainText file is written at all for an omitted body (AC 1 says every article has one), what
     `BodyLength` and the hashes use, whether a revision can carry the reason, and whether the cap also
     applies to HTML in non-body fields such as an Atom `type="html"` title.
-12. **The identity composite FK's delete behaviour.** The source replaces "consistency enforced by the
+13. **The identity composite FK's delete behaviour.** The source replaces "consistency enforced by the
     service" with the composite FK but does not restate the on-delete rule. The merged doc gives it the
     article's `CASCADE` and keeps the separate `NewsFeedId` → `NewsFeeds` `RESTRICT` key.
-13. **The full `NewsFeedHealth` enum** is defined only in an earlier draft that is no longer available.
+14. **The full `NewsFeedHealth` enum** is defined only in an earlier draft that is no longer available.
     The merged doc names the members the sources use (`Healthy`, `Failing`, `Gone`, `Quarantined`,
     `QuotaReached`) but not their ordinals or any others.
-14. **`NewsArticleImages.Origin` 1–6** has no member list. The six image sources in §6.2 are the likely
+15. **`NewsArticleImages.Origin` 1–6** has no member list. The six image sources in §6.2 are the likely
     mapping.
-15. **The `GET /api/news-tags` shape** (`{ id, name, color, archived, feedCount, articleCount }`) leaves
+16. **The `GET /api/news-tags` shape** (`{ id, name, color, archived, feedCount, articleCount }`) leaves
     out `description` and `icon`, which the entity carries and the writes take. Kept as stated.
-16. **The `429` search limit** has no problem `code`.
-17. **`NewsStorageTotals`** has no stated primary key.
+17. **The `429` search limit** has no problem `code`.
+18. **`NewsStorageTotals`** has no stated primary key.
 
 Dropped while merging (superseded by later text):
 
