@@ -234,7 +234,9 @@ running fetch cannot fail them.
 - `ValidatorsResetRequestedAtUtc` is cleared, together with the validators, `WHERE
   ValidatorsResetRequestedAtUtc <= @claimTime`.
 
-These run in the completion's transaction, beside its fenced save.
+These run in the completion's transaction, **after** its fenced save, so the clear of
+`ValidatorsResetRequestedAtUtc` (which also clears the validators) wins over validators that fetch
+just wrote.
 
 - **Two requests cross the boundary:**
   - **Refresh** sets `RefreshRequestedAtUtc`. The next claim treats the feed as due once
@@ -1933,7 +1935,7 @@ and `feedTagIds` are returned separately.
 | `NewsArticles` | `(NewsFeedId, IsRead, FirstSeenAtUtc)` | the mark-read watermark |
 | `NewsArticles` | `UNIQUE (NewsArticleId, NewsFeedId)` | the identity composite FK |
 | `NewsArticles` | `FULLTEXT (Title, Author, Excerpt)` | **search** |
-| `NewsArticleIdentities` | `UNIQUE (NewsFeedId, IdentityKeyHash)`; `(NewsArticleId)` | dedup |
+| `NewsArticleIdentities` | `UNIQUE (NewsFeedId, IdentityKeyHash)`; `(NewsArticleId, NewsFeedId)` | dedup; the child-side index of the composite FK (§4.8), so MariaDB adds no second one |
 | `NewsArticleRevisions` | `UNIQUE (NewsArticleId, RevisionNumber)` | history |
 | `NewsArticleFiles` | `UNIQUE (StoredObjectId)`; `(NewsArticleId, NewsArticleRevisionId, Kind)` | files |
 | `NewsArticleImages` | `UNIQUE (NewsArticleId, Position)`; `(NewsArticleId, DisplayOrder)`; `(State, NextAttemptAtUtc)`; `UNIQUE (NewsArticleFileId)` | images, queue |
