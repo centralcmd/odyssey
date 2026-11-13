@@ -543,9 +543,13 @@ concurrency token.
 
 `NewsArticleRevisionId` PK · `NewsArticleId` FK **CASCADE** · `RevisionNumber` int (1 = the original),
 unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `IdentityHash` · `BodyLength` ·
-`ValidFromUtc`, `ReplacedAtUtc`.
+`BodyOmittedReason` (`tinyint?`, the same `NewsBodyOmittedReason` enum as the article) · `ValidFromUtc`,
+`ReplacedAtUtc`.
 
-- Its text and source are **files** (`NewsArticleFiles` with this revision's id).
+- Its text and source are **files** (`NewsArticleFiles` with this revision's id). A revision whose
+  `BodyOmittedReason` is set has **no revision text file**; it keeps its source file.
+- `CK_NewsArticleRevisions_BodyOmittedReason`: `BodyOmittedReason IS NULL OR BodyOmittedReason IN
+  (1, 2)`.
 - The cap is 20 per article, and the original is always kept. A second change within 1 h overwrites
   without a new revision.
 
@@ -582,7 +586,7 @@ unique with the article · `Title`, `Author`, `Link` · `ContentHash`, `Identity
 | `NewsArticleFileId` | FK → `NewsArticleFiles`, **SET NULL**, unique, set when stored |
 | `Position` | `int`, append-only, unique with the article; overflow past 999 is skipped |
 | `DisplayOrder` | `int` |
-| `Origin` | `byte`, 1–6 |
+| `Origin` | `byte`: `1` Enclosure, `2` MediaContent (`media:content`), `3` MediaThumbnail (`media:thumbnail`), `4` JsonImage (JSON `image`/`banner_image`), `5` JsonAttachment (JSON image attachments), `6` InlineImg (inline `<img>`) — the §6.2 order |
 | `SourceUrl` | `string(2048)`, http(s) only, never served |
 | `AltText` | `string(512)?` |
 | `Width`, `Height` | `int?` |
@@ -623,6 +627,7 @@ no feed id. Rows are pruned after 7 days.
 |---|---|
 | `CK_NewsArticles_ReadState` | `(IsRead = 0 AND ReadAtUtc IS NULL) OR (IsRead = 1 AND ReadAtUtc IS NOT NULL)` |
 | `CK_NewsArticles_BodyOmittedReason` | `BodyOmittedReason IS NULL OR BodyOmittedReason IN (1, 2)` |
+| `CK_NewsArticleRevisions_BodyOmittedReason` | `BodyOmittedReason IS NULL OR BodyOmittedReason IN (1, 2)` |
 | `CK_NewsArticleFiles_RevisionKind` | a row with a revision id is a Source or a PlainText file |
 | `CK_NewsFeeds_QuotaReason` | `(QuotaReachedAtUtc IS NULL) = (QuotaReason IS NULL) AND (QuotaReason IS NULL OR QuotaReason IN (1, 2))` |
 | `CK_NewsStorageTotals_SingleRow` | `Id = 1` |
@@ -1070,7 +1075,8 @@ to raise it.
     - **JSON.** `MaxDepth = 32`.
     - **HTML.** AngleSharp with no loader, no JS and no CSS. Input is at most 2 MiB. An iterative walk is
       capped at 100,000 nodes, depth `NewsLimits.MaxHtmlDepth` (256) and a 2 s deadline.
-    - **HTML nesting pre-scan (hard cap, decided §17.1 B).** Before AngleSharp parses any HTML fragment,
+    - **HTML nesting pre-scan (hard cap, decided §17.1 B).** Before AngleSharp parses **any** HTML
+      fragment (body, summary, title, author or any other HTML-typed field),
       a linear pre-scan (no tree) tracks nesting depth:
       - non-void start tags push, and matching end tags pop;
       - void elements never push;
@@ -1080,11 +1086,20 @@ to raise it.
       If the depth would exceed `NewsLimits.MaxHtmlDepth` = 256 (the same number as the DOM-walk depth
       cap), the fragment is **not parsed**. A fragment over the 2 MiB HTML input cap gets the same
       outcome. There is no large-stack thread fallback.
-    - **Outcome of a refused fragment.** The article is still stored (title, author, link, dates, feed).
-      Its body text is omitted and **no PlainText file is written**. The excerpt falls back to the item's other text field (summary vs
-      content) if that one passes, else it is empty. The article records `BodyOmittedReason`
-      (`TooLarge` for the size cap, `TooComplex` for the depth cap), and the article detail DTO carries
-      it as `bodyOmittedReason`. The refusal is logged with the article id only.
+    - **Outcome of a refused fragment.** The article is always still stored (title, author, link, dates,
+      feed). What happens to the refused field depends on which field it is:
+      - **Body.** The body text is omitted and **no PlainText file is written**. `BodyLength` is `0`.
+        The excerpt falls back to the item's other text field (summary vs content) if that one passes,
+        else it is empty. The article records `BodyOmittedReason` (`TooLarge` for the size cap,
+        `TooComplex` for the depth cap), and the article detail DTO carries it as
+        `bodyOmittedReason`. **Only the body sets `BodyOmittedReason`.**
+      - **Title or author.** Stored empty. The client already shows "(untitled)".
+      - **Summary.** Follows the same excerpt fallback: the excerpt comes from the other text field if
+        that one passes, else it is empty.
+
+      `ContentHash` for an omitted body is computed over the raw fragment bytes (§8.8). A revision
+      records its own `BodyOmittedReason` and then has no revision text file (§4.8). Every refusal is
+      logged with the article id only.
     - XML and JSON nested 100,000 deep still fail at their existing depth-capped readers.
 11. **Packages.**
     - **AngleSharp** (new, a third-party parser on untrusted input). It runs with the mitigations above,
@@ -1306,6 +1321,9 @@ Anything else becomes `NULL`, or an image `Rejected`.
 - `IdentityHash` = SHA-256 of title plus the first 4,096 body characters. It is the identity used in
   `h:`.
 - Both are computed in memory before the file is written.
+- **An omitted body** (§7.10): `BodyLength` is `0`, and `ContentHash` uses the **raw fragment bytes** in
+  place of the body, so a later change to an omitted body is still detected as an edit. `IdentityHash`
+  uses the empty body.
 
 **Candidate keys.** **G** (`g:` or `g#`), **L** (`l:<LinkKey>`), **H** (`h:<IdentityHash>`). Before
 matching, each fetch marks GUIDs that repeat within it as *unreliable*, and LinkKeys that repeat within
@@ -1581,7 +1599,10 @@ The migration contains:
 17. XXE and billion-laughs fixtures read no file and make no request, and memory stays under 64 MB.
 18. **Deep nesting.** HTML nested 100,000 deep is refused by the pre-scan without parsing, and the
     process survives. HTML nested 256 deep parses. 257 is refused with `TooComplex`. XML and JSON nested
-    100,000 deep still fail at their existing depth-capped readers (the raw-capture path included).
+    100,000 deep still fail at their existing depth-capped readers (the raw-capture path included). A
+    title, author or summary nested 257 deep is refused too: the title or author is stored empty, the
+    summary follows the excerpt fallback, and `BodyOmittedReason` stays `null` unless the body itself was
+    refused.
 19. **Crash handling:**
     - a crash fixture leaves the feed's next fetch ≥ 1 h out;
     - three solo crash events quarantine the feed, and release clears it;
@@ -1720,6 +1741,13 @@ The migration contains:
 73. Duplicate ids are collapsed before the cap. A pending-deletion feed id is a `422`. An archived tag
     filters normally.
 74. Every catalogue entry's `articleCount` equals that feed's `ExistingNewsFeed.articleCount`.
+75. **Omitted body.** An article whose body is refused has `BodyLength = 0`, no PlainText file and
+    `ContentHash` over the raw fragment bytes. A later fetch whose refused body differs by one byte is
+    detected as an edit and creates a revision. An unchanged refused body is a no-op.
+76. **Omitted revision body.** When an edit replaces an omitted body, the new revision carries
+    `BodyOmittedReason`, has a source file and no revision text file, and `revisions/{n}` returns it with
+    `body: null` and its `bodyOmittedReason`. On real MariaDB,
+    `CK_NewsArticleRevisions_BodyOmittedReason` rejects the value `3`.
 
 **Test tiers.**
 - `Odyssey.Core.Tests` and `Odyssey.Api.Tests` (EF InMemory) cover the services, the `LIKE` search
@@ -1860,7 +1888,7 @@ in §17.1.
 - OPML import and export, and clickable links.
 - A key-less fetcher container.
 
-## 19. Decisions taken at merge, and what is still open
+## 19. Decisions taken at merge
 
 ### 19.1 Decisions taken at merge
 
@@ -1906,16 +1934,20 @@ Each settles a point the source order left open, or fills a gap in the sources.
     restored (decision 1).
 19. **A reservation swept before its save is a transient skip, retried on the next fetch** (§3.5, AC 30).
     Reason: adopted from the architecture review.
+20. **`NewsArticleImages.Origin` 1–6 is the six image sources in §6.2, in that order** (Enclosure,
+    MediaContent, MediaThumbnail, JsonImage, JsonAttachment, InlineImg). Reason: no source listed values,
+    and §6.2 already fixes the order.
+21. **The nesting pre-scan and the 2 MiB cap apply to every HTML fragment.** A refused title or author is
+    stored empty, a refused summary follows the excerpt fallback, and only the body sets
+    `BodyOmittedReason` (AC 18). Reason: the parser hazard is the same in every field.
+22. **Revisions carry their own `BodyOmittedReason`**, with the same `CHECK`, and an omitted revision has
+    no revision text file (AC 76). Reason: a revision must describe its own body.
+23. **An omitted body has `BodyLength = 0`, and `ContentHash` is computed over the raw fragment bytes**
+    (AC 75). Reason: so a later change to an omitted body is still detected as an edit.
 
-### 19.2 Still open
+Nothing remains open.
 
-- **`NewsArticleImages.Origin` 1–6** has no member list in any source part. The six image sources in
-  §6.2 are the likely mapping.
-- **A refused HTML fragment outside the body**, such as an Atom `type="html"` title. Whether the
-  pre-scan cap applies there, what the stored field becomes, and whether a revision can carry
-  `BodyOmittedReason`, are not stated. Nor is what `BodyLength` and the hashes use for an omitted body.
-
-### 19.3 Removed while merging
+### 19.2 Removed while merging
 
 - **Superseded mechanisms:**
   - the `-r<n>` revision file names, the generated-column unique index and
@@ -1947,6 +1979,7 @@ Old numbers are those used across the issue body and its comments.
 | 6–16 | 7–17 |
 | 16b | 18 |
 | 17–72 | 19–74 (old *n* → new *n* + 2) |
+| — (added at merge) | 75, 76 (omitted body and omitted revision body) |
 
 Notable entries: old 18 → 20 (two workers), 19 → 21 (egress), 26 → 28 (search), 28 → 30 (quotas),
 38 → 40 (query plans), 41 → 43 (polyglot), 48 → 50 (memory), 52 → 54 (image repair), 57 → 59 (quota
