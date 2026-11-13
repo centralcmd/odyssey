@@ -837,8 +837,10 @@ General rules:
       same `asOfUtc`) while `hasMore` is true; #473 shows this as a single action.
     - An unknown id is a `422` keyed `feedIds` or `tagIds`, as is an `asOfUtc` in the future
       (`NewsMarkReadScopeInvalid`).
-    - The confirm's count exists only for **one feed or one tag** and nothing else set; any other
-      combination shows no number (#473).
+    - The confirm's count comes from `unread-counts` and exists only with **no feed or tag filter**
+      (`total`), or with **exactly one feed or exactly one tag** and nothing else set (`byFeed` /
+      `byTag`). Any other combination, and a lone archived feed (not in `unread-counts`), shows no
+      number (#473).
 19. `PUT /api/news-articles/{id:guid}/tags` — `news.update`. Replaces the article's own tags.
 20. `PUT` / `DELETE /api/news-articles/{id:guid}/tags/{tagId:guid}` — `news.update`. Idempotent; an
     archived tag is a `422`.
