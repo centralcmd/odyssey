@@ -410,7 +410,8 @@ The same text is shown visibly in the feed's `management` block.
   - the count of consecutive failures;
   - today's articles and image MB;
   - the `quotaReason` text, when it applies;
-  - the https → http note, when it applies.
+  - the https → http note, when it applies;
+  - the moved-feed line and **Use new address**, when `suggestedUrl` is set (§3.3, *URL suggestions*).
 - **Settings** (h4): the fetch interval, *Download images* and *Active*.
   - On every feed that is not archived, including a quarantined one, the section ends with a visible
     `<p>`: "To delete this feed, archive it first. Archive is in the ⋯ menu on this card." It is
@@ -460,10 +461,16 @@ with **Save**. Required fields carry the `*` **and** the visible word "Required"
   - If Reload returns `404`, the alert reads "This feed was deleted." Save is disabled, and focus moves
     to **Close**.
 - After a feed save, the row and the dialog show the `url` from the `PUT` response, not the form value.
-- **URL suggestions.** A feed whose site moved gets its new URL when the hourly maintenance applies the
-  suggestion, or when the user saves the feed. A plain load never changes it. If maintenance changes the
-  URL while the edit dialog is open, the save returns `409 news-feed-changed`, and the flow above
-  applies.
+- **URL suggestions.** A suggested address is never applied automatically; only a `PUT` applies it.
+  When `ExistingNewsFeed.suggestedUrl` is set, the feed card's `management` block (§3.3, *Status*)
+  shows:
+  - a visible line, "This feed has moved to ‹url›.", with the URL rendered by the `OdsExternalLink`
+    rules (`<bdi dir="ltr">`, the punycode host token, a link only for an absolute http/https URL
+    without user info);
+  - a **Use new address** button, rendered only with `news-feeds.update`. It sends `PUT` for the feed
+    with `url` = `suggestedUrl` and the current `version`. On success the card shows the `url` from the
+    `PUT` response, the snackbar reads "Feed address updated", the page announcer says it once, and
+    focus stays on the card header. A `409 news-feed-changed` follows the Reload flow above.
 
 **Create flow:**
 
@@ -857,6 +864,7 @@ user types (3.2.2). On `/news-tags` the `h2` *Tags* is visible and stays a valid
 | Hide read | The visible-target rule (the pressed button is removed by the reset) |
 | Mark all read dialog closes (finished, stopped or failed) | The visible-target rule |
 | Create feed | The new card's header |
+| Use new address succeeds | Stays on the card header |
 | Create tag | The new row's name button |
 | Delete feed | The next card's header, else the visible-target rule |
 | Delete tag | The next row, else the `h2` *Tags* |
@@ -912,6 +920,7 @@ One polite `OdsLiveAnnouncer` per page. **Announcements never rely on the snackb
 | Attention count changed after the first load | "1 feed needs attention" or "No feeds need attention" |
 | Pending feed changed state | "Example News: fetched" or "…: failing", once; the poll then stops |
 | Pending poll reached 2 minutes | "Example News hasn't been fetched yet. Check again later." |
+| Use new address succeeded | "Feed address updated", once |
 | Feed state swap | "Example News paused", "…resumed", "…archived" or "…unarchived" |
 | Card removed from the filter | "Example News paused and moved to Paused" |
 | Retry before `Retry-After` | "Retrying in 25 seconds" |
@@ -1330,6 +1339,11 @@ through `odyssey-design-system-changes`.
     loaded rows, and growing the window with the pill or the sentinel keeps that order.
     `OdsRecordTable` is not nested inside `OdsInfiniteList`, which renders only its footer after the
     table.
+65. **Suggested feed address.** With `suggestedUrl` set, the management block shows "This feed has moved
+    to ‹url›." with the URL under the `OdsExternalLink` rules, and **Use new address** only for
+    `news-feeds.update` holders. Pressing it sends one `PUT` with `url` = `suggestedUrl` and the current
+    `version`; success shows "Feed address updated", announced once, and leaves focus on the card
+    header. A `409` opens the Reload flow. No feed URL changes without a `PUT`.
 
 ## 12. Rollout Plan
 
@@ -1438,3 +1452,4 @@ Old ids are the issue's numbering. Ids 33–40 were never assigned.
 | 20 | 20 | 50 | 42 | *new* (omitted body; revision case added) | 63 |
 | 21 | 21 | 51 (focus target changed) | 43 | | |
 | 22 | 22 | | | *new* (tags sort order) | 64 |
+| | | | | *new* (suggested feed address) | 65 |
