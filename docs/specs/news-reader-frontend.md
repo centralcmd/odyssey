@@ -292,7 +292,8 @@ only in the `⋯` menu. In-card sections set `OdsRecordSection` `HeadingLevel = 
 - A confirm `OdsModal`. It shows a number **only** when an exact count is known: Status is Unread, no
   search is active, the list total is not capped, and the selection is either no feed and no tag filter (the overall
   unread total) or exactly one feed alone or exactly one tag alone. The number then comes from
-  `unread-counts`. Any other combination shows no number. With a number,
+  `unread-counts`. Any other combination shows no number. When the only filter is one archived feed,
+  which `unread-counts` does not include, it shows no number rather than 0. With a number,
   it reads "Mark 42 unread articles matching these filters as read?"; otherwise "Mark all unread
   articles matching these filters as read?".
 - The scope sentence names the selection in words:
@@ -499,10 +500,17 @@ built from existing pieces:
   a description line, its *Feeds* and *Articles* counts, its *Status* ("Archived" as text), and the row
   menu.
 - The list is an **`OdsRecordTable`** with the caption "News tags", windowed by the in-memory "Load N
-  at a time" pattern: `OdsInfiniteList` in its table-body rendering mode (§4.2), as the design system's
-  `NewsTags` does with `InfiniteList`'s `renderAll`/table form (v227). A "Load N at a time" select
-  (presets 25 · 50 · 100, default 50) sits in the bar. At 320 px the table switches to its stacked
-  layout.
+  at a time" pattern, as the design system's `NewsTags` does (v227). The table is **not** nested inside
+  `OdsInfiniteList`:
+  - The page holds the full tag set, and sorts and filters it itself.
+  - It passes the current window (the first N rows of the sorted, filtered set) to `OdsRecordTable` as
+    `Rows`, with `ServerSort="true"`, so the table's sort header asks the page to re-sort the **whole**
+    set rather than sorting the loaded rows.
+  - `OdsInfiniteList` in its **footer-only mode** (§4.2), rendered after the table, supplies the
+    sentinel and the pill that grow the window. Growing the window keeps the sort order.
+  - `OdsRecordTable` keeps the loading, error and empty states.
+- A "Load N at a time" select (presets 25 · 50 · 100, default 50) sits in the bar. At 320 px the table
+  switches to its stacked layout.
 - The create and edit dialog (`OdsFormDialog`) with **`OdsTagIconPicker`** and **`OdsTagColorPicker`**,
   reused unchanged, plus the name and description fields.
 - **Archive** and **Unarchive** call the dedicated endpoints.
@@ -533,6 +541,10 @@ An `OdsModal` titled *Earlier versions of "‹title›"*:
   - The failure state is an `OdsAlert` with `role="alert"`: "Couldn't load this version." with
     **Retry**. After a successful Retry, focus moves to the panel's heading (`tabindex="-1"`). After a
     failed Retry, focus stays on Retry.
+- **Omitted version.** A revision whose body response has `bodyOmittedReason` set renders no revision
+  body. Its panel shows the same Info `OdsAlert` with `role="status"` as `Body.Omitted` (§3.2.7), "This
+  article is too large or complex to show here.", and the alert text is announced once through the
+  page's `OdsLiveAnnouncer`, in place of "Showing version N".
 - **Only the selected version is rendered.** It uses `NewsArticleBody` with the same chunking, plus its
   title, author and link, each with `lang` set.
 
@@ -626,7 +638,7 @@ Each change is opt-in or invisible to existing pages unless stated.
 
 | Component | Change |
 |---|---|
-| `OdsInfiniteList` | Gains a **remote mode** (§4.4), and a **table-body rendering mode** so an `OdsRecordTable` can be windowed by the in-memory "Load N at a time" pattern (News Tags, §3.4; the design system's `InfiniteList` `renderAll`/table form). Both are off by default; every existing page stays in the in-memory card mode and is unchanged |
+| `OdsInfiniteList` | Gains a **remote mode** (§4.4), and a **footer-only mode**: only the sentinel and the pill, with no list body and no loading, error or empty states of its own, rendered after another component (the News Tags `OdsRecordTable`, §3.4) to grow a page-held window. Both are off by default; every existing page stays in the in-memory card mode and is unchanged |
 | `OdsMultiSelect` | Gains an optional `int? MaxSelected`. When the cap is reached, the unselected options become `aria-disabled` and a `role="status"` line in the popover states the cap (the page supplies the text). **Select all** is hidden while `MaxSelected` is lower than the option count. Pages that do not set it are unchanged |
 | `PageHeader` | `PageHeaderProblem` gains an optional `ActionAriaLabel`, which overrides the action's accessible name when set. The action's trailing " →" is wrapped `aria-hidden` on **every** page. The problems toggle's name stays the existing "‹label›, ‹count›" |
 | `OdsSortSelect` | Its field menu opens at exactly the field's width on every page. Long option labels **wrap**, never clip (1.4.10, 1.4.4). (The 180 px minimum on the split and segmented variants existed in the design-system kit only and is removed there.) Checked on the narrow Background jobs and weather filter bars |
@@ -637,7 +649,7 @@ Each change is opt-in or invisible to existing pages unless stated.
 |---|---|
 | `OdsSearchField`, `OdsSelect`, `OdsSwitch`, `OdsPageSizeSelect`, `OdsListStatus` | |
 | `OdsRecordCard` + `OdsRecordBody` + `OdsInfoTileGrid` + `OdsRecordSection` | The fixed body order is used as is. Cards use `HeadingLevel = 3`; sections `HeadingLevel = 4` |
-| `OdsRecordTable` | News Tags, caption "News tags", windowed through `OdsInfiniteList`'s table-body mode |
+| `OdsRecordTable` | News Tags, caption "News tags". Receives the page's current window as `Rows` with `ServerSort="true"`, and keeps its own loading, error and empty states; `OdsInfiniteList`'s footer-only mode follows it |
 | `OdsTagIconPicker`, `OdsTagColorPicker`, `OdsTagChips`, `OdsTagMultiSelect`, `OdsChip` | |
 | `OdsModal`, `OdsFormDialog`, `OdsCheckbox`, `OdsErrorSummary` | |
 | `OdsAlert`, `OdsProblemAlert`, `OdsEmptyState`, `OdsSkeleton`, `OdsSkeletonRow`, `OdsProgressBar`, `OdsLiveAnnouncer` | |
@@ -904,7 +916,7 @@ One polite `OdsLiveAnnouncer` per page. **Announcements never rely on the snackb
 | Card removed from the filter | "Example News paused and moved to Paused" |
 | Retry before `Retry-After` | "Retrying in 25 seconds" |
 | Copy | "Link copied", or "Couldn't copy. Select the text instead." |
-| Version change | "Showing version 2", only after that version's body has loaded |
+| Version change | "Showing version 2", only after that version's body has loaded; for an omitted version, the omitted alert text instead, once |
 | Carousel | Its own region (§6.1) |
 
 Errors use `role="alert"` through the alert components.
@@ -1228,7 +1240,8 @@ through `odyssey-design-system-changes`.
     action and shows the Mark-unread sentence.
 31. **Mark all read count.** Under Status = Unread, with no search and an uncapped total, the confirm
     shows a number with no feed or tag filter (the overall unread total), with exactly one feed alone, and
-    with exactly one tag alone. Every other combination shows no number.
+    with exactly one tag alone. Every other combination shows no number. When the only filter is one archived feed,
+    which `unread-counts` omits, it shows no number rather than 0.
 32. **Unavailable menu items.**
     - No row menu on the news pages contains a disabled item.
     - Every non-archived feed, including a quarantined one, shows the visible "archive it first"
@@ -1309,8 +1322,14 @@ through `odyssey-design-system-changes`.
     `OdsAlert` with `role="status"` reading "This article is too large or complex to show here.",
     followed by an `OdsExternalLink` to the original, and still shows the carousel when the article has
     images. The alert text is announced exactly once through the page's `OdsLiveAnnouncer` when the card
-expands, and the same announcer call is used for `Body.Unavailable`. With `bodyOmittedReason` null, the body
-renders as usual.
+    expands, and the same announcer call is used for `Body.Unavailable`. With `bodyOmittedReason` null,
+    the body renders as usual. In the earlier versions dialog, a revision with `bodyOmittedReason` set
+    renders no revision body, shows the same Info alert, and announces its text once in place of
+    "Showing version N".
+64. **Tags sort over the whole set.** On `/news-tags`, sorting orders the whole tag set, not just the
+    loaded rows, and growing the window with the pill or the sentinel keeps that order.
+    `OdsRecordTable` is not nested inside `OdsInfiniteList`, which renders only its footer after the
+    table.
 
 ## 12. Rollout Plan
 
@@ -1384,9 +1403,9 @@ Each was a conflict the source amendments did not settle. All are resolved.
    snackbar's text, because the general rule (AC 29) keeps the snackbar out of the live regions.
 3. **Mark all read number: resolved.** Shown with no feed or tag filter and with exactly one feed or one
    tag alone, because only those have an exact count; no number for any other combination.
-4. **News Tags list: resolved.** An `OdsRecordTable` windowed by the in-memory "Load N at a time"
-   pattern, through a new `OdsInfiniteList` table-body mode, because design system v227's `NewsTags`
-   uses `InfiniteList`'s `renderAll`/table form.
+4. **News Tags list: resolved.** An `OdsRecordTable` fed the page-held, page-sorted window as `Rows`
+   with `ServerSort="true"`, followed by `OdsInfiniteList` in a new footer-only mode, because a table
+   cannot be nested in the list and sorting must cover the whole set, as in design system v227.
 5. **Attention row text: resolved.** "‹feed›. ‹health text›", because it is the component's existing
    format; the colon variant is removed.
 6. **Settings row label: resolved.** "Image size limit", because the later wording wins.
@@ -1416,6 +1435,6 @@ Old ids are the issue's numbering. Ids 33–40 were never assigned.
 | 17 | 17 | 47 | 39 | 68 | 60 |
 | 18 | 18 | 48 | 40 | 69 | 61 |
 | 19 | 19 | 49 | 41 | 70 | 62 |
-| 20 | 20 | 50 | 42 | *new* (omitted body) | 63 |
+| 20 | 20 | 50 | 42 | *new* (omitted body; revision case added) | 63 |
 | 21 | 21 | 51 (focus target changed) | 43 | | |
-| 22 | 22 | | | | |
+| 22 | 22 | | | *new* (tags sort order) | 64 |
