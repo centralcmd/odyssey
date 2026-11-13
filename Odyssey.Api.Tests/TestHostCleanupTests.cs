@@ -53,14 +53,17 @@ public class TestHostCleanupTests
     }
 
     [Fact]
-    public async Task The_shared_factory_resolves_no_built_in_logging_provider()
+    public async Task An_odyssey_api_factory_resolves_no_built_in_logging_provider_or_event_source_hook()
     {
         await using var factory = new OdysseyApiFactory();
 
         Assert.DoesNotContain(factory.Services.GetServices<ILoggerProvider>(), p => IsBuiltInLogging(p.GetType()));
         Assert.DoesNotContain(
             factory.Services.GetServices<IOptionsChangeTokenSource<LoggerFilterOptions>>(),
-            s => IsBuiltInLogging(s.GetType()));
+            s => TestHostCleanup.EventSourceFilterHookTypeNames.Contains(s.GetType().FullName));
+        Assert.DoesNotContain(
+            factory.Services.GetServices<IConfigureOptions<LoggerFilterOptions>>(),
+            s => TestHostCleanup.EventSourceFilterHookTypeNames.Contains(s.GetType().FullName));
     }
 
     [Fact]

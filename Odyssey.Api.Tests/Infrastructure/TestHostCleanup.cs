@@ -29,11 +29,17 @@ namespace Odyssey.Api.Tests.Infrastructure;
 /// <c>LoggingEventSource</c>.
 /// </description></item>
 /// </list>
+///
+/// <para>
+/// Only <see cref="OdysseyApiFactory"/> applies this. The few standalone
+/// <c>WebApplicationFactory&lt;Program&gt;</c> subclasses (for example <c>EmailConfirmationTests</c>) still
+/// leak their hosts; they are a small share of the run and can call these two methods if that changes.
+/// </para>
 /// </summary>
 internal static class TestHostCleanup
 {
     /// <summary>The middleware <c>UseRateLimiter</c> adds. Internal, so it is found by name.</summary>
-    internal const string RateLimitingMiddlewareTypeName = "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware";
+    private const string RateLimitingMiddlewareTypeName = "Microsoft.AspNetCore.RateLimiting.RateLimitingMiddleware";
 
     private static readonly string[] BuiltInLoggingNamespaces =
     [
@@ -44,16 +50,27 @@ internal static class TestHostCleanup
     ];
 
     /// <summary>
-    /// Removes the providers <c>WebApplication.CreateBuilder</c> adds by default, matched by namespace, so a
-    /// test's own capturing <see cref="Microsoft.Extensions.Logging.ILoggerProvider"/> keeps working wherever
-    /// it is registered. No test reads console, debug or event-source output.
+    /// The event-source provider's filter hooks, which tie each host's filter options to the process-wide
+    /// <c>LoggingEventSource</c>. They are internal and sit in the root logging namespace, so they are named.
+    /// </summary>
+    internal static readonly string[] EventSourceFilterHookTypeNames =
+    [
+        "Microsoft.Extensions.Logging.EventLogFiltersConfigureOptions",
+        "Microsoft.Extensions.Logging.EventLogFiltersConfigureOptionsChangeSource",
+    ];
+
+    /// <summary>
+    /// Removes the providers <c>WebApplication.CreateBuilder</c> adds by default, matched by namespace, and the
+    /// event-source filter hooks, so a test's own capturing <see cref="Microsoft.Extensions.Logging.ILoggerProvider"/>
+    /// keeps working wherever it is registered. No test reads console, debug or event-source output.
     /// </summary>
     public static void RemoveBuiltInLoggingProviders(this IServiceCollection services)
     {
         for (var i = services.Count - 1; i >= 0; i--)
         {
-            var ns = services[i].ImplementationType?.Namespace;
-            if (ns is not null && BuiltInLoggingNamespaces.Contains(ns))
+            var type = services[i].ImplementationType;
+            if (type is not null
+                && (BuiltInLoggingNamespaces.Contains(type.Namespace) || EventSourceFilterHookTypeNames.Contains(type.FullName)))
             {
                 services.RemoveAt(i);
             }
