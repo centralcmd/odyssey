@@ -257,7 +257,7 @@ only in the `⋯` menu. In-card sections set `OdsRecordSection` `HeadingLevel = 
 | `Body.Loading` | On the first expand, `OdsSkeleton` lines with `aria-busy="true"` while the detail request runs. Expanding announces "Loading article…" once, and nothing when the body arrives within 1 s. Focus stays on the card header |
 | `Body.Error` | An inline `OdsAlert` (error, `role="alert"`) reading "Couldn't load this article." with **Retry**. For `503 news-storage-unavailable` it reads "The article text isn't available right now." with **Retry**. Focus stays on the card header |
 | `Body.Unavailable` | `200` with `bodyUnavailable: true`: an `OdsAlert` with severity **Info** and `role="status"`: "The article text isn't available right now." The sentence "Ask an administrator to check the Background jobs page." and its link appear only for a caller with `system-settings.read`, the `/background-jobs` gate; other callers see the first sentence only. The alert is announced once, when the card expands. The list, the read state and the tags keep working, and a read-state change still applies |
-| `Body.Omitted` | `200` with `bodyOmittedReason` set (`TooLarge` or `TooComplex`): an Info `OdsAlert` with `role="status"`, "This article is too large or complex to show here.", followed by the article's `OdsExternalLink` to the original. No body is rendered. The carousel is still shown if the article has images. *(Added at merge, from the backend cap decision.)* |
+| `Body.Omitted` | `200` with `bodyOmittedReason` set (`TooLarge` or `TooComplex`): an Info `OdsAlert` with `role="status"`, "This article is too large or complex to show here.", followed by the article's `OdsExternalLink` to the original (with its sr-only "(opens in a new tab)"). No body is rendered. The carousel is still shown if the article has images. The alert text is announced once by the page's `OdsLiveAnnouncer` when the card expands, as for `Body.Unavailable`. *(Added at merge, from the backend cap decision.)* |
 
 #### 3.2.8 Mark read on open, Undo and Hide read
 
@@ -895,7 +895,7 @@ One polite `OdsLiveAnnouncer` per page. **Announcements never rely on the snackb
 | *Relevance* fell back to Published, newest first | "Sorted by newest, because the search was cleared" |
 | Hide read | "3 read articles hidden. 1,231 articles." (one announcement) |
 | Expanding a card | "Loading article…" once; nothing when the body arrives within 1 s |
-| `bodyUnavailable` | The alert, once, when the card expands |
+| `bodyUnavailable` or `bodyOmittedReason` set | The alert text, once, through the page's `OdsLiveAnnouncer`, when the card expands (an alert inserted with its text is not reliably announced on its own) |
 | A search error | The message, once, when it first appears or changes (§7.4) |
 | Attention count changed after the first load | "1 feed needs attention" or "No feeds need attention" |
 | Pending feed changed state | "Example News: fetched" or "…: failing", once; the poll then stops |
@@ -1308,7 +1308,9 @@ through `odyssey-design-system-changes`.
     `bodyOmittedReason` `TooLarge` or `TooComplex`, the reading panel renders no body, shows an Info
     `OdsAlert` with `role="status"` reading "This article is too large or complex to show here.",
     followed by an `OdsExternalLink` to the original, and still shows the carousel when the article has
-    images. With `bodyOmittedReason` null, the body renders as usual.
+    images. The alert text is announced exactly once through the page's `OdsLiveAnnouncer` when the card
+expands, and the same announcer call is used for `Body.Unavailable`. With `bodyOmittedReason` null, the body
+renders as usual.
 
 ## 12. Rollout Plan
 
