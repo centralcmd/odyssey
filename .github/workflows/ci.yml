@@ -111,7 +111,7 @@ jobs:
         # SHA-pinned: this job holds GIST_TOKEN, so a moved tag on a community
         # action would run unreviewed code with a write-scoped credential.
         # Dependabot's github-actions ecosystem keeps the pin current.
-        uses: danielpalme/ReportGenerator-GitHub-Action@861674232075b2c6bd1405a04c4bb9b150653e81 # v5.5.12
+        uses: danielpalme/ReportGenerator-GitHub-Action@5f3701a41d14548c9b8e575a5c235230e515cbc0 # v5.6.0
         with:
           reports: coverage/**/coverage.cobertura.xml
           targetdir: coverage-report
