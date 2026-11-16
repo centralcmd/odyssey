@@ -48,6 +48,11 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.23" />
     <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="11.0.0" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <!-- Deliberately ahead of Pomelo 9.0.0's own dependency (MySqlConnector >= 2.4.0, compiled
+         against 2.x). Pomelo only floors it, so restore accepts 3.x, and a binary break would surface
+         only at runtime against a real server: Odyssey.IntegrationTests (Testcontainers MariaDB) is the
+         tier that proves this pairing. If that tier fails after a bump here, hold this at 2.x until
+         Pomelo supports 3.x. -->
     <PackageVersion Include="MySqlConnector" Version="3.0.0" />
     <PackageVersion Include="MudBlazor" Version="9.13.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
