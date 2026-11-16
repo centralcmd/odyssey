@@ -31,6 +31,9 @@ public enum JobType : byte
     /// <summary>The instrument-price sync and its purges (issue #446).</summary>
     InstrumentPriceSync = 8,
 
+    /// <summary>The news reader's fetch, ingest, image and maintenance job (issue #470): work-driven, per-feed leases.</summary>
+    NewsFeedFetch = 9,
+
     Unknown = byte.MaxValue,
 }
 

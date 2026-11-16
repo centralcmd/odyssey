@@ -36,6 +36,7 @@ internal sealed class FileStorageApiFactory : OdysseyApiFactory
                 ["FileStorage:Bindings:FinanceFiles"] = "primary",
                 ["FileStorage:Bindings:JournalFiles"] = "primary",
                 ["FileStorage:Bindings:ContactAvatars"] = "primary",
+                ["FileStorage:Bindings:NewsArticles"] = "primary",
             },
             configureServices: services =>
             {

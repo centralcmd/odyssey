@@ -1,3 +1,4 @@
+using Odyssey.Core.Internet.News;
 using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Journal.Originals;
@@ -566,6 +567,9 @@ builder.Services.AddPhotoOriginals();
 // Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
 // content source every download reads through. The move of the legacy FileBlobs runs in the worker.
 builder.Services.AddStoredFiles();
+// News reader (issue #470): the NewsArticles storage feature, which every host with volumes binds. The fetching job runs
+// in the worker; the API makes no outbound request for news.
+builder.Services.AddNewsReader();
 
 builder.Services.AddScoped<AdminFileExportService>();
 

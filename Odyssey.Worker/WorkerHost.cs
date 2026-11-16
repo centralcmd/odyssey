@@ -61,6 +61,8 @@ public static class WorkerHost
         // lease elects one runner per tick; a file a legacy photo wraps waits for the photo move above.
         services.AddStoredFiles();
         services.AddPeriodicJob<FileBlobBackfillJob>();
+        // News reader (issue #470): the NewsArticles storage feature, shared with the API. The fetch job joins it later.
+        Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsReader(services);
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();
