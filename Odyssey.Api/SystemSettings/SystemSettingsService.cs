@@ -722,6 +722,10 @@ public sealed class SystemSettingsService(
             // raised per-request, so a larger setting would be refused by the transport.
             UploadMegabytesCeiling = ceilings.UploadMegabytes,
 
+            // The news image size cap's ceiling (issue #470 §11.1): derived from the same startup limit, through
+            // NewsImageSizeCeiling, which the worker's read-side clamp also calls.
+            NewsImageMaxSizeKbCeiling = ceilings.NewsImageMaxSizeKb,
+
             // The six issue #434 bound projections. Unlike the three above, these are NOT backed by a
             // RequestCapCeilings validator — their bound is the [Range] on SystemSettingsUpdate, which
             // model validation applies first (§9). They are published anyway because a WebAssembly

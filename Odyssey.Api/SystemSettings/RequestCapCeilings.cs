@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Internet.News;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
@@ -45,10 +46,17 @@ public sealed class RequestCapCeilings
         // Floors at 1: a transport ceiling configured below one megabyte would otherwise produce a
         // ceiling of 0 and make every value — including the compiled default — unsettable.
         UploadMegabytes = (int)Math.Max(1, fileStorage.Value.MaxFileSizeBytes / BytesPerMegabyte);
+        NewsImageMaxSizeKb = NewsImageSizeCeiling.Kb(fileStorage.Value.MaxFileSizeBytes);
     }
 
     /// <summary>The startup transport ceiling, in megabytes.</summary>
     public int UploadMegabytes { get; }
+
+    /// <summary>
+    /// The news image size cap's derived ceiling, in KiB (issue #470 §11.1): the store refuses a write larger than
+    /// <c>FileStorage:MaxFileSizeBytes</c>, so a higher setting would do nothing. Never below the setting's floor.
+    /// </summary>
+    public int NewsImageMaxSizeKb { get; }
 
     public static int PhotoLinksPerKind => PhotoLimits.MaxLinksPerKind;
 
@@ -59,6 +67,13 @@ public sealed class RequestCapCeilings
             ? $"cannot exceed {UploadMegabytes}: the transport request-body limit is fixed at startup "
               + "from FileStorage:MaxFileSizeBytes, so a larger upload would be rejected by the server "
               + "before this setting was consulted. Lower it, or raise the configured limit first."
+            : null;
+
+    public string? ValidateNewsImageMaxSizeKb(int value) =>
+        value > NewsImageMaxSizeKb
+            ? $"cannot exceed {NewsImageMaxSizeKb}: the file store refuses a write larger than "
+              + "FileStorage:MaxFileSizeBytes, so a larger image could never be stored. Lower it, or raise the "
+              + "configured limit first."
             : null;
 
     public static string? ValidatePhotoLinksPerKind(int value) =>

@@ -354,4 +354,30 @@ public static class SystemSettingsDefaults
 
     /// <summary>Ninety days of finished runs: a quarter of history, well under 20 000 rows with two workers (§10).</summary>
     public const int JobRunRetentionDays = 90;
+
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    /// <summary>Minutes between fetches of a feed that names no interval of its own.</summary>
+    public const int NewsDefaultFetchIntervalMinutes = 60;
+
+    /// <summary>Feeds the household may subscribe to; archived feeds count.</summary>
+    public const int NewsMaxFeeds = 200;
+
+    public const int NewsImageMaxPerArticle = 5;
+
+    /// <summary>The largest image downloaded, in KiB.</summary>
+    public const int NewsImageMaxSizeKb = 5120;
+
+    /// <summary>The image store quota; at it, new downloads are deferred, never purged.</summary>
+    public const int NewsImageStoreMaxGiB = 50;
+
+    /// <summary>The text-and-source quota; at it, new articles are not stored, nothing is deleted.</summary>
+    public const int NewsTextStoreMaxGiB = 20;
+
+    public const int NewsFeedMaxArticlesPerDay = 500;
+
+    public const int NewsFeedMaxImageMbPerDay = 200;
+
+    /// <summary>Empty: every default-blocked address stays blocked. A degraded read resolves to this too.</summary>
+    public const string NewsPrivateHostAllowList = "";
 }

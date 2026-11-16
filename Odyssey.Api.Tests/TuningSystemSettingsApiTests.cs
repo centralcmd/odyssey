@@ -499,7 +499,8 @@ public class TuningSystemSettingsApiTests
     /// repeating the same number would be unreachable through the API, which is the "decorative ceiling"
     /// flaw this feature faults its own earlier drafts for. The photo-link, album-member and upload
     /// ceilings stay, because those are runtime- or cross-assembly-derived and genuinely cannot live in
-    /// an attribute.
+    /// an attribute — and so does the news image size ceiling (issue #470), derived from the same startup
+    /// file-size limit as the upload one.
     /// </summary>
     [Fact]
     public void RequestCapCeilings_ValidatorSurface_IsUnchanged()
@@ -513,7 +514,7 @@ public class TuningSystemSettingsApiTests
             .ToList();
 
         Assert.Equal(
-            ["ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
+            ["ValidateNewsImageMaxSizeKb", "ValidatePhotoAlbumMembers", "ValidatePhotoLinksPerKind", "ValidateUploadMegabytes"],
             validators);
     }
 
