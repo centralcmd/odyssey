@@ -11,7 +11,7 @@
          advisory GHSA-q939-rpr3-3284. 4.14.0 depends on SSH.NET 2026.0.0 and clears it. -->
     <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
-    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="MailKit" Version="5.0.0" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
     <PackageVersion Include="Mapster" Version="10.0.14" />
     <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
@@ -24,31 +24,36 @@
          ImageMagick or libwebp CVE within 72 h, other Magick.NET security releases within 14 days. 15.x ships the
          linux-musl-x64 native the Alpine worker image needs, but no linux-musl-arm64 one. -->
     <PackageVersion Include="Magick.NET-Q8-AnyCPU" Version="15.1.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.App.Internal.Assets" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Authorization" Version="10.0.15" />
-    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.22" />
     <!-- Data Protection for the encrypted secret settings (issue #444). Only the Abstractions, and
          only for Odyssey.Context: a plain library needs a package to name IDataProtector.
          Odyssey.Api needs nothing — Data Protection is in its shared framework. The full package was
          here for Odyssey.MigrationService, a Worker host that called AddDataProtection(); that job no
          longer holds a key ring, so nothing takes the full package now. -->
-    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.DataProtection.Abstractions" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.15" />
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
     <!-- Pinned to 9.x: Pomelo.EntityFrameworkCore.MySql 9.0.0 (latest) requires EF Core 9.x -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.23" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.23" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.23" />
     <!-- Referenced explicitly by the context projects so the pinned patch flows to their
          consumers. Pomelo 9.0.0 only floors it at 9.0.0, which left Odyssey.TestData/
          Odyssey.E2ETests resolving 9.0.0 against DLLs compiled for the pinned patch (MSB3277).
          Keep this on the same version as the other three EF entries. -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.22" />
-    <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="11.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.23" />
+    <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="10.0.15" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <!-- Deliberately ahead of Pomelo 9.0.0's own dependency (MySqlConnector >= 2.4.0, compiled
+         against 2.x). Pomelo only floors it, so restore accepts 3.x, and a binary break would surface
+         only at runtime against a real server: Odyssey.IntegrationTests (Testcontainers MariaDB) is the
+         tier that proves this pairing. If that tier fails after a bump here, hold this at 2.x until
+         Pomelo supports 3.x. -->
+    <PackageVersion Include="MySqlConnector" Version="3.0.0" />
     <PackageVersion Include="MudBlazor" Version="9.13.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageVersion Include="QRCoder" Version="1.8.1" />
@@ -68,19 +73,19 @@
          and no test caught it. -->
     <PackageVersion Include="bunit" Version="2.15.2" />
     <PackageVersion Include="Moq" Version="4.21.0" />
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.11.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
-    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.15" />
     <!-- Retry + circuit breaker for the file-analysis provider's HttpClient — the one third-party
          network call in the app (issue #382). Ships out of dotnet/extensions, whose versions run
          ahead of the 10.0.x runtime pins. -->
-    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.11.0" />
     <!-- Odyssey.ApiClient's only package dependency: IServiceCollection for its AddOdysseyApiClient
          registration extension. Abstractions-only, so the library stays free of any web dependency. -->
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
     <!-- Test-only: Odyssey.ApiClient.Tests builds a real container to exercise AddOdysseyApiClient. -->
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.15" />
     <!-- Pins transitive MessagePack (Aspire.Hosting -> StreamJsonRpc) against high-severity
          GHSA-hv8m-jj95-wg3x, patched in 2.5.301. As of Aspire 13.6.4 the transitive floor has
          caught up (StreamJsonRpc 2.25.29 asks for 2.5.302 itself), so this is now defence in

@@ -49,6 +49,16 @@ updates:
       # GHSA-hv8m-jj95-wg3x, so a 3.x major bump is unneeded and risks runtime breakage
       - dependency-name: "MessagePack"
         update-types: ["version-update:semver-major"]
+      # The solution targets net10.0. These packages version with the .NET runtime, so their next
+      # major is .NET 11: the WebAssembly pack's 11.x build tasks do not load under the .NET 10 SDK,
+      # and the rest pull .NET 11 assemblies into net10.0 apps. Moving to .NET 11 is a deliberate
+      # TargetFramework + SDK + base-image change, not a Dependabot bump.
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.NET.Sdk.WebAssembly.Pack"
+        update-types: ["version-update:semver-major"]
 
   # GitHub Actions used across the workflows
   - package-ecosystem: "github-actions"
@@ -77,3 +87,10 @@ updates:
       docker:
         patterns:
           - "*"
+    ignore:
+      # The .NET images track the target framework (net10.0): an aspnet:11.0 runtime cannot start a
+      # net10.0 app. Move them with the TargetFramework, not on their own.
+      - dependency-name: "dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
