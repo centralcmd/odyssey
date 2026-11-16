@@ -11,7 +11,7 @@
          advisory GHSA-q939-rpr3-3284. 4.14.0 depends on SSH.NET 2026.0.0 and clears it. -->
     <PackageVersion Include="Testcontainers.MySql" Version="4.16.0" />
     <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
-    <PackageVersion Include="MailKit" Version="4.18.2" />
+    <PackageVersion Include="MailKit" Version="5.0.0" />
     <PackageVersion Include="Ical.Net" Version="5.2.4" />
     <PackageVersion Include="Mapster" Version="10.0.14" />
     <!-- Pure-managed (Apache-2.0) EXIF/IPTC/XMP reader for the Photos module (issue #321). No native
@@ -39,16 +39,21 @@
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
     <!-- Pinned to 9.x: Pomelo.EntityFrameworkCore.MySql 9.0.0 (latest) requires EF Core 9.x -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore" Version="9.0.23" />
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.23" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="9.0.23" />
     <!-- Referenced explicitly by the context projects so the pinned patch flows to their
          consumers. Pomelo 9.0.0 only floors it at 9.0.0, which left Odyssey.TestData/
          Odyssey.E2ETests resolving 9.0.0 against DLLs compiled for the pinned patch (MSB3277).
          Keep this on the same version as the other three EF entries. -->
-    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.22" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.23" />
     <PackageVersion Include="Microsoft.NET.Sdk.WebAssembly.Pack" Version="11.0.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
-    <PackageVersion Include="MySqlConnector" Version="2.6.2" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.12.0" />
+    <!-- Deliberately ahead of Pomelo 9.0.0's own dependency (MySqlConnector >= 2.4.0, compiled
+         against 2.x). Pomelo only floors it, so restore accepts 3.x, and a binary break would surface
+         only at runtime against a real server: Odyssey.IntegrationTests (Testcontainers MariaDB) is the
+         tier that proves this pairing. If that tier fails after a bump here, hold this at 2.x until
+         Pomelo supports 3.x. -->
+    <PackageVersion Include="MySqlConnector" Version="3.0.0" />
     <PackageVersion Include="MudBlazor" Version="9.13.0" />
     <PackageVersion Include="Pomelo.EntityFrameworkCore.MySql" Version="9.0.0" />
     <PackageVersion Include="QRCoder" Version="1.8.1" />
