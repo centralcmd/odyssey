@@ -80,6 +80,7 @@ licensing.
 | Pomelo.EntityFrameworkCore.MySql | MIT |
 | MySqlConnector | MIT |
 | Mapster | MIT |
+| AngleSharp | MIT |
 | MailKit / MimeKit | MIT |
 | Ical.Net | MIT |
 | QRCoder | MIT |
