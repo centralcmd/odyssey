@@ -88,6 +88,9 @@ public class WeatherHistorySectionTests : IDisposable
     {
         Serve(measuredFrom: new DateOnly(2025, 3, 2), measuredThrough: Yesterday);
         await using var ctx = Context();
+        // MudBlazor 9.13 opens a tooltip on focus only when the browser reports keyboard-visible focus
+        // (MudBlazor #13553); loose interop would answer false, as for a click.
+        ctx.JSInterop.Setup<bool>("mudElementRef.isFocusVisible", _ => true).SetResult(true);
         var popover = ctx.Render<MudBlazor.MudPopoverProvider>();
 
         var section = Render(ctx);
