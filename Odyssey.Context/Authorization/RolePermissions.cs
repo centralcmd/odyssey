@@ -75,6 +75,29 @@ public static class RolePermissions
         WeatherPreferencesUpdate,
     ];
 
+    /// <summary>
+    /// The news reader's claims (issue #470 §7.2), all of which Admin and Owner hold. User keeps the household's read
+    /// state and article tags (<see cref="NewsReaderClaims"/>); Guest only reads.
+    /// </summary>
+    public static readonly string[] NewsModuleClaims =
+    [
+        NewsRead,
+        NewsUpdate,
+        NewsFeedsCreate,
+        NewsFeedsUpdate,
+        NewsFeedsDelete,
+        NewsTagsCreate,
+        NewsTagsUpdate,
+        NewsTagsDelete,
+    ];
+
+    /// <summary>What User holds of <see cref="NewsModuleClaims"/>: reading, read state and article tags.</summary>
+    public static readonly string[] NewsReaderClaims =
+    [
+        NewsRead,
+        NewsUpdate,
+    ];
+
     public static readonly string[] AllClaims =
     [
         AccountsCreate,
@@ -158,6 +181,7 @@ public static class RolePermissions
         SystemSettingsUpdate,
         SystemSettingsSecurityUpdate,
         FileStorageRead,
+        ..NewsModuleClaims,
     ];
 
     public static readonly string[] AdminClaims =
@@ -235,6 +259,7 @@ public static class RolePermissions
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
+        ..NewsModuleClaims,
     ];
 
     public static readonly string[] UserClaims =
@@ -272,6 +297,7 @@ public static class RolePermissions
         ..CalendarModuleClaims,
         ..WeatherReaderClaims,
         ProfileImagesRead,
+        ..NewsReaderClaims,
     ];
 
     public static readonly string[] GuestClaims =
@@ -305,6 +331,8 @@ public static class RolePermissions
         // meets by name on shared records, and the point of the claim is that it is REVOCABLE per role
         // without a code change — not that it narrows anything today.
         ProfileImagesRead,
+        // News (issue #470 §7.2): the household's shared feeds, read only.
+        NewsRead,
     ];
 
     /// <summary>

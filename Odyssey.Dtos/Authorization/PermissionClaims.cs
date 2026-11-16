@@ -234,4 +234,20 @@ public static class PermissionClaims
     // telemetry, not a setting, so it is its own claim rather than system-settings.read, which keeps a
     // revocation lever. It reads counts and byte totals only; no path, file name or object id.
     public const string FileStorageRead = "file-storage.read";
+
+    // News reader (issue #470 §7.2). Shared household data: every role reads it, Guest included; Admin, Owner and User
+    // keep the shared read state and article tags; only Admin and Owner manage feeds and news tags. The status
+    // endpoint uses file-storage.read and the private-host allow-list system-settings.security.update, so neither has
+    // a news claim of its own. Every file-storage.read holder also holds news.read (AuthorizationPolicyTests), because
+    // the status endpoint shows feed titles.
+    public const string NewsRead = "news.read";
+    public const string NewsUpdate = "news.update";
+
+    public const string NewsFeedsCreate = "news-feeds.create";
+    public const string NewsFeedsUpdate = "news-feeds.update";
+    public const string NewsFeedsDelete = "news-feeds.delete";
+
+    public const string NewsTagsCreate = "news-tags.create";
+    public const string NewsTagsUpdate = "news-tags.update";
+    public const string NewsTagsDelete = "news-tags.delete";
 }
