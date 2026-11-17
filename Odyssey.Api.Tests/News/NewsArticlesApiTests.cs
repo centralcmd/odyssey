@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.DataProtection;
 using Odyssey.Core.Internet.News.Reading;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
@@ -104,14 +106,16 @@ public sealed class NewsArticlesApiTests
     [Fact]
     public async Task AC67_An_article_first_seen_after_the_first_page_is_not_on_later_pages_but_on_a_fresh_one()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var time = new FakeTimeProvider(new DateTimeOffset(Base.AddDays(1)));
+        await using var factory = new OdysseyApiFactory(AllNewsClaims, configureServices: s => s.Replace(ServiceDescriptor.Singleton<TimeProvider>(time)));
         var feed = await factory.SeedFeedAsync();
         await factory.SeedArticlesAsync(feed, 4);
         using var client = factory.CreateClient();
 
         var first = await PageAsync(client, "limit=2&sortBy=Oldest");
+        Assert.Equal(time.GetUtcNow().UtcDateTime, first.AsOfUtc);
         var late = await factory.SeedArticlesAsync(feed, 1, "Late", firstSeen: first.AsOfUtc.AddMilliseconds(1), start: Base.AddMinutes(10));
-        await Task.Delay(20);
+        time.Advance(TimeSpan.FromSeconds(1));
         var second = await PageAsync(client, $"limit=10&sortBy=Oldest&cursor={Uri.EscapeDataString(first.NextCursor!)}");
 
         Assert.DoesNotContain(second.Items, i => i.Id == late[0]);
@@ -276,6 +280,30 @@ public sealed class NewsArticlesApiTests
         var other = new HttpRequestMessage(HttpMethod.Get, $"{Articles}?search=election");
         other.Headers.Add(TestAuthHandler.ActorOverrideHeader, "another-user");
         Assert.Equal(HttpStatusCode.OK, (await client.SendAsync(other)).StatusCode);
+    }
+
+    [Fact]
+    public async Task AC47_A_search_filtered_mark_read_takes_the_search_limiter_and_an_unsearched_one_does_not()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims, configuration: new Dictionary<string, string?>
+        {
+            ["RateLimiting:NewsSearch:PermitLimit"] = "1",
+        });
+        var feed = await factory.SeedFeedAsync();
+        await factory.SeedArticlesAsync(feed, 2, "Election");
+        using var client = factory.CreateClient();
+
+        await PageAsync(client, "search=election");
+        var limited = await client.PostAsJsonAsync($"{Articles}/mark-read", new MarkNewsRead { AsOfUtc = DateTimeOffset.UtcNow, Search = "election" });
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, limited.StatusCode);
+        Assert.NotNull(limited.Headers.RetryAfter);
+        Assert.Equal(NewsErrorCodes.SearchLimited, (await limited.ProblemAsync()).Code());
+        Assert.Equal(2, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+
+        var unsearched = await client.PostAsJsonAsync($"{Articles}/mark-read", new MarkNewsRead { AsOfUtc = DateTimeOffset.UtcNow });
+        Assert.Equal(HttpStatusCode.OK, unsearched.StatusCode);
+        Assert.Equal(2, (await unsearched.ReadAsync<MarkNewsReadResult>()).MarkedCount);
     }
 
     [Fact]

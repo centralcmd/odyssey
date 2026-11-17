@@ -4,8 +4,8 @@ using Microsoft.Extensions.Options;
 namespace Odyssey.Api;
 
 /// <summary>
-/// Bound from <c>RateLimiting:NewsSearch</c> (issue #470 §8.4): at most 4 searches at once across the deployment, at
-/// most 2 of them one user's, and 30 per user per minute. Deploy-time configuration for the reason
+/// Bound from <c>RateLimiting:NewsSearch</c> (issue #470 §8.4): at most 4 searches at once per API process (so across
+/// the deployment only while the API runs as one replica), at most 2 of them one user's, and 30 per user per minute. Deploy-time configuration for the reason
 /// <see cref="LocationSearchRateLimiting"/> gives.
 /// </summary>
 public sealed class NewsSearchLimitOptions
@@ -27,8 +27,8 @@ public sealed class NewsSearchLimitOptions
 
 /// <summary>
 /// The full-text search limiter (§8.4), the <see cref="LocationSearchGlobalLimiter"/> pattern widened to the three
-/// limits a <c>FULLTEXT</c> query needs. Acquired inside the article list only when a search is present, so an ordinary
-/// list never spends from it. The per-user window is checked before either concurrency slot is taken, so a refused
+/// limits a <c>FULLTEXT</c> query needs. Acquired by the article list and by mark-read only when a search is present, so an
+/// ordinary list never spends from it. The per-user window is checked before either concurrency slot is taken, so a refused
 /// request holds nothing; a granted request holds its two slots until the lease is disposed.
 /// </summary>
 public sealed class NewsSearchLimiter(IOptions<NewsSearchLimitOptions> options, TimeProvider time)

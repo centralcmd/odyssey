@@ -42,15 +42,20 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
         using var lease = searchLimiter.TryAcquire(userId, out var retryAfter);
         if (lease is null)
         {
-            Response.Headers.RetryAfter = retryAfter.ToString(CultureInfo.InvariantCulture);
-            return Problem(
-                statusCode: StatusCodes.Status429TooManyRequests,
-                title: ReasonPhrases.GetReasonPhrase(StatusCodes.Status429TooManyRequests),
-                detail: "Too many searches right now; try again shortly.",
-                extensions: new Dictionary<string, object?> { ["code"] = NewsErrorCodes.SearchLimited });
+            return SearchLimited(retryAfter);
         }
 
         return Ok(await articles.ListAsync(query, cancellationToken));
+    }
+
+    private ObjectResult SearchLimited(int retryAfter)
+    {
+        Response.Headers.RetryAfter = retryAfter.ToString(CultureInfo.InvariantCulture);
+        return Problem(
+            statusCode: StatusCodes.Status429TooManyRequests,
+            title: ReasonPhrases.GetReasonPhrase(StatusCodes.Status429TooManyRequests),
+            detail: "Too many searches right now; try again shortly.",
+            extensions: new Dictionary<string, object?> { ["code"] = NewsErrorCodes.SearchLimited });
     }
 
     [HttpGet("{id:guid}")]
@@ -147,8 +152,28 @@ public sealed class NewsArticlesController(NewsArticleService articles, NewsSear
     [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Mark read what the list's filters match, up to the first page's asOfUtc; repeat while hasMore.")]
-    public async Task<IActionResult> MarkRead([FromBody] MarkNewsRead request, CancellationToken cancellationToken = default) =>
-        Ok(await articles.MarkReadAsync(request, cancellationToken));
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    public async Task<IActionResult> MarkRead([FromBody] MarkNewsRead request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Search))
+        {
+            return Ok(await articles.MarkReadAsync(request, cancellationToken));
+        }
+
+        // A search-filtered mark-read runs the same full-text query as a search, so it takes the same limiter.
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        using var lease = searchLimiter.TryAcquire(userId, out var retryAfter);
+        if (lease is null)
+        {
+            return SearchLimited(retryAfter);
+        }
+
+        return Ok(await articles.MarkReadAsync(request, cancellationToken));
+    }
 
     [HttpPut("{id:guid}/tags")]
     [Authorize(Policy = PermissionClaims.NewsUpdate)]
