@@ -576,6 +576,10 @@ builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>()
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
 builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
+// OPML import and export (issue #508): the services, and the one-import-at-a-time permit, shared by every request.
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Opml.NewsOpmlImportService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Opml.NewsOpmlExportService>();
+builder.Services.AddSingleton<Odyssey.Api.NewsOpmlImportLimiter>();
 builder.Services.AddNewsSearchLimiter(builder.Configuration);
 // The manual news run (§5.5 item 27): under Testing no worker runs, so it executes inline, as run-now does for the
 // exchange-rate sync.

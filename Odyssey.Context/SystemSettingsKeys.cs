@@ -260,6 +260,10 @@ public static class SystemSettingsKeys
     public const string NewsFeedMaxImageMbPerDay = "NewsFeedMaxImageMbPerDay";
     public const string NewsPrivateHostAllowList = "NewsPrivateHostAllowList";
 
+    // News OPML import (issue #508 §8.5): the size cap (security claim, like every import size cap) and the entry cap.
+    public const string NewsOpmlMaxImportMegabytes = "NewsOpmlMaxImportMegabytes";
+    public const string NewsOpmlMaxImportEntries = "NewsOpmlMaxImportEntries";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -348,6 +352,8 @@ public static class SystemSettingsKeys
         NewsFeedMaxArticlesPerDay,
         NewsFeedMaxImageMbPerDay,
         NewsPrivateHostAllowList,
+        NewsOpmlMaxImportMegabytes,
+        NewsOpmlMaxImportEntries,
     ];
 
     /// <summary>

@@ -41,11 +41,20 @@ public static class NewsQueryGuard
             return true;
         });
 
-    /// <summary>True when <paramref name="exception"/> (or anything it wraps) is a statement timeout or a lock wait.</summary>
+    /// <summary>
+    /// True when <paramref name="exception"/> (or anything it wraps) is a statement timeout or a lock wait, or an
+    /// interrupted news transaction (<see cref="NewsTransactionRetryException"/>, issue #508 A2): its commit outcome is
+    /// unknown, so a retry that re-evaluates is the answer, exactly as for a timeout.
+    /// </summary>
     public static bool IsBusy(Exception exception)
     {
         for (var current = exception; current is not null; current = current.InnerException)
         {
+            if (current is NewsTransactionRetryException)
+            {
+                return true;
+            }
+
             if (current is MySqlException mySql && (mySql.Number == StatementTimeout
                     || mySql.ErrorCode is MySqlErrorCode.LockWaitTimeout or MySqlErrorCode.QueryTimeout or MySqlErrorCode.CommandTimeoutExpired))
             {

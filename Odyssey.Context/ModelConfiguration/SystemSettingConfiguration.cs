@@ -153,6 +153,9 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.NewsFeedMaxArticlesPerDay, Value = "500", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.NewsFeedMaxImageMbPerDay, Value = "200", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.NewsPrivateHostAllowList, Value = SystemSettingsDefaults.NewsPrivateHostAllowList, UpdatedAt = seededAt },
+            // News OPML import (issue #508 §8.5).
+            new SystemSetting { Key = SystemSettingsKeys.NewsOpmlMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsOpmlMaxImportEntries, Value = "100000", UpdatedAt = seededAt },
             // Filesystem object storage (issue #346): a day's grace before a released file leaves the disk.
             new SystemSetting { Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = "24", UpdatedAt = seededAt },
             // Background jobs (issue #409): ninety days of finished runs in the shared run log.

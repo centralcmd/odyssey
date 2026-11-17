@@ -114,7 +114,7 @@ public class CalendarIcsIntegrationTests(MariaDbFixture fixture)
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

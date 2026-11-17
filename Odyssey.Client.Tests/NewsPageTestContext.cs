@@ -11,6 +11,7 @@ using MudBlazor.Services;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Client.Services;
+using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
 
@@ -46,7 +47,17 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
         Ctx.Services.AddScoped<NewsStoreGate>();
         Clipboard.Setup(c => c.CopyAsync(It.IsAny<string>(), It.IsAny<string?>())).ReturnsAsync(true);
         Ctx.Services.AddSingleton(Clipboard.Object);
+        Limits.Setup(l => l.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => CurrentLimits);
+        Ctx.Services.AddSingleton(Limits.Object);
+        Ctx.Services.AddSingleton<IClaimsRefresher>(Refresher);
     }
+
+    /// <summary>What <see cref="Limits"/> returns; change it to stand for a Settings save.</summary>
+    public ImportLimitsDto CurrentLimits { get; set; } = ImportLimitsCache.Fallback;
+
+    public Mock<IImportLimitsCache> Limits { get; } = new();
+
+    public FakeClaimsRefresher Refresher { get; } = new();
 
     public BunitContext Ctx { get; } = new();
 

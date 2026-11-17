@@ -10,8 +10,8 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.Internet.News;
 
 /// <summary>
-/// The eight resolved int settings of the news reader (issue #470 §11.1). <see cref="IsDegraded"/> says at least one
-/// was resolved conservatively; the values are still usable.
+/// The resolved int settings of the news reader (issue #470 §11.1), with the OPML import's entry cap (issue #508 §8.5).
+/// <see cref="IsDegraded"/> says at least one was resolved conservatively; the values are still usable.
 /// </summary>
 public sealed record NewsSettings(
     int DefaultFetchIntervalMinutes,
@@ -22,6 +22,7 @@ public sealed record NewsSettings(
     int TextStoreMaxGiB,
     int FeedMaxArticlesPerDay,
     int FeedMaxImageMbPerDay,
+    int OpmlMaxImportEntries,
     bool IsDegraded = false)
 {
     /// <summary>The shipped defaults: what an unseeded store resolves to.</summary>
@@ -33,7 +34,8 @@ public sealed record NewsSettings(
         SystemSettingsDefaults.NewsImageStoreMaxGiB,
         SystemSettingsDefaults.NewsTextStoreMaxGiB,
         SystemSettingsDefaults.NewsFeedMaxArticlesPerDay,
-        SystemSettingsDefaults.NewsFeedMaxImageMbPerDay);
+        SystemSettingsDefaults.NewsFeedMaxImageMbPerDay,
+        SystemSettingsDefaults.NewsOpmlMaxImportEntries);
 
     public long ImageMaxBytes => ImageMaxSizeKb * 1024L;
 
@@ -52,7 +54,7 @@ public sealed record NewsSettings(
 /// </summary>
 public interface INewsSettingsLookup
 {
-    /// <summary>The eight int settings, on the shared 30 s TTL.</summary>
+    /// <summary>The int settings, on the shared 30 s TTL.</summary>
     Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
@@ -89,6 +91,7 @@ public sealed class NewsSettingsLookup(
         SystemSettingsKeys.NewsTextStoreMaxGiB,
         SystemSettingsKeys.NewsFeedMaxArticlesPerDay,
         SystemSettingsKeys.NewsFeedMaxImageMbPerDay,
+        SystemSettingsKeys.NewsOpmlMaxImportEntries,
     ];
 
     private static readonly IntSettingSpec DefaultInterval = new(
@@ -126,6 +129,10 @@ public sealed class NewsSettingsLookup(
         SystemSettingsKeys.NewsFeedMaxImageMbPerDay, SystemSettingsDefaults.NewsFeedMaxImageMbPerDay,
         SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax);
 
+    private static readonly IntSettingSpec OpmlMaxImportEntries = new(
+        SystemSettingsKeys.NewsOpmlMaxImportEntries, SystemSettingsDefaults.NewsOpmlMaxImportEntries,
+        SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax);
+
     private readonly IntSettingResolver resolver = new(cache, logger, CacheKey);
 
     public async Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default)
@@ -144,8 +151,9 @@ public sealed class NewsSettingsLookup(
         var textStore = resolver.Resolve(TextStoreMaxGiB, values, readFailed);
         var articlesPerDay = resolver.Resolve(FeedMaxArticlesPerDay, values, readFailed);
         var imageMbPerDay = resolver.Resolve(FeedMaxImageMbPerDay, values, readFailed);
+        var opmlEntries = resolver.Resolve(OpmlMaxImportEntries, values, readFailed);
 
-        var degraded = readFailed || new[] { interval, maxFeeds, perArticle, sizeKb, imageStore, textStore, articlesPerDay, imageMbPerDay }
+        var degraded = readFailed || new[] { interval, maxFeeds, perArticle, sizeKb, imageStore, textStore, articlesPerDay, imageMbPerDay, opmlEntries }
             .Any(setting => setting.IsDegraded);
 
         // The read-side backstop of the derived ceiling (§11.1): the same helper the settings PUT validates with.
@@ -159,6 +167,7 @@ public sealed class NewsSettingsLookup(
             textStore.Value,
             articlesPerDay.Value,
             imageMbPerDay.Value,
+            opmlEntries.Value,
             degraded);
         if (!degraded)
         {

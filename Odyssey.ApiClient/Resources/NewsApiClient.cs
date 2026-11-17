@@ -62,6 +62,16 @@ public interface INewsApiClient
 
     Task<ApiResult<ExistingNewsFeed>> ReleaseQuarantineAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Exports feeds as an OPML 2.0 file (issue #508 §5.1, amendment v6): <c>null</c> is every feed
+    /// (<c>GET /api/news-feeds/opml</c>); a list exports exactly those ids (<c>POST …/opml/export</c>), unknown ones and
+    /// feeds pending deletion skipped. <see cref="NewsOpmlExportFile.Rows"/> is the number of feeds written.
+    /// </summary>
+    Task<ApiResult<NewsOpmlExportFile>> ExportOpmlAsync(IReadOnlyCollection<Guid>? feedIds = null, CancellationToken ct = default);
+
+    /// <summary>Imports an OPML file in one step (<c>POST /api/news-feeds/opml</c>, issue #508 §5.2) and returns its report.</summary>
+    Task<ApiResult<NewsOpmlImportResult>> ImportOpmlAsync(ApiUpload file, CancellationToken ct = default);
+
     // Articles
 
     /// <summary>
@@ -117,6 +127,9 @@ public sealed class NewsApiClient(IOdysseyApi api) : INewsApiClient
     private const string Articles = "api/news-articles";
     private const string Tags = "api/news-tags";
 
+    /// <summary>Used when the export response carries no <c>Content-Disposition</c> file name.</summary>
+    private const string OpmlFileName = "odyssey-news-feeds.opml";
+
     public Task<ApiResult<PagedResult<ExistingNewsFeed>>> ListFeedsAsync(
         int page, int pageSize, string? search = null, Guid? tagId = null, NewsFeedState? state = null,
         IReadOnlyCollection<NewsFeedHealth>? health = null, NewsFeedSortBy? sortBy = null, bool? ascending = null,
@@ -165,6 +178,22 @@ public sealed class NewsApiClient(IOdysseyApi api) : INewsApiClient
 
     public Task<ApiResult> DeleteFeedAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Feeds}/{id}", null, ct);
+
+    public async Task<ApiResult<NewsOpmlExportFile>> ExportOpmlAsync(IReadOnlyCollection<Guid>? feedIds = null, CancellationToken ct = default)
+    {
+        var download = feedIds is null
+            ? await api.DownloadExportAsync(HttpMethod.Get, $"{Feeds}/opml", null, OpmlFileName, ct)
+            : await api.DownloadExportAsync(HttpMethod.Post, $"{Feeds}/opml/export", new NewsOpmlExportRequest { FeedIds = [.. feedIds] }, OpmlFileName, ct);
+        return download.IsSuccess && download.Value is { } value
+            ? ApiResult<NewsOpmlExportFile>.Success(new NewsOpmlExportFile(value.File, value.Rows), download.Status)
+            : download.CastFailure<NewsOpmlExportFile>();
+    }
+
+    public Task<ApiResult<NewsOpmlImportResult>> ImportOpmlAsync(ApiUpload file, CancellationToken ct = default) =>
+        api.UploadAsync<NewsOpmlImportResult>(
+            $"{Feeds}/opml",
+            string.IsNullOrWhiteSpace(file.FileName) ? file with { FileName = "feeds.opml" } : file,
+            ct: ct);
 
     public Task<ApiResult<ExistingNewsFeed>> ReleaseQuarantineAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync<ExistingNewsFeed>(HttpMethod.Post, $"{Feeds}/{id}/release-quarantine", null, ct);

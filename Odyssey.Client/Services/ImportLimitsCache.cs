@@ -1,5 +1,5 @@
-using Odyssey.Dtos;
 using Odyssey.ApiClient.Resources;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 
 namespace Odyssey.Client.Services;
@@ -74,6 +74,8 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         JournalIcsMaxImportEntries = null,
         JournalIcsMaxImportMegabytes = (int)(JournalIcsApiClient.MaxImportBytes / (1024 * 1024)),
         JournalIcsMaxExportMegabytes = SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
+        NewsOpmlMaxImportEntries = SystemSettingsDefaults.NewsOpmlMaxImportEntries,
+        NewsOpmlMaxImportMegabytes = SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
     };
 
     private Task<ImportLimitsDto?>? pending;

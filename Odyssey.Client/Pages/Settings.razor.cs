@@ -806,6 +806,22 @@ public partial class Settings : IDisposable
                 AllowEmpty: true,
                 StandingAdvisory: NewsAllowListAdvisory,
                 HideWithoutClaim: true),
+            // The OPML import caps close the group (issue #509 §4.2, AC 20): the size cap under the security claim like
+            // the other import size caps, the entry cap a count cap whose ceiling is its shipped default.
+            new("newsOpmlMaxImportMegabytes", "sd_storage", "Maximum OPML import file size",
+                "Largest OPML file the Feeds page accepts for import. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportMegabytes", dto.NewsOpmlMaxImportMegabytes),
+                Write: (p, req) => req.NewsOpmlMaxImportMegabytes = p.IntRequest("newsOpmlMaxImportMegabytes")),
+            new("newsOpmlMaxImportEntries", "file_upload", "Maximum feeds per OPML import",
+                "Most distinct feeds one OPML file may list. Feeds beyond the feed limit are reported, not added.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportEntriesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportEntries),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportEntries", dto.NewsOpmlMaxImportEntries),
+                Write: (p, req) => req.NewsOpmlMaxImportEntries = p.IntRequest("newsOpmlMaxImportEntries")),
         ]),
         // ── Per-request caps (issue #421 Wave 3) ──────────────────────────────────────────────────
         // These were invisible before: the Contracts and PhotoLibrary config sections had no

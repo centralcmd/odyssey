@@ -303,7 +303,10 @@ public class SystemSettingsRegistryTests
         //
         // +1 in issue #470: NewsPrivateHostAllowList, which decides which private addresses the worker may fetch
         // from — an egress control, so every change is recorded.
-        Assert.Equal(32, audited.Count);
+        //
+        // +1 in issue #508: NewsOpmlMaxImportMegabytes, an import size cap like the eight megabyte caps above, through
+        // the same Megabytes helper (amendment v5). The entry cap beside it is a count cap on the ordinary claim.
+        Assert.Equal(33, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

@@ -46,6 +46,13 @@ internal static class NewsFeedback
         return Spoken(text);
     }
 
+    /// <summary>Shows a failure whose whole text is fixed (the OPML export's §7.1 texts, issue #509); returns what the announcer should say.</summary>
+    public static string? Failure(ISnackbar snackbar, string text)
+    {
+        snackbar.Add(text, Severity.Error, config => config.RequireInteraction = true);
+        return Spoken(text);
+    }
+
     /// <summary>A 404 on an action: the row was removed elsewhere (§7.2). Returns what the announcer should say.</summary>
     public static string? Gone(ISnackbar snackbar)
     {

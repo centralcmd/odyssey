@@ -33,3 +33,17 @@ public sealed record ApiUpload(
     string ContentType,
     long Size,
     Func<Stream> OpenRead);
+
+/// <summary>An export download: the file, and the row count the server declared, when it declared a usable one.</summary>
+/// <param name="File">The file.</param>
+/// <param name="Rows">
+/// <c>X-Odyssey-Export-Rows</c>, or <c>null</c> when the header is missing or not a non-negative integer.
+/// </param>
+public sealed record ApiExportDownload(ApiFile File, int? Rows);
+
+/// <summary>
+/// A news OPML export (issue #508 amendment v7): the file, and the number of feeds written from
+/// <c>X-Odyssey-Export-Rows</c>, which the Feeds page's success message names. <c>null</c> when the header is missing
+/// or not a non-negative integer.
+/// </summary>
+public sealed record NewsOpmlExportFile(ApiFile File, int? Rows);

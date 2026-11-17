@@ -41,4 +41,14 @@ public sealed record ImportLimitsDto
     public int JournalIcsMaxImportMegabytes { get; set; }
 
     public int JournalIcsMaxExportMegabytes { get; set; }
+
+    /// <summary>
+    /// The most distinct feeds one news OPML import may name (issue #508 §5.3). <c>null</c> while the news settings read
+    /// is degraded: that is a news fault, so it withholds this one figure rather than failing the whole endpoint every
+    /// other import dialog reads.
+    /// </summary>
+    public int? NewsOpmlMaxImportEntries { get; set; }
+
+    /// <summary>The largest news OPML upload accepted, in MB (issue #508 §5.3).</summary>
+    public int NewsOpmlMaxImportMegabytes { get; set; }
 }

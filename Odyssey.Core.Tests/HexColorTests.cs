@@ -268,8 +268,8 @@ public class HexColorTests
             // feature's scope, which is tag and calendar colours only.
             .Where(path => Path.GetFileName(path) is not ("HexColor.cs" or "OdsGlyphInk.cs"))
             // NewsEntityPrepass reads hexadecimal character references (&#x2014;) in feed XML (issue #470 §8.6), not
-            // colours.
-            .Where(path => Path.GetFileName(path) is not "NewsEntityPrepass.cs")
+            // colours; OpmlTextReader is its chunked twin for OPML imports (issue #508 §7.5).
+            .Where(path => Path.GetFileName(path) is not ("NewsEntityPrepass.cs" or "OpmlTextReader.cs"))
             .Where(path => Regex.IsMatch(StripComments(File.ReadAllText(path)), @"\[0-9A-Fa-f\]\{6\}|\[0-9a-fA-F\]\{6\}|\[A-Fa-f0-9\]\{6\}|\\p\{XDigit\}|IsAsciiHexDigit|IsHexDigit"))
             .Select(path => Path.GetRelativePath(root, path))
             .ToList();

@@ -549,6 +549,17 @@ public sealed record SystemSettingsUpdate
     public string? NewsPrivateHostAllowList { get; set; }
 
     // ---------------------------------------------------------------------------------------------
+    // News OPML import (issue #508 §8.5). The size cap is an import size cap like the four above it
+    // (security claim, the shared megabyte pair); the entry cap can only be lowered.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax)]
+    public int? NewsOpmlMaxImportMegabytes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax)]
+    public int? NewsOpmlMaxImportEntries { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
     // for deleted personal data, so every change is audited.
     // ---------------------------------------------------------------------------------------------
