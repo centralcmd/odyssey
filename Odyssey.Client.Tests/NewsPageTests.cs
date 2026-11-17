@@ -169,4 +169,53 @@ public class NewsPageTests
         Assert.Empty(cut.FindAll(".odc-section-divider"));
         Assert.Empty(cut.FindAll(".nw-page > .mud-stack > .mud-alert"));
     }
+    // ── AC 1: route and gate ───────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void The_page_is_routed_at_news_behind_news_read_with_its_title_and_state_key()
+    {
+        var route = Assert.Single(typeof(NewsPage).GetCustomAttributes(typeof(Microsoft.AspNetCore.Components.RouteAttribute), false)
+            .Cast<Microsoft.AspNetCore.Components.RouteAttribute>());
+        Assert.Equal("/news", route.Template);
+        var policy = Assert.Single(typeof(NewsPage).GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), false)
+            .Cast<Microsoft.AspNetCore.Authorization.AuthorizeAttribute>());
+        Assert.Equal(PermissionClaims.NewsRead, policy.Policy);
+        Assert.Equal("news-page", NewsPage.PageStateKey);
+    }
+
+    [Fact]
+    public async Task The_page_title_and_h1_are_news()
+    {
+        await using var context = Context([Article("A")]);
+        var cut = context.Render<NewsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+
+        Assert.Equal("News", cut.Find("h1").TextContent.Trim());
+        Assert.Single(cut.FindComponents<Microsoft.AspNetCore.Components.Web.PageTitle>());
+        Assert.Contains("<PageTitle>News</PageTitle>",
+            File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Internet", "NewsPage.razor")), StringComparison.Ordinal);
+    }
+
+    // ── §3.2.2: an attention change after the first load is said once ─────────────────────────────
+
+    [Fact]
+    public async Task A_changed_attention_count_after_mark_all_read_is_announced_and_the_first_load_says_nothing()
+    {
+        var calls = 0;
+        await using var context = Context([Article("A")]);
+        context.News.Setup(n => n.GetCatalogueAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => Ok(++calls == 1
+                ? new List<NewsFeedCatalogueEntry> { CatalogueFeed("Example News", id: FeedId) }
+                : [CatalogueFeed("Example News", f => f.Health = NewsFeedHealth.Failing, FeedId)]));
+        context.News.Setup(n => n.MarkReadAsync(It.IsAny<Odyssey.ApiClient.Resources.NewsArticleListFilter>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new MarkNewsReadResult { MarkedCount = 1 }));
+        var cut = context.Render<NewsPage>();
+        cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
+        Assert.DoesNotContain("attention", Polite(cut), StringComparison.Ordinal);
+
+        cut.Find("#nw-mark-all").Click();
+        cut.WaitForElement("#nw-markall-confirm").Click();
+
+        cut.WaitForAssertion(() => Assert.Contains("1 feed needs attention", Polite(cut), StringComparison.Ordinal));
+    }
 }
