@@ -121,6 +121,7 @@ public partial class NewsPage : IDisposable
     private bool _loadMoreFailed;
     private bool _appendBusyRetried;
     private int _generation;
+    private bool _shownFirstPage;
     private object _resetKey = 0;
     private CancellationTokenSource _listCts = new();
     private readonly HashSet<Guid> _justRead = [];
@@ -679,6 +680,14 @@ public partial class NewsPage : IDisposable
         var sentence = CountSentence();
         Say(announcePrefix is null ? sentence : $"{announcePrefix} {sentence}");
         StateHasChanged();
+        if (!_shownFirstPage && !focusListStart)
+        {
+            // The page's first list: focus stays where route navigation put it, on the h1 (§6.6).
+            _shownFirstPage = true;
+            return;
+        }
+
+        _shownFirstPage = true;
         await InvokeJsAsync("odsNewsScrollListTop", RootId);
         await InvokeJsAsync(focusListStart ? "odsNewsFocusListStart" : "odsNewsRecoverFocus", RootId);
     }
