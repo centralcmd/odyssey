@@ -9,8 +9,9 @@ using Xunit;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// The snackbar provider (issue #473 §6.7, AC 29, 37): configured once, and its container is NOT a live region — so a
-/// page's own announcer is what speaks a status change, exactly once, and the snackbar never says it a second time.
+/// The snackbar provider (issue #473 §6.7, AC 29, 37): configured once. MudBlazor 9 makes its container a live region,
+/// so, by §6.7's fallback, the snackbar speaks a status change and the page's own announcer stays silent for it: each
+/// change is heard exactly once.
 /// </summary>
 public class NewsSnackbarTests
 {
@@ -55,6 +56,25 @@ public class NewsSnackbarTests
         var live = cut.FindAll("[aria-live], [role=status], [role=alert], [role=log]").Count > 0;
         Assert.Equal(NewsFeedback.SnackbarSpeaks, live);
         Assert.Equal(live ? null : "x", NewsFeedback.Spoken("x"));
+    }
+
+    /// <summary>
+    /// Why the snackbar can be relied on to speak: the live region is in the DOM, empty, before any message is added,
+    /// so a snackbar inserted into it is announced like any live-region update. A region created together with its
+    /// content is what screen readers miss, and this rules that out (PR #507 frontend review).
+    /// </summary>
+    [Fact]
+    public async Task The_live_container_exists_empty_before_the_first_snackbar_is_added()
+    {
+        await using var ctx = Context();
+        var cut = ctx.Render<MudSnackbarProvider>();
+
+        var container = cut.Find("[role=status]");
+        Assert.Empty(container.ChildNodes);
+
+        var snackbar = ctx.Services.GetRequiredService<ISnackbar>();
+        await cut.InvokeAsync(() => snackbar.Add("hello", Severity.Success));
+        cut.WaitForAssertion(() => Assert.Contains("hello", cut.Find("[role=status]").TextContent, StringComparison.Ordinal));
     }
 
     [Fact]

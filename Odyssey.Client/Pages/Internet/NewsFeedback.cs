@@ -17,12 +17,12 @@ namespace Odyssey.Client.Pages.Internet;
 /// </summary>
 internal static class NewsFeedback
 {
+    /// <summary>What a user action shows on <c>503 news-busy</c> (§7.2).</summary>
     public const string BusyText = "Busy. Try again in a moment.";
 
     public const string GoneText = "No longer available.";
 
-    /// <summary>A <c>503 news-busy</c>: a statement hit its time limit or a lock wait (§7.1).</summary>
-    /// <summary>The snackbar container is a live region (see the remarks above); pinned by <c>NewsSnackbarTests</c>.</summary>
+    /// <summary>The snackbar container is a live region (see the summary above); pinned by <c>NewsSnackbarTests</c>.</summary>
     public const bool SnackbarSpeaks = true;
 
     /// <summary>
@@ -31,6 +31,7 @@ internal static class NewsFeedback
     /// </summary>
     public static string? Spoken(string text) => SnackbarSpeaks ? null : text;
 
+    /// <summary>A <c>503 news-busy</c>: a statement hit its time limit or a lock wait (§7.1).</summary>
     public static bool IsBusy(ApiProblem? problem) =>
         string.Equals(problem?.Code, NewsErrorCodes.Busy, StringComparison.Ordinal);
 

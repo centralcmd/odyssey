@@ -1,5 +1,6 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject TimeProvider Time
 @*
     OdsExternalLink — a URL someone else wrote (a publisher's article link, a feed's site), shown so its
     destination cannot be disguised and opened only when that is safe (Odyssey Design System ·
@@ -148,7 +149,14 @@ else
         {
             _status = null;
             StateHasChanged();
-            await Task.Delay(50);
+            try
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(50), Time, clear.Token);
+            }
+            catch (TaskCanceledException)
+            {
+                return; // Superseded by a newer result, or disposed.
+            }
         }
 
         _status = ok;
@@ -160,7 +168,7 @@ else
     {
         try
         {
-            await Task.Delay(StatusDuration, token);
+            await Task.Delay(StatusDuration, Time, token);
             _status = null;
             await InvokeAsync(StateHasChanged);
         }

@@ -9,8 +9,11 @@ namespace Odyssey.Client.Services;
 /// <c>RequireInteraction</c> so it stays until dismissed, and the news Undo sets its 8 s.
 /// </summary>
 /// <remarks>
-/// The snackbar container is not a live region, so a page never relies on it to be announced: its own
-/// <c>OdsLiveAnnouncer</c> says every status change once (AC 29, pinned by <c>NewsSnackbarTests</c>).
+/// MudBlazor 9 renders the container as an empty, persistent <c>role="status"</c> region, so a snackbar is announced
+/// on its own; the news pages therefore do not also say it through their <c>OdsLiveAnnouncer</c> (§6.7 fallback,
+/// <c>NewsFeedback.SnackbarSpeaks</c>, pinned by <c>NewsSnackbarTests</c>). This configuration is app-wide: every
+/// page's snackbars move to bottom-right and gain a close icon, and an identical message already on screen is not
+/// stacked again.
 /// </remarks>
 public static class SnackbarDefaults
 {
