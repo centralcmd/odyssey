@@ -20,6 +20,7 @@ namespace Odyssey.Core.Tests.Internet;
 /// MariaDB-only criteria (collation, concurrent tag create, the <c>UrlKeyHash</c> race, the lookup count, the
 /// migration) live in <c>Odyssey.IntegrationTests</c>.
 /// </summary>
+[Collection(MemoryProbeCollection.Name)]
 public sealed class NewsOpmlServiceTests : IDisposable
 {
     private static readonly DateTime Now = new(2026, 11, 17, 17, 0, 0, DateTimeKind.Utc);
@@ -571,7 +572,11 @@ public sealed class NewsOpmlServiceTests : IDisposable
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 
-    /// <summary>The test-time allocation probe: the live heap sampled under forced collections while the work runs.</summary>
+    /// <summary>
+    /// The test-time allocation probe: the live heap sampled under forced collections while the work runs. The class
+    /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure, and the
+    /// probe samples every 5 ms so a short-lived spike is not stepped over.
+    /// </summary>
     private static async Task<(T Result, long Peak)> MeasurePeakAsync<T>(Func<Task<T>> work)
     {
         var baseline = GC.GetTotalMemory(forceFullCollection: true);
@@ -582,7 +587,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
             while (!stop.IsCancellationRequested)
             {
                 peak = Math.Max(peak, GC.GetTotalMemory(forceFullCollection: true) - baseline);
-                await Task.Delay(50);
+                await Task.Delay(5);
             }
         });
 

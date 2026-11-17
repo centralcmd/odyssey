@@ -386,7 +386,9 @@ public class ImportNewsFeedsDialogTests
         Assert.True(h.FocusedById(ImportNewsFeedsDialog.ImportButtonId));
         // The stopped request answering late changes nothing.
         first.SetResult(Ok(Mixed()));
-        await Task.Delay(50);
+        // Drain the renderer's queue twice: any continuation of the stopped request runs before these turns.
+        await h.Cut.InvokeAsync(() => { });
+        await h.Cut.InvokeAsync(() => { });
         Assert.Equal(ImportNewsFeedsDialog.Phase.Rejected, h.Phase);
         Assert.Empty(h.Cut.FindAll("#" + ImportNewsFeedsDialog.ResultHeadingId));
     }
@@ -395,7 +397,7 @@ public class ImportNewsFeedsDialogTests
 
     public static TheoryData<HttpStatusCode, string?, string> AlertCases => new()
     {
-        { HttpStatusCode.UnprocessableEntity, NewsErrorCodes.OpmlUnreadable, "This file isn't an OPML document, or part of it couldn't be read. Nothing was imported." },
+        { HttpStatusCode.BadRequest, NewsErrorCodes.OpmlUnreadable, "This file isn't an OPML document, or part of it couldn't be read. Nothing was imported." },
         { HttpStatusCode.Conflict, NewsErrorCodes.OpmlConflict, "The feed list changed while importing. No feeds were imported, but new tags may have been added. Try again." },
         { HttpStatusCode.ServiceUnavailable, NewsErrorCodes.Busy, "News is busy, and the import may or may not have finished. Close to check the Feeds list, or try again." },
         { HttpStatusCode.ServiceUnavailable, null, "News is busy, and the import may or may not have finished. Close to check the Feeds list, or try again." },
@@ -768,6 +770,10 @@ public class ImportNewsFeedsDialogTests
     [Theory] // AC 13 (v4 §4)
     [InlineData("not a url")]
     [InlineData("/relative/feed")]
+    [InlineData("user:pass@host.example/feed")] // scheme "user", empty user-info (security review, PR #513)
+    [InlineData("feed://u:p@host.example/f")]
+    [InlineData("ftp://host.example/feed")]
+    [InlineData("file:///etc/feeds")]
     [InlineData("")]
     [InlineData(null)]
     public void An_unparseable_url_is_hidden(string? url) => Assert.Null(ImportNewsFeedsDialog.Mask(url));

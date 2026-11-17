@@ -5,6 +5,7 @@ using System.Text;
 using System.Xml.Linq;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Http.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
@@ -146,6 +147,22 @@ public sealed class NewsOpmlApiTests
         var response = await client.PostAsync(FilteredExport, new StringContent(json, Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_filtered_export_carries_its_request_body_cap()
+    {
+        // TestServer does not enforce [RequestSizeLimit] (Kestrel does), so the cap is pinned on the endpoint's metadata:
+        // without it a well-formed body of any size would be read.
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        using var _ = factory.CreateClient();
+
+        var endpoint = factory.Services.GetRequiredService<EndpointDataSource>().Endpoints
+            .OfType<RouteEndpoint>()
+            .Single(e => e.RoutePattern.RawText == "api/news-feeds/opml/export"
+                && e.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods.Contains("POST"));
+
+        Assert.Equal(NewsOpmlLimits.MaxExportRequestBytes, endpoint.Metadata.GetMetadata<IRequestSizeLimitMetadata>()!.MaxRequestBodySize);
     }
 
     [Fact]
@@ -537,14 +554,39 @@ public sealed class NewsOpmlApiTests
         using var client = factory.CreateClient();
 
         var before = await client.GetFromJsonAsync<ImportLimitsDto>("/api/import-limits", Json);
-        Assert.Equal((SystemSettingsDefaults.NewsOpmlMaxImportEntries, SystemSettingsDefaults.NewsOpmlMaxImportMegabytes),
+        Assert.Equal(((int?)SystemSettingsDefaults.NewsOpmlMaxImportEntries, SystemSettingsDefaults.NewsOpmlMaxImportMegabytes),
             (before!.NewsOpmlMaxImportEntries, before.NewsOpmlMaxImportMegabytes));
 
         (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate { NewsOpmlMaxImportEntries = 500, NewsOpmlMaxImportMegabytes = 8 }))
             .EnsureSuccessStatusCode();
 
         var after = await client.GetFromJsonAsync<ImportLimitsDto>("/api/import-limits", Json);
-        Assert.Equal((500, 8), (after!.NewsOpmlMaxImportEntries, after.NewsOpmlMaxImportMegabytes));
+        Assert.Equal(((int?)500, 8), (after!.NewsOpmlMaxImportEntries, after.NewsOpmlMaxImportMegabytes));
+    }
+
+    [Fact]
+    public async Task A_degraded_news_read_withholds_only_the_entry_cap_and_leaves_the_other_limits_served()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims, configureServices: s =>
+            s.Replace(ServiceDescriptor.Scoped<INewsSettingsLookup>(_ => new DegradedNewsSettings())));
+        using var client = factory.CreateClient();
+
+        var response = await client.GetAsync("/api/import-limits");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var limits = await response.Content.ReadFromJsonAsync<ImportLimitsDto>(Json);
+        Assert.Null(limits!.NewsOpmlMaxImportEntries);
+        Assert.Equal(SystemSettingsDefaults.NewsOpmlMaxImportMegabytes, limits.NewsOpmlMaxImportMegabytes);
+        Assert.Equal(SystemSettingsDefaults.CalendarIcsMaxImportMegabytes, limits.CalendarIcsMaxImportMegabytes);
+    }
+
+    private sealed class DegradedNewsSettings : INewsSettingsLookup
+    {
+        public Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(NewsSettings.Defaults with { IsDegraded = true });
+
+        public Task<IReadOnlyList<NewsPrivateHostGrant>> GetAllowListAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<NewsPrivateHostGrant>>([]);
     }
 
     [Fact]
