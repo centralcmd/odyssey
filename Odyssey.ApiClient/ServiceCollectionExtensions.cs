@@ -76,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContractLimitsApiClient, ContractLimitsApiClient>();
         services.AddScoped<IPropertyLimitsApiClient, PropertyLimitsApiClient>();
         services.AddScoped<IFileAnalysisDisclosureApiClient, FileAnalysisDisclosureApiClient>();
+        services.AddScoped<INewsApiClient, NewsApiClient>();
 
         return services;
     }
