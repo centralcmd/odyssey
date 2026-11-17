@@ -1100,6 +1100,25 @@ internal static class SystemSettingsRegistry
             Write = (dto, v) => dto.NewsPrivateHostAllowList = v,
         },
 
+        // ── News OPML import (issue #508 §8.5) ───────────────────────────────────────────────────
+        // The size cap follows the other import size caps (security claim, the import/export limits cache the
+        // size middleware reads); the entry cap follows the count caps and is read by the news settings lookup.
+        ..Megabytes(SystemSettingsKeys.NewsOpmlMaxImportMegabytes, nameof(SystemSettingsUpdate.NewsOpmlMaxImportMegabytes),
+            SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
+            r => r.NewsOpmlMaxImportMegabytes, (dto, v) => dto.NewsOpmlMaxImportMegabytes = v),
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsOpmlMaxImportEntries,
+            Min = SystemSettingsBounds.NewsOpmlMaxImportEntriesMin,
+            Max = SystemSettingsBounds.NewsOpmlMaxImportEntriesMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsOpmlMaxImportEntries),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsOpmlMaxImportEntries),
+            Read = r => r.NewsOpmlMaxImportEntries,
+            Write = (dto, v) => dto.NewsOpmlMaxImportEntries = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+
         // ── Filesystem object storage (issue #346 §3.9) ──────────────────────────────────────────
         //
         // The SECURITY claim, so AuditChanges is true and every change writes an audit line: the grace

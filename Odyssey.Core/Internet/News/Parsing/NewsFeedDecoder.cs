@@ -23,6 +23,36 @@ public static partial class NewsFeedDecoder
         return text.Length > 0 && text[0] == (char)0xFEFF ? text[1..] : text;
     }
 
+    /// <summary>
+    /// The same detection on the first bytes of a stream (issue #508 §6 item 3): the byte-order mark, then the XML
+    /// declaration, then UTF-8, with no response charset. <c>false</c> when the declaration names an encoding .NET cannot
+    /// decode, which an OPML import refuses rather than reading as UTF-8. <paramref name="skip"/> is the mark's length.
+    /// </summary>
+    public static bool TryDetectStreamEncoding(ReadOnlySpan<byte> head, out Encoding encoding, out int skip)
+    {
+        (encoding, skip) = Detect(head, null);
+        if (skip > 0 || encoding is UnicodeEncoding or UTF32Encoding)
+        {
+            return true;
+        }
+
+        var declared = DeclaredEncoding(head)?.Trim();
+        if (string.IsNullOrEmpty(declared))
+        {
+            return true;
+        }
+
+        try
+        {
+            _ = Encoding.GetEncoding(declared);
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
+    }
+
     private static (Encoding Encoding, int Skip) Detect(ReadOnlySpan<byte> body, string? charset)
     {
         if (body.StartsWith((ReadOnlySpan<byte>)[0xEF, 0xBB, 0xBF]))

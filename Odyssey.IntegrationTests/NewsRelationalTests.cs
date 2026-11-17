@@ -44,7 +44,8 @@ public class NewsRelationalTests(MariaDbFixture fixture)
 
         var totals = await context.NewsStorageTotals.AsNoTracking().SingleAsync();
         Assert.Equal((NewsStorageTotal.SingletonId, 0L, 0L), (totals.Id, totals.ImageBytes, totals.TextAndSourceBytes));
-        Assert.Equal(9L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'News%'"));
+        // Nine from AddNewsModule, two from AddNewsOpmlImportLimits (issue #508); migrating below the module reverts both.
+        Assert.Equal(11L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'News%'"));
 
         await AddFeedAsync(context);
         await AddRunAsync(context, run => run.FeedsMarked = 3);

@@ -165,8 +165,8 @@ public class SystemSettingsApiTests
         // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
         // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
         // and +2 for the extraction and match prompt guidance (issue #433), then +3 for the instrument-price
-        // settings (issue #446), then +9 for the news reader (issue #470).
-        Assert.Equal(86, rows.Count);
+        // settings (issue #446), then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508).
+        Assert.Equal(88, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

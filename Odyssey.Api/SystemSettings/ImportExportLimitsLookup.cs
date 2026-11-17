@@ -70,6 +70,7 @@ public sealed class ImportExportLimitsLookup(
         SystemSettingsKeys.CalendarIcsMaxAggregateExportWindowDays,
         SystemSettingsKeys.ContactVCardMaxRepeatablePropertiesPerEntry,
         SystemSettingsKeys.ImportMaxSamplesPerSkipReason,
+        SystemSettingsKeys.NewsOpmlMaxImportMegabytes,
     ];
 
     public async Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default)
@@ -192,6 +193,10 @@ public sealed class ImportExportLimitsLookup(
             SystemSettingsKeys.JournalIcsMaxExportMegabytes, SystemSettingsDefaults.JournalIcsMaxExportMegabytes,
             SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax);
 
+        var newsOpmlImportBytes = ResolveSizeBytes(
+            SystemSettingsKeys.NewsOpmlMaxImportMegabytes, SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
+            SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax);
+
         // The five issue #434 bounds that belong to the import/export surfaces. Plain positive-integer caps, so ResolveBound is the whole story:
         // absent-but-query-succeeded is healthy, present-but-unusable or a failed query is degraded, and
         // a degraded read resolves to min(last-known-good, default).
@@ -234,6 +239,7 @@ public sealed class ImportExportLimitsLookup(
             journalExport, journalImport, journalImportBytes, journalExportBytes,
             aggregateExportRows, aggregateOccurrences, aggregateExportWindowDays,
             repeatableProperties, samplesPerSkipReason,
+            newsOpmlImportBytes,
             anyDegraded);
     }
 

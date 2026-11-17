@@ -73,6 +73,8 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ("/api/news-articles?limit=1", PermissionClaims.NewsRead),
         ("/api/news-tags", PermissionClaims.NewsRead),
         ("/api/news-status", PermissionClaims.FileStorageRead),
+        // The OPML export (issue #508 §5.1): every fetch URL, so news-feeds.update (Admin and Owner). A read-only 200.
+        ("/api/news-feeds/opml", PermissionClaims.NewsFeedsUpdate),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503

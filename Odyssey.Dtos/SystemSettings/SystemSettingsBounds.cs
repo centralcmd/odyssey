@@ -355,4 +355,16 @@ public static class SystemSettingsBounds
     public const int NewsFeedMaxImageMbPerDayMin = 1;
 
     public const int NewsFeedMaxImageMbPerDayMax = 10240;
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    /// <summary>The shared import-size pair, as for the vCard and <c>.ics</c> caps.</summary>
+    public const int NewsOpmlMaxImportMegabytesMin = 1;
+
+    public const int NewsOpmlMaxImportMegabytesMax = 1024;
+
+    public const int NewsOpmlMaxImportEntriesMin = 100;
+
+    /// <summary>Pinned at the shipped default, so the entry cap can only be lowered.</summary>
+    public const int NewsOpmlMaxImportEntriesMax = SystemSettingsDefaults.NewsOpmlMaxImportEntries;
 }

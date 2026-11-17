@@ -40,6 +40,8 @@ public sealed record ImportExportLimits(
     /// <summary>Repeatable vCard properties per entry. Tighten-only, clamped on read for the same reason.</summary>
     int ContactVCardMaxRepeatablePropertiesPerEntry,
     int ImportMaxSamplesPerSkipReason,
+    // ── The news OPML import's size cap (issue #508 §8.5), read by ImportSizeLimitMiddleware's NewsOpml arm ──
+    long NewsOpmlMaxImportBytes,
     bool IsDegraded);
 
 /// <summary>

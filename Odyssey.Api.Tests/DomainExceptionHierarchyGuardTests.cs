@@ -43,9 +43,14 @@ public class DomainExceptionHierarchyGuardTests
         "Odyssey.Core.Internet.News.Fetching.NewsEgressRefusedException",
         // The news job's own control flow (issue #470 §3.5, §6.3): the headroom refusal and an interrupted transaction
         // that is not replayed. Both are caught by the worker's ingestor as a transient skip; the API writes no news
-        // file and runs no ingest, so no request reaches either.
+        // file and runs no ingest, so no request reaches either. Since issue #508 an API news write that is interrupted
+        // is mapped to 503 news-busy by NewsQueryGuard, so it never reaches the global handler either.
         "Odyssey.Core.Internet.News.Files.NewsHeadroomException",
         "Odyssey.Core.Internet.News.NewsTransactionRetryException",
+        // The OPML reader's internal signals (issue #508 §7.5, §9 item 3): the import service turns both into
+        // 400 news-opml-unreadable, so neither escapes it.
+        "Odyssey.Core.Internet.News.Opml.OpmlTokenLimitException",
+        "Odyssey.Core.Internet.News.Opml.OpmlUnreadableException",
         // A task export that grew past its byte cap after the response had started: no status can be sent any
         // more, so the controller catches it and aborts the connection — the handler never sees it.
         "Odyssey.Core.Journal.TaskIcsService+ExportSizeExceededException",

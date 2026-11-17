@@ -27,6 +27,7 @@ public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
     public int? JournalIcsMaxImportEntries { get; set; } = 2000;
     public long JournalIcsMaxImportBytes { get; set; } = 64L * 1024 * 1024;
     public long JournalIcsMaxExportBytes { get; set; } = 64L * 1024 * 1024;
+    public long NewsOpmlMaxImportBytes { get; set; } = 64L * 1024 * 1024;
 
     public Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(new ImportExportLimits(
@@ -34,7 +35,7 @@ public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
             CalendarIcsMaxExportEvents, CalendarIcsMaxImportEvents, CalendarIcsMaxImportBytes, CalendarIcsMaxExportBytes,
             TaskIcsMaxExportTasks, TaskIcsMaxImportTasks, TaskIcsMaxImportBytes, TaskIcsMaxExportBytes,
             JournalIcsMaxExportRows, JournalIcsMaxImportEntries, JournalIcsMaxImportBytes, JournalIcsMaxExportBytes,
-            20_000, 5_000, 92, 200, 100,
+            20_000, 5_000, 92, 200, 100, NewsOpmlMaxImportBytes,
             IsDegraded: false));
 }
 

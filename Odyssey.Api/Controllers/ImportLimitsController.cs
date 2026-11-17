@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Odyssey.Dtos.Application;
+using Odyssey.Core.Internet.News;
 using Odyssey.Core.Journal;
+using Odyssey.Dtos.Application;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
@@ -19,10 +20,12 @@ namespace Odyssey.Api.Controllers;
 public sealed class ImportLimitsController : ControllerBase
 {
     private readonly IImportExportLimitsLookup lookup;
+    private readonly INewsSettingsLookup newsSettings;
 
-    public ImportLimitsController(IImportExportLimitsLookup lookup)
+    public ImportLimitsController(IImportExportLimitsLookup lookup, INewsSettingsLookup newsSettings)
     {
         this.lookup = lookup;
+        this.newsSettings = newsSettings;
     }
 
     [HttpGet]
@@ -32,6 +35,10 @@ public sealed class ImportLimitsController : ControllerBase
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         var limits = await lookup.GetAsync(cancellationToken);
+
+        // The OPML entry cap is a news setting, read through the news lookup that the import itself enforces it with. A
+        // degraded news read withholds that one figure (null) instead of failing the limits every other dialog needs.
+        var news = await newsSettings.GetAsync(cancellationToken);
 
         // A degraded read must never be presented as configuration (issue #343 arch N1, AC 27e) — the
         // import/export SERVICES still use the (monotonically) degraded numbers to keep enforcing a
@@ -60,6 +67,8 @@ public sealed class ImportLimitsController : ControllerBase
             JournalIcsMaxImportEntries = limits.JournalIcsMaxImportEntries,
             JournalIcsMaxImportMegabytes = (int)(limits.JournalIcsMaxImportBytes / (1024 * 1024)),
             JournalIcsMaxExportMegabytes = (int)(limits.JournalIcsMaxExportBytes / (1024 * 1024)),
+            NewsOpmlMaxImportEntries = news.IsDegraded ? null : news.OpmlMaxImportEntries,
+            NewsOpmlMaxImportMegabytes = (int)(limits.NewsOpmlMaxImportBytes / (1024 * 1024)),
         });
     }
 }

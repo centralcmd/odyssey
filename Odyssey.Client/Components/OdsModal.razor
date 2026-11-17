@@ -14,6 +14,12 @@
     the body for .odc-field-req / MudBlazor's .mud-input-required), so no host has
     to declare it and a field that appears conditionally is picked up live. Pass
     RequiredLegend="false" to suppress it.
+
+    Dismissible="false" (issue #509 §4.1) takes Escape, the scrim and the close
+    button away while a dialog must not close — a request in flight. It is turned
+    off BEFORE MudDialog can close itself, which a guard in OnClose could not do,
+    and it is re-applied to the open dialog whenever it changes, so a host can go
+    busy and back without re-opening.
 *@
 
 @implements IAsyncDisposable
@@ -27,6 +33,7 @@
            TitleContent="@(HideHeader ? null : HeaderFragment)"
            AriaLabel="@EffectiveAriaLabel">
     <DialogContent>
+        <OdsModalInstanceProbe Register="OnInstance" />
         @ChildContent
     </DialogContent>
     <DialogActions>
@@ -69,7 +76,7 @@
             }
         </div>
         @HeaderActions
-        @if (OnClose.HasDelegate)
+        @if (CanDismiss)
         {
             <OdsIconButton Icon="@Icons.Material.Filled.Close" Size="OdsSize.Sm"
                            AriaLabel="Close" OnClick="CloseAsync" Class="ods-modal-x" />

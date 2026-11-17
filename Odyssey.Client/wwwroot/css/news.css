@@ -112,6 +112,32 @@ div.nw-focus-host { display: block; }
 .nw-chip-described { display: contents; }
 
 
+/* ---------- OPML import and export (centralcmd/odyssey#509, over #508) ----------
+   ImportNewsFeedsDialog reuses the shared import-dialog surface (cvi-* in the kit,
+   cal-imp-* / cp-imp-busy* in the client, so the client names are used here). These
+   rules only add what a feed report needs: rows that WRAP (a URL must never be cut by
+   the shared nowrap / ellipsis item) and group lists with no max-height, so there is no
+   scroll region to reach by keyboard (A6). Tokens only. */
+.cal-imp-skip-list.nw-opml-list { max-height: none; overflow: visible; }
+/* The shared list is display:flex, which would override the collapsed list's `hidden`. */
+.cal-imp-skip-list.nw-opml-list[hidden] { display: none; }
+.cal-imp-skip-item.nw-opml-row { align-items: flex-start; }
+.cal-imp-skip-item.nw-opml-row span,
+.cal-imp-skip-item.nw-opml-row bdi { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+.nw-opml-row-main { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; flex: 1 1 auto; }
+.nw-opml-title { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-opml-url { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.nw-opml-msg { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-opml-wrap { overflow-wrap: anywhere; min-width: 0; }
+/* The two groups that are not refusals take a neutral count pill, not the warning one. */
+.nw-opml-group.neutral .cal-imp-skip-count { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover); }
+.nw-opml-group.neutral.open { border-color: var(--mud-palette-divider); }
+/* The busy block sits above the (inert) picker rather than replacing the form. */
+.cp-imp-busy.nw-opml-busy { flex-direction: row; justify-content: flex-start; text-align: start; padding: var(--space-3) var(--space-4); border: var(--border-thin) solid var(--mud-palette-divider); border-radius: var(--radius-md); }
+.nw-opml-picker[inert] { opacity: 0.6; }
+/* Reflow at 320 px (1.4.10): the three tiles stack. */
+@media (max-width: 600px) { .cal-imp-stats.nw-opml-stats { grid-template-columns: minmax(0, 1fr); } }
+
 /* ---------- Client additions (not in the kit file) ---------- */
 /* An empty state's heading is a real heading that takes programmatic focus (§6.6), styled as the
    panel's title so it reads exactly as OdsEmptyState's own. */
