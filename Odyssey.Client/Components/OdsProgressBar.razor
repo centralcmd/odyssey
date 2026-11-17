@@ -11,7 +11,9 @@
      aria-valuenow="@Rounded"
      aria-valuemin="0"
      aria-valuemax="100"
-     aria-label="@AriaLabel">
+     aria-label="@AriaLabel"
+     aria-labelledby="@AriaLabelledBy"
+     aria-valuetext="@AriaValueText">
     <div class="odc-progress-fill" style="width:@(Clamped.ToString(System.Globalization.CultureInfo.InvariantCulture))%;"></div>
 </div>
 
@@ -26,6 +28,12 @@
     [Parameter] public bool Tall { get; set; }
 
     [Parameter] public string? AriaLabel { get; set; }
+
+    /// <summary>The id of a VISIBLE label naming the bar (issue #473 §3.6's quota bars); preferred over AriaLabel.</summary>
+    [Parameter] public string? AriaLabelledBy { get; set; }
+
+    /// <summary>The value in words ("3.1 of 20 GiB"), when a bare percentage would not say what is measured.</summary>
+    [Parameter] public string? AriaValueText { get; set; }
 
     [Parameter] public string? Class { get; set; }
 

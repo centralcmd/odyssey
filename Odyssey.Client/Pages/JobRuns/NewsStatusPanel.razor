@@ -1,0 +1,90 @@
+@using System.Globalization
+@using Odyssey.Dtos.Internet
+@using static Odyssey.Client.Pages.JobRuns.BackgroundJobPresentation
+@*
+    NewsStatusPanel — the Background jobs overview's News section (issue #473 §3.6; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BgjNewsPanel), from GET /api/news-status (file-storage.read). The storage state
+    in words, the volume, the article and feed counts, the image and text quota bars, free space, quarantined feeds,
+    and the ten feeds using the most image storage. Every number comes from the response: the client holds no quota
+    of its own (AC 39). Renders in the Ready, Degraded and Unconfigured states.
+
+    Each bar is labelled by its visible caption (aria-labelledby), clamps its value to the maximum, and states the
+    figure in aria-valuetext and as visible text; "Full" is visible text with a warning glyph, never colour alone.
+*@
+
+<div class="bgj-news">
+    <p class="bgj-news-lead">@StateText(Status.Storage)</p>
+    <OdsInfoTileGrid>
+        <OdsInfoTile Icon="storage" Label="Volume" ValueVariant="OdsInfoTileVariant.Text"><Value>@(Status.Volume ?? "None")</Value></OdsInfoTile>
+        <OdsInfoTile Icon="article" Label="Articles"><Value>@Count(Status.ArticleCount)</Value></OdsInfoTile>
+        <OdsInfoTile Icon="rss_feed" Label="Feeds"><Value>@Count(Status.FeedCount)</Value></OdsInfoTile>
+        <OdsInfoTile Icon="gpp_maybe" Label="Quarantined feeds"><Value>@Count(Status.QuarantinedFeedCount)</Value></OdsInfoTile>
+        <OdsInfoTile Icon="data_usage" Label="Free space"><Value>@(Status.Storage == NewsStorageState.Unconfigured ? "Unknown" : $"{GiB(Status.VolumeFreeBytes)} GiB")</Value></OdsInfoTile>
+    </OdsInfoTileGrid>
+    @if (Status.Storage != NewsStorageState.Unconfigured)
+    {
+        <div class="bgj-quotas">
+            @QuotaBar("bgj-news-image", "Image storage", Status.ImageBytes, Status.ImageQuotaBytes, Status.ImageQuotaReached)
+            @QuotaBar("bgj-news-text", "Text storage", Status.TextAndSourceBytes, Status.TextAndSourceQuotaBytes, Status.TextAndSourceQuotaReached)
+        </div>
+    }
+    @if (Status.TopFeedsByImageBytes.Count > 0)
+    {
+        <div class="bgj-news-topwrap">
+            <p class="bgj-news-cap" id="bgj-news-top">Feeds using the most image storage</p>
+            <ol class="bgj-news-top" aria-labelledby="bgj-news-top">
+                @foreach (var feed in Status.TopFeedsByImageBytes.Take(TopFeeds))
+                {
+                    <li @key="feed.FeedId">
+                        <a class="bgj-link" href="@($"news-feeds?state=All&reveal={feed.FeedId}")" lang="@(string.IsNullOrWhiteSpace(feed.Language) ? null : feed.Language)"><bdi>@feed.DisplayTitle</bdi></a>
+                        <span class="mono">@($"{GiB(feed.ImageBytes)} GiB")</span>
+                    </li>
+                }
+            </ol>
+        </div>
+    }
+</div>
+
+@code {
+    /// <summary>The panel lists at most this many feeds (§3.6).</summary>
+    public const int TopFeeds = 10;
+
+    [Parameter, EditorRequired] public NewsStatus Status { get; set; } = default!;
+
+    public static string StateText(NewsStorageState state) => state switch
+    {
+        NewsStorageState.Ready => "Ready — storing articles and images",
+        NewsStorageState.Degraded => "Degraded — the file volume isn’t answering; articles keep loading, bodies and images may not",
+        NewsStorageState.Unconfigured => "Not set up — no file volume is bound to News",
+        _ => "Unknown",
+    };
+
+    /// <summary>Bytes as GiB with at most one decimal, in the reader's number format.</summary>
+    public static string GiB(long bytes) =>
+        (bytes / (1024d * 1024d * 1024d)).ToString("#,0.#", CultureInfo.CurrentCulture);
+
+    /// <summary>"3.1 of 20 GiB", or "Full, 20 of 20 GiB" at the quota; the used figure is clamped to the quota.</summary>
+    public static string QuotaText(long used, long quota, bool full)
+    {
+        var text = $"{GiB(Math.Min(used, quota))} of {GiB(quota)} GiB";
+        return full ? $"Full, {text}" : text;
+    }
+
+    public static double Percent(long used, long quota) => quota <= 0 ? 0 : Math.Min(100, used * 100d / quota);
+
+    private static RenderFragment QuotaBar(string id, string label, long used, long quota, bool full) =>
+        @<div class="bgj-quota">
+            <div class="bgj-quota-head">
+                <span class="bgj-quota-label" id="@id">@label</span>
+                <span class="bgj-quota-value">
+                    @if (full)
+                    {
+                        <span class="material-icons bgj-quota-full-ic" aria-hidden="true">warning</span><b>Full</b><text>, </text>
+                    }
+                    @($"{GiB(Math.Min(used, quota))} of {GiB(quota)} GiB")
+                </span>
+            </div>
+            <OdsProgressBar Value="@Percent(used, quota)" Tall="true" Tone="@(full ? OdsProgressTone.Expense : OdsProgressTone.Default)"
+                            AriaLabelledBy="@id" AriaValueText="@QuotaText(used, quota, full)" />
+        </div>;
+}

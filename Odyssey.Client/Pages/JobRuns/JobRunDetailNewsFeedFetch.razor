@@ -1,17 +1,21 @@
 @*
-    A news reader run's detail (issue #470 §11.1 item 4): a burst's fetches, new and changed articles, stored images
-    and quarantined feeds, or a manual run's feeds marked due. Counts only — never a feed, a host or an article. The
-    full design (#473 §3.6) lands with the news frontend; this is the minimal body the run-detail registry needs.
+    A news reader run's detail (issue #470 §11.1 item 4, #473 §3.6; Odyssey Design System · ui_kits/web/BackgroundJobs.jsx,
+    BGJ_DETAIL.NewsFeeds): feeds fetched, items stored, items revised, images stored and feeds quarantined, each a
+    labelled number; a manual run also says how many feeds it marked due. Counts only — never a feed, a host or an
+    article; a nulled count (no news-feeds.update) reads "Not shown" through N.
 *@
 @inherits JobRunDetailBodyBase
 
 <div class="odc-meta-grid bgj-detail-grid">
+    @if (News.Trigger == JobRunTrigger.Manual)
+    {
+        <OdsMetaTile Label="@Text("Feeds marked due")">@N(News.FeedsMarked)</OdsMetaTile>
+    }
     <OdsMetaTile Label="@Text("Feeds fetched")">@N(News.FeedsFetched)</OdsMetaTile>
-    <OdsMetaTile Label="@Text("New articles")">@N(News.ItemsStored)</OdsMetaTile>
-    <OdsMetaTile Label="@Text("Updated articles")">@N(News.ItemsRevised)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Items stored")">@N(News.ItemsStored)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Items revised")">@N(News.ItemsRevised)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Images stored")">@N(News.ImagesStored)</OdsMetaTile>
     <OdsMetaTile Label="@Text("Feeds quarantined")">@N(News.FeedsQuarantined)</OdsMetaTile>
-    <OdsMetaTile Label="@Text("Feeds marked due")">@N(News.FeedsMarked)</OdsMetaTile>
     <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
 </div>
 

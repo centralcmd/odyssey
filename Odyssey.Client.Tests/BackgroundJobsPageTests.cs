@@ -91,7 +91,8 @@ public class BackgroundJobsPageTests
     }
 
     private static Fixture NewFixture(
-        BackgroundJobsOverview? overview = null, string[]? claims = null, BackgroundJobsPageState? stored = null, ExistingJobRun[]? runs = null)
+        BackgroundJobsOverview? overview = null, string[]? claims = null, BackgroundJobsPageState? stored = null, ExistingJobRun[]? runs = null,
+        Mock<INewsApiClient>? news = null)
     {
         var ctx = new BunitContext();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
@@ -107,6 +108,7 @@ public class BackgroundJobsPageTests
             .ReturnsAsync((Guid id, CancellationToken _) => ApiResult<JobRunDetail>.Success(
                 new WeatherJobRunDetail { Id = id, JobType = JobType.Weather, Status = JobRunStatus.Succeeded, PointsAttempted = 6, StartedAtUtc = Now.UtcDateTime }, HttpStatusCode.OK));
         ctx.Services.AddSingleton(api.Object);
+        ctx.Services.AddSingleton((news ?? new Mock<INewsApiClient>()).Object);
 
         var state = new Mock<IPageStateService>();
         state.Setup(s => s.LoadAsync<BackgroundJobsPageState>(BackgroundJobs.PageKey)).ReturnsAsync(stored);
@@ -948,5 +950,49 @@ public class BackgroundJobsPageTests
         await item.ClickAsync(new());
 
         f.Clipboard.Verify(c => c.CopyAsync(run.Id.ToString(), "Run ID copied."), Times.Once);
+    }
+
+    // ── News (issue #473 §3.6; AC 24, 38, 39) ────────────────────────────────────────────────────────
+
+    private static Mock<INewsApiClient> NewsWith(Odyssey.Dtos.Internet.NewsStatus status)
+    {
+        var news = new Mock<INewsApiClient>();
+        news.Setup(n => n.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<Odyssey.Dtos.Internet.NewsStatus>.Success(status, HttpStatusCode.OK));
+        return news;
+    }
+
+    private static Odyssey.Dtos.Internet.NewsStatus TextFull() => new()
+    {
+        Storage = Odyssey.Dtos.Internet.NewsStorageState.Ready, Volume = "news", ArticleCount = 1200, FeedCount = 18,
+        ImageBytes = 3L << 30, ImageQuotaBytes = 50L << 30, TextAndSourceBytes = 21L << 30, TextAndSourceQuotaBytes = 20L << 30,
+        TextAndSourceQuotaReached = true, VolumeFreeBytes = 100L << 30,
+    };
+
+    [Fact]
+    public async Task With_file_storage_read_the_news_panel_and_the_text_quota_line_render()
+    {
+        var news = NewsWith(TextFull());
+        await using var f = NewFixture(claims: [.. Admin, PermissionClaims.FileStorageRead], news: news);
+        var cut = Render(f);
+
+        cut.WaitForAssertion(() => Assert.Contains(cut.FindAll("h2.bgj-h2"), h => h.TextContent.Trim() == "News"));
+        var tile = cut.FindAll(".bgj-tile").Single(t => t.TextContent.Contains("News feeds", StringComparison.Ordinal));
+        Assert.Contains("Text storage quota reached — raise it in Settings", tile.TextContent, StringComparison.Ordinal);
+        Assert.Equal("settings", tile.QuerySelector(".bgj-warn a")!.GetAttribute("href"));
+        Assert.DoesNotContain("Image storage quota reached", tile.TextContent, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Without_file_storage_read_news_status_is_never_requested()
+    {
+        var news = NewsWith(TextFull());
+        await using var f = NewFixture(news: news);
+        var cut = Render(f);
+
+        cut.WaitForAssertion(() => Assert.NotEmpty(cut.FindAll(".bgj-tile")));
+        Assert.DoesNotContain(cut.FindAll("h2.bgj-h2"), h => h.TextContent.Trim() == "News");
+        Assert.Empty(cut.FindAll(".bgj-warn"));
+        news.Verify(n => n.GetStatusAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
