@@ -2092,6 +2092,26 @@ host's own LAN, cloud metadata, other containers you publish — is still the ne
 split. It is defence in depth. The worker still holds the Data Protection key ring read-only (see *Two containers hold
 the key ring*). **If you add networks of your own, never attach the worker to one the `api` is on.**
 
+### OPML import and export (issue #508)
+
+The Feeds page can export the feed list as OPML 2.0 (`GET /api/news-feeds/opml`, or `POST …/opml/export` for chosen
+feeds) and import an OPML file (`POST /api/news-feeds/opml`). The import makes **no outbound request** — no fetch and no
+DNS lookup; the worker fetches the new feeds on its normal schedule, at most four at a time under the per-host throttle,
+so a large import is fetched over its first hours rather than in one burst. Two operator-facing facts:
+
+- **The proxies cap the upload too.** `NewsOpmlMaxImportMegabytes` (**`/settings` → News**, 64 MB by default, the
+  security claim like every import size cap) is enforced by the API, but under Compose the client container's nginx
+  sets `client_max_body_size 65m` (`Odyssey.Client/nginx/templates/default.conf.template`) and Caddy's `request_body`
+  matches it, so a value above 64 MB has no effect there until both are raised — the same chain as *Upload size* above.
+  `NewsOpmlMaxImportEntries` (100,000, the ordinary claim) can only be lowered.
+- **One OPML import at a time is enforced per API process**, not deployment-wide, and the upload must arrive at
+  64 KiB/s or faster after a 10 s grace (HTTP/1.1; on HTTP/2 the server-wide rate applies). Odyssey runs one API
+  replica; if the API ever scales out, the feed-limit bound under concurrent imports holds per replica, not globally.
+
+An export carries every feed's fetch URL, so it is gated on `news-feeds.update`, the claim that already reads them, and
+is sent `Cache-Control: no-store`. A downloaded file keeps any token a private feed URL embeds after the caller's claim
+is revoked — an accepted residual for a single-household instance.
+
 ## Security checklist
 
 - [ ] `ASPNETCORE_ENVIRONMENT=Production` (Swagger off; set in the overlay) — and **not**
