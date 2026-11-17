@@ -424,11 +424,6 @@ public class AuthorizationPolicyTests
     }
 
     /// <summary>
-    /// Issue #380 decision 3: after the conversion, the place text of a linked event, series or entry lives
-    /// only in the <c>locations.read</c>-gated embed, so every role that reads the calendar or the journal
-    /// must also read places.
-    /// </summary>
-    /// <summary>
     /// The contact vCard export writes each geocoded address's coordinates and time zone under
     /// <c>contacts.read</c> alone — a product decision (PR #510) that is safe only while reading contacts
     /// implies reading places. A role granted contacts.read without locations.read must fail here, so that
@@ -445,6 +440,11 @@ public class AuthorizationPolicyTests
         Assert.Empty(gaps);
     }
 
+    /// <summary>
+    /// Issue #380 decision 3: after the conversion, the place text of a linked event, series or entry lives
+    /// only in the <c>locations.read</c>-gated embed, so every role that reads the calendar or the journal
+    /// must also read places.
+    /// </summary>
     [Fact]
     public void Calendar_read_and_journal_read_each_imply_locations_read()
     {
