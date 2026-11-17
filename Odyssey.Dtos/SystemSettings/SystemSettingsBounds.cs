@@ -312,4 +312,46 @@ public static class SystemSettingsBounds
     public const int JobRunRetentionDaysMin = 14;
 
     public const int JobRunRetentionDaysMax = 730;
+
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    /// <summary>The per-feed interval's own range (<see cref="NewsLimits"/>), so the default can name any value a feed can.</summary>
+    public const int NewsDefaultFetchIntervalMinutesMin = NewsLimits.MinFetchIntervalMinutes;
+
+    public const int NewsDefaultFetchIntervalMinutesMax = NewsLimits.MaxFetchIntervalMinutes;
+
+    public const int NewsMaxFeedsMin = 1;
+
+    /// <summary>The feed-list client fetches the whole set at this ceiling in at most five pages (§5.1).</summary>
+    public const int NewsMaxFeedsMax = 1000;
+
+    /// <summary><c>0</c> downloads no image at all.</summary>
+    public const int NewsImageMaxPerArticleMin = 0;
+
+    public const int NewsImageMaxPerArticleMax = 20;
+
+    /// <summary>
+    /// The static pair. The effective maximum is also bounded by the derived ceiling
+    /// (<c>NewsImageSizeCeiling.Kb</c>, from <c>FileStorage:MaxFileSizeBytes</c>), validated on write and published as
+    /// <c>SystemSettingsDto.NewsImageMaxSizeKbCeiling</c>; this floor is that ceiling's floor too.
+    /// </summary>
+    public const int NewsImageMaxSizeKbMin = 64;
+
+    public const int NewsImageMaxSizeKbMax = 10240;
+
+    public const int NewsImageStoreMaxGiBMin = 1;
+
+    public const int NewsImageStoreMaxGiBMax = 10000;
+
+    public const int NewsTextStoreMaxGiBMin = 1;
+
+    public const int NewsTextStoreMaxGiBMax = 1000;
+
+    public const int NewsFeedMaxArticlesPerDayMin = 10;
+
+    public const int NewsFeedMaxArticlesPerDayMax = 5000;
+
+    public const int NewsFeedMaxImageMbPerDayMin = 1;
+
+    public const int NewsFeedMaxImageMbPerDayMax = 10240;
 }

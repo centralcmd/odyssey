@@ -1,3 +1,4 @@
+using Odyssey.Core.Internet.News;
 using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Journal.Originals;
@@ -566,6 +567,26 @@ builder.Services.AddPhotoOriginals();
 // Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
 // content source every download reads through. The move of the legacy FileBlobs runs in the worker.
 builder.Services.AddStoredFiles();
+// News reader (issue #470): the NewsArticles storage feature, which every host with volumes binds. The fetching job runs
+// in the worker; the API makes no outbound request for news.
+builder.Services.AddNewsReader();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.INewsArticleSearch, Odyssey.Core.Internet.News.Reading.NewsArticleSearch>();
+builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.NewsListCursor>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
+builder.Services.AddNewsSearchLimiter(builder.Configuration);
+// The manual news run (§5.5 item 27): under Testing no worker runs, so it executes inline, as run-now does for the
+// exchange-rate sync.
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<Odyssey.Api.News.INewsRunDispatcher, Odyssey.Api.News.InlineNewsRunDispatcher>();
+}
+else
+{
+    builder.Services.AddSingleton<Odyssey.Api.News.INewsRunDispatcher, Odyssey.Api.News.WorkerNewsRunDispatcher>();
+}
 
 builder.Services.AddScoped<AdminFileExportService>();
 

@@ -40,6 +40,8 @@
       <!-- The file-analysis provider's typed client and its resilience pipeline are registered here, once,
            for both hosts (issue #444): the worker sends the document, the API still runs the match step. -->
       <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+      <!-- The news reader's HTML parser (issue #470 §7.10): behind the nesting pre-scan, no loader, no scripting. -->
+      <PackageReference Include="AngleSharp" />
     </ItemGroup>
 
     <ItemGroup>

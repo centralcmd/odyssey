@@ -65,6 +65,14 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // The rate a conversion would use (issue #472) — exchange-rates.read, held by every role. A
         // currency to itself is a flat 200 whatever rates the stack holds.
         ("/api/exchange-rates/resolved?from=NOK&to=NOK", PermissionClaims.ExchangeRatesRead),
+        // The news reader (issue #470 §7.2): news.read is held by every role; the status is file-storage.read (Admin).
+        // Each is a database-only flat 200 on the shared stack.
+        ("/api/news-feeds", PermissionClaims.NewsRead),
+        ("/api/news-feeds/catalogue", PermissionClaims.NewsRead),
+        ("/api/news-feeds/unread-counts", PermissionClaims.NewsRead),
+        ("/api/news-articles?limit=1", PermissionClaims.NewsRead),
+        ("/api/news-tags", PermissionClaims.NewsRead),
+        ("/api/news-status", PermissionClaims.FileStorageRead),
     ];
 
     // Read-gated endpoints whose authorized result is NOT a flat 200 — they 404 on a random id (or 503
@@ -78,6 +86,9 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         // Issue #472: 200 or 404 depending on the seeded rates, so the boundary only.
         ("/api/exchange-rates/latest?from=NOK&to=USD", PermissionClaims.ExchangeRatesRead),
         ("/api/exchange-rates/resolved?from=USD&to=EUR", PermissionClaims.ExchangeRatesRead),
+        // Issue #470: a random id is a 404 once authorized.
+        ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsRead),
+        ($"/api/news-articles/{Guid.NewGuid()}", PermissionClaims.NewsRead),
     ];
 
     // Write-gated endpoints and the write claim each requires. Probed with DELETE against a random,
@@ -104,6 +115,10 @@ public class AuthorizationMatrixTests(ApiStackFixture fixture)
         ($"/api/users/{Guid.NewGuid()}", PermissionClaims.UsersDelete), // Admin-only discriminator.
         ($"/api/instruments/{Guid.NewGuid()}", PermissionClaims.InstrumentsDelete),
         ($"/api/instrument-prices/{Guid.NewGuid()}", PermissionClaims.InstrumentPricesDelete),
+        // The news reader (issue #470 §7.2): Admin/Owner manage feeds and tags; Guest holds no news write claim.
+        ($"/api/news-feeds/{Guid.NewGuid()}", PermissionClaims.NewsFeedsDelete),
+        ($"/api/news-tags/{Guid.NewGuid()}", PermissionClaims.NewsTagsDelete),
+        ($"/api/news-articles/{Guid.NewGuid()}/tags/{Guid.NewGuid()}", PermissionClaims.NewsUpdate),
     ];
 
     // Write endpoints stacking two [Authorize] policies: a role must hold EVERY claim, so one holding

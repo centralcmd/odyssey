@@ -17,6 +17,8 @@ const offlineAssetsExclude = [
     /^js\/location-map(\.[^/]+)?\.js$/,
     /^css\/location-map(\.[^/]+)?\.css$/,
     /^maps\//,
+    // The news reader's own stylesheet (issue #473 §10): news assets are fetched on use, never precached.
+    /^css\/news(\.[^/]+)?\.css$/,
 ];
 
 // Replace with your base path if you are hosting on a subfolder. Ensure there is a trailing '/'.
@@ -45,7 +47,15 @@ async function onActivate(event) {
         .map(key => caches.delete(key)));
 }
 
+// News API responses and news image bytes (issue #473 §10, AC 28) always go to the network: a read state, a body
+// or an image is never answered from a cache.
+const networkOnlyPaths = [ /^\/api\/news-/ ];
+
 async function onFetch(event) {
+    if (networkOnlyPaths.some(pattern => pattern.test(new URL(event.request.url).pathname))) {
+        return fetch(event.request);
+    }
+
     let cachedResponse = null;
     if (event.request.method === 'GET') {
         // For all navigation requests, try to serve index.html from cache,

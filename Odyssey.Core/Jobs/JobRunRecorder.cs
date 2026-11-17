@@ -377,6 +377,10 @@ public static class JobRunOutcomes
                 ? (JobRunStatus.Failed, JobFailureCategory.ProviderUnavailable)
                 : (JobRunStatus.PartiallySucceeded, JobFailureCategory.ProviderUnavailable),
         FileBlobBackfillJobRun files => FileMove(files),
+        // A quarantine is a parser crashing on a publisher's input: worth a look, but the other feeds were read.
+        NewsFeedJobRun news => news.FeedsQuarantined == 0
+            ? (JobRunStatus.Succeeded, null)
+            : (JobRunStatus.PartiallySucceeded, JobFailureCategory.UnsupportedInput),
         FileStorageMaintenanceJobRun storage => storage.IntegrityFailures > 0
             ? (JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage)
             : (JobRunStatus.Succeeded, null),

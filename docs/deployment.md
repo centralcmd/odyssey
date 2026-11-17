@@ -1029,6 +1029,10 @@ invariant globalization, which is the alpine runtime's default. The API asserts 
 refuses to serve rather than accept an alias the index will then reject. If you build your own image,
 keep both.
 
+Since the news reader (issue #470) the **worker** image installs ICU and pins the variable too: both hosts compute a
+feed's URL key, which maps an IDN host to punycode through ICU, and they must agree. The worker asserts it at startup
+with the same guard.
+
 ## Household locations: what leaves the deployment, and how to erase one
 
 Issue #350 added **locations** — the household's places, each with a name, an address line,
@@ -2009,6 +2013,84 @@ original](#erasure-of-a-photo-original). The file name on disk is the sanitized 
 so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
 must be in every backup, copied after the database dump and within the grace (see [Backup and
 restore](#backup-and-restore)).
+
+## News reader: feeds, what leaves the deployment, and the worker's network
+
+The news reader (issue #470) subscribes to RSS, Atom, RDF and JSON feeds. **Only the worker fetches**: the API makes
+no outbound request for news. The worker's news job runs every 30 seconds on every replica — purge, claim due feeds,
+fetch, ingest, images, and an hourly maintenance pass — and coordinates replicas through per-feed leases on the
+`NewsFeedFetchStates` rows and the shared `NewsHostThrottle` rows, never through process state. It appears on
+`/background-jobs` as **News feeds** (`JobType.NewsFeedFetch = 9`), gated on `news-feeds.update`.
+
+### Release note
+
+- **A new storage binding.** The `NewsArticles` feature keeps every article's source item, plain text and images on the
+  file store, under `news/<feedId>/<bucket>/<articleId>/<storedObjectId>.<ext>` (opaque names: no publisher or user text
+  is ever in a path). Both compose files' base and the AppHost bind it to `primary`. **An operator with their own
+  bindings must add `FileStorage__Bindings__NewsArticles` to both `api` and `worker`**, or startup check B1 fails with
+  `UnboundFeature`.
+- **The worker image gains ICU** (`icu-libs`, `icu-data-full`) and asserts it at startup (`GlobalizationGuard`, now in
+  `Odyssey.Core` and called by both hosts): the API and the worker must map an IDN feed host to the same punycode key.
+- **The compose network topology changed** — see *Network topology* below. If you run your own compose overrides that
+  attach networks, read it before upgrading.
+- **The worker gets `stop_grace_period: 30s`**, so a deploy stops its fetches cleanly (leases cleared, nothing counted
+  as a crash). Keep it if you write your own compose file.
+- **Nine settings** under **`/settings` → News** (`NewsDefaultFetchIntervalMinutes`, `NewsMaxFeeds`, the image and text
+  quotas and caps, and `NewsPrivateHostAllowList`, which needs `system-settings.security.update`). They reach the worker
+  within the 30 s settings TTL; the allow-list is read uncached, so a revoked grant binds on the next fetch.
+- **Rolling back** past this release drops every news table (the migration's `Down()` deletes the job's run-log rows
+  first). The news `StoredObjects` rows remain and log the B4 Critical ("a live row of an unknown feature"). Delete every
+  feed and wait out the deletion grace (168 h by default) **before** rolling back, so the files are gone too.
+
+### What leaves the deployment
+
+Outbound `GET`s go only to the feed hosts users subscribe to and the image hosts those feeds reference. The User-Agent
+is fixed and anonymous (`OdysseyNewsReader/1.0`); there are no cookies, no proxy (`HTTPS_PROXY` is never consulted), and
+the browser never contacts a publisher. Every connection is vetted at connect time: global unicast only, ports 80 and
+443, redirects followed manually (at most five, each re-checked), at least 2 s between requests to one host across all
+replicas. A private or loopback feed host is opened only by an entry in `NewsPrivateHostAllowList`, and only for that
+feed's own host; the hard-denied ranges (metadata endpoints, link-local, `0/8`, `240/4` and the rest) are never opened.
+
+Feed URLs, including any token in a query string, are stored in plain text in MariaDB and its backups (an accepted
+residual). They are never shown to a caller without `news-feeds.update` and are logged by host only. A private feed's
+item links and image URLs can carry tokens too; the stored source files keep them.
+
+### Storage, quotas and headroom
+
+- **Headroom.** News writes stop at the upload threshold **plus 1 GiB** of free space on the volume, so news always stops
+  before user uploads do. A refused write is a per-feed transient skip and the job reports `StorageUnavailable`.
+- **Text and source quota** (`NewsTextStoreMaxGiB`, 20 GiB by default). When it is reached no new article is stored,
+  affected feeds report health `QuotaReached` with reason `TextQuota`, and the job card shows a warning line — it is
+  **not** a held state. Nothing is deleted. To resume, raise the setting; the hourly maintenance pass clears the reason.
+- **Image quota** (`NewsImageStoreMaxGiB`, 50 GiB) and the daily caps defer images rather than failing them; raising the
+  quota makes deferred images due again.
+- **Inodes.** One folder per article holds 2–7 files. Size a dedicated volume's inode count for that, not only its bytes.
+- The per-feed counters and the storage totals are relative increments, recounted hourly; a drift is corrected and logged
+  as a Warning.
+
+### Network topology
+
+`docker-compose.yml` now declares four networks of its own (issue #470 §11.3):
+
+| Network | Internal | Members |
+|---|---|---|
+| `db_api` | yes | `mariadb`, `api` |
+| `db_worker` | yes | `mariadb`, `worker` |
+| `db_migrations` | yes | `mariadb`, `migrations` |
+| `egress` | no | `worker` only |
+
+`api` and `client` stay on `default` for user traffic (Caddy, the client's `/api/` proxy, outbound mail). The dev stack
+also keeps `mariadb` on `default`, solely so its loopback port `3307` can be published; the production overlay drops it
+(`networks: !override`, Compose 2.24.4 or later — the same version `!reset` already needs).
+
+**What it protects.** The worker runs third-party parsers over whatever publishers send. On exactly `db_worker` and
+`egress`, it shares no network with `api` or `client` and cannot reach either directly, and the database is reachable
+from each consumer over its own internal network only.
+
+**What it does not.** `egress` is an ordinary outbound network: the control against every other destination — the
+host's own LAN, cloud metadata, other containers you publish — is still the news egress address policy above, not this
+split. It is defence in depth. The worker still holds the Data Protection key ring read-only (see *Two containers hold
+the key ring*). **If you add networks of your own, never attach the worker to one the `api` is on.**
 
 ## Security checklist
 

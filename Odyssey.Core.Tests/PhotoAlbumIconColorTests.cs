@@ -55,6 +55,8 @@ public class PhotoAlbumIconColorTests
             $"{nameof(PhotoTag)}.{nameof(PhotoTag.Icon)}",
             $"{nameof(PhotoAlbum)}.{nameof(PhotoAlbum.Icon)}",
             $"{nameof(Odyssey.Context.Calendar)}.{nameof(Odyssey.Context.Calendar.Icon)}",
+            // News tags (issue #470 §4.12): the journal tag's shape, catalogue icon included.
+            $"{nameof(NewsTag)}.{nameof(NewsTag.Icon)}",
         ];
 
         using var context = TestContextFactory.Create();

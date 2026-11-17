@@ -3,6 +3,7 @@ using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.Finance.Instruments.Sync;
+using Odyssey.Core.Internet.News.Jobs;
 using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Journal.Thumbnails;
 using Odyssey.Core.Weather;
@@ -133,6 +134,15 @@ public static class JobCatalogue
             StaleAfter: TimeSpan.FromMinutes(2 * InstrumentPriceSyncConstants.RunTimeoutMinutes),
             ManualRunClaims: [],
             DetailReadClaim: null),
+        // The news reader (issue #470 §11.1 item 4): work-driven, every replica, coordinated by per-feed leases — the
+        // leases are the guard, so a scheduled burst is not exclusive. A manual run only marks eligible feeds due;
+        // both it and the card follow news-feeds.update, the claim that manages feeds. The stale window covers a
+        // lease (3 min) plus a hung fetch's 90 s deadline with room to spare.
+        new(JobType.NewsFeedFetch, typeof(NewsFeedJob), NewsJobTiming.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: NewsJobTiming.StaleAfter,
+            ManualRunClaims: [PermissionClaims.NewsFeedsUpdate],
+            DetailReadClaim: PermissionClaims.NewsFeedsUpdate),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

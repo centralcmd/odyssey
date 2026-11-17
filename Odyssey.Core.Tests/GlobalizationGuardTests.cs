@@ -1,8 +1,8 @@
 using System.Globalization;
-using Odyssey.Api;
+using Odyssey.Core.Configuration;
 using Xunit;
 
-namespace Odyssey.Api.Tests;
+namespace Odyssey.Core.Tests;
 
 /// <summary>
 /// The invariant-globalization startup guard (issue #48 §5, AC 42).

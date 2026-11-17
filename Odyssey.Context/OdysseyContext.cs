@@ -616,6 +616,25 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<InstrumentPriceSourceBinding> InstrumentPriceSourceBindings => Set<InstrumentPriceSourceBinding>();
     public DbSet<InstrumentPriceSourceState> InstrumentPriceSourceStates => Set<InstrumentPriceSourceState>();
 
+    // ── News reader (issue #470) ───────────────────────────────────────────────────────────────
+    // Shared household data with no user ids. Articles' bodies, sources and images are files on the NewsArticles
+    // storage feature; NewsArticleFiles is its one referencing table.
+    public DbSet<NewsFeed> NewsFeeds => Set<NewsFeed>();
+    public DbSet<NewsFeedFetchState> NewsFeedFetchStates => Set<NewsFeedFetchState>();
+    public DbSet<NewsFeedCounter> NewsFeedCounters => Set<NewsFeedCounter>();
+    public DbSet<NewsStorageTotal> NewsStorageTotals => Set<NewsStorageTotal>();
+    public DbSet<NewsFeedBucket> NewsFeedBuckets => Set<NewsFeedBucket>();
+    public DbSet<NewsHostThrottle> NewsHostThrottle => Set<NewsHostThrottle>();
+    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
+    public DbSet<NewsArticleIdentity> NewsArticleIdentities => Set<NewsArticleIdentity>();
+    public DbSet<NewsArticleRevision> NewsArticleRevisions => Set<NewsArticleRevision>();
+    public DbSet<NewsArticleFile> NewsArticleFiles => Set<NewsArticleFile>();
+    public DbSet<NewsArticleImage> NewsArticleImages => Set<NewsArticleImage>();
+    public DbSet<NewsTag> NewsTags => Set<NewsTag>();
+    public DbSet<NewsFeedTag> NewsFeedTags => Set<NewsFeedTag>();
+    public DbSet<NewsArticleTag> NewsArticleTags => Set<NewsArticleTag>();
+    public DbSet<NewsFeedCrashEvent> NewsFeedCrashEvents => Set<NewsFeedCrashEvent>();
+
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from
     /// <see cref="SystemSettings"/>: every enumeration of that one projects onto the read DTO, so

@@ -93,7 +93,9 @@ builder.Services.AddScoped(sp =>
 // Every typed API client + the transport core live in Odyssey.ApiClient.
 builder.Services.AddOdysseyApiClient();
 
-builder.Services.AddMudServices();
+// The snackbar provider's one configuration (issue #473 §6.7): bottom-right, a close icon, no duplicate stacking.
+// Error snackbars set RequireInteraction per call so they stay until dismissed; the Undo one sets its 8 s.
+builder.Services.AddMudServices(config => Odyssey.Client.Services.SnackbarDefaults.Configure(config.SnackbarConfiguration));
 builder.Services.AddScoped<CookieAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CookieAuthenticationStateProvider>());
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
@@ -111,6 +113,11 @@ builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.
 builder.Services.AddScoped<Odyssey.Client.Services.IContractLimitsCache, Odyssey.Client.Services.ContractLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IPropertyLimitsCache, Odyssey.Client.Services.PropertyLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache, Odyssey.Client.Services.FileAnalysisDisclosureCache>();
+// One 60-second clock for every OdsRelativeTime on a page (issue #473 §4.1).
+builder.Services.AddScoped<Odyssey.Client.Services.RelativeTimeTicker>();
+// The news feed catalogue and tag list, per signed-in user (issue #473 §4.1, §8.3).
+builder.Services.AddScoped<Odyssey.Client.Services.INewsCatalogueCache, Odyssey.Client.Services.NewsCatalogueCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.NewsStoreGate>();
 // Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
 // surface holding them.
 builder.Services.AddTransient<Odyssey.Client.Services.IContactQuickCreate, Odyssey.Client.Services.ContactQuickCreate>();

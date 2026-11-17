@@ -976,6 +976,128 @@ internal static class SystemSettingsRegistry
             Advise = SettingAdvisories.InstrumentHistoryCostsQuota,
         },
 
+        // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────
+        //
+        // Eight ordinary keys and the allow-list, which takes the SECURITY claim: it decides which private addresses
+        // the worker may fetch from, so every change is audited. The eight ints are served by the news settings lookup
+        // on the shared TTL and evict its entry; the allow-list is read live and uncached (§7.9), so it evicts nothing
+        // — a save reaches this host's next fetch at once, the worker's after its own TTL. The image size cap also has a
+        // derived ceiling — FileStorage:MaxFileSizeBytes, through NewsImageSizeCeiling — which cannot live in an
+        // attribute, so it is the one key here with a Validator.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsDefaultFetchIntervalMinutes,
+            Min = SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin,
+            Max = SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsDefaultFetchIntervalMinutes),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsDefaultFetchIntervalMinutes),
+            Read = r => r.NewsDefaultFetchIntervalMinutes,
+            Write = (dto, v) => dto.NewsDefaultFetchIntervalMinutes = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsMaxFeeds,
+            Min = SystemSettingsBounds.NewsMaxFeedsMin,
+            Max = SystemSettingsBounds.NewsMaxFeedsMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsMaxFeeds),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsMaxFeeds),
+            Read = r => r.NewsMaxFeeds,
+            Write = (dto, v) => dto.NewsMaxFeeds = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsImageMaxPerArticle,
+            Min = SystemSettingsBounds.NewsImageMaxPerArticleMin,
+            Max = SystemSettingsBounds.NewsImageMaxPerArticleMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsImageMaxPerArticle),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsImageMaxPerArticle),
+            Read = r => r.NewsImageMaxPerArticle,
+            Write = (dto, v) => dto.NewsImageMaxPerArticle = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsImageMaxSizeKb,
+            Min = SystemSettingsBounds.NewsImageMaxSizeKbMin,
+            Max = SystemSettingsBounds.NewsImageMaxSizeKbMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsImageMaxSizeKb),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsImageMaxSizeKb),
+            Validator = (value, ceilings) => ceilings.ValidateNewsImageMaxSizeKb(value),
+            Read = r => r.NewsImageMaxSizeKb,
+            Write = (dto, v) => dto.NewsImageMaxSizeKb = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsImageStoreMaxGiB,
+            Min = SystemSettingsBounds.NewsImageStoreMaxGiBMin,
+            Max = SystemSettingsBounds.NewsImageStoreMaxGiBMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsImageStoreMaxGiB),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsImageStoreMaxGiB),
+            Read = r => r.NewsImageStoreMaxGiB,
+            Write = (dto, v) => dto.NewsImageStoreMaxGiB = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsTextStoreMaxGiB,
+            Min = SystemSettingsBounds.NewsTextStoreMaxGiBMin,
+            Max = SystemSettingsBounds.NewsTextStoreMaxGiBMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsTextStoreMaxGiB),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsTextStoreMaxGiB),
+            Read = r => r.NewsTextStoreMaxGiB,
+            Write = (dto, v) => dto.NewsTextStoreMaxGiB = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsFeedMaxArticlesPerDay,
+            Min = SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin,
+            Max = SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsFeedMaxArticlesPerDay),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsFeedMaxArticlesPerDay),
+            Read = r => r.NewsFeedMaxArticlesPerDay,
+            Write = (dto, v) => dto.NewsFeedMaxArticlesPerDay = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.NewsFeedMaxImageMbPerDay,
+            Min = SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin,
+            Max = SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax,
+            FieldName = nameof(SystemSettingsUpdate.NewsFeedMaxImageMbPerDay),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.NewsFeedMaxImageMbPerDay),
+            Read = r => r.NewsFeedMaxImageMbPerDay,
+            Write = (dto, v) => dto.NewsFeedMaxImageMbPerDay = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
+        },
+        new StringSetting
+        {
+            Key = SystemSettingsKeys.NewsPrivateHostAllowList,
+            FieldName = nameof(SystemSettingsUpdate.NewsPrivateHostAllowList),
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
+            DefaultValue = SystemSettingsDefaults.NewsPrivateHostAllowList,
+            MaxLength = NewsPrivateHostAllowListRule.MaxLength,
+            // Empty is the shipped value and the only route back to "no private host": null means "leave unchanged".
+            AllowEmpty = true,
+            Validator = NewsPrivateHostAllowListRule.Validate,
+            Canonicalize = NewsPrivateHostAllowListRule.Canonicalize,
+            // A row planted by a restore is reported, not rendered as healthy; the worker reads it as empty.
+            ReadValidator = NewsPrivateHostAllowListRule.Validate,
+            Read = r => r.NewsPrivateHostAllowList,
+            Write = (dto, v) => dto.NewsPrivateHostAllowList = v,
+        },
+
         // ── Filesystem object storage (issue #346 §3.9) ──────────────────────────────────────────
         //
         // The SECURITY claim, so AuditChanges is true and every change writes an audit line: the grace

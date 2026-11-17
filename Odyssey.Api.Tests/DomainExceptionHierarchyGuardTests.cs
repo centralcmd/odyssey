@@ -38,6 +38,14 @@ public class DomainExceptionHierarchyGuardTests
         "Odyssey.Core.Finance.Instruments.Sources.SourceDestinationException",
         "Odyssey.Core.Finance.Instruments.Sources.SourceQuotaExhaustedException",
         "Odyssey.Core.Finance.Instruments.Sources.SourceResponseMalformedException",
+        // The news egress policy's refusal (issue #470 §7.9). Thrown inside the worker's connect callback and
+        // recorded on the feed as BlockedAddress; the API makes no outbound request, so no request reaches it.
+        "Odyssey.Core.Internet.News.Fetching.NewsEgressRefusedException",
+        // The news job's own control flow (issue #470 §3.5, §6.3): the headroom refusal and an interrupted transaction
+        // that is not replayed. Both are caught by the worker's ingestor as a transient skip; the API writes no news
+        // file and runs no ingest, so no request reaches either.
+        "Odyssey.Core.Internet.News.Files.NewsHeadroomException",
+        "Odyssey.Core.Internet.News.NewsTransactionRetryException",
     ];
 
     [Fact]

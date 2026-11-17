@@ -6,7 +6,7 @@ using Odyssey.Dtos.Authorization;
 namespace Odyssey.Client.Layout;
 
 // Module-based navigation model (design-system "Module rail + switcher + command palette" redesign).
-// Every destination belongs to one of six modules; the rail shows the active module's pages, the
+// Every destination belongs to one of seven modules; the rail shows the active module's pages, the
 // switcher changes module, and the ⌘K palette jumps across all modules. Route keys/pages are
 // unchanged — this is presentation only. `Href` is the real Blazor route (base-relative, no leading
 // slash); `Claim` gates a page behind a permission (null = always visible).
@@ -90,6 +90,20 @@ public static class NavModel
                 new("journal-tags", "Journal Tags", "local_offer", "journal-tags", PermissionClaims.JournalTagsRead),
                 new("task-tags", "Task Tags", "local_offer", "task-tags", PermissionClaims.TaskTagsRead),
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
+            ]),
+        ]),
+        // Internet (issue #473 §3.1): the news reader. news.read gates all three pages, so a caller without it
+        // loses the whole module (VisibleModules).
+        new("internet", "Internet", "public",
+        [
+            new("News",
+            [
+                new("news", "News", "feed", "news", PermissionClaims.NewsRead),
+                new("news-feeds", "Feeds", "rss_feed", "news-feeds", PermissionClaims.NewsRead),
+            ]),
+            new("Reference",
+            [
+                new("news-tags", "News Tags", "local_offer", "news-tags", PermissionClaims.NewsRead),
             ]),
         ]),
         new("user", "User", "person",

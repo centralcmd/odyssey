@@ -1,0 +1,134 @@
+/* Ported from the Odyssey Design System artifact (v227), ui_kits/web/news.css — issue #473.
+   Page-level layout for the Internet module; every colour is a token. Keep in step with the artifact. */
+
+/* Filter bar: wraps, and stacks to one column on a phone (1.4.10). */
+.nw-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-3); }
+.nw-filter-search { flex: 1 1 16rem; min-width: min(16rem, 100%); }
+.nw-filter-sel { flex: 0 1 12rem; min-width: min(10rem, 100%); }
+@media (max-width: 600px) {
+  .nw-filters > * { flex: 1 1 100%; min-width: 0; }
+  /* The Show segmented control fills the line and shares it, so four options fit at 320px. */
+  .nw-filters .odc-seg { display: flex; }
+  .nw-filters .odc-seg-btn { flex: 1 1 auto; justify-content: center; padding-inline: var(--space-2); }
+}
+
+/* Record cards at phone width (1.4.10, centralcmd/odyssey#473 AC 6). The meta
+   line clips its overflow, but its sr-only labels are absolutely positioned and
+   escaped that clip, widening the page; the meta line now contains them. A card
+   with several chips wraps them under its title instead of running off the edge. */
+.nw-page .odc-record-meta { position: relative; }
+@media (max-width: 600px) {
+  .nw-page .odc-record-namerow { flex-wrap: wrap; row-gap: var(--space-1); }
+}
+/* The News tags table keeps its columns and scrolls inside its card rather
+   than widening the page (1.4.10's two-dimensional-table exception). */
+.nw-page .odc-card.flush > .odc-card-body { overflow-x: auto; }
+
+.nw-listhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
+.nw-h2 { margin: 0; font: var(--fw-medium) var(--fs-h6)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-h2:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.nw-muted { color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); }
+.nw-list { display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
+.nw-list .odc-record { scroll-margin-top: calc(var(--appbar-h, var(--space-16)) + var(--space-6)); scroll-margin-bottom: var(--space-16); }
+.nw-loading { display: flex; flex-direction: column; gap: var(--space-3); }
+.nw-refetch { position: absolute; inset: 0 0 auto 0; block-size: var(--space-1); overflow: hidden; border-radius: var(--radius-pill); background: var(--mud-palette-action-default-hover); }
+.nw-refetch > span { display: block; inline-size: 30%; block-size: 100%; background: var(--mud-palette-primary); animation: nw-refetch 1.2s var(--ease-standard) infinite; }
+@keyframes nw-refetch { from { transform: translateX(-100%); } to { transform: translateX(340%); } }
+@media (prefers-reduced-motion: reduce) { .nw-refetch > span { animation: none; inline-size: 100%; opacity: 0.5; } }
+
+.nw-alert-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
+/* Long action labels wrap at 320px instead of overflowing their container (1.4.10). */
+.nw-alert-line .odc-btn, .nw-actions .odc-btn, .nw-link-actions .odc-btn { white-space: normal; text-align: start; height: auto; min-height: var(--space-8); }
+
+/* ---------- Article body ---------- */
+.nw-content { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.nw-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+/* The text and the carousel sit together in one outlined card (the README's
+   outlined-card spec: surface, 1px divider border, --radius-md, no shadow), so the
+   article reads as one block apart from the tiles above it. Carousel beside the
+   text from md (960px; 8 / 4 of 12 columns), below it when narrower. */
+.nw-reading {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-5); align-items: start;
+  padding: var(--space-5); border: var(--border-thin) solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); background: var(--mud-palette-surface);
+}
+@media (max-width: 600px) { .nw-reading { padding: var(--space-4); } }
+@media (min-width: 960px) {
+  .nw-reading.has-images { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); }
+}
+.nw-reading-media { min-width: 0; }
+/* 70ch is the one deliberate non-token unit: a typographic measure. */
+.nw-body { max-inline-size: 70ch; display: flex; flex-direction: column; gap: var(--space-3); overflow-wrap: anywhere; }
+.nw-body p { margin: 0; font: var(--fw-regular) var(--fs-body1)/var(--lh-loose) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-body > .odc-btn { align-self: flex-start; }
+.nw-detail-loading { padding: var(--space-2) 0; }
+.nw-detail-error { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); }
+
+/* Tag row (the Tags dialog's inherited block): read-only chips. */
+.nw-tagrow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.nw-tagrow-item { display: inline-flex; align-items: center; gap: var(--space-1); }
+.nw-tagrow-item .odc-iconbtn { min-width: var(--space-6); min-height: var(--space-6); }
+.odc-chip.nw-inherited { border-style: dashed; }
+
+/* A publisher link: the URL (ltr, wraps anywhere), the host as its own token, then the actions. */
+.nw-link { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.nw-link-url { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.nw-link-host { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.nw-link-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+/* ---------- Dialogs ---------- */
+.nw-dialog-line { margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-dialog-line.nw-muted { color: var(--mud-palette-text-secondary); }
+.nw-inherited-block { display: flex; flex-direction: column; gap: var(--space-2); }
+.nw-version { display: flex; flex-direction: column; gap: var(--space-2); padding-top: var(--space-2); border-top: var(--border-thin) solid var(--mud-palette-divider); }
+.nw-version-title { margin: 0; font: var(--fw-medium) var(--fs-body1)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-version-meta { margin: 0; font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+
+/* ---------- Feeds ---------- */
+.nw-row-busy { display: inline-flex; align-items: center; justify-content: center; width: var(--iconbtn-size); height: var(--iconbtn-size); }
+.nw-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: var(--space-2) var(--space-4); }
+.nw-facts > div { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.nw-facts dt { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.nw-facts dd { margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.nw-line { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.nw-line .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); margin-top: var(--space-1); }
+
+/* ---------- News tags ---------- */
+.nt-name { display: inline-flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.nt-desc { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ---------- Frontend v5–v9 amendments (centralcmd/odyssey#473) ---------- */
+/* The body-unavailable alert's Background jobs link (K10): text-coloured, underlined. */
+.nw-inline-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
+.nw-inline-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* Mark all read's running total (K9): the line keeps its height so the dialog doesn't jump. */
+.nw-run-line { min-height: calc(var(--fs-body2) * var(--lh-normal)); color: var(--mud-palette-text-secondary); }
+/* A wrapper that takes programmatic focus (tabindex -1) for an alert or a button inside it. */
+.nw-focus-host { display: inline-flex; }
+div.nw-focus-host { display: block; }
+.nw-focus-host:focus { outline: none; }
+.nw-focus-host:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* The QuotaReached chip, described by its reason (K13), keeps the chip row's layout. */
+.nw-chip-described { display: contents; }
+
+
+/* ---------- Client additions (not in the kit file) ---------- */
+/* An empty state's heading is a real heading that takes programmatic focus (§6.6), styled as the
+   panel's title so it reads exactly as OdsEmptyState's own. */
+.nw-empty-h { margin: 0; font: inherit; color: inherit; }
+.nw-empty-h:focus { outline: none; }
+.nw-empty-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* The feed URL in the management block: the masked address, then its actions. */
+.nw-feedurl { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.nw-feedurl-text { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.nw-pending-actions { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
+.nw-tags-card { overflow: hidden; }
+/* A news tag's name is its row's edit trigger: a real button that reads as the name (§3.4). */
+.nt-namebtn { all: unset; box-sizing: border-box; cursor: pointer; min-height: var(--space-6); display: inline-flex; align-items: center; font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-align: start; }
+.nt-namebtn:hover { text-decoration: underline; text-underline-offset: 0.2em; }
+.nt-namebtn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* The /news search field's helper line (§7.4): sr-only while there is no message, visible text under the field
+   while there is one. Only the 400 is an error; the others are status text. */
+.nw-search { display: flex; flex-direction: column; gap: var(--space-1); }
+.nw-search-help { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.nw-search-help.is-error { color: var(--mud-palette-error); }

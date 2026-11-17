@@ -512,6 +512,40 @@ public sealed record SystemSettingsUpdate
     public int? InstrumentPriceSyncHistoryDays { get; set; }
 
     // ---------------------------------------------------------------------------------------------
+    // News reader (issue #470 §11.1). The allow-list takes the security claim; the other eight the
+    // ordinary one. NewsImageMaxSizeKb is also bounded by a derived ceiling (RequestCapCeilings), which
+    // cannot live in an attribute because it comes from startup configuration.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin, SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax)]
+    public int? NewsDefaultFetchIntervalMinutes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsMaxFeedsMin, SystemSettingsBounds.NewsMaxFeedsMax)]
+    public int? NewsMaxFeeds { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxPerArticleMin, SystemSettingsBounds.NewsImageMaxPerArticleMax)]
+    public int? NewsImageMaxPerArticle { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxSizeKbMin, SystemSettingsBounds.NewsImageMaxSizeKbMax)]
+    public int? NewsImageMaxSizeKb { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageStoreMaxGiBMin, SystemSettingsBounds.NewsImageStoreMaxGiBMax)]
+    public int? NewsImageStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsTextStoreMaxGiBMin, SystemSettingsBounds.NewsTextStoreMaxGiBMax)]
+    public int? NewsTextStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin, SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax)]
+    public int? NewsFeedMaxArticlesPerDay { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax)]
+    public int? NewsFeedMaxImageMbPerDay { get; set; }
+
+    /// <summary><c>""</c> is a legal value — it empties the list — so <c>[Required]</c> is never used here.</summary>
+    [StringLength(NewsPrivateHostAllowListRule.MaxLength)]
+    public string? NewsPrivateHostAllowList { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
     // for deleted personal data, so every change is audited.
     // ---------------------------------------------------------------------------------------------

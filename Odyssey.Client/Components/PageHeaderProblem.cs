@@ -72,5 +72,12 @@ public sealed class PageHeaderProblem
     /// <summary>Label of the quiet action link on the right of the row.</summary>
     public string ViewLabel { get; set; } = "View";
 
+    /// <summary>
+    /// Optional accessible name for the action, overriding <see cref="ViewLabel"/> when set — for a short
+    /// visible label that needs its subject spoken ("Review Example News", issue #473 §4.2). The trailing
+    /// arrow is <c>aria-hidden</c> either way.
+    /// </summary>
+    public string? ActionAriaLabel { get; set; }
+
     internal bool HasView => OnView.HasDelegate;
 }

@@ -132,34 +132,36 @@ public class FileStorageMaintenanceTests : FileStorageTestBase
 
     /// <summary>
     /// AC 15: every foreign key to <c>StoredObjects</c> belongs to exactly one catalogue feature and is RESTRICT. The
-    /// production model has two features — photo thumbnails and photo originals — and exactly their two keys; the test
-    /// model adds one per test feature.
+    /// production model has its features — photo thumbnails, photo originals, the three file areas and news
+    /// articles — and exactly their keys; the test model adds one per test feature.
     /// </summary>
     [Fact]
     public void Every_key_to_stored_objects_belongs_to_one_feature_and_is_restrict()
     {
         // Production: photo thumbnails (issue #362), photo originals (issue #428) and the three file areas (issue #448,
-        // one column per feature on FileMetadata), and exactly their keys.
+        // one column per feature on FileMetadata), the news articles (issue #470, NewsArticleFiles), and exactly their keys.
         using var production = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-prod").Options);
         var productionCatalogue = new StorageFeatureCatalogue(
-            [Journal.Thumbnails.PhotoThumbnailStorage.Feature, Journal.Originals.PhotoOriginalStorage.Feature, .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
-        Assert.Equal([nameof(FileMetadata), nameof(FileMetadata), nameof(FileMetadata), nameof(Photo), nameof(PhotoThumbnail)],
+            [Journal.Thumbnails.PhotoThumbnailStorage.Feature, Journal.Originals.PhotoOriginalStorage.Feature,
+             Odyssey.Core.Internet.News.Files.NewsArticleStorage.Feature, .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
+        Assert.Equal([nameof(FileMetadata), nameof(FileMetadata), nameof(FileMetadata), nameof(NewsArticleFile), nameof(Photo), nameof(PhotoThumbnail)],
             KeysTo(production.Model).Select(fk => fk.DeclaringEntityType.ClrType.Name).Order());
         Assert.Empty(ReferenceViolations(production.Model, productionCatalogue));
 
         using var test = new TestStorageContext(new DbContextOptionsBuilder<OdysseyContext>().UseInMemoryDatabase("guard-test").Options);
         var testCatalogue = new StorageFeatureCatalogue(
             [.. TestStorageFeatures.All, Journal.Thumbnails.PhotoThumbnailStorage.Feature, Journal.Originals.PhotoOriginalStorage.Feature,
-             .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
-        Assert.Equal(8, KeysTo(test.Model).Count);
+             Odyssey.Core.Internet.News.Files.NewsArticleStorage.Feature, .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All]);
+        Assert.Equal(9, KeysTo(test.Model).Count);
         Assert.Empty(ReferenceViolations(test.Model, testCatalogue));
 
         // And it bites: drop a feature from the catalogue and its key is reported.
         Assert.Single(ReferenceViolations(test.Model, new StorageFeatureCatalogue(
             [TestStorageFeatures.Files, TestStorageFeatures.Dated, Journal.Thumbnails.PhotoThumbnailStorage.Feature,
-             Journal.Originals.PhotoOriginalStorage.Feature, .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All])));
-        Assert.Equal(4, ReferenceViolations(production.Model, new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature])).Count);
-        Assert.Equal(5, ReferenceViolations(production.Model, new StorageFeatureCatalogue([])).Count);
+             Journal.Originals.PhotoOriginalStorage.Feature, Odyssey.Core.Internet.News.Files.NewsArticleStorage.Feature,
+             .. Odyssey.Core.FileStorage.Files.StoredFileAreas.All])));
+        Assert.Equal(5, ReferenceViolations(production.Model, new StorageFeatureCatalogue([Journal.Thumbnails.PhotoThumbnailStorage.Feature])).Count);
+        Assert.Equal(6, ReferenceViolations(production.Model, new StorageFeatureCatalogue([])).Count);
     }
 
     internal static IReadOnlyList<IForeignKey> KeysTo(IModel model) =>
