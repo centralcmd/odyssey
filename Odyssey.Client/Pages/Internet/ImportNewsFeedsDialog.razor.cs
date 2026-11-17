@@ -24,7 +24,9 @@ public partial class ImportNewsFeedsDialog : IDisposable
     /// <summary>When <b>Stop waiting</b> appears while a request is in flight (§3.2, S7).</summary>
     public static readonly TimeSpan StopWaitingAfter = TimeSpan.FromSeconds(30);
 
-    private const long BytesPerMegabyte = 1L << 20;
+    // Named, with no bare 1024 for the AC 21 lint (§8.5): a kibibyte squared.
+    private const long BytesPerKibibyte = 1L << 10;
+    private const long BytesPerMegabyte = BytesPerKibibyte * BytesPerKibibyte;
 
     internal const string NoFileText = "Choose an OPML file to import.";
     internal const string WrongTypeText = "That isn't an OPML file. Use a .opml or .xml file.";
