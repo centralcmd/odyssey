@@ -69,13 +69,14 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
 
     /// <summary>
     /// Sets the request's minimum body data rate. The feature is absent under TestServer, and Kestrel refuses the
-    /// setter on HTTP/2 and HTTP/3, where the server-wide rate applies instead; both are logged and skipped.
+    /// setter on HTTP/2 and HTTP/3, where the server-wide rate applies instead; both are logged and skipped. The log lines
+    /// carry no request value: the path and protocol are client-supplied (CodeQL cs/log-forging).
     /// </summary>
     internal void ApplyMinBodyDataRate(HttpContext context, MinDataRate rate)
     {
         if (context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is not { } feature)
         {
-            logger.LogDebug("IHttpMinRequestBodyDataRateFeature is unavailable for {Path}; the upload-rate floor was not set.", context.Request.Path);
+            logger.LogDebug("IHttpMinRequestBodyDataRateFeature is unavailable; the upload-rate floor was not set.");
             return;
         }
 
@@ -85,7 +86,7 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
         }
         catch (NotSupportedException)
         {
-            logger.LogDebug("The upload-rate floor is not supported on {Protocol} for {Path}.", context.Request.Protocol, context.Request.Path);
+            logger.LogDebug("The upload-rate floor is not supported on this protocol; the server-wide rate applies.");
         }
     }
 
