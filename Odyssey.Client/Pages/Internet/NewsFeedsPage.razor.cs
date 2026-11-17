@@ -22,6 +22,12 @@ public partial class NewsFeedsPage
 
     public const string RootId = "nf-page";
 
+    /// <summary>The ⋯ menu root's id, which the import dialog returns focus to (issue #509 §3.1, v5 §1).</summary>
+    public const string ActionMenuId = "news-feeds-actions";
+
+    /// <summary>The OPML download's media type (§3.2).</summary>
+    public const string OpmlContentType = "text/x-opml";
+
     /// <summary>The hard limit on consecutive list requests for the full set (§3.3, Loading).</summary>
     public const int MaxListRequests = 5;
 
@@ -44,6 +50,8 @@ public partial class NewsFeedsPage
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
     [Inject] private TimeProvider Time { get; set; } = default!;
+
+    [Inject] private IClaimsRefresher ClaimsRefresher { get; set; } = default!;
 
     /// <summary><c>?state=All</c> opens the page with the Status filter cleared (§3.1).</summary>
     [SupplyParameterFromQuery(Name = "state")] public string? StateQuery { get; set; }
@@ -139,10 +147,9 @@ public partial class NewsFeedsPage
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await Auth.GetUserAsync();
-        _canCreate = user.HasPermission(PermissionClaims.NewsFeedsCreate);
-        _canUpdate = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
-        _canDelete = user.HasPermission(PermissionClaims.NewsFeedsDelete);
+        ReadClaims(await Auth.GetUserAsync());
+        // A claim change (a 403's refresh, §7.3) redraws the menu and the actions without a reload (F6, S1).
+        Auth.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
         await PageState.RestoreOrSeedAsync<NewsFeedsPageState>(PageStateKey, ApplyPageState, BuildPageState);
 
@@ -162,6 +169,27 @@ public partial class NewsFeedsPage
             _tagFilter = [];
         }
     }
+
+    private void ReadClaims(System.Security.Claims.ClaimsPrincipal user)
+    {
+        _canCreate = user.HasPermission(PermissionClaims.NewsFeedsCreate);
+        _canUpdate = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
+        _canDelete = user.HasPermission(PermissionClaims.NewsFeedsDelete);
+    }
+
+    private void OnAuthenticationStateChanged(Task<AuthenticationState> state) => _ = InvokeAsync(async () =>
+    {
+        try
+        {
+            ReadClaims((await state).User);
+        }
+        catch (Exception)
+        {
+            return;
+        }
+
+        StateHasChanged();
+    });
 
     // ── Page state ─────────────────────────────────────────────────────────────────────────────────
 
@@ -805,6 +833,151 @@ public partial class NewsFeedsPage
         StateHasChanged();
     }
 
+    // ── OPML (issue #509) ──────────────────────────────────────────────────────────────────────────
+
+    private bool _exporting;
+    private Guid _importKey;
+    private bool _importOpen;
+
+    /// <summary>"Export all": every feed, paused and archived included, whatever the Status filter shows (F15).</summary>
+    internal bool ShowsExportAll => _canUpdate && !_loading && _failure is null && _feeds.Count > 0;
+
+    /// <summary>
+    /// "Export filtered (N)": only from a list loaded in full (v5 §4), and only when the filters show some feeds but
+    /// not all of them — otherwise it would duplicate Export all or export nothing (§3.1).
+    /// </summary>
+    internal bool ShowsExportFiltered => ShowsExportAll && Filtered.Count >= 1 && Filtered.Count < _feeds.Count;
+
+    private string FilteredCountText => Filtered.Count.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    /// <summary>
+    /// One export at a time (§3.2, v4 §5, v5 §3). The menu has closed and returned focus to the ⋯ button; the page
+    /// announcer says the export is being prepared, and the snackbar alone reports how it ended (§6.5).
+    /// </summary>
+    private async Task ExportAsync(bool filtered)
+    {
+        if (_exporting)
+        {
+            Say("An export is already running.");
+            return;
+        }
+
+        _exporting = true;
+        Say("Preparing the OPML export…");
+        try
+        {
+            // The whole filtered set held in memory, including feeds the batch loader has not rendered yet.
+            List<Guid>? ids = filtered ? [.. Filtered.Select(f => f.Id)] : null;
+            var result = await News.ExportOpmlAsync(ids);
+            if (!result.IsSuccess || result.Value is not { } export)
+            {
+                await ExportFailedAsync(result.Status);
+                return;
+            }
+
+            // Zero rows first: the server's empty export is a valid document with an empty <body/>.
+            if (export.Rows == 0)
+            {
+                Snackbar.Add(filtered ? "No feeds to export: the filtered feeds no longer exist." : "No feeds to export.", Severity.Info);
+                return;
+            }
+
+            if (!EndsWithOpmlClose(export.File.Bytes))
+            {
+                Say(NewsFeedback.Failure(Snackbar, "The export didn't complete. Try again."));
+                return;
+            }
+
+            try
+            {
+                await JS.InvokeVoidAsync("downloadFileFromBytes", export.File.Bytes, export.File.FileName, OpmlContentType);
+            }
+            catch (JSException)
+            {
+                Say(NewsFeedback.Failure(Snackbar, "Couldn't export the feeds."));
+                return;
+            }
+
+            Say(NewsFeedback.Success(Snackbar, export.Rows is { } rows
+                ? $"Exported {NewsFeedback.Count(rows, "feed", "feeds")} to {export.File.FileName}."
+                : $"Exported {export.File.FileName}."));
+        }
+        finally
+        {
+            _exporting = false;
+        }
+    }
+
+    /// <summary>§7.1, by status: a <c>429</c> and a <c>503</c> carry no usable code for this purpose.</summary>
+    private async Task ExportFailedAsync(HttpStatusCode status)
+    {
+        var text = status switch
+        {
+            HttpStatusCode.TooManyRequests => "An export is already running. Try again in a moment.",
+            HttpStatusCode.ServiceUnavailable => NewsFeedback.BusyText,
+            HttpStatusCode.Forbidden => "You don't have permission to export feeds.",
+            _ => "Couldn't export the feeds.",
+        };
+        Say(NewsFeedback.Failure(Snackbar, text));
+        if (status == HttpStatusCode.Forbidden)
+        {
+            // The provider's AuthenticationStateChanged redraws the menu without the lost items (§7.3).
+            await ClaimsRefresher.OnResponseAsync(status);
+        }
+    }
+
+    /// <summary>
+    /// Whether the bytes, ignoring trailing whitespace, end in <c>&lt;/opml&gt;</c> (§5, S6). No row count is compared:
+    /// a feed with several tags is written once per tag.
+    /// </summary>
+    internal static bool EndsWithOpmlClose(byte[]? bytes)
+    {
+        ReadOnlySpan<byte> close = "</opml>"u8;
+        if (bytes is null)
+        {
+            return false;
+        }
+
+        var end = bytes.Length;
+        while (end > 0 && bytes[end - 1] is (byte)' ' or (byte)'\t' or (byte)'\r' or (byte)'\n')
+        {
+            end--;
+        }
+
+        return end >= close.Length && bytes.AsSpan(end - close.Length, close.Length).SequenceEqual(close);
+    }
+
+    private void OpenImport()
+    {
+        if (!_canCreate)
+        {
+            return;
+        }
+
+        _importKey = Guid.NewGuid();
+        _importOpen = true;
+    }
+
+    /// <summary>
+    /// After ANY sent request (§3.3 step 6, F5) — a result, a 409, a 503, a drop or a stop — tags or feeds may have been
+    /// committed, so the catalogue is invalidated and the list reloaded. Nothing from the report reaches the page.
+    /// </summary>
+    private async Task OnImportClosedAsync(bool sent)
+    {
+        _importOpen = false;
+        if (!sent)
+        {
+            return;
+        }
+
+        Catalogue.Invalidate();
+        await LoadAsync();
+        if (_failure is null)
+        {
+            Say("Feed list updated.");
+        }
+    }
+
     // ── Pending-feed polling (§3.3 Create flow, §10) ───────────────────────────────────────────────
 
     private readonly Dictionary<Guid, Poll> _polls = [];
@@ -910,6 +1083,7 @@ public partial class NewsFeedsPage
 
     public void Dispose()
     {
+        Auth.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         foreach (var poll in _polls.Values)
         {
             poll.Timer.Dispose();

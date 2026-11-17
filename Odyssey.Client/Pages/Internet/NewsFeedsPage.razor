@@ -23,7 +23,8 @@
     <PageHeader Title="Feeds" Icon="@Icons.Material.Filled.RssFeed"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
                 SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
-                PrimaryActionText="New feed" OnPrimaryAction="NewFeedClicked" ShowPrimaryAction="_canCreate">
+                PrimaryActionText="New feed" OnPrimaryAction="NewFeedClicked" ShowPrimaryAction="_canCreate"
+                ActionMenu="FeedActions" ActionMenuLabel="Feed actions" ActionMenuId="@ActionMenuId">
         <SubLine>@SubLine</SubLine>
         <OverviewContent>
             @if (_feeds.Count > 0)
@@ -127,6 +128,12 @@
                     Refreshed="Replace" />
 }
 
+@if (_importKey != Guid.Empty)
+{
+    <ImportNewsFeedsDialog @key="_importKey" Open="_importOpen" OpenChanged="v => _importOpen = v"
+                           ReturnFocusToId="@ActionMenuId" Closed="OnImportClosedAsync" />
+}
+
 @if (_tagsFeed is { } tagsFeed)
 {
     <OdsFormDialog @key="_tagsKey" Open="_tagsOpen" OpenChanged="OnTagsOpenChanged"
@@ -170,4 +177,30 @@
             </span>
         </Footer>
     </OdsModal>
+}
+
+@code {
+    /// <summary>
+    /// The header's ⋯ "Feed actions" menu (issue #509 §3.1): Export all, Export filtered (N), a divider, Import from
+    /// OPML…. Each item is ABSENT, never disabled, when it does not apply, and with no item the page passes no menu at
+    /// all, so a reader gets no ⋯ button (F1).
+    /// </summary>
+    private RenderFragment? FeedActions => !ShowsExportAll && !_canCreate ? null : @<text>
+        @if (ShowsExportAll)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.FileDownload" OnClick="@(() => ExportAsync(filtered: false))">Export all as OPML</MudMenuItem>
+        }
+        @if (ShowsExportFiltered)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">@($"Export filtered ({FilteredCountText}) as OPML")</MudMenuItem>
+        }
+        @if (ShowsExportAll && _canCreate)
+        {
+            <MudDivider />
+        }
+        @if (_canCreate)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImport">Import from OPML…</MudMenuItem>
+        }
+    </text>;
 }
