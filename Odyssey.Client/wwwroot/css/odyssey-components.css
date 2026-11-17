@@ -5137,3 +5137,23 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 @media (prefers-reduced-motion: reduce) { .odc-toast { animation: none; } }
 .odc-toast-close { position: relative; }
 .odc-toast-close::after { content: ''; position: absolute; inset: -2px; }
+
+/* ============================================================
+   Internet module — the news reader's shared components (issue #473)
+   Ported from the design-system artifact v227 (project/components/bundle.css).
+   ============================================================ */
+
+/* ---------- InfiniteList remote mode (§4.4) ----------
+   The pill is the same button in every state; while a page is in flight it is
+   aria-disabled (never disabled, so focus stays) and leads with the spinner. */
+.odc-infinite-btn[aria-disabled="true"] { cursor: default; }
+.odc-infinite-btn[aria-disabled="true"]:hover { border-color: var(--mud-palette-lines-default); color: var(--mud-palette-text-secondary); }
+.odc-infinite-btn.is-error { color: var(--mud-palette-text-primary); }
+.odc-infinite-spin {
+  width: var(--icon-xs); height: var(--icon-xs); flex: none; border-radius: 50%;
+  border: var(--border-strong) solid var(--mud-palette-divider); border-top-color: var(--mud-palette-primary);
+  animation: odc-pager-spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .odc-infinite-spin { animation: none; border-top-color: var(--mud-palette-divider); }
+}

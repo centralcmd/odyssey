@@ -20,6 +20,26 @@
 @implements IAsyncDisposable
 @inject IJSRuntime JS
 
+@if (FooterOnly)
+{
+    @* Footer-only mode: the sentinel and the pill alone, rendered after a component that draws the
+       window itself (the News tags OdsRecordTable, issue #473 §3.4) and owns its own loading, error
+       and empty states. The window size is the page's (@bind-WindowSize), so the page can sort the
+       WHOLE set before it takes the head of it. *@
+    @if (FooterHasMore)
+    {
+        <div @ref="_sentinel" aria-hidden="true" style="height:1px"></div>
+        <div class="odc-infinite-status" role="status" aria-live="polite">
+            <button type="button" class="odc-infinite-pill" @onclick="Grow"
+                    aria-label="@($"Load more — {FooterShown:N0} of {Total:N0} {Noun} loaded")">
+                <span class="material-icons" aria-hidden="true" style="font-size:16px">expand_more</span>
+                @FooterShown.ToString("N0") of @Total.ToString("N0") @Noun · load more
+            </button>
+        </div>
+    }
+}
+else
+{
 @* The list never assembles its own loading / error / empty states — OdsListStatus owns all four
    and this component owns only the windowing, so a card page cannot render "nothing here yet"
    for a failed load without saying so. *@
@@ -32,27 +52,101 @@
     @* No wrapper element — the rendered card is a direct child of the host list container so its
        `.acct-list > .acct-item` styling holds. (Card expand state lives in the host page, keyed by
        item id, so omitting @key is safe.) *@
-    @foreach (var item in Items.Take(Shown))
+    @if (Remote)
     {
-        @RenderItem(item)
-    }
+        @* Remote mode (issue #473 §4.4): the server pages by cursor, so every loaded item renders and
+           nothing is windowed. *@
+        @foreach (var item in Items)
+        {
+            @RenderItem!(item)
+        }
 
-    @if (HasMore)
-    {
-        <div @ref="_sentinel" aria-hidden="true" style="height:1px"></div>
-        @* The pill is a real button so the next batch is reachable by keyboard (WCAG 2.1.1), not
-           only by scrolling the IntersectionObserver sentinel into view. It stays inside the
-           aria-live status region, whose text updates ("X of N") as batches load. *@
-        <div class="odc-infinite-status" role="status" aria-live="polite">
-            <button type="button" class="odc-infinite-pill" @onclick="Grow"
-                    aria-label="@($"Load more — {Shown:N0} of {Total:N0} {Noun} loaded")">
-                <span class="material-icons" aria-hidden="true" style="font-size:16px">expand_more</span>
-                @Shown.ToString("N0") of @Total.ToString("N0") @Noun · load more
-            </button>
-        </div>
+        @if (RemoteHasMore)
+        {
+            <div @ref="_sentinel" aria-hidden="true" style="height:1px"></div>
+            @* The pill sits OUTSIDE the live region, and its accessible name is its visible text, so its
+               own text changes ("Loading more articles…") are not announced; the separate status line
+               below speaks the appends. aria-disabled, never disabled, so focus stays on it. *@
+            <div class="odc-infinite-status">
+                <button type="button" class="@RemotePillClass" aria-disabled="@(LoadingMore ? "true" : null)"
+                        @onclick="OnPillPressed">
+                    @if (LoadingMore)
+                    {
+                        <span class="odc-infinite-spin" aria-hidden="true"></span>
+                        <span>Loading more @Noun…</span>
+                    }
+                    else if (LoadMoreFailed)
+                    {
+                        <span class="material-icons" aria-hidden="true" style="font-size:16px">refresh</span>
+                        <span>Couldn’t load more. Retry</span>
+                    }
+                    else
+                    {
+                        <span class="material-icons" aria-hidden="true" style="font-size:16px">expand_more</span>
+                        @RemoteIdleText
+                    }
+                </button>
+            </div>
+        }
+        else if (Trailing is not null)
+        {
+            @Trailing
+        }
     }
-    else if (Trailing is not null)
+    else
     {
-        @Trailing
+        @foreach (var item in Items.Take(Shown))
+        {
+            @RenderItem!(item)
+        }
+
+        @if (HasMore)
+        {
+            <div @ref="_sentinel" aria-hidden="true" style="height:1px"></div>
+            @* The pill is a real button so the next batch is reachable by keyboard (WCAG 2.1.1), not
+               only by scrolling the IntersectionObserver sentinel into view. It stays inside the
+               aria-live status region, whose text updates ("X of N") as batches load. *@
+            <div class="odc-infinite-status" role="status" aria-live="polite">
+                <button type="button" class="odc-infinite-pill" @onclick="Grow"
+                        aria-label="@($"Load more — {Shown:N0} of {Total:N0} {Noun} loaded")">
+                    <span class="material-icons" aria-hidden="true" style="font-size:16px">expand_more</span>
+                    @Shown.ToString("N0") of @Total.ToString("N0") @Noun · load more
+                </button>
+            </div>
+        }
+        else if (Trailing is not null)
+        {
+            @Trailing
+        }
     }
 </OdsListStatus>
+
+@if (Remote)
+{
+    @* Stays rendered after the last page removes the pill, so the final "N more … loaded" is still
+       read (issue #473 §4.4). Outside OdsListStatus, so a failed or empty first page keeps it too. *@
+    <div class="odc-sr-only odc-infinite-announce" role="status" aria-live="polite" aria-atomic="true">@_announcement</div>
+}
+}
+
+@code {
+    // "50 of 1,234 articles loaded · Load more"; while capped the total reads "10,000+" with an sr-only
+    // "more than 10,000", so the spoken name never says "plus".
+    private RenderFragment RemoteIdleText => __builder =>
+    {
+        var loaded = Items.Count.ToString("N0");
+        var tail = $" {Noun} loaded · Load more";
+        if (RemoteTotal is { } total && RemoteTotalCapped)
+        {
+            <span>@($"{loaded} of ")<span aria-hidden="true">@($"{total:N0}+")</span><span class="odc-sr-only">@($"more than {total:N0}")</span>@tail</span>
+        }
+        else if (RemoteTotal is { } exact)
+        {
+            <span>@($"{loaded} of {exact:N0}{tail}")</span>
+        }
+        else
+        {
+            <span>@($"{loaded}{tail}")</span>
+        }
+    };
+}
