@@ -38,6 +38,9 @@ public class DomainExceptionHierarchyGuardTests
         "Odyssey.Core.Finance.Instruments.Sources.SourceDestinationException",
         "Odyssey.Core.Finance.Instruments.Sources.SourceQuotaExhaustedException",
         "Odyssey.Core.Finance.Instruments.Sources.SourceResponseMalformedException",
+        // The news egress policy's refusal (issue #470 §7.9). Thrown inside the worker's connect callback and
+        // recorded on the feed as BlockedAddress; the API makes no outbound request, so no request reaches it.
+        "Odyssey.Core.Internet.News.Fetching.NewsEgressRefusedException",
     ];
 
     [Fact]
