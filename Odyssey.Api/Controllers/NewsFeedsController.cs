@@ -1,5 +1,9 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Net.Http.Headers;
+using Odyssey.Core.Internet.News.Opml;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -17,6 +21,12 @@ namespace Odyssey.Api.Controllers;
 [Route("api/news-feeds")]
 public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
 {
+    /// <summary>The declared content types an OPML upload may carry (issue #508 §6); empty is accepted too.</summary>
+    private static readonly HashSet<string> OpmlContentTypes = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "text/x-opml", "text/xml", "application/xml", "application/octet-stream",
+    };
+
     private bool CanManage => User.HasPermission(PermissionClaims.NewsFeedsUpdate);
 
     [HttpGet]
@@ -41,6 +51,108 @@ public sealed class NewsFeedsController(NewsFeedService feeds) : ControllerBase
     [SwaggerOperation(Summary = "Unread counts in total, by feed and by effective tag; archived feeds excluded.")]
     public async Task<IActionResult> UnreadCounts(CancellationToken cancellationToken = default) =>
         Ok(await feeds.UnreadCountsAsync(cancellationToken));
+
+    // ── OPML (issue #508) ───────────────────────────────────────────────────────────────────────────────
+
+    [HttpGet("opml")]
+    [Authorize(Policy = PermissionClaims.NewsFeedsUpdate)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [Produces("text/x-opml")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Export every feed not pending deletion as an OPML 2.0 file, each tag a folder.")]
+    public Task<IActionResult> ExportOpml([FromServices] NewsOpmlExportService export, CancellationToken cancellationToken = default) =>
+        WriteOpmlAsync(export, null, cancellationToken);
+
+    [HttpPost("opml/export")]
+    [Authorize(Policy = PermissionClaims.NewsFeedsUpdate)]
+    [Consumes("application/json")]
+    [RequestSizeLimit(NewsOpmlLimits.MaxExportRequestBytes)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [Produces("text/x-opml")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Export the named feeds as an OPML 2.0 file; unknown ids and feeds pending deletion are skipped.")]
+    public Task<IActionResult> ExportOpmlFiltered(
+        [FromBody] NewsOpmlExportRequest request, [FromServices] NewsOpmlExportService export, CancellationToken cancellationToken = default) =>
+        WriteOpmlAsync(export, request.FeedIds!, cancellationToken);
+
+    [HttpPost("opml")]
+    [Authorize(Policy = PermissionClaims.NewsFeedsCreate)]
+    [Consumes("multipart/form-data")]
+    [ImportSizeLimit(ImportSurface.NewsOpml)]
+    [EnableRateLimiting(ImportExportRateLimiting.ImportConcurrencyPolicy)]
+    [TypeFilter(typeof(NewsOpmlImportConcurrencyFilter))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(NewsOpmlImportResult))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status413PayloadTooLarge, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Subscribe to the feeds of an OPML file in one step and report each. No outbound request is made.")]
+    public async Task<IActionResult> ImportOpml(
+        IFormFile? file, [FromServices] NewsOpmlImportService import, CancellationToken cancellationToken = default)
+    {
+        if (file is null || file.Length == 0)
+        {
+            throw NewsErrors.OpmlFileRequired();
+        }
+
+        var extension = Path.GetExtension(file.FileName);
+        if (!(string.Equals(extension, ".opml", StringComparison.OrdinalIgnoreCase) || string.Equals(extension, ".xml", StringComparison.OrdinalIgnoreCase))
+            || !IsAcceptedOpmlContentType(file.ContentType))
+        {
+            throw NewsErrors.OpmlWrongType();
+        }
+
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        // Tag creation is checked here, never as a second [Authorize]: without it the feeds still import (§5.2).
+        var canCreateTags = User.HasPermission(PermissionClaims.NewsTagsCreate);
+        await using var stream = file.OpenReadStream();
+        return Ok(await import.ImportAsync(stream, canCreateTags, userId, cancellationToken));
+    }
+
+    internal static bool IsAcceptedOpmlContentType(string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(contentType))
+        {
+            return true;
+        }
+
+        return MediaTypeHeaderValue.TryParse(contentType, out var parsed)
+            && parsed.MediaType.Value is { } mediaType
+            && OpmlContentTypes.Contains(mediaType);
+    }
+
+    /// <summary>Loads first, so a query fault is a clean <c>503</c>; then the headers; then the body (§5.1).</summary>
+    private async Task<IActionResult> WriteOpmlAsync(NewsOpmlExportService export, IReadOnlyCollection<Guid>? feedIds, CancellationToken cancellationToken)
+    {
+        if (User.ActingUserId() is not { } userId)
+        {
+            return this.MissingUserProblem();
+        }
+
+        var document = await export.LoadAsync(feedIds, userId, cancellationToken);
+        Response.ContentType = OpmlDocumentWriter.ContentType;
+        var disposition = new ContentDispositionHeaderValue("attachment");
+        disposition.SetHttpFileName(export.FileName());
+        Response.Headers[HeaderNames.ContentDisposition] = disposition.ToString();
+        Response.Headers.XContentTypeOptions = "nosniff";
+        Response.Headers.CacheControl = "no-store";
+        Response.Headers["X-Odyssey-Export-Rows"] = document.Feeds.Count.ToString(CultureInfo.InvariantCulture);
+        await OpmlDocumentWriter.WriteAsync(document, Response.Body, cancellationToken);
+        return new EmptyResult();
+    }
 
     [HttpGet("{id:guid}", Name = "GetNewsFeed")]
     [Authorize(Policy = PermissionClaims.NewsRead)]
