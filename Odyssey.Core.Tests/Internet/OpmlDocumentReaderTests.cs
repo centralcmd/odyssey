@@ -116,6 +116,15 @@ public sealed class OpmlDocumentReaderTests
     }
 
     [Fact]
+    public void A_non_character_reference_in_a_name_is_removed_rather_than_failing_the_file()
+    {
+        var outline = Read("<opml><body><outline text=\"A&#xFFFE;B&#x1;\" xmlUrl=\"https://x.example/\" category=\"/T&#xFFFF;\"/></body></opml>").Single();
+
+        Assert.Equal("AB", outline.CustomTitle);
+        Assert.Equal(["T"], outline.TagNames);
+    }
+
+    [Fact]
     public void The_version_attribute_is_never_enforced()
     {
         Assert.Single(Read("<opml version=\"9.9\"><body><outline xmlUrl=\"https://x.example/\"/></body></opml>"));

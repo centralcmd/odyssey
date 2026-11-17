@@ -74,7 +74,7 @@ public static class OpmlDocumentReader
             using var reader = new DepthCappedXmlReader(XmlReader.Create(text, ReaderSettings()));
             ReadDocument(reader, onFeed, cancellationToken);
         }
-        catch (Exception ex) when (ex is XmlException or OpmlTokenLimitException or DecoderFallbackException or ArgumentException)
+        catch (Exception ex) when (ex is XmlException or OpmlTokenLimitException or DecoderFallbackException)
         {
             throw new OpmlUnreadableException(ex);
         }
@@ -313,7 +313,11 @@ public static class OpmlDocumentReader
         return builder.ToString();
     }
 
-    /// <summary>Trimmed, <see cref="NewsText.Clean"/>ed; <c>null</c> when nothing is left.</summary>
+    /// <summary>
+    /// Trimmed and cleaned (<see cref="OpmlDocumentWriter.Sanitize"/>: <see cref="NewsText.Clean"/> after removing the
+    /// two non-characters its normalisation refuses, which a character reference can carry); <c>null</c> when nothing is
+    /// left.
+    /// </summary>
     private static string? Name(string? value)
     {
         if (string.IsNullOrWhiteSpace(value))
@@ -321,7 +325,7 @@ public static class OpmlDocumentReader
             return null;
         }
 
-        var cleaned = NewsText.Clean(value).Trim();
+        var cleaned = OpmlDocumentWriter.Sanitize(value).Trim();
         return cleaned.Length == 0 ? null : cleaned;
     }
 
