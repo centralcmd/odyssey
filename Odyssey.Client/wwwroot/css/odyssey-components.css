@@ -5198,7 +5198,7 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 .odc-carousel-ph-text { font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-carousel-caption { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-carousel-controls { display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
-.mud-icon-button.odc-carousel-btn { min-width: var(--space-10); min-height: var(--space-10); }
+.mud-icon-button.odc-carousel-btn { inline-size: var(--space-10); block-size: var(--space-10); min-width: var(--space-10); min-height: var(--space-10); }
 .mud-icon-button.odc-carousel-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .mud-icon-button.odc-carousel-btn[aria-disabled="true"] { color: var(--mud-palette-action-disabled); cursor: default; }
 .mud-icon-button.odc-carousel-btn[aria-disabled="true"]:hover { background: transparent; color: var(--mud-palette-action-disabled); }

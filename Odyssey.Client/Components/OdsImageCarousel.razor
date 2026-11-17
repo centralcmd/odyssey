@@ -5,7 +5,7 @@
       • role="group" + aria-roledescription="carousel" + aria-label — a group, not a landmark. Each
         slide is role="group" + aria-roledescription="slide", "Image 2 of 5"; the others are hidden.
       • Nothing advances on its own: there is no timer.
-      • "Previous image" / "Next image" (OdsIconButton, 44 px). At an end the button is aria-disabled
+      • "Previous image" / "Next image" (OdsIconButton, 40 × 40, `--space-10`). At an end the button is aria-disabled
         (never disabled, so focus stays) and a press says "First image" / "Last image"; no wrap.
         ArrowLeft / ArrowRight work while focus is on either button. Focus never moves on its own.
       • The "2 / 5" counter is aria-hidden; a polite region inside the carousel speaks, only on a user
@@ -44,12 +44,12 @@ else if (Images.Count > 1)
         </div>
         @* Keydown bubbles from either button to this row, which owns ArrowLeft / ArrowRight. *@
         <div class="odc-carousel-controls" @onkeydown="OnKeyDown">
-            <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="Previous image" Size="OdsSize.Lg"
+            <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="Previous image" Size="OdsSize.Md"
                            Class="odc-carousel-btn odc-carousel-prev"
                            aria-disabled="@(_index == 0 ? "true" : null)"
                            OnClick="@(() => GoAsync(_index - 1))" />
             <span class="odc-carousel-count" aria-hidden="true">@($"{_index + 1} / {Images.Count}")</span>
-            <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="Next image" Size="OdsSize.Lg"
+            <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="Next image" Size="OdsSize.Md"
                            Class="odc-carousel-btn odc-carousel-next"
                            aria-disabled="@(_index == Images.Count - 1 ? "true" : null)"
                            OnClick="@(() => GoAsync(_index + 1))" />

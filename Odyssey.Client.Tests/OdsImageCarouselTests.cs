@@ -71,6 +71,23 @@ public class OdsImageCarouselTests
     }
 
     [Fact]
+    public void The_controls_are_the_design_systems_40_px_buttons()
+    {
+        using var ctx = NestedInteractiveControlTests.NewContext();
+        var cut = Render(ctx, Five);
+
+        // The artifact's ImageCarousel: 40 × 40 (--space-10), from the medium button grown by .odc-carousel-btn.
+        Assert.All([Prev(cut), Next(cut)], b =>
+        {
+            Assert.Contains("odc-carousel-btn", b.ClassList);
+            Assert.DoesNotContain("mud-icon-button-size-large", b.ClassList);
+        });
+
+        var css = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "css", "odyssey-components.css"));
+        Assert.Contains(".mud-icon-button.odc-carousel-btn { inline-size: var(--space-10); block-size: var(--space-10);", css, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void The_counter_is_hidden_and_nothing_is_spoken_on_first_render()
     {
         using var ctx = NestedInteractiveControlTests.NewContext();
