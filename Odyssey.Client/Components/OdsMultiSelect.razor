@@ -17,6 +17,10 @@
     needs more than one voice (a coloured figure beside muted qualifying text);
     the option's plain Label stays its text form, and is what the search matches.
 
+    MaxSelected caps the selection (issue #473 §4.2): at the cap every unticked row is aria-disabled
+    and a status line under the list says why, in MaxSelectedText (the page's wording). Ticked rows
+    stay operable, so the selection can always shrink. Unset, nothing changes.
+
     A list of more than 8 options gets a search field (Searchable overrides), and the rows sit in a
     232px scroll region. Loading shows an announced row distinct from the "No matches" one. Keyboard
     inside the popover (DS MultiSelect): Tab and Shift+Tab cycle through the search field, the rows
@@ -96,9 +100,14 @@
                 {
                     @foreach (var option in filtered)
                     {
-                        <label class="odc-ms-opt odc-check">
+                        var capped = AtMax && !_selected.Contains(option.Value);
+                        @* At the cap an unticked row is aria-disabled, never disabled, so it stays in the
+                           keyboard path and is read with its state; the click is cancelled instead. *@
+                        <label class="@(capped ? "odc-ms-opt odc-check is-disabled" : "odc-ms-opt odc-check")">
                             <input type="checkbox"
                                    checked="@_selected.Contains(option.Value)"
+                                   aria-disabled="@(capped ? "true" : null)"
+                                   @onclick:preventDefault="capped"
                                    @onchange="@(() => Toggle(option.Value))" />
                             <span class="odc-check-box" aria-hidden="true">
                                 <span class="material-icons">check</span>
@@ -125,6 +134,11 @@
                     }
                 }
             </div>
+            @if (MaxSelected is not null)
+            {
+                @* Always rendered while a cap exists, so reaching it is announced (WCAG 4.1.3). *@
+                <div class="odc-ms-max" role="status">@(AtMax ? MaxSelectedText : null)</div>
+            }
             <div class="odc-ms-foot">
                 <button type="button" class="odc-btn text" @onclick="Clear" disabled="@(Values.Count == 0)">Clear</button>
                 <button type="button" class="odc-btn text" @onclick="Done">Done</button>

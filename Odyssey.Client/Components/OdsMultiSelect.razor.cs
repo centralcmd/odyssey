@@ -99,6 +99,16 @@ public partial class OdsMultiSelect
     /// </summary>
     [Parameter] public bool? Fit { get; set; }
 
+    /// <summary>
+    /// The most options that may be ticked (issue #473 §4.2). At the cap the unticked rows become
+    /// <c>aria-disabled</c> and <see cref="MaxSelectedText"/> appears in a <c>role="status"</c> line.
+    /// <c>null</c> (the default) leaves the control uncapped.
+    /// </summary>
+    [Parameter] public int? MaxSelected { get; set; }
+
+    /// <summary>The cap's explanation, supplied by the page ("Up to 50 feeds").</summary>
+    [Parameter] public string? MaxSelectedText { get; set; }
+
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
@@ -170,10 +180,16 @@ public partial class OdsMultiSelect
     private static string? IconStyle(OdsOption option) =>
         string.IsNullOrEmpty(option.IconColor) ? null : $"color:{OdsGlyphInk.Glyph(option.IconColor)};";
 
+    private bool AtMax => MaxSelected is { } max && _selected.Count >= max;
+
     private Task Toggle(string value)
     {
         if (!_selected.Remove(value))
+        {
+            if (AtMax)
+                return Task.CompletedTask;
             _selected.Add(value);
+        }
         return ValuesChanged.InvokeAsync([.. _selected]);
     }
 

@@ -17,6 +17,9 @@
     other controls while reading as fixed.
 
     Direction is always conveyed as TEXT (the typed label + the aria word), never by the arrow alone.
+
+    The field menu opens at exactly the field's width (DropdownWidth.Relative), and a long option
+    label wraps onto a second line rather than being clipped (issue #473 §4.2; WCAG 1.4.10, 1.4.4).
 *@
 
 @typeparam TRow
@@ -42,6 +45,8 @@
                               TriggerClass="@($"odc-sortsel-trigger {(_open ? "open" : null)}".TrimEnd())"
                               AnchorOrigin="Origin.BottomCenter"
                               TransformOrigin="Origin.TopCenter"
+                              RelativeWidth="DropdownWidth.Relative"
+                              PopoverClass="odc-sortsel-pop"
                               Disabled="@Disabled"
                               RowId="@RowId"
                               RowCount="@Fields.Count"

@@ -181,9 +181,12 @@
                                     </div>
                                     @if (problem.HasView)
                                     {
+                                        @* The arrow is decoration (aria-hidden), so the name is the label alone —
+                                           or ActionAriaLabel where the page needs a fuller one (issue #473 §4.2). *@
                                         <button type="button" class="alert-fix"
+                                                aria-label="@(string.IsNullOrWhiteSpace(problem.ActionAriaLabel) ? null : problem.ActionAriaLabel)"
                                                 @onclick:stopPropagation="true"
-                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
+                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel <span aria-hidden="true">→</span></button>
                                     }
                                 </div>
                             }
