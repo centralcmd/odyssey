@@ -60,6 +60,15 @@ public interface IOdysseyApi
         string url, string defaultFileName, string? completenessMarker = null, CancellationToken ct = default);
 
     /// <summary>
+    /// Sends a request (a GET, or a write with a JSON <paramref name="body"/>) whose answer is a file, and returns the
+    /// file with the row count the server declared in <c>X-Odyssey-Export-Rows</c> — <c>null</c> when that header is
+    /// missing or not a non-negative integer. For an export whose success message names the number of rows written
+    /// (issue #508 amendment v7); a body is what lets an export name its rows by id beyond a query string's length.
+    /// </summary>
+    Task<ApiResult<ApiExportDownload>> DownloadExportAsync(
+        HttpMethod method, string url, object? body, string defaultFileName, CancellationToken ct = default);
+
+    /// <summary>
     /// POSTs a multipart upload under the form field <paramref name="fieldName"/> and deserializes the
     /// response as <typeparamref name="T"/>. <paramref name="contentTypeOverride"/> forces the part's
     /// media type (the ICS/vCard imports declare <c>text/calendar</c> / <c>text/vcard</c> regardless of
@@ -204,6 +213,34 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
             return ApiResult<ApiFile>.Failure(ex);
         }
     }
+
+    public async Task<ApiResult<ApiExportDownload>> DownloadExportAsync(
+        HttpMethod method, string url, object? body, string defaultFileName, CancellationToken ct = default)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(method, url);
+            if (body is not null)
+                request.Content = JsonContent.Create(body, body.GetType());
+
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (!response.IsSuccessStatusCode)
+                return ApiResult<ApiExportDownload>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+
+            var file = await ReadFileAsync(response, defaultFileName, ct);
+            return ApiResult<ApiExportDownload>.Success(new ApiExportDownload(file, ExportRows(response)), response.StatusCode);
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<ApiExportDownload>.Failure(ex);
+        }
+    }
+
+    private static int? ExportRows(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("X-Odyssey-Export-Rows", out var values)
+        && int.TryParse(values.FirstOrDefault(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var rows)
+            ? rows
+            : null;
 
     // issue #343 §11: a missing header or a mismatched count both fail closed. A missing header has no
     // legitimate case to protect against here — every server-side surface that sets completenessMarker
