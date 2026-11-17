@@ -108,6 +108,8 @@ builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.C
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IMapStylesCache, Odyssey.Client.Services.MapStylesCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IWeatherPointOptionsCache, Odyssey.Client.Services.WeatherPointOptionsCache>();
+// One claims refresh per signed-in session after a 403, shared by every page that asks (issue #509 §7.3, v5 §5).
+builder.Services.AddScoped<Odyssey.Client.Services.IClaimsRefresher, Odyssey.Client.Services.ClaimsRefresher>();
 builder.Services.AddScoped<Odyssey.Client.Services.IWeatherClaimsRefresher, Odyssey.Client.Services.WeatherClaimsRefresher>();
 builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.Client.Services.AccountLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IContractLimitsCache, Odyssey.Client.Services.ContractLimitsCache>();
