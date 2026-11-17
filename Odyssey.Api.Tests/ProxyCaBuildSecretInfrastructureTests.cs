@@ -82,11 +82,11 @@ public class ProxyCaBuildSecretInfrastructureTests
 
     /// <summary>
     /// The runtime stages that install packages over the network — the API's (ICU, tzdata) and the
-    /// worker's (tzdata) — need the same guard, and theirs are the <c>RUN</c>s whose layers actually ship.
+    /// worker's (ICU since issue #470, and tzdata) — need the same guard, and theirs are the <c>RUN</c>s whose layers actually ship.
     /// </summary>
     [Theory]
     [InlineData("Odyssey.Api/Dockerfile", "apk add --no-cache icu-libs")]
-    [InlineData("Odyssey.Worker/Dockerfile", "apk add --no-cache tzdata")]
+    [InlineData("Odyssey.Worker/Dockerfile", "apk add --no-cache icu-libs")]
     public void TheRuntimeStage_GuardsItsPackageInstallTheSameWay(string dockerfile, string install)
     {
         var text = RepositoryRoot.ReadAllText(dockerfile);

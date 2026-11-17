@@ -1,9 +1,11 @@
 using System.Globalization;
 
-namespace Odyssey.Api;
+namespace Odyssey.Core.Configuration;
 
 /// <summary>
-/// The startup assertion behind accent-insensitive comparison (issue #48 §5, AC 42).
+/// The startup assertion behind accent-insensitive comparison (issue #48 §5, AC 42) and the news reader's URL keys
+/// (issue #470 §8.2): both hosts call it, so the API and the worker map an IDN host to the same punycode and normalise
+/// text the same way. It lives in <c>Odyssey.Core</c> for that reason — a second host cannot reference a web project.
 ///
 /// <para>
 /// <c>ContactService</c> compares alias values with
@@ -22,7 +24,7 @@ namespace Odyssey.Api;
 /// place it actually happens.
 /// </para>
 /// </summary>
-internal static class GlobalizationGuard
+public static class GlobalizationGuard
 {
     /// <summary>
     /// Throws when the process is running with invariant globalization.
@@ -59,7 +61,8 @@ internal static class GlobalizationGuard
         throw new InvalidOperationException(
             "Globalization is running in invariant mode, so accent-insensitive comparison is unavailable. "
             + "Contact-alias uniqueness would then disagree with the database's case- and accent-insensitive "
-            + "unique index, turning an ordinary write into a duplicate-key failure. Install ICU in the runtime "
+            + "unique index, turning an ordinary write into a duplicate-key failure, and the news reader's URL keys would "
+            + "differ between the API and the worker. Install ICU in the runtime "
             + "image (apk add icu-libs icu-data-full) and ensure DOTNET_SYSTEM_GLOBALIZATION_INVARIANT is false "
             + "and InvariantGlobalization is not set in the project or runtimeconfig.");
     }
