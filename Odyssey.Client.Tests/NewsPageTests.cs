@@ -167,6 +167,6 @@ public class NewsPageTests
 
         cut.WaitForAssertion(() => Assert.Single(CardNames(cut)));
         Assert.Empty(cut.FindAll(".odc-section-divider"));
-        Assert.Empty(cut.FindAll(".nw-page > .mud-stack > .odc-alert"));
+        Assert.Empty(cut.FindAll(".nw-page > .mud-stack > .mud-alert"));
     }
 }
