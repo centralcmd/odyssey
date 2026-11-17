@@ -15,6 +15,9 @@ public partial class ImportTasksDialog
     /// <summary>Fires after an import that created or updated any rows, so the page reloads its board.</summary>
     [Parameter] public EventCallback OnChanged { get; set; }
 
+    // The picker's container: the browser keeps the picked File for it, so a large file uploads straight from disk.
+    private const string UploadId = "task-import-upload";
+
     private IReadOnlyList<OdsUploadFile> _files = [];
     private string? _fileError;
     private string? _error;
@@ -64,10 +67,31 @@ public partial class ImportTasksDialog
 
             if (attachments > 0)
             {
-                parts.Add($"{attachments} attachment {(attachments == 1 ? "reference" : "references")} couldn't be resolved");
+                parts.Add($"{attachments} {(attachments == 1 ? "attachment" : "attachments")} couldn't be linked");
             }
 
             return $"{string.Join(" and ", parts)} — left off, but the tasks themselves imported.";
+        }
+    }
+
+    private string AttachedFilesMessage
+    {
+        get
+        {
+            var stored = _result?.StoredFileCount ?? 0;
+            var reused = _result?.ReusedFileCount ?? 0;
+            var parts = new List<string>();
+            if (stored > 0)
+            {
+                parts.Add($"{stored} attached {(stored == 1 ? "file" : "files")} stored");
+            }
+
+            if (reused > 0)
+            {
+                parts.Add($"{reused} matched to {(reused == 1 ? "a file" : "files")} already stored, so not stored again");
+            }
+
+            return string.Join("; ", parts) + ".";
         }
     }
 
@@ -110,8 +134,11 @@ public partial class ImportTasksDialog
         _isImporting = true;
         try
         {
-            // Same effective value used for the pre-check above and for OpenReadStream (issue #343 fe C2).
-            var outcome = await Tasks.ImportIcsAsync(file!.ToApiUpload(_maxImportBytes));
+            // The browser posts the picked file itself when it can — an import carrying attached files can be far
+            // larger than the WASM heap. The typed client is the fallback, with the same effective value used for the
+            // pre-check above and for OpenReadStream (issue #343 fe C2).
+            var outcome = await NativeTransfer.TryUploadAsync<TaskIcsImportResult>(UploadId, file!, Tasks.ImportIcsUrl, "text/calendar")
+                ?? await Tasks.ImportIcsAsync(file!.ToApiUpload(_maxImportBytes));
             if (!outcome.IsSuccess)
             {
                 _error = outcome.Error ?? "The file could not be imported.";
@@ -137,6 +164,11 @@ public partial class ImportTasksDialog
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        if (Open && _result is null)
+        {
+            await NativeTransfer.WatchAsync(UploadId);
+        }
+
         // The result heading is rendered inside MudDialog's (deferred) dialog content, so its
         // ElementReference can still be unconfigured on the render that first sets the result — guard on
         // Id (empty ⇒ not yet wired) so FocusAsync never throws, and treat focus as best-effort (the

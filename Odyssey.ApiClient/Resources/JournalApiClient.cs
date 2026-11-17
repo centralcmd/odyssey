@@ -120,6 +120,30 @@ public interface ITaskApiClient
         IReadOnlyCollection<string>? ids = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// What <see cref="ExportIcsAsync"/> would contain, refused for the same reasons (a cap, or attached files without
+    /// <c>files.read</c>) — asked before a browser-native download, which cannot report an error itself.
+    /// </summary>
+    Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// The absolute URL of the export, for a download the browser streams to disk itself — an export carrying
+    /// attached files can be far larger than <see cref="ExportIcsAsync"/> can hold in memory.
+    /// </summary>
+    string ExportIcsUrl(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null);
+
+    /// <summary>The absolute URL <see cref="ImportIcsAsync"/> posts to, for an upload the browser streams from disk.</summary>
+    string ImportIcsUrl { get; }
+
     /// <summary>Imports a VTODO <c>.ics</c> file into the shared board (multipart).</summary>
     Task<ApiResult<TaskIcsImportResult>> ImportIcsAsync(ApiUpload file, CancellationToken ct = default);
 
@@ -144,7 +168,7 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
     /// is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
     /// constant exists solely as <c>ImportLimitsCache.Fallback</c>'s input for when that read fails.
     /// </summary>
-    public const long MaxImportBytes = 64L * 1024 * 1024;
+    public const long MaxImportBytes = 10240L * 1024 * 1024;
 
     public Task<ApiResult<List<JournalTaskSummary>>> ListAsync(
         string? search = null,
@@ -179,15 +203,35 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
         // The export endpoint binds the list filter surface minus paging (it's never paginated), so build
         // just search/tag/status (+ optional ids for the single-task row action) — same param names the
         // list query uses.
-        var query = PagedQuery.For($"{Base}/ics")
+        return api.GetFileAsync(ExportQuery("ics", search, tagIds, statuses, ids), "odyssey-tasks.ics", completenessMarker: "BEGIN:VTODO", ct: ct);
+    }
+
+    public Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null,
+        CancellationToken ct = default) =>
+        api.GetAsync<TaskIcsExportSummary>(ExportQuery("ics/summary", search, tagIds, statuses, ids), ct);
+
+    public string ExportIcsUrl(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null) =>
+        new Uri(api.BaseAddress!, ExportQuery("ics", search, tagIds, statuses, ids)).ToString();
+
+    public string ImportIcsUrl => new Uri(api.BaseAddress!, $"{Base}/ics").ToString();
+
+    private static string ExportQuery(
+        string path, string? search, IReadOnlyCollection<string>? tagIds, IReadOnlyCollection<string>? statuses,
+        IReadOnlyCollection<string>? ids) =>
+        PagedQuery.For($"{Base}/{path}")
             .Add("search", search)
             .AddMany("tagIds", tagIds)
             .AddMany("statuses", statuses)
             .AddMany("ids", ids)
             .Build();
-
-        return api.GetFileAsync(query, "odyssey-tasks.ics", completenessMarker: "BEGIN:VTODO", ct: ct);
-    }
 
     public Task<ApiResult<TaskIcsImportResult>> ImportIcsAsync(ApiUpload file, CancellationToken ct = default) =>
         api.UploadAsync<TaskIcsImportResult>(

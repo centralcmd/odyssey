@@ -54,11 +54,12 @@ public static class SystemSettingsBounds
     public const int CalendarIcsMaxExportMegabytesMin = 1;
     public const int CalendarIcsMaxExportMegabytesMax = 1024;
 
+    // The task surface goes to 10 GB, ten times the others: its files carry attached files inline.
     public const int TaskIcsMaxImportMegabytesMin = 1;
-    public const int TaskIcsMaxImportMegabytesMax = 1024;
+    public const int TaskIcsMaxImportMegabytesMax = 10240;
 
     public const int TaskIcsMaxExportMegabytesMin = 1;
-    public const int TaskIcsMaxExportMegabytesMax = 1024;
+    public const int TaskIcsMaxExportMegabytesMax = 10240;
 
     public const int JournalIcsMaxImportMegabytesMin = 1;
     public const int JournalIcsMaxImportMegabytesMax = 1024;
@@ -151,7 +152,7 @@ public static class SystemSettingsBounds
     // ── The upload cap (issue #421 Wave 4) ───────────────────────────────────────────────────────
 
     public const int FileStorageMaxUploadMegabytesMin = 1;
-    public const int FileStorageMaxUploadMegabytesMax = 1024;
+    public const int FileStorageMaxUploadMegabytesMax = 10240;
 
     // ── The last compiled-in tuning constants (issue #434) ───────────────────────────────────────
 

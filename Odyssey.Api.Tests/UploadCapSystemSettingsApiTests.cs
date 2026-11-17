@@ -50,20 +50,30 @@ public class UploadCapSystemSettingsApiTests
     }
 
     /// <summary>
-    /// Without the ceiling the client cannot bound its control, and would offer up to 1024 MB — a value
-    /// the API is going to reject on every save.
+    /// Without the ceiling the client cannot bound its control, and would offer up to 10240 MB — a value
+    /// the API is going to reject on every save when the deployment's ceiling is lower.
     /// </summary>
     [Fact]
     public async Task Get_PublishesTheTransportCeiling()
+    {
+        await using var factory = new ApiFactory(ReadAndSecurity, SixtyFourMegabyteCeiling);
+        using var client = factory.CreateClient();
+
+        var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
+
+        Assert.Equal(64, dto!.UploadMegabytesCeiling);
+    }
+
+    /// <summary>The shipped transport ceiling is 10 GB, so a task export can carry large attached files.</summary>
+    [Fact]
+    public async Task Get_ShippedCeiling_Is10Gb()
     {
         await using var factory = new ApiFactory(ReadAndSecurity);
         using var client = factory.CreateClient();
 
         var dto = await client.GetFromJsonAsync<SystemSettingsDto>(Path);
 
-        // The shipped FileStorage default is 64 MB, so the ceiling is 64 — equal to the compiled
-        // default, which is what makes the out-of-the-box state "settable downwards only".
-        Assert.Equal(64, dto!.UploadMegabytesCeiling);
+        Assert.Equal(10240, dto!.UploadMegabytesCeiling);
     }
 
     [Fact]
@@ -99,7 +109,7 @@ public class UploadCapSystemSettingsApiTests
     [Fact]
     public async Task Put_AboveTheTransportCeiling_IsRejected_AndNamesTheCeiling()
     {
-        await using var factory = new ApiFactory(ReadAndSecurity);
+        await using var factory = new ApiFactory(ReadAndSecurity, SixtyFourMegabyteCeiling);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path,
@@ -118,7 +128,7 @@ public class UploadCapSystemSettingsApiTests
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    [InlineData(1025)]
+    [InlineData(10241)]
     public async Task Put_OutsideTheAdvertisedRange_IsRejected(int value)
     {
         await using var factory = new ApiFactory(ReadAndSecurity);
@@ -148,6 +158,12 @@ public class UploadCapSystemSettingsApiTests
         Assert.Contains(nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes), body, StringComparison.Ordinal);
     }
 
-    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
-        : OdysseyApiFactory(permissions, ActorUserId);
+    // The pre-10 GB ceiling, so the "above the ceiling" path stays reachable at a small number.
+    private static readonly Dictionary<string, string?> SixtyFourMegabyteCeiling = new()
+    {
+        ["FileStorage:MaxFileSizeBytes"] = (64L * 1024 * 1024).ToString(System.Globalization.CultureInfo.InvariantCulture),
+    };
+
+    private sealed class ApiFactory(IReadOnlyCollection<string>? permissions, IReadOnlyDictionary<string, string?>? configuration = null)
+        : OdysseyApiFactory(permissions, ActorUserId, configuration);
 }
