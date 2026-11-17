@@ -56,4 +56,21 @@ public static class NewsErrorCodes
 
     /// <summary><c>400</c> keyed <c>search</c>: no term of at least <see cref="NewsLimits.MinSearchTermLength"/> letters.</summary>
     public const string SearchUnusable = "news-search-unusable";
+
+    // ── OPML import (issue #508 §5.2, amendment v7). 413 and 429 come from middleware and carry no code. ──────────
+
+    /// <summary><c>400</c>: no <c>file</c> part, or an empty one.</summary>
+    public const string OpmlFileRequired = "news-opml-file-required";
+
+    /// <summary><c>400</c>: the extension is not <c>.opml</c>/<c>.xml</c>, or the declared content type is not accepted.</summary>
+    public const string OpmlWrongType = "news-opml-wrong-type";
+
+    /// <summary><c>400</c>: not an OPML document — malformed, wrong root, no <c>body</c>, too deep, or a token over the cap.</summary>
+    public const string OpmlUnreadable = "news-opml-unreadable";
+
+    /// <summary><c>422</c> keyed <c>file</c>, with the <c>limit</c> extension: more distinct feeds than the entry cap.</summary>
+    public const string OpmlTooManyEntries = "news-opml-too-many-entries";
+
+    /// <summary><c>409</c>: a concurrent write took one of the import's URLs; no feed from it was committed.</summary>
+    public const string OpmlConflict = "news-opml-conflict";
 }
