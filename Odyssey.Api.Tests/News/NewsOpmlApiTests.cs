@@ -163,6 +163,7 @@ public sealed class NewsOpmlApiTests
                 && e.Metadata.GetMetadata<IHttpMethodMetadata>()!.HttpMethods.Contains("POST"));
 
         Assert.Equal(NewsOpmlLimits.MaxExportRequestBytes, endpoint.Metadata.GetMetadata<IRequestSizeLimitMetadata>()!.MaxRequestBodySize);
+        Assert.Equal(131_072, NewsOpmlLimits.MaxExportRequestBytes);
     }
 
     [Fact]

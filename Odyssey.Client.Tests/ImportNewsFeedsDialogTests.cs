@@ -164,6 +164,18 @@ public class ImportNewsFeedsDialogTests
 
     // ── Compose ────────────────────────────────────────────────────────────────────────────────
 
+    [Fact] // a degraded news read withholds the entry cap (PR #513 review)
+    public async Task A_withheld_entry_cap_leaves_the_count_out_of_the_hint()
+    {
+        await using var h = new Harness();
+        h.Context.CurrentLimits = Odyssey.Client.Services.ImportLimitsCache.Fallback with { NewsOpmlMaxImportMegabytes = 12, NewsOpmlMaxImportEntries = null };
+
+        h.Start();
+
+        Assert.Contains("OPML (.opml or .xml) · one file · up to 12 MB", h.Dropzone.TextContent, StringComparison.Ordinal);
+        Assert.DoesNotContain("feeds in the file", h.Dropzone.TextContent, StringComparison.Ordinal);
+    }
+
     [Fact] // AC 6
     public async Task Opens_on_the_picker_with_the_live_limits_in_the_hint()
     {
@@ -758,6 +770,9 @@ public class ImportNewsFeedsDialogTests
     [InlineData("https://harbour.example/rss", "https://harbour.example/rss", null)]
     [InlineData("https://user:pw@host.example/x", "https://", "@host.example/x")]
     [InlineData("http://only-user@host.example:8080/p?q=1", "http://", "@host.example:8080/p?q=1")]
+    [InlineData("https://host.example/feed?u=a@b", "https://host.example/feed?u=a@b", null)] // "@" past the authority stays
+    [InlineData("https://host.example/a@b/feed", "https://host.example/a@b/feed", null)]
+    [InlineData("https://host.example#a@b", "https://host.example#a@b", null)]
     public void Urls_are_masked_from_the_parsed_address(string url, string head, string? tail)
     {
         var masked = ImportNewsFeedsDialog.Mask(url);
@@ -774,6 +789,7 @@ public class ImportNewsFeedsDialogTests
     [InlineData("feed://u:p@host.example/f")]
     [InlineData("ftp://host.example/feed")]
     [InlineData("file:///etc/feeds")]
+    [InlineData("https://@host.example/feed")] // http(s) with an "@" the parser does not read as user-info
     [InlineData("")]
     [InlineData(null)]
     public void An_unparseable_url_is_hidden(string? url) => Assert.Null(ImportNewsFeedsDialog.Mask(url));

@@ -85,13 +85,15 @@ public partial class ImportNewsFeedsDialog : IDisposable
 
     private int _maxMegabytes = ImportLimitsCache.Fallback.NewsOpmlMaxImportMegabytes;
     private int _maxEntries = SystemSettingsDefaults.NewsOpmlMaxImportEntries;
+    private bool _entriesKnown = true;
 
     private bool Importing => _phase == Phase.Importing;
 
     internal Phase CurrentPhase => _phase;
 
     private string Hint =>
-        $"OPML (.opml or .xml) · one file · up to {Number(_maxMegabytes)} MB · up to {Number(_maxEntries)} feeds in the file";
+        $"OPML (.opml or .xml) · one file · up to {Number(_maxMegabytes)} MB"
+        + (_entriesKnown ? $" · up to {Number(_maxEntries)} feeds in the file" : string.Empty);
 
     private string? AlertText => _phase switch
     {
@@ -117,7 +119,9 @@ public partial class ImportNewsFeedsDialog : IDisposable
     {
         var limits = await ImportLimits.GetAsync();
         _maxMegabytes = limits.NewsOpmlMaxImportMegabytes;
-        // A degraded news read withholds the entry cap; the shipped default is its ceiling, and the server enforces the real one.
+        // A degraded news read withholds the entry cap: the hint then names no count rather than the ceiling, and the
+        // server enforces (and its too-many-entries error states) the real one.
+        _entriesKnown = limits.NewsOpmlMaxImportEntries is not null;
         _maxEntries = limits.NewsOpmlMaxImportEntries ?? SystemSettingsDefaults.NewsOpmlMaxImportEntries;
     }
 
