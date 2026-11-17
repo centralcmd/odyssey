@@ -123,17 +123,22 @@ public static class OpmlDocumentWriter
             .Replace("/", "%2F", StringComparison.Ordinal);
 
     /// <summary>
-    /// §5.1 rule 4: <see cref="NewsText.Clean"/>, then every character XML 1.0 forbids (lone surrogates and the
-    /// controls are already gone; U+FFFE and U+FFFF remain) removed.
+    /// §5.1 rule 4: every character XML 1.0 forbids removed — U+FFFE and U+FFFF first, because the normalisation inside
+    /// <see cref="NewsText.Clean"/> refuses them, then <see cref="NewsText.Clean"/>, which removes lone surrogates and the
+    /// controls.
     /// </summary>
     public static string Sanitize(string? value)
     {
-        var cleaned = NewsText.Clean(value);
-        if (cleaned.AsSpan().IndexOfAny('￾', '￿') < 0)
+        if (value is not null && value.AsSpan().IndexOfAny(NonCharacterFFFE, NonCharacterFFFF) >= 0)
         {
-            return cleaned;
+            value = value.Replace(NonCharacterFFFE.ToString(), string.Empty, StringComparison.Ordinal)
+                .Replace(NonCharacterFFFF.ToString(), string.Empty, StringComparison.Ordinal);
         }
 
-        return cleaned.Replace("￾", string.Empty, StringComparison.Ordinal).Replace("￿", string.Empty, StringComparison.Ordinal);
+        return NewsText.Clean(value);
     }
+
+    private const char NonCharacterFFFE = (char)0xFFFE;
+
+    private const char NonCharacterFFFF = (char)0xFFFF;
 }
