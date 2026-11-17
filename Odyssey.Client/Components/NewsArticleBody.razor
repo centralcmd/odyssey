@@ -1,0 +1,116 @@
+@using System.Globalization
+@using System.Text.RegularExpressions
+@inject IJSRuntime JS
+@*
+    NewsArticleBody — an article's plain text as paragraphs (issue #473 §3.2.6, §10, AC 8; Odyssey Design System ·
+    ui_kits/web/News.jsx, NewsArticleBody). Encoded text only: each paragraph is a <p>, a single line break a <br>,
+    and runs of blank lines collapse. The first FirstChunk paragraphs render, then "Show the rest (N more
+    paragraphs)" renders NextChunk more per press and moves focus to the first newly shown paragraph, which carries
+    tabindex="-1". The container is the reading panel's .nw-body, with lang and the 70ch measure.
+*@
+
+<div class="nw-body" lang="@Lang">
+    @for (var i = 0; i < Shown; i++)
+    {
+        var index = i;
+        var lines = _paragraphs[index];
+        <p id="@ParagraphId(index)" tabindex="@(index >= FirstChunk && (index - FirstChunk) % NextChunk == 0 ? "-1" : null)">
+            @for (var j = 0; j < lines.Length; j++)
+            {
+                if (j > 0)
+                {
+                    <br />
+                }
+                @lines[j]
+            }
+        </p>
+    }
+    @if (Remaining > 0)
+    {
+        <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="expand_more" OnClick="ShowMore">
+            @($"Show the rest ({Remaining.ToString("N0", CultureInfo.CurrentCulture)} more {(Remaining == 1 ? "paragraph" : "paragraphs")})")
+        </OdsButton>
+    }
+</div>
+
+@code {
+    /// <summary>Paragraphs rendered before the first "Show the rest".</summary>
+    public const int FirstChunk = 50;
+
+    /// <summary>Paragraphs each "Show the rest" press adds.</summary>
+    public const int NextChunk = 200;
+
+    private static readonly Regex BlankLines = new(@"\n[ \t]*\n\s*", RegexOptions.Compiled);
+
+    /// <summary>The plain text, as the API returned it.</summary>
+    [Parameter] public string? Body { get; set; }
+
+    /// <summary>A validated BCP 47 tag, or <c>null</c> for none.</summary>
+    [Parameter] public string? Lang { get; set; }
+
+    /// <summary>The id stem of the paragraphs, unique on the page.</summary>
+    [Parameter] public string IdPrefix { get; set; } = $"nw-body-{Guid.NewGuid():N}";
+
+    private string? _parsed;
+    private string[][] _paragraphs = [];
+    private int _shown;
+    private int? _focusIndex;
+
+    private int Shown => Math.Min(_shown, _paragraphs.Length);
+
+    private int Remaining => _paragraphs.Length - Shown;
+
+    /// <summary>The number of paragraphs the body splits into.</summary>
+    public int ParagraphCount => _paragraphs.Length;
+
+    public string ParagraphId(int index) => $"{IdPrefix}-p{index}";
+
+    protected override void OnParametersSet()
+    {
+        if (ReferenceEquals(Body, _parsed) && _parsed is not null)
+        {
+            return;
+        }
+
+        _parsed = Body;
+        _paragraphs = Split(Body);
+        _shown = FirstChunk;
+    }
+
+    /// <summary>Paragraphs split on blank lines (runs collapsed), each split into its lines.</summary>
+    public static string[][] Split(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return [];
+        }
+
+        var text = body.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
+        return [.. BlankLines.Split(text)
+            .Select(p => p.Trim())
+            .Where(p => p.Length > 0)
+            .Select(p => p.Split('\n').Select(l => l.TrimEnd()).ToArray())];
+    }
+
+    private void ShowMore()
+    {
+        _focusIndex = Shown;
+        _shown = Shown + NextChunk;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusIndex is { } index)
+        {
+            _focusIndex = null;
+            try
+            {
+                await JS.InvokeVoidAsync("odsFocusById", ParagraphId(index));
+            }
+            catch (JSException)
+            {
+                // Not rendered any more: only the focus courtesy is lost.
+            }
+        }
+    }
+}

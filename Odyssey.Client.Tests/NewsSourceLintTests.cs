@@ -22,7 +22,7 @@ public class NewsSourceLintTests
         var internet = Path.Combine(ClientSource.Root, "Pages", "Internet");
         var files = Directory.EnumerateFiles(internet, "*.*", SearchOption.AllDirectories)
             .Where(f => f.EndsWith(".razor", StringComparison.Ordinal) || f.EndsWith(".cs", StringComparison.Ordinal));
-        var components = new[] { "OdsImageCarousel.razor", "OdsImageCarousel.razor.cs", "OdsExternalLink.razor", "NewsFeedHealthChip.razor", "OdsRelativeTime.razor" }
+        var components = new[] { "OdsImageCarousel.razor", "OdsImageCarousel.razor.cs", "OdsExternalLink.razor", "NewsFeedHealthChip.razor", "OdsRelativeTime.razor", "NewsArticleBody.razor" }
             .Select(name => Path.Combine(ClientSource.Root, "Components", name))
             .Concat(Directory.EnumerateFiles(Path.Combine(ClientSource.Root, "Pages", "JobRuns"), "News*.razor*"));
         return files.Concat(components).Where(File.Exists).ToList();

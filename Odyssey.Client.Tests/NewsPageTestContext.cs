@@ -43,6 +43,7 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
         Ctx.Services.AddSingleton(State.Object);
         Ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims ?? AllNewsClaims));
         Ctx.Services.AddScoped<INewsCatalogueCache, NewsCatalogueCache>();
+        Ctx.Services.AddScoped<NewsStoreGate>();
         Clipboard.Setup(c => c.CopyAsync(It.IsAny<string>(), It.IsAny<string?>())).ReturnsAsync(true);
         Ctx.Services.AddSingleton(Clipboard.Object);
     }

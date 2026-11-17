@@ -127,3 +127,8 @@ div.nw-focus-host { display: block; }
 .nt-namebtn { all: unset; box-sizing: border-box; cursor: pointer; min-height: var(--space-6); display: inline-flex; align-items: center; font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-align: start; }
 .nt-namebtn:hover { text-decoration: underline; text-underline-offset: 0.2em; }
 .nt-namebtn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+/* The /news search field's helper line (§7.4): sr-only while there is no message, visible text under the field
+   while there is one. Only the 400 is an error; the others are status text. */
+.nw-search { display: flex; flex-direction: column; gap: var(--space-1); }
+.nw-search-help { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.nw-search-help.is-error { color: var(--mud-palette-error); }

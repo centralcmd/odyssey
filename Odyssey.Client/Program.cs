@@ -115,6 +115,7 @@ builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache,
 builder.Services.AddScoped<Odyssey.Client.Services.RelativeTimeTicker>();
 // The news feed catalogue and tag list, per signed-in user (issue #473 §4.1, §8.3).
 builder.Services.AddScoped<Odyssey.Client.Services.INewsCatalogueCache, Odyssey.Client.Services.NewsCatalogueCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.NewsStoreGate>();
 // Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
 // surface holding them.
 builder.Services.AddTransient<Odyssey.Client.Services.IContactQuickCreate, Odyssey.Client.Services.ContactQuickCreate>();

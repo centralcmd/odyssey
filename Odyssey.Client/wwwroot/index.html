@@ -378,6 +378,15 @@
                 window.odsNewsFocusListStart(rootId);
             });
         };
+        window.odsNewsScrollListTop = function (rootId) {
+            // A fresh first page on /news scrolls the list back to its top (issue #473 §3.2.4) — only when the reader
+            // had scrolled past it, so a filter change at the top of the page never jumps.
+            requestAnimationFrame(function () {
+                const root = document.getElementById(rootId);
+                const list = root && root.querySelector('.nw-list');
+                if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' });
+            });
+        };
         window.odsFocusDialogCancel = function () {
             // OdsModal InitialFocus="Cancel": a destructive confirmation opens on its safe choice — the
             // element marked data-dialog-cancel, else the footer's first button (Cancel sits left of
