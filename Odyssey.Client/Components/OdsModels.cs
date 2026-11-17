@@ -650,3 +650,12 @@ public static class OdsRecordMeta
             builder.CloseElement();
         };
 }
+
+/// <summary>
+/// One image in an <c>OdsImageCarousel</c> (issue #473 §6.1). <paramref name="Src"/> is the URL the page
+/// was handed (for news, the article image endpoint), never a publisher URL; <c>null</c> shows the
+/// "Image unavailable" slide. <paramref name="Alt"/> is the publisher's (sanitised) alt text.
+/// <paramref name="Width"/>/<paramref name="Height"/> are the intrinsic size from the API; the first
+/// image's set the carousel's frame ratio.
+/// </summary>
+public sealed record OdsCarouselImage(string? Id, string? Src, string? Alt = null, int? Width = null, int? Height = null);
