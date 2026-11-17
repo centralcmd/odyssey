@@ -3,6 +3,9 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Odyssey.Core.FileStorage.Files;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Core.Finance;
 using Odyssey.Context;
 using Odyssey.Dtos;
@@ -65,6 +68,13 @@ public class JournalEntryIcsService
     private readonly IJournalLimitsLookup journalLimits;
     private readonly TimeProvider timeProvider;
     private readonly ILogger<JournalEntryIcsService> logger;
+    private readonly StoredFileContentSource? fileContent;
+    private readonly PhotoOriginalSource? photoContent;
+    private readonly StoredFileWriter? fileWriter;
+    private readonly FileValidationService fileValidation;
+    private readonly IUploadLimitsLookup? uploadLimits;
+    private readonly PhotoService? photoService;
+    private readonly long transportFileCeiling;
 
     // journalLimits is a SECOND lookup, newly injected in issue #434 to fix defect A: this service
     // enforced a hardcoded 50 links per kind while an administrator's JournalEntryMaxLinksPerKind
@@ -85,8 +95,24 @@ public class JournalEntryIcsService
         IImportExportLimitsLookup limits,
         IJournalLimitsLookup journalLimits,
         ILogger<JournalEntryIcsService> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null,
+        StoredFileContentSource? fileContent = null,
+        PhotoOriginalSource? photoContent = null,
+        StoredFileWriter? fileWriter = null,
+        FileValidationService? fileValidation = null,
+        IUploadLimitsLookup? uploadLimits = null,
+        PhotoService? photoService = null,
+        IOptions<FileStorageOptions>? fileStorageOptions = null)
     {
+        // The file and photo collaborators are optional so a unit test without a store still builds one; without them
+        // attached files and photos export as bare references and inline ones cannot be imported.
+        this.fileContent = fileContent;
+        this.photoContent = photoContent;
+        this.fileWriter = fileWriter;
+        this.fileValidation = fileValidation ?? new FileValidationService();
+        this.uploadLimits = uploadLimits;
+        this.photoService = photoService;
+        transportFileCeiling = (fileStorageOptions?.Value ?? new FileStorageOptions()).MaxFileSizeBytes;
         this.context = context;
         this.contacts = contacts;
         this.files = files;
@@ -99,48 +125,57 @@ public class JournalEntryIcsService
 
     // ---------------------------------------------------------------- Export
 
-    /// <summary>Exports a single entry by id, or null when it does not exist (→ 404).</summary>
-    public async Task<JournalEntryIcsExport?> ExportSingleAsync(
-        Guid id, bool includeContacts, CancellationToken cancellationToken = default, bool includePlaceNames = false)
-    {
-        var entry = await context.JournalEntries
-            .AsNoTracking()
-            .Include(e => e.EntryTags)
-            .Include(e => e.Contacts)
-            .Include(e => e.Photos)
-            .Include(e => e.Attachments)
-            .FirstOrDefaultAsync(e => e.JournalEntryId == id, cancellationToken);
-        if (entry is null)
-        {
-            return null;
-        }
+    private sealed record ExportFile(Guid Id, string Head, long EncodedBytes, long SizeBytes);
 
-        var content = await SerializeAsync([entry], includeContacts, includePlaceNames, cancellationToken);
-        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        return new JournalEntryIcsExport($"odyssey-journal-entry-{exportDate:yyyyMMdd-HHmmss}Z.ics", content);
-    }
+    private sealed record ExportPlan(
+        IQueryable<JournalEntry> BaseQuery, List<Guid> OrderedIds,
+        IReadOnlyDictionary<Guid, ExportFile> Files, IReadOnlyDictionary<Guid, ExportFile> Photos,
+        int AttachmentCount, int PhotoCount, long AttachmentBytes, long MaxBytes);
+
+    private IQueryable<FileMetadata> VisibleFiles => context.FileMetadata.Where(FileReferenceCounter.VisibleInFilesStore(context));
 
     /// <summary>
-    /// Streams every entry matching <paramref name="query"/>'s filters directly to
-    /// <paramref name="output"/>, in row-keyset chunks (issue #343 §5 Goal 8). Unlike the list endpoint,
-    /// archived entries are <b>included</b> when no status is supplied (§5 — backup/migration use case).
-    /// Throws <see cref="ExportLimitExceededException"/> (→ 400) if the matched set exceeds the
-    /// configured <c>JournalIcsMaxExportRows</c> cap — before any row is fetched, and before
-    /// <paramref name="onReady"/> is invoked. <paramref name="onReady"/> is called exactly once, with
-    /// the file name and row count, before the first chunk is written.
+    /// What <see cref="ExportStreamingAsync"/> would produce for <paramref name="query"/> (or, with
+    /// <paramref name="onlyId"/>, for that one entry), refusing exactly where it would: over the entry cap, over the
+    /// byte cap (judged from the attached files' and photos' stored sizes before any byte is encoded), or when an
+    /// exported entry carries an attached file without <paramref name="canReadFiles"/> or a photo without
+    /// <paramref name="canReadPhotos"/>. Null when <paramref name="onlyId"/> names no entry.
     /// </summary>
-    public async Task ExportStreamingAsync(
-        JournalEntriesQueryParams query, bool includeContacts, Stream output, Action<string, int> onReady,
-        CancellationToken cancellationToken = default, bool includePlaceNames = false)
+    public async Task<JournalEntryIcsExportSummary?> SummarizeExportAsync(
+        JournalEntriesQueryParams query, bool canReadFiles, bool canReadPhotos, Guid? onlyId = null,
+        CancellationToken cancellationToken = default)
     {
-        var baseQuery = JournalEntryService.ApplyFilters(context.JournalEntries.AsNoTracking(), query);
+        var plan = await PrepareExportAsync(query, onlyId, canReadFiles, canReadPhotos, cancellationToken);
+        return onlyId is not null && plan.OrderedIds.Count == 0
+            ? null
+            : new JournalEntryIcsExportSummary
+            {
+                EntryCount = plan.OrderedIds.Count,
+                AttachmentCount = plan.AttachmentCount,
+                PhotoCount = plan.PhotoCount,
+                AttachmentBytes = plan.AttachmentBytes,
+            };
+    }
 
-        baseQuery = query.Status switch
+    private async Task<ExportPlan> PrepareExportAsync(
+        JournalEntriesQueryParams query, Guid? onlyId, bool canReadFiles, bool canReadPhotos, CancellationToken cancellationToken)
+    {
+        IQueryable<JournalEntry> baseQuery;
+        if (onlyId is { } id)
         {
-            ArchivalStatus.Active => baseQuery.Where(e => e.Archived == null),
-            ArchivalStatus.Archived => baseQuery.Where(e => e.Archived != null),
-            _ => baseQuery, // omitted → all statuses, including archived (deliberate divergence from the list default)
-        };
+            // The single-entry export ignores every filter and status: the row menu names exactly one entry.
+            baseQuery = context.JournalEntries.AsNoTracking().Where(e => e.JournalEntryId == id);
+        }
+        else
+        {
+            baseQuery = JournalEntryService.ApplyFilters(context.JournalEntries.AsNoTracking(), query);
+            baseQuery = query.Status switch
+            {
+                ArchivalStatus.Active => baseQuery.Where(e => e.Archived == null),
+                ArchivalStatus.Archived => baseQuery.Where(e => e.Archived != null),
+                _ => baseQuery, // omitted → all statuses, including archived (deliberate divergence from the list default)
+            };
+        }
 
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         var maxExportRows = effectiveLimits.JournalIcsMaxExportRows;
@@ -160,24 +195,123 @@ public class JournalEntryIcsService
             .OrderBy(e => e.EntryDate).ThenBy(e => e.JournalEntryId)
             .Select(e => e.JournalEntryId)
             .ToListAsync(cancellationToken);
-        var count = orderedIds.Count;
-        if (maxExportRows is { } max && count > max)
+        if (onlyId is null && maxExportRows is { } max && orderedIds.Count > max)
         {
             throw new ExportLimitExceededException(max);
         }
 
+        // Attached files and linked photos travel inline. Only a file the Files store shows is exported with its
+        // content (a photo's own original is not readable under files.read), and only a photo whose original
+        // resolves; one that does not keeps its bare reference, which a re-import into the same instance resolves.
+        var fileLinks = await baseQuery.SelectMany(e => e.Attachments).Select(a => a.FileId).ToListAsync(cancellationToken);
+        var files = new Dictionary<Guid, ExportFile>();
+        if (fileLinks.Count > 0 && fileContent is not null)
+        {
+            var distinct = fileLinks.Distinct().ToList();
+            var rows = await VisibleFiles.AsNoTracking()
+                .Where(f => distinct.Contains(f.Id))
+                .Select(f => new { f.Id, f.FileName, f.ContentType, f.Sha256Hash, f.SizeBytes })
+                .ToListAsync(cancellationToken);
+            foreach (var row in rows)
+            {
+                files[row.Id] = Planned(new IcsBinaryAttachmentHeader(row.Id, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes));
+            }
+        }
+
+        var photoLinks = await baseQuery.SelectMany(e => e.Photos).Select(p => p.PhotoId).ToListAsync(cancellationToken);
+        var photoFiles = new Dictionary<Guid, ExportFile>();
+        if (photoLinks.Count > 0 && photoContent is not null)
+        {
+            var distinct = photoLinks.Distinct().ToList();
+            var described = await PhotoOriginalSource
+                .Describe(context, context.Photos.AsNoTracking().Where(p => distinct.Contains(p.PhotoId)))
+                .ToListAsync(cancellationToken);
+            var labels = await context.Photos.AsNoTracking()
+                .Where(p => distinct.Contains(p.PhotoId))
+                .Select(p => new { p.PhotoId, p.Title, p.Caption })
+                .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
+            foreach (var row in described.Where(d => d.SizeBytes is not null && d.Sha256Hash is not null && d.ContentType is not null))
+            {
+                var label = labels.GetValueOrDefault(row.PhotoId);
+                photoFiles[row.PhotoId] = Planned(new IcsBinaryAttachmentHeader(
+                    row.PhotoId, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes!.Value,
+                    IsPhoto: true, Title: label?.Title, Caption: label?.Caption));
+            }
+        }
+
+        var inlineFiles = fileLinks.Where(files.ContainsKey).ToList();
+        var inlinePhotos = photoLinks.Where(photoFiles.ContainsKey).ToList();
+        if (inlineFiles.Count > 0 && !canReadFiles)
+        {
+            throw new DomainForbiddenException(
+                $"These entries have {inlineFiles.Count} attached {(inlineFiles.Count == 1 ? "file" : "files")}, and exporting "
+                + "attached files needs permission to read files.");
+        }
+
+        if (inlinePhotos.Count > 0 && !canReadPhotos)
+        {
+            throw new DomainForbiddenException(
+                $"These entries have {inlinePhotos.Count} {(inlinePhotos.Count == 1 ? "photo" : "photos")}, and exporting "
+                + "photos needs permission to read photos.");
+        }
+
+        var estimatedBytes = inlineFiles.Sum(fid => files[fid].EncodedBytes) + inlinePhotos.Sum(pid => photoFiles[pid].EncodedBytes);
+        if (estimatedBytes > maxExportBytes)
+        {
+            throw new DomainValidationException(
+                $"The export would be at least {estimatedBytes / (1024 * 1024)} MB with its attached files and photos, over the "
+                + $"{maxExportBytes / (1024 * 1024)} MB export limit — narrow the filters.");
+        }
+
+        return new ExportPlan(
+            baseQuery, orderedIds, files, photoFiles, inlineFiles.Count, inlinePhotos.Count,
+            inlineFiles.Sum(fid => files[fid].SizeBytes) + inlinePhotos.Sum(pid => photoFiles[pid].SizeBytes),
+            maxExportBytes);
+    }
+
+    private static ExportFile Planned(IcsBinaryAttachmentHeader header)
+    {
+        var head = IcsBinaryAttachmentWriter.BuildHead(header);
+        return new ExportFile(header.Id!.Value, head, IcsBinaryAttachmentWriter.EncodedLength(head, header.Size), header.Size);
+    }
+
+    /// <summary>
+    /// Streams every entry matching <paramref name="query"/>'s filters — or, with <paramref name="onlyId"/>, that one
+    /// entry — directly to <paramref name="output"/>, in row-keyset chunks (issue #343 §5 Goal 8). Unlike the list
+    /// endpoint, archived entries are <b>included</b> when no status is supplied (§5 — backup/migration use case).
+    /// Attached files and linked photos travel inline as base64 <c>ATTACH</c> lines, streamed from their stores and
+    /// never held whole in memory. Throws <see cref="ExportLimitExceededException"/> (→ 400) if the matched set
+    /// exceeds the configured <c>JournalIcsMaxExportRows</c> cap, and refuses (400/403) exactly as
+    /// <see cref="SummarizeExportAsync"/> does — all before <paramref name="onReady"/> is invoked.
+    /// <paramref name="onReady"/> is called exactly once, with the file name and row count, before the first byte.
+    /// <para>
+    /// The byte cap is judged exactly for the attached content up front; an entry whose text would still cross it
+    /// throws <see cref="IcsExportSizeExceededException"/> once the response has started, and the caller aborts the
+    /// connection rather than delivering a file that stops early.
+    /// </para>
+    /// </summary>
+    public async Task ExportStreamingAsync(
+        JournalEntriesQueryParams query, bool includeContacts, Stream output, Action<string, int> onReady,
+        CancellationToken cancellationToken = default, bool includePlaceNames = false,
+        bool canReadFiles = false, bool canReadPhotos = false, Guid? onlyId = null)
+    {
+        var plan = await PrepareExportAsync(query, onlyId, canReadFiles, canReadPhotos, cancellationToken);
+        var count = plan.OrderedIds.Count;
+
         var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        var suffix = HasAnyFilter(query) ? "-filtered" : string.Empty;
-        onReady($"odyssey-journal-entries{suffix}-{exportDate:yyyyMMdd-HHmmss}Z.ics", count);
+        var name = onlyId is not null
+            ? $"odyssey-journal-entry-{exportDate:yyyyMMdd-HHmmss}Z.ics"
+            : $"odyssey-journal-entries{(HasAnyFilter(query) ? "-filtered" : string.Empty)}-{exportDate:yyyyMMdd-HHmmss}Z.ics";
+        onReady(name, count);
 
         var (head, tail) = IcsChunkSerializer.BuildEnvelope(ProductId);
         await IcsChunkSerializer.WriteAsync(output, head, cancellationToken);
-        var writtenBytes = (long)Encoding.UTF8.GetByteCount(head);
+        var writtenBytes = (long)Encoding.UTF8.GetByteCount(head) + Encoding.UTF8.GetByteCount(tail);
 
         var written = 0;
-        foreach (var idBatch in orderedIds.Chunk(ExportChunking.ChunkSize))
+        foreach (var idBatch in plan.OrderedIds.Chunk(ExportChunking.ChunkSize))
         {
-            var rows = await baseQuery
+            var rows = await plan.BaseQuery
                 .Where(e => idBatch.Contains(e.JournalEntryId))
                 .Include(e => e.EntryTags)
                 .Include(e => e.Contacts)
@@ -190,29 +324,75 @@ public class JournalEntryIcsService
                 continue; // every id in this batch was deleted between the snapshot and this fetch
             }
 
-            var chunkCalendar = await BuildCalendarAsync(entries, includeContacts, includePlaceNames, cancellationToken);
-            var chunkText = IcsChunkSerializer.SerializeComponents(chunkCalendar);
-            var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
-
-            // Unlike the row-count cap above, the byte-size cap can't be rejected up front (total
-            // output size isn't knowable until it's generated) — once writing this chunk would cross
-            // it, stop without writing it. X-Odyssey-Export-Rows already promised the full row count,
-            // so the API client's existing completeness check treats this as a failed download.
-            if (writtenBytes + chunkBytes > maxExportBytes)
+            var lookups = await LoadExportLookupsAsync(entries, includeContacts, includePlaceNames, cancellationToken);
+            foreach (var entry in entries)
             {
-                logger.LogWarning(
-                    "Journal entries .ics export truncated at {WrittenBytes} bytes (cap {MaxBytes}); " +
-                    "{WrittenRows}/{TotalRows} entries delivered.",
-                    writtenBytes, maxExportBytes, written, count);
-                break;
-            }
+                var inlinePhotos = entry.Photos.OrderBy(p => p.Position)
+                    .Select(p => plan.Photos.GetValueOrDefault(p.PhotoId)).OfType<ExportFile>().ToList();
+                var inlineFiles = entry.Attachments.OrderBy(a => a.CreatedAt)
+                    .Select(a => plan.Files.GetValueOrDefault(a.FileId)).OfType<ExportFile>().ToList();
 
-            await IcsChunkSerializer.WriteAsync(output, chunkText, cancellationToken);
-            writtenBytes += chunkBytes;
-            written += entries.Count;
+                var calendar = new IcalCalendar();
+                calendar.Journals.Add(BuildVJournal(entry, lookups, plan.Files, plan.Photos));
+                var text = IcsChunkSerializer.SerializeComponents(calendar);
+                var split = text.LastIndexOf("END:VJOURNAL", StringComparison.Ordinal);
+                var (prefix, suffix) = split < 0 ? (text, string.Empty) : (text[..split], text[split..]);
+
+                var entryBytes = Encoding.UTF8.GetByteCount(text) + inlinePhotos.Sum(f => f.EncodedBytes) + inlineFiles.Sum(f => f.EncodedBytes);
+                if (writtenBytes + entryBytes > plan.MaxBytes)
+                {
+                    logger.LogWarning(
+                        "Journal entries .ics export stopped at {WrittenBytes} bytes (cap {MaxBytes}); {WrittenRows}/{TotalRows} entries delivered.",
+                        writtenBytes, plan.MaxBytes, written, count);
+                    throw new IcsExportSizeExceededException(
+                        $"The export grew past the {plan.MaxBytes / (1024 * 1024)} MB export limit while it was being written.");
+                }
+
+                await IcsChunkSerializer.WriteAsync(output, prefix, cancellationToken);
+                foreach (var photo in inlinePhotos)
+                {
+                    await WriteInlinePhotoAsync(output, photo, cancellationToken);
+                }
+
+                foreach (var file in inlineFiles)
+                {
+                    await WriteInlineFileAsync(output, file, cancellationToken);
+                }
+
+                await IcsChunkSerializer.WriteAsync(output, suffix, cancellationToken);
+                writtenBytes += entryBytes;
+                written++;
+            }
         }
 
         await IcsChunkSerializer.WriteAsync(output, tail, cancellationToken);
+    }
+
+    private async Task WriteInlineFileAsync(Stream output, ExportFile file, CancellationToken cancellationToken)
+    {
+        var content = await fileContent!.OpenAsync(VisibleFiles.Where(f => f.Id == file.Id), cancellationToken);
+        if (content is null)
+        {
+            // Removed since the plan was made: keep the reference rather than drop the link silently.
+            await IcsChunkSerializer.WriteAsync(output, $"ATTACH:{FileUriScheme}:{file.Id}\r\n", cancellationToken);
+            return;
+        }
+
+        await using var stream = content.Content;
+        await IcsBinaryAttachmentWriter.WriteAsync(output, file.Head, stream, cancellationToken);
+    }
+
+    private async Task WriteInlinePhotoAsync(Stream output, ExportFile photo, CancellationToken cancellationToken)
+    {
+        var content = await photoContent!.OpenAsync(photo.Id, cancellationToken);
+        if (content is null)
+        {
+            await IcsChunkSerializer.WriteAsync(output, $"ATTACH:{PhotoUriScheme}:{photo.Id}\r\n", cancellationToken);
+            return;
+        }
+
+        await using var stream = content.Content;
+        await IcsBinaryAttachmentWriter.WriteAsync(output, photo.Head, stream, cancellationToken);
     }
 
     // Every filter JournalEntriesQueryParams carries has to be listed here, because this decides the
@@ -229,18 +409,15 @@ public class JournalEntryIcsService
         || query.HasFiles is not null
         || query.Status is not null;
 
-    private async Task<string> SerializeAsync(
-        IReadOnlyList<JournalEntry> entries, bool includeContacts, bool includePlaceNames, CancellationToken cancellationToken)
-    {
-        var ical = await BuildCalendarAsync(entries, includeContacts, includePlaceNames, cancellationToken);
-        ical.ProductId = ProductId;
-        return new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
-    }
+    private sealed record ExportLookups(
+        IReadOnlyDictionary<Guid, string> TagNames,
+        IReadOnlySet<Guid> ExistingPhotoIds,
+        IReadOnlyDictionary<Guid, string>? ContactUids,
+        IReadOnlyDictionary<Guid, string> PlaceNames);
 
-    // Batches the tag/photo/(optionally) contact lookups for exactly the entries passed in — reused
-    // both by the single-shot SerializeAsync above and, per-chunk, by the streaming export (issue #343
-    // §5 Goal 8), so each chunk's lookups stay scoped to that chunk rather than the whole matched set.
-    private async Task<IcalCalendar> BuildCalendarAsync(
+    // Batches the tag/photo/(optionally) contact lookups for exactly the entries passed in, per chunk, so each chunk's
+    // lookups stay scoped to that chunk rather than the whole matched set (issue #343 §5 Goal 8).
+    private async Task<ExportLookups> LoadExportLookupsAsync(
         IReadOnlyList<JournalEntry> entries, bool includeContacts, bool includePlaceNames, CancellationToken cancellationToken)
     {
         // A linked place's name is written only for a locations.read holder (issue #380 §8.4); never GEO.
@@ -255,7 +432,7 @@ public class JournalEntryIcsService
 
         var photoIds = entries.SelectMany(e => e.Photos.Select(p => p.PhotoId)).Distinct().ToList();
         // Issue #428: a photo is written by its own id; import still accepts an old export's file ids.
-        var exportedPhotoIds = await photos.ExistingIdsAsync(photoIds, cancellationToken);
+        var existingPhotoIds = await photos.ExistingIdsAsync(photoIds, cancellationToken);
 
         IReadOnlyDictionary<Guid, string>? contactUids = null;
         if (includeContacts)
@@ -267,21 +444,12 @@ public class JournalEntryIcsService
                 : await contacts.ResolveExternalUidsAsync(contactIds, cancellationToken);
         }
 
-        var ical = new IcalCalendar();
-        foreach (var entry in entries)
-        {
-            ical.Journals.Add(BuildVJournal(entry, tagNames, exportedPhotoIds, contactUids, placeNames));
-        }
-
-        return ical;
+        return new ExportLookups(tagNames, existingPhotoIds, contactUids, placeNames);
     }
 
     private static IcalJournal BuildVJournal(
-        JournalEntry entry,
-        IReadOnlyDictionary<Guid, string> tagNames,
-        IReadOnlySet<Guid> exportedPhotoIds,
-        IReadOnlyDictionary<Guid, string>? contactUids,
-        IReadOnlyDictionary<Guid, string> placeNames)
+        JournalEntry entry, ExportLookups lookups,
+        IReadOnlyDictionary<Guid, ExportFile> inlineFiles, IReadOnlyDictionary<Guid, ExportFile> inlinePhotos)
     {
         var journal = new IcalJournal
         {
@@ -294,21 +462,21 @@ public class JournalEntryIcsService
             Start = new CalDateTime(entry.EntryDate.Year, entry.EntryDate.Month, entry.EntryDate.Day),
         };
 
-        if (IcsPlaces.ExportText(entry.LocationId, entry.Location, placeNames) is { } place)
+        if (IcsPlaces.ExportText(entry.LocationId, entry.Location, lookups.PlaceNames) is { } place)
         {
             journal.Properties.Add(new CalendarProperty(LocationProperty, place));
         }
 
         foreach (var link in entry.EntryTags)
         {
-            if (tagNames.TryGetValue(link.JournalTagId, out var name))
+            if (lookups.TagNames.TryGetValue(link.JournalTagId, out var name))
             {
                 journal.Categories.Add(name);
             }
         }
 
         // X-ODYSSEY-CONTACT is emitted only when the caller holds contacts.read (§9/§10.2).
-        if (contactUids is not null)
+        if (lookups.ContactUids is { } contactUids)
         {
             foreach (var link in entry.Contacts)
             {
@@ -319,17 +487,18 @@ public class JournalEntryIcsService
             }
         }
 
-        // Photos carry their PhotoId (issue #428 §3.3; before it, the wrapped FileId). A link whose library Photo no
-        // longer resolves is dropped, mirroring the read DTO.
+        // A photo or file whose content travels inline is written by the caller; only one that cannot keeps its bare
+        // reference (issue #428 §3.3: a photo by its PhotoId). A link whose library Photo no longer resolves is dropped,
+        // mirroring the read DTO.
         foreach (var photo in entry.Photos.OrderBy(p => p.Position))
         {
-            if (exportedPhotoIds.Contains(photo.PhotoId))
+            if (!inlinePhotos.ContainsKey(photo.PhotoId) && lookups.ExistingPhotoIds.Contains(photo.PhotoId))
             {
                 journal.Attachments.Add(new Attachment { Uri = new Uri($"{PhotoUriScheme}:{photo.PhotoId}") });
             }
         }
 
-        foreach (var attachment in entry.Attachments.OrderBy(a => a.CreatedAt))
+        foreach (var attachment in entry.Attachments.Where(a => !inlineFiles.ContainsKey(a.FileId)).OrderBy(a => a.CreatedAt))
         {
             journal.Attachments.Add(new Attachment { Uri = new Uri($"{FileUriScheme}:{attachment.FileId}") });
         }
@@ -339,12 +508,32 @@ public class JournalEntryIcsService
 
     // ---------------------------------------------------------------- Import
 
+    /// <summary>Upper bound on the calendar's own text once inline files are lifted out — what <c>Ical.Net</c> parses in
+    /// memory. Attached files and photos are bounded by the byte cap and disk, never by this.</summary>
+    internal const long MaxCalendarTextChars = 64L * 1024 * 1024;
+
+    /// <summary>Inline attachments one import may carry: each costs a temp file and an entry until the import ends.</summary>
+    internal const int MaxInlineAttachments = 10_000;
+
+    /// <summary>
+    /// Imports a VJOURNAL <c>.ics</c>. Inline (base64) files and photos are spooled to disk by a streaming pre-pass,
+    /// then each is matched to a stored file or library photo — the one it was exported from, else any with the same
+    /// content — and stored new only when neither matches (files in the Journal area, photos in the library, through
+    /// the upload checks). A file carrying inline files needs <paramref name="canLinkFiles"/> (<c>files.read</c>) and
+    /// <paramref name="canCreateFiles"/>; one carrying inline photos needs <paramref name="canReadPhotos"/> and
+    /// <paramref name="canCreatePhotos"/> — refused whole (403) at the first such attachment without them.
+    /// </summary>
     public async Task<JournalEntryIcsImportResult> ImportAsync(
         Stream icsFile, long contentLength, string? contentType, string userId,
         bool canLinkFiles, bool canReadContacts, CancellationToken cancellationToken = default,
-        LocationClaims? claims = null, bool canReadPhotos = false)
+        LocationClaims? claims = null, bool canReadPhotos = false, bool canCreateFiles = false, bool canCreatePhotos = false)
     {
-        var journals = await ParseJournalsAsync(icsFile, contentLength, contentType, cancellationToken);
+        var cap = await limits.GetAsync(cancellationToken);
+        var maxFileBytes = Math.Min(cap.JournalIcsMaxImportBytes, transportFileCeiling);
+        using var spool = await SpoolAsync(
+            icsFile, contentLength, contentType, maxFileBytes, canLinkFiles && canCreateFiles, canReadPhotos && canCreatePhotos,
+            cancellationToken);
+        var journals = ParseJournals(spool, cap.JournalIcsMaxImportEntries);
         var lookups = await LoadLookupsAsync(journals, userId, canLinkFiles, canReadPhotos, canReadContacts, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -354,6 +543,12 @@ public class JournalEntryIcsService
         var maxLinksPerKind = (await journalLimits.GetAsync(cancellationToken)).JournalEntryMaxLinksPerKind;
         var skipped = new ImportSkipCollector(importLimits.ImportMaxSamplesPerSkipReason);
         var counts = new LinkSkipCounts();
+        // A file or photo stored new by this import is an upload like any other, so the admin's per-file upload cap
+        // applies to it; one matched to a stored file or photo is not stored again, so only the import's caps bound it.
+        var maxNewFileBytes = Math.Min(maxFileBytes,
+            uploadLimits is null ? long.MaxValue : (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes);
+        var inlineFiles = new InlineFileImporter(context, fileValidation, fileWriter, userId, maxFileBytes, maxNewFileBytes, skipped);
+        var inlinePhotos = new InlinePhotoImporter(context, photoService, userId, maxFileBytes, skipped);
         // Places link only with locations.read + locations.create (issue #380 §8.4); null claims import text.
         var places = await IcsPlaces.ForImportAsync(context, claims ?? LocationClaims.None, userId, timeProvider, cancellationToken);
         var createdByUid = new Dictionary<string, JournalEntry>(StringComparer.Ordinal);
@@ -390,10 +585,10 @@ public class JournalEntryIcsService
             ApplyTags(target, journal, lookups.TagIdsByName, counts, maxLinksPerKind, skipped);
             ApplyContacts(
                 target, journal, canReadContacts, lookups.ContactIdsByUid, counts, maxLinksPerKind, skipped);
-            ApplyAttachments(
-                target, journal, canLinkFiles, lookups.ExistingAttachmentIds, now, counts, maxLinksPerKind, skipped);
-            ApplyPhotos(
-                target, journal, canReadPhotos, lookups.PhotoIdsByReference, now, counts, maxLinksPerKind, skipped);
+            var (fileRefs, photoRefs) = await ResolveAttachmentsAsync(
+                journal, spool, inlineFiles, inlinePhotos, lookups, fields.Title, cancellationToken);
+            ApplyAttachments(target, fileRefs, canLinkFiles, now, counts, maxLinksPerKind, skipped);
+            ApplyPhotos(target, photoRefs, canReadPhotos, now, counts, maxLinksPerKind, skipped);
         }
 
         var collisions = await SaveWithCollisionHandlingAsync(skipped, places, cancellationToken);
@@ -402,16 +597,21 @@ public class JournalEntryIcsService
         var result = BuildResult(imported, updated, skipped, counts);
         result.PlacesLinked = places.Linked;
         result.PlacesCreated = places.Created;
+        result.StoredFileCount = inlineFiles.Stored;
+        result.ReusedFileCount = inlineFiles.Reused;
+        result.StoredPhotoCount = inlinePhotos.Stored;
+        result.ReusedPhotoCount = inlinePhotos.Reused;
         return result;
     }
 
     /// <summary>
-    /// Reads and parses the upload, rejecting anything that makes the file as a whole unusable — wrong
-    /// content type, over the size cap, unparseable, or more VJOURNALs than the batch limit. These are
+    /// Reads the upload through the streaming pre-pass, rejecting anything that makes the file as a whole unusable —
+    /// wrong content type, over the size cap, inline files or photos the caller may not import. These are
     /// whole-request failures; every per-block problem after this point is a skip, not a throw.
     /// </summary>
-    private async Task<List<IcalJournal>> ParseJournalsAsync(
-        Stream icsFile, long contentLength, string? contentType, CancellationToken cancellationToken)
+    private async Task<IcsAttachmentSpool> SpoolAsync(
+        Stream icsFile, long contentLength, string? contentType, long maxFileBytes, bool allowFiles, bool allowPhotos,
+        CancellationToken cancellationToken)
     {
         if (!IsAcceptedContentType(contentType))
         {
@@ -420,23 +620,28 @@ public class JournalEntryIcsService
 
         var cap = await limits.GetAsync(cancellationToken);
         var maxImportBytes = cap.JournalIcsMaxImportBytes;
-        var maxVJournals = cap.JournalIcsMaxImportEntries ?? int.MaxValue;
-
         if (contentLength > maxImportBytes)
         {
             throw new DomainValidationException($"The .ics file exceeds the {maxImportBytes / (1024 * 1024)} MB limit.");
         }
 
         using var reader = ImportFileReader.OpenBoundedTextReader(icsFile, maxImportBytes, ".ics");
+        return await IcsAttachmentSpooler.SpoolAsync(
+            reader,
+            new IcsAttachmentSpooler.Options(
+                maxFileBytes, Math.Min(maxImportBytes, MaxCalendarTextChars),
+                AllowAttachments: allowFiles, MaxAttachments: MaxInlineAttachments, AllowPhotos: allowPhotos),
+            cancellationToken);
+    }
 
+    /// <summary>Parses the spooled calendar text, refusing an unparseable file or more VJOURNALs than the batch limit.</summary>
+    private static List<IcalJournal> ParseJournals(IcsAttachmentSpool spool, int? maxEntries)
+    {
         IcalCalendar? parsed;
         try
         {
-            parsed = IcalCalendar.Load(reader);
+            parsed = IcalCalendar.Load(new StringReader(spool.CalendarText));
         }
-        // DomainValidationException excluded: OpenBoundedTextReader's byte-cap check now runs lazily,
-        // inside this parse, rather than fully before it — catching it here would replace the specific
-        // "exceeds the N MB limit" message with the generic parse-failure one (issue #343 §5).
         catch (Exception ex) when (ex is not OperationCanceledException and not DomainValidationException)
         {
             throw new DomainValidationException("The file could not be parsed as a valid iCalendar (.ics) file.");
@@ -448,6 +653,7 @@ public class JournalEntryIcsService
         }
 
         var journals = parsed.Journals;
+        var maxVJournals = maxEntries ?? int.MaxValue;
         if (journals.Count > maxVJournals)
         {
             throw new DomainValidationException($"The file contains more than {maxVJournals} journal entries (VJOURNAL).");
@@ -490,13 +696,14 @@ public class JournalEntryIcsService
                 .Where(e => incomingUids.Contains(e.ExternalUid))
                 .ToListAsync(cancellationToken);
 
-        // Non-archived tags, indexed by case-insensitive exact name (first wins on a duplicate name).
+        // Every tag, archived ones included, indexed by case-insensitive exact name: the export writes an archived
+        // tag's name too, so matching only active tags made a re-import strip it. On a duplicate name the first wins,
+        // and an active tag is offered before an archived one.
         var tagRows = await context.JournalTags
-            .Where(t => t.Archived == null)
-            .Select(t => new { t.JournalTagId, t.Name })
+            .Select(t => new { t.JournalTagId, t.Name, t.Archived })
             .ToListAsync(cancellationToken);
         var tagsByName = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
-        foreach (var tag in tagRows)
+        foreach (var tag in tagRows.OrderBy(t => t.Archived is null ? 0 : 1).ThenBy(t => t.JournalTagId))
         {
             tagsByName.TryAdd(tag.Name, tag.JournalTagId);
         }
@@ -780,11 +987,52 @@ public class JournalEntryIcsService
             contactId => new JournalEntryContact { ContactId = contactId });
     }
 
+    /// <summary>
+    /// One block's attachment references, in file order, split by kind: an inline file or photo resolved (stored or
+    /// matched) by its importer, an <c>odyssey-file:</c>/<c>odyssey-photo:</c> reference resolved against what already
+    /// exists. Null where a reference did not resolve. Any other ATTACH (a third party's link) is ignored, never counted.
+    /// </summary>
+    private static async Task<(List<Guid?> Files, List<Guid?> Photos)> ResolveAttachmentsAsync(
+        IcalJournal journal, IcsAttachmentSpool spool, InlineFileImporter inlineFiles, InlinePhotoImporter inlinePhotos,
+        ImportLookups lookups, string sampleTitle, CancellationToken cancellationToken)
+    {
+        var files = new List<Guid?>();
+        var photoRefs = new List<Guid?>();
+        foreach (var attachment in journal.Attachments)
+        {
+            if (spool.Find(attachment.Uri) is { } spooled)
+            {
+                if (spooled.IsPhoto)
+                {
+                    photoRefs.Add(await inlinePhotos.ResolveAsync(spooled, sampleTitle, cancellationToken));
+                }
+                else
+                {
+                    files.Add(await inlineFiles.ResolveAsync(spooled, sampleTitle, cancellationToken));
+                }
+            }
+            else if (TryParseAttachment(attachment, out var scheme, out var id))
+            {
+                if (scheme == FileUriScheme)
+                {
+                    files.Add(id is { } fileId && lookups.ExistingAttachmentIds.Contains(fileId) ? fileId : null);
+                }
+                else
+                {
+                    photoRefs.Add(id is { } reference && lookups.PhotoIdsByReference.TryGetValue(reference, out var photoId) ? photoId : null);
+                }
+            }
+        }
+
+        return (files, photoRefs);
+    }
+
     private static void ApplyAttachments(
-        JournalEntry entry, IcalJournal journal, bool canLinkFiles, IReadOnlySet<Guid> existingFileIds,
+        JournalEntry entry, IReadOnlyList<Guid?> references, bool canLinkFiles,
         DateTime now, LinkSkipCounts counts, int maxLinksPerKind, ImportSkipCollector skipped)
     {
-        var references = SchemedFileIds(journal, FileUriScheme);
+        // Without files.read every reference is skipped and the entry's existing links are left untouched (§9, N1). An
+        // inline file never reaches here without files.read: the import is refused up front.
         if (!canLinkFiles)
         {
             counts.Attachments += references.Count;
@@ -792,7 +1040,7 @@ public class JournalEntryIcsService
         }
 
         var resolved = ImportLinks.Resolve(
-            references, fileId => existingFileIds.Contains(fileId) ? fileId : null, maxLinksPerKind,
+            references, fileId => fileId, maxLinksPerKind,
             onUnresolved: () => counts.Attachments++,
             onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Attachments++));
 
@@ -801,22 +1049,18 @@ public class JournalEntryIcsService
     }
 
     private static void ApplyPhotos(
-        JournalEntry entry, IcalJournal journal, bool canReadPhotos,
-        IReadOnlyDictionary<Guid, Guid> photoIdByReference, DateTime now, LinkSkipCounts counts,
+        JournalEntry entry, IReadOnlyList<Guid?> references, bool canReadPhotos, DateTime now, LinkSkipCounts counts,
         int maxLinksPerKind, ImportSkipCollector skipped)
     {
-        var references = SchemedFileIds(journal, PhotoUriScheme);
         if (!canReadPhotos)
         {
             counts.Photos += references.Count;
             return;
         }
 
-        // A reference no existing photo answers to → skip this link only; nothing is created (issue #428 §3.3).
+        // A bare reference no existing photo answers to → skip this link only; it never creates one (issue #428 §3.3).
         var resolved = ImportLinks.Resolve(
-            references,
-            id => photoIdByReference.TryGetValue(id, out var photoId) ? photoId : null,
-            maxLinksPerKind,
+            references, photoId => photoId, maxLinksPerKind,
             onUnresolved: () => counts.Photos++,
             onCapped: () => Capped(entry, maxLinksPerKind, skipped, () => counts.Photos++));
 
@@ -1050,4 +1294,3 @@ public class JournalEntryIcsService
     }
 }
 
-public sealed record JournalEntryIcsExport(string FileName, string Content);

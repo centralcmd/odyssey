@@ -81,11 +81,6 @@ public class TaskIcsService
 
     // ---------------------------------------------------------------- Export
 
-    /// <summary>Thrown once an export has started streaming and the next task would cross the byte cap. The
-    /// response is already committed, so the caller aborts the connection: a browser then reports the download as
-    /// failed, instead of saving a file that silently stops early.</summary>
-    public sealed class ExportSizeExceededException(string message) : Exception(message);
-
     private sealed record ExportFile(Guid FileId, string Head, long EncodedBytes, long SizeBytes);
 
     private sealed record ExportPlan(
@@ -206,7 +201,7 @@ public class TaskIcsService
     /// <para>
     /// The configured <c>TaskIcsMaxExportMegabytes</c> cap is checked twice: up front against the attached files'
     /// encoded size, which is known exactly from their stored sizes, and again before each task is written. A task
-    /// that would cross it throws <see cref="ExportSizeExceededException"/>; by then the response has started, so the
+    /// that would cross it throws <see cref="IcsExportSizeExceededException"/>; by then the response has started, so the
     /// caller aborts the connection rather than delivering a file that stops early.
     /// </para>
     /// </summary>
@@ -265,7 +260,7 @@ public class TaskIcsService
                     logger.LogWarning(
                         "Tasks .ics export stopped at {WrittenBytes} bytes (cap {MaxBytes}); {WrittenRows}/{TotalRows} tasks delivered.",
                         writtenBytes, plan.MaxBytes, written, count);
-                    throw new ExportSizeExceededException(
+                    throw new IcsExportSizeExceededException(
                         $"The export grew past the {plan.MaxBytes / (1024 * 1024)} MB export limit while it was being written.");
                 }
 
@@ -472,7 +467,7 @@ public class TaskIcsService
         // one matched to a stored file is not stored again, so only the import's own caps bound that.
         var maxNewFileBytes = Math.Min(maxFileBytes,
             uploadLimits is null ? long.MaxValue : (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes);
-        var inlineFiles = new InlineFileResolver(this, userId, maxFileBytes, maxNewFileBytes, skipped);
+        var inlineFiles = new InlineFileImporter(context, fileValidation, fileWriter, userId, maxFileBytes, maxNewFileBytes, skipped);
         var imported = 0;
         var updated = 0;
         var skippedTagLinks = 0;
@@ -622,139 +617,6 @@ public class TaskIcsService
                 SampleTitles = samples,
             }),
         };
-    }
-
-    /// <summary>
-    /// Turns spooled inline attachments into file ids, once per attachment and once per distinct content: a file
-    /// stored earlier in the same import is reused by its hash, before it has even been saved.
-    /// </summary>
-    private sealed class InlineFileResolver(
-        TaskIcsService owner, string userId, long maxFileBytes, long maxNewFileBytes, ImportSkipCollector skipped)
-    {
-        private readonly Dictionary<string, Guid?> byReference = new(StringComparer.Ordinal);
-        private readonly Dictionary<string, Guid> storedByContent = new(StringComparer.Ordinal);
-
-        public int Stored { get; private set; }
-
-        public int Reused { get; private set; }
-
-        public async Task<Guid?> ResolveAsync(SpooledAttachment attachment, string taskTitle, CancellationToken cancellationToken)
-        {
-            if (byReference.TryGetValue(attachment.Reference, out var known))
-            {
-                return known;
-            }
-
-            var resolved = await ResolveOnceAsync(attachment, taskTitle, cancellationToken);
-            byReference[attachment.Reference] = resolved;
-            return resolved;
-        }
-
-        private async Task<Guid?> ResolveOnceAsync(SpooledAttachment attachment, string taskTitle, CancellationToken cancellationToken)
-        {
-            if (attachment.Problem is { } problem)
-            {
-                skipped.Add(ProblemReason(problem), taskTitle);
-                return null;
-            }
-
-            var hash = attachment.Sha256Hash!;
-            var contentKey = $"{hash}:{attachment.Size}";
-            if (storedByContent.TryGetValue(contentKey, out var storedId))
-            {
-                Reused++;
-                return storedId;
-            }
-
-            if (await owner.FindExistingFileAsync(attachment.OriginalFileId, hash, attachment.Size, cancellationToken) is { } existingId)
-            {
-                Reused++;
-                storedByContent[contentKey] = existingId;
-                IcsAttachmentSpool.Delete(attachment);
-                return existingId;
-            }
-
-            if (attachment.Size > maxNewFileBytes)
-            {
-                skipped.Add($"Attached file is larger than the {maxNewFileBytes / (1024 * 1024)} MB upload limit, and no stored file matches it.", taskTitle);
-                return null;
-            }
-
-            var path = attachment.Path!;
-            var fileName = owner.fileValidation.SanitizeFileName(attachment.FileName ?? string.Empty);
-            if (string.IsNullOrWhiteSpace(fileName))
-            {
-                fileName = "attachment";
-            }
-
-            if (fileName.Length > FileValidationService.MaxFileNameLength)
-            {
-                fileName = fileName[..FileValidationService.MaxFileNameLength].TrimEnd();
-            }
-
-            var contentType = attachment.ContentType ?? "application/octet-stream";
-            try
-            {
-                // The same checks an upload passes — allow-list, magic bytes, name, the per-file cap — so an import is
-                // never a way round them.
-                owner.fileValidation.ValidateFile(new FileUpload(fileName, contentType, attachment.Size, () => File.OpenRead(path)), maxNewFileBytes);
-            }
-            catch (DomainValidationException)
-            {
-                skipped.Add("Attached file is of a type uploads do not accept, or its content does not match its type.", taskTitle);
-                return null;
-            }
-
-            if (owner.fileWriter is null)
-            {
-                throw new FileStorageUnavailableException("File storage is not set up on this server.");
-            }
-
-            FileMetadata stored;
-            await using (var stream = File.OpenRead(path))
-            {
-                stored = await owner.fileWriter.StageNewFileAsync(
-                    owner.context, StoredFileArea.Journal, stream, fileName, contentType, userId, description: null,
-                    Math.Max(1, attachment.Size), cancellationToken);
-            }
-
-            IcsAttachmentSpool.Delete(attachment);
-            Stored++;
-            storedByContent[contentKey] = stored.Id;
-            return stored.Id;
-        }
-
-        private string ProblemReason(string problem) => problem switch
-        {
-            IcsAttachmentSpooler.TooLargeProblem => $"Attached file is larger than the {maxFileBytes / (1024 * 1024)} MB limit.",
-            IcsAttachmentSpooler.ChecksumProblem => "Attached file does not match its checksum.",
-            IcsAttachmentSpooler.EmptyProblem => "Attached file is empty.",
-            _ => "Attached file is damaged (not valid base64).",
-        };
-    }
-
-    /// <summary>The file an inline attachment duplicates, if one is stored and visible: the one it was exported from
-    /// (same id, same content), else the oldest with the same SHA-256 and size.</summary>
-    private async Task<Guid?> FindExistingFileAsync(Guid? originalId, string sha256, long size, CancellationToken cancellationToken)
-    {
-        if (originalId is { } id)
-        {
-            var original = await VisibleFiles.AsNoTracking()
-                .Where(f => f.Id == id && f.SizeBytes == size && f.Sha256Hash == sha256)
-                .Select(f => (Guid?)f.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-            if (original is not null)
-            {
-                return original;
-            }
-        }
-
-        return await VisibleFiles.AsNoTracking()
-            // Compared as stored (lower-case hex, the store's own format), so the Sha256Hash index can serve it.
-            .Where(f => f.SizeBytes == size && f.Sha256Hash == sha256)
-            .OrderBy(f => f.UploadedAtUtc).ThenBy(f => f.Id)
-            .Select(f => (Guid?)f.Id)
-            .FirstOrDefaultAsync(cancellationToken);
     }
 
     private async Task<IReadOnlySet<Guid>> ResolveLinkableFileIds(

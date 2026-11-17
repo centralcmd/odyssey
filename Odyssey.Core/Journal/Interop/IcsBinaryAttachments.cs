@@ -7,11 +7,15 @@ namespace Odyssey.Core.Journal.Interop;
 
 /// <summary>
 /// What an inline (RFC 5545 §3.8.1.1 <c>ENCODING=BASE64;VALUE=BINARY</c>) <c>ATTACH</c> carries besides its bytes.
-/// <see cref="FileId"/> and <see cref="Sha256Hash"/> travel as <c>X-ODYSSEY-*</c> parameters so a re-import into the
-/// same instance can recognise the file it came from instead of storing a second copy; <see cref="FileName"/> uses the
-/// <c>FILENAME</c> parameter and <see cref="Size"/> the <c>SIZE</c> one (both RFC 8607).
+/// <see cref="Id"/> and <see cref="Sha256Hash"/> travel as <c>X-ODYSSEY-*</c> parameters so a re-import into the
+/// same instance can recognise the file or photo it came from instead of storing a second copy; <see cref="FileName"/>
+/// uses the <c>FILENAME</c> parameter and <see cref="Size"/> the <c>SIZE</c> one (both RFC 8607). A library photo is
+/// marked <c>X-ODYSSEY-KIND=PHOTO</c>, names itself by <c>X-ODYSSEY-PHOTO-ID</c> instead of <c>X-ODYSSEY-FILE-ID</c>,
+/// and carries its <c>X-ODYSSEY-TITLE</c> and <c>X-ODYSSEY-CAPTION</c>, so a photo imported new keeps them.
 /// </summary>
-internal sealed record IcsBinaryAttachmentHeader(Guid? FileId, string? FileName, string? ContentType, string? Sha256Hash, long Size);
+internal sealed record IcsBinaryAttachmentHeader(
+    Guid? Id, string? FileName, string? ContentType, string? Sha256Hash, long Size,
+    bool IsPhoto = false, string? Title = null, string? Caption = null);
 
 /// <summary>
 /// Writes inline binary <c>ATTACH</c> properties straight to a stream, base64-encoding and folding the content as it is
@@ -43,9 +47,24 @@ internal static class IcsBinaryAttachmentWriter
         }
 
         builder.Append(";SIZE=").Append(header.Size.ToString(CultureInfo.InvariantCulture));
-        if (header.FileId is { } id)
+        if (header.IsPhoto)
         {
-            builder.Append(";X-ODYSSEY-FILE-ID=").Append(id.ToString("D"));
+            builder.Append(";X-ODYSSEY-KIND=PHOTO");
+        }
+
+        if (header.Id is { } id)
+        {
+            builder.Append(header.IsPhoto ? ";X-ODYSSEY-PHOTO-ID=" : ";X-ODYSSEY-FILE-ID=").Append(id.ToString("D"));
+        }
+
+        if (header.IsPhoto && SafeQuoted(header.Title, foldLineBreaks: true) is { } title)
+        {
+            builder.Append(";X-ODYSSEY-TITLE=\"").Append(title).Append('"');
+        }
+
+        if (header.IsPhoto && SafeQuoted(header.Caption, foldLineBreaks: true) is { } caption)
+        {
+            builder.Append(";X-ODYSSEY-CAPTION=\"").Append(caption).Append('"');
         }
 
         if (SafeToken(header.Sha256Hash) is { } hash)
@@ -126,15 +145,19 @@ internal static class IcsBinaryAttachmentWriter
         return trimmed.All(c => c < 128 && (char.IsLetterOrDigit(c) || "!#$&^_.+-/".Contains(c))) ? trimmed : null;
     }
 
-    // RFC 5545 QSAFE-CHAR: anything but CTLs and DQUOTE. The name is a label, so dropping those loses nothing.
-    private static string? SafeQuoted(string? value)
+    // RFC 5545 QSAFE-CHAR: anything but CTLs and DQUOTE. A file name is a label, so dropping those loses nothing; a
+    // title or caption keeps its words apart by turning each line break into a space (a parameter cannot hold one).
+    private static string? SafeQuoted(string? value, bool foldLineBreaks = false)
     {
         if (string.IsNullOrWhiteSpace(value))
         {
             return null;
         }
 
-        var cleaned = new string(value.Where(c => c != '"' && !char.IsControl(c)).ToArray()).Trim();
+        var cleaned = new string(value
+            .Select(c => foldLineBreaks && c is '\r' or '\n' or '\t' ? ' ' : c)
+            .Where(c => c != '"' && !char.IsControl(c))
+            .ToArray()).Trim();
         return cleaned.Length == 0 ? null : cleaned;
     }
 
@@ -281,6 +304,15 @@ internal sealed class SpooledAttachment
 
     public Guid? OriginalFileId { get; init; }
 
+    /// <summary>Marked <c>X-ODYSSEY-KIND=PHOTO</c>: a library photo, not a file. Its id then names a photo.</summary>
+    public bool IsPhoto { get; init; }
+
+    public Guid? OriginalPhotoId { get; init; }
+
+    public string? Title { get; init; }
+
+    public string? Caption { get; init; }
+
     /// <summary>The <c>X-ODYSSEY-SHA256</c> the producer declared, if any — checked against what arrived.</summary>
     public string? DeclaredSha256 { get; init; }
 
@@ -378,14 +410,16 @@ internal static class IcsAttachmentSpooler
     private const int DecodeChars = 16 * 1024; // multiple of 4
 
     /// <summary>Limits and gates for one <see cref="SpoolAsync"/> run.</summary>
-    /// <param name="AllowAttachments">False refuses the file (<c>403</c>) at its first inline attachment, before a byte
+    /// <param name="AllowAttachments">False refuses the file (<c>403</c>) at its first inline file, before a byte
     /// of it is decoded — a caller who may not import files never makes the server spool them.</param>
+    /// <param name="AllowPhotos">The same for an inline library photo (<c>X-ODYSSEY-KIND=PHOTO</c>); null means
+    /// photos are gated like files (a surface without photos treats one as a file).</param>
     /// <param name="MaxAttachments">Inline attachments one file may carry. Each costs a temp file and an entry, so a
     /// file of many tiny attachments is refused rather than allowed to exhaust inodes and memory.</param>
     /// <param name="SpoolDirectory">Where temp files go; null means <c>ASPNETCORE_TEMP</c>, else the OS temp path.</param>
     public sealed record Options(
         long MaxFileBytes, long MaxTextChars, bool AllowAttachments = true, int MaxAttachments = int.MaxValue,
-        string? SpoolDirectory = null);
+        string? SpoolDirectory = null, bool? AllowPhotos = null);
 
     /// <summary>Temp files older than this are leftovers of a crashed process, swept on the next import.</summary>
     internal static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
@@ -410,7 +444,14 @@ internal static class IcsAttachmentSpooler
                 var headComplete = await ReadHeadAsync(source, head, cancellationToken);
                 if (headComplete && IsInlineAttachment(head, out var parameters))
                 {
-                    if (!options.AllowAttachments)
+                    var isPhoto = IsPhotoKind(parameters);
+                    if (isPhoto && !(options.AllowPhotos ?? options.AllowAttachments))
+                    {
+                        throw new DomainForbiddenException(
+                            "This file carries photos, and importing photos needs permission to read and upload photos.");
+                    }
+
+                    if (!isPhoto && !options.AllowAttachments)
                     {
                         throw new DomainForbiddenException(
                             "This file carries attached files, and importing attached files needs permission to read and upload files.");
@@ -570,8 +611,15 @@ internal static class IcsAttachmentSpooler
             ContentType = Param("FMTTYPE")?.ToLowerInvariant(),
             OriginalFileId = Guid.TryParse(Param("X-ODYSSEY-FILE-ID"), out var id) ? id : null,
             DeclaredSha256 = Param("X-ODYSSEY-SHA256")?.ToLowerInvariant(),
+            IsPhoto = IsPhotoKind(parameters),
+            OriginalPhotoId = Guid.TryParse(Param("X-ODYSSEY-PHOTO-ID"), out var photoId) ? photoId : null,
+            Title = Param("X-ODYSSEY-TITLE"),
+            Caption = Param("X-ODYSSEY-CAPTION"),
         };
     }
+
+    private static bool IsPhotoKind(Dictionary<string, string> parameters) =>
+        parameters.TryGetValue("X-ODYSSEY-KIND", out var kind) && string.Equals(kind.Trim(), "PHOTO", StringComparison.OrdinalIgnoreCase);
 
     // Decodes the rest of the logical line into a temp file. Whatever goes wrong with the content, the line is still
     // consumed to its end, so one bad attachment never derails the parse of the rest of the file.

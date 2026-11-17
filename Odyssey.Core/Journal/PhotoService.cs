@@ -214,6 +214,21 @@ public class PhotoService
     public async Task<ExistingPhoto> UploadAsync(
         FileUpload upload, NewPhotoUpload request, string userId, bool canAutoCreateTags, CancellationToken cancellationToken = default)
     {
+        var photo = await StageUploadAsync(upload, request, userId, canAutoCreateTags, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+
+        var created = await LoadWithDetails(photo.PhotoId, cancellationToken);
+        return await ToDtoAsync(created!, cancellationToken);
+    }
+
+    /// <summary>
+    /// Everything <see cref="UploadAsync"/> does except the save: validated, hashed, duplicate-checked, written to the
+    /// store and staged on this context with its links and its thumbnail job. The caller saves — a VJOURNAL import
+    /// stores a photo in the same save as the entry that links it (centralcmd/odyssey journal follow-up to #511).
+    /// </summary>
+    internal async Task<Photo> StageUploadAsync(
+        FileUpload upload, NewPhotoUpload request, string userId, bool canAutoCreateTags, CancellationToken cancellationToken = default)
+    {
         ArgumentNullException.ThrowIfNull(upload);
         var contentType = await ValidateUploadAsync(upload, cancellationToken);
         ValidateCoordinates(request.CapturedLatitude, request.CapturedLongitude);
@@ -272,10 +287,7 @@ public class PhotoService
         await StageAlbumItemsAsync(photo.PhotoId, links.AlbumIds, now, cancellationToken);
         // The thumbnail job, in the same save as the photo (issue #362 §3.3 step 1). The worker sees it on its next tick.
         await thumbnails.StageEnqueueAsync(photo, cancellationToken);
-        await context.SaveChangesAsync(cancellationToken);
-
-        var created = await LoadWithDetails(photo.PhotoId, cancellationToken);
-        return await ToDtoAsync(created!, cancellationToken);
+        return photo;
     }
 
     /// <summary>

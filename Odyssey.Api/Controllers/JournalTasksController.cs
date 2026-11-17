@@ -163,7 +163,7 @@ public sealed class JournalTasksController : ControllerBase
         {
             await StreamIcsAsync(query, cancellationToken);
         }
-        catch (TaskIcsService.ExportSizeExceededException)
+        catch (Odyssey.Core.Journal.Interop.IcsExportSizeExceededException)
         {
             // The body has started, so no status can be sent: abort, so the download fails rather than ending early.
             HttpContext.Abort();

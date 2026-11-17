@@ -46,9 +46,9 @@ public class DomainExceptionHierarchyGuardTests
         // file and runs no ingest, so no request reaches either.
         "Odyssey.Core.Internet.News.Files.NewsHeadroomException",
         "Odyssey.Core.Internet.News.NewsTransactionRetryException",
-        // A task export that grew past its byte cap after the response had started: no status can be sent any
-        // more, so the controller catches it and aborts the connection — the handler never sees it.
-        "Odyssey.Core.Journal.TaskIcsService+ExportSizeExceededException",
+        // A task or journal export that grew past its byte cap after the response had started: no status can be sent
+        // any more, so the controller catches it and aborts the connection — the handler never sees it.
+        "Odyssey.Core.Journal.Interop.IcsExportSizeExceededException",
     ];
 
     [Fact]

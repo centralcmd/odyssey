@@ -10,6 +10,7 @@ using Microsoft.Net.Http.Headers;
 using Odyssey.Api.Identity;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
+using Odyssey.Core.Journal.Interop;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Swashbuckle.AspNetCore.Annotations;
@@ -156,24 +157,41 @@ public sealed class JournalEntriesController : ControllerBase
     // ---------------------------------------------------------------- VJOURNAL export/import (issue #339)
 
     // Single-entry export. The literal "vjournal" collection route below and this "{id}/vjournal" route
-    // are distinct from the "{id}" GET; ASP.NET Core prefers the literal segment for the collection route.
+    // are distinct from the "{id}" GET; ASP.NET Core prefers the literal segment for the collection route. It streams
+    // like the collection export, because the entry's attached files and photos travel inline.
     [HttpGet("{id}/vjournal", Name = "ExportJournalEntryVJournal")]
     [Authorize(Policy = PermissionClaims.JournalRead)]
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export a single journal entry as an RFC 5545 VJOURNAL .ics file.")]
+    [SwaggerOperation(Summary = "Export a single journal entry as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
     public async Task<IActionResult> ExportSingleVJournal(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var export = await icsService.ExportSingleAsync(id, CanReadContacts(), cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
-        if (export is null)
+        if (await icsService.SummarizeExportAsync(new JournalEntriesQueryParams(), CanLinkFiles(), CanReadPhotos(), id, cancellationToken) is null)
         {
             return this.NotFoundProblem($"Journal entry ID {id} not found.");
         }
 
-        return IcsFile(export);
+        return await StreamVJournalAsync(new JournalEntriesQueryParams(), id, cancellationToken);
     }
+
+    // What the single-entry export would contain, under the same checks; 404 for an unknown entry.
+    [HttpGet("{id}/vjournal/summary", Name = "SummarizeJournalEntryVJournalExport")]
+    [Authorize(Policy = PermissionClaims.JournalRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a single journal entry's VJOURNAL export would contain.")]
+    public async Task<ActionResult<JournalEntryIcsExportSummary>> SummarizeSingleVJournalExport(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        await icsService.SummarizeExportAsync(new JournalEntriesQueryParams(), CanLinkFiles(), CanReadPhotos(), id, cancellationToken)
+            is { } summary
+            ? summary
+            : this.NotFoundProblem($"Journal entry ID {id} not found.");
 
     // Collection export of the current filtered view (or everything). Unlike the list endpoint, archived
     // entries are included when no status is supplied (§5). A matched set larger than the export cap is a
@@ -185,19 +203,46 @@ public sealed class JournalEntriesController : ControllerBase
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export journal entries matching the given filters as an RFC 5545 VJOURNAL .ics file.")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Export journal entries matching the given filters as an RFC 5545 VJOURNAL .ics file, attached files and photos inline.")]
     public async Task<IActionResult> ExportVJournal(
-        [FromQuery] JournalEntriesQueryParams query, CancellationToken cancellationToken = default)
+        [FromQuery] JournalEntriesQueryParams query, CancellationToken cancellationToken = default) =>
+        await StreamVJournalAsync(query, null, cancellationToken);
+
+    // What the collection export would contain, under the same checks (entry cap, byte cap, files.read when an entry
+    // carries an attached file, photos.read when it carries a photo). The client asks first, so a refusal is an
+    // ordinary error and not a failed browser download.
+    [HttpGet("vjournal/summary", Name = "SummarizeJournalEntriesVJournalExport")]
+    [Authorize(Policy = PermissionClaims.JournalRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(JournalEntryIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a VJOURNAL export of the filtered journal view would contain.")]
+    public async Task<ActionResult<JournalEntryIcsExportSummary>> SummarizeVJournalExport(
+        [FromQuery] JournalEntriesQueryParams query, CancellationToken cancellationToken = default) =>
+        (await icsService.SummarizeExportAsync(query, CanLinkFiles(), CanReadPhotos(), null, cancellationToken))!;
+
+    private async Task<IActionResult> StreamVJournalAsync(
+        JournalEntriesQueryParams query, Guid? onlyId, CancellationToken cancellationToken)
     {
-        await icsService.ExportStreamingAsync(query, CanReadContacts(), Response.Body, (fileName, rowCount) =>
+        try
         {
-            Response.Headers.XContentTypeOptions = "nosniff";
-            Response.ContentType = "text/calendar; charset=utf-8";
-            var contentDisposition = new ContentDispositionHeaderValue("attachment");
-            contentDisposition.SetHttpFileName(fileName);
-            Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
-            Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
-        }, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
+            await icsService.ExportStreamingAsync(query, CanReadContacts(), Response.Body, (fileName, rowCount) =>
+            {
+                Response.Headers.XContentTypeOptions = "nosniff";
+                Response.ContentType = "text/calendar; charset=utf-8";
+                var contentDisposition = new ContentDispositionHeaderValue("attachment");
+                contentDisposition.SetHttpFileName(fileName);
+                Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
+                Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
+            }, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead),
+                canReadFiles: CanLinkFiles(), canReadPhotos: CanReadPhotos(), onlyId: onlyId);
+        }
+        catch (IcsExportSizeExceededException)
+        {
+            // The body has started, so no status can be sent: abort, so the download fails rather than ending early.
+            HttpContext.Abort();
+        }
 
         return new EmptyResult();
     }
@@ -241,16 +286,10 @@ public sealed class JournalEntriesController : ControllerBase
         await using var stream = file.OpenReadStream();
         var result = await icsService.ImportAsync(
             stream, file.Length, file.ContentType, userId, CanLinkFiles(), CanReadContacts(), cancellationToken,
-            User.LocationClaims(), CanReadPhotos());
+            User.LocationClaims(), CanReadPhotos(),
+            canCreateFiles: User.HasPermission(PermissionClaims.FilesCreate),
+            canCreatePhotos: User.HasPermission(PermissionClaims.PhotosCreate));
         return Ok(result);
-    }
-
-    // nosniff mirrors the file-download surface: the browser must not re-interpret the body as anything
-    // other than the declared text/calendar (matches the Calendar/Task export headers).
-    private FileContentResult IcsFile(JournalEntryIcsExport export)
-    {
-        Response.Headers.XContentTypeOptions = "nosniff";
-        return File(Encoding.UTF8.GetBytes(export.Content), "text/calendar; charset=utf-8", export.FileName);
     }
 
     /// <summary>
