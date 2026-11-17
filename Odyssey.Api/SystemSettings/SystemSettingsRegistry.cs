@@ -979,8 +979,9 @@ internal static class SystemSettingsRegistry
         // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────
         //
         // Eight ordinary keys and the allow-list, which takes the SECURITY claim: it decides which private addresses
-        // the worker may fetch from, so every change is audited. No cache key yet: the worker and the API resolve
-        // these through the news settings lookup, which reads with the shared TTL. The image size cap also has a
+        // the worker may fetch from, so every change is audited. The eight ints are served by the news settings lookup
+        // on the shared TTL and evict its entry; the allow-list is read live and uncached (§7.9), so it evicts nothing
+        // — a save reaches this host's next fetch at once, the worker's after its own TTL. The image size cap also has a
         // derived ceiling — FileStorage:MaxFileSizeBytes, through NewsImageSizeCeiling — which cannot live in an
         // attribute, so it is the one key here with a Validator.
         new IntSetting
@@ -993,6 +994,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsDefaultFetchIntervalMinutes),
             Read = r => r.NewsDefaultFetchIntervalMinutes,
             Write = (dto, v) => dto.NewsDefaultFetchIntervalMinutes = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1004,6 +1006,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsMaxFeeds),
             Read = r => r.NewsMaxFeeds,
             Write = (dto, v) => dto.NewsMaxFeeds = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1015,6 +1018,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsImageMaxPerArticle),
             Read = r => r.NewsImageMaxPerArticle,
             Write = (dto, v) => dto.NewsImageMaxPerArticle = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1027,6 +1031,7 @@ internal static class SystemSettingsRegistry
             Validator = (value, ceilings) => ceilings.ValidateNewsImageMaxSizeKb(value),
             Read = r => r.NewsImageMaxSizeKb,
             Write = (dto, v) => dto.NewsImageMaxSizeKb = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1038,6 +1043,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsImageStoreMaxGiB),
             Read = r => r.NewsImageStoreMaxGiB,
             Write = (dto, v) => dto.NewsImageStoreMaxGiB = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1049,6 +1055,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsTextStoreMaxGiB),
             Read = r => r.NewsTextStoreMaxGiB,
             Write = (dto, v) => dto.NewsTextStoreMaxGiB = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1060,6 +1067,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsFeedMaxArticlesPerDay),
             Read = r => r.NewsFeedMaxArticlesPerDay,
             Write = (dto, v) => dto.NewsFeedMaxArticlesPerDay = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new IntSetting
         {
@@ -1071,6 +1079,7 @@ internal static class SystemSettingsRegistry
             DefaultValue = Int(SystemSettingsDefaults.NewsFeedMaxImageMbPerDay),
             Read = r => r.NewsFeedMaxImageMbPerDay,
             Write = (dto, v) => dto.NewsFeedMaxImageMbPerDay = v,
+            CacheKeyToEvict = Odyssey.Core.Internet.News.NewsSettingsLookup.CacheKey,
         },
         new StringSetting
         {

@@ -20,6 +20,7 @@ public static class JobRunDetailRegistry
         [typeof(FileAnalysisJobRunDetail)] = typeof(JobRunDetailFileAnalysis),
         [typeof(FileBlobBackfillJobRunDetail)] = typeof(JobRunDetailFileBlobBackfill),
         [typeof(InstrumentPriceSyncJobRunDetail)] = typeof(JobRunDetailInstrumentPriceSync),
+        [typeof(NewsFeedJobRunDetail)] = typeof(JobRunDetailNewsFeedFetch),
     };
 
     public static Type BodyFor(JobRunDetail detail) => Bodies.GetValueOrDefault(detail.GetType(), typeof(JobRunDetailBase));

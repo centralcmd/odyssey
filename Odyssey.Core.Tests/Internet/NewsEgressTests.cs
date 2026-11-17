@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Core.Internet.News;
 using Odyssey.Core.Internet.News.Fetching;
@@ -395,12 +396,19 @@ public class NewsEgressTests
     public void AddNewsReader_registers_the_egress_client()
     {
         var services = new ServiceCollection();
+        // What every host already has: the context, the cache and the store's options (the settings lookup needs them).
+        services.AddDbContext<Odyssey.Context.OdysseyContext>(o => o.UseInMemoryDatabase($"news-reader-{Guid.NewGuid():N}"));
+        services.AddMemoryCache();
+        services.AddOptions<Odyssey.Core.Finance.FileStorageOptions>();
+        services.AddLogging();
         services.AddNewsReader();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true });
 
         var client = provider.GetRequiredService<IHttpClientFactory>().CreateClient(NewsEgress.HttpClientName);
         Assert.Equal(NewsEgress.FeedTimeout, client.Timeout);
         Assert.NotNull(provider.GetRequiredService<NewsConnectGuard>());
+        using var scope = provider.CreateScope();
+        Assert.IsType<NewsSettingsLookup>(scope.ServiceProvider.GetRequiredService<INewsSettingsLookup>());
     }
 
     // ── Body cap (AC 21: gzip bomb) ─────────────────────────────────────────────────────────────────────

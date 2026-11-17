@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Internet.News.Fetching;
 using Odyssey.Core.Internet.News.Files;
+using Odyssey.Core.Internet.News.Jobs;
+using Odyssey.Core.Jobs;
 
 namespace Odyssey.Core.Internet.News;
 
@@ -20,6 +22,9 @@ public static class NewsServiceCollectionExtensions
     public static IServiceCollection AddNewsReader(this IServiceCollection services)
     {
         services.AddSingleton(NewsArticleStorage.Feature);
+        services.TryAddScoped<INewsSettingsLookup, NewsSettingsLookup>();
+        services.TryAddSingleton<INewsCounterWriter, NewsCounterWriter>();
+        services.TryAddSingleton<INewsFetchStateFlags, NewsFetchStateFlags>();
 
         services.TryAddSingleton<INewsDnsResolver, SystemNewsDnsResolver>();
         services.TryAddSingleton<NewsConnectGuard>();
@@ -30,6 +35,25 @@ public static class NewsServiceCollectionExtensions
             })
             .ConfigurePrimaryHttpMessageHandler(provider => NewsEgress.CreateHandler(provider.GetRequiredService<NewsConnectGuard>()))
             .RemoveAllLoggers();
+        return services;
+    }
+
+    /// <summary>
+    /// The fetch job's services (issue #470 §3.4), for <c>Odyssey.Worker</c> (and the tests): the ingestor, the image
+    /// downloader, the purge, the maintenance, the host throttle and the article writer over the store. Call after
+    /// <see cref="AddNewsReader"/>; the host registers <see cref="NewsFeedJob"/> itself with <c>AddPeriodicJob</c>.
+    /// </summary>
+    public static IServiceCollection AddNewsFeedFetching(this IServiceCollection services)
+    {
+        services.AddJobRunRecording();
+        services.TryAddScoped<NewsArticleWriter>();
+        services.TryAddScoped<NewsBucketAllocator>();
+        services.TryAddSingleton<NewsHostThrottleGate>();
+        services.TryAddSingleton<NewsIngestor>();
+        services.TryAddSingleton<NewsFeedFetcher>();
+        services.TryAddSingleton<NewsImageDownloader>();
+        services.TryAddSingleton<NewsFeedPurger>();
+        services.TryAddSingleton<NewsMaintenance>();
         return services;
     }
 }

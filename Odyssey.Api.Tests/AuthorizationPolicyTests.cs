@@ -1009,6 +1009,7 @@ public class AuthorizationPolicyTests
         Assert.Equal([PermissionClaims.WeatherPointsUpdate], claims[Dtos.Application.JobType.Weather]);
         Assert.Equal([PermissionClaims.FileStorageRead], claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
         Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
             && claim != PermissionClaims.FileStorageRead);
@@ -1024,6 +1025,7 @@ public class AuthorizationPolicyTests
         Assert.Equal(PermissionClaims.WeatherPointsRead, claims[Dtos.Application.JobType.Weather]);
         Assert.Equal(PermissionClaims.FileStorageRead, claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
     }
 
     /// <summary>
