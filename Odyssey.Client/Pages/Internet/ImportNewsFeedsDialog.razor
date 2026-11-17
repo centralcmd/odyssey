@@ -1,0 +1,278 @@
+@using Odyssey.Dtos.Internet
+@*
+    ImportNewsFeedsDialog — the OPML import on the Feeds page (issue #509 §3.2–§3.4, amendments v4 and v5; Odyssey
+    Design System · ui_kits/web/ImportNewsFeedsModal.jsx, components/DialogImportNewsFeeds). A sibling of
+    ImportTasksDialog: the same shell and the shared cal-imp-* / cp-imp-busy* classes, plus two news.css rules that let
+    a report row WRAP (.nw-opml-row) and a group list grow without a scroll region (.nw-opml-list).
+
+    States: Compose (with a field error: ComposeInvalid), Importing, Rejected, Stopped, Result.
+      • Importing is NOT dismissible (OdsModal Dismissible=false): no Escape, no scrim, no close button; Cancel is
+        hidden; Import keeps focus as Loading + AriaDisabled. Only the picker block is inert, so the busy block, the
+        alerts and the announcer stay in the accessibility tree. After 30 s, Stop waiting cancels the request.
+      • Rejected and Stopped show an alert ABOVE the kept file, with focus on Import.
+      • Result is the report: three tiles, disclosure groups whose counts are the server's counters, and the notes.
+
+    Every report value is TEXT: titles, tag names and the file name in <bdi>, URLs in <bdi dir="ltr">, never a link and
+    never markup, and a URL's user-info is masked. No report value leaves the dialog; the announcement is counts only.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Dismissible="@(!Importing)"
+          Icon="upload_file" RequiredLegend="false" ReturnFocusToId="@ReturnFocusToId"
+          Title="@TitleContent" Subtitle="@(_phase == Phase.Result ? null : SubtitleContent)" Class="cal-imp-dialog">
+    <ChildContent>
+        @* The dialog's announcer, mounted from its first render (§6.5). *@
+        <OdsLiveAnnouncer @ref="_announcer" />
+
+        @if (_phase == Phase.Result && _result is { } result)
+        {
+            @Report(result)
+        }
+        else
+        {
+            <div class="cal-imp-form">
+                @if (AlertText is { } alert)
+                {
+                    <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
+                }
+
+                @if (Importing)
+                {
+                    <div class="cp-imp-busy nw-opml-busy">
+                        <OdsSpinner Decorative="true" />
+                        <div>
+                            <div class="cp-imp-busy-l">@ImportingText</div>
+                            <div class="cp-imp-busy-s">Checking each address and matching tags.</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="nw-opml-picker" inert="@Importing">
+                    <OdsFieldShell Label="OPML file">
+                        <OdsFileUpload Id="@PickerId" Files="_files" FilesChanged="OnFilesChanged"
+                                       Multiple="false" ShowKinds="false" Compact="true"
+                                       Accept=".opml,.xml,text/x-opml,text/xml,application/xml"
+                                       Error="@_fieldError" Hint="@Hint" />
+                    </OdsFieldShell>
+                </div>
+
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Folders and categories become tags. Feeds you already follow are left unchanged.</span>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="cal-imp-footer">
+            @if (_phase == Phase.Result)
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ImportAnother">Import another file</OdsButton>
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="CloseAsync">Done</OdsButton>
+            }
+            else
+            {
+                @if (!Importing)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync" data-dialog-cancel="true">Cancel</OdsButton>
+                }
+                else if (_slow)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="hourglass_disabled" OnClick="StopWaitingAsync">Stop waiting</OdsButton>
+                }
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton id="@ImportButtonId" Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                           Loading="Importing" AriaDisabled="Importing" OnClick="SubmitAsync">Import</OdsButton>
+            }
+        </div>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleContent => @<text>Import feeds</text>;
+
+    private RenderFragment SubtitleContent => @<text>Add feeds from an OPML file exported by Odyssey or another feed reader. Feeds you already follow are skipped, and new ones start fetching on the next round.</text>;
+
+    private RenderFragment Report(NewsOpmlImportResult r)
+    {
+        var notImported = NotImported(r);
+        var allAdded = r.Feeds > 0 && r.Created == r.Feeds;
+        return @<div class="cal-imp-result" role="group" aria-labelledby="@ResultHeadingId">
+            <h3 class="cal-imp-result-h" id="@ResultHeadingId" tabindex="-1">
+                Imported from <span class="cal-imp-result-cal"><bdi>@_fileName</bdi></span>
+            </h3>
+
+            <div class="cal-imp-stats nw-opml-stats">
+                <div class="cal-imp-stat ok">
+                    <span class="material-icons" aria-hidden="true">add_circle</span>
+                    <div class="cal-imp-stat-body">
+                        <span class="cal-imp-stat-n">@Number(r.Created)</span>
+                        <span class="cal-imp-stat-l">added</span>
+                    </div>
+                </div>
+                <div class="cal-imp-stat upd">
+                    <span class="material-icons" aria-hidden="true">bookmark_added</span>
+                    <div class="cal-imp-stat-body">
+                        <span class="cal-imp-stat-n">@Number(r.AlreadySubscribed)</span>
+                        <span class="cal-imp-stat-l">already subscribed</span>
+                    </div>
+                </div>
+                <div class="@($"cal-imp-stat{(notImported > 0 ? " skip" : "")}")">
+                    <span class="material-icons" aria-hidden="true">@(notImported > 0 ? "rule" : "check_circle")</span>
+                    <div class="cal-imp-stat-body">
+                        <span class="cal-imp-stat-n">@Number(notImported)</span>
+                        <span class="cal-imp-stat-l">not imported</span>
+                    </div>
+                </div>
+            </div>
+
+            @if (r.Feeds == 0)
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>This file doesn't list any feeds.</span>
+                </div>
+            }
+            else if (allAdded)
+            {
+                <div class="cal-imp-clean">
+                    <span class="material-icons" aria-hidden="true">task_alt</span>Every feed in the file was added.
+                </div>
+            }
+            else
+            {
+                <div class="cal-imp-skips">
+                    <div class="cal-imp-skips-head">Feeds, by outcome</div>
+                    @foreach (var group in Groups(r))
+                    {
+                        @Disclosure(group.Id, group.Reason, group.Count, group.Rows.Count, "feeds", group.Neutral, FeedRows(group))
+                    }
+                </div>
+            }
+
+            @if (r.MergedOutlines > 0)
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">merge</span>
+                    <span>@MergedNote(r.MergedOutlines)</span>
+                </div>
+            }
+            @if (r.ItemsTruncated)
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">short_text</span>
+                    <span>Some lists are shortened. The counts include every feed.</span>
+                </div>
+            }
+            @if (r.TagsCreated.Count > 0)
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">local_offer</span>
+                    <span class="nw-opml-wrap">Added @Number(r.TagsCreated.Count) @(r.TagsCreated.Count == 1 ? "tag" : "tags"):
+                        @for (var i = 0; i < r.TagsCreated.Count; i++)
+                        {
+                            @(i > 0 ? ", " : "")<bdi>@r.TagsCreated[i]</bdi>
+                        }
+                    </span>
+                </div>
+            }
+            @if (r.TagsSkippedTotal > 0)
+            {
+                <div class="cal-imp-skips">
+                    @Disclosure("news-opml-g-tags", "Tags not added", r.TagsSkippedTotal, r.TagsSkipped.Count, "tags", false, TagRows(r))
+                </div>
+            }
+            @if (r.Items.Any(i => i.TagsDropped > 0))
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">label_off</span>
+                    <span>@DroppedNote</span>
+                </div>
+            }
+            @if (r.Created > 0)
+            {
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">schedule</span>
+                    <span>New feeds show as Pending until their first fetch. Paused ones are listed under Status: Paused.</span>
+                </div>
+            }
+        </div>;
+    }
+
+    private RenderFragment FeedRows(OutcomeGroup group) => @<text>
+        @foreach (var row in group.Rows)
+        {
+            <li class="cal-imp-skip-item nw-opml-row">
+                <span class="material-icons" aria-hidden="true">@group.Icon</span>
+                <span class="nw-opml-row-main">
+                    <bdi class="nw-opml-title">@(string.IsNullOrWhiteSpace(row.Title) ? "Untitled feed" : row.Title)</bdi>
+                    @Url(row.Url)
+                    @if (group.WithMessage && !string.IsNullOrWhiteSpace(row.Message))
+                    {
+                        <span class="nw-opml-msg">@row.Message</span>
+                    }
+                </span>
+            </li>
+        }
+    </text>;
+
+    private RenderFragment TagRows(NewsOpmlImportResult r) => @<text>
+        @foreach (var tag in r.TagsSkipped)
+        {
+            <li class="cal-imp-skip-item nw-opml-row">
+                <span class="material-icons" aria-hidden="true">label_off</span>
+                <span class="nw-opml-row-main">
+                    <bdi class="nw-opml-title">@tag.Name</bdi>
+                    <span class="nw-opml-msg">@TagReason(tag.Reason)</span>
+                </span>
+            </li>
+        }
+    </text>;
+
+    /// <summary>
+    /// One collapsed group: a button with aria-expanded / aria-controls whose name is the reason, the exact server
+    /// count and its unit ("Address can't be used, 3 feeds"); rows render only while it is open, then "+n more" when
+    /// the count exceeds the rows the (possibly truncated) report carries.
+    /// </summary>
+    private RenderFragment Disclosure(string id, string reason, int count, int rows, string unit, bool neutral, RenderFragment items)
+    {
+        var open = _openGroups.Contains(id);
+        var listId = $"{id}-list";
+        var more = Math.Max(0, count - rows);
+        return @<div class="@($"cal-imp-skip nw-opml-group{(neutral ? " neutral" : "")}{(open ? " open" : "")}")">
+            <button type="button" class="cal-imp-skip-head" aria-expanded="@(open ? "true" : "false")" aria-controls="@listId"
+                    @onclick="@(() => ToggleGroup(id))">
+                <span class="material-icons cal-imp-skip-chev" aria-hidden="true">chevron_right</span>
+                <span class="cal-imp-skip-reason">@reason</span><span class="odc-sr-only">, </span>
+                <span class="cal-imp-skip-count">@Number(count)</span><span class="odc-sr-only">@($" {unit}")</span>
+            </button>
+            <ul id="@listId" class="cal-imp-skip-list nw-opml-list" hidden="@(!open)">
+                @if (open)
+                {
+                    @items
+                    @if (more > 0)
+                    {
+                        <li class="cal-imp-skip-more">+@Number(more) more</li>
+                    }
+                }
+            </ul>
+        </div>;
+    }
+
+    private RenderFragment Url(string? url)
+    {
+        var masked = Mask(url);
+        return @<bdi dir="ltr" class="nw-opml-url">@if (masked is null)
+            {
+                @("(address hidden)")
+            }
+            else if (!masked.Masked)
+            {
+                @masked.Head
+            }
+            else
+            {
+                @masked.Head<span aria-hidden="true">•••</span><span class="odc-sr-only">credentials hidden</span>@masked.Tail
+            }</bdi>;
+    }
+}
