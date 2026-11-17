@@ -34,12 +34,24 @@ public static class NewsBodyReader
     /// <summary>The decompressed feed body cap (§3.4 step 3).</summary>
     public const long MaxFeedBodyBytes = 10L * 1024 * 1024;
 
+    /// <summary>
+    /// The most content codings a response may stack. Each one wraps another decompression stream, and a read
+    /// recurses through every layer, so an unbounded list (a 64 KB header holds thousands) overflows the stack and
+    /// kills the worker process. No real server stacks more than two.
+    /// </summary>
+    public const int MaxContentCodings = 2;
+
     public static async Task<NewsBodyResult> ReadAsync(HttpContent content, long maxBytes, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(content);
         if (content.Headers.ContentLength is { } declared && declared > maxBytes && content.Headers.ContentEncoding.Count == 0)
         {
             return new NewsBodyResult(NewsBodyOutcome.TooLarge, []);
+        }
+
+        if (content.Headers.ContentEncoding.Count(e => e.Trim() is { Length: > 0 } coding && !coding.Equals("identity", StringComparison.OrdinalIgnoreCase)) > MaxContentCodings)
+        {
+            return new NewsBodyResult(NewsBodyOutcome.UnsupportedEncoding, []);
         }
 
         Stream stream = await content.ReadAsStreamAsync(cancellationToken);

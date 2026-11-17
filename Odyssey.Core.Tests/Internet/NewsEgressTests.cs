@@ -68,6 +68,7 @@ public class NewsEgressTests
     [InlineData("192.0.0.192")]
     [InlineData("fd00:ec2::254")]
     [InlineData("100.100.100.200")]
+    [InlineData("168.63.129.16")]
     [InlineData("240.0.0.1")]
     [InlineData("255.255.255.255")]
     [InlineData("::ffff:169.254.169.254")]
@@ -97,6 +98,31 @@ public class NewsEgressTests
         Assert.Equal(NewsEgressRefusal.None, NewsEgressPolicy.CheckUrl(new Uri("http://10.0.0.1/feed"), Context(feedHost: "10.0.0.1", grants: "10.0.0.1")));
         Assert.Equal(NewsEgressRefusal.HardDeniedAddress, NewsEgressPolicy.CheckUrl(new Uri("http://[fe80::1]/"), Context(feedHost: "fe80::1", grants: "[fe80::1]")));
         Assert.Throws<NewsEgressRefusedException>(() => NewsEgress.CreateRequest(new Uri("http://169.254.169.254/latest/meta-data"), Context(feedHost: "169.254.169.254")));
+    }
+
+    [Theory]
+    [InlineData("http://2130706433/")]
+    [InlineData("http://0x7f.0.0.1/")]
+    [InlineData("http://0177.0.0.1/")]
+    [InlineData("http://127.1/")]
+    [InlineData("http://[::ffff:127.0.0.1]/")]
+    [InlineData("http://[0:0:0:0:0:ffff:7f00:1]/")]
+    public void AC21_an_obfuscated_loopback_literal_is_refused_before_any_connection(string url)
+    {
+        var uri = new Uri(url);
+        Assert.Equal(NewsEgressRefusal.PrivateAddress, NewsEgressPolicy.CheckUrl(uri, Context(feedHost: NewsUrlKey.CanonicalHost(uri)!)));
+        Assert.Throws<NewsEgressRefusedException>(() => NewsEgress.CreateRequest(uri, Context(feedHost: NewsUrlKey.CanonicalHost(uri)!)));
+    }
+
+    [Theory]
+    [InlineData("localhost")]
+    [InlineData("localhost.")]
+    public void AC21_a_name_resolving_to_loopback_is_refused_at_connect_time(string host)
+    {
+        // A name is not refused by the URL check; its resolved addresses are, by the connect-time check.
+        Assert.Equal(NewsEgressRefusal.None, NewsEgressPolicy.CheckUrl(new Uri($"http://{host}/"), Context(feedHost: host)));
+        Assert.Equal(NewsEgressRefusal.PrivateAddress, NewsEgressPolicy.CheckAddress(IPAddress.Loopback, host, Context(feedHost: host)));
+        Assert.Equal(NewsEgressRefusal.PrivateAddress, NewsEgressPolicy.CheckAddress(IPAddress.IPv6Loopback, host, Context(feedHost: host)));
     }
 
     // ── Ports and schemes ────────────────────────────────────────────────────────────────────────────────
@@ -437,6 +463,50 @@ public class NewsEgressTests
         var result = await NewsBodyReader.ReadAsync(bomb, NewsBodyReader.MaxFeedBodyBytes, CancellationToken.None);
         Assert.Equal(NewsBodyOutcome.TooLarge, result.Outcome);
         Assert.Empty(result.Body);
+    }
+
+    [Fact]
+    public async Task Thousands_of_stacked_content_codings_are_refused_before_any_stream_is_built()
+    {
+        // Each coding wraps another decompression stream; unbounded, a read through them overflows the stack (PR #507).
+        using var stacked = new ByteArrayContent([1, 2, 3]);
+        for (var i = 0; i < 5000; i++)
+        {
+            stacked.Headers.ContentEncoding.Add("gzip");
+        }
+
+        var result = await NewsBodyReader.ReadAsync(stacked, NewsBodyReader.MaxFeedBodyBytes, CancellationToken.None);
+        Assert.Equal(NewsBodyOutcome.UnsupportedEncoding, result.Outcome);
+        Assert.Empty(result.Body);
+    }
+
+    [Fact]
+    public async Task Two_stacked_codings_decode_and_a_third_is_refused()
+    {
+        var payload = Encoding.UTF8.GetBytes("<rss/>");
+        var twice = Compress(Compress(payload));
+        using var two = new ByteArrayContent(twice);
+        two.Headers.ContentEncoding.Add("gzip");
+        two.Headers.ContentEncoding.Add("gzip");
+        Assert.Equal(payload, (await NewsBodyReader.ReadAsync(two, NewsBodyReader.MaxFeedBodyBytes, CancellationToken.None)).Body);
+
+        using var three = new ByteArrayContent(Compress(twice));
+        three.Headers.ContentEncoding.Add("gzip");
+        three.Headers.ContentEncoding.Add("identity");
+        three.Headers.ContentEncoding.Add("gzip");
+        three.Headers.ContentEncoding.Add("gzip");
+        Assert.Equal(NewsBodyOutcome.UnsupportedEncoding, (await NewsBodyReader.ReadAsync(three, NewsBodyReader.MaxFeedBodyBytes, CancellationToken.None)).Outcome);
+
+        static byte[] Compress(byte[] data)
+        {
+            using var buffer = new MemoryStream();
+            using (var gzip = new GZipStream(buffer, CompressionLevel.Fastest, leaveOpen: true))
+            {
+                gzip.Write(data);
+            }
+
+            return buffer.ToArray();
+        }
     }
 
     [Fact]

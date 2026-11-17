@@ -30,6 +30,7 @@ public static class NewsAddressClassifier
         (V4(169, 254, 0, 0), 16),
         (V4(192, 0, 0, 0), 24),
         (V4(100, 100, 100, 200), 32),
+        (V4(168, 63, 129, 16), 32), // Azure WireServer: instance metadata and the guest agent channel.
         (V4(240, 0, 0, 0), 4),
     ];
 
