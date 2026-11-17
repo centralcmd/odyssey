@@ -17,7 +17,7 @@ namespace Odyssey.Client.Tests;
 /// <summary>
 /// System settings → News (issue #473 §3.6, §5.4, AC 23; issue #508 §8.5, AC 35): eleven rows, ten without the security
 /// claim, every bound from the API, the image size bounded by the published ceiling, and the allow-list's
-/// confirm-before-save. The two OPML import rows follow the import caps: the entry cap on the ordinary claim, the size
+/// confirm-before-save. The two OPML import rows close the group (issue #509 §4.2, AC 20), the size cap first: the entry cap on the ordinary claim, the size
 /// cap on the security one (amendment v5).
 /// </summary>
 [Collection(SettingsPageCollection.Name)]
@@ -27,7 +27,7 @@ public class NewsSettingsRowsTests : IDisposable
     [
         "newsDefaultFetchIntervalMinutes", "newsMaxFeeds", "newsImageMaxPerArticle", "newsImageMaxSizeKb",
         "newsImageStoreMaxGiB", "newsTextStoreMaxGiB", "newsFeedMaxArticlesPerDay", "newsFeedMaxImageMbPerDay",
-        "newsOpmlMaxImportEntries", "newsOpmlMaxImportMegabytes", Settings.NewsAllowListKey,
+        Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes", "newsOpmlMaxImportEntries",
     ];
 
     public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
@@ -48,6 +48,24 @@ public class NewsSettingsRowsTests : IDisposable
             item => Assert.Equal(Settings.SettingClaim.Count, item.Claim));
     }
 
+    [Fact] // issue #509 AC 20: §4.2's titles, help, icons, controls and bounds
+    public void The_opml_rows_close_the_group_as_the_spec_words_them()
+    {
+        var items = Settings.Sections.Single(s => s.Group == "News").Items;
+        var size = items[^2];
+        var entries = items[^1];
+
+        Assert.Equal(("newsOpmlMaxImportMegabytes", "sd_storage", "Maximum OPML import file size"), (size.Key, size.Icon, size.Title));
+        Assert.Equal("Largest OPML file the Feeds page accepts for import. Above ~64 MB, also raise the reverse proxy's body-size limit.", size.Description);
+        Assert.Equal(Settings.SettingControl.Size, size.Control);
+        Assert.Equal((SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax), (size.Min, size.Max));
+
+        Assert.Equal(("newsOpmlMaxImportEntries", "file_upload", "Maximum feeds per OPML import"), (entries.Key, entries.Icon, entries.Title));
+        Assert.Equal("Most distinct feeds one OPML file may list. Feeds beyond the feed limit are reported, not added.", entries.Description);
+        Assert.Equal(Settings.SettingControl.Number, entries.Control);
+        Assert.Equal((SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax), (entries.Min, entries.Max));
+    }
+
     [Fact]
     public async Task An_administrator_sees_eleven_rows()
     {
@@ -66,7 +84,7 @@ public class NewsSettingsRowsTests : IDisposable
 
         var page = ctx.Render<Settings>();
 
-        Assert.Equal(NewsKeys[..10], Rendered(page));
+        Assert.Equal(NewsKeys.Where(k => k != Settings.NewsAllowListKey), Rendered(page));
         Assert.DoesNotContain(Settings.NewsAllowListAdvisory, page.Markup, StringComparison.Ordinal);
     }
 
