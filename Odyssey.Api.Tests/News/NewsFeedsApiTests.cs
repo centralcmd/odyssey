@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +24,8 @@ public sealed class NewsFeedsApiTests
     [Fact]
     public async Task AC78_Create_inserts_the_fetch_state_and_counters_in_the_same_save_and_is_due_at_once()
     {
-        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var time = new FakeTimeProvider(new DateTimeOffset(Base));
+        await using var factory = new OdysseyApiFactory(AllNewsClaims, configureServices: s => s.Replace(ServiceDescriptor.Singleton<TimeProvider>(time)));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsJsonAsync(Feeds, NewFeed());
@@ -35,7 +39,7 @@ public sealed class NewsFeedsApiTests
         {
             var state = await context.NewsFeedFetchStates.SingleAsync(s => s.NewsFeedId == feed.Id);
             Assert.NotEqual(Guid.Empty, state.FetchFence);
-            Assert.True(state.NextFetchAtUtc <= DateTime.UtcNow);
+            Assert.Equal(Base, state.NextFetchAtUtc);
             var counter = await context.NewsFeedCounters.SingleAsync(c => c.NewsFeedId == feed.Id);
             Assert.Equal((0, 0), (counter.ArticleCount, counter.UnreadCount));
         });

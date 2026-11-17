@@ -100,7 +100,6 @@ public sealed class NewsFeedPurger(
             {
                 long imageBytes = 0;
                 long textBytes = 0;
-                var unread = 0;
                 foreach (var articleId in articleIds)
                 {
                     if (Now - chunkStarted >= NewsJobTiming.PurgeChunkBudget && imageBytes + textBytes > 0)
@@ -117,7 +116,6 @@ public sealed class NewsFeedPurger(
                     context.NewsArticleRevisions.RemoveRange(await context.NewsArticleRevisions.Where(r => r.NewsArticleId == articleId).ToListAsync(cancellationToken));
                     context.NewsArticleTags.RemoveRange(await context.NewsArticleTags.Where(t => t.NewsArticleId == articleId).ToListAsync(cancellationToken));
                     var article = await context.NewsArticles.FirstAsync(a => a.NewsArticleId == articleId, cancellationToken);
-                    unread += article.IsRead ? 0 : 1;
                     context.NewsArticles.Remove(article);
                 }
 

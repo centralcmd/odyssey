@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Time.Testing;
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.EntityFrameworkCore;
@@ -137,10 +140,14 @@ public sealed class NewsTagsStatusApiTests
     [Fact]
     public async Task The_manual_run_executes_inline_under_Testing_and_marks_every_eligible_feed_due()
     {
-        await using var factory = new OdysseyApiFactory([.. AllNewsClaims, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var now = Base.AddDays(1);
+        var time = new FakeTimeProvider(new DateTimeOffset(now));
+        await using var factory = new OdysseyApiFactory(
+            [.. AllNewsClaims, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate],
+            configureServices: s => s.Replace(ServiceDescriptor.Singleton<TimeProvider>(time)));
         var due = await factory.SeedFeedAsync(url: "https://a.example.org/rss");
         var paused = await factory.SeedFeedAsync(url: "https://b.example.org/rss", active: false);
-        var recent = await factory.SeedFeedAsync(url: "https://c.example.org/rss", state: s => s.LastFetchAttemptAtUtc = DateTime.UtcNow);
+        var recent = await factory.SeedFeedAsync(url: "https://c.example.org/rss", state: s => s.LastFetchAttemptAtUtc = now.AddMinutes(-1));
         using var client = factory.CreateClient();
 
         var response = await client.PostAsync("/api/background-jobs/NewsFeedFetch/runs", null);
