@@ -435,29 +435,9 @@ public sealed class NewsFeedJob(
     /// </summary>
     public async Task<int> MarkDueAsync(CancellationToken cancellationToken)
     {
-        var now = Now;
-        var cutoff = now - NewsJobTiming.ManualRunFloor;
-        var marked = 0;
         await using var scope = scopes.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        var eligible = await (from state in context.NewsFeedFetchStates.AsNoTracking()
-                              join feed in context.NewsFeeds.AsNoTracking() on state.NewsFeedId equals feed.NewsFeedId
-                              where feed.IsActive && feed.ArchivedAtUtc == null && feed.DeletionRequestedAtUtc == null
-                                  && state.QuarantinedAtUtc == null
-                                  && (state.LastFetchAttemptAtUtc == null || state.LastFetchAttemptAtUtc <= cutoff)
-                              orderby state.NewsFeedId
-                              select state.NewsFeedId).ToListAsync(cancellationToken);
-        foreach (var chunk in eligible.Chunk(100))
-        {
-            foreach (var feedId in chunk)
-            {
-                marked += await flags.RequestRefreshAsync(context, feedId, now, cancellationToken) ? 1 : 0;
-            }
-
-            context.ChangeTracker.Clear();
-        }
-
-        return marked;
+        return await NewsManualRun.MarkDueAsync(context, flags, Now, cancellationToken);
     }
 
     /// <summary>At startup, overdue feeds (fetched before) are spread over the next 10 minutes (§9.3).</summary>
