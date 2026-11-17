@@ -25,6 +25,16 @@ public partial class OdsModal
     /// <summary>Called on Esc, scrim click, and the close button. Omit to hide the close button.</summary>
     [Parameter] public EventCallback OnClose { get; set; }
 
+    /// <summary>
+    /// Whether Escape, a scrim click and the header close button may close the dialog (issue #509 §4.1). Default
+    /// <c>true</c>, which changes nothing. <c>false</c> passes <c>CloseOnEscapeKey = false</c> and
+    /// <c>BackdropClick = false</c> to the dialog and drops the close button, so the dialog cannot close itself
+    /// while, for example, an upload is in flight. A change while open is re-applied to the open dialog.
+    /// </summary>
+    [Parameter] public bool Dismissible { get; set; } = true;
+
+    private bool CanDismiss => OnClose.HasDelegate && Dismissible;
+
     /// <summary>Right-aligned footer actions (typically OdsButtons).</summary>
     [Parameter] public RenderFragment? Footer { get; set; }
 
@@ -157,16 +167,39 @@ public partial class OdsModal
         {
             MaxWidth = Wide ? MaxWidth.ExtraExtraLarge : MaxWidth.Small,
             FullWidth = true,
-            CloseOnEscapeKey = OnClose.HasDelegate,
-            BackdropClick = OnClose.HasDelegate,
+            CloseOnEscapeKey = CanDismiss,
+            BackdropClick = CanDismiss,
             // Without it MudDialog still renders an empty title element and points aria-labelledby
             // at it, so a header-less dialog is named "" and AriaLabel never reaches the reader.
             NoHeader = HideHeader,
         };
     }
 
+    // The open dialog snapshots its options when it is shown (MudDialog.ShowAsync), so a later change to
+    // Dismissible has to be pushed to the live instance; the probe in the dialog body hands it over, and the
+    // instance's own effective options say whether it is out of date.
+    private IMudDialogInstance? _instance;
+
+    private void OnInstance(IMudDialogInstance? instance) => _instance = instance;
+
+    private async Task ApplyDismissalAsync()
+    {
+        if (_instance is not { } instance || !Open)
+            return;
+
+        var live = instance.Options;
+        if ((live.CloseOnEscapeKey ?? false) == CanDismiss && (live.BackdropClick ?? false) == CanDismiss)
+            return;
+
+        try
+        { await instance.SetOptionsAsync(_options); }
+        catch (ObjectDisposedException) { /* closed meanwhile */ }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await ApplyDismissalAsync();
+
         // The teleported dialog body is in the DOM by now — focus its first field (DS Modal behavior).
         if (focusPending)
         {
@@ -211,4 +244,17 @@ public partial class OdsModal
     }
 
     private Task CloseAsync() => OnVisibleChanged(false);
+}
+
+/// <summary>
+/// Renders nothing; hands <see cref="OdsModal"/> the <see cref="IMudDialogInstance"/> its body is shown in, so a
+/// change to <see cref="OdsModal.Dismissible"/> reaches the open dialog.
+/// </summary>
+public sealed class OdsModalInstanceProbe : ComponentBase
+{
+    [CascadingParameter] private IMudDialogInstance? Instance { get; set; }
+
+    [Parameter] public Action<IMudDialogInstance?>? Register { get; set; }
+
+    protected override void OnParametersSet() => Register?.Invoke(Instance);
 }
