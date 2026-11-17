@@ -23,7 +23,6 @@ public class TaskIcsApiTests
     private const string Path = "/api/tasks";
     private const string IcsPath = "/api/tasks/ics";
 
-
     private static readonly string[] ReadOnly = [PermissionClaims.TasksRead];
 
     private static readonly string[] ReadWrite =
@@ -898,8 +897,6 @@ public class TaskIcsApiTests
         Assert.Contains("Description", group.Reason);
     }
 
-    // ------------------------------------------------------------------ helpers
-
     // ------------------------------------------------------------------ attached files travel inline
 
     [Fact]
@@ -1099,10 +1096,68 @@ public class TaskIcsApiTests
         Assert.Equal(4, result.SkippedAttachmentCount);
         Assert.Equal(0, result.StoredFileCount);
         Assert.Empty(await FilesAsync(factory));
-        var reasons = result.Skipped.Select(g => g.Reason).ToList();
-        Assert.Contains("Attached file is damaged (not valid base64).", reasons);
-        Assert.Contains("Attached file does not match its checksum.", reasons);
-        Assert.Contains(reasons, r => r.StartsWith("Attached file is of a type uploads do not accept", StringComparison.Ordinal));
+        // Each case is pinned to its own task through the group's sample titles, so one refusal silently turning into
+        // another (or into an accepted file) fails here.
+        string[] SamplesFor(string reasonStart) =>
+            [.. Assert.Single(result.Skipped, g => g.Reason.StartsWith(reasonStart, StringComparison.Ordinal)).SampleTitles.Order()];
+        Assert.Equal(["Damaged"], SamplesFor("Attached file is damaged"));
+        Assert.Equal(["Checksum"], SamplesFor("Attached file does not match its checksum"));
+        Assert.Equal(["Executable", "Mislabelled"], SamplesFor("Attached file is of a type uploads do not accept"));
+    }
+
+    [Fact]
+    public async Task Import_NewInlineFile_OverTheAdminUploadCap_IsSkipped_ButAMatchingStoredFileIsStillReused()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
+        var big = Encoding.UTF8.GetBytes(new string('a', 1536 * 1024)); // 1.5 MB, over the 1 MB upload cap
+        var stored = Encoding.UTF8.GetBytes(new string('b', 1536 * 1024));
+        var storedId = await SeedFileAsync(factory, "stored.txt", "text/plain", stored);
+
+        var result = await ImportAsync(client, Vcalendar(
+            Vtodo("u1", "SUMMARY:New big", InlineAttach(big, "big.txt", "text/plain")),
+            Vtodo("u2", "SUMMARY:Known big", InlineAttach(stored, "stored.txt", "text/plain"))));
+
+        Assert.Equal((2, 0, 1, 1), (result.ImportedCount, result.StoredFileCount, result.ReusedFileCount, result.SkippedAttachmentCount));
+        var group = Assert.Single(result.Skipped);
+        Assert.Contains("1 MB upload limit", group.Reason);
+        Assert.Equal(["New big"], group.SampleTitles);
+        Assert.Equal(storedId, Assert.Single(await FilesAsync(factory)).Id);
+    }
+
+    [Fact]
+    public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_IsAborted_NotTruncated()
+    {
+        // The pre-flight check judges attached files exactly, but task text only as it is written. Text alone over the
+        // cap must end the response abnormally, so a browser reports a failed download instead of saving part of it.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.TaskIcsMaxExportMegabytes, "1");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            for (var i = 0; i < 400; i++)
+            {
+                context.JournalTasks.Add(new JournalTask
+                {
+                    ExternalUid = $"bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000), Position = i,
+                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(IcsPath + "/summary")).StatusCode); // nothing to judge up front
+        var failure = await Record.ExceptionAsync(async () =>
+        {
+            using var response = await client.GetAsync(IcsPath);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Fail($"The export completed ({body.Length} chars) instead of being aborted.");
+        });
+
+        Assert.True(failure is HttpRequestException or IOException or OperationCanceledException, failure?.ToString());
     }
 
     [Fact]
@@ -1117,6 +1172,8 @@ public class TaskIcsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(await FilesAsync(factory));
     }
+
+    // ------------------------------------------------------------------ helpers
 
     private static int CountOccurrences(string haystack, string needle)
     {

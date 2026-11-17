@@ -52,6 +52,7 @@ public class TaskIcsService
     private readonly StoredFileWriter? fileWriter;
     private readonly FileValidationService fileValidation;
     private readonly long transportFileCeiling;
+    private readonly IUploadLimitsLookup? uploadLimits;
 
     // journalLimits is a SECOND lookup, newly injected in issue #434 to fix defect A — see the same
     // note on JournalEntryIcsService: this service enforced a hardcoded 50 while the administrator's
@@ -62,8 +63,10 @@ public class TaskIcsService
         OdysseyContext context, IFileLookup files, IImportExportLimitsLookup limits,
         IJournalLimitsLookup journalLimits, ILogger<TaskIcsService> logger, TimeProvider? timeProvider = null,
         StoredFileContentSource? fileContent = null, StoredFileWriter? fileWriter = null,
-        FileValidationService? fileValidation = null, IOptions<FileStorageOptions>? fileStorageOptions = null)
+        FileValidationService? fileValidation = null, IOptions<FileStorageOptions>? fileStorageOptions = null,
+        IUploadLimitsLookup? uploadLimits = null)
     {
+        this.uploadLimits = uploadLimits;
         this.context = context;
         this.files = files;
         this.limits = limits;
@@ -362,7 +365,10 @@ public class TaskIcsService
 
     /// <summary>Upper bound on the calendar's own text once inline files are lifted out — what <c>Ical.Net</c> parses in
     /// memory. Attached files are bounded by the byte cap and disk, never by this.</summary>
-    internal const long MaxCalendarTextChars = 256L * 1024 * 1024;
+    internal const long MaxCalendarTextChars = 64L * 1024 * 1024;
+
+    /// <summary>Inline attachments one import may carry: each costs a temp file and an entry until the import ends.</summary>
+    internal const int MaxInlineAttachments = 10_000;
 
     /// <summary>
     /// Imports a VTODO <c>.ics</c>. Inline (base64) attachments are spooled to disk by a streaming pre-pass, then each
@@ -392,15 +398,13 @@ public class TaskIcsService
         // One inline file can be no larger than the whole import, nor than what the file store accepts at all.
         var maxFileBytes = Math.Min(maxImportBytes, transportFileCeiling);
         using var reader = ImportFileReader.OpenBoundedTextReader(icsFile, maxImportBytes, ".ics");
+        // The file claims are checked by the spooler at the first inline attachment, before any of it is decoded.
         using var spool = await IcsAttachmentSpooler.SpoolAsync(
-            reader, maxFileBytes, Math.Min(maxImportBytes, MaxCalendarTextChars), cancellationToken);
-
-        if (spool.Count > 0 && !(canLinkFiles && canCreateFiles))
-        {
-            throw new DomainForbiddenException(
-                $"This file carries {spool.Count} attached {(spool.Count == 1 ? "file" : "files")}, and importing attached "
-                + "files needs permission to read and upload files.");
-        }
+            reader,
+            new IcsAttachmentSpooler.Options(
+                maxFileBytes, Math.Min(maxImportBytes, MaxCalendarTextChars),
+                AllowAttachments: canLinkFiles && canCreateFiles, MaxAttachments: MaxInlineAttachments),
+            cancellationToken);
 
         IcalCalendar? parsed;
         try
@@ -464,7 +468,11 @@ public class TaskIcsService
         var importLimits = await limits.GetAsync(cancellationToken);
         var maxLinksPerKind = (await journalLimits.GetAsync(cancellationToken)).JournalTaskMaxLinksPerKind;
         var skipped = new ImportSkipCollector(importLimits.ImportMaxSamplesPerSkipReason);
-        var inlineFiles = new InlineFileResolver(this, userId, maxFileBytes, skipped);
+        // A file stored new by this import is an upload like any other, so the admin's per-file upload cap applies to it;
+        // one matched to a stored file is not stored again, so only the import's own caps bound that.
+        var maxNewFileBytes = Math.Min(maxFileBytes,
+            uploadLimits is null ? long.MaxValue : (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes);
+        var inlineFiles = new InlineFileResolver(this, userId, maxFileBytes, maxNewFileBytes, skipped);
         var imported = 0;
         var updated = 0;
         var skippedTagLinks = 0;
@@ -620,7 +628,8 @@ public class TaskIcsService
     /// Turns spooled inline attachments into file ids, once per attachment and once per distinct content: a file
     /// stored earlier in the same import is reused by its hash, before it has even been saved.
     /// </summary>
-    private sealed class InlineFileResolver(TaskIcsService owner, string userId, long maxFileBytes, ImportSkipCollector skipped)
+    private sealed class InlineFileResolver(
+        TaskIcsService owner, string userId, long maxFileBytes, long maxNewFileBytes, ImportSkipCollector skipped)
     {
         private readonly Dictionary<string, Guid?> byReference = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Guid> storedByContent = new(StringComparer.Ordinal);
@@ -665,6 +674,12 @@ public class TaskIcsService
                 return existingId;
             }
 
+            if (attachment.Size > maxNewFileBytes)
+            {
+                skipped.Add($"Attached file is larger than the {maxNewFileBytes / (1024 * 1024)} MB upload limit, and no stored file matches it.", taskTitle);
+                return null;
+            }
+
             var path = attachment.Path!;
             var fileName = owner.fileValidation.SanitizeFileName(attachment.FileName ?? string.Empty);
             if (string.IsNullOrWhiteSpace(fileName))
@@ -680,9 +695,9 @@ public class TaskIcsService
             var contentType = attachment.ContentType ?? "application/octet-stream";
             try
             {
-                // The same checks an upload passes — allow-list, magic bytes, name — so an import is never a way
-                // round them. The size cap here is the import's own: the file already arrived inside it.
-                owner.fileValidation.ValidateFile(new FileUpload(fileName, contentType, attachment.Size, () => File.OpenRead(path)), maxFileBytes);
+                // The same checks an upload passes — allow-list, magic bytes, name, the per-file cap — so an import is
+                // never a way round them.
+                owner.fileValidation.ValidateFile(new FileUpload(fileName, contentType, attachment.Size, () => File.OpenRead(path)), maxNewFileBytes);
             }
             catch (DomainValidationException)
             {
@@ -725,7 +740,7 @@ public class TaskIcsService
         if (originalId is { } id)
         {
             var original = await VisibleFiles.AsNoTracking()
-                .Where(f => f.Id == id && f.SizeBytes == size && f.Sha256Hash.ToLower() == sha256)
+                .Where(f => f.Id == id && f.SizeBytes == size && f.Sha256Hash == sha256)
                 .Select(f => (Guid?)f.Id)
                 .FirstOrDefaultAsync(cancellationToken);
             if (original is not null)
@@ -735,7 +750,8 @@ public class TaskIcsService
         }
 
         return await VisibleFiles.AsNoTracking()
-            .Where(f => f.SizeBytes == size && f.Sha256Hash.ToLower() == sha256)
+            // Compared as stored (lower-case hex, the store's own format), so the Sha256Hash index can serve it.
+            .Where(f => f.SizeBytes == size && f.Sha256Hash == sha256)
             .OrderBy(f => f.UploadedAtUtc).ThenBy(f => f.Id)
             .Select(f => (Guid?)f.Id)
             .FirstOrDefaultAsync(cancellationToken);

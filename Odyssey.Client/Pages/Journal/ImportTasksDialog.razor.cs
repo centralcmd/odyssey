@@ -18,6 +18,10 @@ public partial class ImportTasksDialog
     // The picker's container: the browser keeps the picked File for it, so a large file uploads straight from disk.
     private const string UploadId = "task-import-upload";
 
+    // The most the typed-client fallback reads into the WASM heap (its arrays top out near 2 GB, and the heap well
+    // before that once copied). Only reached when the browser holds no handle to the picked file.
+    private const long FallbackMaxBytes = 512L * 1024 * 1024;
+
     private IReadOnlyList<OdsUploadFile> _files = [];
     private string? _fileError;
     private string? _error;
@@ -123,7 +127,7 @@ public partial class ImportTasksDialog
         }
         else if (file.Size > _maxImportBytes)
         {
-            _fileError = $"That file is larger than the {_maxImportMb} MB limit.";
+            _fileError = $"That file is larger than the {ByteSize.Format(_maxImportBytes)} limit.";
         }
 
         if (_fileError is not null)
@@ -139,8 +143,16 @@ public partial class ImportTasksDialog
             // The browser posts the picked file itself when it can — an import carrying attached files can be far
             // larger than the WASM heap. The typed client is the fallback, with the same effective value used for the
             // pre-check above and for OpenReadStream (issue #343 fe C2).
-            var outcome = await NativeTransfer.TryUploadAsync<TaskIcsImportResult>(UploadId, file!, Tasks.ImportIcsUrl, "text/calendar")
-                ?? await Tasks.ImportIcsAsync(file!.ToApiUpload(_maxImportBytes));
+            var native = await NativeTransfer.TryUploadAsync<TaskIcsImportResult>(UploadId, file!, Tasks.ImportIcsUrl, "text/calendar");
+            if (native is null && file!.Size > FallbackMaxBytes)
+            {
+                // The typed client reads the whole file into the WASM heap, which cannot hold a very large one.
+                _error = $"This browser could not stream the file, and files over {ByteSize.Format(FallbackMaxBytes)} "
+                    + "cannot be read into the page. Choose the file again with Browse, then import.";
+                return;
+            }
+
+            var outcome = native ?? await Tasks.ImportIcsAsync(file!.ToApiUpload(_maxImportBytes));
             if (!outcome.IsSuccess)
             {
                 _error = outcome.Error ?? "The file could not be imported.";

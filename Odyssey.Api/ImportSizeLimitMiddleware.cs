@@ -40,15 +40,18 @@ public sealed class ImportSizeLimitAttribute(ImportSurface surface) : Attribute
 public sealed class UploadSizeLimitAttribute : Attribute;
 
 /// <summary>
-/// Tags an action that may receive a body up to the configured transport ceiling
-/// (<c>FileStorage:MaxFileSizeBytes</c>) without a per-request cap of its own — the photo upload, whose service
-/// answers an over-cap file with a 413 naming the admin cap. Every other action that carries neither this nor
-/// <see cref="ImportSizeLimitAttribute"/>/<see cref="UploadSizeLimitAttribute"/> is held to
-/// <see cref="FileStorageOptions.DefaultMaxRequestBodyBytes"/>, so raising the ceiling for large files never lets a
-/// JSON endpoint — sign-in included — accept a multi-gigabyte body.
+/// Tags an upload whose TRANSPORT limit is the admin upload cap (plus the envelope headroom) while its multipart
+/// limit stays at the ceiling — the photo upload, whose service answers a file just over the cap with a 413 naming
+/// it (#428 §5.1), which the multipart reader's own refusal inside model binding could not. A body well over the cap
+/// is refused by the transport before it is spooled, also as a 413 naming the cap.
+/// <para>
+/// Every action that carries none of this, <see cref="ImportSizeLimitAttribute"/> and
+/// <see cref="UploadSizeLimitAttribute"/> is held to <see cref="FileStorageOptions.DefaultMaxRequestBodyBytes"/>, so
+/// raising the ceiling for large files never lets a JSON endpoint — sign-in included — accept a multi-gigabyte body.
+/// </para>
 /// </summary>
 [AttributeUsage(AttributeTargets.Method)]
-public sealed class TransportCeilingBodyAttribute : Attribute;
+public sealed class UploadTransportLimitAttribute : Attribute;
 
 /// <summary>
 /// Applies the configured, admin-editable per-surface byte cap to the request transport — the
@@ -78,12 +81,16 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
         var uploadAttribute = endpoint?.Metadata.GetMetadata<UploadSizeLimitAttribute>();
         if (importAttribute is null && uploadAttribute is null)
         {
-            if (endpoint?.Metadata.GetMetadata<TransportCeilingBodyAttribute>() is null)
+            if (endpoint?.Metadata.GetMetadata<UploadTransportLimitAttribute>() is null)
             {
                 LowerToDefault(context, fileStorageOptions.Value.DefaultMaxRequestBodyBytes);
+                await next(context);
+                return;
             }
 
-            await next(context);
+            var uploadCap = (await uploadLimitsLookup.GetAsync(context.RequestAborted)).MaxUploadBytes;
+            LowerToDefault(context, uploadCap + fileStorageOptions.Value.RequestEnvelopeHeadroomBytes);
+            await NextAnsweringOversizeAsync(context, uploadCap);
             return;
         }
 
@@ -138,6 +145,11 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
             MultipartBodyLengthLimit = capBytes,
         }));
 
+        await NextAnsweringOversizeAsync(context, capBytes);
+    }
+
+    private async Task NextAnsweringOversizeAsync(HttpContext context, long capBytes)
+    {
         try
         {
             await next(context);
