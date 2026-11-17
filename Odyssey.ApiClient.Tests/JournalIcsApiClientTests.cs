@@ -69,6 +69,23 @@ public class JournalIcsApiClientTests
     }
 
     [Fact]
+    public async Task NoFilters_SendNoFilterParameters_ForTheSummaryOrTheExport()
+    {
+        var (client, handler) = Create();
+
+        await client.SummarizeExportAsync();
+        var summary = handler.LastRequest!.RequestUri!.Query;
+        var export = new Uri(client.ExportUrl()).Query;
+
+        // Only PagedQuery's paging window, which the export endpoints ignore — no stray filter narrows "export all".
+        Assert.Equal(summary, export);
+        foreach (var name in new[] { "search", "tagIds", "status", "contactIds", "from", "to", "hasPhotos", "hasFiles" })
+        {
+            Assert.DoesNotContain(name + "=", export, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
     public async Task SingleEntry_SummaryAndExportUrl_NameTheSameEntry()
     {
         var (client, handler) = Create();

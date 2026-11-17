@@ -776,14 +776,17 @@ public partial class JournalCard
                 ? (await JournalIcs.SummarizeExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles))
                     .OrToast(Snackbar, "Unable to export journal entries")
                 : (await JournalIcs.SummarizeExportAsync()).OrToast(Snackbar, "Unable to export journal entries");
+            // The snackbar container is a role="status" region and speaks the outcome itself, success or refusal, so the
+            // page's announcer only covered the wait and is cleared rather than made to say it a second time.
+            _announce = "";
             if (summary is null) return;
 
             await NativeTransfer.DownloadAsync(filtered
                 ? JournalIcs.ExportUrl(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
                 : JournalIcs.ExportUrl());
-            var message = $"Exporting {Plural(summary.EntryCount, "journal entry", "journal entries")}{CarriedSuffix(summary)} — your browser is downloading the file.";
-            _announce = message;
-            Snackbar.Add(message, Severity.Success);
+            Snackbar.Add(
+                $"Exporting {Plural(summary.EntryCount, "journal entry", "journal entries")}{CarriedSuffix(summary)} — your browser is downloading the file.",
+                Severity.Success);
         }
         finally
         {
@@ -802,7 +805,6 @@ public partial class JournalCard
 
             await NativeTransfer.DownloadAsync(JournalIcs.ExportOneUrl(entry.JournalEntryId));
             var title = string.IsNullOrWhiteSpace(entry.Title) ? "the journal entry" : entry.Title;
-            _announce = $"Exporting {title}.";
             Snackbar.Add($"Exporting {title}{CarriedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
         }
         finally

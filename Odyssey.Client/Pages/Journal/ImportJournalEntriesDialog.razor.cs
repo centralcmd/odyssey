@@ -199,6 +199,12 @@ public partial class ImportJournalEntriesDialog
         finally
         {
             _isImporting = false;
+            // A failure is said by the error alert; clearing the "Importing…" text lets a retry announce it again,
+            // since the announcer only speaks a message that differs from the one it holds.
+            if (_result is null)
+            {
+                _announce = null;
+            }
         }
     }
 

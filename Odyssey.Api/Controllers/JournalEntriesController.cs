@@ -161,6 +161,9 @@ public sealed class JournalEntriesController : ControllerBase
     // like the collection export, because the entry's attached files and photos travel inline.
     [HttpGet("{id}/vjournal", Name = "ExportJournalEntryVJournal")]
     [Authorize(Policy = PermissionClaims.JournalRead)]
+    // One entry can carry gigabytes of files and photos, so it shares the collection export's permits and deadline.
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]

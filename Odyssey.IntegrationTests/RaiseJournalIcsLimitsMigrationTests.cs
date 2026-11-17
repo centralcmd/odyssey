@@ -59,6 +59,36 @@ public class RaiseJournalIcsLimitsMigrationTests(MariaDbFixture fixture)
         }
     }
 
+    [SkippableFact]
+    public async Task Up_and_Down_move_all_four_untouched_defaults()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await RecreateAsync();
+        try
+        {
+            await using var context = Context();
+            await MigrationSeam.MigrateToAsync(context, Baseline);
+
+            await MigrationSeam.MigrateToAsync(context, Subject);
+
+            Assert.Equal("10240", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxImportMegabytes));
+            Assert.Equal("10240", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxExportMegabytes));
+            Assert.Equal("unlimited", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxImportEntries));
+            Assert.Equal("unlimited", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxExportRows));
+
+            await MigrationSeam.MigrateToAsync(context, Baseline);
+
+            Assert.Equal("64", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxImportMegabytes));
+            Assert.Equal("64", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxExportMegabytes));
+            Assert.Equal("2000", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxImportEntries));
+            Assert.Equal("2000", await ValueAsync(context, SystemSettingsKeys.JournalIcsMaxExportRows));
+        }
+        finally
+        {
+            await DropAsync();
+        }
+    }
+
     private static Task SetAsync(OdysseyContext context, string key, string value, string? updatedBy) =>
         context.Database.ExecuteSqlRawAsync(
             "UPDATE `SystemSettings` SET `Value` = {0}, `UpdatedBy` = {1} WHERE `Key` = {2}", [value, updatedBy!, key]);

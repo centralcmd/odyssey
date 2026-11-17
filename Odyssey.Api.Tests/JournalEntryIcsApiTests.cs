@@ -1438,6 +1438,119 @@ public class JournalEntryIcsApiTests
         Assert.Equal(new[] { archivedOnly, activeBoth }.Order().ToArray(), tags);
     }
 
+    [Fact]
+    public async Task Import_NewInlinePhoto_OverTheAdminUploadCap_IsSkipped_ButTheEntryImports()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
+        // A JPEG header padded past the 1 MB cap: the size check runs before the image is decoded.
+        var big = PhotoTestData.Jpeg(PhotoTestData.NextSeed()).Concat(new byte[1536 * 1024]).ToArray();
+
+        var result = await ImportAsync(client, Vcalendar(Vjournal("big1", "SUMMARY:Big photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(big, "big.jpg"))));
+
+        Assert.Equal((1, 1, 0), (result.ImportedCount, result.SkippedPhotoCount, result.StoredPhotoCount));
+        var group = Assert.Single(result.Skipped);
+        Assert.Contains("1 MB limit", group.Reason);
+        Assert.Equal(["Big photo"], group.SampleTitles);
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    // The two kinds are gated apart: photo claims never stand in for file claims, nor the reverse.
+    [Fact]
+    public async Task Import_PhotoClaimsAlone_AcceptAnInlinePhoto_ButRefuseAnInlineFile()
+    {
+        string[] photosOnly =
+        [
+            PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
+            PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate,
+        ];
+        await using var factory = new ApiFactory(photosOnly);
+        using var client = factory.CreateClient();
+
+        var photo = await ImportAsync(client, Vcalendar(Vjournal("po1", "SUMMARY:Photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
+        var file = await PostIcsAsync(client, Vcalendar(Vjournal("po2", "SUMMARY:File", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+
+        Assert.Equal((1, 1), (photo.ImportedCount, photo.StoredPhotoCount));
+        Assert.Equal(HttpStatusCode.Forbidden, file.StatusCode);
+    }
+
+    [Fact]
+    public async Task Import_FileClaimsAlone_AcceptAnInlineFile_ButRefuseAnInlinePhoto()
+    {
+        string[] filesOnly =
+        [
+            PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
+            PermissionClaims.FilesRead, PermissionClaims.FilesCreate,
+        ];
+        await using var factory = new ApiFactory(filesOnly);
+        using var client = factory.CreateClient();
+
+        var file = await ImportAsync(client, Vcalendar(Vjournal("fo1", "SUMMARY:File", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+        var photo = await PostIcsAsync(client, Vcalendar(Vjournal("fo2", "SUMMARY:Photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
+
+        Assert.Equal((1, 1), (file.ImportedCount, file.StoredFileCount));
+        Assert.Equal(HttpStatusCode.Forbidden, photo.StatusCode);
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    [Fact]
+    public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_IsAborted_NotTruncated()
+    {
+        // The pre-flight check judges files and photos exactly, but entry text only as it is written. Text alone over
+        // the cap must end the response abnormally, so a browser reports a failed download instead of saving part of it.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxExportMegabytes, "1");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var now = DateTime.UtcNow;
+            for (var i = 0; i < 400; i++)
+            {
+                context.JournalEntries.Add(new JournalEntry
+                {
+                    ExternalUid = $"urn:uuid:bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000),
+                    EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(IcsPath + "/summary")).StatusCode); // nothing to judge up front
+        var failure = await Record.ExceptionAsync(async () =>
+        {
+            using var response = await client.GetAsync(IcsPath);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Fail($"The export completed ({body.Length} chars) instead of being aborted.");
+        });
+
+        Assert.True(failure is HttpRequestException or IOException or OperationCanceledException, failure?.ToString());
+    }
+
+    // Both export actions stream gigabytes of inline content, so both take the export permits and deadline; a
+    // single-entry route without them would be an unthrottled path to the same streams.
+    [Theory]
+    [InlineData(nameof(Odyssey.Api.Controllers.JournalEntriesController.ExportVJournal))]
+    [InlineData(nameof(Odyssey.Api.Controllers.JournalEntriesController.ExportSingleVJournal))]
+    public void EveryStreamingExport_TakesTheExportConcurrencyLimiters(string action)
+    {
+        var method = typeof(Odyssey.Api.Controllers.JournalEntriesController).GetMethod(action)!;
+
+        var rateLimit = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), false)
+            .Cast<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>().SingleOrDefault();
+        Assert.Equal(Odyssey.Api.ImportExportRateLimiting.ExportConcurrencyPolicy, rateLimit?.PolicyName);
+        Assert.Contains(method.GetCustomAttributes(typeof(TypeFilterAttribute), false).Cast<TypeFilterAttribute>(),
+            a => a.ImplementationType == typeof(Odyssey.Api.ExportConcurrencyFilter));
+    }
+
     private static async Task<Guid> SeedTitledPhotoAsync(
         WebApplicationFactory<Program> factory, byte[] bytes, string? title, string? caption)
     {

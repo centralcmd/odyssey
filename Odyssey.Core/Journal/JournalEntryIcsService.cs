@@ -1151,6 +1151,10 @@ public class JournalEntryIcsService
         throw new DomainConflictException("A concurrent import collision could not be resolved. Please retry.");
     }
 
+    // Detaches the dropped entry and its link rows only. A file or photo the import stored for it stays staged and is
+    // saved: it is a complete upload in its own right (a Files-store row or a library photo), the stored counts report
+    // it truthfully, and a retry of the same file matches it by content instead of storing it twice. This is reached
+    // only on a genuine UID race with another writer.
     private void DetachEntryGraph(JournalEntry entry)
     {
         foreach (var link in entry.EntryTags.ToList())
