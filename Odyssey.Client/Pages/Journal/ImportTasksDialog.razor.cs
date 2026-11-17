@@ -132,6 +132,8 @@ public partial class ImportTasksDialog
         }
 
         _isImporting = true;
+        // A file carrying attachments can take minutes to upload; say it started (WCAG 4.1.3).
+        _announce = "Importing tasks…";
         try
         {
             // The browser posts the picked file itself when it can — an import carrying attached files can be far
@@ -153,7 +155,8 @@ public partial class ImportTasksDialog
                 await OnChanged.InvokeAsync();
             }
 
-            _announce = $"{_result.ImportedCount} imported, {_result.UpdatedCount} updated, {SkippedTotal} skipped.";
+            _announce = $"{_result.ImportedCount} imported, {_result.UpdatedCount} updated, {SkippedTotal} skipped."
+                + (_result.StoredFileCount > 0 || _result.ReusedFileCount > 0 ? " " + AttachedFilesMessage : "");
             _focusResultPending = true;
         }
         finally
@@ -205,9 +208,11 @@ public partial class ImportTasksDialog
         _openReasons.Clear();
     }
 
-    private Task CloseAsync()
+    private async Task CloseAsync()
     {
         Reset();
-        return OpenChanged.InvokeAsync(false);
+        // Drop the browser's reference to the picked file, so a closed dialog holds no handle to it.
+        await NativeTransfer.ForgetAsync(UploadId);
+        await OpenChanged.InvokeAsync(false);
     }
 }
