@@ -57,7 +57,8 @@ single-contact default would silently change what an existing caller receives fr
         bool includeImages = false,
         CancellationToken cancellationToken = default)
     {
-        var export = await vCardService.ExportOneAsync(id, includeImages, cancellationToken);
+        // GEO/TZ on an address are written only for a locations.read holder.
+        var export = await vCardService.ExportOneAsync(id, includeImages, cancellationToken, User.LocationClaims());
         if (export is null)
         {
             return this.NotFoundProblem($"Contact ID {id} not found.");
@@ -74,8 +75,9 @@ single-contact default would silently change what an existing caller receives fr
     /// </summary>
     private const string ExportDisclosure = @"The exported card carries the contact's names, aliases
 (including maiden and former names, with their free-text labels), middle name, dates of birth and
-death, an organization's establishment and dissolution dates, addresses, email addresses, phone
-numbers and notes.";
+death, an organization's establishment and dissolution dates, the archive date, addresses, email
+addresses, phone numbers and notes — and, for a caller holding locations.read, each geocoded
+address's coordinates and time zone.";
 
     [HttpGet("vcard", Name = "ExportContactsVCard")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
@@ -138,7 +140,8 @@ truncated response reports itself rather than returning a silently short documen
                 + "output cap; the response was reported as truncated.",
                 deliveredRows, totalRows);
         },
-        cancellationToken);
+        cancellationToken,
+        User.LocationClaims());
 
         return new EmptyResult();
     }

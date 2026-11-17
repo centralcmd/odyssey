@@ -292,7 +292,13 @@ public partial class ContactsCard
 
         // Per-row vCard export (issue #338 §7.1) — requires only contacts.read, so it's always
         // available to anyone who can see the page.
-        items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c)) });
+        items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c, includeImages: false)) });
+
+        // Only offered when there is a picture to embed; the plain export stays byte-identical.
+        if (c.AvatarFileId is not null)
+        {
+            items.Add(new OdsMenuItem { Icon = "photo", Label = "Export vCard with picture", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c, includeImages: true)) });
+        }
 
         // Add a contact method from the row menu (DS): expands the row and opens the matching form.
         // contacts.update, not .create — the server writes every child collection under it (#287 M3).
@@ -644,7 +650,7 @@ public partial class ContactsCard
 
     // Per-row export (§7.1) — requires only contacts.read; no cap. _exporting guards a
     // re-entrant double-click firing concurrent downloads (mirrors the Calendar ICS export).
-    private async Task ExportRowAsync(ExistingContact c)
+    private async Task ExportRowAsync(ExistingContact c, bool includeImages)
     {
         if (_exporting)
             return;
@@ -652,7 +658,7 @@ public partial class ContactsCard
         _exporting = true;
         try
         {
-            var result = await VCardApi.ExportOneAsync(c.ContactId);
+            var result = await VCardApi.ExportOneAsync(c.ContactId, includeImages);
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
                 return;
 
@@ -667,7 +673,9 @@ public partial class ContactsCard
 
     // Page-level export (§7.2): "all" omits filters; "filtered" sends the same search/type/status
     // query the list view is currently using (minus paging — export is unpaginated server-side).
-    private async Task ExportAsync(bool filtered)
+    // includeImages embeds each contact's picture; the server's output cap makes a cut-short file likely
+    // for a large set, and the API client turns that into a failure toast naming the delivered count.
+    private async Task ExportAsync(bool filtered, bool includeImages = false)
     {
         if (_exporting)
             return;
@@ -676,8 +684,8 @@ public partial class ContactsCard
         try
         {
             var result = filtered
-                ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter)
-                : await VCardApi.ExportManyAsync();
+                ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter, includeImages)
+                : await VCardApi.ExportManyAsync(includeImages: includeImages);
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
                 return;
 

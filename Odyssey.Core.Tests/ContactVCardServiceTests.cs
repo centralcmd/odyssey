@@ -361,14 +361,14 @@ public class ContactVCardServiceTests
     }
 
     [Fact]
-    public async Task Import_InvalidCountryCode_DropsJustThatAddress()
+    public async Task Import_UnresolvableCountry_DropsJustThatAddress()
     {
         await using var context = TestContextFactory.CreateJournal();
         var (service, vCard) = CreateServices(context);
 
         var result = await ImportAsync(vCard, Vcard(
             "UID:bad-country", "FN:Acme", "ORG:Acme",
-            "ADR;TYPE=work:;;Storgata 1;Oslo;;0150;Norway"));
+            "ADR;TYPE=work:;;Storgata 1;Oslo;;0150;Narnia"));
 
         Assert.Equal(1, result.CreatedCount);
         var skipGroup = Assert.Single(result.Skipped);

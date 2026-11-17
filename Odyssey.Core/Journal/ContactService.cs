@@ -118,6 +118,29 @@ public class ContactService
     /// and the <c>X-Odyssey-Export-Rows</c> completeness-header count (issue #343 §5/§11), computed
     /// before any row is fetched.
     /// </summary>
+    /// <summary>
+    /// The coordinates (and time zone, when set) of the places the given address rows link to, keyed by
+    /// address id — only places that carry both coordinates. Core-internal: <see cref="ExistingAddress"/>
+    /// deliberately says only <i>whether</i> a place is geocoded, so this is read solely by the vCard export
+    /// for a caller holding <c>locations.read</c>.
+    /// </summary>
+    internal async Task<IReadOnlyDictionary<Guid, AddressGeocode>> GetAddressGeocodesAsync(
+        IReadOnlyCollection<Guid> addressIds, CancellationToken cancellationToken = default)
+    {
+        if (addressIds.Count == 0)
+        {
+            return new Dictionary<Guid, AddressGeocode>();
+        }
+
+        var rows = await context.Addresses
+            .AsNoTracking()
+            .Where(a => addressIds.Contains(a.Id) && a.Location.Latitude != null && a.Location.Longitude != null)
+            .Select(a => new { a.Id, a.Location.Latitude, a.Location.Longitude, a.Location.TimeZoneId })
+            .ToListAsync(cancellationToken);
+
+        return rows.ToDictionary(r => r.Id, r => new AddressGeocode(r.Latitude!.Value, r.Longitude!.Value, r.TimeZoneId));
+    }
+
     public async Task<int> CountMatchingAsync(ContactsQueryParams query, CancellationToken cancellationToken = default) =>
         await ApplyFilters(ReadQuery(), query).CountAsync(cancellationToken);
 
@@ -1714,3 +1737,9 @@ public class ContactService
 
 /// <summary>A completed conversion: the converted contact and the type it was converted from.</summary>
 public sealed record ContactConversionResult(ExistingContact Contact, ContactType PreviousType);
+
+/// <summary>A linked place's coordinates and time zone, for the vCard export. Redacted: it is where someone lives.</summary>
+internal sealed record AddressGeocode(decimal Latitude, decimal Longitude, string? TimeZoneId)
+{
+    public override string ToString() => nameof(AddressGeocode) + " { (redacted) }";
+}
