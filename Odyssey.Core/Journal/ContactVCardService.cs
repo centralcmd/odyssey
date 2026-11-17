@@ -65,14 +65,8 @@ public class ContactVCardService
 
     /// <summary>Exports a single contact as a single-entry .vcf. Null if it doesn't exist (the
     /// controller maps that to 404).</summary>
-    /// <param name="claims">
-    /// The exporter's location claims. An address's coordinates and time zone are written only for a
-    /// <c>locations.read</c> holder: <see cref="ExistingAddress"/> says only <i>whether</i> a place is geocoded,
-    /// so <c>contacts.read</c> alone must not learn where. Null is no location claim.
-    /// </param>
     public async Task<VCardExport?> ExportOneAsync(
-        Guid contactId, bool includeImages = false, CancellationToken cancellationToken = default,
-        LocationClaims? claims = null)
+        Guid contactId, bool includeImages = false, CancellationToken cancellationToken = default)
     {
         var contact = await contactService.Get(contactId, cancellationToken);
         if (contact is null)
@@ -84,7 +78,7 @@ public class ContactVCardService
         // single-contact default would silently change what an existing caller receives from a shipped
         // endpoint — the same objection §17 raises against re-authorizing one.
         var image = includeImages ? await LoadImageDataUriAsync(contact.AvatarFileId, cancellationToken) : null;
-        var geocodes = await LoadGeocodesAsync([contact], claims, cancellationToken);
+        var geocodes = await LoadGeocodesAsync([contact], cancellationToken);
 
         var sb = new StringBuilder();
         AppendVCard(sb, contact, image, geocodes);
@@ -144,7 +138,7 @@ public class ContactVCardService
     public async Task ExportManyStreamingAsync(
         ContactsQueryParams query, Stream output, Action<string, int> onReady,
         bool includeImages = false, Action<int, int>? onTruncated = null,
-        CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        CancellationToken cancellationToken = default)
     {
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         var cap = effectiveLimits.ContactVCardMaxExportRows;
@@ -167,8 +161,8 @@ public class ContactVCardService
 
         await foreach (var chunk in contactService.StreamMatchingChunksAsync(query, ExportChunking.ChunkSize, cancellationToken))
         {
-            // One query per chunk, never per contact, and nothing at all without locations.read.
-            var geocodes = await LoadGeocodesAsync(chunk, claims, cancellationToken);
+            // One query per chunk, never per contact.
+            var geocodes = await LoadGeocodesAsync(chunk, cancellationToken);
 
             if (includeImages)
             {
@@ -244,19 +238,17 @@ public class ContactVCardService
         onTruncated?.Invoke(writtenRows, count);
     }
 
+    /// <summary>
+    /// The coordinates of the contacts' geocoded addresses. Exported under <c>contacts.read</c> alone, like the
+    /// street address they locate — a product decision: the card already carries the address, so its
+    /// coordinates disclose nothing the address does not.
+    /// </summary>
     private async Task<IReadOnlyDictionary<Guid, AddressGeocode>> LoadGeocodesAsync(
-        IReadOnlyCollection<ExistingContact> contacts, LocationClaims? claims, CancellationToken cancellationToken)
+        IReadOnlyCollection<ExistingContact> contacts, CancellationToken cancellationToken)
     {
-        if (claims is not { LocationsRead: true })
-        {
-            return NoGeocodes;
-        }
-
         var addressIds = contacts.SelectMany(c => c.Addresses).Select(a => a.Id).ToList();
         return await contactService.GetAddressGeocodesAsync(addressIds, cancellationToken);
     }
-
-    private static readonly IReadOnlyDictionary<Guid, AddressGeocode> NoGeocodes = new Dictionary<Guid, AddressGeocode>();
 
     private static bool HasFilters(ContactsQueryParams query) =>
         !string.IsNullOrWhiteSpace(query.Search) || query.Types is { Length: > 0 } || query.Status is not null;
@@ -266,7 +258,7 @@ public class ContactVCardService
     /// caller passes when <c>includeImages</c> is off, so the emitted card is then byte-identical to
     /// what this produced before contact images existed.
     /// </param>
-    /// <param name="geocodes">Coordinates by address id; empty for a caller without <c>locations.read</c>.</param>
+    /// <param name="geocodes">Coordinates by address id.</param>
     private static void AppendVCard(
         StringBuilder sb, ExistingContact row, string? imageDataUri, IReadOnlyDictionary<Guid, AddressGeocode> geocodes)
     {
@@ -345,8 +337,8 @@ public class ContactVCardService
 
         AppendFolded(sb, $"REV:{row.UpdatedAt:yyyyMMddTHHmmssZ}");
 
-        // No registered property says "archived", so it follows the X-ODYSSEY- naming. Read back only when an
-        // import CREATES the contact; an update keeps the target's own status (§9).
+        // No registered property says "archived", so it follows the X-ODYSSEY- naming. Read back, with its
+        // date, only when an import CREATES the contact; an update keeps the target's own status (§9).
         if (row.Archived is { } archived)
         {
             AppendFolded(sb, $"{ArchivedProperty}:{archived:yyyyMMddTHHmmssZ}");
@@ -766,6 +758,11 @@ public class ContactVCardService
                     var createdRow = await contactService.Create(newContact, cancellationToken);
                     id = createdRow.ContactId;
                     updated = false;
+
+                    if (newContact.Archived)
+                    {
+                        await RestoreArchiveDateAsync(id, TextValue(props, ArchivedProperty), cancellationToken);
+                    }
                 }
 
                 await ReplaceContactCollections(
@@ -816,6 +813,28 @@ public class ContactVCardService
             context.ChangeTracker.Clear();
             return (sampleName, ImportOutcome.Skipped, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Replaces the archive timestamp <see cref="ContactService.Create"/> stamped (now) with the one the card
+    /// carries, inside the entry's transaction. A value that does not parse keeps the contact archived as of
+    /// now; a future one is clamped to now, since a contact cannot have been archived later than it was
+    /// imported.
+    /// </summary>
+    private async Task RestoreArchiveDateAsync(Guid contactId, string? value, CancellationToken cancellationToken)
+    {
+        if (!DateTime.TryParseExact(
+                value, ["yyyyMMdd'T'HHmmss'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyyMMdd", "yyyy-MM-dd"],
+                CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                out var archivedAt))
+        {
+            return;
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var contact = await context.Contacts.FirstAsync(c => c.ContactId == contactId, cancellationToken);
+        contact.Archived = DateTime.SpecifyKind(archivedAt < now ? archivedAt : now, DateTimeKind.Utc);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     // ── Imported contact image (issue #86 §9) ─────────────────────────────────────────────────────

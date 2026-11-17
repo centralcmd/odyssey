@@ -120,9 +120,8 @@ public class ContactService
     /// </summary>
     /// <summary>
     /// The coordinates (and time zone, when set) of the places the given address rows link to, keyed by
-    /// address id — only places that carry both coordinates. Core-internal: <see cref="ExistingAddress"/>
-    /// deliberately says only <i>whether</i> a place is geocoded, so this is read solely by the vCard export
-    /// for a caller holding <c>locations.read</c>.
+    /// address id — only places that carry both coordinates. Core-internal: read only by the vCard export,
+    /// which writes them beside the address under <c>contacts.read</c>.
     /// </summary>
     internal async Task<IReadOnlyDictionary<Guid, AddressGeocode>> GetAddressGeocodesAsync(
         IReadOnlyCollection<Guid> addressIds, CancellationToken cancellationToken = default)
