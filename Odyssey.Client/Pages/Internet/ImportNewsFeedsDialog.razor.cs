@@ -82,7 +82,6 @@ public partial class ImportNewsFeedsDialog : IDisposable
     private ITimer? _slowTimer;
     private FocusTarget _focus;
     private OdsLiveAnnouncer? _announcer;
-    private readonly HashSet<string> _openGroups = new(StringComparer.Ordinal);
 
     private int _maxMegabytes = ImportLimitsCache.Fallback.NewsOpmlMaxImportMegabytes;
     private int _maxEntries = ImportLimitsCache.Fallback.NewsOpmlMaxImportEntries;
@@ -210,7 +209,6 @@ public partial class ImportNewsFeedsDialog : IDisposable
         {
             _fileName = string.IsNullOrWhiteSpace(file.Name) ? "the file" : file.Name;
             _result = result;
-            _openGroups.Clear();
             _phase = Phase.Result;
             _focus = FocusTarget.Heading;
             Say(Summary(result));
@@ -337,14 +335,6 @@ public partial class ImportNewsFeedsDialog : IDisposable
 
     // ── Result ─────────────────────────────────────────────────────────────────────────────────────
 
-    private void ToggleGroup(string id)
-    {
-        if (!_openGroups.Remove(id))
-        {
-            _openGroups.Add(id);
-        }
-    }
-
     private void ImportAnother()
     {
         ClearReport();
@@ -359,7 +349,6 @@ public partial class ImportNewsFeedsDialog : IDisposable
     {
         // The report can hold 2,000 rows with URLs: it is dropped as soon as it is no longer shown (v4 §10).
         _result = null;
-        _openGroups.Clear();
         _fileName = "the file";
     }
 
@@ -458,7 +447,7 @@ public partial class ImportNewsFeedsDialog : IDisposable
         public bool Masked => Tail is not null;
     }
 
-    private static string Number(int value) => value.ToString("N0", CultureInfo.CurrentCulture);
+    internal static string Number(int value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
     // ── Focus and announcements ────────────────────────────────────────────────────────────────────
 
