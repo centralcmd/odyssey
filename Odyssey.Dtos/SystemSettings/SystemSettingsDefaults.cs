@@ -380,4 +380,12 @@ public static class SystemSettingsDefaults
 
     /// <summary>Empty: every default-blocked address stays blocked. A degraded read resolves to this too.</summary>
     public const string NewsPrivateHostAllowList = "";
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    /// <summary>The largest OPML file one import reads, in MB. The reader streams, so this bounds the upload, not memory.</summary>
+    public const int NewsOpmlMaxImportMegabytes = 64;
+
+    /// <summary>The most distinct feeds one OPML file may name. Its range's ceiling is this value: it can only be lowered.</summary>
+    public const int NewsOpmlMaxImportEntries = 100_000;
 }

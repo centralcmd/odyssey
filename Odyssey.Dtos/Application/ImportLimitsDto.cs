@@ -41,4 +41,10 @@ public sealed record ImportLimitsDto
     public int JournalIcsMaxImportMegabytes { get; set; }
 
     public int JournalIcsMaxExportMegabytes { get; set; }
+
+    /// <summary>The most distinct feeds one news OPML import may name (issue #508 §5.3).</summary>
+    public int NewsOpmlMaxImportEntries { get; set; }
+
+    /// <summary>The largest news OPML upload accepted, in MB (issue #508 §5.3).</summary>
+    public int NewsOpmlMaxImportMegabytes { get; set; }
 }

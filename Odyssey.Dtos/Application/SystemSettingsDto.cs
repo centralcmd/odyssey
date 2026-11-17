@@ -306,6 +306,12 @@ public sealed record SystemSettingsDto
     /// <summary>Comma-separated <c>host[:port]</c> grants; empty blocks every private address.</summary>
     public string NewsPrivateHostAllowList { get; set; } = string.Empty;
 
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    public int NewsOpmlMaxImportMegabytes { get; set; }
+
+    public int NewsOpmlMaxImportEntries { get; set; }
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>

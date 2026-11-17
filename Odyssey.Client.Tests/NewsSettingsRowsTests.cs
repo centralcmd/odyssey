@@ -15,8 +15,10 @@ using static Odyssey.Client.Tests.SettingsPageHarness;
 namespace Odyssey.Client.Tests;
 
 /// <summary>
-/// System settings → News (issue #473 §3.6, §5.4, AC 23): nine rows, eight without the security claim, every bound
-/// from the API, the image size bounded by the published ceiling, and the allow-list's confirm-before-save.
+/// System settings → News (issue #473 §3.6, §5.4, AC 23; issue #508 §8.5, AC 35): eleven rows, ten without the security
+/// claim, every bound from the API, the image size bounded by the published ceiling, and the allow-list's
+/// confirm-before-save. The two OPML import rows follow the import caps: the entry cap on the ordinary claim, the size
+/// cap on the security one (amendment v5).
 /// </summary>
 [Collection(SettingsPageCollection.Name)]
 public class NewsSettingsRowsTests : IDisposable
@@ -25,7 +27,7 @@ public class NewsSettingsRowsTests : IDisposable
     [
         "newsDefaultFetchIntervalMinutes", "newsMaxFeeds", "newsImageMaxPerArticle", "newsImageMaxSizeKb",
         "newsImageStoreMaxGiB", "newsTextStoreMaxGiB", "newsFeedMaxArticlesPerDay", "newsFeedMaxImageMbPerDay",
-        Settings.NewsAllowListKey,
+        "newsOpmlMaxImportEntries", "newsOpmlMaxImportMegabytes", Settings.NewsAllowListKey,
     ];
 
     public void Dispose() => Settings.InteractiveCheck = static () => OperatingSystem.IsBrowser();
@@ -34,19 +36,20 @@ public class NewsSettingsRowsTests : IDisposable
         [.. NewsKeys.Where(key => page.FindAll($"#ss-ttl-{key}").Count == 1)];
 
     [Fact]
-    public void The_news_group_declares_nine_rows_with_the_rss_icon()
+    public void The_news_group_declares_eleven_rows_with_the_rss_icon()
     {
         var section = Settings.Sections.Single(s => s.Group == "News");
 
         Assert.Equal(MudBlazor.Icons.Material.Filled.RssFeed, section.Icon);
         Assert.Equal(NewsKeys, section.Items.Select(i => i.Key));
-        Assert.Equal(Settings.SettingClaim.Security, section.Items.Single(i => i.Key == Settings.NewsAllowListKey).Claim);
-        Assert.All(section.Items.Where(i => i.Key != Settings.NewsAllowListKey),
+        string[] security = [Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes"];
+        Assert.All(section.Items.Where(i => security.Contains(i.Key)), item => Assert.Equal(Settings.SettingClaim.Security, item.Claim));
+        Assert.All(section.Items.Where(i => !security.Contains(i.Key)),
             item => Assert.Equal(Settings.SettingClaim.Count, item.Claim));
     }
 
     [Fact]
-    public async Task An_administrator_sees_nine_rows()
+    public async Task An_administrator_sees_eleven_rows()
     {
         await using var ctx = NewPageContext(SettingsClient(Valid()).Object);
 
@@ -63,7 +66,7 @@ public class NewsSettingsRowsTests : IDisposable
 
         var page = ctx.Render<Settings>();
 
-        Assert.Equal(NewsKeys[..8], Rendered(page));
+        Assert.Equal(NewsKeys[..10], Rendered(page));
         Assert.DoesNotContain(Settings.NewsAllowListAdvisory, page.Markup, StringComparison.Ordinal);
     }
 

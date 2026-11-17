@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Http.Features;
+using MinDataRate = Microsoft.AspNetCore.Server.Kestrel.Core.MinDataRate;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Odyssey.Core.Finance;
@@ -6,13 +8,16 @@ using Odyssey.Core.Journal;
 
 namespace Odyssey.Api;
 
-/// <summary>The four import surfaces an <see cref="ImportSizeLimitAttribute"/> can name.</summary>
+/// <summary>The import surfaces an <see cref="ImportSizeLimitAttribute"/> can name.</summary>
 public enum ImportSurface
 {
     Contacts,
     Calendars,
     Tasks,
     JournalEntries,
+
+    /// <summary>The news OPML import (issue #508). Its arm also sets the upload-rate floor.</summary>
+    NewsOpml,
 }
 
 /// <summary>
@@ -55,6 +60,35 @@ public sealed class UploadSizeLimitAttribute : Attribute;
 /// </summary>
 public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<ImportSizeLimitMiddleware> logger)
 {
+    /// <summary>
+    /// The OPML upload's minimum data rate (issue #508 §5.2, B2, R2-3): one import holds the single OPML permit for as
+    /// long as its body takes to arrive, and Kestrel's default of 240 B/s would let a slow client hold it for days. At
+    /// 64 KiB/s a 64 MB upload finishes within about 17 minutes or is cut off.
+    /// </summary>
+    internal static readonly MinDataRate NewsOpmlMinBodyDataRate = new(bytesPerSecond: 64 * 1024, gracePeriod: TimeSpan.FromSeconds(10));
+
+    /// <summary>
+    /// Sets the request's minimum body data rate. The feature is absent under TestServer, and Kestrel refuses the
+    /// setter on HTTP/2 and HTTP/3, where the server-wide rate applies instead; both are logged and skipped.
+    /// </summary>
+    internal void ApplyMinBodyDataRate(HttpContext context, MinDataRate rate)
+    {
+        if (context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is not { } feature)
+        {
+            logger.LogDebug("IHttpMinRequestBodyDataRateFeature is unavailable for {Path}; the upload-rate floor was not set.", context.Request.Path);
+            return;
+        }
+
+        try
+        {
+            feature.MinDataRate = rate;
+        }
+        catch (NotSupportedException)
+        {
+            logger.LogDebug("The upload-rate floor is not supported on {Protocol} for {Path}.", context.Request.Protocol, context.Request.Path);
+        }
+    }
+
     public async Task InvokeAsync(
         HttpContext context,
         IImportExportLimitsLookup limitsLookup,
@@ -81,6 +115,7 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 ImportSurface.Calendars => limits.CalendarIcsMaxImportBytes,
                 ImportSurface.Tasks => limits.TaskIcsMaxImportBytes,
                 ImportSurface.JournalEntries => limits.JournalIcsMaxImportBytes,
+                ImportSurface.NewsOpml => limits.NewsOpmlMaxImportBytes,
                 _ => throw new InvalidOperationException($"Unhandled import surface '{importAttribute.Surface}'."),
             };
         }
@@ -105,6 +140,13 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
             logger.LogDebug(
                 "IHttpMaxRequestBodySizeFeature is unavailable or read-only for {Path}; the transport request-body limit was not adjusted.",
                 context.Request.Path);
+        }
+
+        if (importAttribute?.Surface == ImportSurface.NewsOpml)
+        {
+            // Before anything reads the body, like the size cap: the resource filter that holds the OPML permit runs
+            // before model binding, so a floor set any later would let a slow body hold the permit regardless.
+            ApplyMinBodyDataRate(context, NewsOpmlMinBodyDataRate);
         }
 
         var configured = configuredFormOptions.Value;

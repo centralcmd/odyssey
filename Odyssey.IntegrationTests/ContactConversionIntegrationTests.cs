@@ -588,7 +588,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

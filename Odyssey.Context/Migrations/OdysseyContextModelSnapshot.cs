@@ -5956,6 +5956,18 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
+                            Key = "NewsOpmlMaxImportMegabytes",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "64"
+                        },
+                        new
+                        {
+                            Key = "NewsOpmlMaxImportEntries",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "100000"
+                        },
+                        new
+                        {
                             Key = "FileStorageDeletionGraceHours",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "24"
