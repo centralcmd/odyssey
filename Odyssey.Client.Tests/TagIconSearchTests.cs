@@ -92,6 +92,21 @@ public class TagIconSearchTests : IAsyncLifetime
     public void Distance_counts_edits_with_a_swap_as_one(string a, string b, int expected) =>
         Assert.Equal(expected, TagIconSearch.Distance(a, b, 5));
 
+    [Fact]
+    public void Distance_stops_early_past_the_cap_on_length_alone() =>
+        Assert.Equal(2, TagIconSearch.Distance("ab", "abcdef", 1));
+
+    [Fact]
+    public void Equal_scores_keep_catalogue_order()
+    {
+        // Cottage and Chalet both carry "cabin" as a keyword; Cabin itself is the label hit.
+        var keys = Keys("cabin");
+        var order = TagIcons.All.Select(o => o.Key).ToList();
+
+        Assert.Equal(["cabin", "cottage", "chalet"], keys);
+        Assert.True(order.IndexOf("cottage") < order.IndexOf("chalet"));
+    }
+
     // ── The picker ────────────────────────────────────────────────────────────
 
     private IRenderedComponent<OdsTagIconPicker> Picker(string? value, Action<string?>? changed = null) =>
@@ -174,6 +189,118 @@ public class TagIconSearchTests : IAsyncLifetime
 
         Assert.Equal(TagIcons.All.Count + 1, cut.FindAll("[role=radio]").Count);
         Assert.Equal("", cut.Find("[role=status]").TextContent);
+    }
+
+    // The reference the picker holds for the visible cell at that position (bUnit's markup does not carry it).
+    private static string ButtonRef(IRenderedComponent<OdsTagIconPicker> cut, int index) =>
+        ((ElementReference[])typeof(OdsTagIconPicker)
+            .GetField("_buttons", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .GetValue(cut.Instance)!)[index].Id;
+
+    [Fact]
+    public void Arrow_Down_moves_focus_from_the_box_to_the_tab_stop()
+    {
+        var cut = Picker(null);
+
+        var search = cut.Find("input[type=search]");
+        search.Input("cabin");
+        search.KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        var focused = ctx.JSInterop.VerifyFocusAsyncInvoke();
+        Assert.Equal(ButtonRef(cut, 0), ((ElementReference)focused.Arguments[0]!).Id);
+    }
+
+    [Fact]
+    public void Arrow_Down_with_no_match_focuses_nothing()
+    {
+        var cut = Picker(null);
+
+        var search = cut.Find("input[type=search]");
+        search.Input("qqqqqq");
+        search.KeyDown(new KeyboardEventArgs { Key = "ArrowDown" });
+
+        Assert.DoesNotContain(ctx.JSInterop.Invocations, i => i.Identifier.Contains("focus", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("qqqqqq")]
+    public void Enter_on_a_blank_or_matchless_query_picks_nothing(string query)
+    {
+        var emitted = new List<string?>();
+        var cut = Picker(null, emitted.Add);
+
+        var search = cut.Find("input[type=search]");
+        search.Input(query);
+        search.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Empty(emitted);
+    }
+
+    [Fact]
+    public void Enter_announces_the_icon_it_picked()
+    {
+        var cut = Picker(null);
+
+        var search = cut.Find("input[type=search]");
+        search.Input("petrol");
+        search.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+
+        Assert.Equal("Fuel selected.", cut.Find("[role=status]").TextContent);
+    }
+
+    [Fact]
+    public void A_disabled_picker_disables_the_box_and_Enter_picks_nothing()
+    {
+        var emitted = new List<string?>();
+        var cut = ctx.Render<OdsTagIconPicker>(p => p
+            .Add(c => c.Disabled, true)
+            .Add(c => c.ValueChanged, EventCallback.Factory.Create<string?>(this, emitted.Add)));
+
+        var search = cut.Find("input[type=search]");
+        Assert.True(search.HasAttribute("disabled"));
+
+        search.Input("petrol");
+        search.KeyDown(new KeyboardEventArgs { Key = "Enter" });
+        Assert.Empty(emitted);
+    }
+
+    [Fact]
+    public void Typing_clears_the_hover_preview()
+    {
+        var cut = Picker(null);
+
+        cut.Find("[aria-label=Fuel]").MouseEnter();
+        Assert.NotEmpty(cut.FindAll(".odc-iconpick-peek"));
+
+        cut.Find("input[type=search]").Input("fu");
+        Assert.Empty(cut.FindAll(".odc-iconpick-peek"));
+    }
+
+    [Fact]
+    public void The_empty_state_sits_outside_the_radiogroup()
+    {
+        var cut = Picker(null);
+
+        cut.Find("input[type=search]").Input("qqqqqq");
+
+        var empty = cut.Find(".odc-iconpick-empty");
+        Assert.Null(empty.Closest("[role=radiogroup]"));
+        Assert.Equal("true", empty.GetAttribute("aria-hidden"));
+    }
+
+    [Fact]
+    public async Task FocusSelectedAsync_clears_a_query_hiding_the_selection_then_focuses_it()
+    {
+        var cut = Picker("cabin");
+        cut.Find("input[type=search]").Input("fuel");
+
+        await cut.InvokeAsync(() => cut.Instance.FocusSelectedAsync());
+
+        Assert.Equal("", cut.Find("input[type=search]").GetAttribute("value") ?? "");
+        Assert.Equal(TagIcons.All.Count + 1, cut.FindAll("[role=radio]").Count);
+        var focused = ctx.JSInterop.VerifyFocusAsyncInvoke();
+        Assert.Equal(ButtonRef(cut, cut.FindAll("[role=radio]").ToList().FindIndex(b => b.GetAttribute("aria-label") == "Cabin")), ((ElementReference)focused.Arguments[0]!).Id);
     }
 
     [Fact]

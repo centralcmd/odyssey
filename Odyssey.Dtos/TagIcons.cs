@@ -196,7 +196,7 @@ public static class TagIcons
         new("sailing", "Sailing", "sail sailboat boat yacht"),
         new("surfing", "Surfing", "surf beach wave"),
         new("kayaking", "Kayaking", "kayak canoe paddle"),
-        new("downhill_skiing", "Skiing", "ski ski winter snow"),
+        new("downhill_skiing", "Skiing", "ski winter snow slope"),
         new("snowboarding", "Snowboarding", "snowboard winter snow"),
         new("ac_unit", "Winter", "snow cold snowflake frost"),
         new("park", "Nature", "nature tree park outdoors"),

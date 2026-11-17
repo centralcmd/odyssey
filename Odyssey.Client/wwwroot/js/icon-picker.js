@@ -15,7 +15,8 @@ export function attach(grid, search) {
         if (NAV_KEYS.has(e.key) && e.target && e.target.getAttribute('role') === 'radio') e.preventDefault();
     };
     const onSearchKey = (e) => {
-        if (e.key === 'ArrowDown' || e.key === 'Enter') e.preventDefault();
+        // Enter only picks while there is a query; on an empty box it keeps its usual meaning.
+        if (e.key === 'ArrowDown' || (e.key === 'Enter' && search.value.trim() !== '')) e.preventDefault();
     };
     // MudBlazor's dialog takes Escape before the event reaches the box, so this listens on the window in
     // the capture phase — ahead of every other handler — and only for the box holding a query. Blazor

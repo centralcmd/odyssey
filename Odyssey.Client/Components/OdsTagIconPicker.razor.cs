@@ -60,6 +60,8 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     private ElementReference _grid;
     private ElementReference _search;
     private string _query = "";
+    private string? _announcement;
+    private bool _focusSelectedAfterRender;
     private IJSObjectReference? _module;
     private IJSObjectReference? _handle;
     private int? _peek;
@@ -108,19 +110,26 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     private Cell? Peeked =>
         _peek is { } i && i != SelectedIndex && i >= 0 && i < _visible.Count ? _visible[i] : null;
 
-    private string StatusText => !Searching
+    private string StatusText => _announcement ?? (!Searching
         ? ""
         : _visible.Count switch
         {
             0 => "No icons match.",
             1 => "1 icon matches.",
             var n => $"{n} icons match.",
-        };
+        });
 
     protected override void OnInitialized() => _groupId = Id ?? $"odc-iconpick-{Guid.NewGuid():N}";
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        // A query that hid the selection was cleared by FocusSelectedAsync; the cell exists only now.
+        if (_focusSelectedAfterRender)
+        {
+            _focusSelectedAfterRender = false;
+            await FocusCellAsync(Math.Max(0, SelectedIndex));
+        }
+
         if (!firstRender || !OperatingSystem.IsBrowser())
         {
             return;
@@ -204,6 +213,7 @@ public partial class OdsTagIconPicker : IAsyncDisposable
             ? TagIconSearch.Search(_query).Select(option => new Cell(option.Key, option.Label)).ToList()
             : Cells;
         _peek = _focused = null;
+        _announcement = null;
     }
 
     // icon-picker.js stops the defaults of Arrow Down and Enter. Escape on a query never reaches here in a
@@ -216,8 +226,10 @@ public partial class OdsTagIconPicker : IAsyncDisposable
             case "ArrowDown" when _visible.Count > 0:
                 await FocusCellAsync(TabStopIndex);
                 break;
-            case "Enter" when Searching && _visible.Count > 0:
+            case "Enter" when Searching && _visible.Count > 0 && !Disabled:
                 await PickAsync(0);
+                // Focus stays in the box and the caption is aria-hidden, so the pick is announced.
+                _announcement = $"{_visible[0].Label} selected.";
                 break;
             case "Escape" when _query.Length > 0:
                 SetQuery("");
@@ -240,26 +252,21 @@ public partial class OdsTagIconPicker : IAsyncDisposable
     }
 
     /// <summary>Moves focus to the selected cell — the target of a server error on this field (issue #406 §7).</summary>
+    /// <remarks>
+    /// A query that hides the selection is cleared first, and the focus then waits for the render that
+    /// draws the cell: the element references still name the filtered grid until it runs.
+    /// </remarks>
     public async Task FocusSelectedAsync()
     {
         if (SelectedIndex < 0)
         {
             SetQuery("");
+            _focusSelectedAfterRender = true;
             StateHasChanged();
+            return;
         }
 
-        try
-        {
-            await _buttons[Math.Max(0, SelectedIndex)].FocusAsync();
-        }
-        catch (InvalidOperationException)
-        {
-            // Not rendered yet; nothing to focus.
-        }
-        catch (JSException)
-        {
-            // The circuit's JS is gone (teardown); there is nothing left to focus.
-        }
+        await FocusCellAsync(SelectedIndex);
     }
 
     // The caption previews the hovered cell, falling back to the focused one when the pointer leaves.

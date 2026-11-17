@@ -36,8 +36,8 @@
     <div class="odc-iconpick-search">
         <span class="material-icons" aria-hidden="true">search</span>
         <input type="search" class="odc-iconpick-search-input" @ref="_search"
-               placeholder="Search icons" aria-label="@SearchLabel" aria-controls="@_groupId"
-               autocomplete="off" spellcheck="false" disabled="@Disabled"
+               placeholder="@SearchLabel" aria-label="@SearchLabel" aria-controls="@_groupId"
+               maxlength="@TagIcons.MaxKeyLength" autocomplete="off" spellcheck="false" disabled="@Disabled"
                value="@_query" @oninput="OnQueryInput" @onkeydown="OnSearchKeyDownAsync" />
     </div>
     <div class="odc-iconpick-grid" role="radiogroup" id="@_groupId"
@@ -71,11 +71,12 @@
                 }
             </button>
         }
-        @if (_visible.Count == 0)
-        {
-            <div class="odc-iconpick-empty">No icons match “@_query”.</div>
-        }
     </div>
+    @if (_visible.Count == 0)
+    {
+        @* Outside the radiogroup, and aria-hidden: the status line already announces it. *@
+        <div class="odc-iconpick-empty" aria-hidden="true">No icons match “@_query”.</div>
+    }
     <div class="odc-sr-only" role="status">@StatusText</div>
     <div class="odc-iconpick-caption" aria-hidden="true">
         <span class="odc-iconpick-sel">

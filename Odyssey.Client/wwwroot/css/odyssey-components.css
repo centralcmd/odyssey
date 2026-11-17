@@ -3514,7 +3514,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* The native webkit clear "×" is off-theme (as on .odc-searchfield); Escape clears the query instead. */
 .odc-iconpick-search-input::-webkit-search-cancel-button,
 .odc-iconpick-search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
-.odc-iconpick-empty { grid-column: 1 / -1; padding: var(--space-4) var(--space-2); text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-iconpick-empty { padding: var(--space-4) var(--space-2); text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 
 /* ---- TagColorPicker (tag colour, #394) ------------------------------------
    No color · 8 calendar swatches · Custom. Every cell: 1px --control-border
@@ -3558,6 +3558,8 @@ tr:focus-within > .odc-rowactions.reveal,
   .odc-colorpick-cell.filled, .odc-colorpick-dot, .odc-avatar.user-color { forced-color-adjust: none; }
   .odc-colorpick-cell { border-color: CanvasText; }
   .odc-colorpick-cell:focus-visible { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  /* The icon search's focus cue is an inset box-shadow, which forced colours drop. */
+  .odc-iconpick-search:focus-within { box-shadow: none; outline: 2px solid Highlight; outline-offset: -2px; }
   .odc-colorpick-dot { box-shadow: 0 0 0 1px CanvasText; }
 }
 
