@@ -84,7 +84,7 @@ public partial class ImportNewsFeedsDialog : IDisposable
     private OdsLiveAnnouncer? _announcer;
 
     private int _maxMegabytes = ImportLimitsCache.Fallback.NewsOpmlMaxImportMegabytes;
-    private int _maxEntries = ImportLimitsCache.Fallback.NewsOpmlMaxImportEntries;
+    private int _maxEntries = SystemSettingsDefaults.NewsOpmlMaxImportEntries;
 
     private bool Importing => _phase == Phase.Importing;
 
@@ -117,7 +117,8 @@ public partial class ImportNewsFeedsDialog : IDisposable
     {
         var limits = await ImportLimits.GetAsync();
         _maxMegabytes = limits.NewsOpmlMaxImportMegabytes;
-        _maxEntries = limits.NewsOpmlMaxImportEntries;
+        // A degraded news read withholds the entry cap; the shipped default is its ceiling, and the server enforces the real one.
+        _maxEntries = limits.NewsOpmlMaxImportEntries ?? SystemSettingsDefaults.NewsOpmlMaxImportEntries;
     }
 
     private long MaxBytes => _maxMegabytes * BytesPerMegabyte;
@@ -428,17 +429,26 @@ public partial class ImportNewsFeedsDialog : IDisposable
     /// </summary>
     internal static MaskedUrl? Mask(string? url)
     {
+        // Only a web address is shown at all. Anything else — a scheme-less "user:pass@host" parses as scheme "user"
+        // with no user-info — could carry a credential the parser does not recognise, so it is hidden whole.
         if (string.IsNullOrWhiteSpace(url)
             || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
-            // On Unix a bare "/path" parses as a file URI; only an address that names its scheme is one.
-            || (uri.IsFile && !url.TrimStart().StartsWith("file:", StringComparison.OrdinalIgnoreCase)))
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
             return null;
         }
 
-        return string.IsNullOrEmpty(uri.UserInfo)
-            ? new MaskedUrl(url, null)
-            : new MaskedUrl($"{uri.Scheme}://", $"@{uri.Authority}{uri.PathAndQuery}{uri.Fragment}");
+        if (!string.IsNullOrEmpty(uri.UserInfo))
+        {
+            return new MaskedUrl($"{uri.Scheme}://", $"@{uri.Authority}{uri.PathAndQuery}{uri.Fragment}");
+        }
+
+        // The raw text is what is shown, so an "@" in its authority that the parser did not read as user-info hides it too.
+        var text = url.Trim();
+        var start = text.IndexOf("://", StringComparison.Ordinal);
+        var authority = start < 0 ? text : text[(start + 3)..];
+        var end = authority.IndexOfAny(['/', '\\', '?', '#']);
+        return (end < 0 ? authority : authority[..end]).Contains('@') ? null : new MaskedUrl(url, null);
     }
 
     /// <summary>A URL for display: <see cref="Head"/> alone, or the scheme, the masked user-info, then <see cref="Tail"/>.</summary>
