@@ -123,10 +123,11 @@ public class SystemSettingsApiTests
         Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
         Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
         Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.TaskIcsMaxExportTasks);
-        Assert.Equal(2000, dto.TaskIcsMaxImportTasks);
-        Assert.Equal(64, dto.TaskIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.TaskIcsMaxExportMegabytes);
+        // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
+        Assert.Null(dto.TaskIcsMaxExportTasks);
+        Assert.Null(dto.TaskIcsMaxImportTasks);
+        Assert.Equal(10240, dto.TaskIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.TaskIcsMaxExportMegabytes);
         Assert.Equal(2000, dto.JournalIcsMaxExportRows);
         Assert.Equal(2000, dto.JournalIcsMaxImportEntries);
         Assert.Equal(64, dto.JournalIcsMaxImportMegabytes);

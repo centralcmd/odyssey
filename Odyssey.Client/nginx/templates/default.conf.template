@@ -78,17 +78,24 @@ server {
         # response (a large upload, an AI analysis) is governed by proxy_read_timeout, unchanged.
         proxy_connect_timeout 5s;
 
-        # File uploads (statement/document attach, AI analysis) go through this proxy. nginx's
-        # default client_max_body_size is 1 MB, which would 413 any upload over ~1 MB before it
-        # ever reaches the API — while the API accepts up to 64 MB of file content. Keep this at
-        # or above the API's FileStorage:MaxFileSizeBytes plus the multipart envelope headroom
-        # (64 MB + 1 MB). Caddy's request_body limit must stay >= this value.
+        # File uploads (statement/document attach, AI analysis, task imports carrying their attached
+        # files) go through this proxy. nginx's default client_max_body_size is 1 MB, which would 413
+        # any upload over ~1 MB before it ever reaches the API — while the API accepts up to 10 GB.
+        # Keep this at or above the API's FileStorage:MaxFileSizeBytes plus the multipart envelope
+        # headroom (10240 MiB + 1 MiB). Caddy's request_body limit must stay >= this value.
         #
-        # FileStorage:MaxFileSizeBytes is the startup TRANSPORT ceiling, not the cap users hit: that
-        # one is admin-editable in System Settings and can only be set at or below the ceiling
-        # (issue #421 Wave 4). So lowering the limit needs no change here; raising it past 64 MB means
-        # raising this value and Caddy's first. See docs/deployment.md, "Upload size".
-        client_max_body_size 65m;
+        # FileStorage:MaxFileSizeBytes is the startup TRANSPORT ceiling, not the cap users hit: those
+        # are admin-editable in System Settings and can only be set at or below the ceiling (issue
+        # #421 Wave 4). So lowering a limit needs no change here. See docs/deployment.md, "Upload size".
+        client_max_body_size 10241m;
+
+        # Stream request bodies to the API as they arrive instead of spooling a multi-gigabyte upload
+        # to nginx's own temp directory first, and give a large upload or export the time it needs:
+        # the 60 s defaults would cut a 10 GB transfer off part-way. Connect stays bounded above.
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_body_timeout 3600s;
 
         # The Identity auth cookie bakes every permission claim into its value, so the
         # login Set-Cookie response header is large (and grows as claims are added — e.g.

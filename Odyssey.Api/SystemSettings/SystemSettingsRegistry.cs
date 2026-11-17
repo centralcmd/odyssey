@@ -96,17 +96,19 @@ internal static class SystemSettingsRegistry
             r => r.CalendarIcsMaxExportMegabytes, (dto, v) => dto.CalendarIcsMaxExportMegabytes = v),
 
         ..Capacity(SystemSettingsKeys.TaskIcsMaxExportTasks, nameof(SystemSettingsUpdate.TaskIcsMaxExportTasks),
-            Int(SystemSettingsDefaults.TaskIcsMaxExportTasks),
+            SystemSettingsDefaults.TaskIcsMaxExportTasks,
             r => r.TaskIcsMaxExportTasks, (dto, v) => dto.TaskIcsMaxExportTasks = v),
         ..Capacity(SystemSettingsKeys.TaskIcsMaxImportTasks, nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
-            Int(SystemSettingsDefaults.TaskIcsMaxImportTasks),
+            SystemSettingsDefaults.TaskIcsMaxImportTasks,
             r => r.TaskIcsMaxImportTasks, (dto, v) => dto.TaskIcsMaxImportTasks = v),
         ..Megabytes(SystemSettingsKeys.TaskIcsMaxImportMegabytes, nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
             SystemSettingsDefaults.TaskIcsMaxImportMegabytes,
-            r => r.TaskIcsMaxImportMegabytes, (dto, v) => dto.TaskIcsMaxImportMegabytes = v),
+            r => r.TaskIcsMaxImportMegabytes, (dto, v) => dto.TaskIcsMaxImportMegabytes = v,
+            SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, SystemSettingsBounds.TaskIcsMaxImportMegabytesMax),
         ..Megabytes(SystemSettingsKeys.TaskIcsMaxExportMegabytes, nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
             SystemSettingsDefaults.TaskIcsMaxExportMegabytes,
-            r => r.TaskIcsMaxExportMegabytes, (dto, v) => dto.TaskIcsMaxExportMegabytes = v),
+            r => r.TaskIcsMaxExportMegabytes, (dto, v) => dto.TaskIcsMaxExportMegabytes = v,
+            SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax),
 
         ..Capacity(SystemSettingsKeys.JournalIcsMaxExportRows, nameof(SystemSettingsUpdate.JournalIcsMaxExportRows),
             Int(SystemSettingsDefaults.JournalIcsMaxExportRows),
@@ -1177,7 +1179,8 @@ internal static class SystemSettingsRegistry
     // for a transcription slip.
     private static SystemSettingDescriptor[] Megabytes(
         string key, string fieldName, int defaultValue,
-        Func<SystemSettingsUpdate, int?> read, Action<SystemSettingsDto, int> write) =>
+        Func<SystemSettingsUpdate, int?> read, Action<SystemSettingsDto, int> write,
+        int min = MegabytesMin, int max = MegabytesMax) =>
     [
         new IntSetting
         {
@@ -1186,16 +1189,17 @@ internal static class SystemSettingsRegistry
             RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
             DefaultValue = Int(defaultValue),
             CacheKeyToEvict = ImportExportLimitsLookup.CacheKey,
-            Min = MegabytesMin,
-            Max = MegabytesMax,
+            Min = min,
+            Max = max,
             Read = read,
             Write = write,
         },
     ];
 
     /// <summary>
-    /// The shared megabyte bound pair. Named off one of the eight per-key constants rather than a
-    /// literal, and asserted equal to all eight by <c>SystemSettingsBoundsTests</c>.
+    /// The shared megabyte bound pair for six of the eight size keys. Named off one of the per-key constants
+    /// rather than a literal; the two task keys pass their own, wider pair, because a task file carries its
+    /// attached files inline. <c>SystemSettingsBoundsTests</c> asserts each descriptor against its own pair.
     /// </summary>
     private const int MegabytesMin = SystemSettingsBounds.ContactVCardMaxImportMegabytesMin;
 

@@ -325,8 +325,23 @@ which is exactly why the setting is **tighten-only**. `PUT /api/system-settings`
 the transport ceiling with a `400` naming it, rather than accepting a number the transport would then
 silently refuse.
 
-Both proxies currently sit at `65MB` for a `67108864`-byte (64 MB) ceiling plus 1 MB of envelope
-headroom. Lowering the cap needs no deploy-time change at all.
+Both proxies currently sit at `10241` MiB (nginx `10241m`, Caddy `10241MiB` — Caddy reads `MB` as
+10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of envelope headroom. The ceiling was raised
+from 64 MB so a task export can carry its attached files inline and come back in through the task import;
+the admin upload cap still seeds at 64 MB. Both proxies also stream request bodies through and allow an
+hour for a transfer, since a multi-gigabyte upload or download outlives the 60 s defaults. Lowering a cap
+needs no deploy-time change at all.
+
+Raising the ceiling does **not** widen every endpoint: the API holds each request that does not accept
+files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB). Only the upload and import
+endpoints, which set their own per-request cap, and the photo upload reach the ceiling.
+
+A task import is spooled twice while it is processed — once by the multipart reader, once as the decoded
+attachments — so a 10 GB import needs roughly 20 GB of free space for it. Both go to `ASPNETCORE_TEMP`, which
+the API image sets to `/var/odyssey/import-spool`, the `import_spool` named volume in `docker-compose.yml` — not
+`/tmp`, which the production file makes a RAM-backed tmpfs. The volume is scratch: nothing in it outlives a
+request, and it needs no backup. On an existing deployment Docker creates it app-owned from the image on first
+start.
 
 > `FileStorage:MaxFileSizeBytes` is **not** retired — it stays as the transport ceiling above, read by
 > the API at startup. The admin-editable cap is a separate value that seeds at 64 MB, so if you raise

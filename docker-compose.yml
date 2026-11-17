@@ -138,7 +138,7 @@ services:
       # admin-editable in System Settings; this is the startup limit for Kestrel and the multipart
       # reader, and the bound the setting cannot be raised above. Keep the reverse proxy's body-size
       # limit at or above it — see docs/deployment.md.
-      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-67108864}
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-10737418240}
       # The Data Protection key ring (issue #444). The DEV stack had none at all before this, so every
       # developer machine ran an ephemeral ring — which is why the ephemeral write refusal is on the
       # write path rather than being a startup warning nobody would see. The volume is SECRET-BEARING
@@ -195,6 +195,9 @@ services:
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
       - files_primary:/var/odyssey/files/primary
+      # Upload spool on disk (ASPNETCORE_TEMP, set in the image): a 10 GB task import must not land in /tmp,
+      # which is RAM-backed in the production file. Scratch only — nothing in it outlives its request.
+      - import_spool:/var/odyssey/import-spool
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5188:8080"
@@ -304,6 +307,8 @@ networks:
 
 volumes:
   mariadb_data:
+  # The API's upload spool (ASPNETCORE_TEMP). Scratch, never backed up.
+  import_spool:
   # Mounted read-write by the api service and READ-ONLY by the worker (issue #444 §14, revisited for
   # issue #348): those two containers, and only those, can decrypt what is stored under it. The
   # migrations job protects nothing and still does not mount it.

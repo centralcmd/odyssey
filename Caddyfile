@@ -10,16 +10,17 @@
 {$ODYSSEY_DOMAIN} {
 	encode zstd gzip
 
-	# Allow file uploads up to the API's 64 MB transport ceiling plus multipart envelope headroom.
+	# Allow file uploads up to the API's 10 GB transport ceiling plus multipart envelope headroom.
 	# Caddy's default is unlimited, but set it explicitly so this outermost hop stays aligned with
 	# (and never tighter than) the inner nginx client_max_body_size and the API's FileStorage cap.
+	# MiB, not MB: Caddy reads "MB" as 10^6 bytes, and the old "65MB" sat below a 64 MiB file.
 	#
-	# The cap users actually hit is admin-editable in System Settings and is bounded by that
-	# transport ceiling (issue #421 Wave 4), so lowering it needs no change here. Raising it past
-	# 64 MB means raising this, nginx, and FILE_UPLOAD_MAX_BYTES — outermost first.
+	# The caps users actually hit are admin-editable in System Settings and are bounded by that
+	# transport ceiling (issue #421 Wave 4), so lowering one needs no change here. Raising the
+	# ceiling means raising this, nginx, and FILE_UPLOAD_MAX_BYTES — outermost first.
 	# See docs/deployment.md, "Upload size".
 	request_body {
-		max_size 65MB
+		max_size 10241MiB
 	}
 
 	# HSTS — only meaningful over the https Caddy terminates, so it's set here rather than at
@@ -30,5 +31,11 @@
 	# Forward the original scheme/host so the API (via ForwardedHeaders) marks cookies Secure
 	# and generates correct https links. Caddy sets X-Forwarded-* automatically. The client
 	# container runs unprivileged nginx on 8080.
-	reverse_proxy client:8080
+	# A 10 GB upload or export can take a long time; don't let an idle read cut it off part-way.
+	reverse_proxy client:8080 {
+		transport http {
+			read_timeout 1h
+			write_timeout 1h
+		}
+	}
 }

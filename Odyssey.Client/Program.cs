@@ -106,6 +106,7 @@ builder.Services.AddScoped<Odyssey.Client.Services.IClipboardService, Odyssey.Cl
 builder.Services.AddScoped<Odyssey.Client.Services.IReferenceDataCache, Odyssey.Client.Services.ReferenceDataCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.Client.Services.ImportLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.INativeTransfer, Odyssey.Client.Services.NativeTransfer>();
 builder.Services.AddScoped<Odyssey.Client.Services.IMapStylesCache, Odyssey.Client.Services.MapStylesCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IWeatherPointOptionsCache, Odyssey.Client.Services.WeatherPointOptionsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IWeatherClaimsRefresher, Odyssey.Client.Services.WeatherClaimsRefresher>();
