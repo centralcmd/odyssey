@@ -26,6 +26,7 @@ namespace Odyssey.Api.Controllers;
 public sealed class BackgroundJobsController(
     BackgroundJobsService jobs,
     IExchangeRateSyncDispatcher exchangeRateSyncDispatcher,
+    Odyssey.Api.News.INewsRunDispatcher newsRunDispatcher,
     IOptions<JsonOptions> json,
     ILogger<SystemSettingsService> audit) : ControllerBase
 {
@@ -103,6 +104,12 @@ public sealed class BackgroundJobsController(
                     // Not the request's token: the run must not die with the HTTP connection. Under Testing this
                     // executes inline; in production the unclaimed row is the hand-off and this does nothing.
                     await exchangeRateSyncDispatcher.DispatchAsync(accepted.RunId, CancellationToken.None);
+                }
+                else if (entry.JobType == JobType.NewsFeedFetch)
+                {
+                    // The same hand-off for the news job (issue #470 §5.5 item 27): inline under Testing, the unclaimed
+                    // row in production.
+                    await newsRunDispatcher.DispatchAsync(accepted.RunId, CancellationToken.None);
                 }
 
                 return Accepted(new JobRunStarted { Id = accepted.RunId });
