@@ -34,6 +34,10 @@ public partial class LocationUnificationRulesTests
         var root = SolutionRoot();
         var implementations = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Where(path => !IsBuildOutput(path) && !path.Contains(".Tests", StringComparison.Ordinal))
+            // NewsText is the news reader's feed-text sanitiser (issue #470 §8.7): a different, wider rule set (tabs
+            // become spaces, zero-width and tag characters go, lines are kept) applied to publisher text, never to
+            // location data, so it is not a copy of this one.
+            .Where(path => !path.Replace('\\', '/').EndsWith("Odyssey.Core/Internet/News/Content/NewsText.cs", StringComparison.Ordinal))
             .Select(path => (Path: path, Code: StripComments(File.ReadAllText(path))))
             // A cleaner composes to NFC and strips controls and bidi overrides. TermTextValue rejects the same
             // characters rather than removing them and normalizes nothing, so it is not a copy.
