@@ -20,7 +20,9 @@ public partial class ImportTasksDialog
 
     // The most the typed-client fallback reads into the WASM heap (its arrays top out near 2 GB, and the heap well
     // before that once copied). Only reached when the browser holds no handle to the picked file.
-    private const long FallbackMaxBytes = 512L * 1024 * 1024;
+    // A named per-surface megabyte constant, not a server cap: it narrows nothing the server enforces.
+    private const int FallbackMaxMegabytes = 512;
+    private const long FallbackMaxBytes = FallbackMaxMegabytes * 1024L * 1024;
 
     private IReadOnlyList<OdsUploadFile> _files = [];
     private string? _fileError;
