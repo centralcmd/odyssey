@@ -663,7 +663,7 @@ public partial class ContactsCard
                 return;
 
             await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
-            Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+            Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
         {
@@ -690,7 +690,7 @@ public partial class ContactsCard
                 return;
 
             await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
-            Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+            Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
         {

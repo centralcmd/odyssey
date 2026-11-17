@@ -395,8 +395,9 @@ public class ContactVCardService
             AppendFolded(sb, $"{group}ADR;TYPE={AddressTypeToken(address.Label)}{pref}{ExtensionLabelParam(address.Label, AddressExtensionLabels)}:;{EscapeText(address.Line2 ?? "")};{EscapeText(address.Line1)};{EscapeText(address.City)};{EscapeText(address.Region ?? "")};{EscapeText(address.PostalCode ?? "")};{EscapeText(address.CountryCode)}");
             if (geocode is not null)
             {
-                AppendFolded(sb, string.Create(
-                    CultureInfo.InvariantCulture, $"{group}GEO:geo:{geocode.Latitude},{geocode.Longitude}"));
+                // Trailing zeros trimmed, so the line is the same whatever scale the provider materialises
+                // (MariaDB's DECIMAL column pads; the InMemory provider does not).
+                AppendFolded(sb, $"{group}GEO:geo:{FormatCoordinate(geocode.Latitude)},{FormatCoordinate(geocode.Longitude)}");
                 if (!string.IsNullOrWhiteSpace(geocode.TimeZoneId))
                 {
                     AppendFolded(sb, $"{group}TZ:{EscapeText(geocode.TimeZoneId)}");
@@ -451,8 +452,14 @@ public class ContactVCardService
 
     private const string ExtensionLabelParamName = "X-ODYSSEY-LABEL";
 
+    private static string FormatCoordinate(decimal value) =>
+        value.ToString("0.##########", CultureInfo.InvariantCulture);
+
     /// <summary>The contact's archive timestamp; no registered vCard property carries it.</summary>
     private const string ArchivedProperty = "X-ODYSSEY-ARCHIVED";
+
+    /// <summary>The earliest archive date an import keeps; anything earlier is clamped up to it.</summary>
+    private static readonly DateTime EarliestArchiveDate = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
     /// <summary>Group prefix pairing an ADR with its GEO/TZ — distinct from the aliases' <c>item</c>.</summary>
     private const string AddressGroupPrefix = "adr";
@@ -819,7 +826,8 @@ public class ContactVCardService
     /// Replaces the archive timestamp <see cref="ContactService.Create"/> stamped (now) with the one the card
     /// carries, inside the entry's transaction. A value that does not parse keeps the contact archived as of
     /// now; a future one is clamped to now, since a contact cannot have been archived later than it was
-    /// imported.
+    /// imported, and one before <see cref="EarliestArchiveDate"/> is clamped up to it, so a year-1 card can
+    /// never reach the database as a DATETIME outside its range and abort the whole import.
     /// </summary>
     private async Task RestoreArchiveDateAsync(Guid contactId, string? value, CancellationToken cancellationToken)
     {
@@ -832,8 +840,9 @@ public class ContactVCardService
         }
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var clamped = archivedAt > now ? now : archivedAt < EarliestArchiveDate ? EarliestArchiveDate : archivedAt;
         var contact = await context.Contacts.FirstAsync(c => c.ContactId == contactId, cancellationToken);
-        contact.Archived = DateTime.SpecifyKind(archivedAt < now ? archivedAt : now, DateTimeKind.Utc);
+        contact.Archived = DateTime.SpecifyKind(clamped, DateTimeKind.Utc);
         await context.SaveChangesAsync(cancellationToken);
     }
 
@@ -1351,9 +1360,10 @@ public class ContactVCardService
 
         var streetLines = street.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         var line1 = streetLines.Length > 0 ? streetLines[0] : "";
-        var line2 = extended.Length > 0
-            ? CollapseWhitespace(extended.Replace('\n', ' '))
-            : string.Join(", ", streetLines.Skip(1));
+        // Extra street lines are never dropped: with an extended address too, they come first, then it.
+        var line2 = string.Join(", ", streetLines.Skip(1)
+            .Append(CollapseWhitespace(extended.Replace('\n', ' ')))
+            .Where(part => part.Length > 0));
 
         if (line1.Length == 0 || city.Length == 0 || country is null)
         {

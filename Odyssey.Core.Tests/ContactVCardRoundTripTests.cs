@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -18,7 +19,8 @@ namespace Odyssey.Core.Tests;
 /// </summary>
 public class ContactVCardRoundTripTests
 {
-    private static (ContactService Service, ContactVCardService VCard) CreateServices(OdysseyContext context)
+    private static (ContactService Service, ContactVCardService VCard) CreateServices(
+        OdysseyContext context, TimeProvider? clock = null)
     {
         var stores = Odyssey.Testing.FileStorage.TestFileStores.For(context);
         var avatars = new ContactAvatarService(
@@ -26,7 +28,7 @@ public class ContactVCardRoundTripTests
             writer: stores.Writer, store: stores.Store, source: stores.Source);
         var service = new ContactService(context, new NoopContactReferenceGuard());
         return (service, new ContactVCardService(
-            context, service, avatars, new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance));
+            context, service, avatars, new FakeImportExportLimitsLookup(), NullLogger<ContactVCardService>.Instance, clock));
     }
 
     private static NewContact Person(string first, string last, bool archived = false) => new()
@@ -60,10 +62,10 @@ public class ContactVCardRoundTripTests
     private static string Vcard(params string[] lines) =>
         "BEGIN:VCARD\r\nVERSION:4.0\r\n" + string.Join("\r\n", lines) + "\r\nEND:VCARD\r\n";
 
-    private static async Task<string> ExportAllAsync(ContactVCardService vCard)
+    private static async Task<string> ExportAllAsync(ContactVCardService vCard, bool includeImages = false)
     {
         using var buffer = new MemoryStream();
-        await vCard.ExportManyStreamingAsync(new ContactsQueryParams(), buffer, (_, _) => { });
+        await vCard.ExportManyStreamingAsync(new ContactsQueryParams(), buffer, (_, _) => { }, includeImages);
         return Encoding.UTF8.GetString(buffer.ToArray());
     }
 
@@ -129,6 +131,20 @@ public class ContactVCardRoundTripTests
         Assert.Equal("Leil. 4", address.Line2);
     }
 
+    [Fact]
+    public async Task Import_ExtendedAddressAndMultiLineStreet_KeepsEveryLine()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var (service, vCard) = CreateServices(context);
+
+        await ImportAsync(vCard, Vcard("UID:both", "FN:Kari Nordmann", "N:Nordmann;Kari;;;",
+            @"ADR;TYPE=home:;Leil. 4;Storgata 1\nBakgården;Oslo;;0150;NO"));
+
+        var address = Assert.Single(Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items).Addresses);
+        Assert.Equal("Storgata 1", address.Line1);
+        Assert.Equal("Bakgården, Leil. 4", address.Line2);
+    }
+
     // ── Country names ──────────────────────────────────────────────────────────────────────────────
 
     [Theory]
@@ -139,6 +155,12 @@ public class ContactVCardRoundTripTests
     [InlineData("Sverige", "SE")]
     [InlineData("Deutschland", "DE")]
     [InlineData("United States of America", "US")]
+    [InlineData("USA", "US")]
+    [InlineData("UK", "GB")]
+    [InlineData("Great Britain", "GB")]
+    [InlineData("  united   kingdom ", "GB")]
+    [InlineData("Österreich", "AT")]
+    [InlineData("Osterreich", "AT")]
     public async Task Import_CountryNameOrCode_ResolvesToIsoCode(string country, string expected)
     {
         await using var context = TestContextFactory.CreateJournal();
@@ -164,13 +186,13 @@ public class ContactVCardRoundTripTests
 
         var single = (await vCard.ExportOneAsync(created.ContactId))!.Content;
         var bulk = await ExportAllAsync(vCard);
+        var bulkWithImages = await ExportAllAsync(vCard, includeImages: true);
 
-        foreach (var export in new[] { single, bulk })
+        foreach (var export in new[] { single, bulk, bulkWithImages })
         {
-            Assert.Contains("adr1.ADR;TYPE=home;PREF=1:;;Storgata 1;Oslo;;0150;NO", export);
-            Assert.Contains("adr1.GEO:geo:59.9139", export);
-            Assert.Contains(",10.7522", export);
-            Assert.Contains("adr1.TZ:Europe/Oslo", export);
+            Assert.Contains("\r\nadr1.ADR;TYPE=home;PREF=1:;;Storgata 1;Oslo;;0150;NO\r\n", export);
+            Assert.Contains("\r\nadr1.GEO:geo:59.9139,10.7522\r\n", export);
+            Assert.Contains("\r\nadr1.TZ:Europe/Oslo\r\n", export);
         }
     }
 
@@ -194,6 +216,63 @@ public class ContactVCardRoundTripTests
         Assert.Equal(59.9139m, place.Latitude);
         Assert.Equal(10.7522m, place.Longitude);
         Assert.Equal("Europe/Oslo", place.TimeZoneId);
+    }
+
+    [Fact]
+    public async Task Export_MixedAddresses_GroupsOnlyTheGeocodedOnes_InOrder()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var (service, vCard) = CreateServices(context);
+        var created = await service.Create(Person("Kari", "Nordmann"));
+        await service.CreateAddress(created.ContactId, Address("Storgata 1", geocoded: true), claims: LocationClaims.Trusted);
+        await service.CreateAddress(created.ContactId, Address("Kirkegata 2") with { IsPrimary = false }, claims: LocationClaims.Trusted);
+        await service.CreateAddress(created.ContactId, Address("Torggata 3", geocoded: true) with { IsPrimary = false, Latitude = 60m, Longitude = 11m }, claims: LocationClaims.Trusted);
+
+        var export = (await vCard.ExportOneAsync(created.ContactId))!.Content;
+
+        Assert.Contains("\r\nADR;TYPE=home:;;Kirkegata 2;Oslo;;0150;NO\r\n", export);
+        Assert.Contains("adr1.GEO:geo:59.9139,10.7522", export);
+        Assert.Contains("adr2.GEO:geo:60,11", export);
+        Assert.DoesNotContain("adr3.", export);
+    }
+
+    [Theory]
+    [InlineData("geo:59.9139,10.7522;crs=wgs84", 59.9139)]
+    [InlineData("59.9139;10.7522", 59.9139)]
+    public async Task Import_GeoForms_AreAccepted(string geo, double latitude)
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var (_, vCard) = CreateServices(context);
+
+        var result = await ImportAsync(vCard, Vcard("UID:geo-form", "FN:Kari Nordmann", "N:Nordmann;Kari;;;",
+            "ITEM7.ADR;TYPE=home:;;Storgata 1;Oslo;;0150;NO",
+            $"item7.GEO:{geo}",
+            "Item7.TZ:Europe/Oslo"));
+
+        Assert.Empty(result.Skipped);
+        Assert.Equal((decimal)latitude, Assert.Single(await context.Locations.ToListAsync()).Latitude);
+    }
+
+    [Theory]
+    [InlineData("geo:91,10", "Europe/Oslo")]
+    [InlineData("geo:59.9,181", "Europe/Oslo")]
+    [InlineData("geo:north,east", "Europe/Oslo")]
+    [InlineData("geo:59.9", "Europe/Oslo")]
+    [InlineData("geo:59.9,10.7", "Mars/Olympus")]
+    [InlineData("geo:59.9,10.7", "-05:00")]
+    public async Task Import_UnusableGeo_KeepsTheAddress_AndReportsIt(string geo, string tz)
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var (_, vCard) = CreateServices(context);
+
+        var result = await ImportAsync(vCard, Vcard("UID:geo-bad", "FN:Kari Nordmann", "N:Nordmann;Kari;;;",
+            "adr1.ADR;TYPE=home:;;Storgata 1;Oslo;;0150;NO",
+            $"adr1.GEO:{geo}",
+            $"adr1.TZ:{tz}"));
+
+        Assert.Equal(1, result.AddressesLinked);
+        Assert.StartsWith("Address coordinates dropped", Assert.Single(result.Skipped).Reason);
+        Assert.Null(Assert.Single(await context.Locations.ToListAsync()).Latitude);
     }
 
     [Fact]
@@ -304,6 +383,48 @@ public class ContactVCardRoundTripTests
 
         var imported = Assert.Single((await targetService.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items).Archived;
         Assert.Equal(original.AddTicks(-(original.Ticks % TimeSpan.TicksPerSecond)), imported);
+    }
+
+    [Fact]
+    public async Task Export_ArchiveMarker_IsTheUtcTimestamp_OnEveryExportPath()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var (service, vCard) = CreateServices(context);
+        var created = await service.Create(Person("Kari", "Nordmann", archived: true));
+        var tracked = await context.Contacts.SingleAsync(c => c.ContactId == created.ContactId);
+        tracked.Archived = new DateTime(2025, 3, 4, 5, 6, 7, DateTimeKind.Utc);
+        await context.SaveChangesAsync();
+
+        foreach (var export in new[]
+                 {
+                     (await vCard.ExportOneAsync(created.ContactId))!.Content,
+                     await ExportAllAsync(vCard),
+                     await ExportAllAsync(vCard, includeImages: true),
+                 })
+        {
+            Assert.Contains("\r\nX-ODYSSEY-ARCHIVED:20250304T050607Z\r\n", export);
+        }
+    }
+
+    [Theory]
+    [InlineData("20250304T050607Z", "2025-03-04T05:06:07Z")]
+    [InlineData("2025-03-04T05:06:07Z", "2025-03-04T05:06:07Z")]
+    [InlineData("20250304", "2025-03-04T00:00:00Z")]
+    [InlineData("2025-03-04", "2025-03-04T00:00:00Z")]
+    [InlineData("20300101T000000Z", "2026-06-01T12:00:00Z")]
+    [InlineData("00010101", "1970-01-01T00:00:00Z")]
+    public async Task Import_ArchiveDate_IsParsedAndClamped(string value, string expected)
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var clock = new FakeTimeProvider(new DateTimeOffset(2026, 6, 1, 12, 0, 0, TimeSpan.Zero));
+        var (service, vCard) = CreateServices(context, clock);
+
+        var result = await ImportAsync(vCard, Vcard("UID:archive-date", "FN:Kari Nordmann", "N:Nordmann;Kari;;;",
+            $"X-ODYSSEY-ARCHIVED:{value}"));
+
+        Assert.Equal(1, result.CreatedCount);
+        var archived = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items).Archived;
+        Assert.Equal(DateTime.Parse(expected, null, System.Globalization.DateTimeStyles.AdjustToUniversal), archived);
     }
 
     [Fact]

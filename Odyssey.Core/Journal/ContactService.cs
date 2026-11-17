@@ -114,11 +114,6 @@ public class ContactService
     }
 
     /// <summary>
-    /// Row count matching the same filters as <see cref="ListAsync"/> — the Goal 8 pre-fetch cap check
-    /// and the <c>X-Odyssey-Export-Rows</c> completeness-header count (issue #343 §5/§11), computed
-    /// before any row is fetched.
-    /// </summary>
-    /// <summary>
     /// The coordinates (and time zone, when set) of the places the given address rows link to, keyed by
     /// address id — only places that carry both coordinates. Core-internal: read only by the vCard export,
     /// which writes them beside the address under <c>contacts.read</c>.
@@ -140,6 +135,11 @@ public class ContactService
         return rows.ToDictionary(r => r.Id, r => new AddressGeocode(r.Latitude!.Value, r.Longitude!.Value, r.TimeZoneId));
     }
 
+    /// <summary>
+    /// Row count matching the same filters as <see cref="ListAsync"/> — the Goal 8 pre-fetch cap check
+    /// and the <c>X-Odyssey-Export-Rows</c> completeness-header count (issue #343 §5/§11), computed
+    /// before any row is fetched.
+    /// </summary>
     public async Task<int> CountMatchingAsync(ContactsQueryParams query, CancellationToken cancellationToken = default) =>
         await ApplyFilters(ReadQuery(), query).CountAsync(cancellationToken);
 

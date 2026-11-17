@@ -74,8 +74,8 @@ single-contact default would silently change what an existing caller receives fr
     /// </summary>
     private const string ExportDisclosure = @"The exported card carries the contact's names, aliases
 (including maiden and former names, with their free-text labels), middle name, dates of birth and
-death, an organization's establishment and dissolution dates, the archive date, addresses, email
-addresses with each geocoded address's coordinates and time zone, phone numbers and notes.";
+death, an organization's establishment and dissolution dates, the archive date, addresses
+(with each geocoded address's coordinates and time zone), email addresses, phone numbers and notes.";
 
     [HttpGet("vcard", Name = "ExportContactsVCard")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]

@@ -29,12 +29,15 @@ internal static class VCardCountry
         }
 
         var trimmed = value.Trim();
-        if (trimmed.Length == 2 && trimmed.All(char.IsAsciiLetter))
+
+        // The name table is consulted FIRST: "UK" is two letters but not an ISO code, and the two-letter
+        // shortcut below would otherwise store it verbatim instead of as GB.
+        if (Names.Value.TryGetValue(Key(trimmed), out var code))
         {
-            return trimmed.ToUpperInvariant();
+            return code;
         }
 
-        return Names.Value.TryGetValue(Key(trimmed), out var code) ? code : null;
+        return trimmed.Length == 2 && trimmed.All(char.IsAsciiLetter) ? trimmed.ToUpperInvariant() : null;
     }
 
     private static FrozenDictionary<string, string> Build()
