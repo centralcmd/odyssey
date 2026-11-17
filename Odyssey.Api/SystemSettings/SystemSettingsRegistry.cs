@@ -111,17 +111,19 @@ internal static class SystemSettingsRegistry
             SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax),
 
         ..Capacity(SystemSettingsKeys.JournalIcsMaxExportRows, nameof(SystemSettingsUpdate.JournalIcsMaxExportRows),
-            Int(SystemSettingsDefaults.JournalIcsMaxExportRows),
+            SystemSettingsDefaults.JournalIcsMaxExportRows,
             r => r.JournalIcsMaxExportRows, (dto, v) => dto.JournalIcsMaxExportRows = v),
         ..Capacity(SystemSettingsKeys.JournalIcsMaxImportEntries, nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
-            Int(SystemSettingsDefaults.JournalIcsMaxImportEntries),
+            SystemSettingsDefaults.JournalIcsMaxImportEntries,
             r => r.JournalIcsMaxImportEntries, (dto, v) => dto.JournalIcsMaxImportEntries = v),
         ..Megabytes(SystemSettingsKeys.JournalIcsMaxImportMegabytes, nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
             SystemSettingsDefaults.JournalIcsMaxImportMegabytes,
-            r => r.JournalIcsMaxImportMegabytes, (dto, v) => dto.JournalIcsMaxImportMegabytes = v),
+            r => r.JournalIcsMaxImportMegabytes, (dto, v) => dto.JournalIcsMaxImportMegabytes = v,
+            SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, SystemSettingsBounds.JournalIcsMaxImportMegabytesMax),
         ..Megabytes(SystemSettingsKeys.JournalIcsMaxExportMegabytes, nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
             SystemSettingsDefaults.JournalIcsMaxExportMegabytes,
-            r => r.JournalIcsMaxExportMegabytes, (dto, v) => dto.JournalIcsMaxExportMegabytes = v),
+            r => r.JournalIcsMaxExportMegabytes, (dto, v) => dto.JournalIcsMaxExportMegabytes = v,
+            SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax),
 
         // ── AI file-analysis policy and processor disclosure (issue #421 Wave 1) ──────────────────
         // The four disclosure strings carry legal weight — they are what the consent gate shows the

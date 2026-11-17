@@ -70,10 +70,10 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         TaskIcsMaxImportTasks = null,
         TaskIcsMaxImportMegabytes = (int)(TaskApiClient.MaxImportBytes / (1024 * 1024)),
         TaskIcsMaxExportMegabytes = SystemSettingsBounds.TaskIcsMaxExportMegabytesMax,
-        JournalIcsMaxExportRows = 2000,
-        JournalIcsMaxImportEntries = 2000,
+        JournalIcsMaxExportRows = null,
+        JournalIcsMaxImportEntries = null,
         JournalIcsMaxImportMegabytes = (int)(JournalIcsApiClient.MaxImportBytes / (1024 * 1024)),
-        JournalIcsMaxExportMegabytes = 64,
+        JournalIcsMaxExportMegabytes = SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
     };
 
     private Task<ImportLimitsDto?>? pending;

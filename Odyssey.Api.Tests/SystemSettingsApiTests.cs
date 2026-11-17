@@ -128,10 +128,11 @@ public class SystemSettingsApiTests
         Assert.Null(dto.TaskIcsMaxImportTasks);
         Assert.Equal(10240, dto.TaskIcsMaxImportMegabytes);
         Assert.Equal(10240, dto.TaskIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.JournalIcsMaxExportRows);
-        Assert.Equal(2000, dto.JournalIcsMaxImportEntries);
-        Assert.Equal(64, dto.JournalIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.JournalIcsMaxExportMegabytes);
+        // The journal surface follows it: entries carry their files and photos inline too.
+        Assert.Null(dto.JournalIcsMaxExportRows);
+        Assert.Null(dto.JournalIcsMaxImportEntries);
+        Assert.Equal(10240, dto.JournalIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.JournalIcsMaxExportMegabytes);
     }
 
     [Fact]
