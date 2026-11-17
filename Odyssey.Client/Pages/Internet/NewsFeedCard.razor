@@ -1,0 +1,166 @@
+@using System.Globalization
+@inject IClipboardService Clipboard
+@*
+    NewsFeedCard — one feed on /news-feeds (issue #473 §3.3; Odyssey Design System · ui_kits/web/NewsFeeds.jsx,
+    NewsFeedRecord). An h3 record card: the display title (never a fetch host) in the feed's language, the HEALTH as a
+    text chip, its tags, and the meta line — the site host (from siteUrl only), "Checked 12 min ago" and the interval —
+    with unread and article counts.
+
+    The expanded body: the Status section, rendered ONLY when management is non-null (news-feeds.update; the client
+    infers nothing from its absence) — the feed URL with its query masked until Show full address, the last result in
+    words, failures, today's articles and image bytes, the quota reason, the https → http note and a moved feed's
+    Use new address; then Settings, and View articles. Nothing interactive sits inside the card's expand button.
+    Every publisher string is encoded text.
+*@
+
+<OdsRecordCard Id="@CardId(Feed.Id)"
+               Icon="rss_feed"
+               Accent="var(--mud-palette-text-secondary)"
+               AccentSoft="var(--mud-palette-action-default-hover)"
+               HeadingLevel="3"
+               Name="@Feed.DisplayTitle"
+               NameLang="@Lang"
+               Meta="Meta"
+               Counts="Counts"
+               Dimmed="@(Feed.ArchivedAtUtc is not null)"
+               Highlight="Highlight"
+               Open="Open"
+               OnToggle="OnToggle">
+    <Chips>
+        <NewsFeedHealthChip Health="Feed.Health" Compact="true" DescribedBy="@(QuotaText is null ? null : QuotaId)" />
+        @if (QuotaText is { } quota)
+        {
+            <span id="@QuotaId" class="odc-sr-only">@quota</span>
+        }
+        @foreach (var tag in FeedTags)
+        {
+            <OdsTagChip Name="@(tag.Archived ? $"{tag.Name} (archived)" : tag.Name)" Icon="@tag.Icon" Color="@tag.Color" Class="sm" />
+        }
+    </Chips>
+    <Actions>
+        @if (Busy)
+        {
+            <span class="nw-row-busy"><OdsSpinner Size="OdsSize.Sm" AriaLabel="@($"Saving {Feed.DisplayTitle}")" /></span>
+        }
+        else if (Menu.Any(item => !item.Divider))
+        {
+            <OdsMenu Items="Menu" AriaLabel="@($"Actions for {Feed.DisplayTitle}")" />
+        }
+    </Actions>
+    <Alert>
+        @if (Feed.Health == NewsFeedHealth.Quarantined)
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.None">Odyssey stopped fetching this feed because of what it returned. Check the feed, then release it from quarantine.</OdsAlert>
+        }
+        else if (QuotaText is { } quotaAlert)
+        {
+            <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">@quotaAlert</OdsAlert>
+        }
+        else if (Feed.Health == NewsFeedHealth.Pending)
+        {
+            <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">
+                <span class="nw-alert-line">
+                    <span>@(PollExpired ? "Not fetched yet. Check again later." : Polling ? "Checking for the first fetch…" : "Not fetched yet.")</span>
+                    <span class="nw-pending-actions">
+                        @if (Polling)
+                        {
+                            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="stop_circle" OnClick="StopChecking">Stop checking</OdsButton>
+                        }
+                        <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="CheckAgain">Check again</OdsButton>
+                    </span>
+                </span>
+            </OdsAlert>
+        }
+    </Alert>
+    <Details>
+        <OdsInfoTileGrid>
+            <OdsInfoTile Icon="monitor_heart" Label="Health" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@OdsNewsFeedHealth.Meta(Feed.Health).Label</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="schedule" Label="Last success" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@(Feed.LastSuccessAtUtc is { } success ? OdsRelativeTime.Absolute(Utc(success)) : "Never")</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="update" Label="Next check" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@(Feed.NextFetchAtUtc is { } next && Feed.ArchivedAtUtc is null && Feed.IsActive ? OdsRelativeTime.Absolute(Utc(next)) : "Not scheduled")</Value>
+            </OdsInfoTile>
+            <OdsInfoTile Icon="language" Label="Site" ValueVariant="OdsInfoTileVariant.Text">
+                <Value>@(SiteHost ?? "—")</Value>
+            </OdsInfoTile>
+        </OdsInfoTileGrid>
+    </Details>
+    <Content>
+        <div class="nw-content">
+            @if (Feed.Management is { } management)
+            {
+                <OdsRecordSection Label="Status" HeadingLevel="4">
+                    <dl class="nw-facts">
+                        <div>
+                            <dt>Feed URL</dt>
+                            <dd>
+                                <span class="nw-feedurl">
+                                    @{ var (shown, masked) = NewsFeedForm.Mask(management.Url); }
+                                    <bdi dir="ltr" class="nw-feedurl-text">@(_showFullUrl || !masked ? management.Url : shown)</bdi>
+                                    @if (masked && !_showFullUrl)
+                                    {
+                                        <span class="odc-sr-only"> (query hidden)</span>
+                                    }
+                                    <span class="nw-link-actions">
+                                        @if (masked)
+                                        {
+                                            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm"
+                                                       Icon="@(_showFullUrl ? "visibility_off" : "visibility")"
+                                                       aria-pressed="@(_showFullUrl ? "true" : "false")"
+                                                       OnClick="() => _showFullUrl = !_showFullUrl">Show full address</OdsButton>
+                                        }
+                                        <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="content_copy"
+                                                   OnClick="() => CopyUrlAsync(management.Url)">Copy</OdsButton>
+                                    </span>
+                                </span>
+                            </dd>
+                        </div>
+                        <div><dt>Last result</dt><dd>@LastResult(management)</dd></div>
+                        <div><dt>Consecutive failures</dt><dd>@management.ConsecutiveFailures.ToString("N0", CultureInfo.CurrentCulture)</dd></div>
+                        <div><dt>Today</dt><dd>@($"{NewsFeedback.Count(management.ArticlesToday, "article", "articles")} · {ByteSize.Format(management.ImageBytesToday)} of images")</dd></div>
+                        @if (QuotaText is { } limit)
+                        {
+                            <div><dt>Storage limit</dt><dd>@limit</dd></div>
+                        }
+                    </dl>
+                    @if (management.RedirectedFromHttps)
+                    {
+                        <p class="nw-line"><span class="material-icons" aria-hidden="true">lock_open</span>This feed was redirected from https to http. Its content now travels unencrypted.</p>
+                    }
+                    @if (!string.IsNullOrEmpty(management.SuggestedUrl))
+                    {
+                        <div class="nw-moved">
+                            <p class="nw-line"><span class="material-icons" aria-hidden="true">moving</span><span>This feed has moved to:</span></p>
+                            <OdsExternalLink Url="@management.SuggestedUrl" Text="Open the new address" Copyable="true" />
+                            @if (CanUpdate)
+                            {
+                                <div class="nw-actions">
+                                    <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="published_with_changes"
+                                               Loading="Busy" OnClick="UseNewAddress">Use new address</OdsButton>
+                                </div>
+                            }
+                        </div>
+                    }
+                </OdsRecordSection>
+            }
+            <OdsRecordSection Label="Settings" HeadingLevel="4">
+                <dl class="nw-facts">
+                    <div><dt>Check every</dt><dd>@(Feed.FetchIntervalMinutes is { } own ? $"{own} min" : $"{Feed.EffectiveIntervalMinutes} min (default)")</dd></div>
+                    <div><dt>Download images</dt><dd>@(Feed.DownloadImages ? "On" : "Off")</dd></div>
+                    <div><dt>Active</dt><dd>@(Feed.ArchivedAtUtc is not null ? "Archived" : Feed.IsActive ? "Yes" : "Paused")</dd></div>
+                </dl>
+                @if (Feed.ArchivedAtUtc is null && CanUpdate && CanDelete)
+                {
+                    @* Ordinary text, never a tooltip or a describedby-only hint (§3.3, AC 32). *@
+                    <p class="nw-line"><span class="material-icons" aria-hidden="true">info</span>To delete this feed, archive it first. Archive is in the ⋯ menu on this card.</p>
+                }
+            </OdsRecordSection>
+            <div class="nw-actions">
+                <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="feed" Href="@($"news?feedId={Feed.Id}")">View articles</OdsButton>
+            </div>
+        </div>
+    </Content>
+</OdsRecordCard>

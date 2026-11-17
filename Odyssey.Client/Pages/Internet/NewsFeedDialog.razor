@@ -1,0 +1,74 @@
+@*
+    NewsFeedDialog — New feed / Edit feed (issue #473 §3.3; Odyssey Design System · ui_kits/web/NewsFeeds.jsx,
+    NewsFeedDialog). Required fields carry the star AND the word "Required" in their helper line. The client mirrors
+    NewsLimits; a server 400/422 always wins, on the field it names.
+
+    Edit keeps the feed's version from the read and sends it on PUT. A 409 news-feed-changed puts an OdsAlert
+    role=alert at the top of the dialog and focus on it; Reload refetches the feed and stores its new version — a
+    field the server changed WINS, one only the user changed keeps the user's value — then reports which fields the
+    server updated (role=status) and focuses the first of them. A failed Reload keeps the alert and focus on Reload;
+    a 404 means the feed was deleted: Save is disabled and focus moves to Close.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="rss_feed"
+               Title="@(IsEdit ? "Edit feed" : "New feed")"
+               Subtitle="@(IsEdit ? "Change how Odyssey reads this feed." : "Subscribe to a site’s RSS, Atom or JSON feed.")"
+               CancelLabel="@(_conflict == Conflict.Deleted ? "Close" : "Cancel")"
+               SubmitLabel="@(IsEdit ? "Save" : "Create feed")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               SubmitDisabled="@(_conflict == Conflict.Deleted)"
+               OnSubmit="SubmitAsync">
+    @if (_conflict is Conflict.Changed or Conflict.ReloadFailed)
+    {
+        <div id="@ConflictId" tabindex="-1" class="nw-focus-host">
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                <span class="nw-alert-line">
+                    <span>@(_conflict == Conflict.ReloadFailed ? "Couldn’t reload this feed. Try again." : "This feed was changed elsewhere. Reload it to see the latest settings.")</span>
+                    <OdsButton id="@ReloadId" Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh"
+                               Loading="_reloading" AriaDisabled="_reloading" OnClick="ReloadAsync">Reload</OdsButton>
+                </span>
+            </OdsAlert>
+        </div>
+    }
+    else if (_conflict == Conflict.Deleted)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">This feed was deleted.</OdsAlert>
+    }
+    else if (_conflict == Conflict.Reloaded)
+    {
+        <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.Status">@ReloadedText</OdsAlert>
+    }
+
+    @if (_formAlert is { } alert)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
+    }
+
+    <OdsField id="@UrlId" Label="Feed URL" Required="true" InputType="InputType.Url" Value="@_url" ValueChanged="OnUrlChanged"
+              MaxLength="@NewsLimits.MaxUrlLength" AutoFocus="@(!IsEdit)" Placeholder="https://example.com/feed.xml"
+              Help="@NewsFeedForm.UrlHelp" Error="@_urlError" />
+    @if (_duplicateOf is { } existing)
+    {
+        <div>
+            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" IconRight="arrow_forward"
+                       OnClick="() => GoToFeed.InvokeAsync(existing)">Go to feed</OdsButton>
+        </div>
+    }
+    <OdsField id="@TitleFieldId" Label="Custom title" Value="@_title" ValueChanged="OnTitleChanged"
+              MaxLength="@NewsLimits.MaxCustomTitleLength" Help="@NewsFeedForm.TitleHelp" Error="@_titleError" />
+    <OdsNumberField Id="@IntervalId" Label="Check every" Unit="min" Value="_interval" ValueChanged="OnIntervalChanged"
+                    Min="NewsLimits.MinFetchIntervalMinutes" Max="NewsLimits.MaxFetchIntervalMinutes" Step="1"
+                    Placeholder="Default" Help="@NewsFeedForm.IntervalHelp" Error="@_intervalError" />
+    <OdsSwitch Label="Download images" Checked="_downloadImages" CheckedChanged="v => { _downloadImages = v; }" />
+    @if (IsEdit)
+    {
+        <OdsSwitch Label="Active" Checked="_active" CheckedChanged="v => { _active = v; }" />
+    }
+    else
+    {
+        <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
+                           Noun="news tag" NounPlural="news tags" Error="@_tagsError"
+                           Help="Every article from this feed carries these tags too." />
+    }
+</OdsFormDialog>
