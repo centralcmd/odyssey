@@ -64,6 +64,9 @@ public class NewsFeedsPageTests
         cut.WaitForElement(".mud-menu-item");
         var labels = cut.FindAll(".mud-menu-item .odc-menu-item-body > span:first-child").Select(e => e.TextContent.Trim()).Where(t => t.Length > 0).ToList();
         cut.Find($"#nf-{feed.Id} .odc-record-ctl button[aria-label='Actions for {feed.DisplayTitle}']").Click();
+        // The close renders asynchronously: without this wait, the NEXT call can read this menu's items
+        // still in the DOM alongside its own (seen on a loaded CI runner as a list with a stale tail).
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-menu-item")));
         return labels;
     }
 
