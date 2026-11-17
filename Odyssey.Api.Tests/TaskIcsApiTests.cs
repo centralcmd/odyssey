@@ -23,10 +23,6 @@ public class TaskIcsApiTests
     private const string Path = "/api/tasks";
     private const string IcsPath = "/api/tasks/ics";
 
-    // The shipped default for TaskIcsMaxImportTasks (issue #343 §6) — behavior-preserving with the
-    // old hard-coded TaskIcsService.MaxVTodos this replaces.
-    private const int DefaultMaxImportTasks = 2000;
-
     private static readonly string[] ReadOnly = [PermissionClaims.TasksRead];
 
     private static readonly string[] ReadWrite =
@@ -39,6 +35,14 @@ public class TaskIcsApiTests
         PermissionClaims.TasksRead, PermissionClaims.TasksCreate,
         PermissionClaims.TasksUpdate, PermissionClaims.FilesRead,
     ];
+
+    private static readonly string[] ReadWriteWithFileUploads =
+    [
+        PermissionClaims.TasksRead, PermissionClaims.TasksCreate,
+        PermissionClaims.TasksUpdate, PermissionClaims.FilesRead, PermissionClaims.FilesCreate,
+    ];
+
+    private static readonly byte[] NoteBytes = Encoding.UTF8.GetBytes("Packing list: tent, stove, map.\n");
 
     // ------------------------------------------------------------------ export
 
@@ -113,7 +117,11 @@ public class TaskIcsApiTests
         Assert.Contains("DUE:20300801T000000Z", body);
         Assert.DoesNotContain("DUE;VALUE=DATE", body);
         Assert.Contains("CATEGORIES:Home", body);
-        Assert.Contains($"ATTACH:odyssey-file:{fileId}", body);
+        // The attached file travels inline — its bytes, name, type, id and hash — not as a bare reference.
+        Assert.DoesNotContain($"ATTACH:odyssey-file:{fileId}", body);
+        Assert.Contains("ATTACH;FMTTYPE=application/pdf;ENCODING=BASE64;VALUE=BINARY;FILENAME=\"spec.pdf\";SIZE=3;", Unfold(body));
+        Assert.Contains($"X-ODYSSEY-FILE-ID={fileId}", Unfold(body));
+        Assert.Contains(":" + Convert.ToBase64String(SeededFileContent) + "\r\n", Unfold(body));
         Assert.Contains("PERCENT-COMPLETE:0", body);
     }
 
@@ -398,17 +406,67 @@ public class TaskIcsApiTests
     }
 
     [Fact]
-    public async Task Import_ArchivedTagCategory_IsNotResolved()
+    public async Task Import_ArchivedTagCategory_IsResolved()
     {
+        // The export writes an archived tag's name like any other, so the import must match it — otherwise
+        // re-importing an export silently strips archived tags from the tasks it updates.
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
-        await SeedTagAsync(factory, "Retired", archived: true);
+        var tagId = await SeedTagAsync(factory, "Retired", archived: true);
 
-        var ics = Vcalendar(Vtodo("c2", "SUMMARY:Task", "CATEGORIES:Retired"));
+        var ics = Vcalendar(Vtodo("c2", "SUMMARY:Task", "CATEGORIES:retired"));
         var result = await ImportAsync(client, ics);
 
         Assert.Equal(1, result.ImportedCount);
-        Assert.Equal(1, result.SkippedTagLinkCount);
+        Assert.Equal(0, result.SkippedTagLinkCount);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var row = await ctx.JournalTasks.Include(t => t.ItemTags).SingleAsync();
+        Assert.Equal(tagId, Assert.Single(row.ItemTags).JournalTaskTagId);
+    }
+
+    [Fact]
+    public async Task ReImport_OfOwnExport_KeepsArchivedTagLink()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var activeId = await SeedTagAsync(factory, "Home");
+        var archivedId = await SeedTagAsync(factory, "Retired");
+        await CreateAsync(client, new NewJournalTask { Title = "Tagged", TagIds = [activeId, archivedId] });
+        using (var archiveScope = factory.Services.CreateScope())
+        {
+            // A tag archived after it was linked: the link stays, and must survive the round-trip.
+            var archiveContext = archiveScope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            (await archiveContext.JournalTaskTags.SingleAsync(t => t.JournalTaskTagId == archivedId)).Archived = DateTime.UtcNow;
+            await archiveContext.SaveChangesAsync();
+        }
+
+        var exported = await (await client.GetAsync(IcsPath)).Content.ReadAsStringAsync();
+        var result = await ImportAsync(client, exported);
+
+        Assert.Equal(1, result.UpdatedCount);
+        Assert.Equal(0, result.SkippedTagLinkCount);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var row = await ctx.JournalTasks.Include(t => t.ItemTags).SingleAsync();
+        Assert.Equal(new[] { activeId, archivedId }.Order(), row.ItemTags.Select(l => l.JournalTaskTagId).Order());
+    }
+
+    [Fact]
+    public async Task Import_DuplicateTagName_PrefersTheActiveTag()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await SeedTagAsync(factory, "Errand", archived: true);
+        var activeId = await SeedTagAsync(factory, "errand");
+
+        var result = await ImportAsync(client, Vcalendar(Vtodo("c3", "SUMMARY:Task", "CATEGORIES:ERRAND")));
+
+        Assert.Equal(0, result.SkippedTagLinkCount);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var row = await ctx.JournalTasks.Include(t => t.ItemTags).SingleAsync();
+        Assert.Equal(activeId, Assert.Single(row.ItemTags).JournalTaskTagId);
     }
 
     [Fact]
@@ -573,8 +631,12 @@ public class TaskIcsApiTests
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
+        // The shipped default is unlimited (the task surface carries attached files and moves whole boards), so
+        // an administrator's finite cap is what this pins.
+        const int cap = 5;
+        await SetSettingAsync(factory, SystemSettingsKeys.TaskIcsMaxImportTasks, cap.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-        var todos = Enumerable.Range(0, DefaultMaxImportTasks + 1)
+        var todos = Enumerable.Range(0, cap + 1)
             .Select(i => Vtodo($"u{i}", $"SUMMARY:T{i}"));
         var ics = Vcalendar(todos.ToArray());
 
@@ -835,6 +897,282 @@ public class TaskIcsApiTests
         Assert.Contains("Description", group.Reason);
     }
 
+    // ------------------------------------------------------------------ attached files travel inline
+
+    [Fact]
+    public async Task Export_WithAttachedFile_WithoutFilesRead_IsForbidden_AndSoIsTheSummary()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileAsync(factory, "note.txt", "text/plain", NoteBytes);
+        await CreateAsync(client, new NewJournalTask { Title = "With file", AttachmentFileIds = [fileId] });
+
+        await using var readOnly = new ApiFactory(ReadOnly, sharingStoreWith: factory);
+        using var readOnlyClient = readOnly.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_WithoutAttachedFiles_NeedsOnlyTasksRead()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await CreateAsync(client, new NewJournalTask { Title = "Plain" });
+
+        await using var readOnly = new ApiFactory(ReadOnly, sharingStoreWith: factory);
+        using var readOnlyClient = readOnly.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Summary_CountsTasksAndAttachedFiles_ForAllFilteredAndSingle()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var withFile = await CreateAsync(client, new NewJournalTask { Title = "Alpha with file", AttachmentFileIds = [fileId] });
+        await CreateAsync(client, new NewJournalTask { Title = "Beta" });
+
+        var all = await client.GetFromJsonAsync<TaskIcsExportSummary>(IcsPath + "/summary?statuses=Backlog&statuses=Doing&statuses=Done&statuses=Archived");
+        var filtered = await client.GetFromJsonAsync<TaskIcsExportSummary>(IcsPath + "/summary?search=Beta");
+        var single = await client.GetFromJsonAsync<TaskIcsExportSummary>(IcsPath + $"/summary?statuses=Archived&statuses=Backlog&ids={withFile.JournalTaskId}");
+
+        Assert.Equal((2, 1, (long)NoteBytes.Length), (all!.TaskCount, all.AttachmentCount, all.AttachmentBytes));
+        Assert.Equal((1, 0), (filtered!.TaskCount, filtered.AttachmentCount));
+        Assert.Equal((1, 1), (single!.TaskCount, single.AttachmentCount));
+    }
+
+    [Fact]
+    public async Task Export_SingleAndFiltered_CarryTheFileInline()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var task = await CreateAsync(client, new NewJournalTask { Title = "Camping", AttachmentFileIds = [fileId] });
+
+        var single = Unfold(await client.GetStringAsync(IcsPath + $"?statuses=Backlog&ids={task.JournalTaskId}"));
+        var filtered = Unfold(await client.GetStringAsync(IcsPath + "?search=Camp"));
+
+        foreach (var body in new[] { single, filtered })
+        {
+            Assert.Contains(";ENCODING=BASE64;VALUE=BINARY;FILENAME=\"note.txt\";", body);
+            Assert.Contains($"X-ODYSSEY-SHA256={Sha256(NoteBytes)}:" + Convert.ToBase64String(NoteBytes), body);
+        }
+    }
+
+    [Fact]
+    public async Task Export_OverTheByteCap_IsRefusedBeforeAnyByte()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.TaskIcsMaxExportMegabytes, "1");
+        var big = new byte[1024 * 1024]; // 1 MB of content is ~1.4 MB once base64-encoded and folded
+        var fileId = await SeedFileAsync(factory, "big.bin", "application/octet-stream", big);
+        await CreateAsync(client, new NewJournalTask { Title = "Big", AttachmentFileIds = [fileId] });
+
+        var summary = await client.GetAsync(IcsPath + "/summary");
+        var export = await client.GetAsync(IcsPath);
+
+        Assert.Equal(HttpStatusCode.BadRequest, summary.StatusCode);
+        Assert.Contains("1 MB export limit", await summary.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, export.StatusCode);
+    }
+
+    [Fact]
+    public async Task RoundTrip_SameInstance_ReusesTheFile_NoDuplicate()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileAsync(factory, "note.txt", "text/plain", NoteBytes);
+        await CreateAsync(client, new NewJournalTask { Title = "Camping", AttachmentFileIds = [fileId] });
+
+        var exported = await client.GetStringAsync(IcsPath);
+        var result = await ImportAsync(client, exported);
+
+        Assert.Equal((1, 0, 1, 0), (result.UpdatedCount, result.StoredFileCount, result.ReusedFileCount, result.SkippedAttachmentCount));
+        Assert.Single(await FilesAsync(factory));
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var row = await ctx.JournalTasks.Include(t => t.Attachments).SingleAsync();
+        Assert.Equal(fileId, Assert.Single(row.Attachments).FileId);
+    }
+
+    [Fact]
+    public async Task RoundTrip_IntoAnotherInstance_StoresTheFile_WithItsNameTypeAndBytes()
+    {
+        await using var source = new ApiFactory(ReadWriteWithFiles);
+        using var sourceClient = source.CreateClient();
+        var fileId = await SeedFileAsync(source, "note.txt", "text/plain", NoteBytes);
+        await CreateAsync(sourceClient, new NewJournalTask { Title = "Camping", AttachmentFileIds = [fileId] });
+        var exported = await sourceClient.GetStringAsync(IcsPath);
+
+        await using var target = new ApiFactory(ReadWriteWithFileUploads);
+        using var targetClient = target.CreateClient();
+        var result = await ImportAsync(targetClient, exported);
+
+        Assert.Equal((1, 1, 0), (result.ImportedCount, result.StoredFileCount, result.ReusedFileCount));
+        var stored = Assert.Single(await FilesAsync(target));
+        Assert.Equal(("note.txt", "text/plain", Sha256(NoteBytes)), (stored.FileName, stored.ContentType, stored.Sha256Hash));
+        Assert.NotNull(stored.JournalStoredObjectId); // on disk, in the Journal area — not a legacy blob
+        Assert.Equal(NoteBytes, await ContentAsync(targetClient, stored.Id));
+
+        // Importing the same file again matches what the first import stored: still one file.
+        var again = await ImportAsync(targetClient, exported);
+        Assert.Equal((1, 0, 1), (again.UpdatedCount, again.StoredFileCount, again.ReusedFileCount));
+        Assert.Single(await FilesAsync(target));
+    }
+
+    [Fact]
+    public async Task Import_InlineFile_MatchingStoredContent_IsReusedByHash()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        var existingId = await SeedFileAsync(factory, "existing.txt", "text/plain", NoteBytes);
+
+        // No X-ODYSSEY-FILE-ID: a file from elsewhere whose content is already stored.
+        var ics = Vcalendar(Vtodo("h1", "SUMMARY:Hash match", InlineAttach(NoteBytes, "renamed.txt", "text/plain")));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal((0, 1), (result.StoredFileCount, result.ReusedFileCount));
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var row = await ctx.JournalTasks.Include(t => t.Attachments).SingleAsync();
+        Assert.Equal(existingId, Assert.Single(row.Attachments).FileId);
+    }
+
+    [Fact]
+    public async Task Import_SameInlineFileOnTwoTasks_IsStoredOnce()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        var attach = InlineAttach(NoteBytes, "note.txt", "text/plain");
+
+        var ics = Vcalendar(Vtodo("d1", "SUMMARY:One", attach), Vtodo("d2", "SUMMARY:Two", attach));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal((2, 1, 1), (result.ImportedCount, result.StoredFileCount, result.ReusedFileCount));
+        var file = Assert.Single(await FilesAsync(factory));
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.All(await ctx.JournalTasks.Include(t => t.Attachments).ToListAsync(),
+            task => Assert.Equal(file.Id, Assert.Single(task.Attachments).FileId));
+    }
+
+    [Theory]
+    [InlineData(PermissionClaims.FilesCreate)]
+    [InlineData(PermissionClaims.FilesRead)]
+    public async Task Import_InlineFile_WithoutBothFileClaims_IsForbidden_NothingImported(string missing)
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads.Where(c => c != missing).ToArray());
+        using var client = factory.CreateClient();
+
+        var response = await PostIcsAsync(client, Vcalendar(Vtodo("f1", "SUMMARY:Gated", InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(0, await ctx.JournalTasks.CountAsync());
+        Assert.Empty(await FilesAsync(factory));
+    }
+
+    [Fact]
+    public async Task Import_InlineFile_Refusals_SkipTheFileButKeepTheTask()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        var wrongHash = new string('0', 64);
+
+        var ics = Vcalendar(
+            Vtodo("r1", "SUMMARY:Damaged", "ATTACH;FMTTYPE=text/plain;ENCODING=BASE64;VALUE=BINARY:!!!not base64!!!"),
+            Vtodo("r2", "SUMMARY:Checksum", InlineAttach(NoteBytes, "note.txt", "text/plain", $";X-ODYSSEY-SHA256={wrongHash}")),
+            Vtodo("r3", "SUMMARY:Executable", InlineAttach([0x4D, 0x5A, 0x90, 0x00], "tool.exe", "application/x-msdownload")),
+            Vtodo("r4", "SUMMARY:Mislabelled", InlineAttach(NoteBytes, "fake.png", "image/png")));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(4, result.ImportedCount);
+        Assert.Equal(4, result.SkippedAttachmentCount);
+        Assert.Equal(0, result.StoredFileCount);
+        Assert.Empty(await FilesAsync(factory));
+        // Each case is pinned to its own task through the group's sample titles, so one refusal silently turning into
+        // another (or into an accepted file) fails here.
+        string[] SamplesFor(string reasonStart) =>
+            [.. Assert.Single(result.Skipped, g => g.Reason.StartsWith(reasonStart, StringComparison.Ordinal)).SampleTitles.Order()];
+        Assert.Equal(["Damaged"], SamplesFor("Attached file is damaged"));
+        Assert.Equal(["Checksum"], SamplesFor("Attached file does not match its checksum"));
+        Assert.Equal(["Executable", "Mislabelled"], SamplesFor("Attached file is of a type uploads do not accept"));
+    }
+
+    [Fact]
+    public async Task Import_NewInlineFile_OverTheAdminUploadCap_IsSkipped_ButAMatchingStoredFileIsStillReused()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
+        var big = Encoding.UTF8.GetBytes(new string('a', 1536 * 1024)); // 1.5 MB, over the 1 MB upload cap
+        var stored = Encoding.UTF8.GetBytes(new string('b', 1536 * 1024));
+        var storedId = await SeedFileAsync(factory, "stored.txt", "text/plain", stored);
+
+        var result = await ImportAsync(client, Vcalendar(
+            Vtodo("u1", "SUMMARY:New big", InlineAttach(big, "big.txt", "text/plain")),
+            Vtodo("u2", "SUMMARY:Known big", InlineAttach(stored, "stored.txt", "text/plain"))));
+
+        Assert.Equal((2, 0, 1, 1), (result.ImportedCount, result.StoredFileCount, result.ReusedFileCount, result.SkippedAttachmentCount));
+        var group = Assert.Single(result.Skipped);
+        Assert.Contains("1 MB upload limit", group.Reason);
+        Assert.Equal(["New big"], group.SampleTitles);
+        Assert.Equal(storedId, Assert.Single(await FilesAsync(factory)).Id);
+    }
+
+    [Fact]
+    public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_IsAborted_NotTruncated()
+    {
+        // The pre-flight check judges attached files exactly, but task text only as it is written. Text alone over the
+        // cap must end the response abnormally, so a browser reports a failed download instead of saving part of it.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.TaskIcsMaxExportMegabytes, "1");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            for (var i = 0; i < 400; i++)
+            {
+                context.JournalTasks.Add(new JournalTask
+                {
+                    ExternalUid = $"bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000), Position = i,
+                    CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(IcsPath + "/summary")).StatusCode); // nothing to judge up front
+        var failure = await Record.ExceptionAsync(async () =>
+        {
+            using var response = await client.GetAsync(IcsPath);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Fail($"The export completed ({body.Length} chars) instead of being aborted.");
+        });
+
+        Assert.True(failure is HttpRequestException or IOException or OperationCanceledException, failure?.ToString());
+    }
+
+    [Fact]
+    public async Task Import_InlineFile_LargerThanTheImportCap_IsRefusedWhole()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFileUploads);
+        using var client = factory.CreateClient();
+        await SetSettingAsync(factory, SystemSettingsKeys.TaskIcsMaxImportMegabytes, "1");
+
+        var response = await PostIcsAsync(client, Vcalendar(Vtodo("b1", "SUMMARY:Big", InlineAttach(new byte[1024 * 1024], "big.txt", "text/plain"))));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(await FilesAsync(factory));
+    }
+
     // ------------------------------------------------------------------ helpers
 
     private static int CountOccurrences(string haystack, string needle)
@@ -897,13 +1235,60 @@ public class TaskIcsApiTests
         return id;
     }
 
-    private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
+    private static readonly byte[] SeededFileContent = [1, 2, 3];
+
+    private static string Sha256(byte[] content) => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(content));
+
+    // One inline attachment line, folded the way a producer might: base64 split over continuation lines.
+    private static string InlineAttach(byte[] content, string fileName, string contentType, string? extraParams = null)
+    {
+        var base64 = Convert.ToBase64String(content);
+        var folded = string.Join("\r\n ", Enumerable.Range(0, (base64.Length + 59) / 60).Select(i => base64.Substring(i * 60, Math.Min(60, base64.Length - i * 60))));
+        return $"ATTACH;FMTTYPE={contentType};ENCODING=BASE64;VALUE=BINARY;FILENAME=\"{fileName}\"{extraParams}:{folded}";
+    }
+
+    private static async Task<List<FileMetadata>> FilesAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await context.FileMetadata.AsNoTracking().ToListAsync();
+    }
+
+    private static async Task<byte[]> ContentAsync(HttpClient client, Guid fileId) =>
+        await client.GetByteArrayAsync($"/api/files/{fileId}/content");
+
+    // RFC 5545 unfolding: a CRLF followed by one space or tab is removed.
+    private static string Unfold(string ics) => ics.Replace("\r\n ", string.Empty).Replace("\r\n\t", string.Empty);
+
+    private static async Task SetSettingAsync(WebApplicationFactory<Program> factory, string key, string value)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+        var row = await context.SystemSettings.SingleOrDefaultAsync(s => s.Key == key);
+        if (row is null)
+        {
+            context.SystemSettings.Add(new SystemSetting { Key = key, Value = value, UpdatedAt = DateTime.UtcNow });
+        }
+        else
+        {
+            row.Value = value;
+        }
+
+        await context.SaveChangesAsync();
+    }
+
+    private static Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType) =>
+        SeedFileAsync(factory, fileName, contentType, SeededFileContent);
+
+    private static async Task<Guid> SeedFileAsync(
+        WebApplicationFactory<Program> factory, string fileName, string contentType, byte[] content)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
         var metadataId = Guid.NewGuid();
         context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
@@ -912,8 +1297,8 @@ public class TaskIcsApiTests
             UploadedByUserId = ActorUserId,
             FileName = fileName,
             ContentType = contentType,
-            SizeBytes = 3,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
+            SizeBytes = content.Length,
+            Sha256Hash = Sha256(content),
             UploadedAtUtc = DateTime.UtcNow,
             FileBlobId = blob.Id,
             FileBlob = blob,
@@ -924,14 +1309,23 @@ public class TaskIcsApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string>? permissions)
-            : base(permissions, ActorUserId, configureServices: IsolateDomainContext)
+        private readonly string databaseName;
+
+        // sharingStoreWith: a second caller (other claims) over the same database and file volume.
+        public ApiFactory(IReadOnlyCollection<string>? permissions, ApiFactory? sharingStoreWith = null)
+            : this(permissions, sharingStoreWith?.databaseName ?? $"domain-{Guid.NewGuid()}", sharingStoreWith)
         {
         }
 
-        private static void IsolateDomainContext(IServiceCollection services)
+        private ApiFactory(IReadOnlyCollection<string>? permissions, string databaseName, ApiFactory? sharingStoreWith)
+            : base(permissions, ActorUserId, configureServices: services => IsolateDomainContext(services, databaseName),
+                sharingStoreWith: sharingStoreWith)
         {
-            var databaseName = $"domain-{Guid.NewGuid()}";
+            this.databaseName = databaseName;
+        }
+
+        private static void IsolateDomainContext(IServiceCollection services, string databaseName)
+        {
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(databaseName));
         }

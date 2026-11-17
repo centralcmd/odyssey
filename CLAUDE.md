@@ -861,6 +861,29 @@ of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that 
 - **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
   in the lint; the list may only shrink.
 
+**A task `.ics` export carries its attached files inline, and the import stores them without duplicating**
+(`TaskIcsService`, `Journal/Interop/IcsBinaryAttachments.cs`). Rules that are easy to get backwards:
+
+- **`Ical.Net` never sees a binary value.** The export serializes each VTODO without its files and
+  `IcsBinaryAttachmentWriter` splices in `ATTACH;ENCODING=BASE64;VALUE=BINARY` lines streamed from the store; the
+  import's `IcsAttachmentSpooler` decodes them to temp files and hands `Ical.Net` the text with placeholders. A value
+  held as one string caps out near 1 G characters, which is why a 10 GB export is possible at all.
+- **`EncodedLength` must stay exact** — the export refuses an over-cap file from it before sending a byte.
+- **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
+  size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
+  same `FileValidationService` checks an upload does, the admin upload cap included.
+- **Files make the claims stricter, never optional**: an export with attached files needs `files.read`, an import
+  carrying inline files needs `files.read` and `files.create`, and either is refused whole (`403`) without them —
+  the import at its first inline attachment, inside the spooler, before a byte of it is decoded.
+- **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` (same checks) and then
+  navigates to the export URL; the import posts the picked `File` from disk (`INativeTransfer`). The service worker
+  must not answer an `/api/` navigation with `index.html`.
+- **The 10 GB transport ceiling is not every endpoint's limit.** `ImportSizeLimitMiddleware` holds any endpoint
+  without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
+  photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
+  attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
+  timeouts to the task-ICS, photo and file routes alone.
+
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
 version, source and re-check procedure); `wwwroot/js/location-map.js` is the only importer, and only on the

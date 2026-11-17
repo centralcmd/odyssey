@@ -939,7 +939,8 @@ public partial class Settings : IDisposable
             new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload file size",
                 "Largest single file accepted by any upload surface. Cannot be raised above the request-size "
                 + "ceiling the server starts with.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, Max: SystemSettingsBounds.FileStorageMaxUploadMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("fileStorageMaxUploadMegabytes", dto.FileStorageMaxUploadMegabytes),
                 Write: (p, req) => req.FileStorageMaxUploadMegabytes = p.IntRequest("fileStorageMaxUploadMegabytes"),
@@ -1084,14 +1085,17 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
                 Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxImportTasks", dto.TaskIcsMaxImportTasks), Write: (p, req) => req.TaskIcsMaxImportTasks = p.CapacityRequest("taskIcsMaxImportTasks")),
             new("taskIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files included — they travel inside "
+                + "it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
             new("taskIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files included. It cannot usefully exceed the "
+                + "reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxImportMegabytes", dto.TaskIcsMaxImportMegabytes), Write: (p, req) => req.TaskIcsMaxImportMegabytes = p.IntRequest("taskIcsMaxImportMegabytes")),
         ],

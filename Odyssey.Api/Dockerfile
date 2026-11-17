@@ -72,6 +72,12 @@ RUN mkdir -p /var/odyssey/dataprotection-keys && chown -R app:app /var/odyssey/d
 # 0750 — the store creates its own folders 0750 and files 0640, so nothing on a volume is readable by others.
 RUN mkdir -p /var/odyssey/files/primary && chown -R app:app /var/odyssey/files && chmod -R 0750 /var/odyssey/files
 
+# Large uploads spool here, not to /tmp (issue: task import with inline files): /tmp is a RAM-backed tmpfs in the
+# production file, and a multi-gigabyte task import is buffered once by the multipart reader and once more as its
+# decoded attachments. ASPNETCORE_TEMP points both at a named volume on disk; created here so it is app-owned.
+RUN mkdir -p /var/odyssey/import-spool && chown -R app:app /var/odyssey/import-spool && chmod 0700 /var/odyssey/import-spool
+ENV ASPNETCORE_TEMP=/var/odyssey/import-spool
+
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
 
