@@ -114,6 +114,27 @@ public static class NewsErrors
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FilterUnknown,
         "Every id must name an existing feed or tag.", field);
 
+    // ── OPML import (issue #508 §5.2, §9) ──────────────────────────────────────────────────────────────────────────
+
+    public static NewsException OpmlFileRequired() => new(
+        HttpStatusCode.BadRequest, NewsErrorCodes.OpmlFileRequired, "Choose an OPML file to import.", "file");
+
+    public static NewsException OpmlWrongType() => new(
+        HttpStatusCode.BadRequest, NewsErrorCodes.OpmlWrongType, "The file must be an OPML file (.opml or .xml).", "file");
+
+    /// <summary>The generic detail of §9 item 3: never the parser's text, never the file's content.</summary>
+    public static NewsException OpmlUnreadable() => new(
+        HttpStatusCode.BadRequest, NewsErrorCodes.OpmlUnreadable, "This file is not an OPML document.", "file");
+
+    public static NewsException OpmlTooManyEntries(int limit) => new(
+        HttpStatusCode.UnprocessableEntity, NewsErrorCodes.OpmlTooManyEntries,
+        $"An OPML import may name at most {limit} feeds.", "file",
+        new Dictionary<string, object?> { ["limit"] = limit });
+
+    public static NewsException OpmlConflict() => new(
+        HttpStatusCode.Conflict, NewsErrorCodes.OpmlConflict,
+        "Another change added one of these feeds while the import ran; nothing was imported. Try again.");
+
     public static DomainValidationException CursorInvalid() => new(
         "The list position is no longer valid; start again from the first page.", NewsErrorCodes.CursorInvalid, "cursor");
 

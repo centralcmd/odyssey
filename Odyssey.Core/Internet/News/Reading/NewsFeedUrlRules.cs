@@ -16,49 +16,70 @@ public sealed record NewsFeedAddress(string Url, string Host, byte[] UrlKeyHash)
 /// </summary>
 public static class NewsFeedUrlRules
 {
-    public static NewsFeedAddress Validate(string? url, IReadOnlyList<NewsPrivateHostGrant> grants)
+    public static NewsFeedAddress Validate(string? url, IReadOnlyList<NewsPrivateHostGrant> grants) =>
+        TryValidate(url, grants, out var address, out var message) ? address! : throw NewsErrors.UrlRejected(message!);
+
+    /// <summary>
+    /// The same rules without an exception (issue #508 §3, A9), for the OPML import, which checks up to
+    /// <c>NewsOpmlMaxImportEntries</c> addresses and reports each refusal as a row. <paramref name="message"/> is the
+    /// rule's curated message, which never echoes the address.
+    /// </summary>
+    public static bool TryValidate(string? url, IReadOnlyList<NewsPrivateHostGrant> grants, out NewsFeedAddress? address, out string? message)
     {
         ArgumentNullException.ThrowIfNull(grants);
-        var trimmed = url?.Trim() ?? string.Empty;
+        address = null;
+        message = Check(url?.Trim() ?? string.Empty, grants, out var host, out var key);
+        if (message is not null)
+        {
+            return false;
+        }
+
+        address = new NewsFeedAddress(url!.Trim(), host!, NewsUrlKey.Hash(key!));
+        return true;
+    }
+
+    private static string? Check(string trimmed, IReadOnlyList<NewsPrivateHostGrant> grants, out string? host, out string? key)
+    {
+        host = key = null;
         if (trimmed.Length == 0)
         {
-            throw NewsErrors.UrlRejected("Enter the feed's address.");
+            return "Enter the feed's address.";
         }
 
         if (trimmed.Length > NewsLimits.MaxUrlLength)
         {
-            throw NewsErrors.UrlRejected($"A feed address is at most {NewsLimits.MaxUrlLength} characters.");
+            return $"A feed address is at most {NewsLimits.MaxUrlLength} characters.";
         }
 
         if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri) || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
         {
-            throw NewsErrors.UrlRejected("A feed address must start with http:// or https://.");
+            return "A feed address must start with http:// or https://.";
         }
 
         if (uri.UserInfo.Length > 0)
         {
-            throw NewsErrors.UrlRejected("A feed address cannot carry a user name or password.");
+            return "A feed address cannot carry a user name or password.";
         }
 
-        if (!NewsUrl.IsWebUrl(uri) || NewsUrlKey.CanonicalHost(uri) is not { } host || NewsUrlKey.UrlKey(trimmed) is not { } key)
+        if (!NewsUrl.IsWebUrl(uri) || NewsUrlKey.CanonicalHost(uri) is not { } canonical || NewsUrlKey.UrlKey(trimmed) is not { } urlKey)
         {
-            throw NewsErrors.UrlRejected("This is not a valid feed address.");
+            return "This is not a valid feed address.";
         }
 
-        var context = new NewsEgressContext(host, NewsEgressPurpose.Feed, grants);
+        var context = new NewsEgressContext(canonical, NewsEgressPurpose.Feed, grants);
         switch (NewsEgressPolicy.CheckUrl(uri, context))
         {
             case NewsEgressRefusal.None:
-                break;
+                host = canonical;
+                key = urlKey;
+                return null;
             case NewsEgressRefusal.Port:
-                throw NewsErrors.UrlRejected("A feed address may use port 80 or 443 unless an administrator has granted its host another.");
+                return "A feed address may use port 80 or 443 unless an administrator has granted its host another.";
             case NewsEgressRefusal.PrivateAddress:
             case NewsEgressRefusal.HardDeniedAddress:
-                throw NewsErrors.UrlRejected("This address cannot be fetched.");
+                return "This address cannot be fetched.";
             default:
-                throw NewsErrors.UrlRejected("This is not a valid feed address.");
+                return "This is not a valid feed address.";
         }
-
-        return new NewsFeedAddress(trimmed, host, NewsUrlKey.Hash(key));
     }
 }
