@@ -103,7 +103,8 @@ public class NewsFeedsOpmlPageTests
             }
 
             Cut.WaitForAssertion(() => Assert.Contains(Cut.FindAll(".mud-menu-item"), i => i.TextContent.Trim() == label));
-            Cut.InvokeAsync(() => Cut.FindAll(".mud-menu-item").First(i => i.TextContent.Trim() == label).Click()).GetAwaiter().GetResult();
+            // Re-found on each attempt: a re-render between the find and the click retires the handler id.
+            Cut.WaitForAssertion(() => Cut.FindAll(".mud-menu-item").First(i => i.TextContent.Trim() == label).Click());
         }
 
         public string Polite => string.Concat(Cut.FindAll("[role=status][aria-live=polite]").Select(e => e.TextContent));

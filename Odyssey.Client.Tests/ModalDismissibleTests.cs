@@ -28,12 +28,12 @@ public class ModalDismissibleTests
         return ctx;
     }
 
-    private static void PressEscape(IRenderedComponent<ModalHost> cut)
+    private static Task PressEscape(IRenderedComponent<ModalHost> cut)
     {
         var container = cut.FindComponent<MudDialogContainer>().Instance;
         var handler = typeof(MudDialogContainer).GetMethod("HandleEscapeAsync", BindingFlags.Instance | BindingFlags.NonPublic)
                       ?? throw new InvalidOperationException("MudDialogContainer no longer has HandleEscapeAsync; update this test's Escape seam.");
-        cut.InvokeAsync(() => (Task)handler.Invoke(container, null)!).GetAwaiter().GetResult();
+        return cut.InvokeAsync(() => (Task)handler.Invoke(container, null)!);
     }
 
     private static bool EscapeCloses(IRenderedComponent<ModalHost> cut) =>
@@ -48,7 +48,7 @@ public class ModalDismissibleTests
         Assert.Single(cut.FindAll(".ods-modal-x"));
         Assert.True(EscapeCloses(cut));
 
-        PressEscape(cut);
+        await PressEscape(cut);
 
         cut.WaitForAssertion(() => Assert.Equal(1, cut.Instance.Closed));
         Assert.False(cut.Instance.Open);
@@ -64,7 +64,7 @@ public class ModalDismissibleTests
         Assert.False(EscapeCloses(cut));
         Assert.False(((IMudDialogInstance)cut.FindComponent<MudDialogContainer>().Instance).Options.BackdropClick);
 
-        PressEscape(cut);
+        await PressEscape(cut);
         cut.Find(".mud-overlay").Click();
 
         Assert.Equal(0, cut.Instance.Closed);
@@ -83,7 +83,7 @@ public class ModalDismissibleTests
 
         cut.WaitForAssertion(() => Assert.False(EscapeCloses(cut)));
         Assert.Empty(cut.FindAll(".ods-modal-x"));
-        PressEscape(cut);
+        await PressEscape(cut);
         cut.Find(".mud-overlay").Click();
         Assert.Equal(0, cut.Instance.Closed);
 
@@ -91,7 +91,7 @@ public class ModalDismissibleTests
 
         cut.WaitForAssertion(() => Assert.True(EscapeCloses(cut)));
         Assert.Single(cut.FindAll(".ods-modal-x"));
-        PressEscape(cut);
+        await PressEscape(cut);
         cut.WaitForAssertion(() => Assert.Equal(1, cut.Instance.Closed));
     }
 
