@@ -3484,7 +3484,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* TagIconPicker — the tag icon chooser for all four tag types (issues #279, #345): a radiogroup grid
    of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
-/* 48px cells, 24px glyphs; the grid scrolls inside a seven-row window (the catalogue is 110 keys). */
+/* 48px cells, 24px glyphs; the grid scrolls inside a seven-row window (the catalogue is 158 keys). */
 .odc-iconpick-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(48px, 100%), 1fr)); gap: var(--space-1); padding: var(--space-2); max-height: calc(7 * 48px + 6 * var(--space-1) + 2 * var(--space-2)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--space-2); }
 .odc-iconpick-cell { appearance: none; position: relative; height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
 .odc-iconpick-cell .material-icons { font-size: var(--icon-xl); }
@@ -3503,6 +3503,18 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-iconpick-sub { font-weight: 400; color: var(--mud-palette-text-secondary); }
 .odc-iconpick-peek { color: var(--mud-palette-text-secondary); }
 .odc-iconpick-peek .material-icons { font-size: var(--icon-sm); }
+/* The search box above the grid filters the catalogue (label, keywords, key; typo-tolerant). It is the
+   box's first row, divided from the grid like the caption is below it; the .odc-smarttags-search shape. */
+.odc-iconpick-search { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); }
+.odc-iconpick-search:focus-within { box-shadow: inset 0 0 0 2px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-iconpick-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
+.odc-iconpick-search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-iconpick-search-input::placeholder { color: var(--mud-palette-text-secondary); opacity: 1; }
+.odc-iconpick-search-input:disabled { cursor: not-allowed; }
+/* The native webkit clear "×" is off-theme (as on .odc-searchfield); Escape clears the query instead. */
+.odc-iconpick-search-input::-webkit-search-cancel-button,
+.odc-iconpick-search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.odc-iconpick-empty { grid-column: 1 / -1; padding: var(--space-4) var(--space-2); text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
 
 /* ---- TagColorPicker (tag colour, #394) ------------------------------------
    No color · 8 calendar swatches · Custom. Every cell: 1px --control-border

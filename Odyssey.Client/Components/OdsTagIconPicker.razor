@@ -10,6 +10,11 @@
     list and nothing the server would refuse. The catalogue is the shared Odyssey.Dtos declaration,
     never a client copy.
 
+    The search box above the grid filters that same catalogue (TagIconSearch: label, keywords and key,
+    typo-tolerant). While a query is typed the Default cell is hidden, the grid shows the matches best
+    first, and a polite status line announces the count. Arrow Down moves from the box into the grid,
+    Enter picks the first match, Escape clears a non-empty query instead of closing the dialog.
+
     The first cell is always Default — value null, drawn with the generic tag glyph inside a dashed
     outline. DefaultIcon / DefaultLabel / DefaultCaption re-dress that cell for another owner of the same
     catalogue (photo albums, issue #406); their defaults are today's tag strings. The API never stores the default key, so the picker emits null for it, and it treats any
@@ -28,15 +33,22 @@
 *@
 
 <div class="@RootClass">
+    <div class="odc-iconpick-search">
+        <span class="material-icons" aria-hidden="true">search</span>
+        <input type="search" class="odc-iconpick-search-input" @ref="_search"
+               placeholder="Search icons" aria-label="@SearchLabel" aria-controls="@_groupId"
+               autocomplete="off" spellcheck="false" disabled="@Disabled"
+               value="@_query" @oninput="OnQueryInput" @onkeydown="OnSearchKeyDownAsync" />
+    </div>
     <div class="odc-iconpick-grid" role="radiogroup" id="@_groupId"
          aria-label="@(AriaLabelledBy is null ? AriaLabel : null)" aria-labelledby="@AriaLabelledBy"
          aria-describedby="@AriaDescribedBy"
          aria-invalid="@(Invalid ? "true" : null)"
          @ref="_grid" @onmouseleave="OnGridMouseLeave">
-        @for (var i = 0; i < _cells.Count; i++)
+        @for (var i = 0; i < _visible.Count; i++)
         {
             var index = i;
-            var cell = _cells[index];
+            var cell = _visible[index];
             var active = index == SelectedIndex;
             var isDefault = cell.Key is null;
             <button type="button" role="radio" data-idx="@index"
@@ -45,7 +57,7 @@
                     aria-checked="@(active ? "true" : "false")"
                     aria-label="@(isDefault ? DefaultLabel : cell.Label)"
                     disabled="@Disabled"
-                    tabindex="@(active ? 0 : -1)"
+                    tabindex="@(index == TabStopIndex ? 0 : -1)"
                     class="@CellClass(active, isDefault)"
                     @onclick="() => PickAsync(index)"
                     @onkeydown="e => OnKeyDownAsync(e, index)"
@@ -59,7 +71,12 @@
                 }
             </button>
         }
+        @if (_visible.Count == 0)
+        {
+            <div class="odc-iconpick-empty">No icons match “@_query”.</div>
+        }
     </div>
+    <div class="odc-sr-only" role="status">@StatusText</div>
     <div class="odc-iconpick-caption" aria-hidden="true">
         <span class="odc-iconpick-sel">
             <span class="material-icons">@(Selected.Key ?? DefaultIcon)</span>
