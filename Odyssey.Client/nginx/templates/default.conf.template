@@ -78,24 +78,12 @@ server {
         # response (a large upload, an AI analysis) is governed by proxy_read_timeout, unchanged.
         proxy_connect_timeout 5s;
 
-        # File uploads (statement/document attach, AI analysis, task imports carrying their attached
-        # files) go through this proxy. nginx's default client_max_body_size is 1 MB, which would 413
-        # any upload over ~1 MB before it ever reaches the API — while the API accepts up to 10 GB.
-        # Keep this at or above the API's FileStorage:MaxFileSizeBytes plus the multipart envelope
-        # headroom (10240 MiB + 1 MiB). Caddy's request_body limit must stay >= this value.
-        #
-        # FileStorage:MaxFileSizeBytes is the startup TRANSPORT ceiling, not the cap users hit: those
-        # are admin-editable in System Settings and can only be set at or below the ceiling (issue
-        # #421 Wave 4). So lowering a limit needs no change here. See docs/deployment.md, "Upload size".
-        client_max_body_size 10241m;
-
-        # Stream request bodies to the API as they arrive instead of spooling a multi-gigabyte upload
-        # to nginx's own temp directory first, and give a large upload or export the time it needs:
-        # the 60 s defaults would cut a 10 GB transfer off part-way. Connect stays bounded above.
-        proxy_request_buffering off;
-        proxy_read_timeout 3600s;
-        proxy_send_timeout 3600s;
-        client_body_timeout 3600s;
+        # Uploads go through this proxy. nginx's default client_max_body_size is 1 MB, which would
+        # 413 any upload over ~1 MB before it ever reaches the API. Every other API route — sign-in
+        # included — stays at the API's own default body limit (FileStorage:DefaultMaxRequestBodyBytes,
+        # 65 MB) and nginx's default timeouts; only the large-file block below goes past them.
+        # See docs/deployment.md, "Upload size".
+        client_max_body_size 65m;
 
         # The Identity auth cookie bakes every permission claim into its value, so the
         # login Set-Cookie response header is large (and grows as claims are added — e.g.
@@ -105,6 +93,36 @@ server {
         proxy_buffer_size 16k;
         proxy_buffers 8 16k;
         proxy_busy_buffers_size 32k;
+    }
+
+    # The large-file routes — task .ics export/import (attached files travel inline), photos and the
+    # Files store — up to the API's 10 GB transport ceiling (FileStorage:MaxFileSizeBytes) plus the
+    # multipart envelope headroom, 10240 MiB + 1 MiB. Caddy's matching request_body limit must stay >=
+    # this. Bodies stream through instead of spooling to nginx's temp directory first, and a transfer
+    # gets an hour instead of the 60 s defaults that would cut a 10 GB one off part-way. Scoped to these
+    # paths so no other route — sign-in above all — inherits either the size or the patience.
+    #
+    # A regex location wins over the /api/ prefix, so it repeats that block's directives (nginx
+    # inherits none). proxy_pass carries no URI in a regex location; the rewrite strips the first /api/
+    # exactly as the /api/ block's trailing slash does.
+    location ~ ^/api/api/(tasks/ics|photos|files)(/|$) {
+        rewrite ^/api/(.*)$ /$1 break;
+        proxy_pass http://api:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
+        proxy_hide_header X-Content-Type-Options;
+        proxy_connect_timeout 5s;
+        proxy_buffer_size 16k;
+        proxy_buffers 8 16k;
+        proxy_busy_buffers_size 32k;
+
+        client_max_body_size 10241m;
+        proxy_request_buffering off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        client_body_timeout 3600s;
     }
 
     # Household locations (issue #350 §7.7): no access log. The geocoding search sends an address someone

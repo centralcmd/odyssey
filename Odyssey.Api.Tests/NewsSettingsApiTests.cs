@@ -49,8 +49,8 @@ public class NewsSettingsApiTests
 
         var dto = (await client.GetFromJsonAsync<SystemSettingsDto>(Path))!;
 
-        Assert.Equal(Odyssey.Core.Internet.News.NewsImageSizeCeiling.Kb(new Odyssey.Core.Finance.FileStorageOptions().MaxFileSizeBytes),
-            dto.NewsImageMaxSizeKbCeiling);
+        // The shipped 10 GB file-size limit, in KB. A literal, so a change to the default or the helper shows here.
+        Assert.Equal(10 * 1024 * 1024, dto.NewsImageMaxSizeKbCeiling);
     }
 
     /// <summary>AC 56: above the ceiling is refused on PUT and the message names it; at the ceiling is accepted.</summary>

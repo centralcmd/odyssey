@@ -325,23 +325,33 @@ which is exactly why the setting is **tighten-only**. `PUT /api/system-settings`
 the transport ceiling with a `400` naming it, rather than accepting a number the transport would then
 silently refuse.
 
-Both proxies currently sit at `10241` MiB (nginx `10241m`, Caddy `10241MiB` — Caddy reads `MB` as
-10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of envelope headroom. The ceiling was raised
-from 64 MB so a task export can carry its attached files inline and come back in through the task import;
-the admin upload cap still seeds at 64 MB. Both proxies also stream request bodies through and allow an
-hour for a transfer, since a multi-gigabyte upload or download outlives the 60 s defaults. Lowering a cap
-needs no deploy-time change at all.
+The large-file routes — `/api/api/tasks/ics…`, `/api/api/photos…` and `/api/api/files…` as the browser
+sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
+behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
+envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
+multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
+default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task export can carry its attached
+files inline and come back in through the task import; the admin upload cap still seeds at 64 MB, and it also
+bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
 
-Raising the ceiling does **not** widen every endpoint: the API holds each request that does not accept
-files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB). Only the upload and import
-endpoints, which set their own per-request cap, and the photo upload reach the ceiling.
+Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
+accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to
+the admin upload cap plus 1 MiB. Only the import and upload endpoints, which set their own per-request cap, reach
+further.
+
+> **Upgrading from a release before this change.** The migration raises the task import/export defaults to
+> 10240 MB and unlimited counts (only where no administrator saved a value). A deployment whose `.env` still pins
+> `FILE_UPLOAD_MAX_BYTES=67108864`, or whose own reverse proxy still caps bodies at 65 MB, keeps the old ceiling:
+> a large task import then fails at the proxy with an HTML `413` although the settings page offers 10 GB. Raise
+> both (outermost first), or lower the task import/export sizes at `/settings` to match.
 
 A task import is spooled twice while it is processed — once by the multipart reader, once as the decoded
-attachments — so a 10 GB import needs roughly 20 GB of free space for it. Both go to `ASPNETCORE_TEMP`, which
-the API image sets to `/var/odyssey/import-spool`, the `import_spool` named volume in `docker-compose.yml` — not
-`/tmp`, which the production file makes a RAM-backed tmpfs. The volume is scratch: nothing in it outlives a
-request, and it needs no backup. On an existing deployment Docker creates it app-owned from the image on first
-start.
+attachments — so a 10 GB import needs roughly 20 GB of free space for it. A photo upload is spooled once by the
+multipart reader. All of it goes to `ASPNETCORE_TEMP`, which the API image sets to `/var/odyssey/import-spool`,
+the `import_spool` named volume in `docker-compose.yml` — not `/tmp`, which the production file makes a RAM-backed
+tmpfs. The volume is scratch: nothing in it outlives a request (a decoded attachment a crashed process left behind
+is swept by the next task import after a day), and it needs no backup. On an existing deployment Docker creates it
+app-owned from the image on first start.
 
 > `FileStorage:MaxFileSizeBytes` is **not** retired — it stays as the transport ceiling above, read by
 > the API at startup. The admin-editable cap is a separate value that seeds at 64 MB, so if you raise

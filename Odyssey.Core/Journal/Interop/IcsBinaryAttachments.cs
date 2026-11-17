@@ -377,9 +377,27 @@ internal static class IcsAttachmentSpooler
     private const int MaxHeadChars = 16 * 1024;
     private const int DecodeChars = 16 * 1024; // multiple of 4
 
+    /// <summary>Limits and gates for one <see cref="SpoolAsync"/> run.</summary>
+    /// <param name="AllowAttachments">False refuses the file (<c>403</c>) at its first inline attachment, before a byte
+    /// of it is decoded — a caller who may not import files never makes the server spool them.</param>
+    /// <param name="MaxAttachments">Inline attachments one file may carry. Each costs a temp file and an entry, so a
+    /// file of many tiny attachments is refused rather than allowed to exhaust inodes and memory.</param>
+    /// <param name="SpoolDirectory">Where temp files go; null means <c>ASPNETCORE_TEMP</c>, else the OS temp path.</param>
+    public sealed record Options(
+        long MaxFileBytes, long MaxTextChars, bool AllowAttachments = true, int MaxAttachments = int.MaxValue,
+        string? SpoolDirectory = null);
+
+    /// <summary>Temp files older than this are leftovers of a crashed process, swept on the next import.</summary>
+    internal static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
+
+    private const string FilePrefix = "odyssey-import-";
+
     public static async Task<IcsAttachmentSpool> SpoolAsync(
-        TextReader reader, long maxFileBytes, long maxTextChars, CancellationToken cancellationToken)
+        TextReader reader, Options options, CancellationToken cancellationToken)
     {
+        var directory = options.SpoolDirectory ?? SpoolDirectory();
+        SweepStale(directory);
+        var maxTextChars = options.MaxTextChars;
         var spool = new IcsAttachmentSpool(Guid.NewGuid().ToString("N"));
         try
         {
@@ -392,9 +410,23 @@ internal static class IcsAttachmentSpooler
                 var headComplete = await ReadHeadAsync(source, head, cancellationToken);
                 if (headComplete && IsInlineAttachment(head, out var parameters))
                 {
+                    if (!options.AllowAttachments)
+                    {
+                        throw new DomainForbiddenException(
+                            "This file carries attached files, and importing attached files needs permission to read and upload files.");
+                    }
+
+                    if (spool.Count >= options.MaxAttachments)
+                    {
+                        throw new DomainValidationException(
+                            $"The file carries more than {options.MaxAttachments} attached files.");
+                    }
+
                     var attachment = NewAttachment(spool, parameters);
-                    await DecodeValueAsync(source, attachment, maxFileBytes, cancellationToken);
+                    // Added before decoding, so a failure part-way (disk full, cancellation, the byte cap) still
+                    // leaves the partial temp file to the spool's disposal rather than orphaning it.
                     spool.Add(attachment);
+                    await DecodeValueAsync(source, attachment, directory, options.MaxFileBytes, cancellationToken);
                     text.Append("ATTACH:").Append(IcsAttachmentSpool.Scheme).Append(':').Append(attachment.Reference).Append("\r\n");
                 }
                 else
@@ -544,9 +576,9 @@ internal static class IcsAttachmentSpooler
     // Decodes the rest of the logical line into a temp file. Whatever goes wrong with the content, the line is still
     // consumed to its end, so one bad attachment never derails the parse of the rest of the file.
     private static async Task DecodeValueAsync(
-        CharSource source, SpooledAttachment attachment, long maxFileBytes, CancellationToken cancellationToken)
+        CharSource source, SpooledAttachment attachment, string directory, long maxFileBytes, CancellationToken cancellationToken)
     {
-        var path = System.IO.Path.Combine(SpoolDirectory(), $"odyssey-import-{Guid.NewGuid():N}.bin");
+        var path = System.IO.Path.Combine(directory, $"{FilePrefix}{Guid.NewGuid():N}.bin");
         attachment.Path = path;
         var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous);
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -659,6 +691,26 @@ internal static class IcsAttachmentSpooler
         Environment.GetEnvironmentVariable("ASPNETCORE_TEMP") is { Length: > 0 } configured && Directory.Exists(configured)
             ? configured
             : System.IO.Path.GetTempPath();
+
+    // A process that died mid-import leaves its temp files behind, and the spool is a persistent volume, so each import
+    // removes leftovers older than a day. Best effort: a file another import still holds is simply skipped.
+    private static void SweepStale(string directory)
+    {
+        try
+        {
+            var cutoff = DateTime.UtcNow - StaleAfter;
+            foreach (var file in new DirectoryInfo(directory).EnumerateFiles(FilePrefix + "*.bin"))
+            {
+                if (file.LastWriteTimeUtc < cutoff)
+                {
+                    file.Delete();
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
+    }
 
     // Copies the rest of a logical line through, folds included, then a CRLF.
     private static async Task CopyValueAsync(CharSource source, StringBuilder text, long maxTextChars, CancellationToken cancellationToken)

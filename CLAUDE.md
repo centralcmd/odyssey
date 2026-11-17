@@ -871,15 +871,18 @@ of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that 
 - **`EncodedLength` must stay exact** — the export refuses an over-cap file from it before sending a byte.
 - **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
   size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
-  same `FileValidationService` checks an upload does.
+  same `FileValidationService` checks an upload does, the admin upload cap included.
 - **Files make the claims stricter, never optional**: an export with attached files needs `files.read`, an import
-  carrying inline files needs `files.read` and `files.create`, and either is refused whole (`403`) without them.
+  carrying inline files needs `files.read` and `files.create`, and either is refused whole (`403`) without them —
+  the import at its first inline attachment, inside the spooler, before a byte of it is decoded.
 - **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` (same checks) and then
   navigates to the export URL; the import posts the picked `File` from disk (`INativeTransfer`). The service worker
   must not answer an `/api/` navigation with `index.html`.
 - **The 10 GB transport ceiling is not every endpoint's limit.** `ImportSizeLimitMiddleware` holds any endpoint
-  without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB); `[TransportCeilingBody]` (the
-  photo upload) is the only opt-out. A new file endpoint takes one of the three attributes.
+  without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
+  photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
+  attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
+  timeouts to the task-ICS, photo and file routes alone.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
