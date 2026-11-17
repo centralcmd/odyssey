@@ -115,7 +115,11 @@
                     }
                     @* Overflow menu — always the right-most control. The page supplies the
                        items (MudMenuItems); the header owns the kebab trigger so it looks the
-                       same on every page. *@
+                       same on every page. A page with no applicable item passes ActionMenu = null,
+                       which renders no ⋯ button at all (never an empty menu). ActionMenuId lands on
+                       the MudMenu ROOT, not the button: the built-in icon activator stays as it is
+                       (one tab stop, its name, aria-haspopup / aria-expanded), and a dialog's
+                       ReturnFocusToId resolves the root to its first button (odsRestoreFocusOwner). *@
                     @if (ActionMenu is not null)
                     {
                         <MudMenu Icon="@Icons.Material.Filled.MoreVert"
@@ -123,7 +127,8 @@
                                  AnchorOrigin="Origin.BottomRight"
                                  TransformOrigin="Origin.TopRight"
                                  AriaLabel="@ActionMenuLabel"
-                                 Class="ph-action-menu">
+                                 Class="ph-action-menu"
+                                 id="@ActionMenuId">
                             @ActionMenu
                         </MudMenu>
                     }
