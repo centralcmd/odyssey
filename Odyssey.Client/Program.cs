@@ -113,6 +113,8 @@ builder.Services.AddScoped<Odyssey.Client.Services.IPropertyLimitsCache, Odyssey
 builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache, Odyssey.Client.Services.FileAnalysisDisclosureCache>();
 // One 60-second clock for every OdsRelativeTime on a page (issue #473 §4.1).
 builder.Services.AddScoped<Odyssey.Client.Services.RelativeTimeTicker>();
+// The news feed catalogue and tag list, per signed-in user (issue #473 §4.1, §8.3).
+builder.Services.AddScoped<Odyssey.Client.Services.INewsCatalogueCache, Odyssey.Client.Services.NewsCatalogueCache>();
 // Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
 // surface holding them.
 builder.Services.AddTransient<Odyssey.Client.Services.IContactQuickCreate, Odyssey.Client.Services.ContactQuickCreate>();

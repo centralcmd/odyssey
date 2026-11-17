@@ -348,6 +348,36 @@
                 if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
             });
         };
+        window.odsNewsFocusListStart = function (rootId) {
+            // The Internet pages' "visible target" (issue #473 §6.6): the first card's header, else the visible
+            // empty-state heading (tabindex -1), else the failed load's Retry. Never the sr-only h2, which shows no
+            // focus ring. One frame later, so a list that just re-rendered has its rows in the DOM.
+            requestAnimationFrame(function () {
+                const root = document.getElementById(rootId) || document;
+                const target = root.querySelector('.nw-list .odc-record-trigger') ||
+                    root.querySelector('.nw-empty-h') ||
+                    root.querySelector('.nw-region-problem button');
+                if (target) target.focus();
+            });
+        };
+        window.odsNewsFocusCard = function (cardId, rootId) {
+            // A card's header (its disclosure button), else the visible target when the card is gone.
+            requestAnimationFrame(function () {
+                const card = document.getElementById(cardId);
+                const trigger = card && card.querySelector('.odc-record-trigger');
+                if (trigger) { trigger.focus(); return; }
+                window.odsNewsFocusListStart(rootId);
+            });
+        };
+        window.odsNewsRecoverFocus = function (rootId) {
+            // Focus moves ONLY when a reset removed the focused element (§6.6): a filter change leaves it on its
+            // control. After the list settles, focus that fell to <body> goes to the visible target.
+            requestAnimationFrame(function () {
+                const active = document.activeElement;
+                if (active && active !== document.body && active.isConnected) return;
+                window.odsNewsFocusListStart(rootId);
+            });
+        };
         window.odsFocusDialogCancel = function () {
             // OdsModal InitialFocus="Cancel": a destructive confirmation opens on its safe choice — the
             // element marked data-dialog-cancel, else the footer's first button (Cancel sits left of
