@@ -470,14 +470,15 @@ public class AlbumIconColorSurfaceTests
             .Where(e => e.GetAttribute("tabindex") != "-1" && !e.HasAttribute("disabled") && e.GetAttribute("type") != "hidden")
             .ToList();
         string Kind(AngleSharp.Dom.IElement e) =>
-            e.Closest("#album-icon") is not null ? "icon"
+            // The icon picker's search box is the icon field's first stop, ahead of its grid.
+            e.Closest("#album-icon") is not null || e.ClassList.Contains("odc-iconpick-search-input") ? "icon"
             : e.Closest("#album-color") is not null ? "color"
             : e.TagName == "TEXTAREA" ? "description"
             : e.TagName == "INPUT" ? "name"
             : e.TextContent.Contains("Add photos", StringComparison.Ordinal) ? "photos" : "other";
         var order = stops.Select(Kind).Where(k => k != "other").ToList();
 
-        Assert.Equal(["name", "description", "icon", "color", "photos"], order);
+        Assert.Equal(["name", "description", "icon", "icon", "color", "photos"], order);
     }
 
     [Fact]
