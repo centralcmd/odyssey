@@ -32,9 +32,10 @@ public sealed record SystemSettingsUpdate
     // shape (null = leave unchanged; { unlimited: true } = no limit; { value: n } = n) rather than
     // int?, because on this DTO null already means "leave unchanged" for every field — reusing int?
     // for a count field would make "unlimited" inexpressible. Size fields stay int? (megabytes) and
-    // have no unlimited option, on either side — all four surfaces share the same [Range(1, 1024)]
+    // have no unlimited option, on either side — three surfaces share the same [Range(1, 1024)]
     // (issue #343 §5's original per-surface split — contacts up to 512 MB, ICS up to 1024 MB — has
-    // since been unified per a follow-up: contacts allows just as much as the other three now).
+    // since been unified per a follow-up: contacts allows just as much as the other ICS ones now). The task
+    // surface goes to 10240 MB, because its files carry attached files inline.
     //
     // The claim check for every CapacityLimit field below MUST use SystemSettingsService's
     // RequireClaim(ClaimsPrincipal, CapacityLimit?, ...) overload, never `.Value` — see sec F3.
@@ -64,10 +65,11 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? TaskIcsMaxImportTasks { get; set; }
 
-    [Range(1, 1024)]
+    // Ten times the other surfaces: a task file carries its attached files inline.
+    [Range(SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, SystemSettingsBounds.TaskIcsMaxImportMegabytesMax)]
     public int? TaskIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax)]
     public int? TaskIcsMaxExportMegabytes { get; set; }
 
     public CapacityLimit? JournalIcsMaxExportRows { get; set; }
@@ -237,7 +239,7 @@ public sealed record SystemSettingsUpdate
     /// range — the value must also be at or below the startup transport ceiling, which the server
     /// validates and publishes as <c>UploadMegabytesCeiling</c> on the read DTO.
     /// </summary>
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, SystemSettingsBounds.FileStorageMaxUploadMegabytesMax)]
     public int? FileStorageMaxUploadMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------

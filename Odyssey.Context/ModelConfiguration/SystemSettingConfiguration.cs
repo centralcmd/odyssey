@@ -30,8 +30,8 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportEvents, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportEvents, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = SystemSettingsDefaults.TaskIcsMaxImportTasks, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportRows, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportEntries, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
@@ -39,8 +39,8 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // export row cap (Tasks previously had none — see SystemSettingsKeys' doc comment).
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = SystemSettingsDefaults.TaskIcsMaxExportTasks, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
             // AI file-analysis policy and processor disclosure (issue #421 Wave 1). Values mirror
             // today's effective behaviour, with one correction: MaxFutureTransactionDays was 90 in

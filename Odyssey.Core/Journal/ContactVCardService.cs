@@ -78,9 +78,10 @@ public class ContactVCardService
         // single-contact default would silently change what an existing caller receives from a shipped
         // endpoint — the same objection §17 raises against re-authorizing one.
         var image = includeImages ? await LoadImageDataUriAsync(contact.AvatarFileId, cancellationToken) : null;
+        var geocodes = await LoadGeocodesAsync([contact], cancellationToken);
 
         var sb = new StringBuilder();
-        AppendVCard(sb, contact, image);
+        AppendVCard(sb, contact, image, geocodes);
         return new VCardExport(BuildSingleFileName(contact.ResolvedDisplayName), sb.ToString());
     }
 
@@ -160,6 +161,9 @@ public class ContactVCardService
 
         await foreach (var chunk in contactService.StreamMatchingChunksAsync(query, ExportChunking.ChunkSize, cancellationToken))
         {
+            // One query per chunk, never per contact.
+            var geocodes = await LoadGeocodesAsync(chunk, cancellationToken);
+
             if (includeImages)
             {
                 // ONE IMAGE AT A TIME. Each contact's image is read, encoded and written as its card is
@@ -175,7 +179,7 @@ public class ContactVCardService
                     var image = await LoadImageDataUriAsync(row.AvatarFileId, cancellationToken);
 
                     var rowBuilder = new StringBuilder();
-                    AppendVCard(rowBuilder, row, image);
+                    AppendVCard(rowBuilder, row, image, geocodes);
                     var rowBytes = Encoding.UTF8.GetBytes(rowBuilder.ToString());
 
                     if (writtenBytes + rowBytes.Length > maxBytes)
@@ -200,7 +204,7 @@ public class ContactVCardService
             var sb = new StringBuilder();
             foreach (var row in chunk)
             {
-                AppendVCard(sb, row, imageDataUri: null);
+                AppendVCard(sb, row, imageDataUri: null, geocodes);
             }
 
             var bytes = Encoding.UTF8.GetBytes(sb.ToString());
@@ -234,6 +238,18 @@ public class ContactVCardService
         onTruncated?.Invoke(writtenRows, count);
     }
 
+    /// <summary>
+    /// The coordinates of the contacts' geocoded addresses. Exported under <c>contacts.read</c> alone, like the
+    /// street address they locate — a product decision: the card already carries the address, so its
+    /// coordinates disclose nothing the address does not.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, AddressGeocode>> LoadGeocodesAsync(
+        IReadOnlyCollection<ExistingContact> contacts, CancellationToken cancellationToken)
+    {
+        var addressIds = contacts.SelectMany(c => c.Addresses).Select(a => a.Id).ToList();
+        return await contactService.GetAddressGeocodesAsync(addressIds, cancellationToken);
+    }
+
     private static bool HasFilters(ContactsQueryParams query) =>
         !string.IsNullOrWhiteSpace(query.Search) || query.Types is { Length: > 0 } || query.Status is not null;
 
@@ -242,7 +258,9 @@ public class ContactVCardService
     /// caller passes when <c>includeImages</c> is off, so the emitted card is then byte-identical to
     /// what this produced before contact images existed.
     /// </param>
-    private static void AppendVCard(StringBuilder sb, ExistingContact row, string? imageDataUri)
+    /// <param name="geocodes">Coordinates by address id.</param>
+    private static void AppendVCard(
+        StringBuilder sb, ExistingContact row, string? imageDataUri, IReadOnlyDictionary<Guid, AddressGeocode> geocodes)
     {
         AppendFolded(sb, "BEGIN:VCARD");
         AppendFolded(sb, "VERSION:4.0");
@@ -319,6 +337,13 @@ public class ContactVCardService
 
         AppendFolded(sb, $"REV:{row.UpdatedAt:yyyyMMddTHHmmssZ}");
 
+        // No registered property says "archived", so it follows the X-ODYSSEY- naming. Read back, with its
+        // date, only when an import CREATES the contact; an update keeps the target's own status (§9).
+        if (row.Archived is { } archived)
+        {
+            AppendFolded(sb, $"{ArchivedProperty}:{archived:yyyyMMddTHHmmssZ}");
+        }
+
         // The contact's one image (issue #86 §9), folded at 75 octets like every other property.
         // Person → PHOTO, Organization → LOGO: one storage slot, and the property name is purely
         // presentational — an import accepts either on either type.
@@ -352,13 +377,32 @@ public class ContactVCardService
             }
         }
 
+        // Line 2 goes in the EXTENDED ADDRESS component (RFC 6350 §6.3.1: "e.g., apartment or suite number")
+        // and is read back from there, rather than being appended to the street, which an import could
+        // never split again — so Line 1 changed and the re-import matched a different place.
+        //
+        // A geocoded address is GROUPED with its GEO and TZ (adrN.ADR + adrN.GEO + adrN.TZ), the same shape
+        // Apple uses for per-property labels. RFC 6350's ADR has GEO/TZ *parameters*, but a geo: URI value
+        // contains ':' and this parser splits each line at its first ':' (see the alias comment above), so a
+        // parameter would corrupt the line. An address without coordinates stays ungrouped, so its line is
+        // byte-identical to the previous output.
+        var addressGroup = 0;
         foreach (var address in row.Addresses)
         {
             var pref = address.IsPrimary ? ";PREF=1" : "";
-            var street = address.Line2 is { Length: > 0 }
-                ? $"{address.Line1} {address.Line2}"
-                : address.Line1;
-            AppendFolded(sb, $"ADR;TYPE={AddressTypeToken(address.Label)}{pref}{ExtensionLabelParam(address.Label, AddressExtensionLabels)}:;;{EscapeText(street)};{EscapeText(address.City)};{EscapeText(address.Region ?? "")};{EscapeText(address.PostalCode ?? "")};{EscapeText(address.CountryCode)}");
+            var geocode = geocodes.TryGetValue(address.Id, out var found) ? found : null;
+            var group = geocode is null ? "" : $"{AddressGroupPrefix}{++addressGroup}.";
+            AppendFolded(sb, $"{group}ADR;TYPE={AddressTypeToken(address.Label)}{pref}{ExtensionLabelParam(address.Label, AddressExtensionLabels)}:;{EscapeText(address.Line2 ?? "")};{EscapeText(address.Line1)};{EscapeText(address.City)};{EscapeText(address.Region ?? "")};{EscapeText(address.PostalCode ?? "")};{EscapeText(address.CountryCode)}");
+            if (geocode is not null)
+            {
+                // Trailing zeros trimmed, so the line is the same whatever scale the provider materialises
+                // (MariaDB's DECIMAL column pads; the InMemory provider does not).
+                AppendFolded(sb, $"{group}GEO:geo:{FormatCoordinate(geocode.Latitude)},{FormatCoordinate(geocode.Longitude)}");
+                if (!string.IsNullOrWhiteSpace(geocode.TimeZoneId))
+                {
+                    AppendFolded(sb, $"{group}TZ:{EscapeText(geocode.TimeZoneId)}");
+                }
+            }
         }
 
         foreach (var email in row.EmailAddresses)
@@ -407,6 +451,18 @@ public class ContactVCardService
     };
 
     private const string ExtensionLabelParamName = "X-ODYSSEY-LABEL";
+
+    private static string FormatCoordinate(decimal value) =>
+        value.ToString("0.##########", CultureInfo.InvariantCulture);
+
+    /// <summary>The contact's archive timestamp; no registered vCard property carries it.</summary>
+    private const string ArchivedProperty = "X-ODYSSEY-ARCHIVED";
+
+    /// <summary>The earliest archive date an import keeps; anything earlier is clamped up to it.</summary>
+    private static readonly DateTime EarliestArchiveDate = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    /// <summary>Group prefix pairing an ADR with its GEO/TZ — distinct from the aliases' <c>item</c>.</summary>
+    private const string AddressGroupPrefix = "adr";
 
     // The members with no standard token of their own — and ONLY those emit X-ODYSSEY-LABEL, so an
     // export containing no organization labels is byte-identical to the pre-#47 output.
@@ -635,7 +691,8 @@ public class ContactVCardService
             Type = type,
             DisplayName = displayNameOverride,
             Notes = TextValue(props, "NOTE"),
-            Archived = false,
+            // Applies to a CREATE only: an update overwrites this with the target's own status below.
+            Archived = TextValue(props, ArchivedProperty) is not null,
             ExternalUid = uid,
         };
 
@@ -708,6 +765,11 @@ public class ContactVCardService
                     var createdRow = await contactService.Create(newContact, cancellationToken);
                     id = createdRow.ContactId;
                     updated = false;
+
+                    if (newContact.Archived)
+                    {
+                        await RestoreArchiveDateAsync(id, TextValue(props, ArchivedProperty), cancellationToken);
+                    }
                 }
 
                 await ReplaceContactCollections(
@@ -758,6 +820,30 @@ public class ContactVCardService
             context.ChangeTracker.Clear();
             return (sampleName, ImportOutcome.Skipped, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Replaces the archive timestamp <see cref="ContactService.Create"/> stamped (now) with the one the card
+    /// carries, inside the entry's transaction. A value that does not parse keeps the contact archived as of
+    /// now; a future one is clamped to now, since a contact cannot have been archived later than it was
+    /// imported, and one before <see cref="EarliestArchiveDate"/> is clamped up to it, so a year-1 card can
+    /// never reach the database as a DATETIME outside its range and abort the whole import.
+    /// </summary>
+    private async Task RestoreArchiveDateAsync(Guid contactId, string? value, CancellationToken cancellationToken)
+    {
+        if (!DateTime.TryParseExact(
+                value, ["yyyyMMdd'T'HHmmss'Z'", "yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyyMMdd", "yyyy-MM-dd"],
+                CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal,
+                out var archivedAt))
+        {
+            return;
+        }
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var clamped = archivedAt > now ? now : archivedAt < EarliestArchiveDate ? EarliestArchiveDate : archivedAt;
+        var contact = await context.Contacts.FirstAsync(c => c.ContactId == contactId, cancellationToken);
+        contact.Archived = DateTime.SpecifyKind(clamped, DateTimeKind.Utc);
+        await context.SaveChangesAsync(cancellationToken);
     }
 
     // ── Imported contact image (issue #86 §9) ─────────────────────────────────────────────────────
@@ -1017,13 +1103,21 @@ public class ContactVCardService
                 continue;
             }
 
-            var address = ParseAddress(prop, contactType);
+            var (address, geocodeDropped) = ParseAddress(prop, contactType, props);
             if (address is null)
             {
                 // ParseAddress pre-filters (missing street/city/country) rather than throwing, but the
                 // drop is just as real as one caught below — report it the same way (issue #338 review).
                 skipped.Add("Address dropped: missing a required field (street/city/country).", sampleName);
                 continue;
+            }
+
+            if (geocodeDropped)
+            {
+                // The address still imports; only its coordinates are left out.
+                skipped.Add(
+                    "Address coordinates dropped: GEO needs a valid latitude, longitude and IANA time zone (TZ).",
+                    sampleName);
             }
 
             try
@@ -1246,23 +1340,39 @@ public class ContactVCardService
     private static string StripControlCharacters(string value) =>
         value.Any(char.IsControl) ? new string([.. value.Where(ch => !char.IsControl(ch))]) : value;
 
-    private static NewAddress? ParseAddress(VCardProperty prop, ContactType contactType)
+    /// <summary>
+    /// One <c>ADR</c>, plus whether a GEO grouped with it had to be left out. Line 2 is the extended-address
+    /// component; when that is empty, a multi-line street (Apple's shape) splits at its first newline. The
+    /// country is resolved from a name or code (<see cref="VCardCountry"/>).
+    /// </summary>
+    private static (NewAddress? Address, bool GeocodeDropped) ParseAddress(
+        VCardProperty prop, ContactType contactType, Dictionary<string, List<VCardProperty>> props)
     {
         var comps = SplitUnescaped(prop.RawValue);
         string Get(int i) => comps.Count > i ? UnescapeText(comps[i]).Trim() : "";
 
+        var extended = Get(1);
         var street = Get(2);
         var city = Get(3);
         var region = Get(4);
         var postal = Get(5);
-        var country = Get(6);
+        var country = VCardCountry.Resolve(Get(6));
 
-        if (street.Length == 0 || city.Length == 0 || country.Length == 0)
+        var streetLines = street.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        var line1 = streetLines.Length > 0 ? streetLines[0] : "";
+        // Extra street lines are never dropped: with an extended address too, they come first, then it.
+        var line2 = string.Join(", ", streetLines.Skip(1)
+            .Append(CollapseWhitespace(extended.Replace('\n', ' ')))
+            .Where(part => part.Length > 0));
+
+        if (line1.Length == 0 || city.Length == 0 || country is null)
         {
-            return null;
+            return (null, false);
         }
 
-        return new NewAddress
+        var (geocode, geocodeDropped) = ParseGroupedGeocode(prop.Group, props);
+
+        return (new NewAddress
         {
             Label = ContactLabelScope.Clamp(
                 ExtensionLabel<AddressLabel>(prop.Params) ?? ExtractTypeToken(prop.Params, "home", "work", "billing") switch
@@ -1274,12 +1384,80 @@ public class ContactVCardService
                 },
                 contactType),
             IsPrimary = HasPref(prop.Params),
-            Line1 = street,
+            Line1 = line1,
+            Line2 = EmptyToNull(line2),
             City = city,
             Region = EmptyToNull(region),
             PostalCode = EmptyToNull(postal),
             CountryCode = country,
-        };
+            // Applied only if this address CREATES a place; a match on the address key links the existing
+            // place unchanged, so an import never overwrites coordinates someone curated (issue #380 §5.3a).
+            Latitude = geocode?.Latitude,
+            Longitude = geocode?.Longitude,
+            TimeZoneId = geocode?.TimeZoneId,
+            Source = geocode is null ? null : LocationSource.Manual,
+        }, geocodeDropped);
+    }
+
+    /// <summary>
+    /// The GEO and TZ sharing an <c>ADR</c>'s group, validated by the same rules a request's geocode meets
+    /// (<see cref="LocationGeocode.From"/>). An ungrouped GEO describes the contact rather than an address
+    /// and is ignored. A GEO that cannot be used — no TZ, a malformed value, out of range — is dropped and
+    /// reported, never allowed to cost the address.
+    /// </summary>
+    private static (LocationGeocode? Geocode, bool Dropped) ParseGroupedGeocode(
+        string? group, Dictionary<string, List<VCardProperty>> props)
+    {
+        if (group is null)
+        {
+            return (null, false);
+        }
+
+        var geo = Properties(props, "GEO").FirstOrDefault(p => string.Equals(p.Group, group, StringComparison.OrdinalIgnoreCase));
+        if (geo.RawValue is null)
+        {
+            return (null, false);
+        }
+
+        var tz = Properties(props, "TZ").FirstOrDefault(p => string.Equals(p.Group, group, StringComparison.OrdinalIgnoreCase));
+        var zone = tz.RawValue is null ? null : UnescapeText(tz.RawValue).Trim();
+
+        if (!TryParseGeo(geo.RawValue, out var latitude, out var longitude))
+        {
+            return (null, true);
+        }
+
+        try
+        {
+            return (LocationGeocode.From(latitude, longitude, zone, LocationSource.Manual, sourceReference: null), false);
+        }
+        catch (DomainException)
+        {
+            return (null, true);
+        }
+    }
+
+    /// <summary>A vCard 4.0 <c>geo:lat,lon[;…]</c> URI, or vCard 3.0's <c>lat;lon</c>.</summary>
+    private static bool TryParseGeo(string raw, out decimal latitude, out decimal longitude)
+    {
+        latitude = 0;
+        longitude = 0;
+        var value = raw.Trim();
+        string[] parts;
+        if (value.StartsWith("geo:", StringComparison.OrdinalIgnoreCase))
+        {
+            var coordinates = value[4..];
+            var semicolon = coordinates.IndexOf(';');
+            parts = (semicolon >= 0 ? coordinates[..semicolon] : coordinates).Split(',');
+        }
+        else
+        {
+            parts = value.Split(';');
+        }
+
+        return parts.Length >= 2
+            && decimal.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out latitude)
+            && decimal.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out longitude);
     }
 
     private static NewEmailAddress? ParseEmail(VCardProperty prop, ContactType contactType)

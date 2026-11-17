@@ -199,6 +199,7 @@ processing; private, no-cache, so revalidation costs one 304 with no body (issue
     [Authorize(Policy = PermissionClaims.PhotosCreate)]
     [Consumes("multipart/form-data")]
     [EnableRateLimiting(PhotoUploadRateLimiting.UploadPolicy)]
+    [UploadTransportLimit]
     // No per-request [UploadSizeLimit]: under it the multipart reader refuses a file just over the admin cap inside
     // model binding, which surfaces as a 400 with no cap in it. The transport ceiling (FileStorage:MaxFileSizeBytes,
     // fixed at startup) still bounds the body; the service checks the admin cap and answers 413 naming it (#428 §5.1).

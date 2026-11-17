@@ -54,10 +54,12 @@ public static class SystemSettingsDefaults
     public const int CalendarIcsMaxImportEvents = 2000;
     public const int CalendarIcsMaxImportMegabytes = 64;
     public const int CalendarIcsMaxExportMegabytes = 64;
-    public const int TaskIcsMaxExportTasks = 2000;
-    public const int TaskIcsMaxImportTasks = 2000;
-    public const int TaskIcsMaxImportMegabytes = 64;
-    public const int TaskIcsMaxExportMegabytes = 64;
+    // The task surface ships unlimited on counts and at its 10 GB ceiling on size: its files carry attached files
+    // inline, and a mostly single-user instance should not meet an arbitrary cap moving its own board.
+    public const string TaskIcsMaxExportTasks = Unlimited;
+    public const string TaskIcsMaxImportTasks = Unlimited;
+    public const int TaskIcsMaxImportMegabytes = 10240;
+    public const int TaskIcsMaxExportMegabytes = 10240;
     public const int JournalIcsMaxExportRows = 2000;
     public const int JournalIcsMaxImportEntries = 2000;
     public const int JournalIcsMaxImportMegabytes = 64;

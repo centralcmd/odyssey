@@ -12,8 +12,18 @@ public class FileStorageOptions
 {
     public const string SectionName = "FileStorage";
 
-    /// <summary>Maximum accepted file content size, in bytes. Defaults to 64 MB.</summary>
-    public long MaxFileSizeBytes { get; set; } = 64 * 1024 * 1024;
+    /// <summary>
+    /// Maximum accepted file content size, in bytes — the transport ceiling the admin upload cap and the import caps
+    /// live under. Defaults to 10 GB, so a large attachment can travel in a task export and back.
+    /// </summary>
+    public long MaxFileSizeBytes { get; set; } = 10L * 1024 * 1024 * 1024;
+
+    /// <summary>
+    /// The request-body limit for every endpoint that does not accept files (JSON writes, sign-in). Kept small and
+    /// separate from <see cref="MaxFileSizeBytes"/> so a large-file ceiling never becomes a large-JSON-body one.
+    /// Defaults to 65 MB, the transport limit every endpoint had before the ceiling was raised.
+    /// </summary>
+    public long DefaultMaxRequestBodyBytes { get; set; } = 65L * 1024 * 1024;
 
     /// <summary>
     /// Extra bytes allowed on top of <see cref="MaxFileSizeBytes"/> at the transport layer to cover

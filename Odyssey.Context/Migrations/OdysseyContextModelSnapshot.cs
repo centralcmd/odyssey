@@ -5508,13 +5508,13 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "TaskIcsMaxImportTasks",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "TaskIcsMaxImportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
@@ -5550,13 +5550,13 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "TaskIcsMaxExportTasks",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "TaskIcsMaxExportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {

@@ -69,6 +69,27 @@ public class ContactVCardApiTests
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
+    [Fact]
+    public async Task Export_ContactsReadAlone_CarriesTheAddressCoordinates()
+    {
+        // contacts.read is the ONLY claim: the coordinates ride the export beside the street address they
+        // locate (a product decision, PR #510). AuthorizationPolicyTests.Contacts_read_implies_locations_read
+        // pins the role mapping that keeps this safe.
+        await using var factory = new ApiFactory([PermissionClaims.ContactsRead]);
+        var id = await SeedContactAsync(factory, "Acme", geocoded: true);
+        using var client = factory.CreateClient();
+
+        var single = await client.GetStringAsync($"{BasePath}/{id}/vcard");
+        var bulk = await client.GetStringAsync($"{BasePath}/vcard");
+
+        foreach (var body in new[] { single, bulk })
+        {
+            Assert.Contains("\r\nadr1.ADR;TYPE=work:;;Storgata 1;Oslo;;;NO\r\n", body);
+            Assert.Contains("\r\nadr1.GEO:geo:59.9139,10.7522\r\n", body);
+            Assert.Contains("\r\nadr1.TZ:Europe/Oslo\r\n", body);
+        }
+    }
+
     // ------------------------------------------------------------------ export (collection)
 
     [Fact]
@@ -438,7 +459,8 @@ public class ContactVCardApiTests
         return await client.PostAsync($"{BasePath}/vcard", content);
     }
 
-    private static async Task<Guid> SeedContactAsync(WebApplicationFactory<Program> factory, string legalName)
+    private static async Task<Guid> SeedContactAsync(
+        WebApplicationFactory<Program> factory, string legalName, bool geocoded = false)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -455,6 +477,33 @@ public class ContactVCardApiTests
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow,
         });
+
+        if (geocoded)
+        {
+            var locationId = Guid.NewGuid();
+            context.Locations.Add(new Location
+            {
+                LocationId = locationId,
+                Name = "Storgata 1, Oslo",
+                Line1 = "Storgata 1",
+                City = "Oslo",
+                CountryCode = "NO",
+                Latitude = 59.9139m,
+                Longitude = 10.7522m,
+                TimeZoneId = "Europe/Oslo",
+                Source = LocationSource.Manual,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            });
+            context.Addresses.Add(new Address
+            {
+                ContactId = id,
+                LocationId = locationId,
+                Label = AddressLabel.Work,
+                IsPrimary = false,
+            });
+        }
+
         await context.SaveChangesAsync();
         return id;
     }

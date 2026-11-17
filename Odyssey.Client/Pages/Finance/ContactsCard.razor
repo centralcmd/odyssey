@@ -32,6 +32,9 @@
         <ActionMenu>
             <MudMenuItem Icon="@Icons.Material.Filled.Download" OnClick="@(() => ExportAsync(filtered: false))">Export all as vCard</MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_totalCount) as vCard</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem Icon="@Icons.Material.Filled.PhotoLibrary" OnClick="@(() => ExportAsync(filtered: false, includeImages: true))">Export all as vCard with pictures</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => ExportAsync(filtered: true, includeImages: true))">Export filtered (@_totalCount) as vCard with pictures</MudMenuItem>
             @if (_canImport)
             {
                 <MudDivider />

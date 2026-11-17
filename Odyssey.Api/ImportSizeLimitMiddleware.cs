@@ -45,6 +45,20 @@ public sealed class ImportSizeLimitAttribute(ImportSurface surface) : Attribute
 public sealed class UploadSizeLimitAttribute : Attribute;
 
 /// <summary>
+/// Tags an upload whose TRANSPORT limit is the admin upload cap (plus the envelope headroom) while its multipart
+/// limit stays at the ceiling — the photo upload, whose service answers a file just over the cap with a 413 naming
+/// it (#428 §5.1), which the multipart reader's own refusal inside model binding could not. A body well over the cap
+/// is refused by the transport before it is spooled, also as a 413 naming the cap.
+/// <para>
+/// Every action that carries none of this, <see cref="ImportSizeLimitAttribute"/> and
+/// <see cref="UploadSizeLimitAttribute"/> is held to <see cref="FileStorageOptions.DefaultMaxRequestBodyBytes"/>, so
+/// raising the ceiling for large files never lets a JSON endpoint — sign-in included — accept a multi-gigabyte body.
+/// </para>
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class UploadTransportLimitAttribute : Attribute;
+
+/// <summary>
 /// Applies the configured, admin-editable per-surface byte cap to the request transport — the
 /// mechanism that makes the vCard import's size limit actually take effect (issue #343 §5, replacing
 /// the dead <c>[RequestSizeLimit(500 MB)]</c> that never touched the global 65 MB multipart limit).
@@ -102,7 +116,16 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
         var uploadAttribute = endpoint?.Metadata.GetMetadata<UploadSizeLimitAttribute>();
         if (importAttribute is null && uploadAttribute is null)
         {
-            await next(context);
+            if (endpoint?.Metadata.GetMetadata<UploadTransportLimitAttribute>() is null)
+            {
+                LowerToDefault(context, fileStorageOptions.Value.DefaultMaxRequestBodyBytes);
+                await next(context);
+                return;
+            }
+
+            var uploadCap = (await uploadLimitsLookup.GetAsync(context.RequestAborted)).MaxUploadBytes;
+            LowerToDefault(context, uploadCap + fileStorageOptions.Value.RequestEnvelopeHeadroomBytes);
+            await NextAnsweringOversizeAsync(context, uploadCap);
             return;
         }
 
@@ -165,6 +188,11 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
             MultipartBodyLengthLimit = capBytes,
         }));
 
+        await NextAnsweringOversizeAsync(context, capBytes);
+    }
+
+    private async Task NextAnsweringOversizeAsync(HttpContext context, long capBytes)
+    {
         try
         {
             await next(context);
@@ -193,6 +221,16 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 Title = "Payload too large",
                 Detail = $"The request body exceeds the maximum of {capBytes} bytes.",
             });
+        }
+    }
+
+    // Only ever lowers: an endpoint attribute such as [RequestSizeLimit] still applies later, in the MVC filter.
+    private static void LowerToDefault(HttpContext context, long defaultBytes)
+    {
+        var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (feature is { IsReadOnly: false } && (feature.MaxRequestBodySize is null || feature.MaxRequestBodySize > defaultBytes))
+        {
+            feature.MaxRequestBodySize = defaultBytes;
         }
     }
 }

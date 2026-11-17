@@ -154,11 +154,39 @@ public sealed class JournalTasksController : ControllerBase
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Export the current filtered task view as an RFC 5545 VTODO .ics file.")]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Export the current filtered task view as an RFC 5545 VTODO .ics file, attached files inline.")]
     public async Task<IActionResult> ExportIcs(
         [FromQuery] JournalTasksQueryParams query, CancellationToken cancellationToken = default)
     {
-        await icsService.ExportStreamingAsync(query, Response.Body, (fileName, rowCount) =>
+        try
+        {
+            await StreamIcsAsync(query, cancellationToken);
+        }
+        catch (TaskIcsService.ExportSizeExceededException)
+        {
+            // The body has started, so no status can be sent: abort, so the download fails rather than ending early.
+            HttpContext.Abort();
+        }
+
+        return new EmptyResult();
+    }
+
+    // What the export above would contain, under the same checks (task cap, byte cap, files.read when a task carries
+    // an attached file). The client asks first, so a refusal is an ordinary error and not a failed browser download.
+    [HttpGet("ics/summary", Name = "SummarizeTasksIcsExport")]
+    [Authorize(Policy = PermissionClaims.TasksRead)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(TaskIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a VTODO .ics export of the filtered task view would contain.")]
+    public async Task<ActionResult<TaskIcsExportSummary>> SummarizeIcsExport(
+        [FromQuery] JournalTasksQueryParams query, CancellationToken cancellationToken = default) =>
+        await icsService.SummarizeExportAsync(query, CanLinkFiles(), cancellationToken);
+
+    private async Task StreamIcsAsync(JournalTasksQueryParams query, CancellationToken cancellationToken)
+    {
+        await icsService.ExportStreamingAsync(query, CanLinkFiles(), Response.Body, (fileName, rowCount) =>
         {
             // nosniff mirrors the file-download surface: the browser must not re-interpret the body as
             // anything other than the declared text/calendar (matches CalendarIcsController's export headers).
@@ -169,8 +197,6 @@ public sealed class JournalTasksController : ControllerBase
             Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
             Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
         }, cancellationToken);
-
-        return new EmptyResult();
     }
 
     // VTODO/.ics import (issue #337). Creates or updates by UID match, so it requires BOTH claims;
@@ -210,7 +236,8 @@ public sealed class JournalTasksController : ControllerBase
 
         await using var stream = file.OpenReadStream();
         var result = await icsService.ImportAsync(
-            stream, file.Length, file.ContentType, userId, CanLinkFiles(), cancellationToken);
+            stream, file.Length, file.ContentType, userId, CanLinkFiles(), User.HasPermission(PermissionClaims.FilesCreate),
+            cancellationToken);
         return Ok(result);
     }
 

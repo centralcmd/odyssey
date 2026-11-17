@@ -163,9 +163,9 @@ public sealed class ImportExportLimitsLookup(
         journalExport = ClampExport(journalExport, journalImport);
 
         var taskExport = ResolveCount(
-            SystemSettingsKeys.TaskIcsMaxExportTasks, IcsCountFloor, SystemSettingsDefaults.TaskIcsMaxExportTasks);
+            SystemSettingsKeys.TaskIcsMaxExportTasks, IcsCountFloor, seededDefault: null);
         var taskImport = ResolveCount(
-            SystemSettingsKeys.TaskIcsMaxImportTasks, IcsCountFloor, SystemSettingsDefaults.TaskIcsMaxImportTasks);
+            SystemSettingsKeys.TaskIcsMaxImportTasks, IcsCountFloor, seededDefault: null);
         taskExport = ClampExport(taskExport, taskImport);
 
         var contactImportBytes = ResolveSizeBytes(

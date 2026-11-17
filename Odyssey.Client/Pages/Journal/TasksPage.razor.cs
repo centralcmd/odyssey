@@ -364,8 +364,8 @@ public partial class TasksPage
     private enum TaskExportScope { All, Filtered }
 
     // All ignores the page filters and exports every task (all four statuses, incl. archived); Filtered
-    // forwards the current search/tag/status set so the download matches the visible view. The browser
-    // download is handled by the shared downloadFileFromBytes interop (same as the calendar export).
+    // forwards the current search/tag/status set so the download matches the visible view. The browser downloads the
+    // file itself (DownloadIcsAsync below), never through the WASM heap.
     private async Task ExportTasksAsync(TaskExportScope scope)
     {
         if (_exporting) return;
@@ -373,14 +373,14 @@ public partial class TasksPage
         _announce = "Preparing task export…";
         try
         {
-            var result = scope == TaskExportScope.Filtered
-                ? await Tasks.ExportIcsAsync(_search, [.. _tagFilter], [.. _statusFilter])
-                : await Tasks.ExportIcsAsync(statuses: AllStatuses);
-            if (result.OrToast(Snackbar, "Unable to export tasks") is not { } file) return;
+            var exported = scope == TaskExportScope.Filtered
+                ? await DownloadIcsAsync("Unable to export tasks", _search, [.. _tagFilter], [.. _statusFilter])
+                : await DownloadIcsAsync("Unable to export tasks", statuses: AllStatuses);
+            if (exported is not { } summary) return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            _announce = $"Exported {file.FileName}.";
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
+            var message = $"Exporting {Plural(summary.TaskCount, "task")}{AttachedSuffix(summary)} — your browser is downloading the file.";
+            _announce = message;
+            Snackbar.Add(message, Severity.Success);
         }
         finally
         {
@@ -396,18 +396,35 @@ public partial class TasksPage
         _exporting = true;
         try
         {
-            var result = await Tasks.ExportIcsAsync(statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]);
-            if (result.OrToast(Snackbar, "Unable to export the task") is not { } file) return;
+            if (await DownloadIcsAsync("Unable to export the task", statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]) is not { } summary) return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            _announce = $"Exported {t.Title}.";
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
+            _announce = $"Exporting {t.Title}.";
+            Snackbar.Add($"Exporting {t.Title}{AttachedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
         }
         finally
         {
             _exporting = false;
         }
     }
+
+    // Every export carries its attached files inline, so it can be far larger than the WASM heap: the summary runs the
+    // server's checks first (caps, files.read for attachments) and reports a refusal as a toast, then the browser
+    // downloads the file straight to disk. A failure after that point shows in the browser's own download list.
+    private async Task<TaskIcsExportSummary?> DownloadIcsAsync(
+        string failureLead, string? search = null, IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<string>? ids = null)
+    {
+        var summary = (await Tasks.SummarizeIcsExportAsync(search, tagIds, statuses, ids)).OrToast(Snackbar, failureLead);
+        if (summary is null) return null;
+
+        await NativeTransfer.DownloadAsync(Tasks.ExportIcsUrl(search, tagIds, statuses, ids));
+        return summary;
+    }
+
+    private static string Plural(int count, string noun) => $"{count} {noun}{(count == 1 ? "" : "s")}";
+
+    private static string AttachedSuffix(TaskIcsExportSummary summary) =>
+        summary.AttachmentCount == 0 ? "" : $" with {Plural(summary.AttachmentCount, "attached file")} ({ByteSize.Format(summary.AttachmentBytes)})";
 
     private void OpenImport()
     {

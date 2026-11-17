@@ -16,11 +16,20 @@ public sealed record TaskIcsImportResult
 
     public IReadOnlyList<TaskImportSkipGroup> Skipped { get; set; } = [];
 
-    /// <summary>CATEGORIES values across all components that didn't resolve to an existing, non-archived tag.</summary>
+    /// <summary>CATEGORIES values across all components that didn't resolve to an existing tag (archived ones included).</summary>
     public int SkippedTagLinkCount { get; set; }
 
-    /// <summary>odyssey-file: ATTACH URIs that didn't resolve to a file the importing user may link.</summary>
+    /// <summary>
+    /// Attachments that were not linked: an <c>odyssey-file:</c> reference that didn't resolve to a file the importing
+    /// user may link, or an inline file that was damaged, too large or of a type uploads do not accept.
+    /// </summary>
     public int SkippedAttachmentCount { get; set; }
+
+    /// <summary>Inline files stored as new files by this import.</summary>
+    public int StoredFileCount { get; set; }
+
+    /// <summary>Inline files matched to a file already stored (same id or same content), so no copy was made.</summary>
+    public int ReusedFileCount { get; set; }
 }
 
 /// <summary>A set of components skipped for the same reason, with a bounded sample of their titles.</summary>
