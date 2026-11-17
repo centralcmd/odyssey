@@ -448,7 +448,9 @@ public class NewsFeedsPageTests
         cut.Find("#nf-del-confirm").Click();
 
         cut.WaitForAssertion(() => Assert.Empty(CardNames(cut)));
-        cut.WaitForAssertion(() => Assert.Contains("Feed deleted. Its articles are being removed in the background.", Polite(cut), StringComparison.Ordinal));
+        // Said once, by the snackbar (a live region in MudBlazor 9), so the page announcer stays silent (AC 29).
+        cut.WaitForAssertion(() => Assert.Contains("Feed deleted. Its articles are being removed in the background.", cut.Find(".mud-snackbar").TextContent, StringComparison.Ordinal));
+        Assert.DoesNotContain("Feed deleted.", Polite(cut), StringComparison.Ordinal);
     }
 
     // ── Create flow ──────────────────────────────────────────────────────────────────────────────
@@ -527,7 +529,8 @@ public class NewsFeedsPageTests
 
         cut.FindAll("button").First(b => b.TextContent.Contains("Use new address", StringComparison.Ordinal)).Click();
 
-        cut.WaitForAssertion(() => Assert.Contains("Feed address updated", Polite(cut), StringComparison.Ordinal));
+        cut.WaitForAssertion(() => Assert.Contains("Feed address updated", cut.Find(".mud-snackbar").TextContent, StringComparison.Ordinal));
+        Assert.DoesNotContain("Feed address updated", Polite(cut), StringComparison.Ordinal);
         Assert.Equal("https://fetch.example/new.xml", sent!.Url);
         Assert.Equal(feed.Version, sent.Version);
         context.News.Verify(n => n.UpdateFeedAsync(It.IsAny<Guid>(), It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()), Times.Once);

@@ -695,7 +695,13 @@ public partial class NewsTagsPage
 
     // ── Helpers ────────────────────────────────────────────────────────────────────────────────────
 
-    private void Say(string text) => _ = _announcer?.Announce(text);
+    private void Say(string? text)
+    {
+        if (!string.IsNullOrEmpty(text))
+        {
+            _ = _announcer?.Announce(text);
+        }
+    }
 
     private async Task FocusAsync(string id)
     {

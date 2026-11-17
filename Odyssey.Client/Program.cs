@@ -93,7 +93,9 @@ builder.Services.AddScoped(sp =>
 // Every typed API client + the transport core live in Odyssey.ApiClient.
 builder.Services.AddOdysseyApiClient();
 
-builder.Services.AddMudServices();
+// The snackbar provider's one configuration (issue #473 §6.7): bottom-right, a close icon, no duplicate stacking.
+// Error snackbars set RequireInteraction per call so they stay until dismissed; the Undo one sets its 8 s.
+builder.Services.AddMudServices(config => Odyssey.Client.Services.SnackbarDefaults.Configure(config.SnackbarConfiguration));
 builder.Services.AddScoped<CookieAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CookieAuthenticationStateProvider>());
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();

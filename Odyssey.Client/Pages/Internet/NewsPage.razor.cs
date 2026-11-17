@@ -39,6 +39,8 @@ public partial class NewsPage : IDisposable
 
     public const string ChangedBackText = "Couldn't update. Changed back.";
 
+    public const string OfferedUndoText = "Marked as read";
+
     public const string UndoWithdrawnText = "Marked as read — use Mark unread on the article to undo";
 
     /// <summary>Counts refresh this long after the last read-state write (§10).</summary>
@@ -1058,7 +1060,7 @@ public partial class NewsPage : IDisposable
         {
             case ReadSource.Expand:
                 OfferUndo(article);
-                Say("Marked as read");
+                Say(NewsFeedback.Spoken(OfferedUndoText));
                 break;
             default:
                 Say(isRead ? "Marked as read" : "Marked as unread");
@@ -1089,7 +1091,7 @@ public partial class NewsPage : IDisposable
                     ApplyLocally(article, confirmedRead, confirmedAt);
                     var text = NewsFeedback.IsBusy(result.Problem) ? NewsFeedback.BusyText : ChangedBackText;
                     Snackbar.Add(text, Severity.Error, config => config.RequireInteraction = true);
-                    Say(text);
+                    Say(NewsFeedback.Spoken(text));
                     StateHasChanged();
                     return;
                 }
@@ -1163,7 +1165,7 @@ public partial class NewsPage : IDisposable
         }
 
         var id = article.Id;
-        _undoSnackbar = Snackbar.Add("Marked as read", Severity.Normal, config =>
+        _undoSnackbar = Snackbar.Add(OfferedUndoText, Severity.Normal, config =>
         {
             config.VisibleStateDuration = (int)UndoDuration.TotalMilliseconds;
             config.Action = "Undo";
@@ -1469,12 +1471,12 @@ public partial class NewsPage : IDisposable
             case NewsMarkAllEnd.Stopped:
                 var stopped = $"{marked} Stopped before finishing.";
                 Snackbar.Add(stopped, Severity.Info, config => config.VisibleStateDuration = (int)UndoDuration.TotalMilliseconds);
-                Say(stopped);
+                Say(NewsFeedback.Spoken(stopped));
                 break;
             default:
                 const string partial = "Some articles were marked as read; try again to finish.";
                 Snackbar.Add(partial, Severity.Error, config => config.RequireInteraction = true);
-                Say(partial);
+                Say(NewsFeedback.Spoken(partial));
                 break;
         }
 
@@ -1526,8 +1528,13 @@ public partial class NewsPage : IDisposable
     private readonly List<string> _unsaid = [];
 
     /// <summary>Says <paramref name="text"/> once through the page's one announcer — held until it has rendered.</summary>
-    private void Say(string text)
+    private void Say(string? text)
     {
+        if (string.IsNullOrEmpty(text))
+        {
+            return;
+        }
+
         if (_announcer is null)
         {
             _unsaid.Add(text);

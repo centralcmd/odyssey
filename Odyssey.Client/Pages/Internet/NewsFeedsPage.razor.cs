@@ -510,7 +510,7 @@ public partial class NewsFeedsPage
 
             const string changed = "This feed was changed elsewhere. Try again.";
             Snackbar.Add(changed, Severity.Warning);
-            Say(changed);
+            Say(NewsFeedback.Spoken(changed));
             StateHasChanged();
             return;
         }
@@ -888,7 +888,13 @@ public partial class NewsFeedsPage
 
     // ── Helpers ────────────────────────────────────────────────────────────────────────────────────
 
-    private void Say(string text) => _ = _announcer?.Announce(text);
+    private void Say(string? text)
+    {
+        if (!string.IsNullOrEmpty(text))
+        {
+            _ = _announcer?.Announce(text);
+        }
+    }
 
     private async Task InvokeJsAsync(string identifier, params object?[] args)
     {
