@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Odyssey.Dtos.Application;
 using Odyssey.Core.Internet.News;
 using Odyssey.Core.Journal;
+using Odyssey.Dtos.Application;
 using Swashbuckle.AspNetCore.Annotations;
 
 namespace Odyssey.Api.Controllers;
@@ -36,13 +36,14 @@ public sealed class ImportLimitsController : ControllerBase
     {
         var limits = await lookup.GetAsync(cancellationToken);
 
-        // The OPML entry cap is a news setting, read through the news lookup that the import itself enforces it with.
+        // The OPML entry cap is a news setting, read through the news lookup that the import itself enforces it with. A
+        // degraded news read withholds that one figure (null) instead of failing the limits every other dialog needs.
         var news = await newsSettings.GetAsync(cancellationToken);
 
         // A degraded read must never be presented as configuration (issue #343 arch N1, AC 27e) — the
         // import/export SERVICES still use the (monotonically) degraded numbers to keep enforcing a
         // cap, but this read-only display surface fails closed instead of showing an invented value.
-        if (limits.IsDegraded || news.IsDegraded)
+        if (limits.IsDegraded)
         {
             return this.ServiceUnavailableProblem(
                 "Import/export limits are temporarily unavailable while the server recovers a configuration problem.");
@@ -66,7 +67,7 @@ public sealed class ImportLimitsController : ControllerBase
             JournalIcsMaxImportEntries = limits.JournalIcsMaxImportEntries,
             JournalIcsMaxImportMegabytes = (int)(limits.JournalIcsMaxImportBytes / (1024 * 1024)),
             JournalIcsMaxExportMegabytes = (int)(limits.JournalIcsMaxExportBytes / (1024 * 1024)),
-            NewsOpmlMaxImportEntries = news.OpmlMaxImportEntries,
+            NewsOpmlMaxImportEntries = news.IsDegraded ? null : news.OpmlMaxImportEntries,
             NewsOpmlMaxImportMegabytes = (int)(limits.NewsOpmlMaxImportBytes / (1024 * 1024)),
         });
     }
