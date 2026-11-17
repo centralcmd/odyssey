@@ -6,9 +6,6 @@ namespace Odyssey.Client.Components;
 /// <summary>The parameters, navigation and announcements behind <c>OdsImageCarousel</c> (see the .razor header).</summary>
 public partial class OdsImageCarousel
 {
-    /// <summary>Alt text spoken in the live region is cut to this many characters.</summary>
-    public const int SpokenAltLimit = 140;
-
     /// <summary>The images in display order.</summary>
     [Parameter] public IReadOnlyList<OdsCarouselImage> Images { get; set; } = [];
 
@@ -81,17 +78,11 @@ public partial class OdsImageCarousel
         : count > 1 ? $"Image {index + 1} of {count}, no description from the publisher"
         : "Image, no description from the publisher";
 
-    /// <summary>What the live region says on arriving at a slide.</summary>
-    public static string SpokenFor(OdsCarouselImage image, int index, int count)
-    {
-        var position = $"Image {index + 1} of {count}";
-        if (!HasAlt(image))
-            return position;
-        var alt = image.Alt!.Trim();
-        if (alt.Length > SpokenAltLimit)
-            alt = alt[..SpokenAltLimit].TrimEnd() + "…";
-        return $"{position}: {alt}";
-    }
+    /// <summary>
+    /// What the live region says on arriving at a slide: the position only. The alt text is read from the image
+    /// itself, so it is never spoken twice (the design system's ImageCarousel).
+    /// </summary>
+    public static string SpokenFor(int index, int count) => $"Image {index + 1} of {count}";
 
     private static bool HasAlt(OdsCarouselImage image) => !string.IsNullOrWhiteSpace(image.Alt);
 
@@ -116,7 +107,7 @@ public partial class OdsImageCarousel
         _index = next;
         StateHasChanged();
         await IndexChanged.InvokeAsync(next);
-        await SayAsync(SpokenFor(Images[next], next, Images.Count));
+        await SayAsync(SpokenFor(next, Images.Count));
     }
 
     private Task SayAsync(string message)

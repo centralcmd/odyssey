@@ -791,7 +791,7 @@ an **MVP requirement**.
 | No auto-rotation | No timer exists |
 | Controls | **Previous image** and **Next image** (`OdsIconButton`), ≥ 40×40 CSS px. At the ends they are `aria-disabled="true"`. Pressing one there announces "First image" or "Last image". No wrap-around |
 | Counter | The visible "2 / 5" is `aria-hidden`. Only the live region speaks |
-| Live region | Polite, inside the carousel, filled only on a user action: "Image 3 of 5: ‹alt›", or "Image 2 of 5" for an image with no alt text. Alt text spoken there is truncated to 140 characters |
+| Live region | Polite, inside the carousel, filled only on a user action: "Image 3 of 5" and nothing more. The alt text is read from the image itself, so it is never spoken twice (the design system's ImageCarousel; product decision on PR #507) |
 | Keyboard | Tab reaches Previous, then Next. ArrowLeft and ArrowRight work while focus is on either button. No other key handling, and no trap |
 | Images | `alt` = the publisher's alt text, with `lang`. With **no** alt text: alt "Image 2 of 5, no description from the publisher". The visible caption then reads only "No description from the publisher" and is `aria-hidden` |
 | Frame | **One** frame ratio for the carousel: the first image's `width`/`height` (each clamped to `1…4096`), with the ratio clamped to 4:3–16:9. Every slide uses `object-fit: contain` inside that frame. So there is no layout shift, and at 320 px the image scales inside the frame |

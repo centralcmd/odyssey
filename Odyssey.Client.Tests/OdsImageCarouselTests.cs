@@ -101,7 +101,7 @@ public class OdsImageCarouselTests
     }
 
     [Fact]
-    public void Next_moves_one_slide_and_speaks_the_position_and_alt()
+    public void Next_moves_one_slide_and_speaks_the_position_alone_never_the_alt()
     {
         using var ctx = NestedInteractiveControlTests.NewContext();
         var cut = Render(ctx, Five, initial: 2);
@@ -110,7 +110,8 @@ public class OdsImageCarouselTests
 
         Assert.Equal(3, cut.Instance.Index);
         Assert.Equal("4 / 5", cut.Find(".odc-carousel-count").TextContent);
-        cut.WaitForAssertion(() => Assert.Equal("Image 4 of 5: Boats", Spoken(cut)));
+        cut.WaitForAssertion(() => Assert.Equal("Image 4 of 5", Spoken(cut)));
+        Assert.Equal("Boats", cut.FindAll(".odc-carousel-img")[3].GetAttribute("alt"));
     }
 
     [Fact]
@@ -125,9 +126,8 @@ public class OdsImageCarouselTests
     }
 
     [Fact]
-    public void Spoken_alt_is_cut_to_140_characters() =>
-        Assert.Equal("Image 3 of 5: " + Five[2].Alt![..OdsImageCarousel.SpokenAltLimit].TrimEnd() + "…",
-            OdsImageCarousel.SpokenFor(Five[2], 2, 5));
+    public void A_long_alt_is_never_spoken_by_the_live_region() =>
+        Assert.Equal("Image 3 of 5", OdsImageCarousel.SpokenFor(2, 5));
 
     [Fact]
     public void At_the_first_image_previous_says_first_image_and_does_not_wrap()
