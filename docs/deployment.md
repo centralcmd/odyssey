@@ -325,13 +325,14 @@ which is exactly why the setting is **tighten-only**. `PUT /api/system-settings`
 the transport ceiling with a `400` naming it, rather than accepting a number the transport would then
 silently refuse.
 
-The large-file routes — `/api/api/tasks/ics…`, `/api/api/photos…` and `/api/api/files…` as the browser
+The large-file routes — `/api/api/tasks/ics…`, the journal `…/vjournal` routes (`/api/api/journal-entries/vjournal…`
+and `/api/api/journal-entries/{id}/vjournal…`), `/api/api/photos…` and `/api/api/files…` as the browser
 sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
 behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
 envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
 multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
-default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task export can carry its attached
-files inline and come back in through the task import; the admin upload cap still seeds at 64 MB, and it also
+default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task or journal export can carry
+its attached files (and a journal's photos) inline and come back in through the matching import; the admin upload cap still seeds at 64 MB, and it also
 bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
 
 Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not

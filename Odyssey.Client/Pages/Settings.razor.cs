@@ -1129,14 +1129,17 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
                 Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxImportEntries", dto.JournalIcsMaxImportEntries), Write: (p, req) => req.JournalIcsMaxImportEntries = p.CapacityRequest("journalIcsMaxImportEntries")),
             new("journalIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files and photos included — they "
+                + "travel inside it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxExportMegabytes", dto.JournalIcsMaxExportMegabytes), Write: (p, req) => req.JournalIcsMaxExportMegabytes = p.IntRequest("journalIcsMaxExportMegabytes")),
             new("journalIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files and photos included. It cannot usefully "
+                + "exceed the reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxImportMegabytes", dto.JournalIcsMaxImportMegabytes), Write: (p, req) => req.JournalIcsMaxImportMegabytes = p.IntRequest("journalIcsMaxImportMegabytes")),
         ],

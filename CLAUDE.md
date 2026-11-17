@@ -861,10 +861,12 @@ of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that 
 - **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
   in the lint; the list may only shrink.
 
-**A task `.ics` export carries its attached files inline, and the import stores them without duplicating**
-(`TaskIcsService`, `Journal/Interop/IcsBinaryAttachments.cs`). Rules that are easy to get backwards:
+**A task or journal `.ics` export carries its attached files inline — a journal's library photos too — and the
+import stores them without duplicating** (`TaskIcsService`, `JournalEntryIcsService`,
+`Journal/Interop/IcsBinaryAttachments.cs`, `Journal/Interop/InlineAttachmentImporters.cs`). Rules that are easy to
+get backwards:
 
-- **`Ical.Net` never sees a binary value.** The export serializes each VTODO without its files and
+- **`Ical.Net` never sees a binary value.** The export serializes each VTODO/VJOURNAL without its files and
   `IcsBinaryAttachmentWriter` splices in `ATTACH;ENCODING=BASE64;VALUE=BINARY` lines streamed from the store; the
   import's `IcsAttachmentSpooler` decodes them to temp files and hands `Ical.Net` the text with placeholders. A value
   held as one string caps out near 1 G characters, which is why a 10 GB export is possible at all.
@@ -872,10 +874,15 @@ of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that 
 - **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
   size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
   same `FileValidationService` checks an upload does, the admin upload cap included.
-- **Files make the claims stricter, never optional**: an export with attached files needs `files.read`, an import
-  carrying inline files needs `files.read` and `files.create`, and either is refused whole (`403`) without them —
-  the import at its first inline attachment, inside the spooler, before a byte of it is decoded.
-- **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` (same checks) and then
+- **A photo is its own kind (`X-ODYSSEY-KIND=PHOTO`) and dedupes the same way over `PhotoOriginalSource.Describe`**
+  (legacy photos included); a match is linked as-is, and a new one goes through `PhotoService.StageUploadAsync` — the
+  library upload's checks — carrying only the exported file name, title and caption. Tags, people and albums stay
+  library-only.
+- **Files make the claims stricter, never optional**: an export with attached files needs `files.read` (photos:
+  `photos.read`), an import carrying inline files needs `files.read` and `files.create` (photos: `photos.read` and
+  `photos.create`), and either is refused whole (`403`) without them — the import at its first such attachment,
+  inside the spooler, before a byte of it is decoded.
+- **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` or `…/vjournal/summary` (same checks) and then
   navigates to the export URL; the import posts the picked `File` from disk (`INativeTransfer`). The service worker
   must not answer an `/api/` navigation with `index.html`.
 - **The 10 GB transport ceiling is not every endpoint's limit.** `ImportSizeLimitMiddleware` holds any endpoint

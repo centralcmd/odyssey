@@ -76,10 +76,11 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? JournalIcsMaxImportEntries { get; set; }
 
-    [Range(1, 1024)]
+    // A journal file carries its attached files and photos inline, as a task file does.
+    [Range(SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, SystemSettingsBounds.JournalIcsMaxImportMegabytesMax)]
     public int? JournalIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax)]
     public int? JournalIcsMaxExportMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------

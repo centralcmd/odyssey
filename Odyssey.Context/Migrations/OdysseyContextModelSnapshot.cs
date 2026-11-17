@@ -5520,19 +5520,19 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "JournalIcsMaxExportRows",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "JournalIcsMaxImportEntries",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "JournalIcsMaxImportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
@@ -5562,7 +5562,7 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "JournalIcsMaxExportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {

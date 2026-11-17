@@ -23,6 +23,18 @@ public sealed record JournalEntryIcsImportResult
 
     public int SkippedPhotoCount { get; set; }
 
+    /// <summary>Inline files stored as new files by this import.</summary>
+    public int StoredFileCount { get; set; }
+
+    /// <summary>Inline files matched to a file already stored (same id or same content), so no copy was made.</summary>
+    public int ReusedFileCount { get; set; }
+
+    /// <summary>Inline photos added to the library by this import.</summary>
+    public int StoredPhotoCount { get; set; }
+
+    /// <summary>Inline photos matched to a library photo (same id or same content), so no copy was made.</summary>
+    public int ReusedPhotoCount { get; set; }
+
     /// <summary>
     /// Entries linked to a place, whether it already existed or was created by this import (issue #380 §8.4).
     /// Zero unless the importer holds both <c>locations.read</c> and <c>locations.create</c>.

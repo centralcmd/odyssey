@@ -51,9 +51,9 @@ public class DomainExceptionHierarchyGuardTests
         // 400 news-opml-unreadable, so neither escapes it.
         "Odyssey.Core.Internet.News.Opml.OpmlTokenLimitException",
         "Odyssey.Core.Internet.News.Opml.OpmlUnreadableException",
-        // A task export that grew past its byte cap after the response had started: no status can be sent any
-        // more, so the controller catches it and aborts the connection — the handler never sees it.
-        "Odyssey.Core.Journal.TaskIcsService+ExportSizeExceededException",
+        // A task or journal export that grew past its byte cap after the response had started: no status can be sent
+        // any more, so the controller catches it and aborts the connection — the handler never sees it.
+        "Odyssey.Core.Journal.Interop.IcsExportSizeExceededException",
     ];
 
     [Fact]

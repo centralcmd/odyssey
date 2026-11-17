@@ -95,8 +95,8 @@ server {
         proxy_busy_buffers_size 32k;
     }
 
-    # The large-file routes — task .ics export/import (attached files travel inline), photos and the
-    # Files store — up to the API's 10 GB transport ceiling (FileStorage:MaxFileSizeBytes) plus the
+    # The large-file routes — task and journal .ics export/import (attached files and photos travel
+    # inline), photos and the Files store — up to the API's 10 GB transport ceiling (FileStorage:MaxFileSizeBytes) plus the
     # multipart envelope headroom, 10240 MiB + 1 MiB. Caddy's matching request_body limit must stay >=
     # this. Bodies stream through instead of spooling to nginx's temp directory first, and a transfer
     # gets an hour instead of the 60 s defaults that would cut a 10 GB one off part-way. Scoped to these
@@ -105,7 +105,7 @@ server {
     # A regex location wins over the /api/ prefix, so it repeats that block's directives (nginx
     # inherits none). proxy_pass carries no URI in a regex location; the rewrite strips the first /api/
     # exactly as the /api/ block's trailing slash does.
-    location ~ ^/api/api/(tasks/ics|photos|files)(/|$) {
+    location ~ ^/api/api/(tasks/ics|journal-entries/([^/]+/)?vjournal|photos|files)(/|$) {
         rewrite ^/api/(.*)$ /$1 break;
         proxy_pass http://api:8080;
         proxy_http_version 1.1;

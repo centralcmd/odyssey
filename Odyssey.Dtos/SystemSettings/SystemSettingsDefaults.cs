@@ -60,10 +60,11 @@ public static class SystemSettingsDefaults
     public const string TaskIcsMaxImportTasks = Unlimited;
     public const int TaskIcsMaxImportMegabytes = 10240;
     public const int TaskIcsMaxExportMegabytes = 10240;
-    public const int JournalIcsMaxExportRows = 2000;
-    public const int JournalIcsMaxImportEntries = 2000;
-    public const int JournalIcsMaxImportMegabytes = 64;
-    public const int JournalIcsMaxExportMegabytes = 64;
+    // The journal surface follows the task one: entries carry their files and photos inline.
+    public const string JournalIcsMaxExportRows = Unlimited;
+    public const string JournalIcsMaxImportEntries = Unlimited;
+    public const int JournalIcsMaxImportMegabytes = 10240;
+    public const int JournalIcsMaxExportMegabytes = 10240;
 
     // ── AI file-analysis policy and processor disclosure (issue #421 Wave 1) ─────────────────────
     //

@@ -62,10 +62,10 @@ public static class SystemSettingsBounds
     public const int TaskIcsMaxExportMegabytesMax = 10240;
 
     public const int JournalIcsMaxImportMegabytesMin = 1;
-    public const int JournalIcsMaxImportMegabytesMax = 1024;
+    public const int JournalIcsMaxImportMegabytesMax = 10240;
 
     public const int JournalIcsMaxExportMegabytesMin = 1;
-    public const int JournalIcsMaxExportMegabytesMax = 1024;
+    public const int JournalIcsMaxExportMegabytesMax = 10240;
 
     // ── AI file-analysis policy (issue #421 Wave 1) ──────────────────────────────────────────────
 
