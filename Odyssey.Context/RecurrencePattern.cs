@@ -49,9 +49,33 @@ public class RecurrencePattern
     [StringLength(255)]
     public string? ImportSourceUid { get; set; }
 
-    public DateTime StartDateTime { get; set; } // UTC; first occurrence's start; duration = EndDateTime - StartDateTime
+    // The first occurrence's start and end, with the same two stored meanings as CalendarEvent: the UTC instant when
+    // TimeZoneId is set, the wall-clock when it is null (floating). The duration is nominal — local end minus local
+    // start — so 09:00–10:00 stays 09:00–10:00 across a daylight-saving change (issue #519 §3 component 1).
+    public DateTime StartDateTime { get; set; }
 
-    public DateTime EndDateTime { get; set; } // UTC
+    public DateTime EndDateTime { get; set; }
+
+    /// <summary>
+    /// The IANA zone the rule is generated in (issue #519 §4): occurrences are stepped on local dates and wall-clock
+    /// times of this zone. Null means floating. Always null on an all-day series.
+    /// </summary>
+    [StringLength(64)]
+    public string? TimeZoneId { get; set; }
+
+    /// <summary>
+    /// The series' concurrency token (issue #519 §5, v4 §3). It rotates on series-level writes only — a series
+    /// <c>PUT</c>, a key backfill, an import that rewrites the master — never on an occurrence edit or delete, whose
+    /// race with a series edit is closed by <c>confirmedDrops</c> instead.
+    /// </summary>
+    [ConcurrencyCheck]
+    public Guid Version { get; set; }
+
+    /// <summary>
+    /// When the series' rows were given occurrence keys (issue #519 §11). Null for a series written before #519 until
+    /// the backfill job or its first write keys it; until then it is read as a legacy series (§8.5).
+    /// </summary>
+    public DateTime? KeysBackfilledAt { get; set; }
 
     public bool IsAllDay { get; set; } // copied onto every generated CalendarEvent
 
@@ -70,7 +94,8 @@ public class RecurrencePattern
     public int? MonthOfYear { get; set; } // Yearly only
 
     // Exactly one of these two must be set — never-ending recurrence is not supported.
-    public DateTime? RecurrenceEndDate { get; set; } // UTC
+    // Inclusive (RFC 5545 UNTIL): the UTC instant on a zoned series, the wall-clock on a floating one (#519 v3 §C).
+    public DateTime? RecurrenceEndDate { get; set; }
 
     [Range(1, 730)]
     public int? OccurrenceCount { get; set; }
@@ -84,6 +109,8 @@ public class RecurrencePattern
     public DateTime UpdatedAt { get; set; }
 
     public ICollection<CalendarEvent> GeneratedEvents { get; set; } = new List<CalendarEvent>();
+
+    public ICollection<RecurrenceExclusion> Exclusions { get; set; } = new List<RecurrenceExclusion>();
 }
 
 public enum RecurrenceFrequency

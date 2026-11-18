@@ -119,8 +119,9 @@ public class NewsModelTests
     public void The_job_checks_admit_the_news_job_and_its_counters()
     {
         var runs = Entity<JobRun>().GetCheckConstraints().ToDictionary(c => c.ModelName);
-        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)", runs["CK_JobRuns_JobType"].Sql);
-        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)",
+        // Issue #519 appended the recurrence key backfill (10).
+        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)", runs["CK_JobRuns_JobType"].Sql);
+        Assert.Equal("`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9, 10)",
             Entity<JobHeartbeat>().GetCheckConstraints().Single(c => c.ModelName == "CK_JobHeartbeats_JobType").Sql);
         foreach (var counter in new[]
         {

@@ -34,6 +34,9 @@ public enum JobType : byte
     /// <summary>The news reader's fetch, ingest, image and maintenance job (issue #470): work-driven, per-feed leases.</summary>
     NewsFeedFetch = 9,
 
+    /// <summary>The one-off keying of every pre-#519 recurring series (issue #519 §11): work-driven, idle once done.</summary>
+    RecurrenceKeyBackfill = 10,
+
     Unknown = byte.MaxValue,
 }
 
@@ -374,6 +377,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.FileBlobBackfill)] = typeof(FileBlobBackfillJobRunDetail),
         [nameof(Application.JobType.InstrumentPriceSync)] = typeof(InstrumentPriceSyncJobRunDetail),
         [nameof(Application.JobType.NewsFeedFetch)] = typeof(NewsFeedJobRunDetail),
+        [nameof(Application.JobType.RecurrenceKeyBackfill)] = typeof(RecurrenceKeyBackfillJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -752,4 +756,17 @@ public sealed record NewsFeedJobRunDetail : JobRunDetail
 
     /// <summary>The manual run's counter: feeds it marked due.</summary>
     public int? FeedsMarked { get; set; }
+}
+
+/// <summary>
+/// A burst or manual run of the recurrence key backfill (issue #519 §11): series keyed, series that failed and were left
+/// for the next tick, and rows detached to standalone events. Counts only; <c>null</c> without <c>calendar.read</c>.
+/// </summary>
+public sealed record RecurrenceKeyBackfillJobRunDetail : JobRunDetail
+{
+    public int? SeriesKeyed { get; set; }
+
+    public int? SeriesKeyFailures { get; set; }
+
+    public int? KeyRowsDetached { get; set; }
 }
