@@ -59,6 +59,7 @@ internal sealed class IcsByteScanner(Stream stream)
     private long logicalStart;
     private long logicalEnd;
     private bool skimming;
+    private bool skimAllowed;
 
     /// <summary>What every <c>VEVENT</c> read so far carries.</summary>
     public IcsAttachmentKinds AttachmentKinds { get; } = new();
@@ -122,6 +123,7 @@ internal sealed class IcsByteScanner(Stream stream)
         string? recurrenceId = null;
         var hasRecurrenceId = false;
         var hasInline = false;
+        skimAllowed = true;
         while (await ReadLogicalLineAsync(cancellationToken))
         {
             if (TrimmedEquals("BEGIN:VEVENT") || TrimmedEquals("END:VCALENDAR"))
@@ -138,11 +140,13 @@ internal sealed class IcsByteScanner(Stream stream)
             if (StartsWith("BEGIN:"))
             {
                 depth++;
+                skimAllowed = false;
             }
             else if (StartsWith("END:"))
             {
                 if (depth == 0)
                 {
+                    skimAllowed = false;
                     if (!TrimmedEquals("END:VEVENT"))
                     {
                         throw new DomainValidationException(IcsComponentSplitter.TooLargeMessage);
@@ -155,6 +159,7 @@ internal sealed class IcsByteScanner(Stream stream)
                 }
 
                 depth--;
+                skimAllowed = depth == 0;
             }
             else if (depth == 0)
             {
@@ -242,16 +247,16 @@ internal sealed class IcsByteScanner(Stream stream)
     // Classifies the current ATTACH line (issue #521 v3 §A.1); true when it is inline.
     private bool RecordAttachment()
     {
-        var head = Head();
-        if (head is null)
+        if (Head() is not { } raw)
         {
             return false;
         }
 
-        var photo = head.Contains(";X-ODYSSEY-KIND=PHOTO", StringComparison.OrdinalIgnoreCase);
-        if (head.Contains(";ENCODING=BASE64", StringComparison.OrdinalIgnoreCase))
+        // The spooler's own reading of the head, so the claims pass 1 demands are the claims pass 2 needs (S1).
+        var head = IcsAttachHead.Parse(raw);
+        if (head.IsInline)
         {
-            if (photo)
+            if (head.IsPhoto)
             {
                 AttachmentKinds.HasPhotoInline = true;
             }
@@ -298,9 +303,11 @@ internal sealed class IcsByteScanner(Stream stream)
 
     // An inline ATTACH whose head is complete: its base64 continuation lines are counted past, never buffered, so an
     // attachment never reaches the line or component caps (issue #521 v3 §B.5).
+    // Only a VEVENT's own ATTACH is skimmed (PR #529 review S2): one in a nested VALARM stays a plain line under the caps,
+    // so a component pass 1 did not mark inline can never carry an inline value past them.
     private bool IsInlineAttachHead() =>
-        logicalLength > 6 && StartsWith("ATTACH") && logical[6] is (byte)';' or (byte)':'
-        && Head() is { } head && head.Contains(";ENCODING=BASE64", StringComparison.OrdinalIgnoreCase);
+        skimAllowed && logicalLength > 6 && StartsWith("ATTACH") && logical[6] is (byte)';' or (byte)':'
+        && Head() is { } head && IcsAttachHead.Parse(head).IsInline;
 
     // ------------------------------------------------------------------ The current logical line
 

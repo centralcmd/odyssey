@@ -110,8 +110,10 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         {
             // Import: a standalone VEVENT naming a generated row by its synthetic UID, carrying a reference.
             var row = await context.CalendarEvents.AsNoTracking().Where(e => e.RecurrencePatternId == patternId).OrderBy(e => e.StartDateTime).LastAsync();
+            var stored = await context.FileMetadata.AsNoTracking().SingleAsync(f => f.Id == files[0]);
             var ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:" + row.CalendarEventId + "@odyssey.local\r\n"
-                + "DTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:Moved\r\nATTACH:odyssey-file:" + files[0] + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+                + "DTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:Moved\r\nATTACH;VALUE=URI;X-ODYSSEY-SHA256=" + stored.Sha256Hash + ";SIZE=" + stored.SizeBytes
+                + ":odyssey-file:" + files[0] + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
             var result = await new CalendarIcsService(context, NullLogger<CalendarIcsService>.Instance, new ImportLimits(),
                 new StubJournalLimitsLookup(), new FakeTimeProvider(Now)).ImportAsync(
                 calendarId, new MemoryStream(Encoding.UTF8.GetBytes(ics)), ics.Length, "text/calendar", User,

@@ -497,7 +497,7 @@ public class CalendarAttachmentsApiTests
 
         var second = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent(uid,
             "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Meeting", unknown,
-            $"ATTACH:odyssey-file:{kept:D}")));
+            Reference(kept, AgendaBytes))));
         Assert.Equal((1, 1), (second.ReplacedLinkSetCount, second.RemovedLinkCount));
         Assert.Equal(kept, Assert.Single((await GetEventAsync(client, created.CalendarEventId)).Attachments!).FileId);
     }
@@ -590,7 +590,7 @@ public class CalendarAttachmentsApiTests
 
         var standalone = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent(
             $"{row.CalendarEventId}@odyssey.local", "DTSTART:20260209T100000", "DTEND:20260209T110000", "SUMMARY:Moved",
-            $"ATTACH:odyssey-file:{file:D}", InlineAttach(AgendaBytes, "agenda.txt", "text/plain"))));
+            Reference(file, AgendaBytes), InlineAttach(AgendaBytes, "agenda.txt", "text/plain"))));
         Assert.Equal((1, 2, 0), (standalone.UpdatedCount, standalone.IgnoredOccurrenceAttachmentCount, standalone.StoredFileCount));
 
         var masterUid = "series-with-override";
@@ -632,7 +632,8 @@ public class CalendarAttachmentsApiTests
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client);
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.CalendarEventMaxLinksPerKind, "5");
-        var references = Enumerable.Range(0, 5_000).Select(_ => $"ATTACH:odyssey-file:{Guid.NewGuid():D}").ToArray();
+        var references = Enumerable.Range(0, 5_000)
+            .Select(_ => $"ATTACH;VALUE=URI;X-ODYSSEY-SHA256={new string('c', 64)};SIZE=3:odyssey-file:{Guid.NewGuid():D}").ToArray();
 
         var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent("many",
             ["DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Many", .. references])));
@@ -712,6 +713,10 @@ public class CalendarAttachmentsApiTests
     // ------------------------------------------------------------------ helpers
 
     private static DateTime Wall(int year, int month, int day, int hour) => new(year, month, day, hour, 0, 0, DateTimeKind.Unspecified);
+
+    // The reference form §8.3 requires: id, hash and size together.
+    private static string Reference(Guid fileId, byte[] content) =>
+        $"ATTACH;VALUE=URI;X-ODYSSEY-SHA256={Sha256(content)};SIZE={content.Length}:odyssey-file:{fileId:D}";
 
     private static string Unfold(string text) => text.Replace("\r\n ", string.Empty, StringComparison.Ordinal);
 

@@ -435,6 +435,10 @@ internal static class IcsAttachmentSpooler
     /// </param>
     /// <param name="SkipDecode">True streams an inline value past undecoded and marks the attachment skimmed.</param>
     /// <param name="BeforeDecode">Runs before each decode — the calendar import's free-disk check.</param>
+    /// <param name="TopLevelOnly">
+    /// The text is ONE component: an inline <c>ATTACH</c> nested in a sub-component (a <c>VALARM</c>) is dropped unread
+    /// rather than lifted, so only the component's own attachments are ever decoded (PR #529 review S2).
+    /// </param>
     /// <param name="OnSpooled">
     /// Runs right after each decode, before the next one, with the text spooled so far (issue #521 v4 §1): the caller
     /// resolves, stores and deletes the temp file, so at most one attachment is on disk at a time.
@@ -443,7 +447,7 @@ internal static class IcsAttachmentSpooler
         long MaxFileBytes, long MaxTextChars, bool AllowAttachments = true, int MaxAttachments = int.MaxValue,
         string? SpoolDirectory = null, bool? AllowPhotos = null, int? MaxAttachLines = null,
         Func<SpooledAttachment, bool>? SkipDecode = null, Action? BeforeDecode = null,
-        Func<SpooledAttachment, Func<string>, CancellationToken, Task>? OnSpooled = null);
+        Func<SpooledAttachment, Func<string>, CancellationToken, Task>? OnSpooled = null, bool TopLevelOnly = false);
 
     /// <summary>Temp files older than this are leftovers of a crashed process, swept on the next import.</summary>
     internal static readonly TimeSpan StaleAfter = ImportSpool.StaleAfter;
@@ -463,10 +467,29 @@ internal static class IcsAttachmentSpooler
             var text = new StringBuilder();
             var head = new StringBuilder();
             var attachLines = 0;
+            var depth = 0;
             while (await source.EnsureAsync(1, cancellationToken))
             {
                 head.Clear();
                 var headComplete = await ReadHeadAsync(source, head, cancellationToken);
+                if (headComplete && options.TopLevelOnly)
+                {
+                    var name = head.ToString().Trim();
+                    if (string.Equals(name, "BEGIN", StringComparison.OrdinalIgnoreCase))
+                    {
+                        depth++;
+                    }
+                    else if (string.Equals(name, "END", StringComparison.OrdinalIgnoreCase))
+                    {
+                        depth--;
+                    }
+                    else if (depth > 1 && IsInlineAttachment(head, out _))
+                    {
+                        await SkipValueAsync(source, cancellationToken);
+                        continue;
+                    }
+                }
+
                 if (headComplete && options.MaxAttachLines is { } maxLines && IsAttachProperty(head) && ++attachLines > maxLines)
                 {
                     spool.DroppedAttachLines++;
@@ -589,11 +612,7 @@ internal static class IcsAttachmentSpooler
         return false;
     }
 
-    private static bool IsAttachProperty(StringBuilder head)
-    {
-        var parts = SplitParameters(head.ToString());
-        return parts.Count > 0 && string.Equals(parts[0].Trim(), "ATTACH", StringComparison.OrdinalIgnoreCase);
-    }
+    private static bool IsAttachProperty(StringBuilder head) => IcsAttachHead.Parse(head.ToString()).IsAttach;
 
     // Consumes the rest of a logical line, folds included, keeping nothing.
     private static async Task SkipValueAsync(CharSource source, CancellationToken cancellationToken)
@@ -617,60 +636,12 @@ internal static class IcsAttachmentSpooler
         }
     }
 
+    // The one head reader both calendar passes and the task and journal imports share (PR #529 review S1).
     private static bool IsInlineAttachment(StringBuilder head, out Dictionary<string, string> parameters)
     {
-        parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        var parts = SplitParameters(head.ToString());
-        if (parts.Count == 0 || !string.Equals(parts[0], "ATTACH", StringComparison.OrdinalIgnoreCase))
-        {
-            return false;
-        }
-
-        foreach (var part in parts.Skip(1))
-        {
-            var equals = part.IndexOf('=');
-            if (equals <= 0)
-            {
-                continue;
-            }
-
-            var value = part[(equals + 1)..];
-            if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
-            {
-                value = value[1..^1];
-            }
-
-            parameters.TryAdd(part[..equals].Trim(), value);
-        }
-
-        return parameters.TryGetValue("ENCODING", out var encoding)
-            && string.Equals(encoding, "BASE64", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static List<string> SplitParameters(string head)
-    {
-        var parts = new List<string>();
-        var current = new StringBuilder();
-        var quoted = false;
-        foreach (var c in head)
-        {
-            if (c == '"')
-            {
-                quoted = !quoted;
-            }
-
-            if (c == ';' && !quoted)
-            {
-                parts.Add(current.ToString());
-                current.Clear();
-                continue;
-            }
-
-            current.Append(c);
-        }
-
-        parts.Add(current.ToString());
-        return parts;
+        var parsed = IcsAttachHead.Parse(head.ToString());
+        parameters = new Dictionary<string, string>(parsed.Parameters, StringComparer.OrdinalIgnoreCase);
+        return parsed.IsInline;
     }
 
     private static SpooledAttachment NewAttachment(IcsAttachmentSpool spool, Dictionary<string, string> parameters)
@@ -695,7 +666,7 @@ internal static class IcsAttachmentSpooler
     }
 
     private static bool IsPhotoKind(Dictionary<string, string> parameters) =>
-        parameters.TryGetValue("X-ODYSSEY-KIND", out var kind) && string.Equals(kind.Trim(), "PHOTO", StringComparison.OrdinalIgnoreCase);
+        parameters.TryGetValue("X-ODYSSEY-KIND", out var kind) && string.Equals(kind, "PHOTO", StringComparison.OrdinalIgnoreCase);
 
     // Decodes the rest of the logical line into a temp file. Whatever goes wrong with the content, the line is still
     // consumed to its end, so one bad attachment never derails the parse of the rest of the file.

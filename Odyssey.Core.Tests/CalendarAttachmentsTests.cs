@@ -83,6 +83,112 @@ public class CalendarAttachmentsTests
         Assert.False(await context.CalendarEvents.AnyAsync());
     }
 
+    // ------------------------------------------------------------------ One head reader for both passes (PR #529 S1)
+
+    [Theory]
+    [InlineData("ATTACH;X-ODYSSEY-KIND=\"PHOTO\";ENCODING=BASE64", true, true)]
+    [InlineData("ATTACH;x-odyssey-kind=photo;encoding=base64", true, true)]
+    [InlineData("ATTACH; X-ODYSSEY-KIND = PHOTO ;ENCODING= \"BASE64\" ", true, true)]
+    [InlineData("ATTACH;FILENAME=\"a;X-ODYSSEY-KIND=PHOTO\";ENCODING=BASE64", true, false)]
+    [InlineData("ATTACH;FILENAME=\"b;ENCODING=BASE64\";X-ODYSSEY-KIND=PHOTO", false, true)]
+    [InlineData("ATTACH;FMTTYPE=text/plain", false, false)]
+    public async Task Pass_one_and_the_spooler_read_every_head_the_same(string head, bool inline, bool photo)
+    {
+        var parsed = IcsAttachHead.Parse(head);
+        Assert.Equal((inline, photo), (parsed.IsInline, parsed.IsInline && parsed.IsPhoto || (!parsed.IsInline && parsed.IsPhoto)));
+
+        var file = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\n" + head + ":" + (inline ? "aGVsbG8=" : "odyssey-file:x") + "\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(file));
+        var scanner = new IcsByteScanner(stream);
+        await foreach (var _ in scanner.ReadEventsAsync())
+        {
+        }
+
+        Assert.Equal(inline && photo, scanner.AttachmentKinds.HasPhotoInline);
+        Assert.Equal(inline && !photo, scanner.AttachmentKinds.HasFileInline);
+
+        using var reader = new StringReader(file);
+        using var spool = await IcsAttachmentSpooler.SpoolAsync(reader, new IcsAttachmentSpooler.Options(1024, 1 << 20), default);
+        Assert.Equal(inline ? 1 : 0, spool.Count);
+        Assert.All(spool.Attachments, a => Assert.Equal(photo, a.IsPhoto));
+    }
+
+    [Fact]
+    public async Task The_importer_refuses_inline_content_and_references_without_their_claims_at_the_point_of_use()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var importer = new CalendarAttachmentImporter(
+            context, new FileValidationService(), null, null, "user", 1024, Path.GetTempPath(), _ => long.MaxValue,
+            NullLogger.Instance) { Claims = new CalendarIcsImportClaims(FilesRead: true, FilesCreate: true, PhotosRead: false, PhotosCreate: false) };
+        var photo = new SpooledAttachment { Reference = "r", IsPhoto = true, Problem = IcsAttachmentSpooler.DamagedProblem };
+
+        var inline = await Assert.ThrowsAsync<CalendarAttachmentsException>(() =>
+            importer.ResolveInlineAsync(photo, () => Task.FromResult(false), _ => { }, default));
+        var reference = CalendarAttachmentImporter.Reference(
+            CalendarLinkKind.Photo, Guid.NewGuid().ToString(), new string('a', 64), "3", _ => { });
+        var linked = await Assert.ThrowsAsync<CalendarAttachmentsException>(() => importer.ResolveReferencesAsync([reference], _ => { }, default));
+
+        Assert.Equal(CalendarAttachmentsException.ImportForbiddenCode, inline.Code);
+        Assert.Contains("photos.read", inline.MissingClaims);
+        Assert.Equal(["photos.read"], linked.MissingClaims);
+    }
+
+    [Theory]
+    [InlineData(null, "3")]
+    [InlineData("abc", null)]
+    [InlineData(null, null)]
+    public void A_reference_needs_its_id_hash_and_size_together(string? hash, string? size)
+    {
+        var skipped = new List<string>();
+        var slot = CalendarAttachmentImporter.Reference(
+            CalendarLinkKind.File, Guid.NewGuid().ToString(), hash is null ? null : new string('a', 64), size, skipped.Add);
+
+        Assert.Equal(CalendarAttachSlotState.Skipped, slot.State);
+        Assert.Equal([CalendarAttachmentImporter.InvalidReferenceReason], skipped);
+    }
+
+    // ------------------------------------------------------------------ Nested attachments (PR #529 S2)
+
+    [Fact]
+    public async Task An_inline_attachment_in_a_valarm_is_never_skimmed_so_a_large_one_hits_the_caps()
+    {
+        var base64 = Convert.ToBase64String(new byte[2 * 1024 * 1024]);
+        var folded = string.Join("\r\n ", Enumerable.Range(0, (base64.Length + 73) / 74).Select(i => base64.Substring(i * 74, Math.Min(74, base64.Length - (i * 74)))));
+        var file = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:alarm\r\nBEGIN:VALARM\r\nACTION:AUDIO\r\n"
+            + "ATTACH;ENCODING=BASE64;VALUE=BINARY:" + folded + "\r\nEND:VALARM\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes(file));
+
+        var refused = await Assert.ThrowsAsync<DomainValidationException>(async () =>
+        {
+            await foreach (var _ in new IcsByteScanner(stream).ReadEventsAsync())
+            {
+            }
+        });
+
+        Assert.Equal(IcsComponentSplitter.TooLargeMessage, refused.Message);
+    }
+
+    [Fact]
+    public async Task A_small_inline_attachment_in_a_valarm_is_never_decoded_and_the_event_still_imports()
+    {
+        await using var context = TestContextFactory.CreateJournal();
+        var calendar = new Odyssey.Context.Calendar { Name = "Work" };
+        context.Calendars.Add(calendar);
+        await context.SaveChangesAsync();
+        var service = new CalendarIcsService(
+            context, NullLogger<CalendarIcsService>.Instance, new FakeImportExportLimitsLookup(),
+            new ClientDateHandlingTests.StubJournalLimits(), new FakeTimeProvider(Now)) { TempFreeSpace = _ => 0 };
+        var ics = "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nDTSTART:20260302T100000\r\nDTEND:20260302T110000\r\nSUMMARY:A\r\n"
+            + "BEGIN:VALARM\r\nACTION:AUDIO\r\nTRIGGER:-PT5M\r\nATTACH;ENCODING=BASE64;VALUE=BINARY:aGVsbG8=\r\nEND:VALARM\r\n"
+            + "END:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        // No claim at all, and no free disk: the nested value is no attachment of the event's, so neither is consulted.
+        var result = await service.ImportAsync(
+            calendar.CalendarId, new MemoryStream(Encoding.UTF8.GetBytes(ics)), Encoding.UTF8.GetByteCount(ics), "text/calendar", "user");
+
+        Assert.Equal((1, 0, 0), (result.ImportedCount, result.StoredFileCount, service.AttachmentsDecoded));
+    }
+
     // ------------------------------------------------------------------ CalendarLinkService
 
     [Fact]
@@ -178,8 +284,12 @@ public class CalendarAttachmentsTests
     public void Only_CalendarLinkService_writes_the_four_calendar_link_tables()
     {
         var root = SolutionRoot();
+        // The DbSets' writers, the generic Set<T>() route to them, and any construction of a link row. A context-level
+        // Remove(row) is caught where the row comes from: a row can only be had from these sets or by construction.
         var writer = new Regex(
-            @"\b(CalendarEventAttachments|CalendarEventPhotos|RecurrencePatternAttachments|RecurrencePatternPhotos)\s*\.\s*(Add|AddRange|Remove|RemoveRange|Attach|Update)\s*\(|new\s+(CalendarEventAttachment|CalendarEventPhoto|RecurrencePatternAttachment|RecurrencePatternPhoto)\b",
+            @"\b(CalendarEventAttachments|CalendarEventPhotos|RecurrencePatternAttachments|RecurrencePatternPhotos)\s*\.\s*(Add|AddAsync|AddRange|AddRangeAsync|Remove|RemoveRange|Attach|AttachRange|Update|UpdateRange|Entry)\s*\("
+            + @"|new\s+(CalendarEventAttachment|CalendarEventPhoto|RecurrencePatternAttachment|RecurrencePatternPhoto)\b"
+            + @"|Set\s*<\s*(Odyssey\.Context\.)?(CalendarEventAttachment|CalendarEventPhoto|RecurrencePatternAttachment|RecurrencePatternPhoto)\s*>",
             RegexOptions.CultureInvariant);
         var scanned = 0;
         var offenders = new List<string>();

@@ -90,6 +90,9 @@ internal sealed partial class CalendarAttachmentImporter(
 
     public const string TooManyLinesReason = "An event carries more attachment lines than one import reads; the rest were skipped.";
 
+    public const string BatchBudgetReason =
+        "An event carries more new attached content than one import batch stages; the rest of it was skipped.";
+
     public const string ExpiredReservationMessage =
         "An attached file's storage reservation expired before the import could save it; importing the same file again completes it.";
 
@@ -129,6 +132,49 @@ internal sealed partial class CalendarAttachmentImporter(
     private readonly List<Reservation> batchReservations = [];
     private int batchReusedFiles;
     private int batchReusedPhotos;
+
+    /// <summary>
+    /// The importer's claims, enforced again where content is stored or linked (PR #529 review S1): pass 1's file-level
+    /// check is the early refusal, this is the one no parsing difference can route around.
+    /// </summary>
+    public CalendarIcsImportClaims Claims { get; init; } = CalendarIcsImportClaims.None;
+
+    /// <summary>The staged-reservation ceiling: a batch never holds more than this plus one attachment (v5 §2).</summary>
+    public long ReservedBytesCeiling { get; init; } = BatchReservedBytesCeiling;
+
+    private void Demand(CalendarLinkKind kind, bool store)
+    {
+        var missing = new List<string>();
+        if (kind == CalendarLinkKind.File)
+        {
+            if (!Claims.FilesRead)
+            {
+                missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.FilesRead);
+            }
+
+            if (store && !Claims.FilesCreate)
+            {
+                missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.FilesCreate);
+            }
+        }
+        else
+        {
+            if (!Claims.PhotosRead)
+            {
+                missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.PhotosRead);
+            }
+
+            if (store && !Claims.PhotosCreate)
+            {
+                missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.PhotosCreate);
+            }
+        }
+
+        if (missing.Count > 0)
+        {
+            throw CalendarAttachmentsException.ImportForbidden(missing);
+        }
+    }
 
     /// <summary>The slots phase A produced for the component being read, by spool placeholder.</summary>
     public Dictionary<string, CalendarAttachSlot> ComponentSlots { get; } = new(StringComparer.Ordinal);
@@ -180,6 +226,7 @@ internal sealed partial class CalendarAttachmentImporter(
     public CalendarAttachSlot Skimmed(SpooledAttachment attachment, ImportSkip skip)
     {
         var kind = attachment.IsPhoto ? CalendarLinkKind.Photo : CalendarLinkKind.File;
+        Demand(kind, store: true);
         var key = KeyOf(kind, attachment.DeclaredSha256!, attachment.DeclaredSize!.Value);
         if (batchContent.TryGetValue(key, out var known))
         {
@@ -211,6 +258,8 @@ internal sealed partial class CalendarAttachmentImporter(
         var kind = attachment.IsPhoto ? CalendarLinkKind.Photo : CalendarLinkKind.File;
         try
         {
+            // Inline content needs the kind's read AND create claims, whatever it turns out to match (goal 6).
+            Demand(kind, store: true);
             if (attachment.Problem is { } problem)
             {
                 skip(InlineAttachmentReasons.Problem(kind == CalendarLinkKind.Photo ? "photo" : "file", problem, maxNewBytes));
@@ -239,6 +288,14 @@ internal sealed partial class CalendarAttachmentImporter(
             if (await isOccurrence())
             {
                 return new CalendarAttachSlot { Kind = kind, State = CalendarAttachSlotState.Ignored };
+            }
+
+            // The batch holds at most the ceiling plus one attachment (v5 §2): once a component has carried the batch to
+            // the ceiling, its further new content is skipped and counted — a component cannot be split across batches.
+            if (BatchReservedBytes >= ReservedBytesCeiling)
+            {
+                skip(BatchBudgetReason);
+                return new CalendarAttachSlot { Kind = kind, State = CalendarAttachSlotState.Skipped };
             }
 
             var reservation = kind == CalendarLinkKind.Photo
@@ -383,18 +440,17 @@ internal sealed partial class CalendarAttachmentImporter(
     // ------------------------------------------------------------------ References
 
     /// <summary>
-    /// A reference <c>ATTACH</c> (§8.3, SF7): valid only with a GUID id and, when given, a 64-hex hash and a
-    /// non-negative <c>SIZE</c>. An invalid one is skipped with its own reason.
+    /// A reference <c>ATTACH</c> (§8.3, SF7): skipped with its own reason unless the id is a GUID, the hash matches
+    /// <c>^[0-9a-f]{64}$</c> after case-folding and <c>SIZE</c> is a non-negative integer — all three, as the spec states.
     /// </summary>
     public static CalendarAttachSlot Reference(CalendarLinkKind kind, string value, string? hash, string? size, ImportSkip skip)
     {
         var folded = hash?.Trim().ToLowerInvariant();
         long? parsedSize = null;
         var valid = Guid.TryParse(value, out var id)
-            && (folded is null || HashPattern().IsMatch(folded))
-            && (size is null || (long.TryParse(size.Trim(), System.Globalization.NumberStyles.None,
-                System.Globalization.CultureInfo.InvariantCulture, out var s) && (parsedSize = s) >= 0))
-            && (folded is null) == (size is null);
+            && folded is not null && HashPattern().IsMatch(folded)
+            && size is not null && long.TryParse(size.Trim(), System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture, out var s) && (parsedSize = s) >= 0;
         if (!valid)
         {
             skip(InvalidReferenceReason);
@@ -417,6 +473,12 @@ internal sealed partial class CalendarAttachmentImporter(
         foreach (var kind in new[] { CalendarLinkKind.File, CalendarLinkKind.Photo })
         {
             var pending = slots.Where(s => s.Kind == kind && s.State == CalendarAttachSlotState.Reference).ToList();
+            if (pending.Count > 0)
+            {
+                // A reference links stored content: the kind's read claim, at the point of use (S1).
+                Demand(kind, store: false);
+            }
+
             foreach (var slot in pending.Where(s => s.ReferenceHash is not null).ToList())
             {
                 var key = KeyOf(kind, slot.ReferenceHash!, slot.ReferenceSize!.Value);

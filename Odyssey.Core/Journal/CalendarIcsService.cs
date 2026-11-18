@@ -1340,7 +1340,11 @@ public class CalendarIcsService
                 context, fileValidation, fileWriter, photoService, userId,
                 Math.Min(Math.Min(transportFileCeiling, maxImportBytes),
                     uploadLimits is null ? long.MaxValue : (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes),
-                SpillDirectory, TempFreeSpace, logger),
+                SpillDirectory, TempFreeSpace, logger)
+            {
+                Claims = attachmentClaims ?? CalendarIcsImportClaims.None,
+                ReservedBytesCeiling = BatchReservedBytesCeiling,
+            },
         };
 
         // A crashed process's runs and upload copies are never reached by their own finally; the next import sweeps them.
@@ -1372,7 +1376,7 @@ public class CalendarIcsService
                 }
 
                 if (batch.Count >= ImportBatchSize || batchRows >= ImportBatchEntityBudget || batchChars >= ImportBatchCharBudget
-                    || run.Importer.BatchReservedBytes >= CalendarAttachmentImporter.BatchReservedBytesCeiling)
+                    || run.Importer.BatchReservedBytes >= BatchReservedBytesCeiling)
                 {
                     await ApplyBatchAndClearAsync(batch, batchComponents, run, cancellationToken);
                     batch.Clear();
@@ -1437,6 +1441,21 @@ public class CalendarIcsService
             }),
         };
     }
+
+    // A plain component's bytes: 4 Mi characters of at most 4 UTF-8 bytes each, plus its line breaks.
+    private const long MaxPlainComponentBytes = (4L * IcsComponentSplitter.MaxComponentChars) + (1024 * 1024);
+
+    /// <summary>Inline attachments this service has decoded, for a test proving a retried batch decodes nothing again.</summary>
+    internal int AttachmentsDecoded { get; private set; }
+
+    /// <summary>The staged-reservation ceiling a batch closes at; a test lowers it to split batches at a small scale.</summary>
+    internal long BatchReservedBytesCeiling { get; set; } = CalendarAttachmentImporter.BatchReservedBytesCeiling;
+
+    /// <summary>Runs after a batch's phase A and before its first attempt: a test's seam into that window.</summary>
+    internal Func<Task>? BeforeBatchApply { get; set; }
+
+    /// <summary>Batches the last import committed, for a test of where they split.</summary>
+    internal int LastImportCommittedBatches { get; private set; }
 
     /// <summary>Free bytes under a directory, for the per-attachment disk check; a test points it elsewhere.</summary>
     internal Func<string, long> TempFreeSpace { get; set; } = DirectoryFreeSpace;
@@ -1525,11 +1544,18 @@ public class CalendarIcsService
         return (groups, chars);
     }
 
-    // A component with no inline attachment: read whole, as before, but with more ATTACH lines than an event may link
-    // dropped before parsing (§7.4: at most 2 × the cap are parsed).
+    // A component with no inline attachment of its own: read whole, as before, but with more ATTACH lines than an event
+    // may link dropped before parsing (§7.4: at most 2 × the cap are parsed). Pass 1 held such a component to the 4 Mi
+    // character cap — it skims only a VEVENT's own inline ATTACH — and its length is checked again before the read
+    // allocates; an inline value nested in a sub-component is never decoded here (PR #529 review S2).
     private async Task<string> ReadPlainComponentAsync(
         IcsImportGrouper grouper, ComponentRef component, ImportRun run, CancellationToken cancellationToken)
     {
+        if (component.Length > MaxPlainComponentBytes)
+        {
+            throw new DomainValidationException(IcsComponentSplitter.TooLargeMessage);
+        }
+
         var text = await grouper.ReadComponentAsync(component, cancellationToken);
         if (text.Length < 32 || !text.Contains("ATTACH", StringComparison.OrdinalIgnoreCase))
         {
@@ -1539,7 +1565,7 @@ public class CalendarIcsService
         using var reader = new StringReader(text);
         using var spool = await IcsAttachmentSpooler.SpoolAsync(reader, new IcsAttachmentSpooler.Options(
             run.Importer.MaxDecodeBytes, IcsComponentSplitter.MaxComponentChars + (64 * 1024),
-            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory), cancellationToken);
+            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory, SkipDecode: _ => true), cancellationToken);
         for (var i = 0; i < spool.DroppedAttachLines; i++)
         {
             run.SkipAttachment(CalendarAttachmentImporter.TooManyLinesReason);
@@ -1561,12 +1587,13 @@ public class CalendarIcsService
         using var reader = new StreamReader(grouper.OpenComponent(component), Encoding.UTF8, false, 1 << 16, leaveOpen: true);
         var options = new IcsAttachmentSpooler.Options(
             importer.MaxDecodeBytes, IcsComponentSplitter.MaxComponentChars + (64 * 1024),
-            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory,
+            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory, TopLevelOnly: true,
             // A RECURRENCE-ID component's attachments are stored nowhere, so they are never decoded (note 4).
             SkipDecode: a => component.IsOverride || importer.CanSkip(a),
             BeforeDecode: importer.EnsureTempSpace,
             OnSpooled: async (attachment, text, token) =>
             {
+                AttachmentsDecoded++;
                 textSoFar = text;
                 importer.ComponentSlots[attachment.Reference] = await importer.ResolveInlineAsync(
                     attachment, () => occurrence ??= IsOccurrenceTargetAsync(textSoFar!(), run.CalendarId, token), Skip, token);
@@ -1680,7 +1707,8 @@ public class CalendarIcsService
                 continue;
             }
 
-            if (slot is null)
+            // A skipped slot is already counted, and a skip never replaces anything (v3 §A.2).
+            if (slot is null || slot.State == CalendarAttachSlotState.Skipped)
             {
                 continue;
             }
@@ -1751,6 +1779,10 @@ public class CalendarIcsService
         // The batch's references, read-only and outside the locks: one IN query per kind (issue #521 §7.4).
         await run.Importer.ResolveReferencesAsync(
             groups.SelectMany(g => g.Items).SelectMany(i => i.Attachments).ToList(), run.SkipAttachment, cancellationToken);
+        if (BeforeBatchApply is { } seam)
+        {
+            await seam();
+        }
 
         // Every run of the batch's work - a re-resolve below, or the execution strategy retrying a deadlock or a lock wait
         // (PR #528 review A1) - starts from the state the batch began with: a rolled-back attempt may have created places
@@ -1774,6 +1806,7 @@ public class CalendarIcsService
                 tally.MergeInto(run);
                 await run.Importer.CommitBatchAsync(tally.Links, cancellationToken);
                 run.CommittedBatches++;
+                LastImportCommittedBatches = run.CommittedBatches;
                 run.CommittedEvents += components;
                 logger.LogInformation(
                     "Calendar .ics import into {CalendarId}: batch committed ({Batch}), {Groups} group(s), {Components} component(s).",
