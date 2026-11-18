@@ -7,6 +7,7 @@ namespace Odyssey.Context;
 [Index(nameof(CalendarId), nameof(StartDateTime))]
 [Index(nameof(RecurrencePatternId))]
 [Index(nameof(CalendarId), nameof(ExternalUid))]
+[Index(nameof(CalendarId), nameof(ImportSourceUid))]
 public class CalendarEvent
 {
     [Key]
@@ -40,6 +41,14 @@ public class CalendarEvent
     // UIDs (e.g. RECURRENCE-ID exception rows) rather than letting the import skip them.
     [StringLength(255)]
     public string? ExternalUid { get; set; }
+
+    // The UID this row was imported from, set ONLY when that UID was one of Odyssey's own synthetic
+    // "{guid}@odyssey.local" forms and did not resolve in the target calendar (issue #516 §4). It makes a
+    // second import of the same file into the same calendar an update rather than a duplicate. It is never
+    // exported and never matched as a primary key — only as itself, within the row's own calendar — which
+    // is what keeps the issue #345 F1 cross-calendar overwrite closed. Non-unique, like ExternalUid.
+    [StringLength(255)]
+    public string? ImportSourceUid { get; set; }
 
     public DateTime StartDateTime { get; set; } // UTC
 

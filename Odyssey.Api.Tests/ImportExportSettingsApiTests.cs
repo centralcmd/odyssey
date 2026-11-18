@@ -100,10 +100,16 @@ public class ImportExportSettingsApiTests
     [Theory]
     [InlineData(10240, HttpStatusCode.OK)] // 10 GB, the task ceiling
     [InlineData(10241, HttpStatusCode.BadRequest)]
-    public async Task Put_TaskAndJournalSizeFields_AcceptUpTo10Gb(int megabytes, HttpStatusCode expected)
+    public async Task Put_TaskJournalAndCalendarSizeFields_AcceptUpTo10Gb(int megabytes, HttpStatusCode expected)
     {
         await using var factory = new ApiFactory(FullAccess);
         using var client = factory.CreateClient();
+
+        // Issue #516 AC 7: the calendar pair goes to 10 GB too, because its export and import stream.
+        var calendarImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { CalendarIcsMaxImportMegabytes = megabytes });
+        var calendarExport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { CalendarIcsMaxExportMegabytes = megabytes });
+        Assert.Equal(expected, calendarImport.StatusCode);
+        Assert.Equal(expected, calendarExport.StatusCode);
 
         var import = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { TaskIcsMaxImportMegabytes = megabytes });
         var export = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { TaskIcsMaxExportMegabytes = megabytes });
@@ -117,9 +123,40 @@ public class ImportExportSettingsApiTests
     }
 
     [Theory]
+    [InlineData(1024, false)]
+    [InlineData(1025, true)]
+    [InlineData(10240, true)] // the shipped default itself warns: the old 1 GB ceiling is the threshold
+    public async Task Put_CalendarSizeFields_WarnAboutTempDiskAbove1024Mb(int megabytes, bool warns)
+    {
+        // Issue #516 AC 7 / FN1: an advisory, never a refusal — the write still succeeds.
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
+        {
+            CalendarIcsMaxImportMegabytes = megabytes,
+            CalendarIcsMaxExportMegabytes = megabytes,
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var dto = (await response.Content.ReadFromJsonAsync<SystemSettingsDto>())!;
+        foreach (var field in new[] { nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes), nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes) })
+        {
+            if (warns)
+            {
+                Assert.Contains("temporary disk", dto.Warnings[field]);
+            }
+            else
+            {
+                Assert.DoesNotContain(field, dto.Warnings.Keys);
+            }
+        }
+    }
+
+    [Theory]
     [InlineData(1024)] // at the shared ceiling — succeeds for all eight fields
-    [InlineData(1025)] // one above it — rejected for the four contact/calendar fields, accepted for task and journal
-    public async Task Put_FourSizeFields_ShareThe1024MbCeiling_TaskAndJournalFieldsGoHigher(int megabytes)
+    [InlineData(1025)] // one above it — rejected for the two contact fields, accepted for task, journal and calendar
+    public async Task Put_ContactSizeFields_ShareThe1024MbCeiling_IcsFieldsGoHigher(int megabytes)
     {
         // Follow-up to #343: contacts' size range was originally narrower ([1,512]) than the three ICS
         // surfaces' ([1,1024]); a later request unified all four surfaces to the same [1,1024] range,
@@ -147,15 +184,16 @@ public class ImportExportSettingsApiTests
         {
             CalendarIcsMaxImportMegabytes = megabytes,
         });
-        Assert.Equal(expected, calendarImport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, calendarImport.StatusCode);
 
         var calendarExport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             CalendarIcsMaxExportMegabytes = megabytes,
         });
-        Assert.Equal(expected, calendarExport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, calendarExport.StatusCode);
 
-        // The task and journal surfaces carry attached files inline, so their pairs are [1, 10240] instead.
+        // The task and journal surfaces carry attached files inline, and the calendar one streams (issue #516), so
+        // their pairs are [1, 10240] instead.
         var taskImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             TaskIcsMaxImportMegabytes = megabytes,
@@ -545,10 +583,11 @@ public class ImportExportSettingsApiTests
         Assert.Null(dto.ContactVCardMaxImportEntries);
         Assert.Equal(64, dto.ContactVCardMaxImportMegabytes);
         Assert.Equal(64, dto.ContactVCardMaxExportMegabytes);
-        Assert.Equal(2000, dto.CalendarIcsMaxExportEvents);
-        Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
-        Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
+        // The calendar surface streams its export and import (issue #516, AC 6), so it ships like task and journal.
+        Assert.Null(dto.CalendarIcsMaxExportEvents);
+        Assert.Null(dto.CalendarIcsMaxImportEvents);
+        Assert.Equal(10240, dto.CalendarIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.CalendarIcsMaxExportMegabytes);
         // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
         Assert.Null(dto.TaskIcsMaxExportTasks);
         Assert.Null(dto.TaskIcsMaxImportTasks);

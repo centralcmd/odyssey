@@ -119,10 +119,11 @@ public class SystemSettingsApiTests
         Assert.Null(dto.ContactVCardMaxImportEntries);
         Assert.Equal(64, dto.ContactVCardMaxImportMegabytes);
         Assert.Equal(64, dto.ContactVCardMaxExportMegabytes);
-        Assert.Equal(2000, dto.CalendarIcsMaxExportEvents);
-        Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
-        Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
+        // The calendar surface streams its export and import (issue #516, AC 6), so it ships like task and journal.
+        Assert.Null(dto.CalendarIcsMaxExportEvents);
+        Assert.Null(dto.CalendarIcsMaxImportEvents);
+        Assert.Equal(10240, dto.CalendarIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.CalendarIcsMaxExportMegabytes);
         // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
         Assert.Null(dto.TaskIcsMaxExportTasks);
         Assert.Null(dto.TaskIcsMaxImportTasks);
