@@ -357,11 +357,15 @@ for up to a day; that is an accepted residual for a mostly single-user instance.
 #### Calendar `.ics` import and export
 
 The calendar surface ships with **no event-count limit and 10240 MB** for both sizes (issue #516; the migration
-moves only rows no administrator has saved). Both size rows warn above 1024 MB, because a calendar import buffers
-its **whole upload once** to `ASPNETCORE_TEMP` (the `import_spool` volume) before it streams it — budget that cap ×
-the import concurrency limit (2) of free space there. Memory does not grow with the file: the import reads one
+moves only rows no administrator has saved). Both size rows warn above 1024 MB, and so on the shipped default: the
+import row because a calendar import buffers its **whole upload once** to `ASPNETCORE_TEMP` (the `import_spool` volume) before it streams it — budget that cap ×
+the import concurrency limit (2) of free space there; the export row because an export that large streams for hours
+while it holds an export permit. Memory does not grow with the file: the import reads one
 `VEVENT` at a time (an unfolded line is at most 1 Mi characters, a `VEVENT` at most 4 Mi, the file's `VTIMEZONE`
-blocks at most 1 MB in total; anything over is a `400`) and commits every **500 events in their own transaction**.
+blocks at most 1 MB in total; anything over is a `400`), reduces each to its bounded fields as it arrives, and commits
+every **500 events, or fewer once their text reaches 16 Mi characters, in their own transaction**. The
+`VTIMEZONE` blocks are kept once and never re-parsed per event. Only generated series occurrences count against
+`CalendarIcsMaxAggregateOccurrences`, across the whole import; standalone events never do.
 An import that fails part-way therefore leaves its earlier batches applied and answers with code
 `calendar_ics_import_partially_applied` and the committed counts; importing the same file again is idempotent and
 completes it. The API sends nothing until an import completes, so one import must finish inside the proxies'
@@ -369,7 +373,10 @@ hour-long read timeout — at the reference rate of about 3,000 events/s, roughl
 calendars. A client that disconnects stops the import at the next batch boundary.
 
 An export over its byte cap is **aborted mid-stream** (the download fails) instead of being truncated, on every
-calendar export. Cancelled events in an imported file are removed only when the importer asks for it
+calendar export. `X-Odyssey-Export-Rows` is the **planned** event count (#516 Non-Goal 7): a row deleted while a
+long export streams is skipped, so the body then holds fewer `VEVENT`s than the header and the client treats the
+download as incomplete. That is deliberate — the client cannot tell a concurrent delete from a cut-off transfer —
+and re-running the export gives a consistent file. Cancelled events in an imported file are removed only when the importer asks for it
 (`allowRemovals`, which needs `calendar.delete`); each batch that removes anything logs the acting user, the calendar
 and the removed ids. Rolling the migration back restores the old settings rows and drops `ImportSourceUid`, the key
 that makes a second import of another calendar's export update rather than duplicate.
