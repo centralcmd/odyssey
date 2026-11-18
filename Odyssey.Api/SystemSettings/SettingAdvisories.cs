@@ -61,6 +61,33 @@ internal static class SettingAdvisories
               + "source fetches this much history over several runs, within its daily request limit."
             : null;
 
+    /// <summary>The size above which a calendar <c>.ics</c> size row warns (issue #516 §8.5): the old 1 GB ceiling.</summary>
+    public const int CalendarIcsLargeSizeThresholdMegabytes = 1024;
+
+    /// <summary>
+    /// The calendar <c>.ics</c> import size advisory (issue #516 §8.5, FN1). It fires above the old 1 GB ceiling, so it
+    /// fires on the shipped 10 GB default too — deliberately: the spec and its release notes make the disk budget
+    /// something every installation is told about, because a calendar import buffers its whole upload on the API's
+    /// temporary disk before it streams it, and the worst case is this cap times the import concurrency limit.
+    /// <see cref="AboveDefault"/> could never fire here, the default being the ceiling.
+    /// </summary>
+    public static Func<SystemSettingsDto, AdvisoryContext, string?> CalendarIcsImportTempDisk(Func<SystemSettingsDto, int> read) =>
+        (dto, _) => read(dto) > CalendarIcsLargeSizeThresholdMegabytes
+            ? "Each concurrent import can buffer up to this much on the API's temporary disk; check the free space on "
+              + "its temp volume."
+            : null;
+
+    /// <summary>
+    /// The calendar <c>.ics</c> export size advisory, the export row's own cost (PR #524 architect nit 8): an export is
+    /// streamed and buffers nothing on disk, so the import's temp-disk text would misdescribe it. What a large export
+    /// costs is time and one of the export slots it holds while it runs.
+    /// </summary>
+    public static Func<SystemSettingsDto, AdvisoryContext, string?> CalendarIcsExportDuration(Func<SystemSettingsDto, int> read) =>
+        (dto, _) => read(dto) > CalendarIcsLargeSizeThresholdMegabytes
+            ? "Exports are streamed, not buffered, but one this large can take hours to download and holds one of the "
+              + "export slots while it runs."
+            : null;
+
     /// <summary>
     /// The cost advisory shape: fires only when the saved value is strictly above the shipped default,
     /// and names both numbers plus what the extra costs.
@@ -71,20 +98,6 @@ internal static class SettingAdvisories
     /// not there is headroom left to a bound.
     /// </para>
     /// </summary>
-    /// <summary>The size above which a calendar <c>.ics</c> size row warns about the API's temp disk (issue #516 §8.5).</summary>
-    public const int CalendarIcsTempDiskThresholdMegabytes = 1024;
-
-    /// <summary>
-    /// The calendar <c>.ics</c> size advisory (issue #516 §8.5, FN1). The shipped default is the 10 GB ceiling, so
-    /// <see cref="AboveDefault"/> could never fire; this one fires above the old 1 GB ceiling instead, because a calendar
-    /// import buffers its whole upload on the API's temporary disk before it streams it.
-    /// </summary>
-    public static Func<SystemSettingsDto, AdvisoryContext, string?> CalendarIcsTempDisk(Func<SystemSettingsDto, int> read) =>
-        (dto, _) => read(dto) > CalendarIcsTempDiskThresholdMegabytes
-            ? "Each concurrent import can buffer up to this much on the API's temporary disk; check the free space on "
-              + "its temp volume."
-            : null;
-
     public static Func<SystemSettingsDto, AdvisoryContext, string?> AboveDefault(
         Func<SystemSettingsDto, int> read, int shippedDefault, string cost) =>
         (dto, _) =>
