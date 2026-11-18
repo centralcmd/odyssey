@@ -20,8 +20,8 @@ namespace Odyssey.Core.Journal;
 /// <b>The lock wait is bounded per statement</b>: the locking <c>SELECT</c> is issued as
 /// <c>SET STATEMENT innodb_lock_wait_timeout = 5 FOR …</c> through a raw command, never composed with <c>FromSql</c>.
 /// The UPDATE and DELETE statements EF itself generates inside the same delegate cannot carry that prefix, so the
-/// session value is set to the same 5 s for the transaction and restored to the server default before the connection
-/// is released (MySqlConnector also resets session state when it returns a pooled connection).
+/// session value is set to the same 5 s for the transaction and restored to the server default on the same connection
+/// before the commit or rollback (MySqlConnector also resets session state when a pooled connection is reused).
 /// </para>
 /// <para>
 /// <b>Every attempt starts clean and rolls back fully</b>: the change tracker is cleared, and a failed attempt rolls the
@@ -76,18 +76,18 @@ internal static class CalendarSeriesTransactions
             await context.Database.ExecuteSqlRawAsync(
                 $"SET SESSION innodb_lock_wait_timeout = {LockWaitSeconds}", cancellationToken);
             var result = await work();
+            // Restored before the commit, on the transaction's own connection (PR #528 review): after it EF may release
+            // the connection, and a restore would then run on whichever pooled connection came next.
+            await context.Database.ExecuteSqlRawAsync("SET SESSION innodb_lock_wait_timeout = DEFAULT", cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             return result;
         }
         catch
         {
+            await RestoreLockWaitAsync(context);
             await transaction.RollbackAsync(CancellationToken.None);
             context.ChangeTracker.Clear();
             throw;
-        }
-        finally
-        {
-            await RestoreLockWaitAsync(context);
         }
     }
 
