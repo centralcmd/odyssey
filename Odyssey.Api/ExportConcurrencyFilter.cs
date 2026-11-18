@@ -1,6 +1,7 @@
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.AspNetCore.Mvc;
 
@@ -77,6 +78,13 @@ public sealed class ExportConcurrencyFilter(
 
     private readonly TimeProvider clock = timeProvider ?? TimeProvider.System;
 
+    internal static string EndpointName(HttpContext httpContext) => httpContext.GetEndpoint() switch
+    {
+        RouteEndpoint route when route.RoutePattern.RawText is { } template => template,
+        { DisplayName: { } displayName } => displayName,
+        _ => "(unknown endpoint)",
+    };
+
     public async Task OnResourceExecutionAsync(ResourceExecutingContext context, ResourceExecutionDelegate next)
     {
         using var lease = global.Limiter.AttemptAcquire();
@@ -97,10 +105,12 @@ public sealed class ExportConcurrencyFilter(
 
             // Unconditional — never filtered/sampled — because the guard's thresholds are tuned against this data,
             // and repeated aborts must be distinguishable from users cancelling downloads mid-stream.
+            // The endpoint is named by its server-defined route template, never by the request path, which the caller
+            // controls and could use to forge log lines.
             logger.LogWarning(
-                "Export progress guard ({Rule}) aborted {Path} after {ElapsedMs} ms having written {Bytes} bytes. "
+                "Export progress guard ({Rule}) aborted {Endpoint} after {ElapsedMs} ms having written {Bytes} bytes. "
                 + "X-Odyssey-Export-Rows: {Rows}.",
-                rule, httpContext.Request.Path, (long)elapsed.TotalMilliseconds, counting.Written, rows);
+                rule, EndpointName(httpContext), (long)elapsed.TotalMilliseconds, counting.Written, rows);
 
             httpContext.Abort();
         });
