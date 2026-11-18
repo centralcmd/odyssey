@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
@@ -205,7 +206,8 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
         try
         {
             Guid patternId;
-            var now = DateTime.UtcNow;
+            // A fixed clock, handed to the importer too, so the past/future split never depends on when this runs.
+            var now = new DateTime(2031, 3, 1, 12, 0, 0, DateTimeKind.Utc);
             await using (var seeding = new OdysseyContext(options))
             {
                 var first = now.AddDays(-1).AddHours(-1);
@@ -234,7 +236,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 + "RRULE:FREQ=DAILY;COUNT=3\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
             await using (var context = new OdysseyContext(options))
             {
-                var result = await Service(context).ImportAsync(
+                var result = await Service(context, new FakeTimeProvider(now)).ImportAsync(
                     calendarId, Stream(file), file.Length, "text/calendar", User, allowRemovals: true, canDelete: true);
                 Assert.Equal(1, result.RemovedCount);
             }
@@ -244,6 +246,46 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             var left = await check.CalendarEvents.Where(e => e.CalendarId == calendarId).ToListAsync();
             Assert.Equal(2, left.Count);
             Assert.All(left, e => Assert.Null(e.RecurrencePatternId));
+        }
+        finally
+        {
+            await DeleteCalendarAsync(options, calendarId);
+        }
+    }
+
+    [SkippableFact]
+    public async Task A_case_variant_uid_updates_the_stored_row_instead_of_duplicating_it()
+    {
+        // Architect nit 7: the keyed query compares under the column's case-insensitive collation, so the in-memory
+        // pick must too; otherwise it loads the row and then creates a second one.
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var options = await OptionsAsync();
+        var calendarId = await SeedCalendarAsync(options, rows: 0, series: 0);
+        try
+        {
+            var stored = $"Case-{calendarId:N}@Example.com";
+            await using (var seeding = new OdysseyContext(options))
+            {
+                var at = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
+                seeding.CalendarEvents.Add(new CalendarEvent
+                {
+                    CalendarId = calendarId, Title = "Before", StartDateTime = at, EndDateTime = at.AddHours(1),
+                    ExternalUid = stored, CreatedByUserId = User, CreatedAt = at, UpdatedAt = at,
+                });
+                await seeding.SaveChangesAsync();
+            }
+
+            var file = File(1, _ => stored.ToLowerInvariant());
+            await using (var context = new OdysseyContext(options))
+            {
+                var result = await Import(context, calendarId, file);
+                Assert.Equal((0, 1), (result.ImportedCount, result.UpdatedCount));
+            }
+
+            await using var check = new OdysseyContext(options);
+            var row = Assert.Single(await check.CalendarEvents.Where(e => e.CalendarId == calendarId).ToListAsync());
+            Assert.Equal("Imported 0", row.Title);
+            Assert.Equal(stored, row.ExternalUid);
         }
         finally
         {
@@ -266,8 +308,8 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
         return options;
     }
 
-    private static CalendarIcsService Service(OdysseyContext context) =>
-        new(context, NullLogger<CalendarIcsService>.Instance, new Limits(), new StubJournalLimitsLookup());
+    private static CalendarIcsService Service(OdysseyContext context, TimeProvider? clock = null) =>
+        new(context, NullLogger<CalendarIcsService>.Instance, new Limits(), new StubJournalLimitsLookup(), clock);
 
     private static Task<IcsImportResult> Import(OdysseyContext context, Guid calendarId, string file) =>
         Service(context).ImportAsync(calendarId, Stream(file), Encoding.UTF8.GetByteCount(file), "text/calendar", User);

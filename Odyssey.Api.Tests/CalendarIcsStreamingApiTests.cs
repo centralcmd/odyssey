@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Api.Controllers;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
@@ -497,10 +498,12 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_cancelled_series_is_removed_with_delete_semantics()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        // A fixed clock, so which occurrences are past is decided by the test and never by when it runs.
+        var now = new DateTime(2031, 3, 1, 12, 0, 0, DateTimeKind.Utc);
+        await using var factory = new ApiFactory(ReadWrite, clock: new FakeTimeProvider(now));
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "SeriesGone");
-        var series = await CreateSeriesAsync(client, calendar.CalendarId, "Daily", count: 4, start: DateTime.UtcNow.AddHours(-36));
+        var series = await CreateSeriesAsync(client, calendar.CalendarId, "Daily", count: 4, start: now.AddHours(-36));
         var file = Vcalendar(Vevent($"{series.RecurrencePatternId}@odyssey.local", "STATUS:CANCELLED", "SUMMARY:Daily",
             "DTSTART:20300101T090000Z", "RRULE:FREQ=DAILY;COUNT=4"));
 
@@ -513,7 +516,7 @@ public class CalendarIcsStreamingApiTests
         var left = await db.CalendarEvents.Where(e => e.CalendarId == calendar.CalendarId).ToListAsync();
         Assert.Equal(2, left.Count); // the two past occurrences, detached and kept
         Assert.All(left, e => Assert.Null(e.RecurrencePatternId));
-        Assert.All(left, e => Assert.True(e.StartDateTime < DateTime.UtcNow));
+        Assert.All(left, e => Assert.True(e.StartDateTime < now));
     }
 
     [Fact]
@@ -562,6 +565,42 @@ public class CalendarIcsStreamingApiTests
         {
             Assert.Equal("Live", Assert.Single(rows).Title);
         }
+    }
+
+    [Fact]
+    public async Task An_event_created_and_cancelled_in_one_batch_counts_as_neither_imported_nor_removed()
+    {
+        // Architect nit 9: the row never reached the database, so the result must not report a removal.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Net zero");
+        var live = Vevent("fresh@example.com", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", "SUMMARY:Fresh");
+
+        var result = await ImportAsync(
+            client, calendar.CalendarId, Vcalendar(live, Cancelled("fresh@example.com", "Fresh")), allowRemovals: true);
+
+        Assert.Equal((0, 0), (result.ImportedCount, result.RemovedCount));
+        Assert.Empty(result.RemovedSampleTitles);
+        await using var scope = factory.Services.CreateAsyncScope();
+        Assert.False(await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
+            .CalendarEvents.AnyAsync(e => e.CalendarId == calendar.CalendarId));
+    }
+
+    [Fact]
+    public async Task A_uid_over_255_characters_skips_its_event_and_the_batch_still_commits()
+    {
+        // Architect finding 4: under strict mode it used to fail the whole batch's save, so the file never completed.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Long uid");
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(
+            Standalone(new string('u', 256) + "@example.com", "Too long"), Standalone("fine@example.com", "Fine")));
+
+        Assert.Equal(1, result.ImportedCount);
+        var group = Assert.Single(result.Skipped);
+        Assert.Equal(CalendarIcsService.UidTooLongReason, group.Reason);
+        Assert.Equal(["Too long"], group.SampleTitles);
     }
 
     // ------------------------------------------------------------------ AC 16b, 17: streaming caps and partial failure
@@ -915,9 +954,15 @@ public class CalendarIcsStreamingApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null)
+        public ApiFactory(IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null)
             : base(permissions, ActorUserId, configureServices: services =>
             {
+                if (clock is not null)
+                {
+                    services.RemoveAll<TimeProvider>();
+                    services.AddSingleton(clock);
+                }
+
                 var name = $"calendar-ics-streaming-{Guid.NewGuid()}";
                 services.RemoveAll<DbContextOptions<OdysseyContext>>();
                 services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(name));

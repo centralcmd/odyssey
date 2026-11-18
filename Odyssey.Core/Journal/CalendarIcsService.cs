@@ -101,7 +101,22 @@ public class CalendarIcsService
 
     public const string RecurrenceIdReason = "Modified occurrence of a series (RECURRENCE-ID) — not supported yet.";
 
+    public const string UidTooLongReason = "UID exceeds the maximum length of 255 characters.";
+
+    /// <summary>Removed ids per audit line, so one batch's removal of a large series never becomes one huge entry.</summary>
+    internal const int AuditIdsPerLine = 500;
+
+    private const int MaxUidLength = 255;
+
     private const string SyntheticUidSuffix = "@odyssey.local";
+
+    // How a UID is compared in memory, matching how the database compares it: the ExternalUid and ImportSourceUid
+    // columns use the server's default case- and accent-insensitive collation, so a keyed query returns a case variant
+    // and the in-memory pick must accept it too, or it loads the row and then creates a duplicate (architect nit 7).
+    // An exact match is still preferred among the candidates.
+    internal static readonly StringComparer UidComparer =
+        StringComparer.Create(System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.CompareOptions.IgnoreCase | System.Globalization.CompareOptions.IgnoreNonSpace);
     private const string UntitledEvent = "(untitled)";
     private const string ProductId = "-//Odyssey//Calendar//EN";
     private const int MaxLocationLength = 300;
@@ -787,9 +802,9 @@ public class CalendarIcsService
     // same batch sees the earlier one's row, or null when that component removed it, so the last component wins.
     private sealed class BatchState
     {
-        public Dictionary<string, ContextCalendarEvent?> Events { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, ContextCalendarEvent?> Events { get; } = new(UidComparer);
 
-        public Dictionary<string, RecurrencePattern?> Patterns { get; } = new(StringComparer.Ordinal);
+        public Dictionary<string, RecurrencePattern?> Patterns { get; } = new(UidComparer);
 
         // Occurrences this batch added, per series, so regenerating or removing a series created or regenerated
         // earlier in the batch reaches rows the database does not hold yet.
@@ -886,7 +901,7 @@ public class CalendarIcsService
 
                 if (batchComponents == ImportBatchSize || batchChars >= ImportBatchCharBudget)
                 {
-                    await ApplyBatchAsync(batch, batchComponents, run, cancellationToken);
+                    await ApplyBatchAndClearAsync(batch, batchComponents, run, cancellationToken);
                     batch.Clear();
                     batchComponents = 0;
                     batchChars = 0;
@@ -895,7 +910,7 @@ public class CalendarIcsService
 
             if (batchComponents > 0)
             {
-                await ApplyBatchAsync(batch, batchComponents, run, cancellationToken);
+                await ApplyBatchAndClearAsync(batch, batchComponents, run, cancellationToken);
             }
         }
         catch (Exception ex) when (run.CommittedBatches > 0 && ex is not OperationCanceledException)
@@ -950,13 +965,27 @@ public class CalendarIcsService
         }
     }
 
+    // The tracker is cleared whether the batch committed or not, so a failed batch's half-applied entities never
+    // outlive it (architect nit 9).
+    private async Task ApplyBatchAndClearAsync(List<ImportItem> items, int components, ImportRun run, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await ApplyBatchAsync(items, components, run, cancellationToken);
+        }
+        finally
+        {
+            context.ChangeTracker.Clear();
+        }
+    }
+
     // components counts every VEVENT the batch spans, skipped ones included, for the partial-failure counts.
     private async Task ApplyBatchAsync(List<ImportItem> items, int components, ImportRun run, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var state = new BatchState();
-        var uids = items.Select(i => i.Uid).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var uids = items.Select(i => i.Uid).OfType<string>().Distinct(UidComparer).ToList();
         var resolver = await ResolveAsync(run.CalendarId, uids, cancellationToken);
 
         foreach (var item in items)
@@ -979,18 +1008,32 @@ public class CalendarIcsService
         run.CommittedBatches++;
         run.CommittedEvents += components;
 
-        // One line per committed batch that removed anything (§7.7): ids and counts only, never a title or place, so
-        // an import that later fails is audited for exactly what it removed.
-        if (state.RemovedEventIds.Count > 0 || state.RemovedSeriesIds.Count > 0)
+        // After each committed batch that removed anything (§7.7): ids and counts only, never a title or place, so
+        // an import that later fails is audited for exactly what it removed. The ids are split across lines of at
+        // most AuditIdsPerLine, because one removed series can carry thousands of future rows.
+        var removedCount = state.RemovedEventIds.Count + state.RemovedSeriesIds.Count;
+        var parts = AuditChunks(state.RemovedSeriesIds, state.RemovedEventIds, AuditIdsPerLine);
+        for (var part = 0; part < parts.Count; part++)
         {
             logger.LogInformation(
-                "Calendar .ics import by {UserId} into calendar {CalendarId} removed {RemovedCount} cancelled item(s): "
-                + "series {RemovedSeriesIds}; events {RemovedEventIds}.",
-                run.UserId, run.CalendarId, state.RemovedEventIds.Count + state.RemovedSeriesIds.Count,
-                state.RemovedSeriesIds, state.RemovedEventIds);
+                "Calendar .ics import by {UserId} into calendar {CalendarId} removed {RemovedCount} cancelled item(s), "
+                + "part {Part} of {Parts}: series {RemovedSeriesIds}; events {RemovedEventIds}.",
+                run.UserId, run.CalendarId, removedCount, part + 1, parts.Count, parts[part].SeriesIds, parts[part].EventIds);
+        }
+    }
+
+    /// <summary>Splits a batch's removed ids into audit lines of at most <paramref name="perLine"/> ids, series first.</summary>
+    internal static List<(List<Guid> SeriesIds, List<Guid> EventIds)> AuditChunks(
+        IReadOnlyList<Guid> seriesIds, IReadOnlyList<Guid> eventIds, int perLine)
+    {
+        var lines = new List<(List<Guid> SeriesIds, List<Guid> EventIds)>();
+        var all = seriesIds.Select(id => (Series: true, Id: id)).Concat(eventIds.Select(id => (Series: false, Id: id)));
+        foreach (var chunk in all.Chunk(perLine))
+        {
+            lines.Add((chunk.Where(c => c.Series).Select(c => c.Id).ToList(), chunk.Where(c => !c.Series).Select(c => c.Id).ToList()));
         }
 
-        context.ChangeTracker.Clear();
+        return lines;
     }
 
     // One transaction per batch, inside the execution strategy, because EnableRetryOnFailure makes a bare
@@ -1023,6 +1066,14 @@ public class CalendarIcsService
         var title = ev.Summary?.Trim();
         var sampleTitle = string.IsNullOrWhiteSpace(title) ? UntitledEvent : title;
         var uid = string.IsNullOrWhiteSpace(ev.Uid) ? null : ev.Uid.Trim();
+
+        // ExternalUid is varchar(255): a longer UID would fail the whole batch's save under strict mode, and the same
+        // file could then never complete, so it is that event's skip (architect finding 4).
+        if (uid is { Length: > MaxUidLength })
+        {
+            run.Skipped.Add(UidTooLongReason, sampleTitle);
+            return null;
+        }
 
         // Until Spec B models exceptions, a RECURRENCE-ID component is never applied — cancelled or not — so a
         // cancelled occurrence can never act on a whole series (S1).
@@ -1208,13 +1259,14 @@ public class CalendarIcsService
             return byKey;
         }
 
-        if (live.FirstOrDefault(c => string.Equals(externalUid(c), uid, StringComparison.Ordinal)) is { } byExternal)
+        if ((live.FirstOrDefault(c => string.Equals(externalUid(c), uid, StringComparison.Ordinal))
+            ?? live.FirstOrDefault(c => externalUid(c) is { } stored && UidComparer.Equals(stored, uid))) is { } byExternal)
         {
             return byExternal;
         }
 
         return IsSyntheticUid(uid)
-            ? live.FirstOrDefault(c => string.Equals(importSourceUid(c), uid, StringComparison.Ordinal))
+            ? live.FirstOrDefault(c => importSourceUid(c) is { } stored && UidComparer.Equals(stored, uid))
             : null;
     }
 
@@ -1414,21 +1466,25 @@ public class CalendarIcsService
             return;
         }
 
+        // A row this batch created and the file then cancels never existed in the database: it is un-created, not
+        // removed, so neither the import count nor the removal count reports it (architect nit 9).
         if (matchedEvent is not null)
         {
-            if (context.Entry(matchedEvent).State != EntityState.Added)
+            var created = context.Entry(matchedEvent).State == EntityState.Added;
+            if (!created)
             {
                 state.RemovedEventIds.Add(matchedEvent.CalendarEventId);
             }
 
             context.CalendarEvents.Remove(matchedEvent);
-            Removed(run, matchedEvent.Title);
+            CountRemoval(run, matchedEvent.Title, created);
             state.Events[item.Uid!] = null;
             return;
         }
 
+        var seriesCreated = context.Entry(matchedPattern!).State == EntityState.Added;
         await RemoveSeriesAsync(matchedPattern!, run, state, cancellationToken);
-        Removed(run, matchedPattern!.Title);
+        CountRemoval(run, matchedPattern!.Title, seriesCreated);
         state.Patterns[item.Uid!] = null;
     }
 
@@ -1476,8 +1532,14 @@ public class CalendarIcsService
         context.RecurrencePatterns.Remove(pattern);
     }
 
-    private static void Removed(ImportRun run, string title)
+    private static void CountRemoval(ImportRun run, string title, bool createdInThisBatch)
     {
+        if (createdInThisBatch)
+        {
+            run.Imported--;
+            return;
+        }
+
         run.Removed++;
         if (run.RemovedSamples.Count < run.MaxSamples)
         {
