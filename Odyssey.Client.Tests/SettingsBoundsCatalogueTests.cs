@@ -46,7 +46,8 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 58 int rows since issue #508 added the two news OPML import caps (56 before,
+    /// Scope, stated rather than implied: 59 int rows since issue #521 added the calendar link cap (58 since issue #508
+    /// added the two news OPML import caps, 56 before,
     /// since issue #473 added the eight News caps; 48 before that; 46 of 54 numeric rows, 45 of 53 before issue
     /// #409 added the background-job run retention, 44 of 52 before issue
     /// #346 added the file-storage deletion grace, 43 of 51 before issue
@@ -65,7 +66,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(58, NumericRows.Count);
+        Assert.Equal(59, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));

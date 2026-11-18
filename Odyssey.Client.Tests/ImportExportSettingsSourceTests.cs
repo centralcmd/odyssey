@@ -268,4 +268,14 @@ public class ImportExportSettingsSourceTests
         var text = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages/Settings.razor.cs"));
         Assert.Contains($"\"{key}\"", text, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The calendar link cap is withheld from the fallback (issue #521 v3 §E): with no live value a dialog pre-checks
+    /// nothing rather than an invented cap the administrator may have lowered.
+    /// </summary>
+    [Fact]
+    public void The_import_limits_fallback_carries_no_calendar_link_cap()
+    {
+        Assert.Null(Odyssey.Client.Services.ImportLimitsCache.Fallback.CalendarEventMaxLinksPerKind);
+    }
 }

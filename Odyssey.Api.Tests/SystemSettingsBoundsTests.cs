@@ -117,8 +117,8 @@ public class SystemSettingsBoundsTests
         // added two strings (the extraction and match prompt guidance). Issue #446 added three ints (the
         // instrument-price stale window, sync interval and history depth). Issue #470 added eight ints (the
         // news-reader defaults, caps and quotas) and one string (the private-host allow-list). Issue #508 added two
-        // ints (the OPML import's size and entry caps).
-        Assert.Equal(88, SystemSettingsRegistry.All.Count);
+        // ints (the OPML import's size and entry caps). Issue #521 added one int (the calendar link cap).
+        Assert.Equal(89, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(16, SystemSettingsRegistry.All.OfType<StringSetting>().Count());
