@@ -916,6 +916,33 @@ are easy to get backwards:
   under 1 MiB in a 5-minute window with a write waiting on the client, or 24 hours. It replaced a fixed 10-minute
   deadline; don't put one back.
 
+**A calendar event or series links files and library photos, and they travel inline in its `.ics`** (issue #521).
+Four sibling tables (`CalendarEventAttachments`/`Photos`, `RecurrencePatternAttachments`/`Photos`), all `CASCADE`, no
+attribution column. Rules that are easy to get backwards:
+
+- **`CalendarLinkService` is the only writer** of the four (a source-lint in `Odyssey.Core.Tests` scans Core, Api and
+  Worker), because "event links exist only on a standalone event" has no database check. A series' links show on every
+  occurrence; a link array on a generated occurrence is a `422`. **Every detach copies the series' links** — series
+  delete (chunked, 1,000 rows per save, inside its transaction), a cancelled series in an import, and every keying that
+  detaches a row (inline or the backfill job). `CalendarEventMaxLinksPerKindMax` (100) is what bounds that copy at
+  1,000 × 2 × 100 = 200,000 rows; raising it re-opens the bound.
+- **Writes keep what they do not name**: a null array keeps, `[]` clears. The read claims are **change-only** — only an
+  ADDED file needs `files.read`, an added photo `photos.read` — and the cap refuses only a rise. Reads return ids,
+  positions and counts under `calendar.read`; names, types and sizes need the kind's read claim
+  (`CalendarLinkVisibility.ApplyLinkVisibility`, on every action that returns an event or series).
+- **Export: inline once, then a reference** (`ATTACH;VALUE=URI;X-ODYSSEY-SHA256=…;SIZE=…:odyssey-file:<id>`), decided at
+  write time. The aggregate export carries none. `attachments=omit` needs neither read claim; `include` is a
+  `403 calendar_ics_export_attachments_forbidden` when the plan links a kind the caller cannot read.
+- **Import: claims by KIND on pass 1, before any batch** (`403 calendar_ics_import_attachments_forbidden`): any
+  `odyssey-file:`/`odyssey-photo:` or inline `ATTACH` needs the read claim, inline content also the create claim. Any
+  other URI has no kind, needs nothing and replaces nothing. A kind's links are replaced only when one of its `ATTACH`
+  resolved or was stored, so the aggregate export or a Google file re-imported never strips links.
+- **Two phases per batch** (v5): phase A decodes one attachment at a time, matches it read-only and writes new content
+  as a `Pending` reservation (`IObjectStore.ReserveAndWriteAsync`, `StoredFileWriter.PrepareNewFileAsync`,
+  `PhotoService.PrepareUploadAsync`) outside any lock; phase B, inside each retried attempt, re-checks under the lock
+  and attaches a FRESH row (`AttachReserved`). Never re-attach a row a failed attempt mutated, and never release a lost
+  reservation through `StageRelease` — `AbandonReservationAsync`, else the abandoned-write sweep.
+
 **A recurring series remembers its exceptions by occurrence KEY, and times are wall-clock plus zone** (issue #519).
 Every generated row carries `OccurrenceKey` — its local wall-clock start under the rule, `Kind = Unspecified`, unique
 per series — and an edited one `IsOverride`; a deleted one is a `RecurrenceExclusions` row. Rules that are easy to get

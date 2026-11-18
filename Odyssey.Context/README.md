@@ -12,7 +12,9 @@
   job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
   derived data.
 - **Calendars** — calendars, events, recurrence patterns and their exclusions (issue #519: an event's occurrence key,
-  override flag and zone; a series' zone, version and keying date).
+  override flag and zone; a series' zone, version and keying date), and the four link tables that attach files and
+  library photos to a standalone event or a series (issue #521: every key `CASCADE`, each pair unique, no attribution
+  column; `Down()` of `CalendarEventAttachments` drops the links, never the files or photos).
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
 - **Identity and auth** — the ASP.NET Identity schema plus `UserProfile`, `UserPreference`,
