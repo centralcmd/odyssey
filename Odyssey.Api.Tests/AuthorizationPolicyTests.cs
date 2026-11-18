@@ -75,11 +75,12 @@ public class AuthorizationPolicyTests
     /// <c>weather.points.update</c> and <c>weather.points.delete</c>. 107 once issue #346 added
     /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
     /// deliberately left out. 107 once the whole-database JSON export was removed with its
-    /// <c>data.export</c> claim.
+    /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
+    /// #470 added the eight news-reader claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(115, DeclaredClaims().Count());
+        Assert.Equal(123, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -350,6 +351,56 @@ public class AuthorizationPolicyTests
         Assert.Equal(expected, holders);
     }
 
+    /// <summary>
+    /// Issue #470 §7.2: every role reads the household's news, Guest included; Admin, Owner and User keep its shared
+    /// read state and article tags; only Admin and Owner manage feeds and news tags.
+    /// </summary>
+    [Theory]
+    [InlineData(PermissionClaims.NewsRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.NewsUpdate, new[] { "Admin", "Owner", "User" })]
+    [InlineData(PermissionClaims.NewsFeedsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsFeedsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsFeedsDelete, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsDelete, new[] { "Admin", "Owner" })]
+    public void The_news_claims_are_held_by_exactly_the_specified_roles(string claim, string[] expected)
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(claim))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected, holders);
+    }
+
+    /// <summary>
+    /// Issue #470 AC 64: <c>GET /api/news-status</c> is gated on <c>file-storage.read</c> and shows feed display titles,
+    /// custom titles included, so it may never reach a caller who could not read the feed.
+    /// </summary>
+    [Fact]
+    public void Every_role_holding_FileStorageRead_also_holds_NewsRead()
+    {
+        Assert.Contains(MappedRoles(), role => role.Claims.Contains(PermissionClaims.FileStorageRead));
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.FileStorageRead) && !role.Claims.Contains(PermissionClaims.NewsRead));
+    }
+
+    /// <summary>Issue #470 §7.2: no role manages feeds or tags, or keeps the read state, without reading the news.</summary>
+    [Fact]
+    public void No_role_holds_a_news_write_claim_without_NewsRead()
+    {
+        string[] writes =
+        [
+            PermissionClaims.NewsUpdate, PermissionClaims.NewsFeedsCreate, PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsFeedsDelete,
+            PermissionClaims.NewsTagsCreate, PermissionClaims.NewsTagsUpdate, PermissionClaims.NewsTagsDelete,
+        ];
+
+        Assert.DoesNotContain(MappedRoles(), role =>
+            writes.Any(role.Claims.Contains) && !role.Claims.Contains(PermissionClaims.NewsRead));
+    }
+
     /// <summary>Issue #446 §7.3: every price read embeds instrument fields, so a price reader must read instruments.</summary>
     [Fact]
     public void No_role_holds_InstrumentPricesRead_without_InstrumentsRead() =>
@@ -370,6 +421,23 @@ public class AuthorizationPolicyTests
             .ToArray();
 
         Assert.Equal(["Admin", "Guest", "Owner", "User"], holders);
+    }
+
+    /// <summary>
+    /// The contact vCard export writes each geocoded address's coordinates and time zone under
+    /// <c>contacts.read</c> alone — a product decision (PR #510) that is safe only while reading contacts
+    /// implies reading places. A role granted contacts.read without locations.read must fail here, so that
+    /// decision is re-opened rather than silently widened.
+    /// </summary>
+    [Fact]
+    public void Contacts_read_implies_locations_read()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsRead) && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(gaps);
     }
 
     /// <summary>
@@ -958,6 +1026,7 @@ public class AuthorizationPolicyTests
         Assert.Equal([PermissionClaims.WeatherPointsUpdate], claims[Dtos.Application.JobType.Weather]);
         Assert.Equal([PermissionClaims.FileStorageRead], claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
         Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
         Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
             && claim != PermissionClaims.FileStorageRead);
@@ -973,6 +1042,7 @@ public class AuthorizationPolicyTests
         Assert.Equal(PermissionClaims.WeatherPointsRead, claims[Dtos.Application.JobType.Weather]);
         Assert.Equal(PermissionClaims.FileStorageRead, claims[Dtos.Application.JobType.FileStorageMaintenance]);
         Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
     }
 
     /// <summary>

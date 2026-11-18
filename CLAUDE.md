@@ -611,12 +611,23 @@ point. Rules that are easy to get backwards:
 
 **Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
 through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
-fetched one; there is no separate source column. Four rules are easy to get backwards:
+fetched one; there is no separate source column. Five rules are easy to get backwards:
 
 - **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
-  `UpdatedAt ?? CreatedAt`, then the id — and source plays no part. `CurrencyConversionService` (direct
-  vs. hop: the later UTC date wins, the same date goes to direct) and every status rule in
-  `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
+  `UpdatedAt ?? CreatedAt`, then a stored row before an inverted one, then the id — and source plays no
+  part. `CurrencyConversionService` (direct vs. hop: the later UTC date wins, the same date goes to direct)
+  and every status rule in `ExchangeRateService` read it; a source-lint fails on a second copy in
+  `Odyssey.Core`.
+- **Readers invert FETCHED rows, never manual ones** (issue #472). A fetched `B → A` row competes for
+  `A → B` as `1 / Rate`, unrounded, through a second, fetched-only branch whose `Provider` filter runs
+  *before* its grouped MAX, so a newer manual row of the same stored pair cannot hide it. A manual rate may
+  be a buy or sell quote and is never turned around. On a full tie the stored row wins, which is what keeps
+  a database still holding both directions giving exactly the results it gave before. A row's Current
+  badge, the `status=` filter and the summary count only a winner that is a stored row **of its own pair**:
+  an inverted winner names the other pair's row and must never mark it Current. `GET
+  /api/exchange-rates/resolved` reports the rate a conversion uses and its legs; `/latest` returns an
+  inverted row with `inverted: true` and the stored row's id. `CK_ExchangeRates_RatePositive` keeps the
+  division safe.
 - **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
   date; the bounded lookups keep their exclusive `AsOf < bound`.
 - **The run guard is the `JobRuns.ExclusiveGuard` generated column's unique index**, real MariaDB only; a purge
@@ -630,6 +641,23 @@ fetched one; there is no separate source column. Four rules are easy to get back
 - **A fetched row is never edited in place nor deleted on its own** (both `422` keyed `source`, for
   every caller) — the sync fills only beyond its fetched extents, so a row removed from inside them is
   never refetched. Fetched rates leave only through the per-currency purge.
+
+**The news reader fetches untrusted feeds from the worker, and its egress policy is the SSRF control**
+(issues #470, #473; specs in `docs/specs/news-reader-*.md`). Six rules are easy to get backwards:
+
+- **Every outbound request goes through `NewsEgress`** (`Odyssey.Core/Internet/News/Fetching/`): one DNS answer
+  per connection, every address vetted at connect time (wrapped IPv4 forms unwrapped), manual redirects re-checked
+  per hop, decompression capped in layers and bytes. A private host is reachable only through the
+  `NewsPrivateHostAllowList` setting, gated on `system-settings.security.update`, and only for that feed's own host.
+  Never send news traffic through another `HttpClient`.
+- **The worker shares no network with the API or the client.** It sits on its own database network and the
+  `egress` network only, in both compose files; a fetched host must never be able to reach the API's port.
+- **The worker needs ICU** (`GlobalizationGuard`, now in `Odyssey.Core/Configuration`, runs in both hosts).
+- **`NewsArticles` must be bound on every host with volumes**, the API and the worker alike.
+- **The API never writes a worker-owned column.** `NewsFeedFetchStates` is the worker's, behind `FetchFence`; the
+  API changes it only through `INewsFetchStateFlags`, and a suggested feed URL is applied only by a user's `PUT`.
+- **Feed HTML is reduced to text and never re-serialised**, behind a 256-level and 2 MiB cap per fragment, so no
+  feed markup ever reaches the browser.
 
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
@@ -832,6 +860,36 @@ of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that 
   the batch, anything else is the file's own; inside a dialog the alert line is the only failure channel.
 - **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
   in the lint; the list may only shrink.
+
+**A task or journal `.ics` export carries its attached files inline — a journal's library photos too — and the
+import stores them without duplicating** (`TaskIcsService`, `JournalEntryIcsService`,
+`Journal/Interop/IcsBinaryAttachments.cs`, `Journal/Interop/InlineAttachmentImporters.cs`). Rules that are easy to
+get backwards:
+
+- **`Ical.Net` never sees a binary value.** The export serializes each VTODO/VJOURNAL without its files and
+  `IcsBinaryAttachmentWriter` splices in `ATTACH;ENCODING=BASE64;VALUE=BINARY` lines streamed from the store; the
+  import's `IcsAttachmentSpooler` decodes them to temp files and hands `Ical.Net` the text with placeholders. A value
+  held as one string caps out near 1 G characters, which is why a 10 GB export is possible at all.
+- **`EncodedLength` must stay exact** — the export refuses an over-cap file from it before sending a byte.
+- **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
+  size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
+  same `FileValidationService` checks an upload does, the admin upload cap included.
+- **A photo is its own kind (`X-ODYSSEY-KIND=PHOTO`) and dedupes the same way over `PhotoOriginalSource.Describe`**
+  (legacy photos included); a match is linked as-is, and a new one goes through `PhotoService.StageUploadAsync` — the
+  library upload's checks — carrying only the exported file name, title and caption. Tags, people and albums stay
+  library-only.
+- **Files make the claims stricter, never optional**: an export with attached files needs `files.read` (photos:
+  `photos.read`), an import carrying inline files needs `files.read` and `files.create` (photos: `photos.read` and
+  `photos.create`), and either is refused whole (`403`) without them — the import at its first such attachment,
+  inside the spooler, before a byte of it is decoded.
+- **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` or `…/vjournal/summary` (same checks) and then
+  navigates to the export URL; the import posts the picked `File` from disk (`INativeTransfer`). The service worker
+  must not answer an `/api/` navigation with `index.html`.
+- **The 10 GB transport ceiling is not every endpoint's limit.** `ImportSizeLimitMiddleware` holds any endpoint
+  without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
+  photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
+  attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
+  timeouts to the task-ICS, photo and file routes alone.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
@@ -1246,7 +1304,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 115 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 123 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
@@ -1313,8 +1371,9 @@ cleanup to do afterwards.
 single source of truth for demo data — reused by the seeder *and* the tests. They build four
 role-based login users (Admin/Owner/User/Guest; shared password `Odyssey!Demo1`), tags,
 contacts, a 19-account portfolio, per-year budgets, recurring transactions, and exchange
-rates for every currency pair in use (so multi-currency accounts convert — the conversion service
-does no inversion/triangulation, so each directed pair needs a direct rate). Currencies and roles are
+rates for every currency pair in use (so multi-currency accounts convert — demo rates are manual, and
+the conversion service inverts only fetched rows, so each directed pair needs a direct rate; it hops
+through NOK only when both legs exist). Currencies and roles are
 reference data (seeded by the initial migration) and permission claims are reconciled by
 `RoleClaimSeeder`; the demo data references all three and never recreates them.
 

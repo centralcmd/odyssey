@@ -172,8 +172,8 @@ public class ImportExportLimitsLookupTests
 
         Assert.True(result.IsDegraded);
         Assert.Equal(5L * 1024 * 1024, result.TaskIcsMaxImportBytes); // floor, since no LKG was ever cached
-        // An unrelated, well-formed key on the same read is unaffected.
-        Assert.Equal(2000, result.JournalIcsMaxExportRows);
+        // An unrelated, well-formed key on the same read is unaffected: the calendar count still reads its seed.
+        Assert.Equal(2000, result.CalendarIcsMaxExportEvents);
     }
 
     [Fact]

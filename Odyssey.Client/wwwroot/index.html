@@ -28,6 +28,7 @@
     <link rel="stylesheet" href="css/odyssey-components.css" />
     <link rel="stylesheet" href="css/legal.css" />
     <link rel="stylesheet" href="css/weather.css" />
+    <link rel="stylesheet" href="css/news.css" />
     <link rel="stylesheet" href="_content/MudBlazor/MudBlazor.min.css" />
     <link rel="icon" type="image/svg+xml" href="odyssey-logomark.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png" />
@@ -90,6 +91,46 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        };
+        // Browser-native transfers for files larger than the WASM heap can hold (a task export carries its
+        // attached files inline). watch() remembers the File picked or dropped inside a container, from the
+        // input's change event; upload() posts it as multipart straight from disk — the browser streams it, the
+        // bytes never pass through .NET — and returns { status, body }. The File, not a copy, is kept.
+        window.odysseyNativeTransfer = {
+            files: {},
+            watch: function (containerId) {
+                const el = document.getElementById(containerId);
+                if (!el || el.dataset.odsNativeWatch) return;
+                el.dataset.odsNativeWatch = '1';
+                el.addEventListener('change', function (e) {
+                    const t = e.target;
+                    if (t && t.type === 'file') {
+                        window.odysseyNativeTransfer.files[containerId] = t.files && t.files.length ? t.files[0] : null;
+                    }
+                }, true);
+            },
+            has: function (containerId, name, size) {
+                const f = window.odysseyNativeTransfer.files[containerId];
+                return !!f && f.name === name && f.size === size;
+            },
+            upload: async function (containerId, url, fieldName, headerName, token, contentType) {
+                const f = window.odysseyNativeTransfer.files[containerId];
+                if (!f) return { status: 0, body: 'The chosen file is no longer available.' };
+                const part = contentType ? new File([f], f.name, { type: contentType }) : f;
+                const form = new FormData();
+                form.append(fieldName, part, f.name);
+                const headers = {};
+                if (token) headers[headerName] = token;
+                try {
+                    const r = await fetch(url, { method: 'POST', body: form, credentials: 'include', headers: headers });
+                    return { status: r.status, body: await r.text() };
+                } catch (e) {
+                    return { status: 0, body: String((e && e.message) || e) };
+                }
+            },
+            forget: function (containerId) {
+                delete window.odysseyNativeTransfer.files[containerId];
+            }
         };
         window.revokeBlobUrl = function (url) {
             URL.revokeObjectURL(url);
@@ -345,6 +386,45 @@
                 }
                 const h1 = document.querySelector('main h1, h1');
                 if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
+            });
+        };
+        window.odsNewsFocusListStart = function (rootId) {
+            // The Internet pages' "visible target" (issue #473 §6.6): the first card's header, else the visible
+            // empty-state heading (tabindex -1), else the failed load's Retry. Never the sr-only h2, which shows no
+            // focus ring. One frame later, so a list that just re-rendered has its rows in the DOM.
+            requestAnimationFrame(function () {
+                const root = document.getElementById(rootId) || document;
+                const target = root.querySelector('.nw-list .odc-record-trigger') ||
+                    root.querySelector('.nw-empty-h') ||
+                    root.querySelector('.nw-region-problem button');
+                if (target) target.focus();
+            });
+        };
+        window.odsNewsFocusCard = function (cardId, rootId) {
+            // A card's header (its disclosure button), else the visible target when the card is gone.
+            requestAnimationFrame(function () {
+                const card = document.getElementById(cardId);
+                const trigger = card && card.querySelector('.odc-record-trigger');
+                if (trigger) { trigger.focus(); return; }
+                window.odsNewsFocusListStart(rootId);
+            });
+        };
+        window.odsNewsRecoverFocus = function (rootId) {
+            // Focus moves ONLY when a reset removed the focused element (§6.6): a filter change leaves it on its
+            // control. After the list settles, focus that fell to <body> goes to the visible target.
+            requestAnimationFrame(function () {
+                const active = document.activeElement;
+                if (active && active !== document.body && active.isConnected) return;
+                window.odsNewsFocusListStart(rootId);
+            });
+        };
+        window.odsNewsScrollListTop = function (rootId) {
+            // A fresh first page on /news scrolls the list back to its top (issue #473 §3.2.4) — only when the reader
+            // had scrolled past it, so a filter change at the top of the page never jumps.
+            requestAnimationFrame(function () {
+                const root = document.getElementById(rootId);
+                const list = root && root.querySelector('.nw-list');
+                if (list && list.getBoundingClientRect().top < 0) list.scrollIntoView({ block: 'start' });
             });
         };
         window.odsFocusDialogCancel = function () {

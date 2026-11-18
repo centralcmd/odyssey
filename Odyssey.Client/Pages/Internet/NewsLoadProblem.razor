@@ -1,0 +1,48 @@
+@implements IDisposable
+@*
+    NewsLoadProblem — a news region whose FIRST load failed (issue #473 §3.7 Error.Load, §7.1, §7.3; Odyssey Design
+    System · ui_kits/web/News.jsx, NewsRegionError). Shared by the three Internet pages.
+
+      • Busy (503 news-busy): an OdsAlert role=status, "News is busy. Retrying in a moment." with Retry. After the
+        server's Retry-After it retries ONCE by itself. Retry stays enabled the whole time: pressed early it waits out
+        the remaining time, shows "Available in N s" and announces "Retrying in N seconds". While the automatic retry
+        runs, Retry stays in place — aria-disabled, "Retrying…" — so focus is never dropped. A failed automatic retry
+        reads "News is busy. Try again in a moment." and gives Retry back. No snackbar.
+      • Any other failure: "Couldn't load {noun}." · Retry, role=alert.
+
+    The page owns the request: OnRetry is told whether Retry had focus, so a successful retry can move focus to the
+    region's heading or visible target (§6.6) rather than leaving it on a removed button.
+*@
+
+@if (Busy)
+{
+    <div class="nw-region-problem">
+        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">
+            <span class="nw-alert-line">
+                <span>@(_phase == Phase.Failed ? "News is busy. Try again in a moment." : "News is busy. Retrying in a moment.")</span>
+                <OdsButton id="@RetryId" Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh"
+                           AriaDisabled="@(_phase == Phase.Retrying)" OnClick="RetryPressedAsync">
+                    @(_phase == Phase.Retrying ? "Retrying…" : "Retry")
+                </OdsButton>
+                @if (Remaining is { } wait && _phase != Phase.Retrying)
+                {
+                    <span class="nw-muted">@($"Available in {wait} s")</span>
+                }
+            </span>
+        </OdsAlert>
+        <span class="odc-sr-only" role="status" aria-live="polite">@_status</span>
+    </div>
+}
+else
+{
+    <div class="nw-region-problem">
+        <OdsEmptyState Icon="cloud_off" MutedIcon="true" Alert="true">
+            <Title>@($"Couldn’t load {Noun}.")</Title>
+            <Description>Check your connection and try again.</Description>
+            <Action>
+                <OdsButton id="@RetryId" Variant="OdsButtonVariant.Outlined" Icon="refresh"
+                           AriaDisabled="@(_phase == Phase.Retrying)" OnClick="RetryPressedAsync">Retry</OdsButton>
+            </Action>
+        </OdsEmptyState>
+    </div>
+}

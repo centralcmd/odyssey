@@ -57,7 +57,7 @@
                             @foreach (var job in overview.Jobs)
                             {
                                 <BackgroundJobTile @key="job.JobType" Job="job" GeneratedAtUtc="GeneratedAt"
-                                                   Starting="_inFlight.Contains(job.JobType)" />
+                                                   Starting="_inFlight.Contains(job.JobType)" NewsStatus="_newsStatus" />
                             }
                         }
                     </div>
@@ -98,6 +98,12 @@
                         {
                             <h2 class="bgj-h2">File move</h2>
                             <BackfillMoveStatus View="BackgroundJobPresentation.FileMoveView(files)" GeneratedAtUtc="GeneratedAt" />
+                        }
+                        @if (_newsStatus is { } newsStatus)
+                        {
+                            @* GET /api/news-status, its own request, only with file-storage.read (issue #473 §3.6). *@
+                            <h2 class="bgj-h2">News</h2>
+                            <NewsStatusPanel Status="newsStatus" />
                         }
                         @if (WorkerHealthLines(loaded.WorkerHealth) is { Count: > 0 } lines)
                         {

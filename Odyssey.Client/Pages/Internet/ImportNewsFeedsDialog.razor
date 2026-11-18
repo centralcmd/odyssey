@@ -1,0 +1,95 @@
+@using Odyssey.Dtos.Internet
+@*
+    ImportNewsFeedsDialog — the OPML import on the Feeds page (issue #509 §3.2–§3.4, amendments v4 and v5; Odyssey
+    Design System · ui_kits/web/ImportNewsFeedsModal.jsx, components/DialogImportNewsFeeds). A sibling of
+    ImportTasksDialog: the same shell and the shared cal-imp-* / cp-imp-busy* classes, plus two news.css rules that let
+    a report row WRAP (.nw-opml-row) and a group list grow without a scroll region (.nw-opml-list).
+
+    States: Compose (with a field error: ComposeInvalid), Importing, Rejected, Stopped, Result.
+      • Importing is NOT dismissible (OdsModal Dismissible=false): no Escape, no scrim, no close button; Cancel is
+        hidden; Import keeps focus as Loading + AriaDisabled. Only the picker block is inert, so the busy block, the
+        alerts and the announcer stay in the accessibility tree. After 30 s, Stop waiting cancels the request.
+      • Rejected and Stopped show an alert ABOVE the kept file, with focus on Import.
+      • Result is the report: three tiles, disclosure groups whose counts are the server's counters, and the notes.
+
+    Every report value is TEXT: titles, tag names and the file name in <bdi>, URLs in <bdi dir="ltr">, never a link and
+    never markup, and a URL's user-info is masked. No report value leaves the dialog; the announcement is counts only.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Dismissible="@(!Importing)"
+          Icon="upload_file" RequiredLegend="false" ReturnFocusToId="@ReturnFocusToId"
+          Title="@TitleContent" Subtitle="@(_phase == Phase.Result ? null : SubtitleContent)" Class="cal-imp-dialog">
+    <ChildContent>
+        @* The dialog's announcer, mounted from its first render (§6.5). *@
+        <OdsLiveAnnouncer @ref="_announcer" />
+
+        @if (_phase == Phase.Result && _result is { } result)
+        {
+            <ImportNewsFeedsReport Result="result" FileName="@_fileName" />
+        }
+        else
+        {
+            <div class="cal-imp-form">
+                @if (AlertText is { } alert)
+                {
+                    <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
+                }
+
+                @if (Importing)
+                {
+                    <div class="cp-imp-busy nw-opml-busy">
+                        <OdsSpinner Decorative="true" />
+                        <div>
+                            <div class="cp-imp-busy-l">@ImportingText</div>
+                            <div class="cp-imp-busy-s">Checking each address and matching tags.</div>
+                        </div>
+                    </div>
+                }
+
+                <div class="nw-opml-picker" inert="@Importing">
+                    <OdsFieldShell Label="OPML file">
+                        <OdsFileUpload Id="@PickerId" Files="_files" FilesChanged="OnFilesChanged"
+                                       Multiple="false" ShowKinds="false" Compact="true"
+                                       Accept=".opml,.xml,text/x-opml,text/xml,application/xml"
+                                       Error="@_fieldError" Hint="@Hint" />
+                    </OdsFieldShell>
+                </div>
+
+                <div class="cal-imp-note">
+                    <span class="material-icons" aria-hidden="true">info</span>
+                    <span>Folders and categories become tags. Feeds you already follow are left unchanged.</span>
+                </div>
+            </div>
+        }
+    </ChildContent>
+    <Footer>
+        <div class="cal-imp-footer">
+            @if (_phase == Phase.Result)
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="ImportAnother">Import another file</OdsButton>
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="CloseAsync">Done</OdsButton>
+            }
+            else
+            {
+                @if (!Importing)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync" data-dialog-cancel="true">Cancel</OdsButton>
+                }
+                else if (_slow)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="hourglass_disabled" OnClick="StopWaitingAsync">Stop waiting</OdsButton>
+                }
+                <span class="cal-imp-footer-spacer"></span>
+                <OdsButton id="@ImportButtonId" Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                           Loading="Importing" AriaDisabled="Importing" OnClick="SubmitAsync">Import</OdsButton>
+            }
+        </div>
+    </Footer>
+</OdsModal>
+
+@code {
+    private RenderFragment TitleContent => @<text>Import feeds</text>;
+
+    private RenderFragment SubtitleContent => @<text>Add feeds from an OPML file exported by Odyssey or another feed reader. Feeds you already follow are skipped, and new ones start fetching on the next round.</text>;
+}

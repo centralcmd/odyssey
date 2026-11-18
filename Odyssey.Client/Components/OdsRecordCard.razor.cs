@@ -58,6 +58,12 @@ public partial class OdsRecordCard
     /// <summary>The record's name — the one thing a user scans for.</summary>
     [Parameter, EditorRequired] public string? Name { get; set; }
 
+    /// <summary>
+    /// The BCP 47 language of <see cref="Name"/> when it is someone else's text (a news feed's title, issue #473
+    /// §6.8); <c>null</c> sets no <c>lang</c>, so every existing card renders as before.
+    /// </summary>
+    [Parameter] public string? NameLang { get; set; }
+
     /// <summary>Status / problem chips beside the name.</summary>
     [Parameter] public RenderFragment? Chips { get; set; }
 

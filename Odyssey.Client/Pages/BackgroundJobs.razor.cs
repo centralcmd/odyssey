@@ -44,6 +44,8 @@ public partial class BackgroundJobs
 
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
 
+    [Inject] private INewsApiClient News { get; set; } = default!;
+
     /// <summary><c>?job=</c> — repeatable; each value passes the allow-list (F13, FS3, S-N4).</summary>
     [SupplyParameterFromQuery(Name = "job")]
     public string[]? JobQuery { get; set; }
@@ -58,6 +60,12 @@ public partial class BackgroundJobs
     private JobRunAnnouncements _announce = default!;
 
     private bool _canRun;
+
+    // ── News (issue #473 §3.6) ─────────────────────────────────────────────────────────────────────
+    // GET /api/news-status, read only by a file-storage.read holder. A failure shows nothing: the panel and the news
+    // job's quota lines are absent rather than guessed, since the client holds no quota of its own.
+    private bool _canReadNewsStatus;
+    private Odyssey.Dtos.Internet.NewsStatus? _newsStatus;
 
     // ── Overview ───────────────────────────────────────────────────────────────────────────────────
     private BackgroundJobsOverview? _overview;
@@ -95,9 +103,10 @@ public partial class BackgroundJobs
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canRun = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
+        _canReadNewsStatus = user.HasPermission(PermissionClaims.FileStorageRead);
 
         await RestoreFiltersAsync();
-        await Task.WhenAll(LoadOverviewAsync(), LoadRunsAsync(RunsAnnouncement.None));
+        await Task.WhenAll(LoadOverviewAsync(), LoadRunsAsync(RunsAnnouncement.None), LoadNewsStatusAsync());
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -616,7 +625,22 @@ public partial class BackgroundJobs
     }
 
     // The overview and the runs, re-read without announcing a count.
-    private Task ReloadAsync() => Task.WhenAll(LoadOverviewAsync(), LoadRunsAsync(RunsAnnouncement.None));
+    private Task ReloadAsync() => Task.WhenAll(LoadOverviewAsync(), LoadRunsAsync(RunsAnnouncement.None), LoadNewsStatusAsync());
+
+    private async Task LoadNewsStatusAsync()
+    {
+        if (!_canReadNewsStatus)
+        {
+            return;
+        }
+
+        var result = await News.GetStatusAsync(_lifetime.Token);
+        if (result.IsSuccess)
+        {
+            _newsStatus = result.Value;
+            StateHasChanged();
+        }
+    }
 
     private async Task RefreshAsync()
     {
@@ -624,7 +648,7 @@ public partial class BackgroundJobs
             _details.Remove(id);
 
         _announce.Say("Background jobs refreshed", AnnouncementKind.Refresh);
-        await Task.WhenAll(LoadOverviewAsync(announceChanges: true), LoadRunsAsync(RunsAnnouncement.None));
+        await Task.WhenAll(LoadOverviewAsync(announceChanges: true), LoadRunsAsync(RunsAnnouncement.None), LoadNewsStatusAsync());
     }
 
     // ── Follow ─────────────────────────────────────────────────────────────────────────────────────

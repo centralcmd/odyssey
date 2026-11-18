@@ -10,3 +10,9 @@
 @media (max-width: 600px) {
   .bgj-facts { grid-template-columns: 1fr; }
 }
+/* The news job's quota warning lines (Odyssey Design System · background-jobs.css, .bgj-warns; issue #473 §3.6). */
+.bgj-warns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.bgj-warn { display: flex; align-items: flex-start; gap: var(--space-2); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-warn .material-icons { font-size: var(--icon-sm); color: var(--pending-text); margin-top: var(--space-1); }
+.bgj-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
+.bgj-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }

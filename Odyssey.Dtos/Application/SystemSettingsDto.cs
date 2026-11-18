@@ -277,6 +277,41 @@ public sealed record SystemSettingsDto
 
     public int InstrumentPriceSyncHistoryDays { get; set; }
 
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    public int NewsDefaultFetchIntervalMinutes { get; set; }
+
+    public int NewsMaxFeeds { get; set; }
+
+    public int NewsImageMaxPerArticle { get; set; }
+
+    public int NewsImageMaxSizeKb { get; set; }
+
+    /// <summary>
+    /// Server-computed ceiling on <see cref="NewsImageMaxSizeKb"/>: <c>NewsImageSizeCeiling.Kb</c> of
+    /// <c>FileStorage:MaxFileSizeBytes</c>, never below the setting's floor. The store refuses a larger write than
+    /// that limit, so a higher setting would do nothing; the control bounds itself by
+    /// <c>min(range max, this)</c>.
+    /// </summary>
+    public int NewsImageMaxSizeKbCeiling { get; set; }
+
+    public int NewsImageStoreMaxGiB { get; set; }
+
+    public int NewsTextStoreMaxGiB { get; set; }
+
+    public int NewsFeedMaxArticlesPerDay { get; set; }
+
+    public int NewsFeedMaxImageMbPerDay { get; set; }
+
+    /// <summary>Comma-separated <c>host[:port]</c> grants; empty blocks every private address.</summary>
+    public string NewsPrivateHostAllowList { get; set; } = string.Empty;
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    public int NewsOpmlMaxImportMegabytes { get; set; }
+
+    public int NewsOpmlMaxImportEntries { get; set; }
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>

@@ -381,7 +381,15 @@ public partial class Settings : IDisposable
         // pipeline. Drives the "lower only" marker and the range sentence. Stated rather than inferred
         // from MaxFrom: a published bound is not by itself a one-way door — the aggregate calendar caps
         // and the metadata read size publish theirs only so the control can bound itself.
-        bool LowerOnly = false);
+        bool LowerOnly = false,
+        // A client-authored advisory the row ALWAYS carries (the design system's `adviseAlways`, issue
+        // #473 §3.6): the News allow-list's "never list internal service names". It sits below every
+        // server-authored message, so a projection fault on the row still outranks it.
+        string? StandingAdvisory = null,
+        // A row that is NOT RENDERED for a caller who cannot edit it, rather than shown read-only (issue
+        // #473 §3.6: the private-host allow-list). Its Write still sends null for that caller, as every
+        // row the caller cannot edit does.
+        bool HideWithoutClaim = false);
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
@@ -713,6 +721,108 @@ public partial class Settings : IDisposable
                 Rule: WeatherRules.ValidateDefaultPointId,
                 OptionsFrom: p => p.WeatherDefaultOptions()),
         ]),
+        // ── News (issue #473 §3.6, §5.4; backend #470 §11.1). Eight caps on the ordinary claim and the
+        // private-host allow-list on the security one — the list decides which addresses on the
+        // household's own network the worker may fetch from, so it is not rendered at all for a caller
+        // who cannot change it. Every bound is the shared SystemSettingsBounds pair; the image size is
+        // also bounded by the server-published ceiling (the object store's file-size limit).
+        new("News", Icons.Material.Filled.RssFeed,
+        [
+            new("newsDefaultFetchIntervalMinutes", "update", "Default check interval",
+                "How often a feed with no interval of its own is checked for new articles.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin, Max: SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax,
+                Field: nameof(SystemSettingsUpdate.NewsDefaultFetchIntervalMinutes),
+                Load: (p, dto) => p.SetIntLoaded("newsDefaultFetchIntervalMinutes", dto.NewsDefaultFetchIntervalMinutes),
+                Write: (p, req) => req.NewsDefaultFetchIntervalMinutes = p.IntRequest("newsDefaultFetchIntervalMinutes"),
+                Unit: "min"),
+            new("newsMaxFeeds", "rss_feed", "Maximum feeds",
+                "How many feeds the household may subscribe to. Subscribing beyond it is refused; lowering it "
+                + "keeps every existing feed.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsMaxFeedsMin, Max: SystemSettingsBounds.NewsMaxFeedsMax,
+                Field: nameof(SystemSettingsUpdate.NewsMaxFeeds),
+                Load: (p, dto) => p.SetIntLoaded("newsMaxFeeds", dto.NewsMaxFeeds),
+                Write: (p, req) => req.NewsMaxFeeds = p.IntRequest("newsMaxFeeds")),
+            new("newsImageMaxPerArticle", "image", "Images per article",
+                "How many of an article's images are downloaded. 0 stores no images at all.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageMaxPerArticleMin, Max: SystemSettingsBounds.NewsImageMaxPerArticleMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageMaxPerArticle),
+                Load: (p, dto) => p.SetIntLoaded("newsImageMaxPerArticle", dto.NewsImageMaxPerArticle),
+                Write: (p, req) => req.NewsImageMaxPerArticle = p.IntRequest("newsImageMaxPerArticle")),
+            new("newsImageMaxSizeKb", "photo_size_select_large", "Image size limit",
+                "The largest image a feed may bring; a larger one is skipped. At most " + MaxToken
+                + " KB on this deployment, the file store's own limit.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageMaxSizeKbMin, Max: SystemSettingsBounds.NewsImageMaxSizeKbMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageMaxSizeKb),
+                Load: (p, dto) => p.SetIntLoaded("newsImageMaxSizeKb", dto.NewsImageMaxSizeKb),
+                Write: (p, req) => req.NewsImageMaxSizeKb = p.IntRequest("newsImageMaxSizeKb"),
+                MaxFrom: dto => Math.Min(SystemSettingsBounds.NewsImageMaxSizeKbMax, dto.NewsImageMaxSizeKbCeiling),
+                Unit: "KB"),
+            new("newsImageStoreMaxGiB", "photo_library", "Image storage quota",
+                "How much disk the news images may use in all. At the quota, new images are skipped and "
+                + "articles keep arriving.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageStoreMaxGiBMin, Max: SystemSettingsBounds.NewsImageStoreMaxGiBMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageStoreMaxGiB),
+                Load: (p, dto) => p.SetIntLoaded("newsImageStoreMaxGiB", dto.NewsImageStoreMaxGiB),
+                Write: (p, req) => req.NewsImageStoreMaxGiB = p.IntRequest("newsImageStoreMaxGiB"),
+                Unit: "GiB"),
+            new("newsTextStoreMaxGiB", "article", "Text storage quota",
+                "How much disk the articles' text and fetched sources may use in all. At the quota, feeds stop "
+                + "storing new articles until it is raised.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsTextStoreMaxGiBMin, Max: SystemSettingsBounds.NewsTextStoreMaxGiBMax,
+                Field: nameof(SystemSettingsUpdate.NewsTextStoreMaxGiB),
+                Load: (p, dto) => p.SetIntLoaded("newsTextStoreMaxGiB", dto.NewsTextStoreMaxGiB),
+                Write: (p, req) => req.NewsTextStoreMaxGiB = p.IntRequest("newsTextStoreMaxGiB"),
+                Unit: "GiB"),
+            new("newsFeedMaxArticlesPerDay", "today", "Articles per feed per day",
+                "How many new articles one feed may store in a UTC day. Beyond it the feed waits until tomorrow.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin, Max: SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax,
+                Field: nameof(SystemSettingsUpdate.NewsFeedMaxArticlesPerDay),
+                Load: (p, dto) => p.SetIntLoaded("newsFeedMaxArticlesPerDay", dto.NewsFeedMaxArticlesPerDay),
+                Write: (p, req) => req.NewsFeedMaxArticlesPerDay = p.IntRequest("newsFeedMaxArticlesPerDay")),
+            new("newsFeedMaxImageMbPerDay", "data_usage", "Image MB per feed per day",
+                "How much image data one feed may download in a UTC day. Beyond it, its images wait until tomorrow.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, Max: SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax,
+                Field: nameof(SystemSettingsUpdate.NewsFeedMaxImageMbPerDay),
+                Load: (p, dto) => p.SetIntLoaded("newsFeedMaxImageMbPerDay", dto.NewsFeedMaxImageMbPerDay),
+                Write: (p, req) => req.NewsFeedMaxImageMbPerDay = p.IntRequest("newsFeedMaxImageMbPerDay"),
+                Unit: "MB"),
+            new(NewsAllowListKey, "lan", "Private hosts allowed",
+                "Hosts on your own network the worker may fetch feeds from, as host or host:port, separated by "
+                + "commas. Empty blocks every private address. Every change is written to the audit log.",
+                SettingClaim.Security, SettingControl.Text, Max: NewsPrivateHostAllowListRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.NewsPrivateHostAllowList),
+                Load: (p, dto) => p.SetTextLoaded(NewsAllowListKey, dto.NewsPrivateHostAllowList),
+                Write: (p, req) => req.NewsPrivateHostAllowList = p.TextRequest(NewsAllowListKey),
+                Placeholder: "nas.lan, 192.168.1.20:8080",
+                Rule: NewsPrivateHostAllowListRule.Validate,
+                AllowEmpty: true,
+                StandingAdvisory: NewsAllowListAdvisory,
+                HideWithoutClaim: true),
+            // The OPML import caps close the group (issue #509 §4.2, AC 20): the size cap under the security claim like
+            // the other import size caps, the entry cap a count cap whose ceiling is its shipped default.
+            new("newsOpmlMaxImportMegabytes", "sd_storage", "Maximum OPML import file size",
+                "Largest OPML file the Feeds page accepts for import. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportMegabytes", dto.NewsOpmlMaxImportMegabytes),
+                Write: (p, req) => req.NewsOpmlMaxImportMegabytes = p.IntRequest("newsOpmlMaxImportMegabytes")),
+            new("newsOpmlMaxImportEntries", "file_upload", "Maximum feeds per OPML import",
+                "Most distinct feeds one OPML file may list. Feeds beyond the feed limit are reported, not added.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportEntriesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportEntries),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportEntries", dto.NewsOpmlMaxImportEntries),
+                Write: (p, req) => req.NewsOpmlMaxImportEntries = p.IntRequest("newsOpmlMaxImportEntries")),
+        ]),
         // ── Per-request caps (issue #421 Wave 3) ──────────────────────────────────────────────────
         // These were invisible before: the Contracts and PhotoLibrary config sections had no
         // appsettings entry at all, and the two journal caps were `private const` in their services.
@@ -845,7 +955,8 @@ public partial class Settings : IDisposable
             new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload file size",
                 "Largest single file accepted by any upload surface. Cannot be raised above the request-size "
                 + "ceiling the server starts with.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, Max: SystemSettingsBounds.FileStorageMaxUploadMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("fileStorageMaxUploadMegabytes", dto.FileStorageMaxUploadMegabytes),
                 Write: (p, req) => req.FileStorageMaxUploadMegabytes = p.IntRequest("fileStorageMaxUploadMegabytes"),
@@ -990,14 +1101,17 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
                 Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxImportTasks", dto.TaskIcsMaxImportTasks), Write: (p, req) => req.TaskIcsMaxImportTasks = p.CapacityRequest("taskIcsMaxImportTasks")),
             new("taskIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files included — they travel inside "
+                + "it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
             new("taskIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files included. It cannot usefully exceed the "
+                + "reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxImportMegabytes", dto.TaskIcsMaxImportMegabytes), Write: (p, req) => req.TaskIcsMaxImportMegabytes = p.IntRequest("taskIcsMaxImportMegabytes")),
         ],
@@ -1015,14 +1129,17 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
                 Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxImportEntries", dto.JournalIcsMaxImportEntries), Write: (p, req) => req.JournalIcsMaxImportEntries = p.CapacityRequest("journalIcsMaxImportEntries")),
             new("journalIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files and photos included — they "
+                + "travel inside it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxExportMegabytes", dto.JournalIcsMaxExportMegabytes), Write: (p, req) => req.JournalIcsMaxExportMegabytes = p.IntRequest("journalIcsMaxExportMegabytes")),
             new("journalIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files and photos included. It cannot usefully "
+                + "exceed the reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxImportMegabytes", dto.JournalIcsMaxImportMegabytes), Write: (p, req) => req.JournalIcsMaxImportMegabytes = p.IntRequest("journalIcsMaxImportMegabytes")),
         ],
@@ -1189,12 +1306,18 @@ public partial class Settings : IDisposable
     /// <summary>Replaced in the help line by the saved processor name (issue #434 §8).</summary>
     internal const string ProcessorToken = "{processor}";
 
+    /// <summary>Replaced in a row's description by its effective maximum (<see cref="MaxFor"/>).</summary>
+    internal const string MaxToken = "{max}";
+
     internal const string PromptPlaceholder = "Optional. For example: Lines starting with VIPPS* are Vipps payments.";
 
     private bool IsRowDisabled(SettingItem item) =>
         !Editable(item.Claim) || _phase != Phase.Ready || _isSaving;
 
     private bool Matches(SettingItem item, string group) => Matches(item, group, _search);
+
+    /// <summary>A <see cref="SettingItem.HideWithoutClaim"/> row exists only for a caller who can edit it.</summary>
+    private bool Shown(SettingItem item) => !item.HideWithoutClaim || Editable(item.Claim);
 
     /// <summary>
     /// The search predicate, as a pure function so <see cref="FaultSummaryText"/> can count the rows a
@@ -1210,7 +1333,7 @@ public partial class Settings : IDisposable
 
     private IReadOnlyList<SettingSection> VisibleSections =>
         Sections
-            .Select(s => s with { Items = s.Items.Where(i => Matches(i, s.Group)).ToList() })
+            .Select(s => s with { Items = s.Items.Where(i => Shown(i) && Matches(i, s.Group)).ToList() })
             // A section survives on its CREDENTIALS alone (issue #445). Searching "SMTP password"
             // filters away every plaintext row in Email, and dropping the section there would hide the
             // one row that matched — the search would answer "no settings match" for a term naming a
@@ -1796,6 +1919,9 @@ public partial class Settings : IDisposable
         description = description.Replace(ProcessorToken,
             string.IsNullOrWhiteSpace(_dto?.FileAnalysisProcessor) ? "the analysis provider" : _dto!.FileAnalysisProcessor,
             StringComparison.Ordinal);
+        // A row bounded by a server-published ceiling names the EFFECTIVE maximum, never a literal that
+        // would go stale the moment the deployment's file-size limit changes (issue #473 §5.4).
+        description = description.Replace(MaxToken, MaxFor(item).ToString("N0", System.Globalization.CultureInfo.CurrentCulture), StringComparison.Ordinal);
         var parts = new List<string>(3) { description };
 
         // The marker in the outline says WHICH WAY; the range belongs here, where there is room for
@@ -2146,6 +2272,11 @@ public partial class Settings : IDisposable
         if (item.Key == ClientBaseUrlKey && OriginMismatchHint is { } hint)
         {
             return hint;
+        }
+
+        if (item.StandingAdvisory is { } standing)
+        {
+            return standing;
         }
 
         // The design system's on-row warning: while one of the three clearing rows is dirty in its
@@ -2881,9 +3012,20 @@ public partial class Settings : IDisposable
             return;
         }
 
+        // The News allow-list gate (issue #473 §3.6): a change to the hosts the worker may reach on the
+        // household's network is confirmed with the added and removed hosts listed, before anything is sent.
+        // Checked after the credential gate and before either confirmation is consumed, so a save that trips
+        // both asks twice and sends once.
+        if (!_allowListConfirmed && PendingAllowListChange is { } allowListChange)
+        {
+            OpenAllowListConfirmation(allowListChange);
+            return;
+        }
+
         // One-shot: consumed here so a later save that no longer trips a trigger is not silently
         // pre-confirmed, and so the same confirmation cannot cover a second destructive edit.
         _clearConfirmed = false;
+        _allowListConfirmed = false;
 
         _isSaving = true;
         _justSaved = false;

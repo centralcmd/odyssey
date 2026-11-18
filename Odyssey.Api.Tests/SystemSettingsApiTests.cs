@@ -123,14 +123,16 @@ public class SystemSettingsApiTests
         Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
         Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
         Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.TaskIcsMaxExportTasks);
-        Assert.Equal(2000, dto.TaskIcsMaxImportTasks);
-        Assert.Equal(64, dto.TaskIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.TaskIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.JournalIcsMaxExportRows);
-        Assert.Equal(2000, dto.JournalIcsMaxImportEntries);
-        Assert.Equal(64, dto.JournalIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.JournalIcsMaxExportMegabytes);
+        // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
+        Assert.Null(dto.TaskIcsMaxExportTasks);
+        Assert.Null(dto.TaskIcsMaxImportTasks);
+        Assert.Equal(10240, dto.TaskIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.TaskIcsMaxExportMegabytes);
+        // The journal surface follows it: entries carry their files and photos inline too.
+        Assert.Null(dto.JournalIcsMaxExportRows);
+        Assert.Null(dto.JournalIcsMaxImportEntries);
+        Assert.Equal(10240, dto.JournalIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.JournalIcsMaxExportMegabytes);
     }
 
     [Fact]
@@ -163,8 +165,9 @@ public class SystemSettingsApiTests
         // smart-tag cap (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync
         // start date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
         // for the background-job run retention (issue #409), then -1 for the retired match vocabulary cap
-        // and +2 for the extraction and match prompt guidance (issue #433).
-        Assert.Equal(77, rows.Count);
+        // and +2 for the extraction and match prompt guidance (issue #433), then +3 for the instrument-price
+        // settings (issue #446), then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508).
+        Assert.Equal(88, rows.Count);
         Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(k => k), rows.Select(r => r.Key).OrderBy(k => k));
     }
 

@@ -325,8 +325,34 @@ which is exactly why the setting is **tighten-only**. `PUT /api/system-settings`
 the transport ceiling with a `400` naming it, rather than accepting a number the transport would then
 silently refuse.
 
-Both proxies currently sit at `65MB` for a `67108864`-byte (64 MB) ceiling plus 1 MB of envelope
-headroom. Lowering the cap needs no deploy-time change at all.
+The large-file routes — `/api/api/tasks/ics…`, the journal `…/vjournal` routes (`/api/api/journal-entries/vjournal…`
+and `/api/api/journal-entries/{id}/vjournal…`), `/api/api/photos…` and `/api/api/files…` as the browser
+sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
+behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
+envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
+multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
+default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task or journal export can carry
+its attached files (and a journal's photos) inline and come back in through the matching import; the admin upload cap still seeds at 64 MB, and it also
+bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
+
+Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
+accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to
+the admin upload cap plus 1 MiB. Only the import and upload endpoints, which set their own per-request cap, reach
+further.
+
+> **Upgrading from a release before this change.** The migration raises the task import/export defaults to
+> 10240 MB and unlimited counts (only where no administrator saved a value). A deployment whose `.env` still pins
+> `FILE_UPLOAD_MAX_BYTES=67108864`, or whose own reverse proxy still caps bodies at 65 MB, keeps the old ceiling:
+> a large task import then fails at the proxy with an HTML `413` although the settings page offers 10 GB. Raise
+> both (outermost first), or lower the task import/export sizes at `/settings` to match.
+
+A task import is spooled twice while it is processed — once by the multipart reader, once as the decoded
+attachments — so a 10 GB import needs roughly 20 GB of free space for it. A photo upload is spooled once by the
+multipart reader. All of it goes to `ASPNETCORE_TEMP`, which the API image sets to `/var/odyssey/import-spool`,
+the `import_spool` named volume in `docker-compose.yml` — not `/tmp`, which the production file makes a RAM-backed
+tmpfs. The volume is scratch: nothing in it outlives a request (a decoded attachment a crashed process left behind
+is swept by the next task import after a day), and it needs no backup. On an existing deployment Docker creates it
+app-owned from the image on first start.
 
 > `FileStorage:MaxFileSizeBytes` is **not** retired — it stays as the transport ceiling above, read by
 > the API at startup. The admin-editable cap is a separate value that seeds at 64 MB, so if you raise
@@ -1028,6 +1054,10 @@ alias uniqueness is checked **accent-insensitively**, to agree with the database
 invariant globalization, which is the alpine runtime's default. The API asserts this at startup and
 refuses to serve rather than accept an alias the index will then reject. If you build your own image,
 keep both.
+
+Since the news reader (issue #470) the **worker** image installs ICU and pins the variable too: both hosts compute a
+feed's URL key, which maps an IDN host to punycode through ICU, and they must agree. The worker asserts it at startup
+with the same guard.
 
 ## Household locations: what leaves the deployment, and how to erase one
 
@@ -2116,6 +2146,104 @@ original](#erasure-of-a-photo-original). The file name on disk is the sanitized 
 so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
 must be in every backup, copied after the database dump and within the grace (see [Backup and
 restore](#backup-and-restore)).
+
+## News reader: feeds, what leaves the deployment, and the worker's network
+
+The news reader (issue #470) subscribes to RSS, Atom, RDF and JSON feeds. **Only the worker fetches**: the API makes
+no outbound request for news. The worker's news job runs every 30 seconds on every replica — purge, claim due feeds,
+fetch, ingest, images, and an hourly maintenance pass — and coordinates replicas through per-feed leases on the
+`NewsFeedFetchStates` rows and the shared `NewsHostThrottle` rows, never through process state. It appears on
+`/background-jobs` as **News feeds** (`JobType.NewsFeedFetch = 9`), gated on `news-feeds.update`.
+
+### Release note
+
+- **A new storage binding.** The `NewsArticles` feature keeps every article's source item, plain text and images on the
+  file store, under `news/<feedId>/<bucket>/<articleId>/<storedObjectId>.<ext>` (opaque names: no publisher or user text
+  is ever in a path). Both compose files' base and the AppHost bind it to `primary`. **An operator with their own
+  bindings must add `FileStorage__Bindings__NewsArticles` to both `api` and `worker`**, or startup check B1 fails with
+  `UnboundFeature`.
+- **The worker image gains ICU** (`icu-libs`, `icu-data-full`) and asserts it at startup (`GlobalizationGuard`, now in
+  `Odyssey.Core` and called by both hosts): the API and the worker must map an IDN feed host to the same punycode key.
+- **The compose network topology changed** — see *Network topology* below. If you run your own compose overrides that
+  attach networks, read it before upgrading.
+- **The worker gets `stop_grace_period: 30s`**, so a deploy stops its fetches cleanly (leases cleared, nothing counted
+  as a crash). Keep it if you write your own compose file.
+- **Nine settings** under **`/settings` → News** (`NewsDefaultFetchIntervalMinutes`, `NewsMaxFeeds`, the image and text
+  quotas and caps, and `NewsPrivateHostAllowList`, which needs `system-settings.security.update`). They reach the worker
+  within the 30 s settings TTL; the allow-list is read uncached, so a revoked grant binds on the next fetch.
+- **Rolling back** past this release drops every news table (the migration's `Down()` deletes the job's run-log rows
+  first). The news `StoredObjects` rows remain and log the B4 Critical ("a live row of an unknown feature"). Delete every
+  feed and wait out the deletion grace (168 h by default) **before** rolling back, so the files are gone too.
+
+### What leaves the deployment
+
+Outbound `GET`s go only to the feed hosts users subscribe to and the image hosts those feeds reference. The User-Agent
+is fixed and anonymous (`OdysseyNewsReader/1.0`); there are no cookies, no proxy (`HTTPS_PROXY` is never consulted), and
+the browser never contacts a publisher. Every connection is vetted at connect time: global unicast only, ports 80 and
+443, redirects followed manually (at most five, each re-checked), at least 2 s between requests to one host across all
+replicas. A private or loopback feed host is opened only by an entry in `NewsPrivateHostAllowList`, and only for that
+feed's own host; the hard-denied ranges (metadata endpoints, link-local, `0/8`, `240/4` and the rest) are never opened.
+
+Feed URLs, including any token in a query string, are stored in plain text in MariaDB and its backups (an accepted
+residual). They are never shown to a caller without `news-feeds.update` and are logged by host only. A private feed's
+item links and image URLs can carry tokens too; the stored source files keep them.
+
+### Storage, quotas and headroom
+
+- **Headroom.** News writes stop at the upload threshold **plus 1 GiB** of free space on the volume, so news always stops
+  before user uploads do. A refused write is a per-feed transient skip and the job reports `StorageUnavailable`.
+- **Text and source quota** (`NewsTextStoreMaxGiB`, 20 GiB by default). When it is reached no new article is stored,
+  affected feeds report health `QuotaReached` with reason `TextQuota`, and the job card shows a warning line — it is
+  **not** a held state. Nothing is deleted. To resume, raise the setting; the hourly maintenance pass clears the reason.
+- **Image quota** (`NewsImageStoreMaxGiB`, 50 GiB) and the daily caps defer images rather than failing them; raising the
+  quota makes deferred images due again.
+- **Inodes.** One folder per article holds 2–7 files. Size a dedicated volume's inode count for that, not only its bytes.
+- The per-feed counters and the storage totals are relative increments, recounted hourly; a drift is corrected and logged
+  as a Warning.
+
+### Network topology
+
+`docker-compose.yml` now declares four networks of its own (issue #470 §11.3):
+
+| Network | Internal | Members |
+|---|---|---|
+| `db_api` | yes | `mariadb`, `api` |
+| `db_worker` | yes | `mariadb`, `worker` |
+| `db_migrations` | yes | `mariadb`, `migrations` |
+| `egress` | no | `worker` only |
+
+`api` and `client` stay on `default` for user traffic (Caddy, the client's `/api/` proxy, outbound mail). The dev stack
+also keeps `mariadb` on `default`, solely so its loopback port `3307` can be published; the production overlay drops it
+(`networks: !override`, Compose 2.24.4 or later — the same version `!reset` already needs).
+
+**What it protects.** The worker runs third-party parsers over whatever publishers send. On exactly `db_worker` and
+`egress`, it shares no network with `api` or `client` and cannot reach either directly, and the database is reachable
+from each consumer over its own internal network only.
+
+**What it does not.** `egress` is an ordinary outbound network: the control against every other destination — the
+host's own LAN, cloud metadata, other containers you publish — is still the news egress address policy above, not this
+split. It is defence in depth. The worker still holds the Data Protection key ring read-only (see *Two containers hold
+the key ring*). **If you add networks of your own, never attach the worker to one the `api` is on.**
+
+### OPML import and export (issue #508)
+
+The Feeds page can export the feed list as OPML 2.0 (`GET /api/news-feeds/opml`, or `POST …/opml/export` for chosen
+feeds) and import an OPML file (`POST /api/news-feeds/opml`). The import makes **no outbound request** — no fetch and no
+DNS lookup; the worker fetches the new feeds on its normal schedule, at most four at a time under the per-host throttle,
+so a large import is fetched over its first hours rather than in one burst. Two operator-facing facts:
+
+- **The proxies cap the upload too.** `NewsOpmlMaxImportMegabytes` (**`/settings` → News**, 64 MB by default, the
+  security claim like every import size cap) is enforced by the API, but under Compose the client container's nginx
+  sets `client_max_body_size 65m` (`Odyssey.Client/nginx/templates/default.conf.template`) and Caddy's `request_body`
+  matches it, so a value above 64 MB has no effect there until both are raised — the same chain as *Upload size* above.
+  `NewsOpmlMaxImportEntries` (100,000, the ordinary claim) can only be lowered.
+- **One OPML import at a time is enforced per API process**, not deployment-wide, and the upload must arrive at
+  64 KiB/s or faster after a 10 s grace (HTTP/1.1; on HTTP/2 the server-wide rate applies). Odyssey runs one API
+  replica; if the API ever scales out, the feed-limit bound under concurrent imports holds per replica, not globally.
+
+An export carries every feed's fetch URL, so it is gated on `news-feeds.update`, the claim that already reads them, and
+is sent `Cache-Control: no-store`. A downloaded file keeps any token a private feed URL embeds after the caller's claim
+is revoked — an accepted residual for a single-household instance.
 
 ## Security checklist
 

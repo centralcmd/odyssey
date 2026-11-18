@@ -1,0 +1,88 @@
+@*
+    OdsImageCarousel — a record's images one at a time (Odyssey Design System · components/ImageCarousel;
+    issue #473 §6.1, AC 9). The WAI-ARIA APG carousel, basic variant:
+
+      • role="group" + aria-roledescription="carousel" + aria-label — a group, not a landmark. Each
+        slide is role="group" + aria-roledescription="slide", "Image 2 of 5"; the others are hidden.
+      • Nothing advances on its own: there is no timer.
+      • "Previous image" / "Next image" (OdsIconButton, 40 × 40, `--space-10`). At an end the button is aria-disabled
+        (never disabled, so focus stays) and a press says "First image" / "Last image"; no wrap.
+        ArrowLeft / ArrowRight work while focus is on either button. Focus never moves on its own.
+      • The "2 / 5" counter is aria-hidden; a polite region inside the carousel speaks, only on a user
+        action: "Image 3 of 5" and nothing more. The alt is read from the image, never spoken twice.
+      • ONE frame ratio for the whole carousel: the first image's width/height (each clamped to
+        1…4096), the ratio clamped to 4:3 … 16:9; every image is contained, so nothing shifts.
+      • The current slide and both neighbours load eagerly, so the next one is ready before it is
+        asked for; a hidden slide is never left lazy when it becomes current.
+      • A failed image shows "Image unavailable" as text and stays in the count.
+      • One image: a plain <figure> with no controls. None: nothing.
+
+    The component never builds an image URL — Src is whatever the page was handed — and only ever
+    renders it as an <img src>.
+*@
+
+@if (Images.Count == 1)
+{
+    <figure class="@ClassName("odc-carousel single")">
+        @Frame(Images[0], 0)
+    </figure>
+}
+else if (Images.Count > 1)
+{
+    <div class="@ClassName(_animate ? "odc-carousel animate" : "odc-carousel")"
+         role="group" aria-roledescription="carousel" aria-label="@Label">
+        <div class="odc-carousel-slides">
+            @for (var i = 0; i < Images.Count; i++)
+            {
+                var index = i;
+                <figure @key="@(Images[index].Id ?? (object)index)" class="odc-carousel-slide"
+                        role="group" aria-roledescription="slide" aria-label="@($"Image {index + 1} of {Images.Count}")"
+                        hidden="@(index != _index)">
+                    @Frame(Images[index], index)
+                </figure>
+            }
+        </div>
+        @* Keydown bubbles from either button to this row, which owns ArrowLeft / ArrowRight. *@
+        <div class="odc-carousel-controls" @onkeydown="OnKeyDown">
+            <OdsIconButton Icon="@Icons.Material.Filled.ChevronLeft" AriaLabel="Previous image" Size="OdsSize.Md"
+                           Class="odc-carousel-btn odc-carousel-prev"
+                           aria-disabled="@(_index == 0 ? "true" : null)"
+                           OnClick="@(() => GoAsync(_index - 1))" />
+            <span class="odc-carousel-count" aria-hidden="true">@($"{_index + 1} / {Images.Count}")</span>
+            <OdsIconButton Icon="@Icons.Material.Filled.ChevronRight" AriaLabel="Next image" Size="OdsSize.Md"
+                           Class="odc-carousel-btn odc-carousel-next"
+                           aria-disabled="@(_index == Images.Count - 1 ? "true" : null)"
+                           OnClick="@(() => GoAsync(_index + 1))" />
+        </div>
+        <OdsLiveAnnouncer @ref="_announcer" />
+    </div>
+}
+
+@code {
+    private RenderFragment Frame(OdsCarouselImage image, int index) => __builder =>
+    {
+        var failed = _failed.Contains(index) || string.IsNullOrEmpty(image.Src);
+        var eager = Math.Abs(index - _index) <= 1;
+        <div class="odc-carousel-frame" style="@($"aspect-ratio: {Ratio}")">
+            @if (failed)
+            {
+                <div class="odc-carousel-ph">
+                    <span class="material-icons" aria-hidden="true">broken_image</span>
+                    <span class="odc-carousel-ph-text">Image unavailable</span>
+                </div>
+            }
+            else
+            {
+                <img class="odc-carousel-img" src="@image.Src" alt="@AltFor(image, index, Images.Count)"
+                     lang="@(HasAlt(image) ? Lang : null)"
+                     width="@Dimension(image.Width)" height="@Dimension(image.Height)"
+                     loading="@(eager ? "eager" : "lazy")" decoding="async"
+                     @onerror="@(() => OnImageError(index))" />
+            }
+        </div>
+        @if (!failed && !HasAlt(image))
+        {
+            <figcaption class="odc-carousel-caption" aria-hidden="true">No description from the publisher</figcaption>
+        }
+    };
+}

@@ -35,7 +35,9 @@ public static class DatabaseExtension
             // startup rather than on the first DbContext resolution.
             var odysseyConnectionString = builder.Configuration.GetRequiredConnectionString("OdysseyConnection");
             builder.Services.AddDbContext<OdysseyContext>(options =>
-                options.UseMySql(odysseyConnectionString, DatabaseVersion, EnableRetries));
+                options.UseMySql(odysseyConnectionString, DatabaseVersion, EnableRetries)
+                    // The news reader's statement limit (issue #470 §8.4): applies only to commands tagged news-query.
+                    .AddInterceptors(new Odyssey.Core.Internet.News.Reading.NewsQueryCommandInterceptor()));
         }
 
         return builder;

@@ -24,11 +24,16 @@ public sealed record ValidatedImage(byte[] Bytes, string ContentType, int Width,
 /// What the image is, for the two messages that have to name it ("a contact image", "a profile
 /// picture"). User-visible, so it reads inside a sentence.
 /// </param>
+/// <param name="MinDimension">
+/// The smallest accepted pixel dimension, on both axes, or <c>null</c> for none. The news reader sets it
+/// (issue #470 §6.2) so a tracking pixel or spacer is not stored; the upload surfaces leave it unset.
+/// </param>
 public sealed record StillImagePolicy(
     IReadOnlyList<string> AllowedContentTypes,
     string TypeLabel,
     int MaxDimension,
-    string SubjectLabel)
+    string SubjectLabel,
+    int? MinDimension = null)
 {
     /// <summary>Whether a declared or stored <c>ContentType</c> is legal for this surface.</summary>
     public bool IsAllowedContentType(string? contentType) =>
@@ -124,6 +129,12 @@ public static class StillImageValidator
             throw new DomainValidationException(
                 $"The image is {walk.Width} × {walk.Height} pixels. It must be at most "
                 + $"{policy.MaxDimension} × {policy.MaxDimension}.");
+        }
+
+        if (policy.MinDimension is { } min && (walk.Width < min || walk.Height < min))
+        {
+            throw new DomainValidationException(
+                $"The image is {walk.Width} × {walk.Height} pixels. It must be at least {min} × {min}.");
         }
 
         // Stripping cannot grow a container, but the cap is re-applied to the stored bytes because the

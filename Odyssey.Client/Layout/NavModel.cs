@@ -6,7 +6,7 @@ using Odyssey.Dtos.Authorization;
 namespace Odyssey.Client.Layout;
 
 // Module-based navigation model (design-system "Module rail + switcher + command palette" redesign).
-// Every destination belongs to one of six modules; the rail shows the active module's pages, the
+// Every destination belongs to one of seven modules; the rail shows the active module's pages, the
 // switcher changes module, and the ⌘K palette jumps across all modules. Route keys/pages are
 // unchanged — this is presentation only. `Href` is the real Blazor route (base-relative, no leading
 // slash); `Claim` gates a page behind a permission (null = always visible).
@@ -86,10 +86,28 @@ public static class NavModel
                 new("tasks", "Tasks", "checklist", "tasks", PermissionClaims.TasksRead),
                 new("contacts", "Contacts", "groups", "contacts", PermissionClaims.ContactsRead),
                 new("locations", "Locations", "place", "locations", PermissionClaims.LocationsRead),
-                new("weather-points", "Weather points", "wb_sunny", "weather-points", PermissionClaims.WeatherPointsRead),
                 new("journal-tags", "Journal Tags", "local_offer", "journal-tags", PermissionClaims.JournalTagsRead),
                 new("task-tags", "Task Tags", "local_offer", "task-tags", PermissionClaims.TaskTagsRead),
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
+            ]),
+        ]),
+        // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read
+        // gates the three news pages and weather.points.read the weather page, so a caller holding neither loses
+        // the whole module (VisibleModules). Reference stays last, as in Finance.
+        new("internet", "Internet", "public",
+        [
+            new("News",
+            [
+                new("news", "News", "feed", "news", PermissionClaims.NewsRead),
+                new("news-feeds", "Feeds", "rss_feed", "news-feeds", PermissionClaims.NewsRead),
+            ]),
+            new("Weather",
+            [
+                new("weather-points", "Weather points", "wb_sunny", "weather-points", PermissionClaims.WeatherPointsRead),
+            ]),
+            new("Reference",
+            [
+                new("news-tags", "News Tags", "local_offer", "news-tags", PermissionClaims.NewsRead),
             ]),
         ]),
         new("user", "User", "person",

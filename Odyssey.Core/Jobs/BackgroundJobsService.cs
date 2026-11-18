@@ -557,6 +557,16 @@ public sealed class BackgroundJobsService(
                 PricesDeleted = prices.PricesDeleted,
             },
             InstrumentPriceSyncJobRun => new InstrumentPriceSyncJobRunDetail(),
+            NewsFeedJobRun news when canRead => new NewsFeedJobRunDetail
+            {
+                FeedsFetched = news.FeedsFetched,
+                ItemsStored = news.ItemsStored,
+                ItemsRevised = news.ItemsRevised,
+                ImagesStored = news.ImagesStored,
+                FeedsQuarantined = news.FeedsQuarantined,
+                FeedsMarked = news.FeedsMarked,
+            },
+            NewsFeedJobRun => new NewsFeedJobRunDetail(),
             _ => new JobRunDetail(),
         };
 
@@ -742,6 +752,8 @@ public sealed class BackgroundJobsService(
                     && !context.PhotoOriginalBackfillFailures.Any(f => f.PhotoId == p.PhotoId), cancellationToken);
             case JobType.FileBlobBackfill:
                 return await FileBlobBackfillJob.Movable(context).AnyAsync(cancellationToken);
+            case JobType.NewsFeedFetch:
+                return await Odyssey.Core.Internet.News.Jobs.NewsFeedJob.HasWorkAsync(context, Now, cancellationToken);
             default:
                 return true;
         }
@@ -757,6 +769,7 @@ public sealed class BackgroundJobsService(
             JobType.PhotoOriginalBackfill => new PhotoOriginalBackfillJobRun(),
             JobType.FileBlobBackfill => new FileBlobBackfillJobRun(),
             JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
+            JobType.NewsFeedFetch => new NewsFeedJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

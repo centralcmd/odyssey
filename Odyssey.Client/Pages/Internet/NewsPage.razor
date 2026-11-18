@@ -1,0 +1,230 @@
+@page "/news"
+@attribute [Authorize(Policy = PermissionClaims.NewsRead)]
+@implements IDisposable
+
+<PageTitle>News</PageTitle>
+
+@*
+    News — the reader (issue #473 §3.2; Odyssey Design System · ui_kits/web/News.jsx). A scrolling list of expandable
+    article cards: OdsInfiniteList in its remote mode, one request of "Load N at a time" rows per page by nextCursor,
+    no pager. The page owns the paging — the generation number that drops a stale response, the cancelled request
+    on every fresh first page, the restart on a 400 keyed cursor, the de-duplication on append, the pill's focus rule
+    and each first page's count announcement.
+
+    PageHeader carries the sub-line, the Overview (Articles · Feeds) and the "Attention" problems (one row per feed
+    that needs attention, plus the quota rows for a file-storage.read holder), the standard filter bar and the
+    actions (Hide read · Mark all read · Manage feeds). No visible divider sits under it; an sr-only h2 keeps the
+    outline and is never a focus target. Expanding an unread card marks it read, with Undo in the snackbar and Mark
+    unread in the ⋯ menu. Every publisher string is encoded text; one OdsLiveAnnouncer speaks every status change.
+*@
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<div class="nw-page" id="@RootId">
+<MudStack Spacing="4">
+    <PageHeader Title="News" Icon="@Icons.Material.Filled.Feed"
+                Problems="Problems" ProblemsLabel="Attention"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true">
+        <SubLine>@SubLine</SubLine>
+        <OverviewContent>
+            @if (_catalogue.Count > 0)
+            {
+                <div class="odc-summary-grid">
+                    <OdsBreakdownTile Label="Articles" Rows="ArticleRows" Empty="No articles." />
+                    <OdsBreakdownTile Label="Feeds" Rows="FeedRows" Empty="No feeds." />
+                </div>
+            }
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <div class="ph-search odc-combo-wrap nw-search" @onkeyup="OnSearchKeyUp">
+                    <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
+                                    Placeholder="Search titles, authors and summaries" id="news-search"
+                                    aria-describedby="@SearchHelpId" aria-invalid="@(_searchError?.Kind == SearchErrorKind.Unusable ? "true" : null)" />
+                    <div id="@SearchHelpId" class="@(_searchError is null ? "odc-sr-only" : _searchError.Kind == SearchErrorKind.Unusable ? "nw-search-help is-error" : "nw-search-help")">
+                        @(_searchError?.Text ?? "Searches titles, authors and summaries, not the full article.")
+                    </div>
+                    <span class="odc-sr-only" role="status" aria-live="polite">@_searchSaid</span>
+                </div>
+                <OdsMultiSelect Label="Feed" Values="_feedFilter" ValuesChanged="OnFeedFilterChanged" Options="FeedOptions"
+                                MaxSelected="NewsLimits.MaxFilterIds" MaxSelectedText="@($"Up to {NewsLimits.MaxFilterIds} feeds")"
+                                Class="ph-select">
+                    <OptionContent Context="option"><span lang="@FeedLang(option.Value)">@option.Label</span></OptionContent>
+                </OdsMultiSelect>
+                <OdsMultiSelect Label="Tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged" Options="TagFilterOptions"
+                                MaxSelected="NewsLimits.MaxFilterIds" MaxSelectedText="@($"Up to {NewsLimits.MaxFilterIds} tags")"
+                                Class="ph-select" />
+                <OdsMultiSelect Label="@(StatusIsAll ? "Status: All" : "Status")" Values="_statuses" ValuesChanged="OnStatusesChanged"
+                                Options="StatusOptions" Class="ph-select" />
+                <OdsSortSelect TRow="NewsArticleSummary" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Articles per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+        <PrimaryAction>
+            @if (CanHideRead)
+            {
+                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="visibility_off" OnClick="HideReadAsync">Hide read</OdsButton>
+            }
+            @if (_canUpdate && _catalogue.Count > 0 && !StatusIsReadOnly)
+            {
+                <OdsButton id="nw-mark-all" Variant="OdsButtonVariant.Outlined" Icon="done_all" OnClick="OpenMarkAll">Mark all read</OdsButton>
+            }
+            <OdsButton Variant="OdsButtonVariant.Text" Icon="rss_feed" Href="news-feeds">Manage feeds</OdsButton>
+        </PrimaryAction>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <div class="nw-loading" aria-busy="true">
+            <span class="odc-sr-only" role="status">Loading articles…</span>
+            @for (var i = 0; i < 4; i++)
+            {
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="88px" />
+            }
+        </div>
+    }
+    else if (_failure is { } failure)
+    {
+        <NewsLoadProblem Busy="failure.Busy" Noun="articles" RetryAfter="failure.RetryAfter" Failure="_failureCount"
+                         IdPrefix="nw-load" OnRetry="RetryLoadAsync" />
+    }
+    else if (_catalogue.Count == 0)
+    {
+        <OdsEmptyState Icon="rss_feed">
+            <Title><h2 class="nw-empty-h" tabindex="-1" id="nw-empty-h">No feeds yet</h2></Title>
+            <Description>Subscribe to a site’s RSS, Atom or JSON feed to start reading.</Description>
+            <Action>
+                @if (_canCreateFeeds)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" Href="news-feeds">New feed</OdsButton>
+                }
+                else
+                {
+                    <span class="nw-muted">Ask an administrator to add feeds.</span>
+                }
+            </Action>
+        </OdsEmptyState>
+    }
+    else if (_rows.Count == 0)
+    {
+        @switch (EmptyKind)
+        {
+            case NewsEmptyKind.Pending:
+                <OdsEmptyState Icon="schedule" MutedIcon="true">
+                    <Title><h2 class="nw-empty-h" tabindex="-1" id="nw-empty-h">Your feeds haven’t been fetched yet.</h2></Title>
+                    <Description>This usually takes a minute.</Description>
+                </OdsEmptyState>
+                break;
+            case NewsEmptyKind.AllRead:
+                <OdsEmptyState Icon="done_all">
+                    <Title><h2 class="nw-empty-h" tabindex="-1" id="nw-empty-h">You’re all caught up</h2></Title>
+                    <Description>Every article has been read.</Description>
+                    <Action>
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="list" OnClick="ShowAllArticlesAsync">Show all articles</OdsButton>
+                    </Action>
+                </OdsEmptyState>
+                break;
+            default:
+                <OdsEmptyState Icon="search_off" MutedIcon="true">
+                    <Title><h2 class="nw-empty-h" tabindex="-1" id="nw-empty-h">No articles match these filters</h2></Title>
+                    <Description>
+                        @if (string.IsNullOrWhiteSpace(_appliedSearch))
+                        {
+                            <span>Try a different filter.</span>
+                        }
+                        else
+                        {
+                            <span>Nothing matches “<bdi>@_appliedSearch.Trim()</bdi>”.</span>
+                        }
+                    </Description>
+                    <Action>
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="close" OnClick="ClearFiltersAsync">Clear filters</OdsButton>
+                    </Action>
+                </OdsEmptyState>
+                break;
+        }
+    }
+    else
+    {
+        <h2 class="odc-sr-only">Articles</h2>
+        <div class="nw-list" aria-busy="@(_refetching || _marking ? "true" : null)">
+            <OdsInfiniteList TItem="NewsArticleSummary" Items="_rows" Noun="articles" Remote="true"
+                             ItemKey="@(a => (object)a.Id)" Refetching="_refetching"
+                             RemoteTotal="_total" RemoteTotalCapped="_totalCapped" HasMoreRemote="@(_cursor is not null)"
+                             LoadMore="LoadMoreAsync" LoadingMore="_loadingMore" LoadMoreFailed="_loadMoreFailed"
+                             ResetKey="_resetKey">
+                <RenderItem Context="article">
+                    <NewsArticleCard @key="article.Id" Article="article" TagsById="_tagsById"
+                                     FeedLanguage="@FeedLang(article.FeedId.ToString())" Menu="MenuFor(article)"
+                                     Open="@(_openId == article.Id)" OnToggle="open => OnToggleAsync(article, open)"
+                                     Detail="@_details.GetValueOrDefault(article.Id)" RetryWaitSeconds="Gate.RemainingSeconds"
+                                     CanReadJobs="_canReadSettings" ImageUrl="News.ImageUrl"
+                                     OnRetryDetail="RetryDetailAsync" OnShowVersions="OpenVersions" />
+                </RenderItem>
+            </OdsInfiniteList>
+        </div>
+    }
+</MudStack>
+</div>
+
+@if (_versionsArticle is { } versionsArticle)
+{
+    <NewsVersionsDialog @key="_versionsKey" Article="versionsArticle" FeedLanguage="@FeedLang(versionsArticle.FeedId.ToString())"
+                        Open="_versionsOpen" OpenChanged="OnVersionsOpenChanged" OnAnnounce="Say" />
+}
+
+@if (_tagsArticle is { } tagsArticle)
+{
+    <OdsFormDialog @key="_tagsKey" Open="_tagsOpen" OpenChanged="OnTagsOpenChanged"
+                   Icon="local_offer" RequiredLegend="false"
+                   Title="@($"Tags for “{NewsArticleCard.TitleOf(tagsArticle)}”")"
+                   SubmitLabel="Save" SubmitIcon="check" OnSubmit="SaveArticleTagsAsync">
+        <OdsTagMultiSelect Label="Tags" Value="_tagsDraft" ValueChanged="v => { _tagsDraft = v; _tagsError = null; }"
+                           Options="@NewsVisuals.TagPickerOptions(_tags, tagsArticle.TagIds)"
+                           Noun="news tag" NounPlural="news tags" Error="@_tagsError" />
+        @if (InheritedTagsOf(tagsArticle).ToList() is { Count: > 0 } inherited)
+        {
+            <div class="nw-inherited-block">
+                <ul class="nw-tagrow" aria-label="Tags from the feed">
+                    @foreach (var tag in inherited)
+                    {
+                        <li class="nw-tagrow-item">
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="rss_feed" Class="sm nw-inherited"><bdi>@tag.Name</bdi><span class="odc-sr-only"> (from feed)</span></OdsChip>
+                        </li>
+                    }
+                </ul>
+                <p class="nw-dialog-line">From the feed. Change them on the Feeds page.</p>
+            </div>
+        }
+    </OdsFormDialog>
+}
+
+@if (_markAllKey != Guid.Empty)
+{
+    <OdsModal @key="_markAllKey" Open="_markAllOpen" OpenChanged="OnMarkAllOpenChanged" OnClose="MarkAllClosed"
+              Icon="done_all" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+              RequiredLegend="false" DescribedById="nw-markall-desc">
+        <Title>Mark all as read?</Title>
+        <ChildContent>
+            @if (_markAllOutOfDate)
+            {
+                <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Alert">
+                    <span class="nw-alert-line">
+                        <span>The list is out of date. Refresh and try again.</span>
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="RefreshAfterOutOfDateAsync">Refresh</OdsButton>
+                    </span>
+                </OdsAlert>
+            }
+            <p class="nw-dialog-line" id="nw-markall-desc">@MarkAllSentence</p>
+            <p class="nw-dialog-line nw-muted">Articles that arrived after this list was loaded stay unread.</p>
+            <p class="nw-dialog-line nw-run-line" role="status" aria-live="polite">@_markAllProgress</p>
+        </ChildContent>
+        <Footer>
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelMarkAll" data-dialog-cancel="true">Cancel</OdsButton>
+            <OdsButton id="nw-markall-confirm" Variant="OdsButtonVariant.Filled" Icon="done_all"
+                       AriaDisabled="@(_marking || _markAllOutOfDate)" OnClick="MarkAllAsync">@(_marking ? "Marking…" : "Mark read")</OdsButton>
+        </Footer>
+    </OdsModal>
+}

@@ -32,9 +32,10 @@ public sealed record SystemSettingsUpdate
     // shape (null = leave unchanged; { unlimited: true } = no limit; { value: n } = n) rather than
     // int?, because on this DTO null already means "leave unchanged" for every field — reusing int?
     // for a count field would make "unlimited" inexpressible. Size fields stay int? (megabytes) and
-    // have no unlimited option, on either side — all four surfaces share the same [Range(1, 1024)]
+    // have no unlimited option, on either side — three surfaces share the same [Range(1, 1024)]
     // (issue #343 §5's original per-surface split — contacts up to 512 MB, ICS up to 1024 MB — has
-    // since been unified per a follow-up: contacts allows just as much as the other three now).
+    // since been unified per a follow-up: contacts allows just as much as the other ICS ones now). The task
+    // surface goes to 10240 MB, because its files carry attached files inline.
     //
     // The claim check for every CapacityLimit field below MUST use SystemSettingsService's
     // RequireClaim(ClaimsPrincipal, CapacityLimit?, ...) overload, never `.Value` — see sec F3.
@@ -64,20 +65,22 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? TaskIcsMaxImportTasks { get; set; }
 
-    [Range(1, 1024)]
+    // Ten times the other surfaces: a task file carries its attached files inline.
+    [Range(SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, SystemSettingsBounds.TaskIcsMaxImportMegabytesMax)]
     public int? TaskIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax)]
     public int? TaskIcsMaxExportMegabytes { get; set; }
 
     public CapacityLimit? JournalIcsMaxExportRows { get; set; }
 
     public CapacityLimit? JournalIcsMaxImportEntries { get; set; }
 
-    [Range(1, 1024)]
+    // A journal file carries its attached files and photos inline, as a task file does.
+    [Range(SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, SystemSettingsBounds.JournalIcsMaxImportMegabytesMax)]
     public int? JournalIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax)]
     public int? JournalIcsMaxExportMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------
@@ -237,7 +240,7 @@ public sealed record SystemSettingsUpdate
     /// range — the value must also be at or below the startup transport ceiling, which the server
     /// validates and publishes as <c>UploadMegabytesCeiling</c> on the read DTO.
     /// </summary>
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, SystemSettingsBounds.FileStorageMaxUploadMegabytesMax)]
     public int? FileStorageMaxUploadMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------
@@ -510,6 +513,51 @@ public sealed record SystemSettingsUpdate
 
     [Range(SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMin, SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMax)]
     public int? InstrumentPriceSyncHistoryDays { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // News reader (issue #470 §11.1). The allow-list takes the security claim; the other eight the
+    // ordinary one. NewsImageMaxSizeKb is also bounded by a derived ceiling (RequestCapCeilings), which
+    // cannot live in an attribute because it comes from startup configuration.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin, SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax)]
+    public int? NewsDefaultFetchIntervalMinutes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsMaxFeedsMin, SystemSettingsBounds.NewsMaxFeedsMax)]
+    public int? NewsMaxFeeds { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxPerArticleMin, SystemSettingsBounds.NewsImageMaxPerArticleMax)]
+    public int? NewsImageMaxPerArticle { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxSizeKbMin, SystemSettingsBounds.NewsImageMaxSizeKbMax)]
+    public int? NewsImageMaxSizeKb { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageStoreMaxGiBMin, SystemSettingsBounds.NewsImageStoreMaxGiBMax)]
+    public int? NewsImageStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsTextStoreMaxGiBMin, SystemSettingsBounds.NewsTextStoreMaxGiBMax)]
+    public int? NewsTextStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin, SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax)]
+    public int? NewsFeedMaxArticlesPerDay { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax)]
+    public int? NewsFeedMaxImageMbPerDay { get; set; }
+
+    /// <summary><c>""</c> is a legal value — it empties the list — so <c>[Required]</c> is never used here.</summary>
+    [StringLength(NewsPrivateHostAllowListRule.MaxLength)]
+    public string? NewsPrivateHostAllowList { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // News OPML import (issue #508 §8.5). The size cap is an import size cap like the four above it
+    // (security claim, the shared megabyte pair); the entry cap can only be lowered.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax)]
+    public int? NewsOpmlMaxImportMegabytes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax)]
+    public int? NewsOpmlMaxImportEntries { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period

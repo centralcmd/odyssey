@@ -36,6 +36,15 @@ services:
       # SECURITY.md's "weak dev defaults are out of scope" structurally true rather than declared.
       # The prod overlay resets this list entirely, so it is unaffected.
       - "127.0.0.1:3307:3306"
+    # Per-consumer internal networks (issue #470 §11.3): the database is reachable from api, worker and migrations,
+    # each on its own network, so no two of them share one through it. `default` is kept here only for the published
+    # loopback port above (a container on internal networks alone publishes nothing); the prod overlay, which
+    # publishes no port, drops it.
+    networks:
+      - default
+      - db_api
+      - db_worker
+      - db_migrations
     healthcheck:
       test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
       interval: 10s
@@ -55,6 +64,9 @@ services:
     # the .NET host got to honour it — the two have to agree or the mitigation is inert.
     stop_grace_period: 5m
     command: sh -c "sleep 10 && dotnet Odyssey.MigrationService.dll"
+    # The database and nothing else (issue #470 §11.3).
+    networks:
+      - db_migrations
     environment:
       # This host is Host.CreateApplicationBuilder, which reads DOTNET_ENVIRONMENT and IGNORES
       # ASPNETCORE_ENVIRONMENT entirely, defaulting to Production. Setting only the ASPNETCORE name
@@ -126,7 +138,7 @@ services:
       # admin-editable in System Settings; this is the startup limit for Kestrel and the multipart
       # reader, and the bound the setting cannot be raised above. Keep the reverse proxy's body-size
       # limit at or above it — see docs/deployment.md.
-      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-67108864}
+      FileStorage__MaxFileSizeBytes: ${FILE_UPLOAD_MAX_BYTES:-10737418240}
       # The Data Protection key ring (issue #444). The DEV stack had none at all before this, so every
       # developer machine ran an ephemeral ring — which is why the ephemeral write refusal is on the
       # write path rather than being a startup warning nobody would see. The volume is SECRET-BEARING
@@ -170,6 +182,7 @@ services:
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
+      FileStorage__Bindings__NewsArticles: primary
       # The location map's basemap (issue #370) — deploy-time, because the client's CSP below is rendered
       # from the same MAP_ALLOWED_ORIGINS at container start. SINGLE-dash ${VAR-default}: the default
       # applies only when the variable is UNSET, so an explicit MAP_ALLOWED_ORIGINS= (the off-switch)
@@ -182,9 +195,17 @@ services:
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys
       - files_primary:/var/odyssey/files/primary
+      # Upload spool on disk (ASPNETCORE_TEMP, set in the image): a 10 GB task import must not land in /tmp,
+      # which is RAM-backed in the production file. Scratch only — nothing in it outlives its request.
+      - import_spool:/var/odyssey/import-spool
     ports:
       # Loopback-only — see the mariadb service above (issue #451 §1.2).
       - "127.0.0.1:5188:8080"
+    # User traffic on `default` (the client's /api/ proxy, the published port, outbound mail), the database on its
+    # own internal network. Never on a network the worker is on (issue #470 §11.3).
+    networks:
+      - default
+      - db_api
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -218,6 +239,7 @@ services:
       FileStorage__Bindings__FinanceFiles: primary
       FileStorage__Bindings__JournalFiles: primary
       FileStorage__Bindings__ContactAvatars: primary
+      FileStorage__Bindings__NewsArticles: primary
     volumes:
       - dataprotection_keys:/var/odyssey/dataprotection-keys:ro
       - files_primary:/var/odyssey/files/primary
@@ -236,6 +258,18 @@ services:
     pids_limit: 256
     tmpfs:
       - /tmp:size=64m
+    # A graceful stop (issue #470 §3.4 step 7): the news job cancels its fetches cleanly, clearing each lease and
+    # putting back the crash suspicion, so a deploy never counts as a crash. Compose's 10 s default would SIGKILL it
+    # mid-completion; a fetch's network part alone is capped at 30 s.
+    stop_grace_period: 30s
+    # Network isolation (issue #470 §7.14, §11.3): the worker runs untrusted parsers on what publishers send, so it
+    # is on EXACTLY its own database network and `egress` (outbound: news, weather, exchange rates, file analysis),
+    # and shares no network with api or client — it cannot reach either directly. This is defence in depth: the SSRF
+    # control against every other destination is still the news egress address policy. If you add networks of your
+    # own, never put the worker on one with api. docs/deployment.md → Network topology.
+    networks:
+      - db_worker
+      - egress
     depends_on:
       migrations:
         condition: service_completed_successfully
@@ -260,8 +294,21 @@ services:
     depends_on:
       - api
 
+# Issue #470 §11.3. The three database networks are internal: no route out, and each joins one consumer to the
+# database. `egress` is the worker's way out and carries nothing else. api and client keep `default`.
+networks:
+  db_api:
+    internal: true
+  db_worker:
+    internal: true
+  db_migrations:
+    internal: true
+  egress: {}
+
 volumes:
   mariadb_data:
+  # The API's upload spool (ASPNETCORE_TEMP). Scratch, never backed up.
+  import_spool:
   # Mounted read-write by the api service and READ-ONLY by the worker (issue #444 §14, revisited for
   # issue #348): those two containers, and only those, can decrypt what is stored under it. The
   # migrations job protects nothing and still does not mount it.

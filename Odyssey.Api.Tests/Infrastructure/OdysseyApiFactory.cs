@@ -73,7 +73,7 @@ public class OdysseyApiFactory(
     /// <summary>
     /// A per-factory file volume (issues #428 §3.7, #448). Photo originals and every Files-store upload live on the
     /// object store with no database fallback, so every API host binds <c>PhotoOriginals</c>, <c>PhotoThumbnails</c>
-    /// and the three file areas (<c>FinanceFiles</c>, <c>JournalFiles</c>, <c>ContactAvatars</c>) to one temp volume,
+    /// the three file areas (<c>FinanceFiles</c>, <c>JournalFiles</c>, <c>ContactAvatars</c>) and <c>NewsArticles</c> to one temp volume,
     /// unless the factory configures its own volumes (<c>FileStorageApiFactory</c>). Deleted on dispose.
     /// </summary>
     private readonly string fileVolumePath = sharingStoreWith?.fileVolumePath
@@ -118,6 +118,8 @@ public class OdysseyApiFactory(
                 settings["FileStorage:Bindings:FinanceFiles"] = "photos";
                 settings["FileStorage:Bindings:JournalFiles"] = "photos";
                 settings["FileStorage:Bindings:ContactAvatars"] = "photos";
+                // News reader (issue #470): the NewsArticles feature is registered by every API host.
+                settings["FileStorage:Bindings:NewsArticles"] = "photos";
             }
 
             if (configuration is not null)
@@ -133,6 +135,8 @@ public class OdysseyApiFactory(
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveBuiltInLoggingProviders();
+            services.DisposeRateLimitersOnStop();
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options =>
                 options.UseInMemoryDatabase(applicationDatabaseName, DatabaseRoot)

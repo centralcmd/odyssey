@@ -1,0 +1,206 @@
+@page "/news-feeds"
+@attribute [Authorize(Policy = PermissionClaims.NewsRead)]
+@implements IDisposable
+
+<PageTitle>Feeds</PageTitle>
+
+@*
+    Feeds — the household's feed list (issue #473 §3.3; Odyssey Design System · ui_kits/web/NewsFeeds.jsx). The page
+    holds the FULL set (GET /api/news-feeds?state=All in pages of NewsLimits.MaxPageSize, at most five requests) and
+    filters and sorts it client-side, as Accounts does; OdsInfiniteList shows it in its in-memory mode with a "Load N
+    at a time" select. The header's Overview has By tags and By status — the three statuses are disjoint, so the tile
+    sums to the feed count; "need attention" overlaps them and lives in the sub-line.
+
+    No visible divider sits above the list; an sr-only h2 keeps the outline and is never a focus target. Where focus
+    would go "to the list" it goes to the first card's header, else the visible empty-state heading (§6.6).
+    A feed URL never appears in a route, a query string, the announcer or the page title.
+*@
+
+<OdsLiveAnnouncer @ref="_announcer" />
+
+<div class="nw-page" id="@RootId">
+<MudStack Spacing="4">
+    <PageHeader Title="Feeds" Icon="@Icons.Material.Filled.RssFeed"
+                OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
+                PrimaryActionText="New feed" OnPrimaryAction="NewFeedClicked" ShowPrimaryAction="_canCreate"
+                ActionMenu="FeedActions" ActionMenuLabel="Feed actions" ActionMenuId="@ActionMenuId">
+        <SubLine>@SubLine</SubLine>
+        <OverviewContent>
+            @if (_feeds.Count > 0)
+            {
+                <div class="odc-summary-grid">
+                    <OdsBreakdownTile Label="By tags" Rows="TagRows" Empty="No tagged feeds." />
+                    <OdsBreakdownTile Label="By status" Rows="StatusRows" Empty="No feeds." />
+                </div>
+            }
+        </OverviewContent>
+        <SearchContent>
+            <div class="ph-filter-bar">
+                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
+                                Placeholder="Search name or site…" Class="ph-search" />
+                <OdsMultiSelect Label="@(_statuses.Count == 0 ? "Status: All" : "Status")" Values="_statuses"
+                                ValuesChanged="OnStatusesChanged" Options="NewsVisuals.StatusOptions" Class="ph-select" />
+                <OdsMultiSelect Label="Tag" Values="_tagFilter" ValuesChanged="OnTagFilterChanged"
+                                Options="TagFilterOptions" Class="ph-select" />
+                <OdsSortSelect TRow="ExistingNewsFeed" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
+                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Feeds per batch"
+                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
+            </div>
+        </SearchContent>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <div class="nw-loading" aria-busy="true">
+            <span class="odc-sr-only" role="status">Loading feeds…</span>
+            @for (var i = 0; i < 4; i++)
+            {
+                <OdsSkeleton Variant="OdsSkeletonVariant.Block" Height="88px" />
+            }
+        </div>
+    }
+    else if (_failure is { } failure)
+    {
+        <NewsLoadProblem Busy="failure.Busy" Noun="feeds" RetryAfter="failure.RetryAfter" Failure="_failureCount"
+                         IdPrefix="nf-load" OnRetry="RetryLoadAsync" />
+    }
+    else if (_feeds.Count == 0)
+    {
+        <OdsEmptyState Icon="rss_feed">
+            <Title><h2 class="nw-empty-h" tabindex="-1" id="nf-empty-h">No feeds yet</h2></Title>
+            <Description>Subscribe to a site’s RSS, Atom or JSON feed to start reading.</Description>
+            <Action>
+                @if (_canCreate)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="NewFeedClicked">New feed</OdsButton>
+                }
+                else
+                {
+                    <span class="nw-muted">Ask an administrator to add feeds.</span>
+                }
+            </Action>
+        </OdsEmptyState>
+    }
+    else if (Filtered.Count == 0)
+    {
+        <OdsEmptyState Icon="search_off" MutedIcon="true">
+            <Title><h2 class="nw-empty-h" tabindex="-1" id="nf-empty-h">No feeds match these filters</h2></Title>
+            <Description>Try a different search or another status.</Description>
+            <Action>
+                @if (HasFilters)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="close" OnClick="ClearFilters">Clear filters</OdsButton>
+                }
+                else
+                {
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="list" OnClick="ShowAllFeeds">Show all feeds</OdsButton>
+                }
+            </Action>
+        </OdsEmptyState>
+    }
+    else
+    {
+        <h2 class="odc-sr-only">Feeds</h2>
+        <div class="nw-list">
+            <OdsInfiniteList TItem="ExistingNewsFeed" Items="Filtered" BatchSize="_batch" Noun="feeds"
+                             ItemKey="@(f => (object)f.Id)" RevealKey="_revealId">
+                <RenderItem Context="feed">
+                    <NewsFeedCard @key="feed.Id" Feed="feed" TagsById="_tagsById" Menu="MenuFor(feed)"
+                                  Open="@(_openId == feed.Id)" OnToggle="open => OnToggle(feed, open)"
+                                  Highlight="@(_revealId == feed.Id)"
+                                  Busy="@_busyIds.Contains(feed.Id)" CanUpdate="_canUpdate" CanDelete="_canDelete"
+                                  Polling="@_polls.ContainsKey(feed.Id)" PollExpired="@_pollExpired.Contains(feed.Id)"
+                                  OnCheckAgain="CheckAgainAsync" OnStopChecking="StopChecking"
+                                  OnUseNewAddress="UseNewAddressAsync" OnCopied="Say" />
+                </RenderItem>
+            </OdsInfiniteList>
+        </div>
+    }
+</MudStack>
+</div>
+
+@if (_dialogKey != Guid.Empty)
+{
+    <NewsFeedDialog @key="_dialogKey" Open="_dialogOpen" OpenChanged="OnDialogOpenChanged"
+                    Feed="_dialogFeed" Tags="_tags" InitialConflict="_dialogConflict" InitialUrl="_dialogUrl"
+                    Saved="OnFeedSavedAsync" GoToFeed="GoToFeedAsync" Deleted="OnFeedGoneInDialog"
+                    Refreshed="Replace" />
+}
+
+@if (_importKey != Guid.Empty)
+{
+    <ImportNewsFeedsDialog @key="_importKey" Open="_importOpen" OpenChanged="v => _importOpen = v"
+                           ReturnFocusToId="@ActionMenuId" Closed="OnImportClosedAsync" />
+}
+
+@if (_tagsFeed is { } tagsFeed)
+{
+    <OdsFormDialog @key="_tagsKey" Open="_tagsOpen" OpenChanged="OnTagsOpenChanged"
+                   Icon="local_offer" RequiredLegend="false"
+                   Title="@($"Tags for “{tagsFeed.DisplayTitle}”")"
+                   SubmitLabel="Save" SubmitIcon="check" OnSubmit="SaveFeedTagsAsync">
+        <OdsTagMultiSelect Label="Tags" Value="_tagsDraft" ValueChanged="v => { _tagsDraft = v; _tagsError = null; }"
+                           Options="@NewsVisuals.TagPickerOptions(_tags, tagsFeed.TagIds)"
+                           Noun="news tag" NounPlural="news tags" Error="@_tagsError"
+                           Help="Every article from this feed carries these tags too." />
+    </OdsFormDialog>
+}
+
+@if (_deleting is { } deleting)
+{
+    <OdsModal @key="_deleteKey" Open="_deleteOpen" OpenChanged="OnDeleteOpenChanged"
+              Icon="delete" IconTone="OdsModalTone.Error" Role="OdsModalRole.AlertDialog"
+              InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false" DescribedById="nf-del-desc">
+        <Title>Delete feed?</Title>
+        <ChildContent>
+            @if (_deleteError is { } error)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@error</OdsAlert>
+            }
+            <p class="nw-dialog-line" id="nf-del-desc">
+                Delete <em lang="@deleting.Language"><bdi>@deleting.DisplayTitle</bdi></em>@($" and its {NewsFeedback.Count(deleting.ArticleCount, "article", "articles")}? This cannot be undone.")
+            </p>
+            <OdsCheckbox Id="nf-del-ack" Label="I understand this deletes the feed and all its articles"
+                         Checked="_deleteAck" CheckedChanged="v => _deleteAck = v" />
+        </ChildContent>
+        <Footer>
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseDelete" data-dialog-cancel="true">Cancel</OdsButton>
+            <span class="nw-pending-actions">
+                <OdsButton id="nf-del-confirm" Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleteBusy"
+                           AriaDisabled="@(!_deleteAck)" aria-describedby="@(_deleteAck ? null : "nf-del-reason")"
+                           OnClick="DeleteAsync">Delete feed</OdsButton>
+                @if (!_deleteAck)
+                {
+                    <span class="nw-muted" id="nf-del-reason">Tick the box above to delete.</span>
+                }
+            </span>
+        </Footer>
+    </OdsModal>
+}
+
+@code {
+    /// <summary>
+    /// The header's ⋯ "Feed actions" menu (issue #509 §3.1): Export all, Export filtered (N), a divider, Import from
+    /// OPML…. Each item is ABSENT, never disabled, when it does not apply, and with no item the page passes no menu at
+    /// all, so a reader gets no ⋯ button (F1).
+    /// </summary>
+    private RenderFragment? FeedActions => !ShowsExportAll && !_canCreate ? null : @<text>
+        @if (ShowsExportAll)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.FileDownload" OnClick="@(() => ExportAsync(filtered: false))">Export all as OPML</MudMenuItem>
+        }
+        @if (ShowsExportFiltered)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">@($"Export filtered ({FilteredCountText}) as OPML")</MudMenuItem>
+        }
+        @if (ShowsExportAll && _canCreate)
+        {
+            <MudDivider />
+        }
+        @if (_canCreate)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.UploadFile" OnClick="OpenImport">Import from OPML…</MudMenuItem>
+        }
+    </text>;
+}

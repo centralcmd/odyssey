@@ -759,26 +759,34 @@ public partial class JournalCard
     }
 
     // "Export all" = every entry, all statuses (no filters). "Export filtered" = the current search/tag
-    // set plus the collapsed status. A guard prevents a re-entrant double-click; a failed export toasts
+    // set plus the collapsed status. A guard prevents a re-entrant double-click; a refused export toasts
     // the server's reason (forbidden / over-cap / generic) rather than downloading a fake file.
     private async Task ExportAsync(bool filtered)
     {
         if (_exporting) return;
         _exporting = true;
-        _announce = "Exporting journal entries…";
+        _announce = "Preparing journal export…";
         StateHasChanged();
         try
         {
             // Every filter is passed, so "Export filtered" and the list describe the same set. The
             // export endpoint binds the same query model as the list, which is what makes that hold
             // without a second definition of "filtered" living here.
-            var result = filtered
-                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
-                : await JournalIcs.ExportAsync();
-            if (result.OrToast(Snackbar, "Unable to export journal entries") is { } file)
-            {
-                await DownloadIcsAsync(file);
-            }
+            var summary = filtered
+                ? (await JournalIcs.SummarizeExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles))
+                    .OrToast(Snackbar, "Unable to export journal entries")
+                : (await JournalIcs.SummarizeExportAsync()).OrToast(Snackbar, "Unable to export journal entries");
+            // The snackbar container is a role="status" region and speaks the outcome itself, success or refusal, so the
+            // page's announcer only covered the wait and is cleared rather than made to say it a second time.
+            _announce = "";
+            if (summary is null) return;
+
+            await NativeTransfer.DownloadAsync(filtered
+                ? JournalIcs.ExportUrl(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
+                : JournalIcs.ExportUrl());
+            Snackbar.Add(
+                $"Exporting {Plural(summary.EntryCount, "journal entry", "journal entries")}{CarriedSuffix(summary)} — your browser is downloading the file.",
+                Severity.Success);
         }
         finally
         {
@@ -792,11 +800,12 @@ public partial class JournalCard
         _exporting = true;
         try
         {
-            var result = await JournalIcs.ExportOneAsync(entry.JournalEntryId);
-            if (result.OrToast(Snackbar, "Unable to export the journal entry") is { } file)
-            {
-                await DownloadIcsAsync(file);
-            }
+            var summary = (await JournalIcs.SummarizeExportOneAsync(entry.JournalEntryId)).OrToast(Snackbar, "Unable to export the journal entry");
+            if (summary is null) return;
+
+            await NativeTransfer.DownloadAsync(JournalIcs.ExportOneUrl(entry.JournalEntryId));
+            var title = string.IsNullOrWhiteSpace(entry.Title) ? "the journal entry" : entry.Title;
+            Snackbar.Add($"Exporting {title}{CarriedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
         }
         finally
         {
@@ -804,10 +813,17 @@ public partial class JournalCard
         }
     }
 
-    private async Task DownloadIcsAsync(ApiFile file)
+    // Every export carries its files and photos inline, so it can be far larger than the WASM heap: the summary runs
+    // the server's checks first (caps, files.read / photos.read) and a refusal is a toast, then the browser downloads
+    // the file straight to disk. A failure after that point shows in the browser's own download list.
+    private static string Plural(int count, string singular, string plural) => $"{count} {(count == 1 ? singular : plural)}";
+
+    private static string CarriedSuffix(JournalEntryIcsExportSummary summary)
     {
-        await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-        Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+        var parts = new List<string>();
+        if (summary.AttachmentCount > 0) parts.Add(Plural(summary.AttachmentCount, "attached file", "attached files"));
+        if (summary.PhotoCount > 0) parts.Add(Plural(summary.PhotoCount, "photo", "photos"));
+        return parts.Count == 0 ? "" : $" with {string.Join(" and ", parts)} ({ByteSize.Format(summary.AttachmentBytes)})";
     }
 
     // After an import that created/updated rows: drop everything cached per entry and reload. The card

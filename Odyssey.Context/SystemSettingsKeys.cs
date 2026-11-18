@@ -245,6 +245,25 @@ public static class SystemSettingsKeys
 
     public const string JobRunRetentionDays = "JobRunRetentionDays";
 
+    // ---------------------------------------------------------------------------------------------
+    // News reader (issue #470 §11.1): the feed defaults and caps, the image and text quotas, the per-feed
+    // daily caps, and the private-host allow-list the worker's egress policy reads (security claim).
+    // ---------------------------------------------------------------------------------------------
+
+    public const string NewsDefaultFetchIntervalMinutes = "NewsDefaultFetchIntervalMinutes";
+    public const string NewsMaxFeeds = "NewsMaxFeeds";
+    public const string NewsImageMaxPerArticle = "NewsImageMaxPerArticle";
+    public const string NewsImageMaxSizeKb = "NewsImageMaxSizeKb";
+    public const string NewsImageStoreMaxGiB = "NewsImageStoreMaxGiB";
+    public const string NewsTextStoreMaxGiB = "NewsTextStoreMaxGiB";
+    public const string NewsFeedMaxArticlesPerDay = "NewsFeedMaxArticlesPerDay";
+    public const string NewsFeedMaxImageMbPerDay = "NewsFeedMaxImageMbPerDay";
+    public const string NewsPrivateHostAllowList = "NewsPrivateHostAllowList";
+
+    // News OPML import (issue #508 §8.5): the size cap (security claim, like every import size cap) and the entry cap.
+    public const string NewsOpmlMaxImportMegabytes = "NewsOpmlMaxImportMegabytes";
+    public const string NewsOpmlMaxImportEntries = "NewsOpmlMaxImportEntries";
+
     public static readonly string[] AllKeys =
     [
         RequireTwoFactor,
@@ -324,6 +343,17 @@ public static class SystemSettingsKeys
         InstrumentPriceSyncHistoryDays,
         FileStorageDeletionGraceHours,
         JobRunRetentionDays,
+        NewsDefaultFetchIntervalMinutes,
+        NewsMaxFeeds,
+        NewsImageMaxPerArticle,
+        NewsImageMaxSizeKb,
+        NewsImageStoreMaxGiB,
+        NewsTextStoreMaxGiB,
+        NewsFeedMaxArticlesPerDay,
+        NewsFeedMaxImageMbPerDay,
+        NewsPrivateHostAllowList,
+        NewsOpmlMaxImportMegabytes,
+        NewsOpmlMaxImportEntries,
     ];
 
     /// <summary>

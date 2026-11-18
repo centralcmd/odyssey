@@ -70,6 +70,7 @@ public sealed class ImportExportLimitsLookup(
         SystemSettingsKeys.CalendarIcsMaxAggregateExportWindowDays,
         SystemSettingsKeys.ContactVCardMaxRepeatablePropertiesPerEntry,
         SystemSettingsKeys.ImportMaxSamplesPerSkipReason,
+        SystemSettingsKeys.NewsOpmlMaxImportMegabytes,
     ];
 
     public async Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default)
@@ -156,15 +157,15 @@ public sealed class ImportExportLimitsLookup(
         calendarExport = ClampExport(calendarExport, calendarImport);
 
         var journalExport = ResolveCount(
-            SystemSettingsKeys.JournalIcsMaxExportRows, IcsCountFloor, SystemSettingsDefaults.JournalIcsMaxExportRows);
+            SystemSettingsKeys.JournalIcsMaxExportRows, IcsCountFloor, seededDefault: null);
         var journalImport = ResolveCount(
-            SystemSettingsKeys.JournalIcsMaxImportEntries, IcsCountFloor, SystemSettingsDefaults.JournalIcsMaxImportEntries);
+            SystemSettingsKeys.JournalIcsMaxImportEntries, IcsCountFloor, seededDefault: null);
         journalExport = ClampExport(journalExport, journalImport);
 
         var taskExport = ResolveCount(
-            SystemSettingsKeys.TaskIcsMaxExportTasks, IcsCountFloor, SystemSettingsDefaults.TaskIcsMaxExportTasks);
+            SystemSettingsKeys.TaskIcsMaxExportTasks, IcsCountFloor, seededDefault: null);
         var taskImport = ResolveCount(
-            SystemSettingsKeys.TaskIcsMaxImportTasks, IcsCountFloor, SystemSettingsDefaults.TaskIcsMaxImportTasks);
+            SystemSettingsKeys.TaskIcsMaxImportTasks, IcsCountFloor, seededDefault: null);
         taskExport = ClampExport(taskExport, taskImport);
 
         var contactImportBytes = ResolveSizeBytes(
@@ -191,6 +192,10 @@ public sealed class ImportExportLimitsLookup(
         var journalExportBytes = ResolveSizeBytes(
             SystemSettingsKeys.JournalIcsMaxExportMegabytes, SystemSettingsDefaults.JournalIcsMaxExportMegabytes,
             SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax);
+
+        var newsOpmlImportBytes = ResolveSizeBytes(
+            SystemSettingsKeys.NewsOpmlMaxImportMegabytes, SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
+            SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax);
 
         // The five issue #434 bounds that belong to the import/export surfaces. Plain positive-integer caps, so ResolveBound is the whole story:
         // absent-but-query-succeeded is healthy, present-but-unusable or a failed query is degraded, and
@@ -234,6 +239,7 @@ public sealed class ImportExportLimitsLookup(
             journalExport, journalImport, journalImportBytes, journalExportBytes,
             aggregateExportRows, aggregateOccurrences, aggregateExportWindowDays,
             repeatableProperties, samplesPerSkipReason,
+            newsOpmlImportBytes,
             anyDegraded);
     }
 

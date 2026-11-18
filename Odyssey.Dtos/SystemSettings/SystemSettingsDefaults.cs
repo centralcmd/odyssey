@@ -54,14 +54,17 @@ public static class SystemSettingsDefaults
     public const int CalendarIcsMaxImportEvents = 2000;
     public const int CalendarIcsMaxImportMegabytes = 64;
     public const int CalendarIcsMaxExportMegabytes = 64;
-    public const int TaskIcsMaxExportTasks = 2000;
-    public const int TaskIcsMaxImportTasks = 2000;
-    public const int TaskIcsMaxImportMegabytes = 64;
-    public const int TaskIcsMaxExportMegabytes = 64;
-    public const int JournalIcsMaxExportRows = 2000;
-    public const int JournalIcsMaxImportEntries = 2000;
-    public const int JournalIcsMaxImportMegabytes = 64;
-    public const int JournalIcsMaxExportMegabytes = 64;
+    // The task surface ships unlimited on counts and at its 10 GB ceiling on size: its files carry attached files
+    // inline, and a mostly single-user instance should not meet an arbitrary cap moving its own board.
+    public const string TaskIcsMaxExportTasks = Unlimited;
+    public const string TaskIcsMaxImportTasks = Unlimited;
+    public const int TaskIcsMaxImportMegabytes = 10240;
+    public const int TaskIcsMaxExportMegabytes = 10240;
+    // The journal surface follows the task one: entries carry their files and photos inline.
+    public const string JournalIcsMaxExportRows = Unlimited;
+    public const string JournalIcsMaxImportEntries = Unlimited;
+    public const int JournalIcsMaxImportMegabytes = 10240;
+    public const int JournalIcsMaxExportMegabytes = 10240;
 
     // ── AI file-analysis policy and processor disclosure (issue #421 Wave 1) ─────────────────────
     //
@@ -354,4 +357,38 @@ public static class SystemSettingsDefaults
 
     /// <summary>Ninety days of finished runs: a quarter of history, well under 20 000 rows with two workers (§10).</summary>
     public const int JobRunRetentionDays = 90;
+
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    /// <summary>Minutes between fetches of a feed that names no interval of its own.</summary>
+    public const int NewsDefaultFetchIntervalMinutes = 60;
+
+    /// <summary>Feeds the household may subscribe to; archived feeds count.</summary>
+    public const int NewsMaxFeeds = 200;
+
+    public const int NewsImageMaxPerArticle = 5;
+
+    /// <summary>The largest image downloaded, in KiB.</summary>
+    public const int NewsImageMaxSizeKb = 5120;
+
+    /// <summary>The image store quota; at it, new downloads are deferred, never purged.</summary>
+    public const int NewsImageStoreMaxGiB = 50;
+
+    /// <summary>The text-and-source quota; at it, new articles are not stored, nothing is deleted.</summary>
+    public const int NewsTextStoreMaxGiB = 20;
+
+    public const int NewsFeedMaxArticlesPerDay = 500;
+
+    public const int NewsFeedMaxImageMbPerDay = 200;
+
+    /// <summary>Empty: every default-blocked address stays blocked. A degraded read resolves to this too.</summary>
+    public const string NewsPrivateHostAllowList = "";
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    /// <summary>The largest OPML file one import reads, in MB. The reader streams, so this bounds the upload, not memory.</summary>
+    public const int NewsOpmlMaxImportMegabytes = 64;
+
+    /// <summary>The most distinct feeds one OPML file may name. Its range's ceiling is this value: it can only be lowered.</summary>
+    public const int NewsOpmlMaxImportEntries = 100_000;
 }

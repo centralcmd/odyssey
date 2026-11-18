@@ -9,7 +9,7 @@ namespace Odyssey.Api;
 /// <summary>
 /// The instance-wide half of the two-limiter export concurrency control (issue #343 §5): a singleton
 /// <see cref="ConcurrencyLimiter"/> with 4 global permits, queue depth 0, shared across every request
-/// regardless of which of the five tagged actions or which authenticated user it belongs to. Registered
+/// regardless of which of the six tagged actions or which authenticated user it belongs to. Registered
 /// as a singleton service so the same limiter instance backs every request
 /// (<see cref="ExportConcurrencyFilter"/> is instantiated per-request by <c>[TypeFilter]</c>, but this
 /// type is resolved from DI as a singleton dependency).

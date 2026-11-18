@@ -30,18 +30,18 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportEvents, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportEvents, Value = "2000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportRows, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportEntries, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = SystemSettingsDefaults.TaskIcsMaxImportTasks, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportRows, Value = SystemSettingsDefaults.JournalIcsMaxExportRows, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportEntries, Value = SystemSettingsDefaults.JournalIcsMaxImportEntries, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
             // Export-side follow-up (post-#343): a "maximum export file size" per surface, plus a Tasks
             // export row cap (Tasks previously had none — see SystemSettingsKeys' doc comment).
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = "2000", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = SystemSettingsDefaults.TaskIcsMaxExportTasks, UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
             // AI file-analysis policy and processor disclosure (issue #421 Wave 1). Values mirror
             // today's effective behaviour, with one correction: MaxFutureTransactionDays was 90 in
             // appsettings.json and 30 on FileAnalysisOptions, and 90 is what ran.
@@ -143,6 +143,19 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.InstrumentPriceStaleAfterDays, Value = "5", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.InstrumentPriceSyncIntervalHours, Value = "24", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.InstrumentPriceSyncHistoryDays, Value = "365", UpdatedAt = seededAt },
+            // News reader (issue #470 §11.1).
+            new SystemSetting { Key = SystemSettingsKeys.NewsDefaultFetchIntervalMinutes, Value = "60", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsMaxFeeds, Value = "200", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsImageMaxPerArticle, Value = "5", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsImageMaxSizeKb, Value = "5120", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsImageStoreMaxGiB, Value = "50", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsTextStoreMaxGiB, Value = "20", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsFeedMaxArticlesPerDay, Value = "500", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsFeedMaxImageMbPerDay, Value = "200", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsPrivateHostAllowList, Value = SystemSettingsDefaults.NewsPrivateHostAllowList, UpdatedAt = seededAt },
+            // News OPML import (issue #508 §8.5).
+            new SystemSetting { Key = SystemSettingsKeys.NewsOpmlMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.NewsOpmlMaxImportEntries, Value = "100000", UpdatedAt = seededAt },
             // Filesystem object storage (issue #346): a day's grace before a released file leaves the disk.
             new SystemSetting { Key = SystemSettingsKeys.FileStorageDeletionGraceHours, Value = "24", UpdatedAt = seededAt },
             // Background jobs (issue #409): ninety days of finished runs in the shared run log.

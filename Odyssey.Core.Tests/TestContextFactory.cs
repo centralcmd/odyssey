@@ -40,7 +40,7 @@ public sealed class FakeImportExportLimitsLookup : IImportExportLimitsLookup
             CalendarIcsMaxExportEvents, CalendarIcsMaxImportEvents, CalendarIcsMaxImportBytes, CalendarIcsMaxExportBytes,
             TaskIcsMaxExportTasks, TaskIcsMaxImportTasks, TaskIcsMaxImportBytes, TaskIcsMaxExportBytes,
             JournalIcsMaxExportRows, JournalIcsMaxImportEntries, JournalIcsMaxImportBytes, JournalIcsMaxExportBytes,
-            20_000, 5_000, 92, 200, 100,
+            20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
 }
 

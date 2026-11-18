@@ -1,18 +1,23 @@
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Server.Kestrel.Core.Features;
 using Microsoft.Extensions.Options;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
+using MinDataRate = Microsoft.AspNetCore.Server.Kestrel.Core.MinDataRate;
 
 namespace Odyssey.Api;
 
-/// <summary>The four import surfaces an <see cref="ImportSizeLimitAttribute"/> can name.</summary>
+/// <summary>The import surfaces an <see cref="ImportSizeLimitAttribute"/> can name.</summary>
 public enum ImportSurface
 {
     Contacts,
     Calendars,
     Tasks,
     JournalEntries,
+
+    /// <summary>The news OPML import (issue #508). Its arm also sets the upload-rate floor.</summary>
+    NewsOpml,
 }
 
 /// <summary>
@@ -40,6 +45,20 @@ public sealed class ImportSizeLimitAttribute(ImportSurface surface) : Attribute
 public sealed class UploadSizeLimitAttribute : Attribute;
 
 /// <summary>
+/// Tags an upload whose TRANSPORT limit is the admin upload cap (plus the envelope headroom) while its multipart
+/// limit stays at the ceiling — the photo upload, whose service answers a file just over the cap with a 413 naming
+/// it (#428 §5.1), which the multipart reader's own refusal inside model binding could not. A body well over the cap
+/// is refused by the transport before it is spooled, also as a 413 naming the cap.
+/// <para>
+/// Every action that carries none of this, <see cref="ImportSizeLimitAttribute"/> and
+/// <see cref="UploadSizeLimitAttribute"/> is held to <see cref="FileStorageOptions.DefaultMaxRequestBodyBytes"/>, so
+/// raising the ceiling for large files never lets a JSON endpoint — sign-in included — accept a multi-gigabyte body.
+/// </para>
+/// </summary>
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class UploadTransportLimitAttribute : Attribute;
+
+/// <summary>
 /// Applies the configured, admin-editable per-surface byte cap to the request transport — the
 /// mechanism that makes the vCard import's size limit actually take effect (issue #343 §5, replacing
 /// the dead <c>[RequestSizeLimit(500 MB)]</c> that never touched the global 65 MB multipart limit).
@@ -55,6 +74,36 @@ public sealed class UploadSizeLimitAttribute : Attribute;
 /// </summary>
 public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<ImportSizeLimitMiddleware> logger)
 {
+    /// <summary>
+    /// The OPML upload's minimum data rate (issue #508 §5.2, B2, R2-3): one import holds the single OPML permit for as
+    /// long as its body takes to arrive, and Kestrel's default of 240 B/s would let a slow client hold it for days. At
+    /// 64 KiB/s a 64 MB upload finishes within about 17 minutes or is cut off.
+    /// </summary>
+    internal static readonly MinDataRate NewsOpmlMinBodyDataRate = new(bytesPerSecond: 64 * 1024, gracePeriod: TimeSpan.FromSeconds(10));
+
+    /// <summary>
+    /// Sets the request's minimum body data rate. The feature is absent under TestServer, and Kestrel refuses the
+    /// setter on HTTP/2 and HTTP/3, where the server-wide rate applies instead; both are logged and skipped. The log lines
+    /// carry no request value: the path and protocol are client-supplied (CodeQL cs/log-forging).
+    /// </summary>
+    internal void ApplyMinBodyDataRate(HttpContext context, MinDataRate rate)
+    {
+        if (context.Features.Get<IHttpMinRequestBodyDataRateFeature>() is not { } feature)
+        {
+            logger.LogDebug("IHttpMinRequestBodyDataRateFeature is unavailable; the upload-rate floor was not set.");
+            return;
+        }
+
+        try
+        {
+            feature.MinDataRate = rate;
+        }
+        catch (NotSupportedException)
+        {
+            logger.LogDebug("The upload-rate floor is not supported on this protocol; the server-wide rate applies.");
+        }
+    }
+
     public async Task InvokeAsync(
         HttpContext context,
         IImportExportLimitsLookup limitsLookup,
@@ -67,7 +116,16 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
         var uploadAttribute = endpoint?.Metadata.GetMetadata<UploadSizeLimitAttribute>();
         if (importAttribute is null && uploadAttribute is null)
         {
-            await next(context);
+            if (endpoint?.Metadata.GetMetadata<UploadTransportLimitAttribute>() is null)
+            {
+                LowerToDefault(context, fileStorageOptions.Value.DefaultMaxRequestBodyBytes);
+                await next(context);
+                return;
+            }
+
+            var uploadCap = (await uploadLimitsLookup.GetAsync(context.RequestAborted)).MaxUploadBytes;
+            LowerToDefault(context, uploadCap + fileStorageOptions.Value.RequestEnvelopeHeadroomBytes);
+            await NextAnsweringOversizeAsync(context, uploadCap);
             return;
         }
 
@@ -81,6 +139,7 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 ImportSurface.Calendars => limits.CalendarIcsMaxImportBytes,
                 ImportSurface.Tasks => limits.TaskIcsMaxImportBytes,
                 ImportSurface.JournalEntries => limits.JournalIcsMaxImportBytes,
+                ImportSurface.NewsOpml => limits.NewsOpmlMaxImportBytes,
                 _ => throw new InvalidOperationException($"Unhandled import surface '{importAttribute.Surface}'."),
             };
         }
@@ -107,6 +166,13 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 context.Request.Path);
         }
 
+        if (importAttribute?.Surface == ImportSurface.NewsOpml)
+        {
+            // Before anything reads the body, like the size cap: the resource filter that holds the OPML permit runs
+            // before model binding, so a floor set any later would let a slow body hold the permit regardless.
+            ApplyMinBodyDataRate(context, NewsOpmlMinBodyDataRate);
+        }
+
         var configured = configuredFormOptions.Value;
         context.Features.Set<IFormFeature>(new FormFeature(context.Request, new FormOptions
         {
@@ -122,6 +188,11 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
             MultipartBodyLengthLimit = capBytes,
         }));
 
+        await NextAnsweringOversizeAsync(context, capBytes);
+    }
+
+    private async Task NextAnsweringOversizeAsync(HttpContext context, long capBytes)
+    {
         try
         {
             await next(context);
@@ -150,6 +221,16 @@ public sealed class ImportSizeLimitMiddleware(RequestDelegate next, ILogger<Impo
                 Title = "Payload too large",
                 Detail = $"The request body exceeds the maximum of {capBytes} bytes.",
             });
+        }
+    }
+
+    // Only ever lowers: an endpoint attribute such as [RequestSizeLimit] still applies later, in the MVC filter.
+    private static void LowerToDefault(HttpContext context, long defaultBytes)
+    {
+        var feature = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
+        if (feature is { IsReadOnly: false } && (feature.MaxRequestBodySize is null || feature.MaxRequestBodySize > defaultBytes))
+        {
+            feature.MaxRequestBodySize = defaultBytes;
         }
     }
 }

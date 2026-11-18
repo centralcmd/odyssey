@@ -6,8 +6,9 @@ namespace Odyssey.TestData.Generators;
 
 /// <summary>
 /// Seeds realistic exchange rates so multi-currency accounts convert without warnings.
-/// The conversion service does no inversion or triangulation (a (to,from) rate does NOT serve a
-/// (from,to) request), so every directed pair among the demo currencies gets its own rate.
+/// These rates are manual, and the conversion service inverts only FETCHED rows (issue #472), so a manual
+/// (to,from) rate does NOT serve a (from,to) request: every directed pair among the demo currencies gets its
+/// own rate.
 /// Rates are derived from a single USD-value table to stay internally consistent, with a monthly
 /// history long enough to cover the net-worth chart's default window; conversions use the latest
 /// (AsOf) row.

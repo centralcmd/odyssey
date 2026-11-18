@@ -329,6 +329,7 @@ public sealed class FileStoreUploadApiTests
                     ["FileStorage:Bindings:FinanceFiles"] = "finance",
                     ["FileStorage:Bindings:JournalFiles"] = "primary",
                     ["FileStorage:Bindings:ContactAvatars"] = "primary",
+                    ["FileStorage:Bindings:NewsArticles"] = "primary",
                     ["FileStorage:Bindings:PhotoOriginals"] = "primary",
                     ["FileStorage:Bindings:PhotoThumbnails"] = "primary",
                 },

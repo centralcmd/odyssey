@@ -1,0 +1,87 @@
+@using System.Globalization
+@implements IDisposable
+@*
+    NewsVersionsDialog — an article's earlier versions (issue #473 §3.5, AC 11, 42, 63; Odyssey Design System ·
+    ui_kits/web/News.jsx, NewsVersionsDialog). Up to NewsLimits.MaxRevisions versions, so a "Version" select rather
+    than a tab strip, filled from the metadata-only list, newest first and ending with the Original. Choosing one
+    loads that ONE body: a silent skeleton with aria-busy while it loads, a superseded response discarded, and
+    "Showing version N" announced only once it has loaded — or, for a version whose body was omitted, the omitted
+    alert's text instead. A failure is "Couldn't load this version." with Retry; a successful Retry moves focus to
+    the panel's heading, a failed one leaves it on Retry. Read-only.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Closed" Icon="history" RequiredLegend="false" TitleLevel="2">
+    <Title>Earlier versions of “<bdi lang="@Lang">@NewsArticleCard.TitleOf(Article)</bdi>”</Title>
+    <ChildContent>
+        @if (_listPhase == Phase.Loading)
+        {
+            <div aria-busy="true"><OdsSkeleton Variant="OdsSkeletonVariant.Text" Lines="2" /></div>
+        }
+        else if (_listPhase == Phase.Failed)
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                <span class="nw-alert-line">
+                    <span>Couldn’t load the earlier versions.</span>
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="LoadListAsync">Retry</OdsButton>
+                </span>
+            </OdsAlert>
+        }
+        else
+        {
+            <p class="nw-dialog-line">@CountLine</p>
+            @if (_revisions.Count > 0)
+            {
+                <OdsSelect Label="Version" Value="@(_selected?.ToString(CultureInfo.InvariantCulture))" ValueChanged="OnVersionChanged" Options="Options" />
+            }
+            @if (Selected is { } revision)
+            {
+                <section class="nw-version" aria-labelledby="@HeadingId" lang="@Lang" aria-busy="@(_bodyPhase == Phase.Loading ? "true" : null)">
+                    <h3 id="@HeadingId" class="nw-version-title" tabindex="-1"><bdi>@(Shown?.Title is { Length: > 0 } title ? title : revision.Title is { Length: > 0 } t ? t : "(untitled)")</bdi></h3>
+                    <p class="nw-version-meta">
+                        @if (!string.IsNullOrWhiteSpace(Shown?.Author ?? revision.Author))
+                        {
+                            <bdi>@(Shown?.Author ?? revision.Author)</bdi>
+                        }
+                        else
+                        {
+                            <span>No author</span>
+                        }
+                    </p>
+                    @if (!string.IsNullOrWhiteSpace(Shown?.Link ?? revision.Link))
+                    {
+                        <OdsExternalLink Url="@(Shown?.Link ?? revision.Link)" Text="Open this version’s link" Copyable="true" />
+                    }
+                    @if (_bodyPhase == Phase.Loading)
+                    {
+                        <OdsSkeleton Variant="OdsSkeletonVariant.Text" Lines="3" />
+                    }
+                    else if (_bodyPhase == Phase.Failed)
+                    {
+                        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                            <span class="nw-alert-line">
+                                <span>Couldn’t load this version.</span>
+                                <OdsButton id="nw-version-retry" Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh"
+                                           AriaDisabled="_retrying" OnClick="RetryBodyAsync">@(_retrying ? "Retrying…" : "Retry")</OdsButton>
+                                @if (Gate.RemainingSeconds is { } wait && !_retrying)
+                                {
+                                    <span class="nw-muted">@($"Available in {wait.ToString(CultureInfo.CurrentCulture)} s")</span>
+                                }
+                            </span>
+                        </OdsAlert>
+                    }
+                    else if (Shown?.BodyOmittedReason is not null)
+                    {
+                        <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.Status">@NewsArticleCard.OmittedText</OdsAlert>
+                    }
+                    else if (Shown is { } shown)
+                    {
+                        <NewsArticleBody @key="shown.RevisionNumber" Body="@shown.Body" Lang="@Lang" IdPrefix="@($"nwv-{shown.RevisionNumber}")" />
+                    }
+                </section>
+            }
+        }
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Filled" OnClick="Close">Close</OdsButton>
+    </Footer>
+</OdsModal>

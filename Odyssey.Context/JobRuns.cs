@@ -350,6 +350,34 @@ public class FileAnalysisJobRun : JobRun
 }
 
 /// <summary>
+/// A burst or manual run of the news reader's job (issue #470 §11.1 item 4). The per-feed leases are the job's guard,
+/// so a scheduled burst is not exclusive; a manual run only marks eligible feeds due and counts them in
+/// <see cref="FeedsMarked"/>.
+/// </summary>
+public class NewsFeedJobRun : JobRun
+{
+    public NewsFeedJobRun() : base(Dtos.Application.JobType.NewsFeedFetch)
+    {
+    }
+
+    public int FeedsFetched { get; set; }
+
+    public int ItemsStored { get; set; }
+
+    public int ItemsRevised { get; set; }
+
+    public int ImagesStored { get; set; }
+
+    public int FeedsQuarantined { get; set; }
+
+    /// <summary>The manual run's counter: feeds it marked due.</summary>
+    public int FeedsMarked { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() =>
+        (FeedsFetched + ItemsStored + ItemsRevised + ImagesStored + FeedsMarked, FeedsQuarantined);
+}
+
+/// <summary>
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes

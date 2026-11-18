@@ -31,6 +31,9 @@ public enum JobType : byte
     /// <summary>The instrument-price sync and its purges (issue #446).</summary>
     InstrumentPriceSync = 8,
 
+    /// <summary>The news reader's fetch, ingest, image and maintenance job (issue #470): work-driven, per-feed leases.</summary>
+    NewsFeedFetch = 9,
+
     Unknown = byte.MaxValue,
 }
 
@@ -370,6 +373,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.FileAnalysis)] = typeof(FileAnalysisJobRunDetail),
         [nameof(Application.JobType.FileBlobBackfill)] = typeof(FileBlobBackfillJobRunDetail),
         [nameof(Application.JobType.InstrumentPriceSync)] = typeof(InstrumentPriceSyncJobRunDetail),
+        [nameof(Application.JobType.NewsFeedFetch)] = typeof(NewsFeedJobRunDetail),
     };
 
     public override JobRunDetail? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -727,4 +731,28 @@ public sealed record InstrumentPriceSyncJobRunDetail : JobRunDetail
     public int? RequestsMade { get; set; }
 
     public int? PricesDeleted { get; set; }
+}
+
+/// <summary>
+/// A news reader run (issue #470 §11.1 item 4): a burst of fetch ticks, or a manual run that only marks eligible feeds
+/// due (<see cref="FeedsMarked"/>). Counts only; <c>null</c> without <c>news-feeds.update</c>.
+/// </summary>
+public sealed record NewsFeedJobRunDetail : JobRunDetail
+{
+    /// <summary>Fetch attempts that reached a publisher and completed (a success, a 304 or a handled failure).</summary>
+    public int? FeedsFetched { get; set; }
+
+    /// <summary>New articles stored.</summary>
+    public int? ItemsStored { get; set; }
+
+    /// <summary>Articles whose content changed (a revision or a within-the-hour overwrite).</summary>
+    public int? ItemsRevised { get; set; }
+
+    public int? ImagesStored { get; set; }
+
+    /// <summary>Feeds set aside after repeated crashes while they were being read.</summary>
+    public int? FeedsQuarantined { get; set; }
+
+    /// <summary>The manual run's counter: feeds it marked due.</summary>
+    public int? FeedsMarked { get; set; }
 }
