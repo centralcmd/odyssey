@@ -381,6 +381,47 @@ and re-running the export gives a consistent file. Cancelled events in an import
 and the removed ids. Rolling the migration back restores the old settings rows and drops `ImportSourceUid`, the key
 that makes a second import of another calendar's export update rather than duplicate.
 
+#### Calendar recurrence keys and time zones (issue #519)
+
+**The import sorts the file by UID first, on temporary disk.** Since issue #519 a calendar import reads the buffered
+upload twice: pass 1 checks the whole file and writes a 40-byte sort record per `VEVENT` to `ASPNETCORE_TEMP` (the
+same `import_spool` volume), pass 2 merges the sorted runs and applies one UID at a time. The disk this needs is
+bounded, not estimated:
+
+- A file with more than `max(1, upload bytes / 64)` top-level `VEVENT`s is refused with
+  `400 calendar_ics_import_too_many_components` before anything is applied — no real calendar averages under 64 bytes
+  an event — so the records are at most **0.625×** the upload.
+- Runs are deleted after each merge round, so the spill peaks at **1.25×** the upload (on top of the buffered upload
+  itself). Before pass 1 the import reserves **1.5×** the upload against the free space, in a process-wide budget that
+  concurrent imports share; crossing 1.25× while sorting, or `ENOSPC`, is a `507` with nothing applied. Budget
+  `cap × 2.5 × import concurrency (2)` of free space on the volume for a worst case: the 1× buffer plus the 1.5×
+  reservation. The spill is deleted when the request ends, whatever happened.
+
+Because pass 1 reads the whole file before any batch, a structural fault anywhere in a file (an unclosed or oversized
+component, too many events) is now a plain `400` with nothing applied. Batches still commit separately, but in UID-hash
+order, so a failure part-way leaves an arbitrary subset applied; re-running the same file is still idempotent.
+
+**Series writes lock the series row.** Every write that touches a series' rows — a series edit, an occurrence edit or
+delete, an import of that series, a series delete, the backfill — runs in one transaction whose first statement is
+`SET STATEMENT innodb_lock_wait_timeout = 5 FOR SELECT … FOR UPDATE` on the series, in ascending id order. Interactive
+writes retry twice (about 15 s worst case) and then answer `409 calendar-series-busy`. Every host now retries MariaDB
+errors `1205` (lock wait) and `1213` (deadlock) through one shared configuration (`OdysseyDatabaseRetry`), which also
+makes any plain save on the API, the worker and the migration job retry a deadlock.
+
+**The key backfill runs in the worker.** `RecurrenceKeyBackfillJob` (`/background-jobs`, "Recurrence keys") keys every
+series written before #519, one locked series at a time: a row whose start equals an occurrence is keyed (a future one
+that differs from the series becomes an override), a duplicate or rescheduled row is **detached** into a standalone
+event with its date and fields unchanged — it is no longer deleted with its series — and a future occurrence with no
+row is recorded as deleted. What calendars show does not change; series membership does. A series that fails is logged
+by id and retried on the next tick; until it is keyed, its first write keys it inline.
+
+**Release notes for #519** should say: existing events stay floating and display exactly as before until they are
+edited with a zone; floating times now export without `Z`; the backfill and what it detaches; the grouper's disk formula
+above; the `removeCancelled` → `allowRemovals` rename and that it now also gates discarding a series' edits; that every
+host retries deadlocks; that a past deletion in a backfilled legacy series is not remembered, so such a series exports
+flat; that a tzdata change moves no stored instant (a series' future rows follow it on its next write); and that
+`Down()` loses every exclusion, override flag, key and zone, and leaves detached rows detached — only a backup undoes it.
+
 Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
 accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to
 the admin upload cap plus 1 MiB. Only the import and upload endpoints, which set their own per-request cap, reach
