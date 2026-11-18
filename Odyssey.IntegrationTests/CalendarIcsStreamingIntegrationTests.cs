@@ -190,6 +190,17 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             // The file itself sits in the test's own memory; what is measured is what the import adds over it.
             Assert.True(input.PeakLiveBytes - baseline < 128 * MiB,
                 $"Peak live heap grew by {(input.PeakLiveBytes - baseline) / MiB} MiB.");
+
+            // The bound discriminates (tester finding 6): the materialising import this replaced loaded the whole file
+            // into one Ical.Net calendar first, and that parse alone retains more than the bound for this file.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            var beforeParse = GC.GetTotalMemory(forceFullCollection: true);
+            var whole = Ical.Net.Calendar.Load(file);
+            var materialised = GC.GetTotalMemory(forceFullCollection: true) - beforeParse;
+            Assert.Equal(events, whole!.Events.Count);
+            Assert.True(materialised > 128 * MiB, $"A whole-file parse retained only {materialised / MiB} MiB.");
+            GC.KeepAlive(whole);
         }
         finally
         {
