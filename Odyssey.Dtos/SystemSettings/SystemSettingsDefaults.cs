@@ -170,6 +170,9 @@ public static class SystemSettingsDefaults
     public const int JournalEntryMaxLinksPerKind = 50;
     public const int JournalTaskMaxLinksPerKind = 50;
 
+    /// <summary>Files, and separately photos, one calendar event or series may link (issue #521 §4).</summary>
+    public const int CalendarEventMaxLinksPerKind = 50;
+
     /// <summary>
     /// The shipped upload cap, in megabytes. Matches the 64 MB that
     /// <c>FileStorage:MaxFileSizeBytes</c> pins in <c>appsettings.json</c>, so a default install sees

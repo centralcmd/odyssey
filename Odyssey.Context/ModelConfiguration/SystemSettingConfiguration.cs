@@ -82,6 +82,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.PhotoMaxAlbumMembers, Value = "1000", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalEntryMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalTaskMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarEventMaxLinksPerKind, Value = "50", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.FileStorageMaxUploadMegabytes, Value = "64", UpdatedAt = seededAt },
             // The last compiled-in tuning constants (issue #434). Every seed is today's effective
             // value, so a default install is behaviourally identical after the migration — with the

@@ -145,6 +145,9 @@ public sealed record SystemSettingsDto
 
     public int JournalTaskMaxLinksPerKind { get; set; }
 
+    /// <summary>Files, and separately photos, one calendar event or series may link (issue #521).</summary>
+    public int CalendarEventMaxLinksPerKind { get; set; }
+
     /// <summary>The effective upload cap, in megabytes (issue #421 Wave 4).</summary>
     public int FileStorageMaxUploadMegabytes { get; set; }
 

@@ -126,6 +126,9 @@ public static class SystemSettingsKeys
     public const string JournalEntryMaxLinksPerKind = "JournalEntryMaxLinksPerKind";
     public const string JournalTaskMaxLinksPerKind = "JournalTaskMaxLinksPerKind";
 
+    // Files and photos one calendar event or series may link, per kind (issue #521 §4).
+    public const string CalendarEventMaxLinksPerKind = "CalendarEventMaxLinksPerKind";
+
     // ---------------------------------------------------------------------------------------------
     // The upload cap (issue #421 Wave 4). Megabytes, matching the sixteen existing size caps rather
     // than the bytes of the retired `FileStorage:MaxFileSizeBytes` — which is NOT retired, only
@@ -310,6 +313,7 @@ public static class SystemSettingsKeys
         PhotoMaxAlbumMembers,
         JournalEntryMaxLinksPerKind,
         JournalTaskMaxLinksPerKind,
+        CalendarEventMaxLinksPerKind,
         FileStorageMaxUploadMegabytes,
         FileAnalysisMaxTokens,
         FileAnalysisMatchTimeoutSeconds,
