@@ -44,6 +44,9 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
 
     public const string TooManyComponentsCode = "calendar_ics_import_too_many_components";
 
+    /// <summary>The prefix of every file the calendar import spills (runs and upload copies), for the stale sweep.</summary>
+    public const string SpillFilePrefix = "odyssey-ics-";
+
     public const string TooManyComponentsMessage =
         "The file contains more events than its size allows; it does not look like a calendar file.";
 
@@ -309,7 +312,7 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
 
     private string NewSpillPath()
     {
-        var path = Path.Combine(spillDirectory, $"odyssey-ics-{Guid.NewGuid():N}.run");
+        var path = Path.Combine(spillDirectory, $"{SpillFilePrefix}{Guid.NewGuid():N}.run");
         allFiles.Add(path);
         return path;
     }
@@ -524,7 +527,17 @@ internal sealed class IcsSpillReservation : IDisposable
     public static IcsSpillReservation Reserve(string directory, long uploadBytes, Func<string, long>? freeSpace = null)
     {
         var need = Required(uploadBytes);
-        var available = (freeSpace ?? FreeSpace)(directory);
+        long available;
+        try
+        {
+            available = (freeSpace ?? FreeSpace)(directory);
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            // Fails closed: a volume whose free space cannot be read is refused with the 507, never assumed unlimited.
+            available = 0;
+        }
+
         lock (Gate)
         {
             if (available - reserved < need)
@@ -548,15 +561,5 @@ internal sealed class IcsSpillReservation : IDisposable
         }
     }
 
-    private static long FreeSpace(string directory)
-    {
-        try
-        {
-            return new DriveInfo(Path.GetFullPath(directory)).AvailableFreeSpace;
-        }
-        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
-        {
-            return long.MaxValue;
-        }
-    }
+    private static long FreeSpace(string directory) => new DriveInfo(Path.GetFullPath(directory)).AvailableFreeSpace;
 }

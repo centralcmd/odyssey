@@ -178,8 +178,12 @@ public class CalendarIcsService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>The directory the import spill is written to; the process temp directory unless a test points it elsewhere.</summary>
-    internal string SpillDirectory { get; set; } = Path.GetTempPath();
+    /// <summary>
+    /// The directory the import spill and any upload copy are written to: <see cref="ImportSpool.Directory"/> — the
+    /// <c>import_spool</c> volume behind <c>ASPNETCORE_TEMP</c> in the images, where the upload itself is buffered —
+    /// unless a test points it elsewhere. Never the OS temp directory by default, which can be a RAM-backed tmpfs.
+    /// </summary>
+    internal string SpillDirectory { get; set; } = ImportSpool.Directory();
 
     /// <summary>A fixed grouping key, for a test that must know the order groups commit in; random per import otherwise.</summary>
     internal byte[]? GroupingKey { get; set; }
@@ -1218,6 +1222,8 @@ public class CalendarIcsService
             MaxSamples = cap.ImportMaxSamplesPerSkipReason,
         };
 
+        // A crashed process's runs and upload copies are never reached by their own finally; the next import sweeps them.
+        ImportSpool.SweepStale(SpillDirectory, IcsImportGrouper.SpillFilePrefix + "*");
         await using var upload = await SeekableUpload.OpenAsync(icsFile, maxImportBytes, SpillDirectory, cancellationToken);
         using var reservation = IcsSpillReservation.Reserve(SpillDirectory, upload.Stream.Length);
         await using var grouper = await IcsImportGrouper.BuildAsync(
@@ -2803,7 +2809,7 @@ internal sealed class SeekableUpload : IAsyncDisposable
             return new SeekableUpload(source, null);
         }
 
-        var path = Path.Combine(directory, $"odyssey-ics-{Guid.NewGuid():N}.upload");
+        var path = Path.Combine(directory, $"{IcsImportGrouper.SpillFilePrefix}{Guid.NewGuid():N}.upload");
         var file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1 << 16,
             FileOptions.Asynchronous | FileOptions.DeleteOnClose);
         try
