@@ -380,6 +380,16 @@ public class CalendarApiClientTests
         Assert.Equal($"http://localhost/api/calendars/{id}/ics", client.ImportUrl(id));
     }
 
+    [Fact]
+    public void TransferUrls_WithoutABaseAddress_ThrowAClearInvalidOperationException()
+    {
+        var client = new CalendarApiClient(new OdysseyApi(new HttpClient(SummaryHandler())));
+
+        var error = Assert.Throws<InvalidOperationException>(() => client.ExportUrl(Guid.NewGuid()));
+
+        Assert.Contains("BaseAddress", error.Message);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
