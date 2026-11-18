@@ -5,7 +5,10 @@ using Microsoft.AspNetCore.Mvc.Abstractions;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.Routing.Patterns;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Odyssey.Api.Tests.Infrastructure;
 using Microsoft.Extensions.Time.Testing;
 using Xunit;
 
@@ -224,12 +227,44 @@ public class ExportConcurrencyFilterTests
         Assert.True(lifetime.Aborted);
     }
 
+    [Fact]
+    public async Task ProgressGuard_Abort_LogsTheRouteTemplate_NeverTheCallerSuppliedPath()
+    {
+        // CodeQL "log entries created from user input": the request path is the caller's, the template is the server's.
+        var logger = new CapturingLogger<ExportConcurrencyFilter>();
+        var (filter, context, clock, lifetime, _) = Guarded(logger);
+        context.HttpContext.Request.Path = "/api/calendars/x%0AFORGED/ics";
+        context.HttpContext.SetEndpoint(new RouteEndpoint(
+            _ => Task.CompletedTask, RoutePatternFactory.Parse("api/calendars/{id:guid}/ics"), 0, null, "calendar export"));
+
+        await filter.OnResourceExecutionAsync(context, () =>
+        {
+            clock.Advance(TimeSpan.FromMinutes(10) + TimeSpan.FromSeconds(15));
+            return Completed(context);
+        });
+
+        Assert.True(lifetime.Aborted);
+        var line = Assert.Single(logger.Messages);
+        Assert.Contains("api/calendars/{id:guid}/ics", line);
+        Assert.DoesNotContain("FORGED", line);
+    }
+
+    [Fact]
+    public void EndpointName_FallsBackToTheDisplayName_ThenToAPlaceholder()
+    {
+        var context = new DefaultHttpContext();
+        Assert.Equal("(unknown endpoint)", ExportConcurrencyFilter.EndpointName(context));
+
+        context.SetEndpoint(new Endpoint(_ => Task.CompletedTask, null, "Some.Controller.Export"));
+        Assert.Equal("Some.Controller.Export", ExportConcurrencyFilter.EndpointName(context));
+    }
+
     private static (ExportConcurrencyFilter Filter, ResourceExecutingContext Context, FakeTimeProvider Clock,
-        RecordingLifetime Lifetime, GatedBody Body) Guarded()
+        RecordingLifetime Lifetime, GatedBody Body) Guarded(ILogger<ExportConcurrencyFilter>? logger = null)
     {
         var clock = new FakeTimeProvider(new DateTimeOffset(2030, 1, 1, 0, 0, 0, TimeSpan.Zero));
         var filter = new ExportConcurrencyFilter(
-            new GlobalExportConcurrencyLimiter(), NullLogger<ExportConcurrencyFilter>.Instance, clock);
+            new GlobalExportConcurrencyLimiter(), logger ?? NullLogger<ExportConcurrencyFilter>.Instance, clock);
         var context = CreateContext();
         var lifetime = new RecordingLifetime();
         var body = new GatedBody();
