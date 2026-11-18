@@ -7,15 +7,24 @@ namespace Odyssey.Core.Journal.Interop;
 /// <summary>
 /// Reads an uploaded <c>.ics</c> file one <c>VEVENT</c> at a time (issue #516 §3 component 4), so a calendar import's
 /// memory never grows with the file or its event count. It unfolds lines itself, keeps the file's <c>VTIMEZONE</c>
-/// blocks (at most <see cref="MaxTimeZoneChars"/> in total) and yields each <c>VEVENT</c> wrapped in a minimal
-/// <c>VCALENDAR</c> carrying them, for <c>Ical.Net</c> to parse on its own. Every other top-level component is read past
-/// without being held.
+/// blocks (at most <see cref="MaxTimeZoneChars"/> in total, exposed once as <see cref="TimeZoneText"/>) and yields each
+/// <c>VEVENT</c> wrapped in a minimal <c>VCALENDAR</c>, for <c>Ical.Net</c> to parse on its own. Every other top-level
+/// component is read past without being held.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The caps are compile-time constants and count characters: an unfolded content line is at most
 /// <see cref="MaxLineChars"/> and a <c>VEVENT</c> at most <see cref="MaxComponentChars"/>. A component over either, a
 /// <c>BEGIN:VEVENT</c> nested in another, or one the file never closes stops the import with <c>400</c>
 /// (<see cref="TooLargeMessage"/>) — never a skip, because the splitter cannot tell where such a component ends.
+/// </para>
+/// <para>
+/// The time zones are deliberately <b>not</b> prepended to each yielded event (PR #524 security finding 2): doing so
+/// re-parsed up to 1 Mi characters per event, so a small file of many tiny events cost the zone block times the event
+/// count. <c>Ical.Net</c> 5 resolves a <c>TZID</c> through its own resolvers and never reads a <c>VTIMEZONE</c>
+/// (pinned by <c>IcsComponentSplitterTests</c>), so carrying them changed no result. A consumer that does need them
+/// (Spec B) parses <see cref="TimeZoneText"/> once per import, never per event.
+/// </para>
 /// </remarks>
 internal sealed class IcsComponentSplitter(TextReader reader)
 {
@@ -39,14 +48,16 @@ internal sealed class IcsComponentSplitter(TextReader reader)
     private readonly StringBuilder logical = new();
     private readonly StringBuilder component = new();
     private readonly StringBuilder timeZones = new();
-    private string timeZoneText = string.Empty;
     private int position;
     private int length;
     private bool endOfFile;
     private string? lookahead;
     private bool hasLookahead;
 
-    /// <summary>Yields each <c>VEVENT</c> as a complete, minimal <c>VCALENDAR</c> document.</summary>
+    /// <summary>The <c>VTIMEZONE</c> blocks read so far, in file order; at most <see cref="MaxTimeZoneChars"/>.</summary>
+    public string TimeZoneText => timeZones.ToString();
+
+    /// <summary>Yields each <c>VEVENT</c> as a complete, minimal <c>VCALENDAR</c> document carrying that event alone.</summary>
     public async IAsyncEnumerable<string> ReadEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var sawCalendar = false;
@@ -72,7 +83,7 @@ internal sealed class IcsComponentSplitter(TextReader reader)
             if (trimmed.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
             {
                 await ReadEventAsync(cancellationToken);
-                yield return Envelope + timeZoneText + component + "END:VCALENDAR\r\n";
+                yield return Envelope + component + "END:VCALENDAR\r\n";
                 component.Clear();
             }
             else if (trimmed.Equals("BEGIN:VTIMEZONE", StringComparison.OrdinalIgnoreCase))
@@ -156,7 +167,6 @@ internal sealed class IcsComponentSplitter(TextReader reader)
             {
                 if (depth == 0)
                 {
-                    timeZoneText = timeZones.ToString();
                     return;
                 }
 
