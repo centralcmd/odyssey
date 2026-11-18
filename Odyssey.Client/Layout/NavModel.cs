@@ -86,20 +86,24 @@ public static class NavModel
                 new("tasks", "Tasks", "checklist", "tasks", PermissionClaims.TasksRead),
                 new("contacts", "Contacts", "groups", "contacts", PermissionClaims.ContactsRead),
                 new("locations", "Locations", "place", "locations", PermissionClaims.LocationsRead),
-                new("weather-points", "Weather points", "wb_sunny", "weather-points", PermissionClaims.WeatherPointsRead),
                 new("journal-tags", "Journal Tags", "local_offer", "journal-tags", PermissionClaims.JournalTagsRead),
                 new("task-tags", "Task Tags", "local_offer", "task-tags", PermissionClaims.TaskTagsRead),
                 new("photo-tags", "Photo Tags", "local_offer", "photo-tags", PermissionClaims.PhotoTagsRead),
             ]),
         ]),
-        // Internet (issue #473 §3.1): the news reader. news.read gates all three pages, so a caller without it
-        // loses the whole module (VisibleModules).
+        // Internet (issue #473 §3.1): the news reader, plus Weather points (moved here from Journal). news.read
+        // gates the three news pages and weather.points.read the weather page, so a caller holding neither loses
+        // the whole module (VisibleModules). Reference stays last, as in Finance.
         new("internet", "Internet", "public",
         [
             new("News",
             [
                 new("news", "News", "feed", "news", PermissionClaims.NewsRead),
                 new("news-feeds", "Feeds", "rss_feed", "news-feeds", PermissionClaims.NewsRead),
+            ]),
+            new("Weather",
+            [
+                new("weather-points", "Weather points", "wb_sunny", "weather-points", PermissionClaims.WeatherPointsRead),
             ]),
             new("Reference",
             [
