@@ -170,6 +170,27 @@ public class ExportConcurrencyFilterTests
         Assert.True(lifetime.Aborted);
     }
 
+    [Theory]
+    [InlineData(0, false)] // exactly 1 MiB in the window: at the floor, not under it
+    [InlineData(1, true)]  // one byte short of it
+    public async Task ProgressGuard_TheOneMibFloor_IsInclusive(int shortBy, bool aborted)
+    {
+        var (filter, context, clock, lifetime, body) = Guarded();
+
+        await filter.OnResourceExecutionAsync(context, async () =>
+        {
+            // The first byte opens the window and counts in it, so the window holds 1 + (MiB - 1 - shortBy) bytes.
+            await context.HttpContext.Response.Body.WriteAsync(new byte[1]);
+            await context.HttpContext.Response.Body.WriteAsync(new byte[MiB - 1 - shortBy]);
+            body.Block();
+            _ = context.HttpContext.Response.Body.WriteAsync(new byte[MiB]).AsTask();
+            clock.Advance(TimeSpan.FromMinutes(5) + TimeSpan.FromSeconds(15));
+            return await Completed(context);
+        });
+
+        Assert.Equal(aborted, lifetime.Aborted);
+    }
+
     [Fact]
     public async Task ProgressGuard_TenMibPerMinuteForAnHour_IsNotAborted()
     {

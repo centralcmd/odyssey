@@ -3,6 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -386,14 +389,21 @@ public class CalendarIcsStreamingApiTests
         var fromB = await (await client.GetAsync($"{CalendarsPath}/{b.CalendarId}/ics")).Content.ReadAsStringAsync();
         // B's file names only B's own rows.
         Assert.DoesNotContain($"{x.CalendarEventId}@odyssey.local", fromB);
-        await ImportAsync(client, a.CalendarId, fromB);
+        // B's copy is edited before it travels back (tester finding 5): an overwrite of X would now change its title,
+        // where an identical copy would have left the title equal either way.
+        Assert.Contains("SUMMARY:X\r\n", fromB);
+        fromB = fromB.Replace("SUMMARY:X\r\n", "SUMMARY:Edited in B\r\n", StringComparison.Ordinal);
+        var back = await ImportAsync(client, a.CalendarId, fromB);
 
         var after = await RowAsync(factory, x.CalendarEventId);
-        Assert.Equal(before.Title, after.Title);
+        Assert.Equal("X", after.Title);
         Assert.Equal(before.UpdatedAt, after.UpdatedAt);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var aRows = await db.CalendarEvents.Where(e => e.CalendarId == a.CalendarId).ToListAsync();
+        // B's UID names nothing in A, so rule 4 creates B's copy beside X; it never lands on X.
+        Assert.Equal((1, 0), (back.ImportedCount, back.UpdatedCount));
+        Assert.Equal(["Edited in B", "X"], aRows.Select(r => r.Title).Order(StringComparer.Ordinal));
         var aIds = aRows.Select(r => $"{r.CalendarEventId}@odyssey.local").ToHashSet();
         Assert.All(aRows, r => Assert.False(r.ExternalUid?.EndsWith("@odyssey.local") ?? false));
         // A copy imported back carries B's synthetic UID as its match key — never one naming a row of A.
@@ -808,7 +818,93 @@ public class CalendarIcsStreamingApiTests
         Assert.Contains(id.ToString(), audit.Message);
     }
 
+    [Fact]
+    public async Task The_buffered_upload_is_deleted_after_a_failed_import()
+    {
+        // AC 16 (tester finding 6): ASP.NET Core spools a multipart body over 64 KB to ASPNETCORE_TEMP. The probe
+        // proves the spool existed while the request ran, so its absence afterwards is the deletion, not a body that
+        // was never written to disk.
+        var probe = new SpoolProbe($"spool-{Guid.NewGuid():N}");
+        await using var factory = new ApiFactory(ReadWrite, startup: probe);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Spooled");
+        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nX-MARKER:" + probe.Marker + "\r\nX-PAD:" + new string('p', 32 * 1024) + "\r\n"
+            + string.Concat(Enumerable.Range(0, CalendarIcsService.ImportBatchSize).Select(i => Standalone($"spool-{i}@example.com", $"Spool {i}")))
+            + "BEGIN:VEVENT\r\nUID:never\r\n";
+        Assert.True(Encoding.UTF8.GetByteCount(file) > 64 * 1024);
+
+        var response = await PostIcsAsync(client, calendar.CalendarId, file);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
+        Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
+        Assert.True(probe.SeenDuringRequest, "The upload was never spooled to disk, so this test proves nothing.");
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (probe.SpoolFiles().Count > 0 && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(50);
+        }
+
+        Assert.Empty(probe.SpoolFiles());
+    }
+
     // ------------------------------------------------------------------ helpers
+
+    // Looks for the request's spool file (ASPNETCORE_*.tmp holding the marker) as the response starts, which is
+    // before the framework disposes it.
+    private sealed class SpoolProbe(string marker) : IStartupFilter
+    {
+        public string Marker { get; } = marker;
+
+        public bool SeenDuringRequest { get; private set; }
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use(async (context, inner) =>
+            {
+                // OnStarting runs before the client can see any response, so the check never races the test, and
+                // after model binding has spooled the form.
+                if (HttpMethods.IsPost(context.Request.Method) && context.Request.Path.Value!.EndsWith("/ics", StringComparison.Ordinal))
+                {
+                    context.Response.OnStarting(() =>
+                    {
+                        SeenDuringRequest |= SpoolFiles().Count > 0;
+                        return Task.CompletedTask;
+                    });
+                }
+
+                await inner(context);
+            });
+            next(app);
+        };
+
+        public List<string> SpoolFiles()
+        {
+            var directory = Environment.GetEnvironmentVariable("ASPNETCORE_TEMP") is { Length: > 0 } configured
+                ? configured
+                : Path.GetTempPath();
+            var found = new List<string>();
+            foreach (var path in Directory.EnumerateFiles(directory, "ASPNETCORE_*.tmp"))
+            {
+                try
+                {
+                    using var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    var head = new byte[4096];
+                    var read = stream.Read(head, 0, head.Length);
+                    if (Encoding.UTF8.GetString(head, 0, read).Contains(Marker, StringComparison.Ordinal))
+                    {
+                        found.Add(path);
+                    }
+                }
+                catch (IOException)
+                {
+                    // Deleted, or another test's spool held exclusively, between the listing and the open.
+                }
+            }
+
+            return found;
+        }
+    }
 
     private static string Summary(string url)
     {
@@ -1006,9 +1102,16 @@ public class CalendarIcsStreamingApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null)
+        public ApiFactory(
+            IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null,
+            IStartupFilter? startup = null)
             : base(permissions, ActorUserId, configureServices: services =>
             {
+                if (startup is not null)
+                {
+                    services.AddSingleton(startup);
+                }
+
                 if (clock is not null)
                 {
                     services.RemoveAll<TimeProvider>();
