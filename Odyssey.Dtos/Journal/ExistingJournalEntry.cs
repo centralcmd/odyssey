@@ -22,6 +22,12 @@ public sealed record ExistingJournalEntry : ITagIconRecord
     [StringLength(300)]
     public string? Location { get; set; }
 
+    /// <summary>The linked place's id (issue #380 §5.1), present whenever the record is linked.</summary>
+    public Guid? LocationId { get; set; }
+
+    /// <summary>The linked place's embed, or <see langword="null"/> without <c>locations.read</c>.</summary>
+    public LocationRef? LocationRef { get; set; }
+
     [StringLength(255)]
     public string? CreatedByUserId { get; set; }
 
@@ -47,6 +53,12 @@ public sealed record ExistingJournalEntry : ITagIconRecord
 
     /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
     public string DisplayIcon { get; set; } = TagIcons.Default;
+
+    /// <summary>
+    /// The colour of the tag that supplies <see cref="DisplayIcon"/> (issue #392): normalised <c>#RRGGBB</c>
+    /// or <c>null</c>. Resolved server-side by <see cref="TagIcons.ResolveDisplay(IEnumerable{TagIconCandidate}?)"/>.
+    /// </summary>
+    public string? DisplayColor { get; set; }
 
     public List<Guid> ContactIds { get; set; } = [];
 

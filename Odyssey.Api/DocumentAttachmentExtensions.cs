@@ -56,8 +56,23 @@ public static class DocumentAttachmentExtensions
             return controller.NotFound();
         }
 
+        return controller.ServeDocument(metadata, content);
+    }
+
+    /// <summary>
+    /// The download response every document endpoint shares (issue #448 §5.3), for a file on disk or a legacy one alike:
+    /// <c>nosniff</c>; the strong <c>ETag</c> handed to the framework, so <c>If-None-Match</c> answers <c>304</c> and
+    /// <c>If-Range</c> works; range processing; <c>Cache-Control: private, no-cache</c>; and the forced attachment
+    /// disposition, written by <c>File(…, fileDownloadName)</c> and never by hand (issue #247), so a stored name holding a
+    /// quote, CR/LF or non-ASCII text cannot break the header.
+    /// </summary>
+    public static IActionResult ServeDocument(this ControllerBase controller, FileMetadataResponse metadata, Stream content)
+    {
         controller.Response.Headers.XContentTypeOptions = "nosniff";
-        controller.Response.Headers.ETag = $"\"{metadata.Sha256Hash}\"";
-        return controller.File(content, metadata.ContentType, metadata.FileName);
+        controller.Response.Headers.CacheControl = "private, no-cache";
+        return controller.File(
+            content, metadata.ContentType, metadata.FileName, lastModified: null,
+            entityTag: new Microsoft.Net.Http.Headers.EntityTagHeaderValue($"\"{metadata.Sha256Hash}\""),
+            enableRangeProcessing: true);
     }
 }

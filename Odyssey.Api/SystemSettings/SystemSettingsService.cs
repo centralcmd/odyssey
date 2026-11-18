@@ -39,7 +39,7 @@ public sealed class SystemSettingsService(
     IUserDisplayNameResolver displayNames,
     RequestCapCeilings ceilings,
     SecretSettingsService secrets,
-    IWeatherLocationRules weatherRules,
+    IWeatherPointRules weatherRules,
     ILogger<SystemSettingsService> logger)
 {
     /// <summary>
@@ -187,6 +187,15 @@ public sealed class SystemSettingsService(
         // it changed, and a rolled-back clear leaves no line claiming a credential was removed.
         foreach (var line in auditLines)
         {
+            if (line.DigestOnly)
+            {
+                // Lengths and digests, never the text (issue #433 §7.2).
+                logger.LogInformation(
+                    "System settings guidance change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
+                    actorUserId, GuidanceAuditField(line.Key), line.OldValue, line.NewValue);
+                continue;
+            }
+
             logger.LogInformation(
                 "System settings security-claim change by {ActorUserId}: {Field} {OldValue} -> {NewValue}.",
                 actorUserId, line.Key, line.OldValue, line.NewValue);
@@ -213,7 +222,20 @@ public sealed class SystemSettingsService(
     /// PROJECTED values — the projection runs where the old and new strings are still in hand, so a
     /// line can never be composed from an unprojected one by a later edit at the emit site.
     /// </summary>
-    private sealed record PendingAudit(string Key, string OldValue, string NewValue);
+    /// <summary>
+    /// The field a digest-only line names, chosen from the closed set of guidance keys rather than
+    /// passed through from the descriptor. Only those two keys ever produce a digest line, and naming
+    /// them from this switch keeps every other key (the mail settings among them) structurally off it —
+    /// which is also what static analysis needs to see (code-scanning alert 71 on PR #440).
+    /// </summary>
+    private static string GuidanceAuditField(string key) => key switch
+    {
+        SystemSettingsKeys.FileAnalysisExtractionPromptAddition => "FileAnalysisExtractionPromptAddition",
+        SystemSettingsKeys.FileAnalysisMatchPromptAddition => "FileAnalysisMatchPromptAddition",
+        _ => "guidance",
+    };
+
+    private sealed record PendingAudit(string Key, string OldValue, string NewValue, bool DigestOnly = false);
 
     /// <summary>
     /// The write phase, extracted so the whole of it — not just <c>BeginTransactionAsync</c> — sits
@@ -266,10 +288,10 @@ public sealed class SystemSettingsService(
             rows, SystemSettingsKeys.JournalIcsMaxExportRows, SystemSettingsKeys.JournalIcsMaxImportEntries,
             request.JournalIcsMaxExportRows, request.JournalIcsMaxImportEntries, "journal-entries");
 
-        // Phase 1d — the household weather default must name a selectable location (issue #348 §11). Only
+        // Phase 1d — the household weather default must name a selectable point (issue #348 §11, #387). Only
         // a CHANGE is checked: a stored default whose location was archived since is treated as unset on
         // read, and refusing every unrelated save until it is cleared would freeze the whole page.
-        await ValidateWeatherDefaultAsync(rows, request.WeatherDefaultLocationId, cancellationToken);
+        await ValidateWeatherDefaultAsync(rows, request.WeatherDefaultPointId, cancellationToken);
 
         // Phase 2 — every claim/shape/round-trip check passed; now mutate. Not a Mapster Adapt call:
         // IgnoreNullValues defaults to false, so a bare Adapt would write false/0 for every null
@@ -332,6 +354,15 @@ public sealed class SystemSettingsService(
                     descriptor.Key,
                     project is null ? oldValue : project(oldValue),
                     project is null ? newValue : project(newValue)));
+            }
+
+            // Issue #433: the prompt additions take the ordinary claim, so the branch above skips them, but
+            // a change to what is sent to the processor must still say who made it. Lengths and digests
+            // only — the text is never logged.
+            if (descriptor.AuditDigestOnChange && valueChanged)
+            {
+                auditLines.Add(new PendingAudit(
+                    descriptor.Key, DigestSummary(oldValue), DigestSummary(newValue), DigestOnly: true));
             }
 
             // G4/G7. Computed off the loop's own valueChanged rather than re-derived up front — see
@@ -404,6 +435,15 @@ public sealed class SystemSettingsService(
     /// entered for — is about an ENDPOINT, and the host is only half of one.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// The audit form of a prompt addition: its length and its 16-character digest, or <c>empty</c>.
+    /// Enough to tell one version from another and to match a job's stamp, without the text.
+    /// </summary>
+    private static string DigestSummary(string value) =>
+        Odyssey.Core.Finance.PromptAdditionDigest.Of(value) is { } digest
+            ? string.Create(CultureInfo.InvariantCulture, $"[length {value.Length}, digest {digest}]")
+            : "[empty]";
+
     private static string? RelayCredentialClearTrigger(string key, string newValue, bool valueChanged)
     {
         if (!valueChanged)
@@ -506,7 +546,7 @@ public sealed class SystemSettingsService(
             return;
         }
 
-        var stored = rows.TryGetValue(SystemSettingsKeys.WeatherDefaultLocationId, out var row) ? row.Value : "";
+        var stored = rows.TryGetValue(SystemSettingsKeys.WeatherDefaultPointId, out var row) ? row.Value : "";
         if (Guid.TryParse(stored, out var storedId) && storedId == id)
         {
             return;
@@ -515,9 +555,9 @@ public sealed class SystemSettingsService(
         if (!await weatherRules.IsSelectableAsync(context, id, cancellationToken))
         {
             throw new DomainValidationException(
-                "That location has no weather. Turn weather on for it on the Locations page first.",
+                "That weather point has no forecast. Turn its forecast on on the Weather points page first.",
                 code: null,
-                field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId));
+                field: nameof(SystemSettingsUpdate.WeatherDefaultPointId));
         }
     }
 
@@ -681,6 +721,10 @@ public sealed class SystemSettingsService(
             // Kestrel's request-body limit is fixed from FileStorage:MaxFileSizeBytes and cannot be
             // raised per-request, so a larger setting would be refused by the transport.
             UploadMegabytesCeiling = ceilings.UploadMegabytes,
+
+            // The news image size cap's ceiling (issue #470 §11.1): derived from the same startup limit, through
+            // NewsImageSizeCeiling, which the worker's read-side clamp also calls.
+            NewsImageMaxSizeKbCeiling = ceilings.NewsImageMaxSizeKb,
 
             // The six issue #434 bound projections. Unlike the three above, these are NOT backed by a
             // RequestCapCeilings validator — their bound is the [Range] on SystemSettingsUpdate, which

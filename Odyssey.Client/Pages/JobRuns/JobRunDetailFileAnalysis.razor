@@ -1,0 +1,16 @@
+@*
+    A file-analysis queue run's detail (issue #444): the analyses the burst completed, the ones that failed after the
+    document may have left, and the ones refused before anything was sent. Counts only — never a file, user or account.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Completed")">@N(Analysis.AnalysesCompleted)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Failed")">@N(Analysis.AnalysesFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Refused before sending")">@N(Analysis.AnalysesRefused)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private FileAnalysisJobRunDetail Analysis => (FileAnalysisJobRunDetail)Run;
+}

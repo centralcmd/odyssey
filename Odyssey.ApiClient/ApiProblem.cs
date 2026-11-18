@@ -22,7 +22,7 @@ public sealed record ApiProblem
     /// The machine-readable error code from the problem's <c>code</c> extension, when present
     /// (e.g. <c>feature_disabled</c>). Reserved for callers that need to discriminate a specific
     /// failure beyond the HTTP status — today the feature-disabled branches key on the <c>503</c>
-    /// status itself, so nothing reads this yet; it is parsed so that wiring is already in place.
+    /// status itself; <see cref="ApiProblemExtensions.IsFileAnalysisDestinationChanged"/> reads it.
     /// </summary>
     public string? Code { get; init; }
 
@@ -88,6 +88,34 @@ public sealed record ApiProblem
         }
     }
 
+    /// <summary>
+    /// Reads the named extension member as a value type (a <see cref="Guid"/>, an <see cref="int"/>…) — the
+    /// counterpart of the class-only <see cref="Extension{T}"/>, for e.g. the id a <c>409</c> duplicate collided with
+    /// (issue #452 §5.2). <see langword="false"/> when the member is absent, <c>null</c> or does not deserialize into
+    /// <typeparamref name="T"/>; never throws.
+    /// </summary>
+    public bool TryGetExtensionValue<T>(string name, out T value)
+        where T : struct
+    {
+        value = default;
+        if (Extensions is null || !Extensions.TryGetValue(name, out var element)
+            || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return false;
+        }
+
+        try
+        {
+            value = element.Deserialize<T>(ApiProblemExtensions.SerializerOptions);
+            return true;
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException or InvalidOperationException or FormatException)
+        {
+            value = default;
+            return false;
+        }
+    }
+
     /// <summary>The HTTP reason phrase, captured at parse time as a fallback when <see cref="Detail"/> is absent.</summary>
     [JsonIgnore]
     public string? ReasonFallback { get; init; }
@@ -111,6 +139,64 @@ public static class ApiProblemExtensions
 
     /// <summary>The same web-defaults options, for reading a problem extension member.</summary>
     internal static JsonSerializerOptions SerializerOptions => Options;
+
+    /// <summary>The <c>code</c> a match refused because the provider settings moved since analyze carries (issue #433).</summary>
+    public const string FileAnalysisDestinationChangedCode = Odyssey.Dtos.Finance.FileAnalysisCodes.MatchDestinationChanged;
+
+    /// <summary>
+    /// Whether this is the match refusal for a destination or disclosure that changed after the analysis
+    /// started (issue #434). The single home of that literal: any other <c>409</c> keeps the caller's
+    /// generic conflict handling.
+    /// </summary>
+    public static bool IsFileAnalysisDestinationChanged(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, FileAnalysisDestinationChangedCode, StringComparison.Ordinal);
+
+    /// <summary>
+    /// An analyze refused because the file already has an open analysis (<c>409 analysis_in_progress</c>,
+    /// issue #444). The open job's id is <see cref="TryGetAnalysisJobId"/>.
+    /// </summary>
+    public static bool IsFileAnalysisInProgress(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.AnalysisInProgress, StringComparison.Ordinal);
+
+    /// <summary>An analyze refused because the disclosure changed under an open consent gate (<c>409 disclosure_changed</c>).</summary>
+    public static bool IsFileAnalysisDisclosureChanged(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.DisclosureChanged, StringComparison.Ordinal);
+
+    /// <summary>An analyze refused because the file is over the analysis size ceiling (<c>422 file_too_large_for_analysis</c>).</summary>
+    public static bool IsFileAnalysisTooLarge(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.FileTooLargeForAnalysis, StringComparison.Ordinal);
+
+    /// <summary>A file-analysis write refused because analysis is switched off (<c>503 feature_disabled</c>).</summary>
+    public static bool IsFileAnalysisFeatureDisabled(this ApiProblem? problem) =>
+        string.Equals(problem?.Code, Odyssey.Dtos.Finance.FileAnalysisCodes.FeatureDisabled, StringComparison.Ordinal);
+
+    /// <summary>
+    /// The open job's id from a <c>409 analysis_in_progress</c> (the <c>analysisJobId</c> extension). False when
+    /// the member is absent, not a string, or not a GUID — a malformed id is never attached to.
+    /// </summary>
+    public static bool TryGetAnalysisJobId(this ApiProblem? problem, out Guid jobId)
+    {
+        jobId = Guid.Empty;
+        return problem?.Extensions is { } extensions
+            && extensions.TryGetValue(Odyssey.Dtos.Finance.FileAnalysisCodes.AnalysisJobIdExtension, out var element)
+            && element.ValueKind == JsonValueKind.String
+            && Guid.TryParse(element.GetString(), out jobId)
+            && jobId != Guid.Empty;
+    }
+
+    /// <summary>
+    /// The analysis size ceiling, in bytes, from a <c>422 file_too_large_for_analysis</c> (the <c>limitBytes</c>
+    /// extension). The client holds no copy of the limit: when this is false the copy says so without a number.
+    /// </summary>
+    public static bool TryGetAnalysisSizeLimit(this ApiProblem? problem, out long limitBytes)
+    {
+        limitBytes = 0;
+        return problem?.Extensions is { } extensions
+            && extensions.TryGetValue(Odyssey.Dtos.Finance.FileAnalysisCodes.LimitBytesExtension, out var element)
+            && element.ValueKind == JsonValueKind.Number
+            && element.TryGetInt64(out limitBytes)
+            && limitBytes > 0;
+    }
 
     /// <summary>
     /// Reads an RFC 7807 <c>problem+json</c> error body into an <see cref="ApiProblem"/>. Guards

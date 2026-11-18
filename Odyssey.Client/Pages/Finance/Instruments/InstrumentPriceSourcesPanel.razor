@@ -1,0 +1,204 @@
+@using Odyssey.Dtos.Finance
+@using Odyssey.Client.Pages.Journal
+@inject IInstrumentPriceSourcesApiClient PriceSources
+@inject ISnackbar Snackbar
+@inject TimeProvider Time
+@inject IJSRuntime Js
+
+@*
+    InstrumentPriceSourcesPanel — an instrument's price sources, inside its expanded record (issue #452 §3.4; design
+    system · InstrumentPriceSources.jsx, components/InstrumentPriceSourcesPanel). Rendered only for
+    system-settings.read; its controls only with system-settings.update and never on an archived instrument. An
+    ordered list: the position IS the priority, changed with per-source Move up / Move down buttons (no drag) and
+    saved as one PUT of the whole list. Turning a source on asks first (EnablePriceSourceDialog). Every source name,
+    symbol and failure text is plain text.
+*@
+
+<div class="ins-src-panel" aria-busy="@(_saving ? "true" : null)">
+    <OdsLiveAnnouncer @ref="_polite" />
+
+    @if (StatusFailed)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+            <span class="ins-server-error">
+                <span>Couldn’t load the price sources.</span>
+                <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="OnRetryStatus">Retry</OdsButton>
+            </span>
+        </OdsAlert>
+    }
+    else if (Status is null || _loading)
+    {
+        <p class="ins-src-note" role="status"><OdsSpinner Size="OdsSize.Sm" Decorative="true" />Loading price sources…</p>
+    }
+    else if (_loadFailed)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+            <span class="ins-server-error">
+                <span>Couldn’t load this instrument’s price sources.</span>
+                <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="LoadAsync">Retry</OdsButton>
+            </span>
+        </OdsAlert>
+    }
+    else
+    {
+        @if (Status.Sources.Count == 0)
+        {
+            <p class="ins-src-note">@NoSourcesInstalled</p>
+        }
+        @if (Instrument.Archived is not null)
+        {
+            <p class="ins-src-note"><span class="material-icons" aria-hidden="true">inventory_2</span>Archived instruments are not synced.</p>
+        }
+
+        <LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" Links="SummaryLinks" />
+
+        @if (_draft.Count == 0)
+        {
+            @if (Status.Sources.Count > 0)
+            {
+                <OdsEmptyLine>No sources for this instrument.</OdsEmptyLine>
+            }
+        }
+        else
+        {
+            <ol class="ins-src-list" role="list">
+                @for (var i = 0; i < _draft.Count; i++)
+                {
+                    var index = i;
+                    var item = _draft[index];
+                    var name = NameOf(item.SourceKey);
+                    <li @key="item.Key" class="ins-src">
+                        <span class="ins-src-rank" aria-hidden="true">@(index + 1).</span>
+                        <div class="ins-src-main">
+                            <div class="ins-src-head">
+                                <span class="ins-src-name">@name</span>
+                                @if (!Editable)
+                                {
+                                    <span class="ins-src-symbol mono">@item.SourceSymbol</span>
+                                }
+                            </div>
+                            @if (Editable)
+                            {
+                                <div class="ins-src-symfield">
+                                    <OdsTextInputField Id="@SymbolId(item)" Label="@($"{name} source symbol")" Value="@item.SourceSymbol"
+                                                       ValueChanged="@(v => OnSymbolChanged(item, v))" Required="true"
+                                                       MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength" AutoComplete="off"
+                                                       Help="The symbol as the source writes it, e.g. EQNR.OL"
+                                                       Error="@ItemError(item)" ErrorIsAlert="false" />
+                                    @if (item.SymbolChanged)
+                                    {
+                                        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.Status">@SymbolChangeWarning</OdsAlert>
+                                    }
+                                </div>
+                            }
+                            <dl class="ins-src-facts">
+                                <div><dt>State</dt><dd>@StateText(item)</dd></div>
+                                @if (item.Saved is { } saved)
+                                {
+                                    <div><dt>Last success</dt><dd>@(saved.LastSuccessUtc is { } ok ? RunTime.Full(ok) : "None yet")</dd></div>
+                                    @if (saved.LastFailure is { } failure)
+                                    {
+                                        <div><dt>Last failure</dt><dd>@FailureText(failure, saved.LastFailureUtc)</dd></div>
+                                    }
+                                    <div><dt>History</dt><dd>@HistoryText(saved)</dd></div>
+                                }
+                                else
+                                {
+                                    <div><dt>History</dt><dd>Fetched after you save</dd></div>
+                                }
+                            </dl>
+                        </div>
+                        @if (Editable)
+                        {
+                            <div class="ins-src-ctl">
+                                <span id="@SwitchHostId(item)">
+                                    <OdsSwitch Label="@($"{name} enabled")" Checked="item.Enabled" ResetKey="item.ResetKey"
+                                               CheckedChanged="@(on => OnEnabledChanged(item, on))" />
+                                </span>
+                                <div class="ins-src-order">
+                                    @if (index > 0)
+                                    {
+                                        <OdsIconButton Icon="@Icons.Material.Filled.ArrowUpward" Size="OdsSize.Sm" AriaLabel="@($"Move {name} up")"
+                                                       id="@MoveId(item, up: true)" OnClick="@(() => Move(index, -1))" />
+                                    }
+                                    @if (index < _draft.Count - 1)
+                                    {
+                                        <OdsIconButton Icon="@Icons.Material.Filled.ArrowDownward" Size="OdsSize.Sm" AriaLabel="@($"Move {name} down")"
+                                                       id="@MoveId(item, up: false)" OnClick="@(() => Move(index, 1))" />
+                                    }
+                                    <OdsIconButton Icon="@Icons.Material.Filled.Delete" Size="OdsSize.Sm" AriaLabel="@($"Remove {name}")"
+                                                   id="@RemoveId(item)" OnClick="@(() => Remove(index))" />
+                                </div>
+                            </div>
+                        }
+                    </li>
+                }
+            </ol>
+        }
+
+        @if (Editable && Status.Sources.Count > 0)
+        {
+            @if (_adding is { } adding)
+            {
+                <div class="ins-src-add" role="group" aria-labelledby="@($"{_uid}-add-h")">
+                    <h4 class="ins-src-add-h" id="@($"{_uid}-add-h")">Add source</h4>
+                    <div class="ins-src-add-grid">
+                        <OdsSelect Label="Source" Required="true" Value="@adding.SourceKey" ValueChanged="OnAddSourceChanged"
+                                   Options="AddableOptions" Placeholder="Choose a source" Error="@adding.SourceError" />
+                        <OdsTextInputField Id="@($"{_uid}-add-symbol")" Label="Source symbol" Required="true" Value="@adding.Symbol"
+                                           ValueChanged="OnAddSymbolChanged" MaxLength="InstrumentIdentifierRules.SourceSymbolMaxLength"
+                                           AutoComplete="off" Help="The symbol as the source writes it, e.g. EQNR.OL"
+                                           Error="@adding.SymbolError" ErrorIsAlert="false" />
+                        <OdsDateField Label="History start" Value="adding.HistoryStart" ValueChanged="@(d => adding.HistoryStart = d)"
+                                      Max="TodayMax" Placeholder="Source’s full history"
+                                      Help="Leave empty to fetch everything the source has." />
+                    </div>
+                    <span id="@($"{_uid}-add-on")">
+                        <OdsSwitch Label="Turn on now" Checked="adding.Enabled" CheckedChanged="@(on => adding.Enabled = on)" />
+                    </span>
+                    <div class="ins-src-add-actions">
+                        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAdd">Cancel</OdsButton>
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add" OnClick="TryAdd">Add</OdsButton>
+                    </div>
+                </div>
+            }
+            else if (_draft.Count >= Status.MaxBindingsPerInstrument)
+            {
+                <p class="ins-src-note">@MaximumText(Status.MaxBindingsPerInstrument)</p>
+            }
+            else if (Addable.Count == 0)
+            {
+                <p class="ins-src-note">Every installed source that supports this type is already added.</p>
+            }
+            else
+            {
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="add" OnClick="StartAdd" id="@AddButtonId" Class="ins-src-addbtn">Add source</OdsButton>
+            }
+        }
+
+        @if (Editable && Dirty)
+        {
+            <div class="ins-src-bar" role="group" aria-label="Unsaved price source changes">
+                <span class="ins-src-bar-text"><span class="material-icons" aria-hidden="true">edit</span>Unsaved changes to price sources</span>
+                <OdsButton Variant="OdsButtonVariant.Text" Disabled="_saving" OnClick="Discard">Discard</OdsButton>
+                <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_saving" AriaDisabled="_saving" OnClick="SaveAsync">Save</OdsButton>
+            </div>
+        }
+
+        @if (Status.Sources.Count > 0)
+        {
+            @* Run now and the run history are the job's, on System › Background jobs. *@
+            <div class="ins-src-runs">
+                <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="history" Href="@BackgroundJobsHref">View price sync runs</OdsButton>
+            </div>
+        }
+    }
+</div>
+
+@if (_confirm is { } confirm)
+{
+    <EnablePriceSourceDialog @key="confirm.Key" Open="true"
+                             ProviderName="@confirm.ProviderName" SourceSymbol="@confirm.Symbol"
+                             ReturnFocusToId="@confirm.ReturnFocusToId"
+                             OnDecided="OnEnableDecided" />
+}

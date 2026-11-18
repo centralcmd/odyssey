@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Odyssey.Context;
@@ -34,7 +35,7 @@ public class PropertyEventAutomationTests
     {
         await using var context = TestContextFactory.Create();
 
-        var created = await Service(context).Create(PropertyTestData.House(), Actor);
+        var created = await Service(context).Create(PropertyTestData.House(), Actor, claims: LocationClaims.Trusted);
 
         var e = Assert.Single(Events(context, created.PropertyId));
         Assert.Equal(ContextPropertyEventType.Acquired, e.Type);
@@ -54,7 +55,7 @@ public class PropertyEventAutomationTests
         var body = PropertyTestData.House();
         body.AcquiredDate = Now.AddDays(10);
 
-        var created = await Service(context).Create(body, Actor);
+        var created = await Service(context).Create(body, Actor, claims: LocationClaims.Trusted);
 
         Assert.Equal(Now, Assert.Single(Events(context, created.PropertyId)).OccurredAt);
     }
@@ -64,7 +65,7 @@ public class PropertyEventAutomationTests
     {
         await using var context = TestContextFactory.Create();
 
-        var created = await Service(context).Create(PropertyTestData.Car(), Actor);
+        var created = await Service(context).Create(PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted);
 
         Assert.Empty(Events(context, created.PropertyId));
     }
@@ -77,7 +78,7 @@ public class PropertyEventAutomationTests
         body.DisposedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         body.Archived = true;
 
-        var created = await Service(context).Create(body, Actor);
+        var created = await Service(context).Create(body, Actor, claims: LocationClaims.Trusted);
 
         Assert.Equal(
             [ContextPropertyEventType.Acquired, ContextPropertyEventType.Disposed, ContextPropertyEventType.Archived],
@@ -89,13 +90,13 @@ public class PropertyEventAutomationTests
     public async Task Update_Archiving_WritesExactlyOneArchivedEvent()
     {
         await using var context = TestContextFactory.Create();
-        var created = await Service(context).Create(PropertyTestData.Car(), userId: null);
+        var created = await Service(context).Create(PropertyTestData.Car(), userId: null, claims: LocationClaims.Trusted);
         var body = PropertyTestData.Car();
         body.Archived = true;
 
-        await Service(context).Update(created.PropertyId, body, Actor);
+        await Service(context).Update(created.PropertyId, body, Actor, claims: LocationClaims.Trusted);
         // Re-sending the same state is not a transition.
-        await Service(context).Update(created.PropertyId, body, Actor);
+        await Service(context).Update(created.PropertyId, body, Actor, claims: LocationClaims.Trusted);
 
         var e = Assert.Single(Events(context, created.PropertyId));
         Assert.Equal(ContextPropertyEventType.Archived, e.Type);
@@ -110,9 +111,9 @@ public class PropertyEventAutomationTests
         await using var context = TestContextFactory.Create();
         var body = PropertyTestData.Car();
         body.Archived = true;
-        var created = await Service(context).Create(body, userId: null);
+        var created = await Service(context).Create(body, userId: null, claims: LocationClaims.Trusted);
 
-        await Service(context).Update(created.PropertyId, PropertyTestData.Car(), Actor);
+        await Service(context).Update(created.PropertyId, PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted);
 
         Assert.Equal(
             [ContextPropertyEventType.Archived, ContextPropertyEventType.Unarchived],
@@ -124,11 +125,11 @@ public class PropertyEventAutomationTests
     public async Task Update_ReDatingAnAcquiredDate_WritesNothing()
     {
         await using var context = TestContextFactory.Create();
-        var created = await Service(context).Create(PropertyTestData.House(), Actor);
+        var created = await Service(context).Create(PropertyTestData.House(), Actor, claims: LocationClaims.Trusted);
         var body = PropertyTestData.House();
         body.AcquiredDate = new DateTime(2018, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        await Service(context).Update(created.PropertyId, body, Actor);
+        await Service(context).Update(created.PropertyId, body, Actor, claims: LocationClaims.Trusted);
 
         Assert.Single(Events(context, created.PropertyId));
     }
@@ -140,12 +141,12 @@ public class PropertyEventAutomationTests
         await using var context = TestContextFactory.Create();
         var body = PropertyTestData.House();
         body.DisposedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        var created = await Service(context).Create(body, Actor);
+        var created = await Service(context).Create(body, Actor, claims: LocationClaims.Trusted);
 
         var cleared = PropertyTestData.House();
         cleared.AcquiredDate = null;
         cleared.DisposedDate = null;
-        await Service(context).Update(created.PropertyId, cleared, Actor);
+        await Service(context).Update(created.PropertyId, cleared, Actor, claims: LocationClaims.Trusted);
 
         var reversals = Events(context, created.PropertyId)
             .Where(e => e.Type is ContextPropertyEventType.AcquisitionDateCleared or ContextPropertyEventType.DisposalReversed)
@@ -161,12 +162,12 @@ public class PropertyEventAutomationTests
     public async Task Update_RefusedByValidation_WritesNoEvent()
     {
         await using var context = TestContextFactory.Create();
-        var created = await Service(context).Create(PropertyTestData.Car(), Actor);
+        var created = await Service(context).Create(PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted);
         var body = PropertyTestData.Car();
         body.Archived = true;
         body.VehicleDetails!.ModelYear = Now.Year + 5;
 
-        await Assert.ThrowsAsync<DomainValidationException>(() => Service(context).Update(created.PropertyId, body, Actor));
+        await Assert.ThrowsAsync<DomainValidationException>(() => Service(context).Update(created.PropertyId, body, Actor, claims: LocationClaims.Trusted));
 
         Assert.Empty(Events(context, created.PropertyId));
     }
@@ -181,14 +182,14 @@ public class PropertyEventAutomationTests
         {
             seed.Currencies.Add(new Currency { CurrencyCode = "SEK", Name = "Krona", MinorUnits = 2, Symbol = "kr" });
             await seed.SaveChangesAsync();
-            propertyId = (await Service(seed).Create(PropertyTestData.Car(), Actor)).PropertyId;
+            propertyId = (await Service(seed).Create(PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted)).PropertyId;
         }
 
         await using (var failing = NewContext(database, new FailingSave()))
         {
             var body = PropertyTestData.Car();
             body.Archived = true;
-            await Assert.ThrowsAsync<InvalidOperationException>(() => Service(failing).Update(propertyId, body, Actor));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => Service(failing).Update(propertyId, body, Actor, claims: LocationClaims.Trusted));
         }
 
         await using var verify = NewContext(database);
@@ -201,7 +202,7 @@ public class PropertyEventAutomationTests
     public async Task CreatingOrDeletingAnEstimate_WritesNoEvent()
     {
         await using var context = TestContextFactory.Create();
-        var created = await Service(context).Create(PropertyTestData.Car(), Actor);
+        var created = await Service(context).Create(PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted);
         var estimates = new PropertyEstimateService(context);
 
         var estimate = await estimates.Create(created.PropertyId, new NewPropertyEstimate
@@ -221,11 +222,11 @@ public class PropertyEventAutomationTests
         await using var context = TestContextFactory.Create();
         var body = PropertyTestData.House();
         body.Archived = true;
-        var created = await Service(context).Create(body, Actor);
-        var bare = await Service(context).Create(PropertyTestData.Car(), Actor);
+        var created = await Service(context).Create(body, Actor, claims: LocationClaims.Trusted);
+        var bare = await Service(context).Create(PropertyTestData.Car(), Actor, claims: LocationClaims.Trusted);
 
-        Assert.Equal(2, (await Service(context).Get(created.PropertyId))!.EventCount);
-        var listed = (await Service(context).ListAsync(new PropertiesQueryParams())).Items;
+        Assert.Equal(2, (await Service(context).Get(created.PropertyId, claims: LocationClaims.Trusted))!.EventCount);
+        var listed = (await Service(context).ListAsync(new PropertiesQueryParams(), claims: LocationClaims.Trusted)).Items;
         Assert.Equal(2, listed.Single(p => p.PropertyId == created.PropertyId).EventCount);
         Assert.Equal(0, listed.Single(p => p.PropertyId == bare.PropertyId).EventCount);
     }
@@ -235,7 +236,7 @@ public class PropertyEventAutomationTests
     public async Task Delete_CascadesTheEvents()
     {
         await using var context = TestContextFactory.Create();
-        var created = await Service(context).Create(PropertyTestData.House(), Actor);
+        var created = await Service(context).Create(PropertyTestData.House(), Actor, claims: LocationClaims.Trusted);
         Assert.Single(Events(context, created.PropertyId));
 
         Assert.True(await Service(context).Delete(created.PropertyId, Actor));
@@ -267,12 +268,12 @@ public class PropertyEventAutomationTests
         car.AcquiredDate = Now.AddYears(-1);
         car.Archived = true;
 
-        var h = await Service(context).Create(house, Actor);
-        var c = await Service(context).Create(car, Actor);
+        var h = await Service(context).Create(house, Actor, claims: LocationClaims.Trusted);
+        var c = await Service(context).Create(car, Actor, claims: LocationClaims.Trusted);
         var cleared = PropertyTestData.Car(name: "Narwhal Wagon");
         cleared.VehicleDetails = car.VehicleDetails;
         cleared.AcquiredDate = null;
-        await Service(context).Update(c.PropertyId, cleared, Actor);
+        await Service(context).Update(c.PropertyId, cleared, Actor, claims: LocationClaims.Trusted);
 
         string[] forbidden =
         [

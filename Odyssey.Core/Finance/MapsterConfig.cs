@@ -113,7 +113,9 @@ public static class MapsterConfig
             // null. Explicit rather than convention-mapped so the raw column can never leak through.
             TypeAdapterConfig<ContextTransactionTag, DtoExistingTransactionTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                // Issue #392: the same for the colour — a hand-edited value reads as null, never echoed.
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             // Issue #279. The tag order and the display icon are computed after materialisation from the
             // already-projected tags, so every producer of ExistingTransaction (the transaction list and
@@ -125,7 +127,10 @@ public static class MapsterConfig
                 .AfterMapping((_, dest) =>
                 {
                     dest.TransactionTags = TagIcons.Order(dest.TransactionTags, tag => tag.AsIconCandidate());
-                    dest.DisplayIcon = TagIcons.Resolve(dest.TransactionTags, tag => tag.AsIconCandidate());
+                    // Issue #392: icon and colour come from ONE winning tag.
+                    var display = TagIcons.ResolveDisplay(dest.TransactionTags, tag => tag.AsIconCandidate());
+                    dest.DisplayIcon = display.Icon;
+                    dest.DisplayColor = display.Color;
                 });
 
             // (The former Account→ExistingAccount Ignore(Custodian) pin was removed with the Contact
@@ -133,6 +138,27 @@ public static class MapsterConfig
             // is nothing for Mapster to auto-map onto the slim Custodian DTO. The service resolves
             // ExistingAccount.Custodian explicitly via IContactLookup. Contact read-projection Mapster
             // config moved to Odyssey.Core.Journal/ContactMapsterConfig.cs with the aggregate (issue #325).)
+
+            // A property's address is its linked location since issue #380; the four DTO fields are projected
+            // from it (AddressLine is Line1) under properties.read alone, and every read loads it
+            // (ThenInclude). OtherUses depends on the caller's claims, so PropertyService fills it; the
+            // request-only members never echo.
+            TypeAdapterConfig<Odyssey.Context.RealEstateDetails, Odyssey.Dtos.Finance.RealEstateDetailsDto>
+                .NewConfig()
+                .Map(dest => dest.AddressLine, src => src.Location != null ? src.Location.Line1 : null)
+                .Map(dest => dest.PostalCode, src => src.Location != null ? src.Location.PostalCode : null)
+                .Map(dest => dest.City, src => src.Location != null ? src.Location.City : null)
+                .Map(dest => dest.CountryCode, src => src.Location != null ? src.Location.CountryCode : null)
+                .Map(dest => dest.PlaceHasCoordinates, src => src.Location != null ? src.Location.Latitude != null : (bool?)null)
+                .Ignore(dest => dest.OtherUses)
+                .Ignore(dest => dest.ApplyTo)
+                .Ignore(dest => dest.ExpectedOtherUses)
+                // The geocode (§5.3a, v9) is request-only: a read never echoes the place's coordinates here.
+                .Ignore(dest => dest.Latitude)
+                .Ignore(dest => dest.Longitude)
+                .Ignore(dest => dest.TimeZoneId)
+                .Ignore(dest => dest.Source)
+                .Ignore(dest => dest.SourceReference);
 
             configured = true;
         }

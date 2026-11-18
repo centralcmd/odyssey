@@ -1,3 +1,4 @@
+using Odyssey.Core.Journal.Originals;
 using System.Collections.Concurrent;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,11 +42,13 @@ public abstract class PhotoThumbnailTestBase : FileStorageTestBase
         Action<IServiceCollection>? configure = null) =>
         NewHostAsync(
             new Dictionary<string, string> { ["primary"] = Root("primary") },
-            TestStorageFeatures.All.Select(f => f.Key).Append(PhotoThumbnailStorage.FeatureKey).ToDictionary(k => k, _ => "primary"),
+            TestStorageFeatures.All.Select(f => f.Key).Append(PhotoThumbnailStorage.FeatureKey).Append(PhotoOriginalStorage.FeatureKey)
+                .ToDictionary(k => k, _ => "primary"),
             TestStorageFeatures.All, // the thumbnail feature comes from AddPhotoThumbnails, as in production
             configureServices: services =>
             {
                 services.AddPhotoThumbnails();
+                services.AddPhotoOriginals();
                 services.Configure<PhotoThumbnailOptions>(o => o.BucketCapacity = bucketCapacity);
                 services.Replace(ServiceDescriptor.Singleton(new PhotoThumbnailWorkerIdentity(workerName)));
                 services.Replace(ServiceDescriptor.Singleton(new PhotoThumbnailProcessHooks { Exit = Exits.Add }));

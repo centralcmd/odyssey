@@ -30,7 +30,7 @@ public class TagIconFontLigatureTests
     }
 
     [Fact]
-    public void Every_catalogue_key_and_the_default_is_a_ligature_of_the_bundled_font()
+    public void Every_catalogue_key_and_both_defaults_are_ligatures_of_the_bundled_font()
     {
         var ligatures = File.ReadLines(FixturePath).Where(line => !line.StartsWith('#')).ToHashSet(StringComparer.Ordinal);
 
@@ -39,6 +39,7 @@ public class TagIconFontLigatureTests
 
         var missing = TagIcons.All.Select(option => option.Key)
             .Append(TagIcons.Default)
+            .Append(PhotoAlbumIcons.Default)
             .Where(key => !ligatures.Contains(key))
             .ToList();
         Assert.True(missing.Count == 0, "Not drawn by the bundled font: " + string.Join(", ", missing));

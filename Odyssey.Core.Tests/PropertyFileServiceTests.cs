@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
@@ -33,7 +34,7 @@ public class PropertyFileServiceTests
         new(context, TestContextFactory.ContactLookup(context), clock ?? new MovableTimeProvider(Start));
 
     private static async Task<Guid> SeedProperty(OdysseyContext context, string name = "Storgata 14") =>
-        (await new PropertyService(context, TestContextFactory.ContactLookup(context)).Create(PropertyTestData.House(name), userId: null)).PropertyId;
+        (await new PropertyService(context, TestContextFactory.ContactLookup(context)).Create(PropertyTestData.House(name), userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
     private static async Task<Guid> SeedFile(OdysseyContext context, string fileName = "deed.pdf")
     {

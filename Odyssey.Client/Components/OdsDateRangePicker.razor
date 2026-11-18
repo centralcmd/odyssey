@@ -20,10 +20,12 @@
         <span class="odc-dpr-lab">@Label</span>
     }
     <OdsDatePicker Value="From" ValueChanged="OnFromChanged" Placeholder="@FromPlaceholder"
-                   Min="Min" Max="FromMax" Align="Align" Full="false" />
+                   Min="Min" Max="FromMax" Align="Align" Full="false"
+                   AriaLabel="@FromAriaLabel" AriaDescribedBy="@FromDescribedBy" />
     <span class="odc-dpr-dash" aria-hidden="true">–</span>
     <OdsDatePicker Value="To" ValueChanged="OnToChanged" Placeholder="@ToPlaceholder"
-                   Min="ToMin" Max="Max" Align="Align" Full="false" />
+                   Min="ToMin" Max="Max" Align="Align" Full="false"
+                   AriaLabel="@ToAriaLabel" AriaDescribedBy="@ToDescribedBy" />
     @if (From is not null || To is not null)
     {
         <button type="button" class="odc-dpr-clear" aria-label="Clear date range" @onclick="Clear">
@@ -63,6 +65,21 @@
     [Parameter] public OdsAlign Align { get; set; } = OdsAlign.Start;
 
     [Parameter] public string AriaLabel { get; set; } = "Filter by date range";
+
+    /// <summary>
+    /// The start input's own accessible name ("Started from"). The group's name alone leaves both inputs sharing
+    /// one, so a screen-reader user cannot tell the two apart once a value replaces the placeholder. Omit for none.
+    /// </summary>
+    [Parameter] public string? FromAriaLabel { get; set; }
+
+    /// <summary>The end input's own accessible name ("Started to"). Omit for none.</summary>
+    [Parameter] public string? ToAriaLabel { get; set; }
+
+    /// <summary>The id of text that explains the start input (a format or time-zone caption), forwarded to its <c>aria-describedby</c>.</summary>
+    [Parameter] public string? FromDescribedBy { get; set; }
+
+    /// <summary>The id of text that explains the end input, forwarded to its <c>aria-describedby</c>.</summary>
+    [Parameter] public string? ToDescribedBy { get; set; }
 
     [Parameter] public string? Class { get; set; }
 

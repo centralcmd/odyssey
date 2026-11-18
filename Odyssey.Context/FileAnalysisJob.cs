@@ -4,8 +4,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Odyssey.Context;
 
-[Index(nameof(AccountFileId))]
-[Index(nameof(Status))]
+// Issue #444: the composites replace the single-column AccountFileId and Status indexes. (AccountFileId, Status)
+// serves the one-open-job-per-file check and still leads with the FK column, so the key keeps its index;
+// (Status, QueuedAt) serves the worker's FIFO claim and the stale sweep.
+[Index(nameof(AccountFileId), nameof(Status))]
+[Index(nameof(Status), nameof(QueuedAt))]
 [Index(nameof(RequestedByUserId))]
 public class FileAnalysisJob
 {
@@ -173,6 +176,124 @@ public class FileAnalysisJob
     /// </summary>
     [StringLength(128)]
     public string? ProcessorRegionInForce { get; set; }
+
+    // ── Match vocabulary and administrator guidance (issue #433) ─────────────────────────────────
+
+    /// <summary>
+    /// What the user's consent covered for the match step, written once at analyze. <c>NULL</c> is a
+    /// job created before the feature, matched names-only for its whole life, re-matches included.
+    /// </summary>
+    public Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope? MatchVocabularyScope { get; set; }
+
+    /// <summary>The full disclosure version the user consented to, written at analyze.</summary>
+    [StringLength(16)]
+    public string? DisclosureVersionInForce { get; set; }
+
+    /// <summary>
+    /// The match-relevant part of that disclosure, written at analyze from the same snapshot. Match
+    /// compares a fresh value against it and refuses on a difference, so a match never sends data
+    /// under a disclosure the user did not see. It excludes the extraction-guidance flag: extraction has
+    /// already run, so changing that guidance must not refuse matches on open analyses.
+    /// </summary>
+    [StringLength(16)]
+    public string? MatchDisclosureVersionInForce { get; set; }
+
+    /// <summary>The administrator's extraction guidance this run sent, verbatim; <c>NULL</c> when none.</summary>
+    // TEXT, not varchar(4000): two utf8mb4 varchar(4000) columns would take 32 000 bytes of the table's
+    // 65 535-byte row-size budget. The 4000 limit is the rule's, enforced on write.
+    [StringLength(4000)]
+    [Column(TypeName = "text")]
+    public string? ExtractionPromptAdditionInForce { get; set; }
+
+    /// <summary>The match guidance the latest match run sent, verbatim; <c>NULL</c> when none.</summary>
+    // TEXT, not varchar(4000): two utf8mb4 varchar(4000) columns would take 32 000 bytes of the table's
+    // 65 535-byte row-size budget. The 4000 limit is the rule's, enforced on write.
+    [StringLength(4000)]
+    [Column(TypeName = "text")]
+    public string? MatchPromptAdditionInForce { get; set; }
+
+    /// <summary>
+    /// The version of the match text the latest run actually sent. A names-only run sends the
+    /// pre-feature text and is stamped <c>1.0</c>; <see cref="PromptVersion"/> is stamped at analyze
+    /// and says nothing about the match text.
+    /// </summary>
+    [StringLength(32)]
+    public string? MatchPromptVersion { get; set; }
+
+    /// <summary>Contacts the latest match run sent.</summary>
+    public int? ContactCount { get; set; }
+
+    /// <summary>Tags the latest match run sent.</summary>
+    public int? TagCount { get; set; }
+
+    /// <summary>Contact aliases the latest match run sent, after the payload budget.</summary>
+    public int? AliasCount { get; set; }
+
+    /// <summary>Tag descriptions the latest match run sent, after the payload budget.</summary>
+    public int? TagDescriptionCount { get; set; }
+
+    /// <summary>How far the latest match run had to shrink its vocabulary to fit the payload budget.</summary>
+    public Odyssey.Dtos.Finance.FileAnalysisVocabularyReduction? VocabularyReduction { get; set; }
+
+    /// <summary>
+    /// The match claim's concurrency token. The running guard is check-then-save, so on its own two
+    /// simultaneous requests can both pass it; every claim and every match-status write increments
+    /// this, and the loser's save fails instead of sending a second time. The same pattern as the
+    /// <c>Generation</c> tokens on <c>PhotoThumbnailJobs</c> and <c>JobRuns</c>.
+    /// </summary>
+    [ConcurrencyCheck]
+    public int MatchGeneration { get; set; }
+
+    // ── The extraction queue (issue #444) ─────────────────────────────────────────────────────────
+    // Extraction runs in Odyssey.Worker: the API enqueues (Queued), a worker claims (Running), re-checks
+    // the consent and only then sends. Every column here is nullable with NO BACKFILL — a legacy row was
+    // never queued, and inventing a queue time would put an unobserved value into an audit record.
+
+    /// <summary>When the request was accepted — the user's moment of consent, before anything was sent.</summary>
+    public DateTime? QueuedAt { get; set; }
+
+    /// <summary>When a worker claimed the job. Not "started": the pre-send checks may still refuse it.</summary>
+    public DateTime? ClaimedAt { get; set; }
+
+    /// <summary>
+    /// Saved immediately before the provider call — the only "the document may have left" marker. Null
+    /// means nothing was sent, which is what <c>DocumentSent = No</c> on the read model is computed from.
+    /// <see cref="StartedAt"/> is set equal to it on new rows, so "started" never names a job that sent
+    /// nothing.
+    /// </summary>
+    public DateTime? TransferStartedAt { get; set; }
+
+    /// <summary>The claiming worker's run. Cleared on a terminal write. Never projected.</summary>
+    public Guid? RunId { get; set; }
+
+    /// <summary>A Running row past this is failed <c>interrupted</c> by any replica's sweep. Never projected.</summary>
+    public DateTime? LeaseUntilUtc { get; set; }
+
+    /// <summary>
+    /// The extraction's concurrency token, bumped by the claim, every save of the run and the sweep — so
+    /// two replicas cannot both claim, and a sweep that failed a row wins over the run's late save.
+    /// Distinct from <see cref="MatchGeneration"/>, which fences the match step.
+    /// </summary>
+    [ConcurrencyCheck]
+    public int ExtractionGeneration { get; set; }
+
+    /// <summary>Hex SHA-256 of the prompt template the job was consented under; the worker must hold the same.</summary>
+    [StringLength(64)]
+    public string? PromptTemplateHash { get; set; }
+
+    /// <summary>
+    /// The file's SHA-256 at consent, copied from <c>FileMetadata.Sha256Hash</c>: the worker sends only the
+    /// bytes the user consented to.
+    /// </summary>
+    [StringLength(64)]
+    public string? FileSha256 { get; set; }
+
+    /// <summary>
+    /// The destination's scheme, host and port at consent. <see cref="AnalyzerBaseUrlHost"/> stays the audit
+    /// stamp; this is what the pre-send check compares, so a port or scheme change is also a refusal.
+    /// </summary>
+    [StringLength(256)]
+    public string? AnalyzerBaseUrlOrigin { get; set; }
 
     public ICollection<FileAnalysisCandidateTransaction> CandidateTransactions { get; set; } = new List<FileAnalysisCandidateTransaction>();
 }

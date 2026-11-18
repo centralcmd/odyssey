@@ -87,7 +87,6 @@ public sealed class TransactionDetailPanelTests : IAsyncLifetime
             FileName = "receipt.pdf",
             ContentType = "application/pdf",
             SizeBytes = 10,
-            FileBlobId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         },
     };

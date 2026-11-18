@@ -13,7 +13,7 @@ public partial class TaskListRow : IAsyncDisposable
 
     [Parameter, EditorRequired] public JournalTaskSummary Task { get; set; } = default!;
     /// <summary>The task's tags, name-ordered, each with its own icon for its chip.</summary>
-    [Parameter] public IEnumerable<JournalTagChips.Tag> Tags { get; set; } = [];
+    [Parameter] public IEnumerable<OdsTagChips.Tag> Tags { get; set; } = [];
     [Parameter] public bool CanUpdate { get; set; }
     [Parameter] public bool CanDelete { get; set; }
 
@@ -114,7 +114,7 @@ public partial class TaskListRow : IAsyncDisposable
         _files = LoadFiles is null ? [] : await LoadFiles(Task.JournalTaskId);
     }
 
-    private List<JournalTagChips.Tag> _tags = [];
+    private List<OdsTagChips.Tag> _tags = [];
     private TaskRail _rail = TaskRail.Undated;
 
     protected override async System.Threading.Tasks.Task OnParametersSetAsync()

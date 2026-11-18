@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Odyssey.Dtos;
 
 namespace Odyssey.Core.Finance;
@@ -30,9 +31,17 @@ public class FileAnalysisOptions
     // .AddStandardResilienceHandler(), so a runtime value could never reach a live pipeline — and worse
     // than inert, since the options validator rejects the handler unless SamplingDuration >= 2x
     // AttemptTimeout. Contrast Match.TimeoutSeconds below, which IS per-call and did move.
+    //
+    // Bounded (issue #444 v4): the worker runs one job per tick inside RunOnceAsync, so the whole provider
+    // budget (2 × this, see FileAnalysisJobTiming) plus the blob load must stay under the background-jobs
+    // page's 300 s not-ticking threshold. ValidateOnStart in both hosts makes an out-of-range value a
+    // startup failure rather than a silently stalled worker.
+    [Range(FileAnalysisJobTiming.MinTimeoutSeconds, FileAnalysisJobTiming.MaxTimeoutSeconds)]
     public int TimeoutSeconds { get; set; } = 120;
-    public string PromptVersion { get; set; } = "1.0";
-    public string PromptTemplatePath { get; set; } = "Resources/Prompts/transaction-extraction.txt";
+    // PromptVersion and PromptTemplatePath are GONE (issue #444): the template is an embedded resource in
+    // Odyssey.Core with its version a const beside it (EmbeddedFileAnalysisPromptTemplate), so the API that
+    // stamps a job and the worker that sends it cannot hold different prompts. Deleted rather than kept
+    // as documentation of record, because a surviving property would read like a working override.
     // Moved to the system-settings store (issue #434 key 1); read through IFileAnalysisSettingsLookup
     // and passed to the provider as a parameter, so the value a request was built with is the value
     // stamped on the job.
@@ -60,8 +69,8 @@ public class FileAnalysisOptions
     // ── AI matching step (issue #266) ──
     //
     // The FileAnalysis:Match SECTION no longer exists in appsettings.json: AutoLinkThreshold moved to
-    // the settings store in issue #421 Wave 1, and MaxVocabulary/TimeoutSeconds followed in issue #434
-    // (keys 2 and 3). The class survives — binding an absent section is now the expected case — for the
+    // the settings store in issue #421 Wave 1, and TimeoutSeconds followed in issue #434. The vocabulary
+    // cap that moved with it was retired in issue #433: matching is never skipped for vocabulary size. The class survives — binding an absent section is now the expected case — for the
     // same reason Wave 1 kept the disclosure strings here: it is the one place a reader can see what
     // these values are without reading a migration.
     public MatchOptions Match { get; set; } = new();
@@ -71,13 +80,6 @@ public class MatchOptions
 {
     /// <summary>A returned match ≥ this is auto-linked (MatchMethod=Llm); below it is a suggestion only.</summary>
     public double AutoLinkThreshold { get; set; } = 0.60;
-
-    /// <summary>
-    /// Per-list cap (contacts, tags). Over cap ⇒ the LLM match is skipped, not truncated.
-    /// Database-backed since issue #434; the value here is documentation of record, initialised from the
-    /// same shared constant the migration seeds so the two cannot disagree.
-    /// </summary>
-    public int MaxVocabulary { get; set; } = SystemSettingsDefaults.FileAnalysisMatchMaxVocabulary;
 
     /// <summary>
     /// Hard per-match-call timeout; on timeout ⇒ MatchStatus = Failed and manual fallback.

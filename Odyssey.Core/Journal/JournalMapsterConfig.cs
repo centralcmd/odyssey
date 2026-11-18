@@ -66,19 +66,35 @@ public static class JournalMapsterConfig
             // Issue #345. Every tag read is projected through these, so an unknown stored key (a hand
             // edit, a restore, a key retired from the catalogue) reaches no client as anything but null.
             // Explicit rather than convention-mapped so the raw column can never leak through.
+            // Issue #392: the colour likewise goes through HexColor.Normalize on every tag read.
             TypeAdapterConfig<JournalTag, ExistingJournalTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             TypeAdapterConfig<JournalTaskTag, ExistingJournalTaskTag>
                 .NewConfig()
-                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
 
             TypeAdapterConfig<PhotoTag, ExistingPhotoTag>
                 .NewConfig()
+                .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon))
+                .Map(dest => dest.Color, src => HexColor.Normalize(src.Color));
+
+            // Issue #392: a calendar colour is read through the tag rule. Any valid hex reads upper-case; a
+            // stored value that is not one (a hand edit, a restore) reads as the default rather than
+            // reaching a client style.
+            TypeAdapterConfig<Calendar, ExistingCalendar>
+                .NewConfig()
+                .Map(dest => dest.Color, src => CalendarColorOnRead(src.Color))
                 .Map(dest => dest.Icon, src => TagIcons.Normalize(src.Icon));
 
             configured = true;
         }
     }
+
+    /// <summary>A stored calendar colour as the API returns it (issue #392).</summary>
+    public static string CalendarColorOnRead(string? stored) =>
+        HexColor.Normalize(stored) ?? ColorPalette.CalendarDefault;
 }

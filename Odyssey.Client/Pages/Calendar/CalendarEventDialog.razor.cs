@@ -23,6 +23,12 @@ public partial class CalendarEventDialog
     /// <summary>Whether the current user may delete (calendar.delete).</summary>
     [Parameter] public bool CanDelete { get; set; }
 
+    /// <summary><c>locations.read</c> — the Place picker. Without it the picker is hidden and the stored link is kept.</summary>
+    [Parameter] public bool CanReadLocations { get; set; }
+
+    /// <summary><c>locations.create</c> — the picker's staged <c>Create place "…"</c> row.</summary>
+    [Parameter] public bool CanCreateLocations { get; set; }
+
     [Parameter] public EventCallback OnSaved { get; set; }
     [Parameter] public EventCallback<Guid> OnEditSeries { get; set; }
 
@@ -61,11 +67,35 @@ public partial class CalendarEventDialog
     ];
 
     private CalendarEventDraft _draft = new();
+    private OdsLiveAnnouncer? _announcer;
+
+    /// <summary>
+    /// Announces through the announcer's own method, never by setting its Message: an identical string (the
+    /// same place failing to create twice — the usual retry) renders nothing new and would be silent the
+    /// second time (WCAG 4.1.3; accessibility review 2).
+    /// </summary>
+    private void Announce(string message) => _ = _announcer?.Announce(message);
     private ExistingCalendarEvent? _sourceEvent;
+
+    /// <summary>The fields the weather depends on, as loaded — the Weather section's dirty rule compares against it.</summary>
+    private sealed record WeatherInputs(DateTime? StartDate, TimeSpan? StartTime, DateTime? EndDate, TimeSpan? EndTime, bool IsAllDay, LocationPick? Place);
+
+    private WeatherInputs? _loadedWeatherInputs;
+
+    private WeatherInputs CurrentWeatherInputs =>
+        new(_draft.StartDate, _draft.StartTime, _draft.EndDate, _draft.EndTime, _draft.IsAllDay, _draft.Place.Pick);
+
+    /// <summary>
+    /// The date, time, all-day or place differ from the loaded event, so the weather shown no longer describes the
+    /// form (issue #363 §3.4). The place counts only where its field exists (<c>locations.read</c>).
+    /// </summary>
+    private bool WeatherDirty =>
+        _loadedWeatherInputs is { } loaded
+        && (CanReadLocations ? loaded != CurrentWeatherInputs : loaded with { Place = null } != CurrentWeatherInputs with { Place = null });
     private bool _isSaving;
     private bool _previousOpen;
 
-    private IReadOnlyList<OdsOption> _calendarOptions => [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name))];
+    private IReadOnlyList<OdsOption> _calendarOptions => [.. Calendars.Select(CalendarVisuals.Option)];
 
     private bool RepeatEditable => Mode == CalendarEventDialogMode.Create;
 
@@ -100,12 +130,14 @@ public partial class CalendarEventDialog
     private async Task LoadAsync()
     {
         _sourceEvent = null;
+        _loadedWeatherInputs = null;
 
         switch (Mode)
         {
             case CalendarEventDialogMode.Edit when EventId is { } id:
                 _sourceEvent = await CalendarApi.GetEventAsync(id);
                 _draft = _sourceEvent is not null ? CalendarEventDraft.FromEvent(_sourceEvent) : new CalendarEventDraft();
+                _loadedWeatherInputs = CurrentWeatherInputs;
                 break;
             case CalendarEventDialogMode.Series when PatternId is { } patternId:
                 var pattern = await CalendarApi.GetPatternAsync(patternId);
@@ -134,6 +166,17 @@ public partial class CalendarEventDialog
     }
 
     private Task CancelAsync() => OpenChanged.InvokeAsync(false);
+
+    private void OnPlaceChanged(LocationPick? pick)
+    {
+        _draft.Place.Pick = pick;
+        _draft.Place.Error = null;
+        // A Kartverket address is staged like a new name (issue #383 v6 §3.2a); the create row announces through OnStage.
+        if (pick is { IsStagedAddress: true })
+            Announce($"{_draft.Place.StagedName} will be added when you save");
+    }
+
+    private void OnPlaceStaged(string name) => Announce($"{name} will be added when you save");
 
     private async Task EditSeriesClicked()
     {
@@ -173,27 +216,55 @@ public partial class CalendarEventDialog
             return false;
         }
 
+        // A staged place is created immediately before the record write; if that fails the save stops and
+        // nothing else is written. A retry after a failed record write reuses the created id (issue #383 §3.2, §3.2a).
+        if (!await _draft.Place.EnsureCreatedAsync(Locations, CanReadLocations))
+        {
+            Announce($"Couldn’t add {_draft.Place.StagedName}");
+            return false;
+        }
+
+        var link = _draft.Place.Link(CanReadLocations);
+        var place = _draft.Place;
+
         if (Mode == CalendarEventDialogMode.Series && PatternId is { } patternId)
         {
-            return (await CalendarApi.UpdatePatternAsync(patternId, _draft.ToNewRecurrencePattern())).Toast(Snackbar, "Unable to update series", "Series updated.");
+            return (await CalendarApi.UpdatePatternAsync(patternId, _draft.ToNewRecurrencePattern(link)))
+                .PlacedOrToast(Snackbar, "Unable to update series", "Series updated.", place, link);
         }
 
         if (Mode == CalendarEventDialogMode.Edit && EventId is { } eventId)
         {
-            return (await CalendarApi.UpdateEventAsync(eventId, _draft.ToNewCalendarEvent())).Toast(Snackbar, "Unable to update event", "Event updated.");
+            return (await CalendarApi.UpdateEventAsync(eventId, _draft.ToNewCalendarEvent(link)))
+                .PlacedOrToast(Snackbar, "Unable to update event", "Event updated.", place, link);
         }
 
         if (_draft.Repeats)
         {
-            return (await CalendarApi.CreatePatternAsync(_draft.ToNewRecurrencePattern())).Toast(Snackbar, "Unable to create series", "Series created.");
+            return (await CalendarApi.CreatePatternAsync(_draft.ToNewRecurrencePattern(link)))
+                .PlacedOrToast(Snackbar, "Unable to create series", "Series created.", place, link);
         }
 
-        return (await CalendarApi.CreateEventAsync(_draft.ToNewCalendarEvent())).Toast(Snackbar, "Unable to create event", "Event created.");
+        return (await CalendarApi.CreateEventAsync(_draft.ToNewCalendarEvent(link)))
+            .PlacedOrToast(Snackbar, "Unable to create event", "Event created.", place, link);
+    }
+
+    /// <summary>The delete confirmation's body (issue #383 §3.9): the record goes, its place stays.</summary>
+    internal static string DeleteMessage(string noun, string title) =>
+        $"Permanently delete the {noun} “{title}”? This cannot be undone. {Odyssey.Client.Pages.Journal.LocationVisuals.RecordDeleteSentence}";
+
+    private async Task<bool> ConfirmDeleteAsync(string noun)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            $"Delete {noun}",
+            DeleteMessage(noun, _draft.Title),
+            yesText: "Delete", cancelText: "Cancel");
+        return confirmed == true;
     }
 
     private async Task DeleteEventAsync()
     {
-        if (EventId is not { } id)
+        if (EventId is not { } id || !await ConfirmDeleteAsync("event"))
         {
             return;
         }
@@ -207,7 +278,7 @@ public partial class CalendarEventDialog
 
     private async Task DeleteSeriesAsync()
     {
-        if (PatternId is not { } id)
+        if (PatternId is not { } id || !await ConfirmDeleteAsync("series"))
         {
             return;
         }

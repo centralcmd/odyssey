@@ -1,4 +1,5 @@
 using System.Net;
+using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -133,49 +134,78 @@ public class ScopedWriteRouteTests
     };
 
     /// <summary>
-    /// <c>POST /api/photos</c> answers <c>201</c> with the created photo, and the album-create flow
-    /// depends on reading it back — a client that discarded the body would break that silently.
+    /// <c>POST /api/photos</c> is a multipart upload since issue #428 and answers <c>201</c> with the created photo,
+    /// which the album-create flow reads back. The form fields travel beside the file part, each id list as the
+    /// repeated field name without brackets (§5.1).
     /// </summary>
     [Fact]
-    public async Task Photos_CreateAsync_returns_the_created_photo()
+    public async Task Photos_UploadAsync_sends_multipart_and_returns_the_created_photo()
     {
         var handler = new RecordingHandlerWithBody("""
-            {"photoId":"44444444-4444-4444-4444-444444444444","fileId":"55555555-5555-5555-5555-555555555555",
+            {"photoId":"44444444-4444-4444-4444-444444444444",
              "createdByUserId":"u1","createdAt":"2030-01-01T00:00:00Z","updatedAt":"2030-01-01T00:00:00Z"}
             """, HttpStatusCode.Created);
         var client = new PhotosApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+        var albumA = Guid.NewGuid();
+        var albumB = Guid.NewGuid();
 
-        var result = await client.CreateAsync(new NewPhoto { FileId = Child });
+        var result = await client.UploadAsync(
+            new ApiUpload("p.jpg", "image/jpeg", 3, () => new MemoryStream([1, 2, 3])),
+            new NewPhotoUpload { Title = "Beach", AlbumIds = [albumA, albumB] });
 
         Assert.True(result.IsSuccess);
         Assert.Equal(Guid.Parse("44444444-4444-4444-4444-444444444444"), result.Value!.PhotoId);
+        Assert.Equal(HttpMethod.Post, handler.Method);
+        Assert.Equal("/api/photos", handler.Path);
+        Assert.Contains("name=title", handler.Body);
+        Assert.Equal(2, CountOf(handler.Body!, "name=albumIds\r\n") + CountOf(handler.Body!, "name=albumIds\n"));
+        Assert.DoesNotContain("albumIds[]", handler.Body);
+        Assert.Contains("filename=p.jpg", handler.Body);
     }
 
-    /// <summary>
-    /// A <c>409</c> means "this file is already a library photo". The upload flow treats that as a
-    /// benign no-op, so the status has to survive on the result rather than collapsing into a
-    /// generic failure.
-    /// </summary>
+    /// <summary>A <c>409</c> (the bytes are already a photo) stays on the result with its status, not a generic failure.</summary>
     [Fact]
-    public async Task Photos_CreateAsync_keeps_Conflict_distinguishable()
+    public async Task Photos_UploadAsync_keeps_Conflict_distinguishable()
     {
-        var handler = new RecordingHandlerWithBody("""{"detail":"Already a photo."}""", HttpStatusCode.Conflict);
+        var handler = new RecordingHandlerWithBody("""{"detail":"This photo is already in the library."}""", HttpStatusCode.Conflict);
         var client = new PhotosApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
 
-        var result = await client.CreateAsync(new NewPhoto { FileId = Child });
+        var result = await client.UploadAsync(new ApiUpload("p.jpg", "image/jpeg", 3, () => new MemoryStream([1, 2, 3])));
 
         Assert.False(result.IsSuccess);
         Assert.Equal(HttpStatusCode.Conflict, result.Status);
     }
 
+    private static int CountOf(string text, string value)
+    {
+        var count = 0;
+        for (var index = text.IndexOf(value, StringComparison.Ordinal); index >= 0; index = text.IndexOf(value, index + 1, StringComparison.Ordinal))
+        {
+            count++;
+        }
+
+        return count;
+    }
+
     private sealed class RecordingHandlerWithBody(string body, HttpStatusCode status) : HttpMessageHandler
     {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>
-            Task.FromResult(new HttpResponseMessage(status)
+        public HttpMethod? Method { get; private set; }
+
+        public string? Path { get; private set; }
+
+        public string? Body { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+        {
+            Method = request.Method;
+            Path = request.RequestUri?.AbsolutePath;
+            Body = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
+            return new HttpResponseMessage(status)
             {
                 Content = new StringContent(body, System.Text.Encoding.UTF8, "application/json"),
-            });
+            };
+        }
     }
 }

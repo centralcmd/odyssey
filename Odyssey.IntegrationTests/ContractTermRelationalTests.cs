@@ -326,9 +326,7 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
 
     private async Task MigrateAsync()
     {
-        await RecreateAsync();
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext() =>
@@ -392,13 +390,6 @@ public class ContractTermRelationalTests(MariaDbFixture fixture)
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private OdysseyContext ServerContext() =>

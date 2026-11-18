@@ -72,6 +72,31 @@
     color: var(--mud-palette-text-secondary);
 }
 
+/* A phone (WCAG 1.4.10's 320px, issue #389): beside the 56px tile the title had ~118px, so a one-word
+   title ("Transactions", "Preferences") could not wrap and pushed the page sideways. The tile stacks
+   above the title, the title steps down to the h3 size, and as a last resort a word too long for the
+   line breaks inside itself rather than overflowing. */
+@media (max-width: 480px) {
+    .ph-lead {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .ph-titles {
+        max-width: 100%;
+    }
+
+    .ph-titles ::deep .ph-title {
+        font-size: var(--fs-h3);
+        overflow-wrap: anywhere;
+    }
+
+    .ph-sub {
+        overflow-wrap: anywhere;
+    }
+}
+
 .ph-actions {
     display: flex;
     gap: 8px;
@@ -142,13 +167,59 @@
     margin-bottom: 0;
 }
 
-.ph-root ::deep .ph-search {
-    flex: 1;
-    min-width: 220px;
+/* A combobox filter (the Instrument prices "Any instrument" picker) sits inside its own wrapper, so the
+   direct-child rule above misses its MudAutocomplete's dense 4px margins — which pushed it 4px below its
+   neighbours and made its slot 48px tall. */
+.ph-root ::deep .ph-filter-bar .odc-combo-wrap .mud-input-control {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
+.ph-root ::deep .ph-search {
+    flex: 1;
+    min-width: min(220px, 100%);
+}
+
+/* min(): each floor still sets the wrap rhythm, and caps at the bar's width on a 320px phone so no
+   control pushes the page sideways (WCAG 1.4.10, issue #389). */
 .ph-root ::deep .ph-select {
-    min-width: 170px;
+    min-width: min(170px, 100%);
+}
+
+/* An open-ended filter (accounts, merchants, tags) is as wide as its menu, which is its own width —
+   so it takes a wider floor than a fitted one, enough for a typical name beside its checkbox and glyph
+   before the row truncates. */
+.ph-root ::deep .ph-select.open-ended {
+    min-width: min(240px, 100%);
+}
+
+/* The Search region's controls are recessed: the page-background fill the overview's
+   breakdown tiles use, with the softer --control-border-quiet outline (still 3:1 on
+   both the fill and the card's surface, WCAG 1.4.11). Redefining the token on the
+   region reaches every control that draws its edge from --control-border — the search
+   field, the multiselect, sort, page-size and date-range triggers — and nothing outside it, since
+   their popovers are portaled out of the region. A quiet multiselect keeps its
+   transparent rest state. */
+.ph-root ::deep .ph-search-region {
+    --control-border: var(--control-border-quiet);
+}
+
+.ph-root ::deep .ph-search-region .mud-input.mud-input-outlined,
+.ph-root ::deep .ph-search-region .odc-input,
+.ph-root ::deep .ph-search-region .odc-ms-trigger:not(.quiet),
+.ph-root ::deep .ph-search-region .odc-sortsel-trigger,
+.ph-root ::deep .ph-search-region .odc-sortsel-static,
+.ph-root ::deep .ph-search-region .odc-sortsel-dir,
+.ph-root ::deep .ph-search-region .odc-rpp-trigger,
+.ph-root ::deep .ph-search-region .odc-dpr {
+    background-color: var(--mud-palette-background);
+}
+
+/* The date range's two inner fields are outlined MudInputs too, so the rule above would fill them
+   as well. They are as tall as the range's own box, so an opaque fill paints over its top and bottom
+   border; the range draws the one fill and edge, and its fields stay transparent inside it. */
+.ph-root ::deep .ph-search-region .odc-dpr .mud-input.mud-input-outlined {
+    background-color: transparent;
 }
 
 /* Problem-signal toggle — count badge punched out of the MudButton's tint.

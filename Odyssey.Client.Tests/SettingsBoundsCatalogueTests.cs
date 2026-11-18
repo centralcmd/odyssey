@@ -46,7 +46,9 @@ public class SettingsBoundsCatalogueTests
     }
 
     /// <summary>
-    /// Scope, stated rather than implied: 45 of the catalogue's 53 numeric rows (44 of 52 before issue
+    /// Scope, stated rather than implied: 58 int rows since issue #508 added the two news OPML import caps (56 before,
+    /// since issue #473 added the eight News caps; 48 before that; 46 of 54 numeric rows, 45 of 53 before issue
+    /// #409 added the background-job run retention, 44 of 52 before issue
     /// #346 added the file-storage deletion grace, 43 of 51 before issue
     /// #349 added the exchange-rate sync interval, 41 of 49 before issue #348 added the weather
     /// refresh interval and tracked cap, 40 of 48 before issue
@@ -63,7 +65,7 @@ public class SettingsBoundsCatalogueTests
     [Fact]
     public void The_guard_covers_every_int_row()
     {
-        Assert.Equal(45, NumericRows.Count);
+        Assert.Equal(58, NumericRows.Count);
         Assert.Equal(
             8,
             Settings.AllItems.Count(item => item.Control == Settings.SettingControl.Capacity));
@@ -127,7 +129,7 @@ public class SettingsBoundsCatalogueTests
     public void An_exempted_rows_load_phase_fallback_stays_inside_its_pair()
     {
         var exempt = NumericRows.Where(item => item.MaxFrom is not null || item.MinFrom is not null).ToList();
-        Assert.Equal(9, exempt.Count);
+        Assert.Equal(10, exempt.Count);
 
         foreach (var item in exempt)
         {

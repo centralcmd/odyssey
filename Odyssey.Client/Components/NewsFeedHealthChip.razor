@@ -1,0 +1,34 @@
+@using Odyssey.Dtos.Internet
+@*
+    NewsFeedHealthChip — a news feed's DERIVED health as one text-labelled chip (Odyssey Design System ·
+    components/NewsFeedHealthChip; issue #473 §3.3, §6.4). Registry-driven like OdsContractStatusChip:
+    OdsNewsFeedHealth holds the label, tone and glyph, and its neutral fallback for a member this
+    client has never heard of.
+
+    Accessibility: the health lives in the visible text label; the glyph is aria-hidden. QuotaReached
+    does not say WHICH limit — the host pairs it with the quotaReason line via DescribedBy.
+*@
+
+<span class="@ChipClass" aria-describedby="@DescribedBy">
+    <span class="material-icons" aria-hidden="true">@_meta.Icon</span>
+    @_meta.Label
+</span>
+
+@code {
+    /// <summary>The derived feed health to display.</summary>
+    [Parameter] public NewsFeedHealth Health { get; set; } = NewsFeedHealth.Pending;
+
+    /// <summary>Compact (sm) sizing.</summary>
+    [Parameter] public bool Compact { get; set; }
+
+    /// <summary>Id of the element that explains the state (the quota reason line), as aria-describedby.</summary>
+    [Parameter] public string? DescribedBy { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private OdsNewsFeedHealthMeta _meta => OdsNewsFeedHealth.Meta(Health);
+
+    private string ChipClass =>
+        string.Join(' ', new[] { "odc-chip", _meta.Tone, Compact ? "sm" : null, "odc-newshealth", Class }
+            .Where(c => !string.IsNullOrEmpty(c)));
+}

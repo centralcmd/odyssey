@@ -3,6 +3,7 @@ using Odyssey.ApiClient;
 using Odyssey.Dtos;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Authorization;
@@ -11,6 +12,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Client.Pages.Weather;
 
 namespace Odyssey.Client.Pages.Journal;
 
@@ -52,11 +54,11 @@ public partial class JournalCard
     private bool _canUpdatePhotos;
     private bool _canDeletePhotos;
     private bool _canCreatePhotoTags;
-    private bool _canRenameFile;
     private bool _photoRefsLoaded;
     private Dictionary<Guid, string> _photoTagNames = [];
     private Dictionary<Guid, string?> _photoTagIcons = [];
-    private Dictionary<Guid, string> _photoAlbumNames = [];
+    private Dictionary<Guid, string?> _photoTagColors = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _photoAlbumById = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
@@ -67,7 +69,7 @@ public partial class JournalCard
     private bool _canUpdate;
     private bool _canDelete;
     private bool _canReadFiles;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
     private bool _canReadJournalTags;
@@ -90,18 +92,15 @@ public partial class JournalCard
     private const string MediaPhotos = "photos";
     private const string MediaFiles = "files";
 
-    private static readonly IReadOnlyList<OdsOption> _mediaOptions =
+    // The glyphs the entry card counts photos and files under.
+    internal static readonly IReadOnlyList<OdsOption> _mediaOptions =
     [
-        new(MediaPhotos, "Has photos"),
-        new(MediaFiles, "Has files"),
+        new(MediaPhotos, "Has photos") { Icon = "photo_library", IconColor = "var(--sea-400)" },
+        new(MediaFiles, "Has files") { Icon = "attach_file", IconColor = "var(--mud-palette-text-secondary)" },
     ];
 
     // Status: single "Active / Archived" multiselect. Empty = hide archived (Active only); both = all.
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-    [
-        new(nameof(ArchivalStatus.Active), "Active"),
-        new(nameof(ArchivalStatus.Archived), "Archived"),
-    ];
+    private static readonly IReadOnlyList<OdsOption> _statusOptions = ArchivalStatusOptions.Options;
 
     // ── Sort (server-side; keys map 1:1 to JournalEntrySortBy) ───────────────────
     private static readonly OdsTableSort DefaultSort = new("entryDate", OdsSortDirection.Desc);
@@ -119,20 +118,10 @@ public partial class JournalCard
         || _statusFilter.Count > 0 || _contactFilter.Count > 0 || _mediaFilter.Count > 0
         || _from is not null || _to is not null;
 
-    private IReadOnlyList<OdsBreakdownRow> TagRows =>
-        [.. _tags.Where(t => t.Archived is null)
-            .Select(t => new OdsBreakdownRow
-            {
-                Key = t.JournalTagId,
-                Icon = "label",
-                IconColor = "var(--tag-text)",
-                Label = t.Name,
-                Count = _entries.Count(e => e.TagIds.Contains(t.JournalTagId)),
-            })
-            .Where(r => (int)r.Count > 0)];
+    private IReadOnlyList<OdsBreakdownRow> TagRows => JournalOverviews.JournalTagRows(_tags, _entries);
 
-    private IReadOnlyList<JournalTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
-        JournalTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon);
+    private IReadOnlyList<OdsTagChips.Tag> TagChips(IReadOnlyList<Guid> ids) =>
+        OdsTagChips.Tag.For(ids, _tagById, t => t.Name, t => t.Icon, t => t.Color);
 
     // A contact link the caller cannot resolve — deleted, or no contacts.read — keeps its place and
     // renders as "Unavailable" rather than leaking the id into the chip row.
@@ -145,10 +134,46 @@ public partial class JournalCard
         })];
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
+    // ── Weather (issue #363 §3.6) ─────────────────────────────────────────────
+    // Weather follows the RENDERED window, not the loaded list: the list loads every entry, the infinite list
+    // renders a batch, and only the rendered ids are asked about. Keyed by entry id, so a filter, sort or batch
+    // change does not clear it — an entry already answered is not asked about again.
+    private WeatherBatchLoader<JournalEntryWeatherItem>? _weatherLoader;
+    private IReadOnlyList<Guid> _shownIds = [];
+    private IJSObjectReference? _focusReturnJs;
+
+    private WeatherBatchLoader<JournalEntryWeatherItem> WeatherLoader => _weatherLoader ??= new(
+        WeatherBatchReads.JournalEntries(WeatherApi), item => item.JournalEntryId,
+        () => InvokeAsync(StateHasChanged), Log, "journal", TimeSpan.FromMilliseconds(250));
+
+    private void OnShownChanged(IReadOnlyList<JournalEntrySummary> shown)
+    {
+        _shownIds = [.. shown.Select(e => e.JournalEntryId)];
+        _ = WeatherLoader.ShowAsync(_shownIds);
+    }
+
+    // A sign-out, a different user or a changed claim set: start over from nothing.
+    private async void OnAuthenticationStateChanged(Task<AuthenticationState> state)
+    {
+        try
+        {
+            var user = (await state).User;
+            WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
+            await InvokeAsync(StateHasChanged);
+            await WeatherLoader.ShowAsync(_shownIds);
+        }
+        catch (Exception)
+        {
+            // The page may already be gone; weather is supplementary and never worth an unhandled exception.
+        }
+    }
+
     protected override async Task OnInitializedAsync()
     {
         if (!OperatingSystem.IsBrowser())
             return;
+
+        AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;
 
         await RestorePageStateAsync();
         await LoadPermissionsAsync();
@@ -174,7 +199,7 @@ public partial class JournalCard
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
         _canCreatePhotoTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
-        _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
+        WeatherLoader.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
     private async Task LoadTags()
@@ -185,7 +210,7 @@ public partial class JournalCard
         [
             .. _tags.Where(t => t.Archived is null)
                 .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(t => new OdsOption(t.JournalTagId.ToString(), t.Name)),
+                .Select(JournalOverviews.JournalTagOption),
         ];
     }
 
@@ -252,10 +277,6 @@ public partial class JournalCard
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
-
-        // Every card renders its gallery, so the page's photo filenames are hydrated once per load
-        // rather than per card. Deliberately after the render above: the list must not wait on it.
-        await HydratePagePhotosAsync();
     }
 
     private bool? WantPhotos => JournalMediaFilter.Want(_mediaFilter, MediaPhotos);
@@ -364,37 +385,6 @@ public partial class JournalCard
         return entry;
     }
 
-    // Photo file metadata (name/size/type) for every entry on the page, so each gallery tile carries a
-    // real filename as its caption and accessible name. Fetched once per file id and cached, in
-    // parallel rather than in sequence — a page of cards would otherwise serialise dozens of round
-    // trips. A file the caller can't read (no files.read) or that was deleted resolves to null and
-    // renders as an "Unavailable" placeholder.
-    private async Task HydratePagePhotosAsync()
-    {
-        if (!_canReadFiles)
-        {
-            return;
-        }
-
-        var ids = _entries
-            .SelectMany(e => e.Photos.Select(p => p.FileId))
-            .Distinct()
-            .Where(id => !_fileMeta.ContainsKey(id))
-            .ToList();
-        if (ids.Count == 0)
-        {
-            return;
-        }
-
-        var metas = await Task.WhenAll(ids.Select(id => Files.GetMetadataAsync(id)));
-        for (var i = 0; i < ids.Count; i++)
-        {
-            _fileMeta[ids[i]] = metas[i];
-        }
-
-        StateHasChanged();
-    }
-
     // The attachment list behind the card's footer count. The summary carries only the count — the
     // file ids live on the detail — so opening the disclosure is what pays for both fetches, on the one
     // card the reader actually asked about.
@@ -452,22 +442,20 @@ public partial class JournalCard
     }
 
     private IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(JournalEntrySummary e) =>
-        GalleryPhotos(e.Photos, id => _canReadFiles ? _fileMeta.GetValueOrDefault(id) : null, _imageAccess, Photos, Files);
+        GalleryPhotos(e.Photos, _imageAccess, Photos);
 
     /// <summary>
-    /// The gallery's sources (issue #365 B5): the original still needs resolved metadata, as before; the Small
-    /// thumbnail does not, so a <c>photos.read</c>-only caller with a ready thumbnail sees it rather than "no access".
-    /// "No access" is only the case with neither source. Static so the rule is tested without rendering the page.
+    /// The gallery's sources (issue #365 B5, issue #428): both the Small thumbnail and the original are photo data
+    /// under <c>photos.read</c>, and the label travels on the link. "No access" is the case with neither source.
+    /// Static so the rule is tested without rendering the page.
     /// </summary>
     internal static IReadOnlyList<JournalPhotoGallery.Photo> GalleryPhotos(
-        IEnumerable<JournalEntryPhotoDto> photos, Func<Guid, FileMetadataResponse?> metadata, PhotoImageAccess access,
-        IPhotosApiClient photoClient, IFilesApiClient fileClient) =>
-        [.. photos.OrderBy(p => p.Position).Select(p =>
+        IEnumerable<JournalEntryPhotoDto> photos, PhotoImageAccess access, IPhotosApiClient photoClient) =>
+        [.. photos.OrderBy(p => p.Position).Select((p, i) =>
         {
-            var meta = metadata(p.FileId);
-            var image = PhotoImageSources.For(
-                p.PhotoId, meta is not null ? p.FileId : null, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient, fileClient);
-            return new JournalPhotoGallery.Photo(p.FileId.ToString(), meta?.FileName ?? "Photo", image, Unavailable: image.IsEmpty);
+            var image = PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Small, access, photoClient);
+            return new JournalPhotoGallery.Photo(
+                p.PhotoId.ToString(), PhotoMappers.Label(p.Title, p.FileName, $"Photo {i + 1}"), image, Unavailable: image.IsEmpty);
         })];
 
     private IReadOnlyList<FileMetadataResponse> ResolvedAttachments(ExistingJournalEntry e) =>
@@ -479,7 +467,7 @@ public partial class JournalCard
     // Remember the activating gallery tile so focus returns to it when the lightbox closes (WCAG 2.4.3),
     // then open. The lightbox itself traps focus (MudFocusTrap) while open.
     // Clicking a gallery tile opens the shared PhotoDetailDialog over the entry's photos. The gallery
-    // keys tiles by FileId; the entry's link order (Position) drives the dialog's prev/next, so the
+    // keys tiles by PhotoId; the entry's link order (Position) drives the dialog's prev/next, so the
     // summary list is built in that same order and the clicked tile's ordinal is the opening index.
     private async Task OpenPhotoDetail(JournalEntrySummary e, JournalPhotoGallery.Photo photo)
     {
@@ -497,10 +485,10 @@ public partial class JournalCard
         [
             .. ordered.Select((jp, i) => fulls[i] is { } full
                 ? PhotoMappers.ToSummary(full)
-                : PhotoMappers.MinimalSummary(jp.PhotoId, jp.FileId)),
+                : PhotoMappers.MinimalSummary(jp.PhotoId)),
         ];
         _detailEntryId = e.JournalEntryId;
-        var idx = ordered.FindIndex(p => p.FileId.ToString() == photo.Id);
+        var idx = ordered.FindIndex(p => p.PhotoId.ToString() == photo.Id);
         _detailIndex = idx < 0 ? 0 : idx;
     }
 
@@ -606,22 +594,15 @@ public partial class JournalCard
             return;
         }
 
-        var entry = _entries.FirstOrDefault(e => e.JournalEntryId == eid);
-        if (entry is not null)
-        {
-            foreach (var fid in entry.Photos.Select(p => p.FileId))
-            {
-                _fileMeta.Remove(fid);
-            }
-        }
-
         _details.Remove(eid);
         await LoadEntries();
     }
 
     internal string PhotoTagName(Guid id) => _photoTagNames.GetValueOrDefault(id, "—");
     internal string? PhotoTagIcon(Guid id) => _photoTagIcons.GetValueOrDefault(id);
-    private string PhotoAlbumName(Guid id) => _photoAlbumNames.GetValueOrDefault(id, "—");
+
+    internal string? PhotoTagColor(Guid id) => _photoTagColors.GetValueOrDefault(id);
+    private OdsTagChips.Tag? PhotoAlbumChip(Guid id) => Odyssey.Client.Pages.Photos.AlbumVisuals.Chip(_photoAlbumById.GetValueOrDefault(id));
     private string PhotoPersonName(Guid id) => _contactById.GetValueOrDefault(id)?.ResolvedDisplayName ?? "—";
 
     // Tag/album names + edit-dialog option lists for the detail rail — loaded lazily on first open
@@ -640,15 +621,16 @@ public partial class JournalCard
         {
             _photoTagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
-            _photoTagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
+            _photoTagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
         }
 
         var albumsResult = await Albums.ListAllAsync();
         var albums = albumsResult.ItemsOrToast(Snackbar, "albums");
         if (albumsResult.IsSuccess)
         {
-            _photoAlbumNames = albums.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
-            _photoAlbumOptions = [.. albums.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
+            _photoAlbumById = albums.ToDictionary(a => a.PhotoAlbumId);
+            _photoAlbumOptions = [.. albums.Select(Odyssey.Client.Pages.Photos.AlbumVisuals.FilterOption)];
         }
 
         // Active Person contacts for the people picker — reuse the entry's already-loaded set.
@@ -683,7 +665,10 @@ public partial class JournalCard
         {
             _announce = "Entry updated.";
             await Task.WhenAll(LoadTags(), LoadContacts());
-            await ReloadEntry(_editEntry.JournalEntryId);
+            var id = _editEntry.JournalEntryId;
+            await ReloadEntry(id);
+            // Its date or place may have moved: ask again for this entry alone.
+            _ = WeatherLoader.RefreshAsync(id);
         }
     }
 
@@ -704,12 +689,16 @@ public partial class JournalCard
         }
     }
 
+    /// <summary>The delete confirmation's body: attached files and the entry's place both stay (issue #383 §3.9).</summary>
+    internal static string DeleteMessage(string title) =>
+        $"Permanently delete '{title}'? This cannot be undone. Attached files stay in your files. {LocationVisuals.RecordDeleteSentence}";
+
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
         if (!_canDelete) return;
         var confirmed = await DialogService.ShowMessageBoxAsync(
             "Delete entry",
-            $"Permanently delete '{e.Title}'? This cannot be undone. Attached files stay in your files.",
+            DeleteMessage(e.Title),
             yesText: "Delete", cancelText: "Cancel");
 
         if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
@@ -717,7 +706,9 @@ public partial class JournalCard
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
             _attachments.Remove(e.JournalEntryId);
+            WeatherLoader.Forget(e.JournalEntryId);
             await LoadEntries();
+            await FocusPageHeadingAsync();
         }
     }
 
@@ -768,26 +759,34 @@ public partial class JournalCard
     }
 
     // "Export all" = every entry, all statuses (no filters). "Export filtered" = the current search/tag
-    // set plus the collapsed status. A guard prevents a re-entrant double-click; a failed export toasts
+    // set plus the collapsed status. A guard prevents a re-entrant double-click; a refused export toasts
     // the server's reason (forbidden / over-cap / generic) rather than downloading a fake file.
     private async Task ExportAsync(bool filtered)
     {
         if (_exporting) return;
         _exporting = true;
-        _announce = "Exporting journal entries…";
+        _announce = "Preparing journal export…";
         StateHasChanged();
         try
         {
             // Every filter is passed, so "Export filtered" and the list describe the same set. The
             // export endpoint binds the same query model as the list, which is what makes that hold
             // without a second definition of "filtered" living here.
-            var result = filtered
-                ? await JournalIcs.ExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
-                : await JournalIcs.ExportAsync();
-            if (result.OrToast(Snackbar, "Unable to export journal entries") is { } file)
-            {
-                await DownloadIcsAsync(file);
-            }
+            var summary = filtered
+                ? (await JournalIcs.SummarizeExportAsync(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles))
+                    .OrToast(Snackbar, "Unable to export journal entries")
+                : (await JournalIcs.SummarizeExportAsync()).OrToast(Snackbar, "Unable to export journal entries");
+            // The snackbar container is a role="status" region and speaks the outcome itself, success or refusal, so the
+            // page's announcer only covered the wait and is cleared rather than made to say it a second time.
+            _announce = "";
+            if (summary is null) return;
+
+            await NativeTransfer.DownloadAsync(filtered
+                ? JournalIcs.ExportUrl(_searchString, _tagFilter, ExportStatusParam(), _contactFilter, _from?.Date, _to?.Date, WantPhotos, WantFiles)
+                : JournalIcs.ExportUrl());
+            Snackbar.Add(
+                $"Exporting {Plural(summary.EntryCount, "journal entry", "journal entries")}{CarriedSuffix(summary)} — your browser is downloading the file.",
+                Severity.Success);
         }
         finally
         {
@@ -801,11 +800,12 @@ public partial class JournalCard
         _exporting = true;
         try
         {
-            var result = await JournalIcs.ExportOneAsync(entry.JournalEntryId);
-            if (result.OrToast(Snackbar, "Unable to export the journal entry") is { } file)
-            {
-                await DownloadIcsAsync(file);
-            }
+            var summary = (await JournalIcs.SummarizeExportOneAsync(entry.JournalEntryId)).OrToast(Snackbar, "Unable to export the journal entry");
+            if (summary is null) return;
+
+            await NativeTransfer.DownloadAsync(JournalIcs.ExportOneUrl(entry.JournalEntryId));
+            var title = string.IsNullOrWhiteSpace(entry.Title) ? "the journal entry" : entry.Title;
+            Snackbar.Add($"Exporting {title}{CarriedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
         }
         finally
         {
@@ -813,10 +813,17 @@ public partial class JournalCard
         }
     }
 
-    private async Task DownloadIcsAsync(ApiFile file)
+    // Every export carries its files and photos inline, so it can be far larger than the WASM heap: the summary runs
+    // the server's checks first (caps, files.read / photos.read) and a refusal is a toast, then the browser downloads
+    // the file straight to disk. A failure after that point shows in the browser's own download list.
+    private static string Plural(int count, string singular, string plural) => $"{count} {(count == 1 ? singular : plural)}";
+
+    private static string CarriedSuffix(JournalEntryIcsExportSummary summary)
     {
-        await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-        Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+        var parts = new List<string>();
+        if (summary.AttachmentCount > 0) parts.Add(Plural(summary.AttachmentCount, "attached file", "attached files"));
+        if (summary.PhotoCount > 0) parts.Add(Plural(summary.PhotoCount, "photo", "photos"));
+        return parts.Count == 0 ? "" : $" with {string.Join(" and ", parts)} ({ByteSize.Format(summary.AttachmentBytes)})";
     }
 
     // After an import that created/updated rows: drop everything cached per entry and reload. The card
@@ -886,9 +893,31 @@ public partial class JournalCard
     // edit dialog owns the picker that adds and removes them. The focus-return dance that used to land
     // a caller on a neighbouring tile went with them — a dialog returns focus to its own trigger.
 
+    // The card is gone, and with it its ⋯ button and anything inside it that held focus: land on the page's h1
+    // rather than letting focus fall to <body> (issue #363 §3.6 step 6).
+    private async Task FocusPageHeadingAsync()
+    {
+        try
+        {
+            _focusReturnJs ??= await JS.InvokeAsync<IJSObjectReference>("import", "./js/focus-return.js");
+            await _focusReturnJs.InvokeVoidAsync("focusFirst", "h1");
+        }
+        catch (Exception)
+        {
+            // Best-effort: the deletion is already announced through the page's live region.
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
+        AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
+        _weatherLoader?.Dispose();
         _listLoader.Dispose();
+        if (_focusReturnJs is not null)
+        {
+            try { await _focusReturnJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }
+        }
+
         if (_focusJs is not null)
         {
             try { await _focusJs.DisposeAsync(); } catch (Exception) { /* JS already gone on teardown */ }

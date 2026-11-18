@@ -2,6 +2,7 @@ using Odyssey.Core;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Dtos.Journal;
@@ -40,13 +41,19 @@ public class RecurrencePatternService
 
     public async Task<PagedResult<ExistingRecurrencePattern>> ListAsync(
         RecurrencePatternsQueryParams query,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
         var q = context.RecurrencePatterns.AsNoTracking();
 
         if (query.CalendarId is { } calendarId)
         {
             q = q.Where(p => p.CalendarId == calendarId);
+        }
+
+        if (query.LocationId is { } locationId)
+        {
+            q = q.Where(p => p.LocationId == locationId);
         }
 
         var term = ListQuery.NormalizeSearch(query.Search);
@@ -66,18 +73,18 @@ public class RecurrencePatternService
         q = sorted.ThenBy(p => p.RecurrencePatternId);
 
         var page = await q.ToPagedResultAsync(query.Offset, query.Limit, cancellationToken);
-        return await ToDtoPageAsync(page, cancellationToken);
+        return await ToDtoPageAsync(page, claims, cancellationToken);
     }
 
-    public async Task<ExistingRecurrencePattern?> Get(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ExistingRecurrencePattern?> Get(Guid id, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var pattern = await context.RecurrencePatterns.AsNoTracking()
             .FirstOrDefaultAsync(p => p.RecurrencePatternId == id, cancellationToken);
-        return pattern is null ? null : await ToDtoAsync(pattern, cancellationToken);
+        return pattern is null ? null : await ToDtoAsync(pattern, claims, cancellationToken);
     }
 
     public async Task<PagedResult<ExistingCalendarEvent>?> ListEventsAsync(
-        Guid patternId, int offset, int limit, CancellationToken cancellationToken = default)
+        Guid patternId, int offset, int limit, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         var exists = await context.RecurrencePatterns.AnyAsync(p => p.RecurrencePatternId == patternId, cancellationToken);
         if (!exists)
@@ -91,15 +98,25 @@ public class RecurrencePatternService
             .OrderBy(e => e.StartDateTime)
             .ThenBy(e => e.CalendarEventId);
 
-        return await q.ToPagedResultAsync(offset, limit, e => e.Adapt<ExistingCalendarEvent>(), cancellationToken);
+        var page = await q.ToPagedResultAsync(offset, limit, e => e.Adapt<ExistingCalendarEvent>(), cancellationToken);
+        await CalendarEventService.FillLocationRefsAsync(context, page.Items, claims, cancellationToken);
+        return page;
     }
 
-    public async Task<ExistingRecurrencePattern> Create(NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// The place is a template field (issue #380 §4): copied onto every generated occurrence, and compared
+    /// in the series diff. Linking by id needs <c>locations.read</c> when the link changes; null claims are a
+    /// trusted, non-HTTP caller.
+    /// </summary>
+    public async Task<ExistingRecurrencePattern> Create(
+        NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         request = NormalizeTimes(request);
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateFields(request, effectiveLimits.CalendarMaxEventDurationDays);
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(request.LocationId, null, claims ?? LocationClaims.None, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var pattern = new RecurrencePattern
@@ -108,6 +125,7 @@ public class RecurrencePatternService
             Title = request.Title,
             Description = request.Description,
             Location = request.Location,
+            LocationId = locationId,
             StartDateTime = request.StartDateTime,
             EndDateTime = request.EndDateTime,
             IsAllDay = request.IsAllDay,
@@ -136,6 +154,7 @@ public class RecurrencePatternService
                 Title = pattern.Title,
                 Description = pattern.Description,
                 Location = pattern.Location,
+                LocationId = pattern.LocationId,
                 StartDateTime = start,
                 EndDateTime = end,
                 IsAllDay = pattern.IsAllDay,
@@ -146,16 +165,17 @@ public class RecurrencePatternService
             });
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        var dto = pattern.Adapt<ExistingRecurrencePattern>();
+        var dto = await ToDtoAsync(pattern, claims, cancellationToken);
         dto.GeneratedEventCount = occurrences.Count;
         return dto;
     }
 
     // Updates the template/rule fields and regenerates ONLY the future (>= now) generated events;
     // past/current ones are left untouched, even if they no longer match the new rule.
-    public async Task<ExistingRecurrencePattern?> Update(Guid id, NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default)
+    public async Task<ExistingRecurrencePattern?> Update(
+        Guid id, NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
     {
         request = NormalizeTimes(request);
         var pattern = await context.RecurrencePatterns.FirstOrDefaultAsync(p => p.RecurrencePatternId == id, cancellationToken);
@@ -167,6 +187,9 @@ public class RecurrencePatternService
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         ValidateFields(request, effectiveLimits.CalendarMaxEventDurationDays);
+        var resolver = new LocationResolver(context, timeProvider);
+        var locationId = await resolver.ResolveRecordLinkAsync(
+            request.LocationId, pattern.LocationId, claims ?? LocationClaims.None, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -174,6 +197,7 @@ public class RecurrencePatternService
         pattern.Title = request.Title;
         pattern.Description = request.Description;
         pattern.Location = request.Location;
+        pattern.LocationId = locationId;
         pattern.StartDateTime = request.StartDateTime;
         pattern.EndDateTime = request.EndDateTime;
         pattern.IsAllDay = request.IsAllDay;
@@ -203,6 +227,7 @@ public class RecurrencePatternService
                 Title = pattern.Title,
                 Description = pattern.Description,
                 Location = pattern.Location,
+                LocationId = pattern.LocationId,
                 StartDateTime = start,
                 EndDateTime = end,
                 IsAllDay = pattern.IsAllDay,
@@ -213,9 +238,9 @@ public class RecurrencePatternService
             });
         }
 
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
-        return await ToDtoAsync(pattern, cancellationToken);
+        return await ToDtoAsync(pattern, claims, cancellationToken);
     }
 
     // Hard-deletes future (>= now) generated events; past/current ones are detached (RecurrencePatternId
@@ -314,19 +339,22 @@ public class RecurrencePatternService
         }
     }
 
-    private async Task<ExistingRecurrencePattern> ToDtoAsync(RecurrencePattern pattern, CancellationToken cancellationToken)
+    private async Task<ExistingRecurrencePattern> ToDtoAsync(RecurrencePattern pattern, LocationClaims? claims, CancellationToken cancellationToken)
     {
         var dto = pattern.Adapt<ExistingRecurrencePattern>();
         dto.GeneratedEventCount = await context.CalendarEvents.CountAsync(e => e.RecurrencePatternId == pattern.RecurrencePatternId, cancellationToken);
+        var refs = await LocationRefs.LoadAsync(context, [dto.LocationId], claims ?? LocationClaims.None, cancellationToken);
+        dto.LocationRef = refs.For(dto.LocationId);
         return dto;
     }
 
-    private async Task<PagedResult<ExistingRecurrencePattern>> ToDtoPageAsync(PagedResult<RecurrencePattern> page, CancellationToken cancellationToken)
+    private async Task<PagedResult<ExistingRecurrencePattern>> ToDtoPageAsync(
+        PagedResult<RecurrencePattern> page, LocationClaims? claims, CancellationToken cancellationToken)
     {
         var items = new List<ExistingRecurrencePattern>(page.Items.Count);
         foreach (var pattern in page.Items)
         {
-            items.Add(await ToDtoAsync(pattern, cancellationToken));
+            items.Add(await ToDtoAsync(pattern, claims, cancellationToken));
         }
 
         return new PagedResult<ExistingRecurrencePattern>

@@ -117,7 +117,7 @@ public class AlbumsApiTests
     private static async Task<Guid> CreatePhoto(OdysseyApiFactory factory, HttpClient client)
     {
         var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
-        var post = await client.PostAsJsonAsync("/api/photos", new NewPhoto { FileId = fileId });
+        var post = await PhotoTestSupport.PostPhotoAsync(client, new NewPhotoUpload());
         post.EnsureSuccessStatusCode();
         var created = (await post.Content.ReadFromJsonAsync<ExistingPhoto>())!;
         return created.PhotoId;

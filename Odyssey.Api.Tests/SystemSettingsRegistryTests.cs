@@ -44,6 +44,8 @@ public class SystemSettingsRegistryTests
         nameof(SystemSettingsDto.PhotoMaxAlbumMembersCeiling),
         // Same, for the upload cap (Wave 4) — computed from startup configuration rather than stored.
         nameof(SystemSettingsDto.UploadMegabytesCeiling),
+        // Same, for the news image size cap (issue #470): derived from the same startup limit, never stored.
+        nameof(SystemSettingsDto.NewsImageMaxSizeKbCeiling),
         // The six issue #434 bound projections. Five ceilings and one floor, all server-computed rather
         // than stored: three are static numbers the [Range] on the write DTO also carries, and three are
         // the pinned end of a single-direction key, which IS the shipped default.
@@ -298,7 +300,13 @@ public class SystemSettingsRegistryTests
         //
         // +1 in issue #346: FileStorageDeletionGraceHours, the retention period for deleted personal data
         // on the file volumes. Shortening it can outrun a backup; lengthening it keeps erased data on disk.
-        Assert.Equal(31, audited.Count);
+        //
+        // +1 in issue #470: NewsPrivateHostAllowList, which decides which private addresses the worker may fetch
+        // from — an egress control, so every change is recorded.
+        //
+        // +1 in issue #508: NewsOpmlMaxImportMegabytes, an import size cap like the eight megabyte caps above, through
+        // the same Megabytes helper (amendment v5). The entry cap beside it is a count cap on the ordinary claim.
+        Assert.Equal(33, audited.Count);
         Assert.All(SystemSettingsRegistry.All, descriptor =>
             Assert.Equal(
                 descriptor.RequiredClaim == PermissionClaims.SystemSettingsSecurityUpdate,

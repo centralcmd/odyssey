@@ -1,0 +1,3 @@
+/* One stack (Odyssey Design System · ui_kits/web/BackgroundJobs.jsx, BgjToastHost): each OdsToast brings its own
+   fixed .odc-toast-stack, so inside the host they flow as plain rows of this one. */
+.bgj-toast-host ::deep .odc-toast-stack { position: static; width: auto; }

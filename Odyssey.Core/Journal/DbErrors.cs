@@ -11,4 +11,13 @@ internal static class DbErrors
     // and re-fetches the winner instead of letting the DbUpdateException bubble to a 409 (§5, §16.3e).
     public static bool IsDuplicateKey(DbUpdateException exception) =>
         exception.InnerException is MySqlException { Number: 1062 };
+
+    /// <summary>
+    /// A 1062 raised by the unique index <paramref name="indexName"/> specifically. MariaDB names the index only
+    /// in the message text (<c>Duplicate entry '…' for key 'IX_…'</c>), so this is the one place that reads it:
+    /// a driver or server wording change has one place to fix.
+    /// </summary>
+    public static bool IsDuplicateKeyOn(DbUpdateException exception, string indexName) =>
+        exception.InnerException is MySqlException { Number: 1062 } mysql
+        && mysql.Message.Contains($"{indexName}'", StringComparison.Ordinal);
 }

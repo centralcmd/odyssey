@@ -1,5 +1,5 @@
+@using Odyssey.Dtos
 @inject IAlbumsApiClient Albums
-@inject IFilesApiClient Files
 @inject IPhotosApiClient Photos
 @inject AuthenticationStateProvider Auth
 @inject ISnackbar Snackbar
@@ -12,7 +12,7 @@
 *@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="Close"
-          Icon="photo_album" Title="@TitleFragment" Subtitle="@SubtitleFragment">
+          Icon="@PhotoAlbumIcons.Default" Title="@TitleFragment" Subtitle="@SubtitleFragment">
     <ChildContent>
         <div class="ods-modal-body">
             <div class="pl-alblist" role="group" aria-label="Albums">
@@ -21,7 +21,17 @@
                     var on = _checked.Contains(a.PhotoAlbumId);
                     <button type="button" class="pl-albrow @(on ? "on" : null)"
                             aria-pressed="@(on ? "true" : "false")" @onclick="() => Toggle(a.PhotoAlbumId)">
-                        <span class="pl-albrow-cover"><OdsPhotoImage Source="Cover(a)" Alt="" Fill="true" /></span>
+                        @if (a.CoverPhotoId is null)
+                        {
+                            @* No cover: the album's own glyph fills the thumbnail cell (issue #406 surface C). *@
+                            <span class="pl-albrow-cover pl-albrow-glyph">
+                                <span class="material-icons pl-albglyph" aria-hidden="true" style="@AlbumVisuals.GlyphStyle(a.Color, AlbumVisuals.SurfaceFallback)">@AlbumVisuals.Glyph(a.Icon)</span>
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="pl-albrow-cover"><OdsPhotoImage Source="Cover(a)" Alt="" Fill="true" /></span>
+                        }
                         <span class="pl-albrow-name">@a.Name</span>
                         <span class="pl-albrow-check @(on ? "on" : null)">
                             @if (on)
@@ -74,7 +84,7 @@
     private string _newName = string.Empty;
     private bool _busy;
     private bool _loaded;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private RenderFragment TitleFragment => builder => builder.AddContent(0, "Add to album");
     private RenderFragment SubtitleFragment => builder =>
@@ -97,7 +107,7 @@
     }
 
     private PhotoImageSource Cover(PhotoAlbumSummary a) =>
-        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
     private void Toggle(Guid id)
     {
@@ -148,14 +158,10 @@
                 }
             }
 
-            var ok = (await Albums.UpdateAsync(albumId, new UpdatePhotoAlbum
-            {
-                Name = a.Name,
-                Description = a.Description,
-                PhotoIds = [.. members],
-                CoverPhotoId = a.CoverPhotoId,
-                Archived = a.Archived is not null,
-            })).Toast(Snackbar, "Add to album failed");
+            // Full replacement: start from the loaded album so its icon and colour survive (issue #406 §3.4).
+            var update = AlbumWrites.From(a);
+            update.PhotoIds = [.. members];
+            var ok = (await Albums.UpdateAsync(albumId, update)).Toast(Snackbar, "Add to album failed");
             if (ok)
             {
                 added++;

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 
@@ -25,10 +26,13 @@ public sealed class AdminFileExportService
     private static readonly char[] InvalidNameChars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
 
     private readonly OdysseyContext context;
+    private readonly StoredFileContentSource source;
 
-    public AdminFileExportService(OdysseyContext context)
+    /// <param name="source">The one read path to a file's bytes (issue #448): a file on disk or a legacy blob alike.</param>
+    public AdminFileExportService(OdysseyContext context, StoredFileContentSource? source = null)
     {
         this.context = context;
+        this.source = source ?? new StoredFileContentSource(context, store: null);
     }
 
     /// <summary>Total stored files and their combined size — a cheap summary for the Settings card / capability response.</summary>
@@ -87,7 +91,7 @@ public sealed class AdminFileExportService
     {
         var files = await query
             .OrderBy(file => file.Id)
-            .Select(file => new FileExportItem(file.Id, file.FileName, file.ContentType, file.FileBlobId))
+            .Select(file => new FileExportItem(file.Id, file.FileName, file.ContentType))
             .ToListAsync(cancellationToken);
 
         if (files.Count == 0)
@@ -95,14 +99,13 @@ public sealed class AdminFileExportService
             return files;
         }
 
-        var blobIds = files.Select(file => file.FileBlobId).ToList();
-        var presentBlobIds = await context.FileBlob.AsNoTracking()
-            .Where(blob => blobIds.Contains(blob.Id))
-            .Select(blob => blob.Id)
-            .ToListAsync(cancellationToken);
-
-        var present = presentBlobIds.ToHashSet();
-        var missing = files.Count(file => !present.Contains(file.FileBlobId));
+        // Present means a legacy blob that exists, or a committed stored object (issue #448): whichever backend holds it.
+        var missing = await query.CountAsync(file =>
+            (file.FileBlobId != null && !context.FileBlob.Any(blob => blob.Id == file.FileBlobId))
+            || (file.FinanceStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.FinanceStoredObjectId && o.State == StoredObjectState.Committed))
+            || (file.JournalStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.JournalStoredObjectId && o.State == StoredObjectState.Committed))
+            || (file.ContactAvatarStoredObjectId != null && !context.StoredObjects.Any(o => o.Id == file.ContactAvatarStoredObjectId && o.State == StoredObjectState.Committed)),
+            cancellationToken);
         if (missing > 0)
         {
             throw new FileExportException($"{missing} file(s) are missing their stored content; export aborted.");
@@ -130,10 +133,16 @@ public sealed class AdminFileExportService
 
                 var entryName = UniqueEntryName(file, usedNames);
 
-                var content = await context.FileBlob.AsNoTracking()
-                    .Where(blob => blob.Id == file.FileBlobId)
-                    .Select(blob => blob.Content)
-                    .FirstOrDefaultAsync(cancellationToken);
+                StoredFileContent? content;
+                try
+                {
+                    content = await source.OpenAsync(file.FileId, cancellationToken);
+                }
+                catch (DomainException)
+                {
+                    // A file on disk that the store can no longer serve (missing, corrupt, volume down).
+                    content = null;
+                }
 
                 if (content is null)
                 {
@@ -142,9 +151,10 @@ public sealed class AdminFileExportService
                 }
 
                 var entry = archive.CreateEntry($"files/{entryName}", CompressionLevel.Optimal);
+                await using (var body = content.Content)
                 await using (var entryStream = entry.Open())
                 {
-                    await entryStream.WriteAsync(content, cancellationToken);
+                    await body.CopyToAsync(entryStream, cancellationToken);
                 }
 
                 mapEntries.Add(new FileMapEntry(file.FileId.ToString(), entryName));

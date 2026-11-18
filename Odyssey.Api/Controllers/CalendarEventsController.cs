@@ -41,7 +41,7 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] CalendarEventsQueryParams query, CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken));
+        return Ok(await service.ListAsync(query, cancellationToken, User.LocationClaims()));
     }
 
     // Aggregate/filtered .ics export (issue #340). Literal "ics" segment takes precedence over the
@@ -72,7 +72,7 @@ public sealed class CalendarEventsController : ControllerBase
             contentDisposition.SetHttpFileName(fileName);
             Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
             Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
-        }, cancellationToken);
+        }, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
 
         return new EmptyResult();
     }
@@ -85,7 +85,7 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var calendarEvent = await service.Get(id, cancellationToken);
+        var calendarEvent = await service.Get(id, cancellationToken, User.LocationClaims());
         return calendarEvent is null ? this.NotFoundProblem($"Calendar event ID {id} not found.") : Ok(calendarEvent);
     }
 
@@ -98,7 +98,7 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> ExportEventIcs(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var export = await icsService.ExportEventAsync(id, cancellationToken);
+        var export = await icsService.ExportEventAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
         if (export is null)
         {
             return this.NotFoundProblem($"Calendar event ID {id} not found.");
@@ -124,7 +124,7 @@ public sealed class CalendarEventsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var created = await service.Create(request, userId, cancellationToken);
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
         return CreatedAtRoute("GetCalendarEvent", new { id = created.CalendarEventId }, created);
     }
 
@@ -143,7 +143,7 @@ public sealed class CalendarEventsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken);
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
         return updated is null ? this.NotFoundProblem($"Calendar event ID {id} not found.") : Ok(updated);
     }
 

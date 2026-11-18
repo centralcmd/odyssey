@@ -17,7 +17,7 @@ namespace Odyssey.Context.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.22")
+                .HasAnnotation("ProductVersion", "9.0.23")
                 .HasAnnotation("Relational:MaxIdentifierLength", 64);
 
             MySqlModelBuilderExtensions.AutoIncrementColumns(modelBuilder);
@@ -351,18 +351,8 @@ namespace Odyssey.Context.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("City")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
                     b.Property<Guid>("ContactId")
                         .HasColumnType("char(36)");
-
-                    b.Property<string>("CountryCode")
-                        .IsRequired()
-                        .HasMaxLength(2)
-                        .HasColumnType("varchar(2)");
 
                     b.Property<bool>("IsPrimary")
                         .HasColumnType("tinyint(1)");
@@ -370,26 +360,15 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("Label")
                         .HasColumnType("int");
 
-                    b.Property<string>("Line1")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<string>("Line2")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
-                    b.Property<string>("Region")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
+                    b.Property<Guid>("LocationId")
+                        .HasColumnType("char(36)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ContactId");
+                    b.HasIndex("LocationId");
+
+                    b.HasIndex("ContactId", "LocationId")
+                        .IsUnique();
 
                     b.ToTable("Addresses");
                 });
@@ -549,6 +528,10 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -605,6 +588,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<Guid?>("RecurrencePatternId")
                         .HasColumnType("char(36)");
 
@@ -625,6 +611,8 @@ namespace Odyssey.Context.Migrations
                     b.HasKey("CalendarEventId");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("RecurrencePatternId");
 
@@ -2087,9 +2075,13 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "AsOf", "Provider")
                         .IsUnique();
 
+                    b.HasIndex("FromCurrencyCode", "ToCurrencyCode", "Provider", "AsOf");
+
                     b.ToTable("ExchangeRates", t =>
                         {
                             t.HasCheckConstraint("CK_ExchangeRates_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_ExchangeRates_RatePositive", "`Rate` > 0");
                         });
                 });
 
@@ -2142,86 +2134,6 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.ToTable("ExchangeRateSyncCurrencies");
-                });
-
-            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
-                {
-                    b.Property<Guid>("ExchangeRateSyncRunId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime?>("ClaimedAtUtc")
-                        .IsConcurrencyToken()
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("CurrencyCodes")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
-                    b.Property<int?>("ErrorKind")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("FinishedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Provider")
-                        .HasColumnType("int");
-
-                    b.Property<string>("RequestedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<int>("RowsDeleted")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsInserted")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsRejected")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RowsSkipped")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("RunningGuard")
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("int")
-                        .HasComputedColumnSql("IF(`Status` = 0, 1, NULL)", false);
-
-                    b.Property<DateOnly?>("SpanFrom")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("SpanTo")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime>("StartedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
-
-                    b.Property<int>("Trigger")
-                        .HasColumnType("int");
-
-                    b.HasKey("ExchangeRateSyncRunId");
-
-                    b.HasIndex("RequestedByUserId");
-
-                    b.HasIndex("RunningGuard")
-                        .IsUnique();
-
-                    b.HasIndex("StartedAtUtc");
-
-                    b.ToTable("ExchangeRateSyncRuns", t =>
-                        {
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Status", "`Status` IN (0, 1, 2, 3, 4)");
-
-                            t.HasCheckConstraint("CK_ExchangeRateSyncRuns_Trigger", "`Trigger` IN (0, 1, 2)");
-                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>
@@ -2353,7 +2265,14 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("AccountFileId")
                         .HasColumnType("char(36)");
 
+                    b.Property<int?>("AliasCount")
+                        .HasColumnType("int");
+
                     b.Property<string>("AnalyzerBaseUrlHost")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("AnalyzerBaseUrlOrigin")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
@@ -2370,6 +2289,9 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(5, 4)
                         .HasColumnType("decimal(5,4)");
 
+                    b.Property<DateTime?>("ClaimedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime(6)");
 
@@ -2384,6 +2306,21 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
 
+                    b.Property<int?>("ContactCount")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DisclosureVersionInForce")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<int>("ExtractionGeneration")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("ExtractionPromptAdditionInForce")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
                     b.Property<string>("FailureCode")
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
@@ -2391,6 +2328,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("FailureMessage")
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
+
+                    b.Property<string>("FileSha256")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("FileTypeDetected")
                         .HasMaxLength(256)
@@ -2400,9 +2341,28 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("MatchDisclosureVersionInForce")
+                        .HasMaxLength(16)
+                        .HasColumnType("varchar(16)");
+
                     b.Property<string>("MatchFailureMessage")
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
+
+                    b.Property<int>("MatchGeneration")
+                        .IsConcurrencyToken()
+                        .HasColumnType("int");
+
+                    b.Property<string>("MatchPromptAdditionInForce")
+                        .HasMaxLength(4000)
+                        .HasColumnType("text");
+
+                    b.Property<string>("MatchPromptVersion")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
 
                     b.Property<int>("MatchStatus")
                         .ValueGeneratedOnAdd()
@@ -2410,6 +2370,9 @@ namespace Odyssey.Context.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int?>("MatchTimeoutSecondsInForce")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("MatchVocabularyScope")
                         .HasColumnType("int");
 
                     b.Property<int?>("MaxTokensInForce")
@@ -2423,12 +2386,22 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<string>("PromptTemplateHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
                     b.Property<string>("PromptVersion")
                         .HasMaxLength(128)
                         .HasColumnType("varchar(128)");
 
+                    b.Property<DateTime?>("QueuedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<string>("RequestedByUserId")
                         .HasColumnType("varchar(255)");
+
+                    b.Property<Guid?>("RunId")
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("datetime(6)");
@@ -2438,16 +2411,28 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("int")
                         .HasDefaultValue(0);
 
+                    b.Property<int?>("TagCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("TagDescriptionCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("TransferStartedAt")
+                        .HasColumnType("datetime(6)");
+
                     b.Property<int?>("VocabularyCount")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("VocabularyReduction")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AccountFileId");
-
                     b.HasIndex("RequestedByUserId");
 
-                    b.HasIndex("Status");
+                    b.HasIndex("AccountFileId", "Status");
+
+                    b.HasIndex("Status", "QueuedAt");
 
                     b.ToTable("FileAnalysisJobs");
                 });
@@ -2467,10 +2452,75 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("FileBlob");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.FileBlobBackfillFailure", b =>
+                {
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("FileId");
+
+                    b.ToTable("FileBlobBackfillFailures", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileBlobBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large', 'type', 'error')");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileBlobBackfillLease", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("ConsecutiveEnvironmentalFailures")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("HolderId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("LastRunAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("FileBlobBackfillLeases", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileBlobBackfillLeases_Singleton", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            ConsecutiveEnvironmentalFailures = 0,
+                            Version = new Guid("3c9b7e51-6a2f-4d08-b1e4-95f0a27c6d13")
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.FileMetadata", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("ContactAvatarStoredObjectId")
                         .HasColumnType("char(36)");
 
                     b.Property<string>("ContentType")
@@ -2482,13 +2532,19 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
 
-                    b.Property<Guid>("FileBlobId")
+                    b.Property<Guid?>("FileBlobId")
                         .HasColumnType("char(36)");
 
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
+
+                    b.Property<Guid?>("FinanceStoredObjectId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("JournalStoredObjectId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("Sha256Hash")
                         .IsRequired()
@@ -2506,7 +2562,16 @@ namespace Odyssey.Context.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ContactAvatarStoredObjectId")
+                        .IsUnique();
+
                     b.HasIndex("FileBlobId")
+                        .IsUnique();
+
+                    b.HasIndex("FinanceStoredObjectId")
+                        .IsUnique();
+
+                    b.HasIndex("JournalStoredObjectId")
                         .IsUnique();
 
                     b.HasIndex("Sha256Hash");
@@ -2517,7 +2582,10 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("UploadedByUserId", "Sha256Hash", "SizeBytes");
 
-                    b.ToTable("FileMetadata");
+                    b.ToTable("FileMetadata", t =>
+                        {
+                            t.HasCheckConstraint("CK_FileMetadata_ExactlyOneSource", "(`FileBlobId` IS NOT NULL) + (`FinanceStoredObjectId` IS NOT NULL) + (`JournalStoredObjectId` IS NOT NULL) + (`ContactAvatarStoredObjectId` IS NOT NULL) = 1");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.FileStorageMaintenanceLease", b =>
@@ -2646,6 +2714,360 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("FileStorageWorkerVerdicts");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Instrument", b =>
+                {
+                    b.Property<Guid>("InstrumentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("Archived")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<string>("CurrencyCode")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("varchar(3)");
+
+                    b.Property<string>("Isin")
+                        .HasMaxLength(12)
+                        .HasColumnType("varchar(12)");
+
+                    b.Property<string>("ListingKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("MicCode")
+                        .HasMaxLength(4)
+                        .HasColumnType("varchar(4)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<bool>("ShowOnDashboard")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Symbol")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("InstrumentId");
+
+                    b.HasIndex("Archived");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("CurrencyCode");
+
+                    b.HasIndex("ListingKey")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("Instruments", t =>
+                        {
+                            t.HasCheckConstraint("CK_Instruments_Type", "`Type` IN (1, 2, 3, 9)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPrice", b =>
+                {
+                    b.Property<Guid>("InstrumentPriceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<decimal>("Close")
+                        .HasPrecision(18, 8)
+                        .HasColumnType("decimal(18,8)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<Guid>("InstrumentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("SourceKeyGuard")
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)")
+                        .HasComputedColumnSql("COALESCE(`SourceKey`, '')", true);
+
+                    b.Property<DateOnly>("TradingDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("InstrumentPriceId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("TradingDate");
+
+                    b.HasIndex("InstrumentId", "TradingDate", "SourceKeyGuard")
+                        .IsUnique();
+
+                    b.ToTable("InstrumentPrices", t =>
+                        {
+                            t.HasCheckConstraint("CK_InstrumentPrices_ClosePositive", "`Close` > 0");
+
+                            t.HasCheckConstraint("CK_InstrumentPrices_SourceKeyFormat", "`SourceKey` IS NULL OR `SourceKey` REGEXP '^[a-z0-9-]{1,32}\\\\z'");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPriceSourceBinding", b =>
+                {
+                    b.Property<Guid>("InstrumentId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<DateOnly?>("BackfilledFrom")
+                        .HasColumnType("date");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateOnly?>("HistoryStartDate")
+                        .HasColumnType("date");
+
+                    b.Property<byte?>("LastFailure")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("LastFailureUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastSuccessUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateOnly?>("NewestFetched")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceSymbol")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("InstrumentId", "SourceKey");
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("InstrumentId", "Priority")
+                        .IsUnique();
+
+                    b.ToTable("InstrumentPriceSourceBindings", t =>
+                        {
+                            t.HasCheckConstraint("CK_InstrumentPriceSourceBindings_ConsecutiveFailures", "`ConsecutiveFailures` >= 0");
+
+                            t.HasCheckConstraint("CK_InstrumentPriceSourceBindings_Priority", "`Priority` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_InstrumentPriceSourceBindings_SourceKeyFormat", "`SourceKey` REGEXP '^[a-z0-9-]{1,32}\\\\z'");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPriceSourceState", b =>
+                {
+                    b.Property<string>("SourceKey")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<byte?>("BackOffReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("BackOffUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RequestCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("RequestDay")
+                        .HasColumnType("date");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("SourceKey");
+
+                    b.ToTable("InstrumentPriceSourceStates", t =>
+                        {
+                            t.HasCheckConstraint("CK_InstrumentPriceSourceStates_RequestCount", "`RequestCount` >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobHeartbeat", b =>
+                {
+                    b.Property<byte>("JobType")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid>("WorkerId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("LastTickAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("JobType", "WorkerId");
+
+                    b.ToTable("JobHeartbeats", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobHeartbeats_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobRun", b =>
+                {
+                    b.Property<Guid>("JobRunId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ClaimedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<long?>("DurationMs")
+                        .HasColumnType("bigint");
+
+                    b.Property<int?>("ExclusiveGuard")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("IF(`Status` = 0 AND (`JobType` IN (1, 3, 8) OR `Trigger` = 1), `JobType`, NULL)", false);
+
+                    b.Property<byte?>("FailureCategory")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("FinishedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Generation")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte?>("HeldReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int?>("ItemsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ItemsProcessed")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("JobType")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("LastActivityAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("OpenHeldGuard")
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("int")
+                        .HasComputedColumnSql("IF(`Status` = 5 AND `FinishedAtUtc` IS NULL, 1, NULL)", false);
+
+                    b.Property<string>("RequestedByUserId")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<DateTime>("StartedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<byte>("Trigger")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid?>("WorkerId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("JobRunId");
+
+                    b.HasIndex("DurationMs");
+
+                    b.HasIndex("ExclusiveGuard")
+                        .IsUnique();
+
+                    b.HasIndex("RequestedByUserId");
+
+                    b.HasIndex("StartedAtUtc");
+
+                    b.HasIndex("JobType", "StartedAtUtc");
+
+                    b.HasIndex("Status", "StartedAtUtc");
+
+                    b.HasIndex("JobType", "WorkerId", "OpenHeldGuard")
+                        .IsUnique();
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator<byte>("JobType").IsComplete(true);
+
+                    b.UseTphMappingStrategy();
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.Property<Guid>("JournalEntryId")
@@ -2679,6 +3101,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -2696,6 +3121,8 @@ namespace Odyssey.Context.Migrations
 
                     b.HasIndex("ExternalUid")
                         .IsUnique();
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -2809,6 +3236,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)
@@ -2928,6 +3359,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
@@ -3009,6 +3444,13 @@ namespace Odyssey.Context.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
+                    b.Property<string>("AddressKey")
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .UseCollation("ascii_bin");
+
+                    MySqlPropertyBuilderExtensions.HasCharSet(b.Property<string>("AddressKey"), "ascii");
+
                     b.Property<string>("AddressText")
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
@@ -3018,6 +3460,14 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("City")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
+
+                    b.Property<string>("CountryCode")
+                        .HasMaxLength(2)
+                        .HasColumnType("char(2)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
@@ -3029,18 +3479,37 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("varchar(1000)");
 
-                    b.Property<decimal>("Latitude")
+                    b.Property<decimal?>("Latitude")
                         .HasPrecision(7, 5)
                         .HasColumnType("decimal(7,5)");
 
-                    b.Property<decimal>("Longitude")
+                    b.Property<string>("Line1")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Line2")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<decimal?>("Longitude")
                         .HasPrecision(8, 5)
                         .HasColumnType("decimal(8,5)");
+
+                    b.Property<Guid?>("MergedIntoLocationId")
+                        .HasColumnType("char(36)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("PostalCode")
+                        .HasMaxLength(32)
+                        .HasColumnType("varchar(32)");
+
+                    b.Property<string>("Region")
+                        .HasMaxLength(128)
+                        .HasColumnType("varchar(128)");
 
                     b.Property<int>("Source")
                         .HasColumnType("int");
@@ -3050,7 +3519,6 @@ namespace Odyssey.Context.Migrations
                         .HasColumnType("varchar(64)");
 
                     b.Property<string>("TimeZoneId")
-                        .IsRequired()
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
 
@@ -3060,14 +3528,24 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("UpdatedByUserId")
                         .HasColumnType("varchar(255)");
 
+                    b.Property<Guid?>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.HasKey("LocationId");
 
+                    b.HasIndex("AddressKey")
+                        .IsUnique();
+
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("MergedIntoLocationId");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
                     b.HasIndex("UpdatedByUserId");
+
+                    b.HasIndex("WeatherPointId");
 
                     b.HasIndex("Archived", "Name");
 
@@ -3075,14 +3553,741 @@ namespace Odyssey.Context.Migrations
                         {
                             t.HasCheckConstraint("CK_Locations_AltitudeRange", "`AltitudeMeters` IS NULL OR `AltitudeMeters` BETWEEN -500 AND 9000");
 
+                            t.HasCheckConstraint("CK_Locations_CoordinatesAllOrNone", "(`Latitude` IS NULL AND `Longitude` IS NULL AND `TimeZoneId` IS NULL) OR (`Latitude` IS NOT NULL AND `Longitude` IS NOT NULL AND `TimeZoneId` IS NOT NULL)");
+
                             t.HasCheckConstraint("CK_Locations_LatitudeRange", "`Latitude` BETWEEN -90 AND 90");
 
                             t.HasCheckConstraint("CK_Locations_LongitudeRange", "`Longitude` BETWEEN -180 AND 180");
 
                             t.HasCheckConstraint("CK_Locations_ManualHasNoReference", "`Source` <> 1 OR `SourceReference` IS NULL");
 
-                            t.HasCheckConstraint("CK_Locations_SourceKnown", "`Source` IN (1, 2, 3)");
+                            t.HasCheckConstraint("CK_Locations_SourceKnown", "`Source` IN (1, 2, 3, 4, 5, 6, 7)");
                         });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticle", b =>
+                {
+                    b.Property<Guid>("NewsArticleId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int>("BodyLength")
+                        .HasColumnType("int");
+
+                    b.Property<byte?>("BodyOmittedReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("Bucket")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ContentChangedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte[]>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Excerpt")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("varchar(300)");
+
+                    b.Property<DateTime?>("FeedUpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("FeedVisible")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime>("FirstSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte[]>("IdentityHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(35)
+                        .HasColumnType("varchar(35)");
+
+                    b.Property<DateTime>("LastSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<byte[]>("LinkKeyHash")
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("PublishedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RevisionCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("SortAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.HasKey("NewsArticleId");
+
+                    b.HasIndex("SortAtUtc", "NewsArticleId")
+                        .IsDescending(true, false)
+                        .HasDatabaseName("IX_NewsArticles_Sort");
+
+                    b.HasIndex("NewsFeedId", "IsRead", "FirstSeenAtUtc")
+                        .HasDatabaseName("IX_NewsArticles_Feed_Read_FirstSeen");
+
+                    b.HasIndex("Title", "Author", "Excerpt")
+                        .HasDatabaseName("FT_NewsArticles_Title_Author_Excerpt")
+                        .HasAnnotation("MySql:FullTextIndex", true);
+
+                    b.HasIndex("IsRead", "FeedVisible", "SortAtUtc", "NewsArticleId")
+                        .IsDescending(false, false, true, false)
+                        .HasDatabaseName("IX_NewsArticles_Read_Visible_Sort");
+
+                    b.HasIndex("NewsFeedId", "IsRead", "SortAtUtc", "NewsArticleId")
+                        .IsDescending(false, false, true, false)
+                        .HasDatabaseName("IX_NewsArticles_Feed_Read_Sort");
+
+                    b.ToTable("NewsArticles", t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsArticles_BodyOmittedReason", "`BodyOmittedReason` IS NULL OR `BodyOmittedReason` IN (1, 2)");
+
+                            t.HasCheckConstraint("CK_NewsArticles_ReadState", "(`IsRead` = 0 AND `ReadAtUtc` IS NULL) OR (`IsRead` = 1 AND `ReadAtUtc` IS NOT NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleFile", b =>
+                {
+                    b.Property<Guid>("NewsArticleFileId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("NewsArticleRevisionId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte[]>("Sha256")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<long>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("StoredObjectId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("NewsArticleFileId");
+
+                    b.HasIndex("NewsArticleRevisionId");
+
+                    b.HasIndex("StoredObjectId")
+                        .IsUnique();
+
+                    b.HasIndex("NewsArticleId", "NewsArticleRevisionId", "Kind");
+
+                    b.ToTable("NewsArticleFiles", t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsArticleFiles_RevisionKind", "`NewsArticleRevisionId` IS NULL OR `Kind` IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleIdentity", b =>
+                {
+                    b.Property<Guid>("NewsArticleIdentityId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("FirstSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("IdentityKey")
+                        .IsRequired()
+                        .HasMaxLength(2100)
+                        .HasColumnType("varchar(2100)");
+
+                    b.Property<byte[]>("IdentityKeyHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<byte>("Kind")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime>("LastSeenAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("NewsArticleIdentityId");
+
+                    b.HasIndex("NewsArticleId", "NewsFeedId");
+
+                    b.HasIndex("NewsFeedId", "IdentityKeyHash")
+                        .IsUnique();
+
+                    b.ToTable("NewsArticleIdentities");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleImage", b =>
+                {
+                    b.Property<Guid>("NewsArticleImageId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("AltText")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<byte>("Attempts")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<byte?>("DeferredReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("Height")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LastRequeuedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("LeaseOwner")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid?>("NewsArticleFileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("Origin")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SourceUrl")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<byte>("State")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateTime?>("VerifiedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("Width")
+                        .HasColumnType("int");
+
+                    b.HasKey("NewsArticleImageId");
+
+                    b.HasIndex("NewsArticleFileId")
+                        .IsUnique();
+
+                    b.HasIndex("NewsArticleId", "DisplayOrder");
+
+                    b.HasIndex("NewsArticleId", "Position")
+                        .IsUnique();
+
+                    b.HasIndex("State", "NextAttemptAtUtc");
+
+                    b.ToTable("NewsArticleImages");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleRevision", b =>
+                {
+                    b.Property<Guid>("NewsArticleRevisionId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Author")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int>("BodyLength")
+                        .HasColumnType("int");
+
+                    b.Property<byte?>("BodyOmittedReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<byte[]>("ContentHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<byte[]>("IdentityHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<string>("Link")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("ReplacedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("RevisionNumber")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<DateTime>("ValidFromUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("NewsArticleRevisionId");
+
+                    b.HasIndex("NewsArticleId", "RevisionNumber")
+                        .IsUnique();
+
+                    b.ToTable("NewsArticleRevisions", t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsArticleRevisions_BodyOmittedReason", "`BodyOmittedReason` IS NULL OR `BodyOmittedReason` IN (1, 2)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleTag", b =>
+                {
+                    b.Property<Guid>("NewsArticleTagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsArticleId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsTagId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("SortAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("NewsArticleTagId");
+
+                    b.HasIndex("NewsArticleId", "NewsTagId")
+                        .IsUnique();
+
+                    b.HasIndex("NewsTagId", "NewsArticleId");
+
+                    b.HasIndex("NewsTagId", "SortAtUtc", "NewsArticleId")
+                        .IsDescending(false, true, false)
+                        .HasDatabaseName("IX_NewsArticleTags_Tag_Sort");
+
+                    b.ToTable("NewsArticleTags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeed", b =>
+                {
+                    b.Property<Guid>("NewsFeedId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CustomTitle")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("DeletionRequestedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("DownloadImages")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<int?>("FetchIntervalMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<Guid>("SettingsVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Url")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<byte[]>("UrlKeyHash")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.HasKey("NewsFeedId");
+
+                    b.HasIndex("UrlKeyHash")
+                        .IsUnique();
+
+                    b.ToTable("NewsFeeds");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedBucket", b =>
+                {
+                    b.Property<Guid>("NewsFeedBucketId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("ArticlesInBucket")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentBucket")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("NewsFeedBucketId");
+
+                    b.HasIndex("NewsFeedId")
+                        .IsUnique();
+
+                    b.ToTable("NewsFeedBuckets");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedCounter", b =>
+                {
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("ArticleCount")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UnreadCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("NewsFeedId");
+
+                    b.ToTable("NewsFeedCounters");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedCrashEvent", b =>
+                {
+                    b.Property<Guid>("NewsFeedCrashEventId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("DetectedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("FeedsInFlight")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("LeaseOwner")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("NewsFeedCrashEventId");
+
+                    b.HasIndex("DetectedAtUtc");
+
+                    b.ToTable("NewsFeedCrashEvents");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedFetchState", b =>
+                {
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("ArticlesToday")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ConsecutiveFailures")
+                        .HasColumnType("int");
+
+                    b.Property<byte>("CrashSuspectCount")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<DateOnly?>("DailyQuotaDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1024)
+                        .HasColumnType("varchar(1024)");
+
+                    b.Property<string>("ETag")
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("FeedTtlMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("FetchFence")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<byte>("Format")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<long>("ImageBytesToday")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("Language")
+                        .HasMaxLength(35)
+                        .HasColumnType("varchar(35)");
+
+                    b.Property<byte[]>("LastBodySha256")
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime?>("LastErrorAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte>("LastErrorKind")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<string>("LastErrorMessage")
+                        .HasMaxLength(512)
+                        .HasColumnType("varchar(512)");
+
+                    b.Property<DateTime?>("LastFetchAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("LastHttpStatus")
+                        .HasColumnType("int");
+
+                    b.Property<string>("LastModified")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("LastSuccessAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid?>("LeaseOwner")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("NextFetchAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("QuarantinedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("QuotaReachedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<byte?>("QuotaReason")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<bool>("RedirectedFromHttps")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<DateTime?>("RefreshRequestedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("SiteUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<string>("SuggestedUrl")
+                        .HasMaxLength(2048)
+                        .HasColumnType("varchar(2048)");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<DateTime?>("ValidatorsResetRequestedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("NewsFeedId");
+
+                    b.HasIndex("LeaseExpiresAtUtc");
+
+                    b.HasIndex("RefreshRequestedAtUtc");
+
+                    b.HasIndex("QuarantinedAtUtc", "NextFetchAtUtc");
+
+                    b.ToTable("NewsFeedFetchStates", t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsFeedFetchStates_QuotaReason", "(`QuotaReachedAtUtc` IS NULL) = (`QuotaReason` IS NULL) AND (`QuotaReason` IS NULL OR `QuotaReason` IN (1, 2))");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedTag", b =>
+                {
+                    b.Property<Guid>("NewsFeedTagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsFeedId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("NewsTagId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("NewsFeedTagId");
+
+                    b.HasIndex("NewsFeedId", "NewsTagId")
+                        .IsUnique();
+
+                    b.HasIndex("NewsTagId", "NewsFeedId");
+
+                    b.ToTable("NewsFeedTags");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsHostThrottle", b =>
+                {
+                    b.Property<byte[]>("HostKeyHash")
+                        .HasMaxLength(32)
+                        .HasColumnType("binary(32)")
+                        .IsFixedLength();
+
+                    b.Property<DateTime>("NextAllowedAtUtc")
+                        .IsConcurrencyToken()
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("HostKeyHash");
+
+                    b.ToTable("NewsHostThrottle");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsStorageTotal", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<long>("ImageBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("TextAndSourceBytes")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NewsStorageTotals", t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsStorageTotals_SingleRow", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            ImageBytes = 0L,
+                            TextAndSourceBytes = 0L
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsTag", b =>
+                {
+                    b.Property<Guid>("NewsTagId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("ArchivedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<string>("NameKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("NewsTagId");
+
+                    b.HasIndex("ArchivedAtUtc");
+
+                    b.HasIndex("NameKey")
+                        .IsUnique();
+
+                    b.ToTable("NewsTags");
                 });
 
             modelBuilder.Entity("Odyssey.Context.OrganizationDetails", b =>
@@ -3253,6 +4458,11 @@ namespace Odyssey.Context.Migrations
                     b.Property<double?>("CapturedLongitude")
                         .HasColumnType("double");
 
+                    b.Property<string>("ContentType")
+                        .HasMaxLength(256)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(256)");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
@@ -3262,7 +4472,14 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Favourited")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid>("FileId")
+                    b.Property<Guid?>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("FileName")
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<Guid?>("LegacyFileId")
                         .HasColumnType("char(36)");
 
                     b.Property<string>("LocationName")
@@ -3274,6 +4491,18 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<int?>("PixelWidth")
                         .HasColumnType("int");
+
+                    b.Property<string>("Sha256Hash")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("char(64)")
+                        .IsFixedLength();
+
+                    b.Property<long?>("SizeBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid?>("StoredObjectId")
+                        .HasColumnType("char(36)");
 
                     b.Property<DateTime?>("TakenAt")
                         .HasColumnType("datetime(6)");
@@ -3297,13 +4526,26 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("FileId")
                         .IsUnique();
 
+                    b.HasIndex("LegacyFileId")
+                        .IsUnique();
+
+                    b.HasIndex("StoredObjectId")
+                        .IsUnique();
+
                     b.HasIndex("TakenAt");
 
                     b.HasIndex("UpdatedByUserId");
 
                     b.HasIndex("Archived", "TakenAt");
 
-                    b.ToTable("Photos");
+                    b.HasIndex("Sha256Hash", "SizeBytes");
+
+                    b.ToTable("Photos", t =>
+                        {
+                            t.HasCheckConstraint("CK_Photos_ExactlyOneSource", "(`FileId` IS NULL) <> (`StoredObjectId` IS NULL)");
+
+                            t.HasCheckConstraint("CK_Photos_OriginalComplete", "`StoredObjectId` IS NULL OR (`FileName` IS NOT NULL AND `ContentType` IS NOT NULL AND `SizeBytes` IS NOT NULL AND `Sha256Hash` IS NOT NULL)");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.PhotoAlbum", b =>
@@ -3314,6 +4556,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<Guid?>("CoverPhotoId")
                         .HasColumnType("char(36)");
@@ -3327,6 +4573,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(1024)
                         .HasColumnType("varchar(1024)");
+
+                    b.Property<string>("Icon")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -3382,6 +4632,96 @@ namespace Odyssey.Context.Migrations
                     b.ToTable("PhotoAlbumItems");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillFailure", b =>
+                {
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(16)");
+
+                    b.Property<DateTime>("RecordedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("PhotoId");
+
+                    b.ToTable("PhotoOriginalBackfillFailures", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBackfillFailures_Code", "`Code` IN ('hash', 'read', 'too-large', 'error')");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillLease", b =>
+                {
+                    b.Property<byte>("Id")
+                        .HasColumnType("tinyint unsigned");
+
+                    b.Property<int>("ConsecutiveEnvironmentalFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CopiedSharedCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("HolderId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("LastRunAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextAttemptAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PhotoOriginalBackfillLeases", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBackfillLeases_Singleton", "`Id` = 1");
+                        });
+
+                    b.HasData(
+                        new
+                        {
+                            Id = (byte)1,
+                            ConsecutiveEnvironmentalFailures = 0,
+                            CopiedSharedCount = 0,
+                            Version = new Guid("8a1e6f2c-0b4d-4c7a-9e35-71d2c8f04b96")
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBucket", b =>
+                {
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentBucket")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosWritten")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Year");
+
+                    b.ToTable("PhotoOriginalBuckets", t =>
+                        {
+                            t.HasCheckConstraint("CK_PhotoOriginalBuckets_CurrentBucketPositive", "`CurrentBucket` >= 1");
+
+                            t.HasCheckConstraint("CK_PhotoOriginalBuckets_PhotosWrittenRange", "`PhotosWritten` BETWEEN 0 AND 10000");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.PhotoPerson", b =>
                 {
                     b.Property<Guid>("PhotoPersonId")
@@ -3412,6 +4752,10 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
 
                     b.Property<string>("Description")
                         .HasMaxLength(256)
@@ -3595,6 +4939,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("LeaseUntilUtc")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<byte>("ManualRequeues")
+                        .HasColumnType("tinyint unsigned");
+
                     b.Property<DateTime>("NextAttemptAtUtc")
                         .HasColumnType("datetime(6)");
 
@@ -3632,6 +4979,8 @@ namespace Odyssey.Context.Migrations
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseExpiriesNonNegative", "`LeaseExpiries` >= 0");
 
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_LeaseWhenRunning", "`State` <> 1 OR `LeaseUntilUtc` IS NOT NULL");
+
+                            t.HasCheckConstraint("CK_PhotoThumbnailJobs_ManualRequeuesRange", "`ManualRequeues` IN (0, 1)");
 
                             t.HasCheckConstraint("CK_PhotoThumbnailJobs_PriorityRange", "`Priority` IN (0, 1)");
 
@@ -3830,24 +5179,12 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("PropertyId")
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("AddressLine")
-                        .HasMaxLength(256)
-                        .HasColumnType("varchar(256)");
-
                     b.Property<int?>("BuildYear")
                         .HasColumnType("int");
 
                     b.Property<string>("CadastralNumber")
                         .HasMaxLength(64)
                         .HasColumnType("varchar(64)");
-
-                    b.Property<string>("City")
-                        .HasMaxLength(128)
-                        .HasColumnType("varchar(128)");
-
-                    b.Property<string>("CountryCode")
-                        .HasMaxLength(2)
-                        .HasColumnType("varchar(2)");
 
                     b.Property<Guid?>("HomeownerAssociationId")
                         .HasColumnType("char(36)");
@@ -3859,17 +5196,18 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<decimal?>("PlotAreaSqm")
                         .HasPrecision(18, 2)
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("PostalCode")
-                        .HasMaxLength(32)
-                        .HasColumnType("varchar(32)");
-
                     b.HasKey("PropertyId");
 
                     b.HasIndex("HomeownerAssociationId");
+
+                    b.HasIndex("LocationId");
 
                     b.ToTable("RealEstateDetails");
                 });
@@ -3919,6 +5257,9 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("varchar(300)");
 
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("char(36)");
+
                     b.Property<int?>("MonthOfYear")
                         .HasColumnType("int");
 
@@ -3947,6 +5288,8 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("CalendarId");
 
                     b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("LocationId");
 
                     b.HasIndex("UpdatedByUserId");
 
@@ -3981,6 +5324,35 @@ namespace Odyssey.Context.Migrations
                     b.HasKey("Key");
 
                     b.ToTable("SystemSettingSecrets");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.StoredFileBucket", b =>
+                {
+                    b.Property<string>("FeatureKey")
+                        .HasMaxLength(64)
+                        .IsUnicode(false)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CurrentBucket")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObjectsWritten")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("FeatureKey", "Year");
+
+                    b.ToTable("StoredFileBuckets", t =>
+                        {
+                            t.HasCheckConstraint("CK_StoredFileBuckets_CurrentBucketPositive", "`CurrentBucket` >= 1");
+
+                            t.HasCheckConstraint("CK_StoredFileBuckets_ObjectsWrittenRange", "`ObjectsWritten` BETWEEN 0 AND 10000");
+                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.StoredObject", b =>
@@ -4136,31 +5508,31 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "TaskIcsMaxImportTasks",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "TaskIcsMaxImportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
                             Key = "JournalIcsMaxExportRows",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "JournalIcsMaxImportEntries",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "JournalIcsMaxImportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
@@ -4178,19 +5550,19 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "TaskIcsMaxExportTasks",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "TaskIcsMaxExportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
                             Key = "JournalIcsMaxExportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
@@ -4338,12 +5710,6 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
-                            Key = "FileAnalysisMatchMaxVocabulary",
-                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "500"
-                        },
-                        new
-                        {
                             Key = "FileAnalysisMatchTimeoutSeconds",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "60"
@@ -4446,13 +5812,13 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
-                            Key = "WeatherMaxTrackedLocations",
+                            Key = "WeatherMaxTrackedPoints",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "5"
                         },
                         new
                         {
-                            Key = "WeatherDefaultLocationId",
+                            Key = "WeatherDefaultPointId",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = ""
                         },
@@ -4473,6 +5839,18 @@ namespace Odyssey.Context.Migrations
                             Key = "FileAnalysisBaseUrl",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "https://api.anthropic.com"
+                        },
+                        new
+                        {
+                            Key = "FileAnalysisExtractionPromptAddition",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
+                        },
+                        new
+                        {
+                            Key = "FileAnalysisMatchPromptAddition",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
                         },
                         new
                         {
@@ -4506,9 +5884,99 @@ namespace Odyssey.Context.Migrations
                         },
                         new
                         {
+                            Key = "InstrumentPriceStaleAfterDays",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Key = "InstrumentPriceSyncIntervalHours",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "24"
+                        },
+                        new
+                        {
+                            Key = "InstrumentPriceSyncHistoryDays",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "365"
+                        },
+                        new
+                        {
+                            Key = "NewsDefaultFetchIntervalMinutes",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "60"
+                        },
+                        new
+                        {
+                            Key = "NewsMaxFeeds",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "200"
+                        },
+                        new
+                        {
+                            Key = "NewsImageMaxPerArticle",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "5"
+                        },
+                        new
+                        {
+                            Key = "NewsImageMaxSizeKb",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "5120"
+                        },
+                        new
+                        {
+                            Key = "NewsImageStoreMaxGiB",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "50"
+                        },
+                        new
+                        {
+                            Key = "NewsTextStoreMaxGiB",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "20"
+                        },
+                        new
+                        {
+                            Key = "NewsFeedMaxArticlesPerDay",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "500"
+                        },
+                        new
+                        {
+                            Key = "NewsFeedMaxImageMbPerDay",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "200"
+                        },
+                        new
+                        {
+                            Key = "NewsPrivateHostAllowList",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = ""
+                        },
+                        new
+                        {
+                            Key = "NewsOpmlMaxImportMegabytes",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "64"
+                        },
+                        new
+                        {
+                            Key = "NewsOpmlMaxImportEntries",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "100000"
+                        },
+                        new
+                        {
                             Key = "FileStorageDeletionGraceHours",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "24"
+                        },
+                        new
+                        {
+                            Key = "JobRunRetentionDays",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "90"
                         });
                 });
 
@@ -4911,6 +6379,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime?>("Archived")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("varchar(7)");
+
                     b.Property<string>("Description")
                         .HasMaxLength(256)
                         .HasColumnType("varchar(256)");
@@ -5127,7 +6599,7 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.WeatherDay", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
 
                     b.Property<DateOnly>("LocalDate")
@@ -5199,7 +6671,7 @@ namespace Odyssey.Context.Migrations
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("datetime(6)");
 
-                    b.HasKey("LocationId", "LocalDate");
+                    b.HasKey("WeatherPointId", "LocalDate");
 
                     b.ToTable("WeatherDays", t =>
                         {
@@ -5226,9 +6698,6 @@ namespace Odyssey.Context.Migrations
                         .HasPrecision(6, 3)
                         .HasColumnType("decimal(6,3)");
 
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
                     b.Property<decimal>("Longitude")
                         .HasPrecision(7, 3)
                         .HasColumnType("decimal(7,3)");
@@ -5242,9 +6711,12 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("SiteVersion")
                         .HasColumnType("int");
 
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.HasKey("WeatherForecastRunId");
 
-                    b.HasIndex("LocationId", "SiteVersion", "ProviderUpdatedAt")
+                    b.HasIndex("WeatherPointId", "SiteVersion", "ProviderUpdatedAt")
                         .IsUnique();
 
                     b.ToTable("WeatherForecastRuns", t =>
@@ -5272,9 +6744,6 @@ namespace Odyssey.Context.Migrations
                     b.Property<decimal?>("CloudAreaFractionPct")
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
 
                     b.Property<byte>("PeriodHours")
                         .HasColumnType("tinyint unsigned");
@@ -5322,6 +6791,9 @@ namespace Odyssey.Context.Migrations
                     b.Property<Guid>("WeatherForecastRunId")
                         .HasColumnType("char(36)");
 
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.Property<decimal?>("WindFromDirectionDeg")
                         .HasPrecision(4, 1)
                         .HasColumnType("decimal(4,1)");
@@ -5339,161 +6811,9 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("WeatherForecastRunId", "TimeUtc")
                         .IsUnique();
 
-                    b.HasIndex("LocationId", "TimeUtc", "SiteVersion", "RunProviderUpdatedAt", "RunFetchedAtUtc");
+                    b.HasIndex("WeatherPointId", "TimeUtc", "SiteVersion", "RunProviderUpdatedAt", "RunFetchedAtUtc");
 
                     b.ToTable("WeatherForecastSteps");
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherLocation", b =>
-                {
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("CreatedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<int>("CurrentSiteVersion")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("EnabledAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<bool>("ForecastEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<bool>("HistoryEnabled")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateOnly>("HistoryFrom")
-                        .HasColumnType("date");
-
-                    b.Property<bool>("IsTracked")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<DateTime?>("PurgeStartedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("StationResolvedAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("UpdatedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.HasKey("LocationId");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("UpdatedByUserId");
-
-                    b.HasIndex("LocationId", "CurrentSiteVersion");
-
-                    b.ToTable("WeatherLocations", t =>
-                        {
-                            t.HasCheckConstraint("CK_WeatherLocations_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1");
-                        });
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSchedule", b =>
-                {
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<bool>("ArchivedSkipLogged")
-                        .HasColumnType("tinyint(1)");
-
-                    b.Property<int>("ForecastConsecutiveFailures")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime?>("ForecastExpiresAtUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int?>("ForecastFailureKind")
-                        .HasColumnType("int");
-
-                    b.Property<string>("ForecastLastModified")
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.Property<DateTime?>("LastForecastSuccessUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LastObservationSuccessUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("LeaseUntilUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("NextForecastFetchAfterUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("NextObservationFetchAfterUtc")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<int>("ObservationConsecutiveFailures")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("ObservationFailureKind")
-                        .HasColumnType("int");
-
-                    b.Property<DateOnly?>("ObservationsBackfilledFromDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateOnly?>("ObservationsCheckedThroughDate")
-                        .HasColumnType("date");
-
-                    b.Property<Guid>("Version")
-                        .IsConcurrencyToken()
-                        .HasColumnType("char(36)");
-
-                    b.HasKey("LocationId");
-
-                    b.ToTable("WeatherLocationSchedules");
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSite", b =>
-                {
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
-
-                    b.Property<int>("SiteVersion")
-                        .HasColumnType("int");
-
-                    b.Property<int?>("AltitudeMeters")
-                        .HasColumnType("int");
-
-                    b.Property<DateTime>("AppliedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("AppliedByUserId")
-                        .HasColumnType("varchar(255)");
-
-                    b.Property<decimal>("Latitude")
-                        .HasPrecision(6, 3)
-                        .HasColumnType("decimal(6,3)");
-
-                    b.Property<decimal>("Longitude")
-                        .HasPrecision(7, 3)
-                        .HasColumnType("decimal(7,3)");
-
-                    b.Property<string>("TimeZoneId")
-                        .IsRequired()
-                        .HasMaxLength(64)
-                        .HasColumnType("varchar(64)");
-
-                    b.HasKey("LocationId", "SiteVersion");
-
-                    b.HasIndex("AppliedByUserId");
-
-                    b.ToTable("WeatherLocationSites", t =>
-                        {
-                            t.HasCheckConstraint("CK_WeatherLocationSites_VersionPositive", "`SiteVersion` >= 1");
-                        });
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
@@ -5507,9 +6827,6 @@ namespace Odyssey.Context.Migrations
 
                     b.Property<DateOnly>("LocalDate")
                         .HasColumnType("date");
-
-                    b.Property<Guid>("LocationId")
-                        .HasColumnType("char(36)");
 
                     b.Property<decimal?>("MaxTempC")
                         .HasPrecision(4, 1)
@@ -5549,20 +6866,230 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
                     b.Property<string>("WindStationId")
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
                     b.HasKey("WeatherObservationId");
 
-                    b.HasIndex("LocationId", "LocalDate", "SiteVersion", "FetchedAtUtc");
+                    b.HasIndex("WeatherPointId", "LocalDate", "SiteVersion", "FetchedAtUtc");
 
                     b.ToTable("WeatherObservations");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.WeatherObservationCoverage", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("SiteVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("FromDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("ToDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("WeatherPointId", "SiteVersion", "FromDate");
+
+                    b.ToTable("WeatherObservationCoverages", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherObservationCoverages_Order", "`ToDate` >= `FromDate`");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("CreatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<int>("CurrentSiteVersion")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EnabledAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<bool>("ForecastEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("HistoryEnabled")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<bool>("IsTracked")
+                        .HasColumnType("tinyint(1)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("PurgeMode")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("PurgeStartedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("SettingsVersion")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime?>("StationResolvedAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("UpdatedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.HasKey("WeatherPointId");
+
+                    b.HasIndex("CreatedByUserId");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("UpdatedByUserId");
+
+                    b.ToTable("WeatherPoints", t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherPoints_CurrentSiteVersionPositive", "`CurrentSiteVersion` >= 1");
+
+                            t.HasCheckConstraint("CK_WeatherPoints_PurgeModeWithFence", "(`PurgeStartedAt` IS NULL) = (`PurgeMode` IS NULL)");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPointHistoryWindow", b =>
+                {
+                    b.Property<Guid>("WeatherPointHistoryWindowId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateOnly>("FromDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("ToDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("WeatherPointHistoryWindowId");
+
+                    b.HasIndex("WeatherPointId", "FromDate")
+                        .IsUnique();
+
+                    b.ToTable("WeatherPointHistoryWindows", t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherPointHistoryWindows_Order", "`ToDate` IS NULL OR `ToDate` >= `FromDate`");
+                        });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("ForecastConsecutiveFailures")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ForecastExpiresAtUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int?>("ForecastFailureKind")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ForecastLastModified")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<DateTime?>("LastForecastSuccessUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LastObservationSuccessUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("LeaseUntilUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextForecastFetchAfterUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("NextObservationFetchAfterUtc")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<int>("ObservationConsecutiveFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("ObservationFailureKind")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("ObservationsCheckedThroughDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("WeatherPointId");
+
+                    b.ToTable("WeatherPointSchedules");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSite", b =>
+                {
+                    b.Property<Guid>("WeatherPointId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("SiteVersion")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("AltitudeMeters")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("AppliedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("AppliedByUserId")
+                        .HasColumnType("varchar(255)");
+
+                    b.Property<decimal>("Latitude")
+                        .HasPrecision(6, 3)
+                        .HasColumnType("decimal(6,3)");
+
+                    b.Property<decimal>("Longitude")
+                        .HasPrecision(7, 3)
+                        .HasColumnType("decimal(7,3)");
+
+                    b.Property<string>("TimeZoneId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.HasKey("WeatherPointId", "SiteVersion");
+
+                    b.HasIndex("AppliedByUserId");
+
+                    b.ToTable("WeatherPointSites", t =>
+                        {
+                            t.HasCheckConstraint("CK_WeatherPointSites_VersionPositive", "`SiteVersion` >= 1");
+                        });
+                });
+
             modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
                 {
-                    b.Property<Guid>("LocationId")
+                    b.Property<Guid>("WeatherPointId")
                         .HasColumnType("char(36)");
 
                     b.Property<int>("Group")
@@ -5586,12 +7113,460 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(32)
                         .HasColumnType("varchar(32)");
 
-                    b.HasKey("LocationId", "Group");
+                    b.HasKey("WeatherPointId", "Group");
 
                     b.ToTable("WeatherStations", t =>
                         {
                             t.HasCheckConstraint("CK_WeatherStations_GroupKnown", "`Group` IN (0, 1, 2)");
                         });
+                });
+
+            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<string>("CurrencyCodes")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("varchar(256)");
+
+                    b.Property<int?>("ErrorKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Provider")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsRejected")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RowsSkipped")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly?>("SpanFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("SpanTo")
+                        .HasColumnType("date");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)1);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileAnalysisJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("AnalysesCompleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnalysesFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("AnalysesRefused")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)6);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileBlobBackfillJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("ContactAvatarsMoved")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FilesParked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FinanceFilesMoved")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Interruptions")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("int")
+                        .HasColumnName("Interruptions");
+
+                    b.Property<int>("JournalFilesMoved")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)7);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.FileStorageMaintenanceJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("AbandonedWritesSwept")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FilesErased")
+                        .HasColumnType("int");
+
+                    b.Property<string>("HeldByCheck")
+                        .HasMaxLength(64)
+                        .HasColumnType("varchar(64)");
+
+                    b.Property<int>("IntegrityFailures")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObjectsScrubbed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrphansFound")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)3);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPriceSyncJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("FallbacksUsed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InstrumentsAttempted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InstrumentsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("InstrumentsSucceeded")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PricesDeleted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PricesInserted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("RequestsMade")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)8);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("FeedsFetched")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FeedsMarked")
+                        .HasColumnType("int");
+
+                    b.Property<int>("FeedsQuarantined")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ImagesStored")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemsRevised")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ItemsStored")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)9);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("Interruptions")
+                        .ValueGeneratedOnUpdateSometimes()
+                        .HasColumnType("int")
+                        .HasColumnName("Interruptions");
+
+                    b.Property<int>("PhotosCopiedShared")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosMoved")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosParked")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)5);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoThumbnailJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int>("Crashes")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Hangs")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosRendered")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhotosRequeued")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)4);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherJobRun", b =>
+                {
+                    b.HasBaseType("Odyssey.Context.JobRun");
+
+                    b.Property<int?>("FailureKind")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ForecastsStored")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ObservationDaysStored")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsAttempted")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsFailed")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PointsSkippedNotExpired")
+                        .HasColumnType("int");
+
+                    b.ToTable("JobRuns", t =>
+                        {
+                            t.HasCheckConstraint("CK_JobRuns_CountersNonNegative", "COALESCE(`ItemsProcessed`, 0) >= 0 AND COALESCE(`ItemsFailed`, 0) >= 0 AND COALESCE(`DurationMs`, 0) >= 0 AND COALESCE(`RowsInserted`, 0) >= 0 AND COALESCE(`RowsSkipped`, 0) >= 0 AND COALESCE(`RowsRejected`, 0) >= 0 AND COALESCE(`RowsDeleted`, 0) >= 0 AND COALESCE(`PointsAttempted`, 0) >= 0 AND COALESCE(`PointsSkippedNotExpired`, 0) >= 0 AND COALESCE(`PointsFailed`, 0) >= 0 AND COALESCE(`ForecastsStored`, 0) >= 0 AND COALESCE(`ObservationDaysStored`, 0) >= 0 AND COALESCE(`FilesErased`, 0) >= 0 AND COALESCE(`AbandonedWritesSwept`, 0) >= 0 AND COALESCE(`ObjectsScrubbed`, 0) >= 0 AND COALESCE(`IntegrityFailures`, 0) >= 0 AND COALESCE(`OrphansFound`, 0) >= 0 AND COALESCE(`PhotosRendered`, 0) >= 0 AND COALESCE(`PhotosFailed`, 0) >= 0 AND COALESCE(`PhotosRequeued`, 0) >= 0 AND COALESCE(`Crashes`, 0) >= 0 AND COALESCE(`Hangs`, 0) >= 0 AND COALESCE(`PhotosMoved`, 0) >= 0 AND COALESCE(`PhotosCopiedShared`, 0) >= 0 AND COALESCE(`PhotosParked`, 0) >= 0 AND COALESCE(`Interruptions`, 0) >= 0 AND COALESCE(`AnalysesCompleted`, 0) >= 0 AND COALESCE(`AnalysesFailed`, 0) >= 0 AND COALESCE(`AnalysesRefused`, 0) >= 0 AND COALESCE(`FinanceFilesMoved`, 0) >= 0 AND COALESCE(`JournalFilesMoved`, 0) >= 0 AND COALESCE(`ContactAvatarsMoved`, 0) >= 0 AND COALESCE(`FilesParked`, 0) >= 0 AND COALESCE(`InstrumentsAttempted`, 0) >= 0 AND COALESCE(`InstrumentsSucceeded`, 0) >= 0 AND COALESCE(`InstrumentsFailed`, 0) >= 0 AND COALESCE(`PricesInserted`, 0) >= 0 AND COALESCE(`FallbacksUsed`, 0) >= 0 AND COALESCE(`RequestsMade`, 0) >= 0 AND COALESCE(`PricesDeleted`, 0) >= 0 AND COALESCE(`FeedsFetched`, 0) >= 0 AND COALESCE(`ItemsStored`, 0) >= 0 AND COALESCE(`ItemsRevised`, 0) >= 0 AND COALESCE(`ImagesStored`, 0) >= 0 AND COALESCE(`FeedsQuarantined`, 0) >= 0 AND COALESCE(`FeedsMarked`, 0) >= 0");
+
+                            t.HasCheckConstraint("CK_JobRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
+
+                            t.HasCheckConstraint("CK_JobRuns_FailureCategory", "`FailureCategory` IS NULL OR `FailureCategory` BETWEEN 1 AND 10");
+
+                            t.HasCheckConstraint("CK_JobRuns_FinishedMatchesStatus", "(`Status` = 0 AND `FinishedAtUtc` IS NULL) OR `Status` = 5 OR (`Status` IN (1, 2, 3, 4) AND `FinishedAtUtc` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldHasWorkerAndReason", "`Status` <> 5 OR (`WorkerId` IS NOT NULL AND `HeldReason` IS NOT NULL)");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReason", "`HeldReason` IS NULL OR `HeldReason` BETWEEN 1 AND 6");
+
+                            t.HasCheckConstraint("CK_JobRuns_HeldReasonOnlyOnHeld", "`HeldReason` IS NULL OR `Status` = 5");
+
+                            t.HasCheckConstraint("CK_JobRuns_JobType", "`JobType` IN (1, 2, 3, 4, 5, 6, 7, 8, 9)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Provider", "`Provider` IS NULL OR `Provider` IN (1)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Status", "`Status` IN (0, 1, 2, 3, 4, 5)");
+
+                            t.HasCheckConstraint("CK_JobRuns_Trigger", "`Trigger` IN (0, 1, 2)");
+                        });
+
+                    b.HasDiscriminator().HasValue((byte)2);
                 });
 
             modelBuilder.Entity("Odyssey.Context.ContractEvent", b =>
@@ -5781,7 +7756,15 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Odyssey.Context.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Contact");
+
+                    b.Navigation("Location");
                 });
 
             modelBuilder.Entity("Odyssey.Context.Budget", b =>
@@ -5837,6 +7820,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.RecurrencePattern", "RecurrencePattern")
                         .WithMany("GeneratedEvents")
@@ -5998,14 +7986,6 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
                 });
 
-            modelBuilder.Entity("Odyssey.Context.ExchangeRateSyncRun", b =>
-                {
-                    b.HasOne("Odyssey.Context.ApplicationUser", null)
-                        .WithMany()
-                        .HasForeignKey("RequestedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
             modelBuilder.Entity("Odyssey.Context.FileAnalysisCandidateTag", b =>
                 {
                     b.HasOne("Odyssey.Context.FileAnalysisCandidateTransaction", "CandidateTransaction")
@@ -6064,11 +8044,25 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.FileMetadata", b =>
                 {
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("ContactAvatarStoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.FileBlob", "FileBlob")
                         .WithOne("FileMetadata")
                         .HasForeignKey("Odyssey.Context.FileMetadata", "FileBlobId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("FinanceStoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("JournalStoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6087,12 +8081,72 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Odyssey.Context.Instrument", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Currency", null)
+                        .WithMany()
+                        .HasForeignKey("CurrencyCode")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPrice", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("CreatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Instrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.InstrumentPriceSourceBinding", b =>
+                {
+                    b.HasOne("Odyssey.Context.Instrument", null)
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("UpdatedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.JobRun", b =>
+                {
+                    b.HasOne("Odyssey.Context.ApplicationUser", null)
+                        .WithMany()
+                        .HasForeignKey("RequestedByUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
             modelBuilder.Entity("Odyssey.Context.JournalEntry", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6226,10 +8280,139 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("MergedIntoLocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticle", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsFeed", null)
+                        .WithMany()
+                        .HasForeignKey("NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleFile", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsArticle", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.NewsArticleRevision", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleRevisionId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("StoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleIdentity", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsArticle", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleId", "NewsFeedId")
+                        .HasPrincipalKey("NewsArticleId", "NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleImage", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsArticleFile", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.NewsArticleImage", "NewsArticleFileId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.NewsArticle", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleRevision", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsArticle", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsArticleTag", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsArticle", null)
+                        .WithMany()
+                        .HasForeignKey("NewsArticleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.NewsTag", null)
+                        .WithMany()
+                        .HasForeignKey("NewsTagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedBucket", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsFeed", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.NewsFeedBucket", "NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedCounter", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsFeed", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.NewsFeedCounter", "NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedFetchState", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsFeed", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.NewsFeedFetchState", "NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.NewsFeedTag", b =>
+                {
+                    b.HasOne("Odyssey.Context.NewsFeed", null)
+                        .WithMany()
+                        .HasForeignKey("NewsFeedId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.NewsTag", null)
+                        .WithMany()
+                        .HasForeignKey("NewsTagId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.OrganizationDetails", b =>
@@ -6283,8 +8466,12 @@ namespace Odyssey.Context.Migrations
                     b.HasOne("Odyssey.Context.FileMetadata", null)
                         .WithMany()
                         .HasForeignKey("FileId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("Odyssey.Context.StoredObject", null)
+                        .WithMany()
+                        .HasForeignKey("StoredObjectId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6329,6 +8516,15 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("Photo");
 
                     b.Navigation("PhotoAlbum");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.PhotoOriginalBackfillFailure", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.PhotoPerson", b =>
@@ -6471,11 +8667,18 @@ namespace Odyssey.Context.Migrations
                         .HasForeignKey("HomeownerAssociationId")
                         .OnDelete(DeleteBehavior.SetNull);
 
+                    b.HasOne("Odyssey.Context.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Odyssey.Context.Property", "Property")
                         .WithOne("RealEstateDetails")
                         .HasForeignKey("Odyssey.Context.RealEstateDetails", "PropertyId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Location");
 
                     b.Navigation("Property");
                 });
@@ -6492,6 +8695,11 @@ namespace Odyssey.Context.Migrations
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("Odyssey.Context.Location", null)
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
@@ -6711,18 +8919,18 @@ namespace Odyssey.Context.Migrations
 
             modelBuilder.Entity("Odyssey.Context.WeatherDay", b =>
                 {
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherForecastRun", b =>
                 {
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
@@ -6736,68 +8944,74 @@ namespace Odyssey.Context.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocation", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherObservationCoverage", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPoint", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("CreatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Odyssey.Context.Location", null)
-                        .WithOne()
-                        .HasForeignKey("Odyssey.Context.WeatherLocation", "LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("UpdatedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("Odyssey.Context.WeatherLocationSite", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId", "CurrentSiteVersion")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSchedule", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointHistoryWindow", b =>
                 {
-                    b.HasOne("Odyssey.Context.WeatherLocation", null)
-                        .WithOne()
-                        .HasForeignKey("Odyssey.Context.WeatherLocationSchedule", "LocationId")
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithMany()
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Odyssey.Context.WeatherLocationSite", b =>
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSchedule", b =>
+                {
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
+                        .WithOne()
+                        .HasForeignKey("Odyssey.Context.WeatherPointSchedule", "WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.WeatherPointSite", b =>
                 {
                     b.HasOne("Odyssey.Context.ApplicationUser", null)
                         .WithMany()
                         .HasForeignKey("AppliedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("Odyssey.Context.Location", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Odyssey.Context.WeatherObservation", b =>
-                {
-                    b.HasOne("Odyssey.Context.Location", null)
-                        .WithMany()
-                        .HasForeignKey("LocationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("WeatherPointId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.WeatherStation", b =>
                 {
-                    b.HasOne("Odyssey.Context.WeatherLocation", null)
+                    b.HasOne("Odyssey.Context.WeatherPoint", null)
                         .WithMany()
-                        .HasForeignKey("LocationId")
+                        .HasForeignKey("WeatherPointId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -5,6 +5,12 @@ namespace Odyssey.Client.Components;
 
 public partial class PageHeader
 {
+    /// <summary>
+    /// The id of the page's one <c>h1</c> (focusable, <c>tabindex="-1"</c>): the last link of a focus chain
+    /// when the row an action was about is gone — a deleted place with no neighbour (issue #383 §6.5).
+    /// </summary>
+    public const string HeadingId = "page-heading";
+
     /// <summary>Page name shown as the title (rendered at Typo.h2).</summary>
     [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
 
@@ -76,6 +82,14 @@ public partial class PageHeader
     /// <summary>Accessible name for the kebab trigger (WCAG 4.1.2 — an icon-only MudMenu has no name
     /// otherwise). Override when a page's overflow actions need a more specific label.</summary>
     [Parameter] public string ActionMenuLabel { get; set; } = "More actions";
+
+    /// <summary>
+    /// Optional id for the overflow menu's root element (issue #509 §4.1, v5 §1), so a dialog opened from one of its
+    /// items can return focus to the ⋯ button with <c>ReturnFocusToId</c>. The id goes on the <c>MudMenu</c> root,
+    /// which is not itself focusable, and <c>odsRestoreFocusOwner</c> focuses its first button: the built-in
+    /// activator. Unset (the default), the markup is unchanged.
+    /// </summary>
+    [Parameter] public string? ActionMenuId { get; set; }
 
     /// <summary>Extra one-off regions. Wrap each in &lt;div class="ph-region"&gt;.</summary>
     [Parameter] public RenderFragment? ChildContent { get; set; }

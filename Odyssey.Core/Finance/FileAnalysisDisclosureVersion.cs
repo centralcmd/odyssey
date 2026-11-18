@@ -39,16 +39,62 @@ public static class FileAnalysisDisclosureVersion
     /// <summary>Base64url characters kept from the digest. 16 is ~96 bits — ample for a change detector.</summary>
     private const int Length = 16;
 
+    /// <summary>The match vocabulary fields a new job's consent covers (issue #433).</summary>
+    public const Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope CurrentScope =
+        Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions;
+
     /// <summary>
-    /// Computes the version for one snapshot. Returns <see cref="string.Empty"/> when the snapshot
-    /// carries no usable model or base URL, which is unreachable in practice: both callers refuse with
-    /// <see cref="FileAnalysisUnavailableException"/> (analyze) or <c>503</c> (the disclosure endpoint)
-    /// before they get here, and an empty version can never match an echoed one.
+    /// The coverage word served with the field list: every active contact and tag is sent, with no
+    /// relevance filter (a product-owner decision recorded in issue #433 §7.5).
+    /// </summary>
+    public const string Coverage = "allActive";
+
+    private static readonly string[] NamesOnlyFields = ["contactName", "tagName"];
+
+    private static readonly string[] ExtendedFields = ["contactName", "contactAlias", "tagName", "tagDescription"];
+
+    /// <summary>
+    /// The field list for one scope, in the order it is served and hashed. A server constant, so the
+    /// consent copy is driven by the server and the list and the version cannot drift apart.
+    /// </summary>
+    public static IReadOnlyList<string> FieldsFor(Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope scope) =>
+        scope == Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions
+            ? ExtendedFields
+            : NamesOnlyFields;
+
+    /// <summary>
+    /// Computes the full version for one snapshot: the processor disclosure, the match field list and
+    /// coverage, and both guidance flags (issue #433). Returns <see cref="string.Empty"/> when the
+    /// snapshot carries no usable model or base URL, which is unreachable in practice: both callers
+    /// refuse with <see cref="FileAnalysisUnavailableException"/> (analyze) or <c>503</c> (the
+    /// disclosure endpoint) before they get here, and an empty version can never match an echoed one.
     /// </summary>
     public static string Compute(FileAnalysisSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
+        return Hash(settings, CurrentScope, includeExtractionGuidance: true);
+    }
+
+    /// <summary>
+    /// The match-relevant part of the disclosure for a job of the given scope (issue #433 §3 step 2):
+    /// everything <see cref="Compute"/> covers except the extraction-guidance flag. Extraction has
+    /// already run by the time a match does, so changing that guidance must not refuse matches on
+    /// analyses that are already open.
+    /// </summary>
+    public static string ComputeForMatch(
+        FileAnalysisSettings settings, Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope scope)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        return Hash(settings, scope, includeExtractionGuidance: false);
+    }
+
+    private static string Hash(
+        FileAnalysisSettings settings,
+        Odyssey.Dtos.Finance.FileAnalysisMatchVocabularyScope scope,
+        bool includeExtractionGuidance)
+    {
         if (settings.Model is not { } model || settings.BaseUrl is not { } baseUrl)
         {
             return string.Empty;
@@ -60,15 +106,28 @@ public static class FileAnalysisDisclosureVersion
             ? uri.Host
             : baseUrl;
 
-        var input = string.Join(Separator,
+        var parts = new List<string>
+        {
             settings.Processor,
             settings.ProcessorRegion,
             settings.LawfulBasis,
             settings.PrivacyNoticeUrl,
             model,
-            host);
+            host,
+            // Issue #433: the same values the disclosure response serves, so what the user was shown
+            // and what the version covers cannot drift apart.
+            string.Join(',', FieldsFor(scope)),
+            Coverage,
+        };
 
-        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        if (includeExtractionGuidance)
+        {
+            parts.Add(settings.ExtractionPromptAddition is null ? "extraction-guidance:off" : "extraction-guidance:on");
+        }
+
+        parts.Add(settings.MatchPromptAddition is null ? "match-guidance:off" : "match-guidance:on");
+
+        var digest = SHA256.HashData(Encoding.UTF8.GetBytes(string.Join(Separator, parts)));
         return Base64Url.EncodeToString(digest)[..Length];
     }
 

@@ -1,3 +1,4 @@
+using Microsoft.JSInterop;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
@@ -21,7 +22,15 @@ public partial class LocationsPage
     [Inject] private AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;
     [Inject] private IPageStateService PageState { get; set; } = default!;
     [Inject] private IWeatherApiClient Weather { get; set; } = default!;
-    [Inject] private ISystemSettingsApiClient SystemSettings { get; set; } = default!;
+    [Inject] private Microsoft.JSInterop.IJSRuntime Js { get; set; } = default!;
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    /// <summary>The registered clock, if any: the weather reads fall back to the system clock in a host that registers none.</summary>
+    private TimeProvider? ClockOrNull => Services.GetService(typeof(TimeProvider)) as TimeProvider;
+
+    /// <summary><c>?open=&lt;locationId&gt;</c>: expand, scroll to and focus that record (issue #388 §3).</summary>
+    [SupplyParameterFromQuery(Name = "open")] public Guid? OpenId { get; set; }
 
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingLocation> _locations = [];
@@ -51,6 +60,16 @@ public partial class LocationsPage
     private string _searchString = string.Empty;
     private IReadOnlyCollection<string> _statusFilter = LocationVisuals.DefaultStatusFilter;
 
+    // Issue #383 §3.6: two separate two-option filters beside status — none or both sends no parameter.
+    private IReadOnlyCollection<string> _coordinatesFilter = [];
+    private IReadOnlyCollection<string> _useFilter = [];
+
+    private bool? HasCoordinatesQuery =>
+        LocationVisuals.FilterValue(_coordinatesFilter, LocationVisuals.HasCoordinatesKey, LocationVisuals.NeedsCoordinatesKey);
+
+    private bool? ReferencedQuery =>
+        LocationVisuals.FilterValue(_useFilter, LocationVisuals.UsedKey, LocationVisuals.NotUsedKey);
+
     // ── Sort — LocationSortBy: Name (default, ascending), CreatedAt, UpdatedAt; the server applies it. ──
     private static readonly OdsTableSort DefaultSort = new("name", OdsSortDirection.Asc);
     private OdsTableSort _sort = DefaultSort;
@@ -73,10 +92,13 @@ public partial class LocationsPage
     // ── Permissions ────────────────────────────────────────────────────────────
     private bool _canCreate;
     private bool _canUpdate;
-    private bool _canReadWeather;
-    private bool _canUpdateWeather;
-    private bool _canPurgeWeather;
+    private bool _canDelete;
+    // Weather (issue #388 §3 control-to-claim map).
     private bool _canReadWeatherData;
+    private bool _canLink;
+    private bool _canOpenPoints;
+    private bool _canUpdatePoints;
+    private bool _canCreatePoints;
     private bool _canOpenSettings;
 
     // ── Dialogs ──────────────────────────────────────────────────────────────────
@@ -87,7 +109,8 @@ public partial class LocationsPage
     private bool _editOpen;
 
     // ── Computed ────────────────────────────────────────────────────────────────
-    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0;
+    private bool _hasFilters => !string.IsNullOrWhiteSpace(_searchString) || _statusFilter.Count > 0
+        || _coordinatesFilter.Count > 0 || _useFilter.Count > 0;
 
     private int? FileTotal => _activeCount + _archivedCount;
 
@@ -113,26 +136,32 @@ public partial class LocationsPage
     /// <summary>The credits line's sources — recomputed when the rows change, not on every render.</summary>
     private IReadOnlyList<LocationAttribution> Credits { get; set; } = [];
 
+    /// <summary>The interactivity check, as a seam for bUnit.</summary>
+    internal static Func<bool> InteractiveCheck = OperatingSystem.IsBrowser;
+
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
-        if (!OperatingSystem.IsBrowser())
+        if (!InteractiveCheck())
             return;
 
         var user = await AuthenticationStateProvider.GetUserAsync();
         _canCreate = user.HasPermission(PermissionClaims.LocationsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.LocationsUpdate);
-        // Weather on this page is Admin-only (issue #348): without weather.locations.read it shows nothing.
-        _canReadWeather = user.HasPermission(PermissionClaims.WeatherLocationsRead);
-        _canUpdateWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherLocationsUpdate);
-        _canPurgeWeather = _canReadWeather && user.HasPermission(PermissionClaims.WeatherHistoryDelete);
-        _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
-        // Weather history is weather data, not setup: it follows weather.read, which every role holds.
+        _canDelete = user.HasPermission(PermissionClaims.LocationsDelete);
+        // Weather data on a place follows weather.read, which every role holds; linking needs locations.update
+        // too; only an Admin (weather.points.read) is pointed at the Weather points page. No weather setup is here.
         _canReadWeatherData = user.HasPermission(PermissionClaims.WeatherRead);
+        _canLink = _canUpdate && _canReadWeatherData;
+        _canOpenPoints = user.HasPermission(PermissionClaims.WeatherPointsRead);
+        _canUpdatePoints = user.HasPermission(PermissionClaims.WeatherPointsUpdate);
+        _canCreatePoints = _canOpenPoints && _canUpdatePoints;
         _canOpenSettings = user.HasPermission(PermissionClaims.SystemSettingsUpdate);
+        _weatherReads = new WeatherPointReads(Weather, ClockOrNull);
 
         await RestorePageStateAsync();
-        await Task.WhenAll(LoadLocations(), LoadCounts(), LoadWeatherAsync(), LoadWeatherOptionsAsync());
+        await Task.WhenAll(LoadLocations(), LoadCounts());
+        await OpenDeepLinkAsync();
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -144,6 +173,8 @@ public partial class LocationsPage
         _searchOpen = state.SearchOpen;
         _searchString = state.Search ?? string.Empty;
         _statusFilter = LocationVisuals.StatusOptions.KnownValues(state.StatusFilter);
+        _coordinatesFilter = LocationVisuals.CoordinatesOptions.KnownValues(state.CoordinatesFilter);
+        _useFilter = LocationVisuals.UseOptions.KnownValues(state.UseFilter);
         _sort = OdsSortHelpers.Resolve(SortFields, state.SortField, state.SortDirection, DefaultSort);
         _batch = OdsPageSizes.Restore(state.BatchSize, OdsPageSizes.Batch);
     }
@@ -153,6 +184,8 @@ public partial class LocationsPage
         SearchOpen = _searchOpen,
         Search = _searchString,
         StatusFilter = [.. _statusFilter],
+        CoordinatesFilter = [.. _coordinatesFilter],
+        UseFilter = [.. _useFilter],
         SortField = _sort.Key,
         SortDirection = _sort.Dir,
         BatchSize = _batch,
@@ -163,6 +196,8 @@ public partial class LocationsPage
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _searchString = value ?? string.Empty; PersistPageState(); }
     private async Task OnStatusFilterChanged(IReadOnlyCollection<string> values) { _statusFilter = values ?? []; PersistPageState(); await LoadLocations(); }
+    private async Task OnCoordinatesFilterChanged(IReadOnlyCollection<string> values) { _coordinatesFilter = values ?? []; PersistPageState(); await LoadLocations(); }
+    private async Task OnUseFilterChanged(IReadOnlyCollection<string> values) { _useFilter = values ?? []; PersistPageState(); await LoadLocations(); }
     private async Task OnSortChanged(OdsTableSort sort) { _sort = sort; PersistPageState(); await LoadLocations(); }
     private void OnBatchChanged(int size) { _batch = size; PersistPageState(); StateHasChanged(); }
 
@@ -170,15 +205,19 @@ public partial class LocationsPage
     {
         _searchString = string.Empty;
         _statusFilter = [];
+        _coordinatesFilter = [];
+        _useFilter = [];
         PersistPageState();
         await LoadLocations();
     }
 
-    private sealed class LocationsPageState
+    internal sealed class LocationsPageState
     {
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> StatusFilter { get; set; } = [.. LocationVisuals.DefaultStatusFilter];
+        public List<string> CoordinatesFilter { get; set; } = [];
+        public List<string> UseFilter { get; set; } = [];
         public string? SortField { get; set; }
         public OdsSortDirection? SortDirection { get; set; }
         public int BatchSize { get; set; } = OdsPageSizes.Batch[0];
@@ -200,6 +239,8 @@ public partial class LocationsPage
             _statusFilter,
             SortByFor(_sort.Key),
             _sort.Dir == OdsSortDirection.Asc ? "asc" : "desc",
+            HasCoordinatesQuery,
+            ReferencedQuery,
             ct));
         if (response.IsSuperseded)
             return;
@@ -211,11 +252,15 @@ public partial class LocationsPage
         _archivedMatch = !_loadError && _locations.Count == 0 && await ArchivedRowMatchesAsync();
 
         _announce = _loadError ? "Couldn't load locations."
-            : _locations.Count == 0 ? "No locations match your filters."
-            : $"Showing {_locations.Count} location{(_locations.Count == 1 ? "" : "s")}.";
+            : _locations.Count == 0 ? LocationVisuals.NoFilterMatches
+            : $"Showing {_locations.Count} {(_locations.Count == 1 ? "place" : "places")}";
         _isLoading = false;
         _refetching = false;
         StateHasChanged();
+
+        // Awaited, not fire-and-forget: the chips' names arrive after the list renders, and a newer load or a
+        // dispose cancels this one so its answers never land on rows they no longer describe (N4).
+        await ResolveMergeTargetsAsync(_locations);
     }
 
     /// <summary>
@@ -227,7 +272,9 @@ public partial class LocationsPage
         var hidesArchived = _statusFilter.Count == 1 && _statusFilter.Contains(nameof(ArchivalStatus.Active));
         if (!hidesArchived || string.IsNullOrWhiteSpace(_searchString) || _archivedCount is 0)
             return false;
-        var archived = await Locations.ListAsync(1, 1, _searchString, [nameof(ArchivalStatus.Archived)]);
+        // The archived-match hint honours the two #383 filters too, so it never points at a row they hide.
+        var archived = await Locations.ListAsync(1, 1, _searchString, [nameof(ArchivalStatus.Archived)],
+            hasCoordinates: HasCoordinatesQuery, referenced: ReferencedQuery);
         return archived.IsSuccess && archived.Value is { TotalCount: > 0 };
     }
 
@@ -245,54 +292,287 @@ public partial class LocationsPage
     // ── Expand ──────────────────────────────────────────────────────────────────
     private bool IsExpanded(Guid id) => _expandedId == id;
 
-    private void ToggleExpand(Guid id) => _expandedId = _expandedId == id ? null : id;
+    private void ToggleExpand(Guid id)
+    {
+        // A record's link advisories are transient: they go when it closes (issue #388 flow B step 5), and its
+        // forecast reads are released with it.
+        if (_expandedId is { } open)
+        {
+            _linkAdvisories.Remove(open);
+            if (FindRow(open)?.WeatherPoint is { } wp)
+                _weatherReads.Forget(wp.WeatherPointId);
+        }
+
+        _expandedId = _expandedId == id ? null : id;
+    }
 
     // ── Row menu ──────────────────────────────────────────────────────────────────
     private IReadOnlyList<OdsMenuItem> RowActions(ExistingLocation l) => BuildRowActions(
         l,
-        _canUpdate,
+        new LocationRowClaims(_canUpdate, _canDelete),
         edit: EventCallback.Factory.Create(this, () => EditClicked(l)),
         copyCoordinates: EventCallback.Factory.Create(this, () => CopyAsync(LocationVisuals.FormatPair(l.Latitude, l.Longitude), "Coordinates copied.")),
         copyId: EventCallback.Factory.Create(this, () => CopyAsync(l.LocationId.ToString(), "ID copied.")),
         toggleArchive: EventCallback.Factory.Create(this, () => SetArchived(l, l.Archived is null)),
-        weather: ShowWeather ? WeatherActions(l) : null);
+        merge: EventCallback.Factory.Create(this, () => MergeClicked(l)),
+        delete: EventCallback.Factory.Create(this, () => DeleteClicked(l)),
+        weather: BuildWeatherLinkActions(l, _canLink,
+            link: EventCallback.Factory.Create(this, () => LinkClicked(l)),
+            unlink: EventCallback.Factory.Create(this, () => UnlinkClicked(l))));
+
+    /// <summary>The two claims beyond <c>locations.read</c> that decide the row menu (issue #383 §3.6).</summary>
+    internal sealed record LocationRowClaims(bool CanUpdate, bool CanDelete);
 
     /// <summary>
-    /// The row menu: Edit and Archive / Restore need <c>locations.update</c> and are ABSENT without it;
-    /// the two copies are read-only and always there. There is no Delete — a location is archived.
+    /// The row menu, by claim (issue #383 §3.6, SEC F7; issue #388): Edit location · Copy coordinates (only with them) ·
+    /// Copy ID · (weather point) · Merge into… · divider · Archive / Restore · Delete. A merged-away row offers only
+    /// Copy ID and Delete; Merge is absent on an archived row. Unavailable actions are ABSENT, never dimmed,
+    /// and every item names the place in its accessible name.
     /// </summary>
     internal static IReadOnlyList<OdsMenuItem> BuildRowActions(
-        ExistingLocation l, bool canUpdate, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
-        EventCallback toggleArchive, IReadOnlyList<OdsMenuItem>? weather = null)
+        ExistingLocation l, LocationRowClaims claims, EventCallback edit, EventCallback copyCoordinates, EventCallback copyId,
+        EventCallback toggleArchive, EventCallback merge = default, EventCallback delete = default,
+        IReadOnlyList<OdsMenuItem>? weather = null)
     {
+        var merged = l.MergedIntoLocationId is not null;
         var items = new List<OdsMenuItem>();
-        if (canUpdate)
-            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", OnClick = edit });
+        if (claims.CanUpdate && !merged)
+            items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit location", AriaLabel = $"Edit location {l.Name}", OnClick = edit });
 
-        items.Add(new OdsMenuItem { Icon = "my_location", Label = "Copy coordinates", TrailingIcon = "content_copy", OnClick = copyCoordinates });
-        items.Add(new OdsMenuItem { Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy", OnClick = copyId });
-
-        // The weather items sit after Copy ID and before Archive (issue #348).
-        if (weather is { Count: > 0 })
+        if (l.HasCoordinates && !merged)
+            items.Add(new OdsMenuItem
+            {
+                Icon = "my_location", Label = "Copy coordinates", AriaLabel = $"Copy coordinates of {l.Name}",
+                TrailingIcon = "content_copy", OnClick = copyCoordinates,
+            });
+        items.Add(new OdsMenuItem
         {
-            items.Add(new OdsMenuItem { Divider = true });
-            items.AddRange(weather);
-        }
+            Icon = "fingerprint", Label = "Copy ID", AriaLabel = $"Copy ID of {l.Name}", TrailingIcon = "content_copy", OnClick = copyId,
+        });
 
-        if (canUpdate)
+        // The weather-point items sit directly after Copy ID (issue #388 §3).
+        if (weather is { Count: > 0 } && !merged)
+            items.AddRange(weather);
+
+        if (claims.CanUpdate && !merged && l.Archived is null)
+            items.Add(new OdsMenuItem { Icon = "call_merge", Label = "Merge into…", AriaLabel = $"Merge into… — {l.Name}", OnClick = merge });
+
+        var archive = claims.CanUpdate && !merged;
+        if (archive || claims.CanDelete)
+            items.Add(new OdsMenuItem { Divider = true });
+
+        if (archive)
         {
             var archived = l.Archived is not null;
-            items.Add(new OdsMenuItem { Divider = true });
             items.Add(new OdsMenuItem
             {
                 Icon = archived ? "unarchive" : "inventory_2",
                 Label = archived ? "Restore" : "Archive",
+                AriaLabel = $"{(archived ? "Restore" : "Archive")} {l.Name}",
                 OnClick = toggleArchive,
             });
         }
 
+        if (claims.CanDelete)
+            items.Add(new OdsMenuItem { Icon = "delete", Label = "Delete", AriaLabel = $"Delete {l.Name}", Danger = true, OnClick = delete });
+
         return items;
     }
+
+    /// <summary>The id of a row's menu wrapper — a focus target after merge, delete and Find coordinates.</summary>
+    internal static string MenuId(Guid id) => $"loc-menu-{id}";
+
+    /// <summary>Find coordinates: a place without them, under <c>locations.update</c>, never on a merged-away row.</summary>
+    internal static bool ShowsFindCoordinates(ExistingLocation l, bool canUpdate) =>
+        canUpdate && !l.HasCoordinates && l.MergedIntoLocationId is null;
+
+    /// <summary>The id of a row's Find coordinates button.</summary>
+    internal static string FindId(Guid id) => $"loc-find-{id}";
+
+    /// <summary>
+    /// Where focus goes after a delete (issue #383 §3.9, FE m6): the next row's menu button, else the
+    /// previous one — recorded BEFORE the call, so list batching does not matter — else the page h1.
+    /// </summary>
+    internal static Guid? NeighbourOf(IReadOnlyList<ExistingLocation> rows, Guid id)
+    {
+        var index = rows.ToList().FindIndex(r => r.LocationId == id);
+        if (index < 0)
+            return null;
+        return index + 1 < rows.Count ? rows[index + 1].LocationId
+            : index > 0 ? rows[index - 1].LocationId
+            : null;
+    }
+
+    // ── Merge / delete (issue #383 §3.8, §3.9) ───────────────────────────────────────
+    private ExistingLocation? _mergeSource;
+    private bool _mergeOpen;
+    private Guid _mergeKey;
+    private ExistingLocation? _deleteLocation;
+    private bool _deleteOpen;
+    private Guid _deleteKey;
+    private Guid? _focusAfterRender;
+    private bool _focusPending;
+
+    private void MergeClicked(ExistingLocation l)
+    {
+        _mergeSource = l;
+        _mergeKey = Guid.NewGuid();
+        _mergeOpen = true;
+    }
+
+    private async Task OnMerged(ExistingLocation target)
+    {
+        var source = _mergeSource?.Name ?? "the place";
+        Snackbar.Add($"Merged {source} into {target.Name}.", Severity.Success);
+        await Task.WhenAll(LoadLocations(), LoadCounts());
+        Announce($"Merged {source} into {target.Name}");
+        FocusRowOrHeading(target.LocationId);
+    }
+
+    private void DeleteClicked(ExistingLocation l)
+    {
+        _deleteLocation = l;
+        _deleteKey = Guid.NewGuid();
+        _deleteOpen = true;
+        // The neighbour is recorded before anything is sent.
+        _deleteNeighbour = NeighbourOf(_locations, l.LocationId);
+    }
+
+    private Guid? _deleteNeighbour;
+
+    /// <summary>After a merge: the target's row menu, else the page heading (§3.8, §6.5).</summary>
+    internal static string MergeDestination(ExistingLocation target) => $"{MenuId(target.LocationId)} {PageHeader.HeadingId}";
+
+    /// <summary>After a delete: the neighbouring row's menu, else the page heading (§3.9, §6.5).</summary>
+    internal static string DeleteDestination(Guid? neighbour) =>
+        neighbour is { } id ? $"{MenuId(id)} {PageHeader.HeadingId}" : PageHeader.HeadingId;
+
+    private async Task OnDeleted(ExistingLocation deleted)
+    {
+        Snackbar.Add($"Deleted {deleted.Name}.", Severity.Success);
+        _locations.RemoveAll(l => l.LocationId == deleted.LocationId);
+        Credits = LocationVisuals.Credits(_locations);
+        Announce($"Deleted {deleted.Name}");
+        FocusRowOrHeading(_deleteNeighbour);
+        await LoadCounts();
+    }
+
+    private void FocusRowOrHeading(Guid? id)
+    {
+        _focusAfterRender = id;
+        _focusPending = true;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusPending)
+            return;
+        _focusPending = false;
+        try
+        {
+            var target = _focusAfterRender is { } id ? (_focusRecordHeader ? $"loc-{id}" : MenuId(id)) : null;
+            _focusRecordHeader = false;
+            await Js.InvokeVoidAsync("odsFocusChainOrHeading",
+                (object)(target is not null ? new[] { target } : Array.Empty<string>()));
+        }
+        catch (Microsoft.JSInterop.JSException) { }
+    }
+
+    // ── Merged-into chips ──────────────────────────────────────────────────────────────
+    private readonly Dictionary<Guid, string> _mergeTargets = [];
+    private CancellationTokenSource? _mergeTargetsCts;
+
+    /// <summary>At most this many target GETs are in flight at once.</summary>
+    internal const int MergeTargetConcurrency = 4;
+
+    /// <summary>
+    /// The target's name — from the loaded list, else <c>GET /api/locations/{id}</c> (issue #383 §3.6). The GETs
+    /// run in parallel under <see cref="MergeTargetConcurrency"/>; a failed one leaves its chip reading
+    /// "another place"; and the run is cancelled by the next load or by dispose, so a superseded answer never
+    /// reaches the page (frontend review N4).
+    /// </summary>
+    private async Task ResolveMergeTargetsAsync(IReadOnlyList<ExistingLocation> rows)
+    {
+        CancelMergeTargets();
+        var cts = new CancellationTokenSource();
+        _mergeTargetsCts = cts;
+        var ct = cts.Token;
+
+        var targets = rows.Select(l => l.MergedIntoLocationId).OfType<Guid>().Distinct().ToList();
+        foreach (var id in targets)
+        {
+            if (rows.FirstOrDefault(l => l.LocationId == id) is { } loaded)
+                _mergeTargets[id] = loaded.Name;
+        }
+
+        var missing = targets.Where(id => !_mergeTargets.ContainsKey(id)).ToList();
+        if (missing.Count == 0)
+            return;
+
+        try
+        {
+            var names = await FetchNamesAsync(
+                missing, async (id, token) =>
+                {
+                    var result = await Locations.GetAsync(id, token);
+                    return result.IsSuccess ? result.Value?.Name : null;
+                },
+                MergeTargetConcurrency, ct);
+
+            if (ct.IsCancellationRequested)
+                return;
+            foreach (var (id, name) in names)
+                _mergeTargets[id] = name;
+
+            StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // Superseded by a newer load, or the page went away.
+        }
+    }
+
+    /// <summary>
+    /// The names of <paramref name="ids"/>, fetched in parallel with at most <paramref name="concurrency"/> in
+    /// flight. An id whose fetch fails or answers nothing is left out, so its chip falls back to "another
+    /// place"; cancellation propagates.
+    /// </summary>
+    internal static async Task<IReadOnlyDictionary<Guid, string>> FetchNamesAsync(
+        IReadOnlyCollection<Guid> ids, Func<Guid, CancellationToken, Task<string?>> fetch, int concurrency, CancellationToken ct)
+    {
+        using var gate = new SemaphoreSlim(concurrency);
+        var fetched = await Task.WhenAll(ids.Select(async id =>
+        {
+            await gate.WaitAsync(ct);
+            try
+            {
+                return (Id: id, Name: await fetch(id, ct));
+            }
+            catch (Exception) when (!ct.IsCancellationRequested)
+            {
+                return (Id: id, Name: (string?)null);
+            }
+            finally
+            {
+                gate.Release();
+            }
+        }));
+
+        ct.ThrowIfCancellationRequested();
+        return fetched.Where(f => f.Name is not null).ToDictionary(f => f.Id, f => f.Name!);
+    }
+
+    private void CancelMergeTargets()
+    {
+        var previous = _mergeTargetsCts;
+        _mergeTargetsCts = null;
+        previous?.Cancel();
+        previous?.Dispose();
+    }
+
+    private string? MergedInto(ExistingLocation l) =>
+        l.MergedIntoLocationId is { } id ? LocationVisuals.MergedInto(_mergeTargets.GetValueOrDefault(id) ?? "another place") : null;
 
     private async Task CopyAsync(string text, string message)
     {
@@ -313,12 +593,24 @@ public partial class LocationsPage
         _createOpen = true;
     }
 
-    private void EditClicked(ExistingLocation l)
+    private void EditClicked(ExistingLocation l) => OpenEdit(l, findCoordinates: false);
+
+    // Find coordinates (issue #383 §3.6): the edit dialog at the search step, prefilled; focus returns to the
+    // row's Find coordinates button, or — once the row has coordinates and the button is gone — its menu.
+    private void FindCoordinatesClicked(ExistingLocation l) => OpenEdit(l, findCoordinates: true);
+
+    private bool _editFindCoordinates;
+
+    private void OpenEdit(ExistingLocation l, bool findCoordinates)
     {
         _editLocation = l;
+        _editFindCoordinates = findCoordinates;
         _editKey = Guid.NewGuid();
         _editOpen = true;
     }
+
+    private string EditReturnFocus(ExistingLocation l) =>
+        _editFindCoordinates ? $"{FindId(l.LocationId)} {MenuId(l.LocationId)}" : MenuId(l.LocationId);
 
     private async Task OnLocationCreated(ExistingLocation created)
     {
@@ -332,9 +624,6 @@ public partial class LocationsPage
     private async Task OnLocationSaved(ExistingLocation saved)
     {
         Snackbar.Add($"{saved.Name} saved.", Severity.Success);
-        // The weather chip and notice derive "moved" from the live location, so they follow the edit as-is;
-        // the rows are re-read for the server's own view.
-        _ = LoadWeatherAsync();
         var index = _locations.FindIndex(l => l.LocationId == saved.LocationId);
         if (index >= 0)
             _locations[index] = saved;
@@ -343,12 +632,21 @@ public partial class LocationsPage
         await LoadCounts();
     }
 
-    /// <summary>Builds the full-replacement body that changes only <see cref="UpdateLocation.Archived"/>.</summary>
+    /// <summary>
+    /// Builds the full-replacement body that changes only <see cref="UpdateLocation.Archived"/> — the
+    /// structured address included, or the PUT would clear it (issue #380).
+    /// </summary>
     internal static UpdateLocation WithArchived(ExistingLocation l, bool archived) => new()
     {
         Name = l.Name,
         Description = l.Description,
         AddressText = l.AddressText,
+        Line1 = l.Line1,
+        Line2 = l.Line2,
+        PostalCode = l.PostalCode,
+        City = l.City,
+        Region = l.Region,
+        CountryCode = l.CountryCode,
         Latitude = l.Latitude,
         Longitude = l.Longitude,
         AltitudeMeters = l.AltitudeMeters,
@@ -389,11 +687,17 @@ public partial class LocationsPage
     }
 
     // ── Card header ────────────────────────────────────────────────────────────────
+    /// <summary>
+    /// The collapsed row's meta line (issue #383 §3.6): the address (structured, else as written, else a muted
+    /// <i>No address</i>), coordinates in mono and the time zone when set, then the usage sub-line.
+    /// </summary>
     private static IReadOnlyList<RenderFragment?> MetaFor(ExistingLocation l) =>
     [
-        string.IsNullOrWhiteSpace(l.AddressText) ? NoAddress : OdsRecordMeta.Text(l.AddressText),
-        OdsRecordMeta.Mono(LocationVisuals.FormatPair(l.Latitude, l.Longitude)),
-        OdsRecordMeta.Text(l.TimeZoneId),
+        LocationVisuals.ComposeAddress(l) is { } composed ? OdsRecordMeta.Text(composed)
+            : string.IsNullOrWhiteSpace(l.AddressText) ? NoAddress : OdsRecordMeta.Text(l.AddressText),
+        l.HasCoordinates ? OdsRecordMeta.Mono(LocationVisuals.FormatPair(l.Latitude, l.Longitude)) : null,
+        string.IsNullOrEmpty(l.TimeZoneId) ? null : OdsRecordMeta.Text(l.TimeZoneId),
+        OdsRecordMeta.Text(LocationVisuals.UsageSubLine(l.Usage)),
     ];
 
     private static readonly RenderFragment NoAddress = builder =>
@@ -413,252 +717,163 @@ public partial class LocationsPage
         }
         : OdsInfoTile.Caption("no third-party data")!;
 
-    // ── Weather (issue #348, Admin only) ────────────────────────────────────────────────────────────
+    // ── Weather point link (issue #388 flow B) ──────────────────────────────────────────────────────
 
-    private bool _canReadSettings;
-    private Dictionary<Guid, ExistingWeatherLocation> _weatherRows = [];
-    private bool _weatherLoaded;
-    private readonly HashSet<Guid> _refreshing = [];
+    private WeatherPointReads _weatherReads = default!;
 
-    /// <summary>Weather shows only once its rows are known — never a guess from an empty list.</summary>
-    private bool ShowWeather => _canReadWeather && _weatherLoaded;
-    private int? _weatherCap;
-    private Guid _wxKey;
-    private ExistingLocation? _wxSettingsLocation;
-    private bool _wxSettingsOpen;
-    private ExistingLocation? _wxApplyLocation;
-    private bool _wxApplyOpen;
-    private ExistingLocation? _wxPurgeLocation;
-    private bool _wxPurgeOpen;
-
-    private ExistingWeatherLocation? WeatherRow(ExistingLocation l) => _weatherRows.GetValueOrDefault(l.LocationId);
-
-    // ── Weather history (every role) ────────────────────────────────────────────────────────────
-
-    /// <summary>The places with historical data on (<c>historyLocations</c> of <c>GET /api/weather/locations/options</c>).</summary>
-    private HashSet<Guid> _historyPlaces = [];
-
-    /// <summary>Bumped when measured data is deleted, so an open Weather history section reloads.</summary>
-    private int _historyEpoch;
+    /// <summary>The warnings each place's last link returned — transient, never stored on the location.</summary>
+    private readonly Dictionary<Guid, IReadOnlyList<WeatherAdvisory>> _linkAdvisories = [];
 
     /// <summary>
-    /// On a place with historical data on — the same list for every role, separate from the dashboard picker's,
-    /// since a place can have history without a forecast — and, for an Admin, on any place with a weather row
-    /// (design system · Locations.jsx).
+    /// Link weather point… (unlinked) or Change weather point… · Unlink weather point (linked), for a
+    /// <c>locations.update</c> + <c>weather.read</c> holder; never on a merged-away row. Absent, never dimmed.
     /// </summary>
-    private bool ShowHistory(ExistingLocation l) =>
-        _canReadWeatherData
-        && (_historyPlaces.Contains(l.LocationId) || ShowWeather && WeatherRow(l) is { PurgeInProgress: false });
-
-    private async Task LoadWeatherOptionsAsync()
+    internal static IReadOnlyList<OdsMenuItem> BuildWeatherLinkActions(ExistingLocation l, bool canLink, EventCallback link, EventCallback unlink)
     {
-        if (!_canReadWeatherData)
-            return;
-
-        // A failed read leaves the set as it was: the section is extra, and an Admin still reaches it by the row.
-        if ((await Weather.OptionsAsync()).Value is { } options)
-        {
-            _historyPlaces = [.. options.HistoryLocations.Select(o => o.LocationId)];
-            StateHasChanged();
-        }
+        if (!canLink || l.MergedIntoLocationId is not null)
+            return [];
+        return l.WeatherPoint is null
+            ? [new OdsMenuItem { Icon = "wb_sunny", Label = "Link weather point…", AriaLabel = $"Link a weather point to {l.Name}", OnClick = link }]
+            :
+            [
+                new OdsMenuItem { Icon = "wb_sunny", Label = "Change weather point…", AriaLabel = $"Change weather point of {l.Name}", OnClick = link },
+                new OdsMenuItem { Icon = "link_off", Label = "Unlink weather point", AriaLabel = $"Unlink weather point from {l.Name}", OnClick = unlink },
+            ];
     }
 
-    /// <summary>Places on a schedule — what the cap counts.</summary>
-    private int TrackedCount => _weatherRows.Values.Count(r => r is { ForecastEnabled: true, IsTracked: true, LocationArchived: false, PurgeInProgress: false });
+    private ExistingLocation? _linkTarget;
+    private Guid _linkKey;
+    private bool _linkOpen;
+    private ExistingLocation? _unlinkTarget;
+    private Guid _unlinkKey;
+    private bool _unlinkOpen;
+    private bool _goneToast;
 
-    private async Task LoadWeatherAsync()
+    internal const string GoneMessage = "This place was merged or removed. Reload Locations.";
+
+    private void LinkClicked(ExistingLocation l)
     {
-        if (!_canReadWeather)
-            return;
+        _linkTarget = l;
+        _linkKey = Guid.NewGuid();
+        _linkOpen = true;
+    }
 
-        var rows = Weather.ListLocationsAsync();
-        if (_canReadSettings && (await SystemSettings.GetAsync()).Value is { } settings)
-            _weatherCap = settings.WeatherMaxTrackedLocations;
-        var result = await rows;
-        if (result.IsSuccess && result.Value is { } list)
+    private void UnlinkClicked(ExistingLocation l)
+    {
+        _unlinkTarget = l;
+        _unlinkKey = Guid.NewGuid();
+        _unlinkOpen = true;
+    }
+
+    /// <summary>
+    /// The link saved: the record updates in place and opens, the advisories show in its section, and ONE
+    /// announcement carries the outcome and every advisory. Focus returns to the row's ⋯ through the dialog.
+    /// </summary>
+    private async Task OnLinkedAsync(LocationWeatherPointLink link)
+    {
+        var place = _linkTarget!;
+        await ApplyLinkAsync(place, link);
+        _expandedId = place.LocationId;
+        _linkAdvisories[place.LocationId] = link.Warnings;
+        Announce(LinkAnnouncement(place.Name, link));
+    }
+
+    /// <summary><i>Storgata 1 now uses weather from Oslo (2 km).</i> plus every advisory, as one message.</summary>
+    internal static string LinkAnnouncement(string place, LocationWeatherPointLink link)
+    {
+        var point = link.WeatherPoint?.Name ?? "its weather point";
+        var km = link.DistanceKm is { } d ? $" ({WeatherVisuals.Km(d)})" : "";
+        var extra = string.Join(' ', link.Warnings.Select(w => WeatherVisuals.AdvisoryText(w, point)).OfType<string>());
+        return $"{place} now uses weather from {point}{km}.{(extra.Length > 0 ? $" {extra}" : "")}";
+    }
+
+    private async Task OnUnlinkedAsync(LocationWeatherPointLink link)
+    {
+        var place = _unlinkTarget!;
+        await ApplyLinkAsync(place, link);
+        _linkAdvisories.Remove(place.LocationId);
+        Announce($"Weather point unlinked from {place.Name}.");
+    }
+
+    /// <summary>
+    /// The link response names the point but not its four flags, so the row is re-read; a failed re-read keeps the
+    /// response's name and distance with the flags off, which draws the point section without guessing.
+    /// </summary>
+    private async Task ApplyLinkAsync(ExistingLocation place, LocationWeatherPointLink link)
+    {
+        var fresh = (await Locations.GetAsync(place.LocationId)).Value;
+        if (fresh is null)
         {
-            _weatherRows = list.ToDictionary(r => r.LocationId);
-            _weatherLoaded = true;
+            fresh = place;
+            fresh.WeatherPoint = link.WeatherPoint is { } p
+                ? new LinkedWeatherPointRef { WeatherPointId = p.WeatherPointId, Name = p.Name }
+                : null;
+            fresh.WeatherPointDistanceKm = link.DistanceKm;
         }
-        else
-        {
-            // Keep whatever was known. With nothing known, the weather surfaces stay hidden rather than
-            // offering "Turn on weather" on places that already have it (a create would then PUT defaults).
-            Snackbar.Add("Weather settings couldn’t be loaded.", Severity.Warning);
-        }
+
+        var index = _locations.FindIndex(l => l.LocationId == place.LocationId);
+        if (index >= 0)
+            _locations[index] = fresh;
+        if (_pinned?.LocationId == place.LocationId)
+            _pinned = fresh;
         StateHasChanged();
     }
 
-    /// <summary>The Admin's weather items. Unavailable actions are absent, not dimmed.</summary>
-    private IReadOnlyList<OdsMenuItem> WeatherActions(ExistingLocation l) => BuildWeatherActions(
-        l, WeatherRow(l), _canUpdateWeather, _canPurgeWeather,
-        enable: EventCallback.Factory.Create(this, () => OpenWeatherSettings(l)),
-        apply: EventCallback.Factory.Create(this, () => OpenWeatherApply(l)),
-        refresh: EventCallback.Factory.Create(this, () => RefreshWeatherAsync(l)),
-        purge: EventCallback.Factory.Create(this, () => OpenWeatherPurge(l)));
-
-    internal static IReadOnlyList<OdsMenuItem> BuildWeatherActions(
-        ExistingLocation l, ExistingWeatherLocation? row, bool canUpdate, bool canPurge,
-        EventCallback enable, EventCallback apply, EventCallback refresh, EventCallback purge)
+    /// <summary>The place was merged or removed: a persistent, quiet warning toast, announced once by the page.</summary>
+    private void OnPlaceGone()
     {
-        var items = new List<OdsMenuItem>();
-        if (row is null)
-        {
-            if (canUpdate && l.Archived is null)
-                items.Add(new OdsMenuItem { Icon = "wb_sunny", Label = "Turn on weather…", OnClick = enable });
-            return items;
-        }
-
-        if (row.PurgeInProgress)
-        {
-            if (canPurge)
-                items.Add(new OdsMenuItem { Icon = "delete_sweep", Label = "Continue deleting weather history…", Danger = true, OnClick = purge });
-            return items;
-        }
-
-        if (canUpdate)
-        {
-            items.Add(new OdsMenuItem { Icon = "tune", Label = "Weather settings…", OnClick = enable });
-            if (l.Archived is null)
-            {
-                if (row.ForecastEnabled)
-                    items.Add(new OdsMenuItem { Icon = "refresh", Label = "Refresh forecast", OnClick = refresh });
-                if ((row.ForecastEnabled || row.HistoryEnabled) && WeatherVisuals.Moved(row, l))
-                    items.Add(new OdsMenuItem { Icon = "edit_location_alt", Label = "Apply new position…", OnClick = apply });
-            }
-        }
-
-        // Offered once historical data is off. With the forecast still on it deletes only the measured data; with
-        // both off, everything. A place with its forecast off cannot be the household default, so that refusal
-        // is unreachable here.
-        if (canPurge && !row.HistoryEnabled)
-        {
-            if (items.Count > 0)
-                items.Add(new OdsMenuItem { Divider = true });
-            items.Add(new OdsMenuItem { Icon = "delete_forever", Label = "Delete weather history…", Danger = true, OnClick = purge });
-        }
-
-        return items;
+        _goneToast = true;
+        Announce(GoneMessage);
     }
 
-    private void OpenWeatherSettings(ExistingLocation l)
-    {
-        _wxKey = Guid.NewGuid();
-        _wxSettingsLocation = l;
-        _wxSettingsOpen = true;
-    }
+    /// <summary>The no-points link: the dialog has closed first; now the page navigates.</summary>
+    private void GoToWeatherPoints() => Nav.NavigateTo("/weather-points");
 
-    private void OpenWeatherApply(ExistingLocation l)
-    {
-        _wxKey = Guid.NewGuid();
-        _wxApplyLocation = l;
-        _wxApplyOpen = true;
-    }
+    // ── Deep link (issue #388 §3) ─────────────────────────────────────────────────────────────────────
+    private ExistingLocation? _pinned;
 
-    private void OpenWeatherPurge(ExistingLocation l)
-    {
-        _wxKey = Guid.NewGuid();
-        _wxPurgeLocation = l;
-        _wxPurgeOpen = true;
-    }
+    private ExistingLocation? FindRow(Guid id) =>
+        _locations.FirstOrDefault(l => l.LocationId == id) ?? (_pinned?.LocationId == id ? _pinned : null);
 
-    private void StoreWeatherRow(ExistingWeatherLocation row)
+    /// <summary>
+    /// The loaded rows first; otherwise fetch by id and pin it above the list, overriding the saved filters for this
+    /// visit without overwriting them. An unknown id focuses the h1 and says so.
+    /// </summary>
+    private async Task OpenDeepLinkAsync()
     {
-        _weatherRows[row.LocationId] = row;
-        StateHasChanged();
-    }
-
-    private async Task OnWeatherSaved(ExistingWeatherLocation row)
-    {
-        var wasOn = _weatherRows.TryGetValue(row.LocationId, out var before) && (before.ForecastEnabled || before.HistoryEnabled);
-        var isOn = row.ForecastEnabled || row.HistoryEnabled;
-        Announce(!wasOn && isOn ? $"Weather is on for {row.Name}." : !isOn && wasOn ? $"Weather is off for {row.Name}. Everything stored is kept." : $"Weather settings for {row.Name} saved.");
-        // Re-read every row: the cap's suspension flags are computed across them. Turning weather on or off
-        // also changes which places the options list serves, which the history section follows.
-        await Task.WhenAll(LoadWeatherAsync(), LoadWeatherOptionsAsync());
-    }
-
-    private void OnWeatherApplied(ExistingWeatherLocation row)
-    {
-        StoreWeatherRow(row);
-        Announce($"Weather for {row.Name} now uses the new position.");
-    }
-
-    private async Task OnWeatherPurged()
-    {
-        if (_wxPurgeLocation is { } l)
-        {
-            // With the forecast still on, only the measured data went and the row stays: re-read it. Otherwise
-            // the row is gone along with everything else.
-            _historyEpoch++;
-            if (WeatherRow(l) is { ForecastEnabled: true })
-            {
-                Announce($"Measured weather for {l.Name} deleted. The forecast keeps running.");
-                await LoadWeatherAsync();
-            }
-            else
-            {
-                _weatherRows.Remove(l.LocationId);
-                _historyPlaces.Remove(l.LocationId);
-                Announce($"Weather history for {l.Name} deleted.");
-            }
-        }
-        StateHasChanged();
-    }
-
-    private void OnWeatherPurgeInterrupted(ExistingWeatherLocation? row)
-    {
-        if (row is not null)
-            StoreWeatherRow(row);
-    }
-
-    private async Task RefreshWeatherAsync(ExistingLocation l)
-    {
-        if (!_refreshing.Add(l.LocationId))
+        if (OpenId is not { } id)
             return;
-        try
+
+        if (_locations.All(l => l.LocationId != id))
         {
-            await RefreshWeatherCoreAsync(l);
+            var result = await Locations.GetAsync(id);
+            if (result.Value is not { } place)
+            {
+                Announce("That location no longer exists.");
+                FocusRowOrHeading(null);
+                return;
+            }
+
+            _pinned = place;
         }
-        finally
-        {
-            _refreshing.Remove(l.LocationId);
-        }
+
+        _expandedId = id;
+        _flashId = id;
+        _focusRecordHeader = true;
+        FocusRowOrHeading(id);
     }
 
-    private async Task RefreshWeatherCoreAsync(ExistingLocation l)
+    private bool _focusRecordHeader;
+
+    private void ShowAllLocations()
     {
-        var result = await Weather.RefreshAsync(l.LocationId);
-        if (result.IsSuccess && result.Value is { } refreshed)
-        {
-            Announce(refreshed.Fetched
-                ? $"Forecast for {l.Name} refreshed — issued {WeatherVisuals.Clock(refreshed.IssuedAtUtc)}."
-                : WeatherVisuals.IsPause(refreshed.ForecastFailureKind)
-                    ? $"MET Norway has paused fetching for {l.Name} for up to 6 hours. A refresh can’t shorten the pause."
-                    : refreshed.ForecastFailureKind is { } kind
-                        ? $"The forecast for {l.Name} couldn’t be refreshed: {WeatherVisuals.FailureOf(kind)!.Label.ToLowerInvariant()}."
-                        : $"MET Norway has nothing newer for {l.Name} yet.");
-            await LoadWeatherAsync();
-            return;
-        }
-
-        if (result.Status is System.Net.HttpStatusCode.GatewayTimeout or 0)
-        {
-            // The fetch may still be running server-side: say so and re-read rather than report a failure.
-            Announce($"The refresh for {l.Name} is taking longer than usual and may still finish. Its status updates here.");
-            await LoadWeatherAsync();
-            return;
-        }
-
-        var message = result.Status switch
-        {
-            System.Net.HttpStatusCode.ServiceUnavailable => "Weather isn’t set up: add a contact address for MET Norway in System settings → Weather.",
-            System.Net.HttpStatusCode.TooManyRequests => "Weather actions have been used many times in the last few minutes. Wait a moment, then try again.",
-            _ => result.Problem?.Message ?? $"The forecast for {l.Name} couldn’t be refreshed.",
-        };
-        Snackbar.Add(message, Severity.Warning);
-        Announce(message);
+        _pinned = null;
+        FocusRowOrHeading(null);
     }
 
-    public void Dispose() => _listLoader.Dispose();
+    public void Dispose()
+    {
+        CancelMergeTargets();
+        _listLoader.Dispose();
+    }
 }

@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Calendar;
@@ -13,7 +14,12 @@ public sealed class CalendarEventDraft
     public Guid? CalendarId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    /// <summary>The Details text beside the place (issue #383 §3.2) — meeting links, room numbers.</summary>
     public string Location { get; set; } = string.Empty;
+
+    /// <summary>The linked place: the stored link, the picker's value and a staged create (issue #383).</summary>
+    public PlaceDraft Place { get; set; } = new();
+
     public bool IsAllDay { get; set; }
     public DateTime? StartDate { get; set; }
     public TimeSpan? StartTime { get; set; } = new(9, 0, 0);
@@ -67,6 +73,7 @@ public sealed class CalendarEventDraft
             Title = source.Title,
             Description = source.Description ?? string.Empty,
             Location = source.Location ?? string.Empty,
+            Place = PlaceDraft.For(source.LocationId, source.LocationRef),
             IsAllDay = source.IsAllDay,
             StartDate = start.Date,
             StartTime = start.TimeOfDay,
@@ -88,6 +95,7 @@ public sealed class CalendarEventDraft
             Title = source.Title,
             Description = source.Description ?? string.Empty,
             Location = source.Location ?? string.Empty,
+            Place = PlaceDraft.For(source.LocationId, source.LocationRef),
             IsAllDay = source.IsAllDay,
             StartDate = start.Date,
             StartTime = start.TimeOfDay,
@@ -209,44 +217,39 @@ public sealed class CalendarEventDraft
         return (timedStart, timedEnd);
     }
 
-    public NewCalendarEvent ToNewCalendarEvent()
+    /// <summary>The event write. <paramref name="link"/> is required: a full replacement without it would unlink.</summary>
+    public NewCalendarEvent ToNewCalendarEvent(LocationLink link)
     {
         var (start, end) = BuildTimes();
-        return new NewCalendarEvent
-        {
-            CalendarId = CalendarId!.Value,
-            Title = Title.Trim(),
-            Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-            Location = string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
-            StartDateTime = start,
-            EndDateTime = end,
-            IsAllDay = IsAllDay,
-        };
+        return CalendarWrites.Event(
+            CalendarId!.Value,
+            Title.Trim(),
+            string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+            string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
+            start, end, IsAllDay, link);
     }
 
-    public NewRecurrencePattern ToNewRecurrencePattern()
+    /// <summary>The series write. <paramref name="link"/> is required: a full replacement without it would unlink.</summary>
+    public NewRecurrencePattern ToNewRecurrencePattern(LocationLink link)
     {
         var (start, end) = BuildTimes();
         var isWeekly = Frequency == RecurrenceFrequency.Weekly;
         var isMonthlyOrYearly = Frequency is RecurrenceFrequency.Monthly or RecurrenceFrequency.Yearly;
         var isYearly = Frequency == RecurrenceFrequency.Yearly;
 
-        return new NewRecurrencePattern
-        {
-            CalendarId = CalendarId!.Value,
-            Title = Title.Trim(),
-            Description = string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
-            Location = string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
-            StartDateTime = start,
-            EndDateTime = end,
-            IsAllDay = IsAllDay,
-            Frequency = Frequency,
-            Interval = Interval ?? 1,
-            DaysOfWeek = isWeekly ? DaysOfWeek : null,
-            DayOfMonth = isMonthlyOrYearly ? DayOfMonth : null,
-            MonthOfYear = isYearly ? MonthOfYear : null,
-            RecurrenceEndDate = EndMode == "date" ? RecurrenceEndDate : null,
-            OccurrenceCount = EndMode == "count" ? OccurrenceCount : null,
-        };
+        return CalendarWrites.Pattern(
+            CalendarId!.Value,
+            Title.Trim(),
+            string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
+            string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
+            start, end, IsAllDay,
+            Frequency,
+            Interval ?? 1,
+            isWeekly ? DaysOfWeek : null,
+            isMonthlyOrYearly ? DayOfMonth : null,
+            isYearly ? MonthOfYear : null,
+            EndMode == "date" ? RecurrenceEndDate : null,
+            EndMode == "count" ? OccurrenceCount : null,
+            link);
     }
 }

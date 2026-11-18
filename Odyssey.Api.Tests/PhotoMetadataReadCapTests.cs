@@ -29,10 +29,10 @@ public class PhotoMetadataReadCapTests
     {
         var reader = new RecordingReader(new byte[16]);
         var service = new PhotoMetadataService(
-            reader, new StubExtractor(new PhotoMetadata { Title = "Canon shot" }),
+            new StubExtractor(new PhotoMetadata { Title = "Canon shot" }),
             new StubLimits(readMegabytes: 12), NullLogger<PhotoMetadataService>.Instance);
 
-        await service.ExtractAsync(Guid.NewGuid());
+        await service.ExtractAsync(reader.ReadPrefix);
 
         // Megabytes on the setting, bytes at the reader — converted once, at the lookup boundary.
         Assert.Equal(12 * 1024 * 1024, reader.RequestedLength);
@@ -43,10 +43,10 @@ public class PhotoMetadataReadCapTests
     {
         var reader = new RecordingReader(new byte[16]);
         var service = new PhotoMetadataService(
-            reader, new StubExtractor(PhotoMetadata.Empty),
+            new StubExtractor(PhotoMetadata.Empty),
             new StubLimits(readMegabytes: 16), NullLogger<PhotoMetadataService>.Instance);
 
-        await service.ExtractAsync(Guid.NewGuid());
+        await service.ExtractAsync(reader.ReadPrefix);
 
         Assert.Equal(16 * 1024 * 1024, reader.RequestedLength);
     }
@@ -60,10 +60,10 @@ public class PhotoMetadataReadCapTests
     public async Task WhenTheServerCannotServeThePrefix_ExtractionIsSkippedRatherThanFailing()
     {
         var service = new PhotoMetadataService(
-            new ThrowingReader(), new StubExtractor(PhotoMetadata.Empty),
+            new StubExtractor(PhotoMetadata.Empty),
             new StubLimits(readMegabytes: 16), NullLogger<PhotoMetadataService>.Instance);
 
-        var metadata = await service.ExtractAsync(Guid.NewGuid());
+        var metadata = await service.ExtractAsync(_ => throw new InvalidOperationException("max_allowed_packet exceeded"));
 
         Assert.Equal(PhotoMetadata.Empty, metadata);
     }
@@ -72,10 +72,10 @@ public class PhotoMetadataReadCapTests
     public async Task WhenThePrefixComesBackEmpty_ExtractionIsSkipped()
     {
         var service = new PhotoMetadataService(
-            new RecordingReader([]), new StubExtractor(new PhotoMetadata { Title = "Canon shot" }),
+            new StubExtractor(new PhotoMetadata { Title = "Canon shot" }),
             new StubLimits(readMegabytes: 8), NullLogger<PhotoMetadataService>.Instance);
 
-        Assert.Equal(PhotoMetadata.Empty, await service.ExtractAsync(Guid.NewGuid()));
+        Assert.Equal(PhotoMetadata.Empty, await service.ExtractAsync(new RecordingReader([]).ReadPrefix));
     }
 
     /// <summary>
@@ -87,34 +87,22 @@ public class PhotoMetadataReadCapTests
     {
         var expected = new PhotoMetadata { Title = "Nikon shot" };
         var service = new PhotoMetadataService(
-            new RecordingReader(new byte[8]), new StubExtractor(expected),
+            new StubExtractor(expected),
             new StubLimits(readMegabytes: 8, timeoutSeconds: 0), NullLogger<PhotoMetadataService>.Instance);
 
-        Assert.Equal(expected.Title, (await service.ExtractAsync(Guid.NewGuid())).Title);
+        Assert.Equal(expected.Title, (await service.ExtractAsync(new RecordingReader(new byte[8]).ReadPrefix)).Title);
     }
 
-    private sealed class RecordingReader(byte[] prefix) : IImageContentReader
+    /// <summary>A prefix reader that records how many bytes it was asked for.</summary>
+    private sealed class RecordingReader(byte[] prefix)
     {
         public int RequestedLength { get; private set; }
 
-        public Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken = default)
+        public Task<byte[]?> ReadPrefix(int maxBytes)
         {
             RequestedLength = maxBytes;
             return Task.FromResult<byte[]?>(prefix);
         }
-
-        public Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException("Metadata extraction reads a prefix only.");
-    }
-
-    /// <summary>Stands in for a server that cannot serve the requested prefix (packet limit, unreadable blob).</summary>
-    private sealed class ThrowingReader : IImageContentReader
-    {
-        public Task<byte[]?> ReadPrefixAsync(Guid fileId, int maxBytes, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("max_allowed_packet exceeded");
-
-        public Task<ImageContent?> ReadAllAsync(Guid fileId, long maxBytes, CancellationToken cancellationToken = default) =>
-            throw new InvalidOperationException("max_allowed_packet exceeded");
     }
 
     private sealed class StubExtractor(PhotoMetadata metadata) : IPhotoMetadataExtractor

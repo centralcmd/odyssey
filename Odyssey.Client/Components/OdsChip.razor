@@ -52,12 +52,23 @@
     /// </summary>
     [Parameter] public string? Title { get; set; }
 
+    /// <summary>
+    /// A user-entered colour (a tag's <c>#RRGGBB</c>, issue #394) that the chip itself takes: its text and
+    /// icon in the colour, through the <c>--user-text-l</c> lightness bound (floored on dark, capped on
+    /// light, so every colour clears 4.5:1), on a soft tint of it. Checked through
+    /// <see cref="Odyssey.Client.Theme.UserColor.Chip"/>; invalid or null → the chip keeps its tone.
+    /// </summary>
+    [Parameter] public string? UserColor { get; set; }
+
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
-    private string ChipClass => string.Join(' ', new[] { "odc-chip", ToneClass, Class }
+    private string? UserColorStyle => Odyssey.Client.Theme.UserColor.Chip(UserColor);
+
+    private string ChipClass => string.Join(' ', new[] { "odc-chip", ToneClass, UserColorStyle is null ? null : "user-color", Class }
         .Where(c => !string.IsNullOrEmpty(c)));
 
     private string? ColorStyle => string.Concat(
+        UserColorStyle is { } user ? $"{user};" : null,
         string.IsNullOrEmpty(Bg) ? null : $"background:{Bg};",
         string.IsNullOrEmpty(Fg) ? null : $"color:{Fg};") is { Length: > 0 } style ? style : null;
 

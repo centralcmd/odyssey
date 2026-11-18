@@ -136,6 +136,9 @@ public class JournalEntryIcsIntegrationTests(MariaDbFixture fixture)
         public Task<IReadOnlyList<ContactRef>> ListActiveContactRefsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ContactRef>>([]);
 
+        public Task<IReadOnlyList<ContactMatchRef>> ListActiveContactMatchRefsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ContactMatchRef>>([]);
+
         public Task<IReadOnlySet<Guid>> ExistingPersonIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
 
@@ -153,15 +156,11 @@ public class JournalEntryIcsIntegrationTests(MariaDbFixture fixture)
         public Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
 
-        public Task<IReadOnlyDictionary<Guid, Guid>> ResolveFileIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+        public Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyDictionary<Guid, PhotoLinkInfo>>(new Dictionary<Guid, PhotoLinkInfo>());
+
+        public Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(IReadOnlyCollection<Guid> referenceIds, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyDictionary<Guid, Guid>>(new Dictionary<Guid, Guid>());
-
-        public Task<Guid> FindOrCreatePhotoIdForFileAsync(Guid fileId, string userId, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException("Not used by export.");
-
-        public Task<IReadOnlyDictionary<Guid, Guid>> FindOrCreatePhotoIdsForFilesAsync(
-            IReadOnlyCollection<Guid> fileIds, string userId, CancellationToken cancellationToken = default) =>
-            throw new NotSupportedException("Not used by export.");
     }
 
     // Every cap unlimited / a generous 64 MB — this test is about the transaction fix, not the caps.
@@ -173,7 +172,7 @@ public class JournalEntryIcsIntegrationTests(MariaDbFixture fixture)
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

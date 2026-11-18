@@ -63,25 +63,24 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         // Weather (issue #348): an empty contact means nothing is fetched until an administrator sets one.
         (SystemSettingsKeys.WeatherUserAgentContact, SystemSettingsDefaults.WeatherUserAgentContact),
         (SystemSettingsKeys.WeatherRefreshIntervalMinutes, $"{SystemSettingsDefaults.WeatherRefreshIntervalMinutes}"),
-        (SystemSettingsKeys.WeatherMaxTrackedLocations, $"{SystemSettingsDefaults.WeatherMaxTrackedLocations}"),
-        (SystemSettingsKeys.WeatherDefaultLocationId, SystemSettingsDefaults.WeatherDefaultLocationId),
+        (SystemSettingsKeys.WeatherMaxTrackedPoints, $"{SystemSettingsDefaults.WeatherMaxTrackedPoints}"),
+        (SystemSettingsKeys.WeatherDefaultPointId, SystemSettingsDefaults.WeatherDefaultPointId),
         (SystemSettingsKeys.ExchangeRateHistoryStartDate, SystemSettingsDefaults.ExchangeRateHistoryStartDate),
         (SystemSettingsKeys.ExchangeRateSyncIntervalHours,
             $"{SystemSettingsDefaults.ExchangeRateSyncIntervalHours}"),
         (SystemSettingsKeys.FileStorageDeletionGraceHours,
             $"{SystemSettingsDefaults.FileStorageDeletionGraceHours}"),
+        (SystemSettingsKeys.JobRunRetentionDays, $"{SystemSettingsDefaults.JobRunRetentionDays}"),
+        (SystemSettingsKeys.InstrumentPriceStaleAfterDays, $"{SystemSettingsDefaults.InstrumentPriceStaleAfterDays}"),
+        (SystemSettingsKeys.InstrumentPriceSyncIntervalHours, $"{SystemSettingsDefaults.InstrumentPriceSyncIntervalHours}"),
+        (SystemSettingsKeys.InstrumentPriceSyncHistoryDays, $"{SystemSettingsDefaults.InstrumentPriceSyncHistoryDays}"),
     ];
 
     [SkippableFact]
     public async Task A_fresh_database_carries_every_known_key()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateDatabaseAsync();
-
-        await using (var context = new OdysseyContext(ApplicationOptions()))
-        {
-            await context.Database.MigrateAsync();
-        }
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         await using (var context = new OdysseyContext(ApplicationOptions()))
         {
@@ -94,8 +93,11 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // migration deleted the three summary-limit rows, and -5 when the standalone
             // insurance-policy feature went the same way, then +1 for the per-property smart-tag cap
             // (issue #167), then +4 for weather (issue #348), then +2 for the exchange-rate sync start
-            // date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346).
-            Assert.Equal(72, rows.Count);
+            // date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
+            // for the background-job run retention (issue #409), then +2 -1 for the two prompt-guidance
+            // rows and the retired match-vocabulary cap (issue #433), then +3 for instrument prices (issue #446),
+            // then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508).
+            Assert.Equal(88, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)
@@ -107,14 +109,6 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         }
 
         await DropDatabaseAsync();
-    }
-
-    private async Task RecreateDatabaseAsync()
-    {
-        await using var admin = AdminContext();
-
-        await admin.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task DropDatabaseAsync()

@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Finance;
@@ -246,13 +247,13 @@ public class ClientDateHandlingTests
         {
             CalendarId = calendar.CalendarId, Title = "Dentist", StartDateTime = start, EndDateTime = end,
         };
-        var created = await service.Create(request, "user-id");
+        var created = await service.Create(request, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(DateTime.SpecifyKind(start, DateTimeKind.Utc), created.StartDateTime);
         AssertUtc(DateTime.SpecifyKind(end, DateTimeKind.Utc), created.EndDateTime);
         Assert.Equal(DateTimeKind.Unspecified, request.StartDateTime.Kind);
 
-        var updated = await service.Update(created.CalendarEventId, request, "user-id");
+        var updated = await service.Update(created.CalendarEventId, request, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(DateTime.SpecifyKind(start, DateTimeKind.Utc), updated!.StartDateTime);
         AssertUtc(DateTime.SpecifyKind(end, DateTimeKind.Utc), updated.EndDateTime);
@@ -277,7 +278,7 @@ public class ClientDateHandlingTests
             EndDateTime = start.AddMinutes(15),
             Frequency = RecurrenceFrequency.Daily,
             RecurrenceEndDate = until,
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(DateTime.SpecifyKind(start, DateTimeKind.Utc), created.StartDateTime);
         AssertUtc(DateTime.SpecifyKind(start.AddMinutes(15), DateTimeKind.Utc), created.EndDateTime);
@@ -300,7 +301,7 @@ public class ClientDateHandlingTests
             EndDateTime = new DateTime(2026, 10, 1, 9, 15, 0, DateTimeKind.Utc),
             Frequency = RecurrenceFrequency.Daily,
             RecurrenceEndDate = new DateTime(2026, 10, 10, 0, 0, 0, DateTimeKind.Utc),
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         var updated = await service.Update(created.RecurrencePatternId, new NewRecurrencePattern
         {
@@ -310,7 +311,7 @@ public class ClientDateHandlingTests
             EndDateTime = new DateTime(2026, 10, 2, 10, 30, 0, DateTimeKind.Unspecified),
             Frequency = RecurrenceFrequency.Daily,
             RecurrenceEndDate = new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Unspecified),
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         Assert.NotNull(updated);
         AssertUtc(new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc), updated!.StartDateTime);

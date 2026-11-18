@@ -1,0 +1,167 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IJSRuntime Js
+@*
+    WeatherHistoryWindowsEditor — a weather point's history windows in New weather point / Weather settings (issue
+    #437 §3.2; design system · Weather.jsx WeatherHistoryWindowsEditor, components/WeatherHistoryWindows). A page-local
+    composite of OdsDateField, OdsCheckbox, OdsIconButton and OdsAddRow — no new interaction pattern. A native <ol> of
+    <li><fieldset>, the legend "Window n" giving each row its context, so the fields are named by their visible labels
+    alone (WCAG 2.5.3). "No end date" is on every row, so no control ever disappears under focus. Rows never re-sort
+    while the dialog is open: a new row goes last, an edit never moves a row, and row n is request index n − 1.
+*@
+
+<div class="wx-hw">
+    <div class="wx-hw-head">
+        <div class="wx-toggle-label" id="@HeadId" tabindex="-1">History windows</div>
+        <div class="wx-toggle-help" id="@DescId">
+            Days outside every window are not fetched. Days already stored stay. Measured days can be seen by everyone who can see weather, so they show when you were here.
+        </div>
+        @if (ListError is not null)
+        {
+            <div class="wx-toggle-error" id="@ListErrorId"><OdsMIcon Name="error_outline" Size="16" />@ListError</div>
+        }
+    </div>
+    @if (Rows.Count > 0)
+    {
+        <ol class="wx-hw-list" aria-labelledby="@HeadId" aria-describedby="@DescId">
+            @for (var i = 0; i < Rows.Count; i++)
+            {
+                var row = Rows[i];
+                var n = i + 1;
+                var errors = RowErrors.GetValueOrDefault(row.Key);
+                <li @key="row.Key" class="wx-hw-item">
+                    <fieldset class="wx-hw-row @(errors?.Row is not null ? "error" : null)">
+                        <legend class="wx-hw-legend">Window @n</legend>
+                        @if (errors?.Row is { } rowError)
+                        {
+                            <div class="wx-toggle-error wx-hw-row-err" id="@RowErrorId(row)"><OdsMIcon Name="error_outline" Size="16" />@rowError</div>
+                        }
+                        <div class="wx-hw-fields">
+                            <OdsDateField Id="@FromId(row)" Label="From" Required="true" Placeholder="YYYY-MM-DD"
+                                          Value="@ToDateTime(row.From)" ValueChanged="@(v => SetFrom(row, v))"
+                                          Min="Floor" Max="Max" Error="@errors?.From"
+                                          Invalid="@(errors?.Row is not null)" DescribedBy="@(errors?.Row is not null ? RowErrorId(row) : null)" />
+                            <OdsDateField Id="@ToId(row)" Label="To" Required="@(!row.Open)" Disabled="row.Open"
+                                          Placeholder="@(row.Open ? "No end date" : "YYYY-MM-DD")"
+                                          Value="@(row.Open ? null : ToDateTime(row.To))" ValueChanged="@(v => SetTo(row, v))"
+                                          Min="@(ToDateTime(row.From) ?? Floor)" Max="Max" Error="@(row.Open ? null : errors?.To)" />
+                        </div>
+                        <div class="wx-hw-end">
+                            <span class="wx-hw-check">
+                                <OdsCheckbox Id="@EndId(row)" Label="No end date" Checked="row.Open" CheckedChanged="@(c => SetOpen(row, c))"
+                                             aria-describedby="@(row.Open ? EndHelpId(row) : null)" />
+                                @if (row.Open)
+                                {
+                                    <span class="wx-hw-check-help" id="@EndHelpId(row)">collected every day</span>
+                                }
+                            </span>
+                            <OdsTooltip Label="@($"Remove window {n}")">
+                                <OdsIconButton Icon="@MudBlazor.Icons.Material.Outlined.Delete" Danger="true" AriaLabel="@($"Remove window {n}")" id="@RemoveId(row)"
+                                               OnClick="@(() => RemoveAsync(row))" />
+                            </OdsTooltip>
+                        </div>
+                    </fieldset>
+                </li>
+            }
+        </ol>
+    }
+    <div id="@AddId" class="wx-hw-add">
+        <OdsAddRow Title="New window" Sub="A date range to fetch measured days for — a trip, a season, or from a date onwards." OnClick="AddAsync" />
+    </div>
+</div>
+
+@code {
+    /// <summary>The rows, owned by the dialog; the editor edits them in place and reports each change.</summary>
+    [Parameter, EditorRequired] public List<WeatherWindowRow> Rows { get; set; } = [];
+
+    /// <summary>A row changed (its key), or one was added or removed; the dialog clears that row's errors.</summary>
+    [Parameter] public EventCallback<string> OnChanged { get; set; }
+
+    [Parameter] public IReadOnlyDictionary<string, WeatherWindowRowErrors> RowErrors { get; set; } = new Dictionary<string, WeatherWindowRowErrors>();
+
+    [Parameter] public string? ListError { get; set; }
+
+    /// <summary>The dialog's polite region.</summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    [Parameter] public string Uid { get; set; } = Guid.NewGuid().ToString("N")[..8];
+
+    private static readonly DateTime Floor = WeatherRules.HistoryFloor.ToDateTime(TimeOnly.MinValue);
+
+    private DateTime Max => WeatherHistoryWindows.MaxDate(DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue);
+
+    internal string HeadId => $"hw-h-{Uid}";
+    private string DescId => $"hw-d-{Uid}";
+    private string ListErrorId => $"hw-le-{Uid}";
+    private string AddId => $"hw-add-{Uid}";
+    internal string FromId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-from";
+    internal string ToId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-to";
+    private string EndId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-end";
+    private string EndHelpId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-end-h";
+    private string RemoveId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-rm";
+    private string RowErrorId(WeatherWindowRow r) => $"hw-{Uid}-{r.Key}-row-err";
+
+    private static DateTime? ToDateTime(DateOnly? d) => d?.ToDateTime(TimeOnly.MinValue);
+
+    private Task SetFrom(WeatherWindowRow row, DateTime? value)
+    {
+        row.From = value is { } v ? DateOnly.FromDateTime(v) : null;
+        return OnChanged.InvokeAsync(row.Key);
+    }
+
+    private Task SetTo(WeatherWindowRow row, DateTime? value)
+    {
+        // A disabled To (No end date ticked) reports its cleared value; that must not forget the typed end.
+        if (row.Open)
+            return Task.CompletedTask;
+        row.To = value is { } v ? DateOnly.FromDateTime(v) : null;
+        row.KeptTo = row.To;
+        return OnChanged.InvokeAsync(row.Key);
+    }
+
+    /// <summary>Ticking clears and disables To; unticking brings the typed end back.</summary>
+    private Task SetOpen(WeatherWindowRow row, bool open)
+    {
+        row.Open = open;
+        row.To = open ? null : row.KeptTo;
+        return OnChanged.InvokeAsync(row.Key);
+    }
+
+    /// <summary>A new row goes last; it scrolls into view and its From takes focus. The fieldset names it.</summary>
+    private async Task AddAsync()
+    {
+        var row = new WeatherWindowRow();
+        Rows.Add(row);
+        await OnChanged.InvokeAsync(row.Key);
+        StateHasChanged();
+        await Task.Yield();
+        await JsAsync("odsScrollIntoViewById", FromId(row));
+        await JsAsync("odsFocusById", FromId(row));
+    }
+
+    /// <summary>
+    /// Focus goes to the next row's Remove, else the previous row's, else the New window button itself — never a
+    /// wrapper that cannot take focus. The announcement names the window and what remains.
+    /// </summary>
+    private async Task RemoveAsync(WeatherWindowRow row)
+    {
+        var i = Rows.IndexOf(row);
+        var next = i + 1 < Rows.Count ? Rows[i + 1] : i > 0 ? Rows[i - 1] : null;
+        Rows.RemoveAt(i);
+        await OnChanged.InvokeAsync(row.Key);
+        await OnAnnounce.InvokeAsync($"Window {i + 1} removed, {Rows.Count} {(Rows.Count == 1 ? "remains" : "remain")}.");
+        StateHasChanged();
+        await Task.Yield();
+        if (next is not null)
+            await JsAsync("odsFocusById", RemoveId(next));
+        else
+            await JsAsync("odsFocusFirstIn", AddId, false, 0);
+    }
+
+    private async Task JsAsync(string fn, params object?[] args)
+    {
+        try { await Js.InvokeVoidAsync(fn, args); }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+}

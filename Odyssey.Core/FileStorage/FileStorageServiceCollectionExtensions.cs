@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
+using Odyssey.Core.Jobs;
 
 namespace Odyssey.Core.FileStorage;
 
@@ -37,6 +38,7 @@ public static class FileStorageServiceCollectionExtensions
         services.TryAddScoped<FileStorageVerifier>();
         services.TryAddScoped<FileStorageSweeper>();
         services.TryAddScoped<FileStorageStatusService>();
+        services.AddJobRunRecording();
         return services;
     }
 

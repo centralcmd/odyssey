@@ -32,9 +32,10 @@ public sealed record SystemSettingsUpdate
     // shape (null = leave unchanged; { unlimited: true } = no limit; { value: n } = n) rather than
     // int?, because on this DTO null already means "leave unchanged" for every field — reusing int?
     // for a count field would make "unlimited" inexpressible. Size fields stay int? (megabytes) and
-    // have no unlimited option, on either side — all four surfaces share the same [Range(1, 1024)]
+    // have no unlimited option, on either side — three surfaces share the same [Range(1, 1024)]
     // (issue #343 §5's original per-surface split — contacts up to 512 MB, ICS up to 1024 MB — has
-    // since been unified per a follow-up: contacts allows just as much as the other three now).
+    // since been unified per a follow-up: contacts allows just as much as the other ICS ones now). The task
+    // surface goes to 10240 MB, because its files carry attached files inline.
     //
     // The claim check for every CapacityLimit field below MUST use SystemSettingsService's
     // RequireClaim(ClaimsPrincipal, CapacityLimit?, ...) overload, never `.Value` — see sec F3.
@@ -64,20 +65,22 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? TaskIcsMaxImportTasks { get; set; }
 
-    [Range(1, 1024)]
+    // Ten times the other surfaces: a task file carries its attached files inline.
+    [Range(SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, SystemSettingsBounds.TaskIcsMaxImportMegabytesMax)]
     public int? TaskIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, SystemSettingsBounds.TaskIcsMaxExportMegabytesMax)]
     public int? TaskIcsMaxExportMegabytes { get; set; }
 
     public CapacityLimit? JournalIcsMaxExportRows { get; set; }
 
     public CapacityLimit? JournalIcsMaxImportEntries { get; set; }
 
-    [Range(1, 1024)]
+    // A journal file carries its attached files and photos inline, as a task file does.
+    [Range(SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, SystemSettingsBounds.JournalIcsMaxImportMegabytesMax)]
     public int? JournalIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, SystemSettingsBounds.JournalIcsMaxExportMegabytesMax)]
     public int? JournalIcsMaxExportMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------
@@ -237,7 +240,7 @@ public sealed record SystemSettingsUpdate
     /// range — the value must also be at or below the startup transport ceiling, which the server
     /// validates and publishes as <c>UploadMegabytesCeiling</c> on the read DTO.
     /// </summary>
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, SystemSettingsBounds.FileStorageMaxUploadMegabytesMax)]
     public int? FileStorageMaxUploadMegabytes { get; set; }
 
     // ---------------------------------------------------------------------------------------------
@@ -269,11 +272,6 @@ public sealed record SystemSettingsUpdate
         "Max tokens must be between 1024 and 64000. It caps the model's output on every analysis, so "
         + "it bounds both extraction completeness and per-request API spend.")]
     public int? FileAnalysisMaxTokens { get; set; }
-
-    [Range(1, 5000, ErrorMessage =
-        "Match vocabulary cap must be between 1 and 5000. Over the cap the match step is skipped "
-        + "rather than truncated, and every name in it is sent to the provider on each match call.")]
-    public int? FileAnalysisMatchMaxVocabulary { get; set; }
 
     [Range(5, 600, ErrorMessage =
         "Match timeout must be between 5 and 600 seconds. On timeout the job records a failed match "
@@ -443,6 +441,21 @@ public sealed record SystemSettingsUpdate
         "The provider base URL cannot exceed 256 characters.")]
     public string? FileAnalysisBaseUrl { get; set; }
 
+    /// <summary>
+    /// Administrator guidance appended to the extraction prompt (issue #433). <c>""</c> clears it.
+    /// The <c>[StringLength]</c> here is a <strong>transport</strong> bound only: a 4000-character value
+    /// sent with CRLF line breaks is up to 8000 long before normalisation. The 4000 limit is enforced
+    /// on the normalised value by <c>PromptAdditionRule</c>, through the descriptor.
+    /// </summary>
+    [StringLength(PromptAdditionRule.MaxRawLength, ErrorMessage =
+        "Guidance is far over the 4000-character limit.")]
+    public string? FileAnalysisExtractionPromptAddition { get; set; }
+
+    /// <summary>Administrator guidance appended to the match prompt (issue #433). As above.</summary>
+    [StringLength(PromptAdditionRule.MaxRawLength, ErrorMessage =
+        "Guidance is far over the 4000-character limit.")]
+    public string? FileAnalysisMatchPromptAddition { get; set; }
+
     // ---------------------------------------------------------------------------------------------
     // Weather (issue #348). All four take system-settings.update. The two strings are AllowEmpty:
     // empty is meaningful ("not configured" / "no default"), and null already means "leave unchanged".
@@ -461,17 +474,17 @@ public sealed record SystemSettingsUpdate
         "The forecast refresh interval must be between {1} and {2} minutes.")]
     public int? WeatherRefreshIntervalMinutes { get; set; }
 
-    [Range(SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
-        SystemSettingsBounds.WeatherMaxTrackedLocationsMax, ErrorMessage =
+    [Range(SystemSettingsBounds.WeatherMaxTrackedPointsMin,
+        SystemSettingsBounds.WeatherMaxTrackedPointsMax, ErrorMessage =
         "Places on a schedule must be between {1} and {2}.")]
-    public int? WeatherMaxTrackedLocations { get; set; }
+    public int? WeatherMaxTrackedPoints { get; set; }
 
     /// <summary>
     /// A weather location id, or empty for none. Must be selectable — weather on, not archived, not being
     /// purged — which <c>SystemSettingsService</c> checks inside the write's transaction (400 otherwise).
     /// </summary>
     [StringLength(36, ErrorMessage = "Choose a location from the list.")]
-    public string? WeatherDefaultLocationId { get; set; }
+    public string? WeatherDefaultPointId { get; set; }
 
     // ---------------------------------------------------------------------------------------------
     // Exchange-rate sync (issue #349 §8). Both take the ordinary write claim: nothing here is a
@@ -489,10 +502,75 @@ public sealed record SystemSettingsUpdate
     public int? ExchangeRateSyncIntervalHours { get; set; }
 
     // ---------------------------------------------------------------------------------------------
+    // Instrument prices (issue #446 §8.4).
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.InstrumentPriceStaleAfterDaysMin, SystemSettingsBounds.InstrumentPriceStaleAfterDaysMax)]
+    public int? InstrumentPriceStaleAfterDays { get; set; }
+
+    [Range(SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMin, SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMax)]
+    public int? InstrumentPriceSyncIntervalHours { get; set; }
+
+    [Range(SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMin, SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMax)]
+    public int? InstrumentPriceSyncHistoryDays { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // News reader (issue #470 §11.1). The allow-list takes the security claim; the other eight the
+    // ordinary one. NewsImageMaxSizeKb is also bounded by a derived ceiling (RequestCapCeilings), which
+    // cannot live in an attribute because it comes from startup configuration.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin, SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax)]
+    public int? NewsDefaultFetchIntervalMinutes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsMaxFeedsMin, SystemSettingsBounds.NewsMaxFeedsMax)]
+    public int? NewsMaxFeeds { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxPerArticleMin, SystemSettingsBounds.NewsImageMaxPerArticleMax)]
+    public int? NewsImageMaxPerArticle { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageMaxSizeKbMin, SystemSettingsBounds.NewsImageMaxSizeKbMax)]
+    public int? NewsImageMaxSizeKb { get; set; }
+
+    [Range(SystemSettingsBounds.NewsImageStoreMaxGiBMin, SystemSettingsBounds.NewsImageStoreMaxGiBMax)]
+    public int? NewsImageStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsTextStoreMaxGiBMin, SystemSettingsBounds.NewsTextStoreMaxGiBMax)]
+    public int? NewsTextStoreMaxGiB { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin, SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax)]
+    public int? NewsFeedMaxArticlesPerDay { get; set; }
+
+    [Range(SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax)]
+    public int? NewsFeedMaxImageMbPerDay { get; set; }
+
+    /// <summary><c>""</c> is a legal value — it empties the list — so <c>[Required]</c> is never used here.</summary>
+    [StringLength(NewsPrivateHostAllowListRule.MaxLength)]
+    public string? NewsPrivateHostAllowList { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // News OPML import (issue #508 §8.5). The size cap is an import size cap like the four above it
+    // (security claim, the shared megabyte pair); the entry cap can only be lowered.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax)]
+    public int? NewsOpmlMaxImportMegabytes { get; set; }
+
+    [Range(SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, SystemSettingsBounds.NewsOpmlMaxImportEntriesMax)]
+    public int? NewsOpmlMaxImportEntries { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346 §4.3). The security claim: this is the retention period
     // for deleted personal data, so every change is audited.
     // ---------------------------------------------------------------------------------------------
 
     [Range(SystemSettingsBounds.FileStorageDeletionGraceHoursMin, SystemSettingsBounds.FileStorageDeletionGraceHoursMax)]
     public int? FileStorageDeletionGraceHours { get; set; }
+
+    // ---------------------------------------------------------------------------------------------
+    // Background jobs (issue #409 §8): how long a finished run stays in the shared run log.
+    // ---------------------------------------------------------------------------------------------
+
+    [Range(SystemSettingsBounds.JobRunRetentionDaysMin, SystemSettingsBounds.JobRunRetentionDaysMax)]
+    public int? JobRunRetentionDays { get; set; }
 }

@@ -25,6 +25,8 @@ public sealed class DemoDataSet
     public required IReadOnlyList<Transaction> Transactions { get; init; }
     public required IReadOnlyList<TransactionTagLink> TransactionTagLinks { get; init; }
     public required IReadOnlyList<ExchangeRate> ExchangeRates { get; init; }
+    public required IReadOnlyList<Instrument> Instruments { get; init; }
+    public required IReadOnlyList<InstrumentPrice> InstrumentPrices { get; init; }
     public required IReadOnlyList<Contract> Contracts { get; init; }
     public required IReadOnlyList<ContractParty> ContractParties { get; init; }
     public required IReadOnlyList<ContractEvent> ContractEvents { get; init; }
@@ -91,6 +93,7 @@ public sealed class DemoDataSet
         var (taxStatements, taxStatementTags) = TaxStatementGenerator.Build();
         var (properties, propertyEstimates, propertySmartTags) = PropertyGenerator.Build();
         var (fileBlobs, fileMetadata, taxStatementFiles) = TaxStatementFileGenerator.Build();
+        var (instruments, instrumentPrices) = InstrumentGenerator.Build(anchor);
 
         var journalTags = JournalTagGenerator.Generate(anchor);
         var taskTags = JournalTaskTagGenerator.Generate(anchor);
@@ -127,6 +130,8 @@ public sealed class DemoDataSet
             Transactions = transactions,
             TransactionTagLinks = tagLinks,
             ExchangeRates = ExchangeRateGenerator.Build(anchor),
+            Instruments = instruments,
+            InstrumentPrices = instrumentPrices,
             Contracts = contracts,
             ContractParties = contractParties,
             ContractEvents = contractEvents,

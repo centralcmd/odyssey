@@ -36,6 +36,12 @@ services:
   mariadb:
     # No host port mapping in production — the DB is reachable only on the internal network.
     ports: !reset []
+    # Only the three per-consumer internal networks (issue #470 §11.3): the base file adds `default` solely for the
+    # dev stack's published port, which this overlay removes.
+    networks: !override
+      - db_api
+      - db_worker
+      - db_migrations
     environment:
       # Required in production (issue #451 §1.4). The base file falls back to `root_password` /
       # `odyssey_password` so a laptop needs no env file at all; without these guards the prod overlay
@@ -168,6 +174,10 @@ services:
     pids_limit: 256
     tmpfs:
       - /tmp:size=64m
+    # Restated from the base file, beside the hardening it belongs with (issue #470 §3.4 step 7): long enough for the
+    # news job to cancel its fetches cleanly, so a deploy is never counted as a crash. The network split
+    # (db_worker + egress only) comes from the base file unchanged.
+    stop_grace_period: 30s
 
   client:
     image: ghcr.io/${GHCR_OWNER:?GHCR_OWNER must be set in your env file (the GitHub user or org that owns the published images)}/odyssey-client:${IMAGE_TAG:?IMAGE_TAG must be set in your env file (the release to deploy, e.g. 1.4.0)}

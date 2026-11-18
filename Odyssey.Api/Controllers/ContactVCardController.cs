@@ -74,8 +74,8 @@ single-contact default would silently change what an existing caller receives fr
     /// </summary>
     private const string ExportDisclosure = @"The exported card carries the contact's names, aliases
 (including maiden and former names, with their free-text labels), middle name, dates of birth and
-death, an organization's establishment and dissolution dates, addresses, email addresses, phone
-numbers and notes.";
+death, an organization's establishment and dissolution dates, the archive date, addresses
+(with each geocoded address's coordinates and time zone), email addresses, phone numbers and notes.";
 
     [HttpGet("vcard", Name = "ExportContactsVCard")]
     [Authorize(Policy = PermissionClaims.ContactsRead)]
@@ -181,7 +181,10 @@ truncated response reports itself rather than returning a silently short documen
         }
 
         await using var stream = file.OpenReadStream();
-        var outcome = await vCardService.ImportWithOutcomeAsync(stream, file.Length, file.ContentType, cancellationToken);
+        // ADR needs locations.create, checked once for the file (issue #380 §8.4); PlacesCreated is withheld
+        // from a caller without locations.read.
+        var outcome = await vCardService.ImportWithOutcomeAsync(
+            stream, file.Length, file.ContentType, cancellationToken, User.LocationClaims(), User.ActingUserId());
 
         // The service holds no principal, so the actor-bearing audit lines for type changes are written
         // here from the ids it returns (issue #335 §7.5). The ids never reach the response body.

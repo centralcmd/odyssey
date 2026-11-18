@@ -42,7 +42,7 @@
                 <Value>
                     @if (Transaction.TransactionTags.Count > 0)
                     {
-                        <OdsTagChips Tags="Transaction.TransactionTags" />
+                        <OdsTagChips Tags="OdsTagChips.Tag.Of(Transaction.TransactionTags)" Empty="—" />
                     }
                     else
                     {

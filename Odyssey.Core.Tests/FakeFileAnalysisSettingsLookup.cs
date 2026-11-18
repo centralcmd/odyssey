@@ -29,7 +29,6 @@ internal sealed class FakeFileAnalysisSettingsLookup : IFileAnalysisSettingsLook
         MaxFutureTransactionDays: 90,
         AutoLinkThreshold: 0.60m,
         MaxTokens: 8096,
-        MatchMaxVocabulary: 500,
         MatchTimeoutSeconds: 60,
         Model: "claude-sonnet-5",
         BaseUrl: "https://api.anthropic.com",
@@ -45,6 +44,15 @@ internal sealed class FakeFileAnalysisSettingsLookup : IFileAnalysisSettingsLook
 
     /// <summary>Counts the live reads, so a test can pin that the switch is never served from a cache.</summary>
     public int EnabledReadCount { get; private set; }
+    /// <summary>
+    /// What a FRESH read answers (issue #444): null means the same as <see cref="Settings"/>. Set it to model a
+    /// save the cached snapshot has not seen yet — the worker's pre-send check must see this one.
+    /// </summary>
+    public FileAnalysisSettings? UncachedSettings { get; set; }
+
+    public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(UncachedSettings ?? Settings);
+
 
     public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult(Settings);

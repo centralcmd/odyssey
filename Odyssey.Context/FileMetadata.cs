@@ -31,8 +31,21 @@ public class FileMetadata
     [MaxLength(64)]
     public required string Sha256Hash { get; set; }
 
-    [Required]
-    public required Guid FileBlobId { get; set; }
+    /// <summary>
+    /// The legacy database copy of the bytes (issue #448). Null once the file lives on the object store, when exactly one
+    /// of the three stored-object columns below is set instead (<c>CK_FileMetadata_ExactlyOneSource</c>). Read it only
+    /// through the file content source; a source-lint keeps it so.
+    /// </summary>
+    public Guid? FileBlobId { get; set; }
+
+    /// <summary>The bytes on the store, feature <c>FinanceFiles</c> (RESTRICT, issue #448 §4.1).</summary>
+    public Guid? FinanceStoredObjectId { get; set; }
+
+    /// <summary>The bytes on the store, feature <c>JournalFiles</c> (RESTRICT, issue #448 §4.1).</summary>
+    public Guid? JournalStoredObjectId { get; set; }
+
+    /// <summary>The bytes on the store, feature <c>ContactAvatars</c> (RESTRICT, issue #448 §4.1).</summary>
+    public Guid? ContactAvatarStoredObjectId { get; set; }
 
     [MaxLength(256)]
     public string? Description { get; set; }

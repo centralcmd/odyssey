@@ -44,6 +44,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICurrenciesApiClient, CurrenciesApiClient>();
         services.AddScoped<IExchangeRatesApiClient, ExchangeRatesApiClient>();
         services.AddScoped<IExchangeRateSyncApiClient, ExchangeRateSyncApiClient>();
+        services.AddScoped<IInstrumentsApiClient, InstrumentsApiClient>();
+        services.AddScoped<IInstrumentPricesApiClient, InstrumentPricesApiClient>();
+        services.AddScoped<IInstrumentPriceSourcesApiClient, InstrumentPriceSourcesApiClient>();
+        services.AddScoped<IBackgroundJobsApiClient, BackgroundJobsApiClient>();
         services.AddScoped<IFileStorageApiClient, FileStorageApiClient>();
         services.AddScoped<ITransactionsApiClient, TransactionsApiClient>();
         services.AddScoped<ITransactionTagsApiClient, TransactionTagsApiClient>();
@@ -61,7 +65,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPhotosApiClient, PhotosApiClient>();
         services.AddScoped<IPhotoTagsApiClient, PhotoTagsApiClient>();
         services.AddScoped<IAlbumsApiClient, AlbumsApiClient>();
-        services.AddScoped<IDataExportApiClient, DataExportApiClient>();
         services.AddScoped<IFileExportApiClient, FileExportApiClient>();
         services.AddScoped<IProfileApiClient, ProfileApiClient>();
         services.AddScoped<ISystemSettingsApiClient, SystemSettingsApiClient>();
@@ -73,6 +76,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContractLimitsApiClient, ContractLimitsApiClient>();
         services.AddScoped<IPropertyLimitsApiClient, PropertyLimitsApiClient>();
         services.AddScoped<IFileAnalysisDisclosureApiClient, FileAnalysisDisclosureApiClient>();
+        services.AddScoped<INewsApiClient, NewsApiClient>();
 
         return services;
     }

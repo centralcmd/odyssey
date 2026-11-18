@@ -39,7 +39,9 @@ public class FileAnalysisDisclosureApiTests
     /// </para>
     /// </summary>
     private static readonly string[] DocumentedProperties =
-        ["processor", "processorRegion", "lawfulBasis", "privacyNoticeUrl", "model", "enabled", "disclosureVersion"];
+        ["processor", "processorRegion", "lawfulBasis", "privacyNoticeUrl", "model", "enabled", "disclosureVersion",
+         // Issue #433: the match field list, its coverage and the two guidance flags — never the text.
+         "matchVocabularyFields", "matchVocabularyCoverage", "extractionGuidanceInForce", "matchGuidanceInForce"];
 
     [Fact]
     public async Task AuthenticatedWithNoClaims_ReturnsOk()
@@ -201,8 +203,11 @@ public class FileAnalysisDisclosureApiTests
         Assert.Equal(SystemSettingsDefaults.FileAnalysisProcessor, dto!.Processor);
     }
 
+    // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
+    // rows), and verifying a volume ensures the store is created.
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
-        : OdysseyApiFactory(permissions, ActorUserId);
+        : OdysseyApiFactory(permissions, ActorUserId,
+            configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
 
     // ── issue #439: the live switch and the consent-binding version ──────────────────────────────
 

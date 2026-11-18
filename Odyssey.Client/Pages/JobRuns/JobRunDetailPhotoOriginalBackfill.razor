@@ -1,0 +1,18 @@
+@*
+    A photo-original move run's detail (issue #428; Odyssey Design System · BackgroundJobs.jsx, BGJ_DETAIL
+    PhotoOriginalBackfill): moved, copied and kept (the database file stays because an attachment still uses it), parked
+    and the ticks a storage or database error cut short.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Moved")">@N(Move.PhotosMoved)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Copied and kept")">@N(Move.PhotosCopiedShared)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Parked")">@N(Move.PhotosParked)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Interruptions")">@N(Move.Interruptions)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private PhotoOriginalBackfillJobRunDetail Move => (PhotoOriginalBackfillJobRunDetail)Run;
+}

@@ -1,7 +1,7 @@
 namespace Odyssey.Core.FileExport;
 
 /// <summary>A single file to export — the columns needed to locate content and name the ZIP entry.</summary>
-public sealed record FileExportItem(Guid FileId, string FileName, string ContentType, Guid FileBlobId);
+public sealed record FileExportItem(Guid FileId, string FileName, string ContentType);
 
 /// <summary>One <c>file-map.json</c> row: maps a stored <see cref="FileId"/> to the name used in the ZIP.</summary>
 public sealed record FileMapEntry(string FileId, string FileName);

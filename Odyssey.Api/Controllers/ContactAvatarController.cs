@@ -97,14 +97,18 @@ image is never served from a stale cache.")]
         }
 
         // The FileResult overload that TAKES an EntityTagHeaderValue, so ASP.NET Core performs
-        // conditional-request handling itself. A manually assigned Response.Headers.ETag — the shape
-        // FilesController.DownloadFile uses — does not engage that machinery at all, so copying it
-        // would return 200 every time and the 304 above would be the only one that ever fired.
-        return File(content, descriptor.ContentType, lastModified: null, entityTag: etag);
+        // conditional-request handling itself. A manually assigned Response.Headers.ETag does not engage
+        // that machinery at all. The image streams from the store, or from its legacy blob (issue #448).
+        return File(content.Content, descriptor.ContentType, lastModified: null, entityTag: etag, enableRangeProcessing: true);
     }
 
     [HttpPost("{id}/avatar", Name = "PostContactAvatar")]
     [Authorize(Policy = PermissionClaims.ContactsUpdate)]
+    // The image now goes to disk (issue #448 §5.2), so it counts against the file upload's per-user limit.
+    [Microsoft.AspNetCore.RateLimiting.EnableRateLimiting(FileUploadRateLimiting.UploadPolicy)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
     [Consumes("multipart/form-data")]
     // The transport gate resolves the GLOBAL cap (64 MB ceiling), not this surface's min — so it is the
     // coarse gate and the action's own check is the binding one.

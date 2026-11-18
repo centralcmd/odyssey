@@ -26,6 +26,8 @@ public class ContactApiTests
     [
         PermissionClaims.ContactsRead, PermissionClaims.ContactsCreate,
         PermissionClaims.ContactsUpdate, PermissionClaims.ContactsDelete,
+        // An address is a link to a place since issue #380; entering one needs locations.create.
+        PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate,
     ];
 
     private static NewContact NewOrg(string legalName = "Acme") => new()

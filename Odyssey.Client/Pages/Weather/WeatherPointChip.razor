@@ -1,0 +1,29 @@
+@using Odyssey.Client.Components
+@* The weather point row chip (design system · Weather.jsx WeatherPointChip): the state in words, never colour alone. *@
+
+@if (PurgeInProgress)
+{
+    <OdsChip Tone="OdsChipTone.Error" Icon="delete_sweep" Class="sm">Weather: deleting</OdsChip>
+}
+else if (!ForecastEnabled && !HistoryEnabled)
+{
+    <OdsChip Tone="OdsChipTone.Outline" Icon="cloud_off" Class="sm">Weather off</OdsChip>
+}
+else if (!HistoryEnabled)
+{
+    <OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Forecast only</OdsChip>
+}
+else if (!ForecastEnabled)
+{
+    <OdsChip Tone="OdsChipTone.Info" Icon="history" Class="sm">History only</OdsChip>
+}
+else
+{
+    <OdsChip Tone="OdsChipTone.Info" Icon="wb_sunny" Class="sm">Weather</OdsChip>
+}
+
+@code {
+    [Parameter] public bool ForecastEnabled { get; set; }
+    [Parameter] public bool HistoryEnabled { get; set; }
+    [Parameter] public bool PurgeInProgress { get; set; }
+}

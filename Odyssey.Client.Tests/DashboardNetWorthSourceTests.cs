@@ -244,13 +244,17 @@ public class DashboardNetWorthSourceTests
 
         Assert.DoesNotContain("_mainCurrencyMinorUnits", totalsLoad, StringComparison.Ordinal);
 
-        // …and it is resolved before the three calls fan out, not after any of them returns.
-        var accountsLoad = Between(source, "private async Task LoadAccountsAsync()", "private async Task LoadHistoryAsync()");
-        var resolvedAt = accountsLoad.IndexOf("ResolveMainCurrencyMinorUnitsAsync", StringComparison.Ordinal);
-        var fannedOutAt = accountsLoad.IndexOf("Task.WhenAll", StringComparison.Ordinal);
+        // …and it is resolved before the three calls fan out, not after any of them returns. Since issue #452
+        // it is resolved once in OnInitializedAsync, ahead of the accounts load, because the Watchlist card
+        // prices in the same currency and must not wait on (or race) the net-worth calls.
+        var init = Between(source, "protected override async Task OnInitializedAsync()", "protected override void OnAfterRender");
+        var resolvedAt = init.IndexOf("ResolveMainCurrencyMinorUnitsAsync", StringComparison.Ordinal);
+        var fannedOutAt = init.IndexOf("LoadAccountsAsync()", StringComparison.Ordinal);
+        Assert.DoesNotContain("ResolveMainCurrencyMinorUnitsAsync",
+            Between(source, "private async Task LoadAccountsAsync()", "private async Task LoadHistoryAsync()"), StringComparison.Ordinal);
 
         Assert.True(resolvedAt >= 0 && fannedOutAt > resolvedAt,
-            "The currency has to be resolved above the Task.WhenAll: a totals failure must not be able "
+            "The currency has to be resolved before the accounts load fans out: a totals failure must not be able "
             + "to leave the chart's figures rendering in the wrong precision.");
     }
 

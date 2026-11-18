@@ -14,12 +14,11 @@ using Odyssey.Dtos.Journal;
 namespace Odyssey.Client.Pages.Attachments;
 
 /// <summary>
-/// One photo the dialog hands back — the DS <c>onSubmit</c> item. <see cref="PhotoId"/> is null for an
-/// upload made without <see cref="AttachPhotosDialog.CreateLibraryPhoto"/>: only the stored file exists
-/// until the host's own write links it. <see cref="ThumbnailsReady"/> travels with the pick so the host's own strip
-/// can show the thumbnail (issue #365 B2); a fresh upload's is always false.
+/// One photo the dialog hands back — the DS <c>onSubmit</c> item. Every upload is a library photo since issue #428,
+/// so <see cref="PhotoId"/> is always known. <see cref="ThumbnailsReady"/> travels with the pick so the host's own
+/// strip can show the thumbnail (issue #365 B2); a fresh upload's is always false.
 /// </summary>
-public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid? PhotoId, Guid FileId, string Name, bool ThumbnailsReady = false);
+public sealed record AttachPhotoItem(AttachDocumentSource Source, Guid PhotoId, string Name, bool ThumbnailsReady = false);
 
 public partial class AttachPhotosDialog
 {
@@ -29,10 +28,10 @@ public partial class AttachPhotosDialog
     /// <summary>The page the library tab reads: the newest photos, narrowed by the search.</summary>
     internal const int LibraryPageSize = 96;
 
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private PhotoImageSource ImageOf(PhotoSummary photo) =>
-        PhotoImageSources.For(photo.PhotoId, photo.FileId, photo.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos, Files);
+        PhotoImageSources.For(photo.PhotoId, photo.ThumbnailsReady, ThumbnailSize.Small, _imageAccess, Photos);
 
     private static readonly IReadOnlyList<OdsSegmentedOption> Tabs =
     [
@@ -42,7 +41,6 @@ public partial class AttachPhotosDialog
 
     private static readonly string[] AllowedExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
 
-    [Inject] private IFilesApiClient Files { get; set; } = default!;
     [Inject] private IPhotosApiClient Photos { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
     [Inject] private IUploadLimitsCache UploadLimits { get; set; } = default!;
@@ -61,9 +59,6 @@ public partial class AttachPhotosDialog
 
     /// <summary>Upload only — no tabs, no library (the Photos page's own upload).</summary>
     [Parameter] public bool UploadOnly { get; set; }
-
-    /// <summary>Creates a library Photo over each upload (needs <c>photos.create</c>).</summary>
-    [Parameter] public bool CreateLibraryPhoto { get; set; } = true;
 
     /// <summary>
     /// A surface's own, tighter per-file cap in megabytes. The effective cap is the smaller of it and
@@ -102,9 +97,6 @@ public partial class AttachPhotosDialog
     // when a partly failed batch is retried.
     private readonly Dictionary<string, AttachPhotoItem> _uploaded = [];
 
-    // Stored files by row, so a retry whose library-photo step failed does not store the bytes again.
-    private readonly Dictionary<string, Guid> _stored = [];
-
     private string _announce = string.Empty;
     private bool _libraryLoaded;
     private bool _libraryLoading;
@@ -134,8 +126,8 @@ public partial class AttachPhotosDialog
     protected override async Task OnInitializedAsync()
     {
         var user = await AuthenticationState.GetUserAsync();
-        _canUpload = user.HasPermission(PermissionClaims.FilesCreate)
-                     && (!CreateLibraryPhoto || user.HasPermission(PermissionClaims.PhotosCreate));
+        // Every upload is a library photo (issue #428), so photos.create alone gates it; files.create plays no part.
+        _canUpload = user.HasPermission(PermissionClaims.PhotosCreate);
         _canBrowse = !UploadOnly && user.HasPermission(PermissionClaims.PhotosRead);
         _imageAccess = PhotoImageAccess.From(user);
         if (!_canUpload && _canBrowse)
@@ -153,6 +145,7 @@ public partial class AttachPhotosDialog
     {
         _tab = tab == LibraryTab ? LibraryTab : UploadTab;
         _error = null;
+        Notice(null);
         if (_tab == LibraryTab && !_libraryLoaded)
             await LoadLibraryAsync();
     }
@@ -190,7 +183,7 @@ public partial class AttachPhotosDialog
     private bool IsPicked(PhotoSummary photo) => _picked.Any(p => p.PhotoId == photo.PhotoId);
 
     private bool IsAttached(PhotoSummary photo) =>
-        AttachedIds.Contains(photo.PhotoId) || AttachedIds.Contains(photo.FileId);
+        AttachedIds.Contains(photo.PhotoId);
 
     private static string LabelOf(PhotoSummary photo) =>
         string.IsNullOrWhiteSpace(photo.Title) ? "Photo" : photo.Title!;
@@ -214,17 +207,18 @@ public partial class AttachPhotosDialog
     private void OnUploadsChanged(IReadOnlyList<OdsUploadFile> files)
     {
         var kept = new List<OdsUploadFile>();
+        var rejected = new List<string>();
         foreach (var f in files)
         {
             var ext = Path.GetExtension(f.Name).ToLowerInvariant();
             if (f.Source is not null && !AllowedExtensions.Contains(ext))
             {
-                Snackbar.Add($"“{f.Name}” isn’t a JPEG, PNG, GIF or WebP image.", Severity.Warning);
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” isn’t a JPEG, PNG, GIF or WebP image.");
                 continue;
             }
             if (f.SizeBytes > _uploadLimits.MaxUploadBytes)
             {
-                Snackbar.Add($"“{f.Name}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.", Severity.Warning);
+                rejected.Add($"“{UploadFailureText.Clean(f.Name)}” exceeds the {_uploadLimits.MaxUploadMegabytes} MB limit.");
                 continue;
             }
             kept.Add(f);
@@ -233,6 +227,9 @@ public partial class AttachPhotosDialog
         _uploads = kept;
         if (_error is not null && _uploads.Count > 0)
             _error = null;
+
+        // Every rejection of one pick in one alert (WCAG 3.3.1); a pick or removal with none clears a stale one.
+        Notice(rejected.Count > 0 ? UploadFailureText.Several(rejected, itemised: true, "can’t be added") : null);
     }
 
     private async Task SubmitAsync()
@@ -248,7 +245,7 @@ public partial class AttachPhotosDialog
                 return;
             }
             await FinishAsync([.. _picked.Select(p =>
-                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, p.FileId, LabelOf(p), p.ThumbnailsReady))]);
+                new AttachPhotoItem(AttachDocumentSource.Library, p.PhotoId, LabelOf(p), p.ThumbnailsReady))]);
             return;
         }
 
@@ -260,20 +257,45 @@ public partial class AttachPhotosDialog
 
         _busy = true;
         _error = null;
+        Notice(null);
         var added = new List<AttachPhotoItem>();
         var failed = new List<OdsUploadFile>();
+        var perFile = new List<string>();
+        string? stoppedText = null;
         try
         {
-            foreach (var file in _uploads.Where(f => f.Source is not null))
+            var queue = _uploads.Where(f => f.Source is not null).ToList();
+            for (var i = 0; i < queue.Count; i++)
             {
-                var item = _uploaded.GetValueOrDefault(file.Uid) ?? await UploadOneAsync(file);
-                if (item is null)
+                var file = queue[i];
+                if (_uploaded.GetValueOrDefault(file.Uid) is { } done)
                 {
-                    failed.Add(file);
+                    added.Add(done);
                     continue;
                 }
-                _uploaded[file.Uid] = item;
-                added.Add(item);
+
+                var created = await Photos.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes));
+                if (created.IsSuccess && created.Value is { } photo)
+                {
+                    var item = new AttachPhotoItem(AttachDocumentSource.Upload, photo.PhotoId, file.Name);
+                    _uploaded[file.Uid] = item;
+                    added.Add(item);
+                    continue;
+                }
+
+                // 507 / 503 / 429 stop the batch (issue #449 §3.2): the failed photo and every untried one stay listed.
+                var stop = UploadFailureText.StopOf(created.Status);
+                if (stop != UploadStop.None)
+                {
+                    failed.AddRange(queue.Skip(i));
+                    stoppedText = UploadFailureText.Stopped(stop, queue.Count - i, created.RetryAfter);
+                    break;
+                }
+
+                perFile.Add(created.Status == HttpStatusCode.Conflict
+                    ? $"“{UploadFailureText.Clean(file.Name)}” is already in your library — pick it from From Photos instead."
+                    : UploadFailureText.PerFile(created.Status, created.Problem?.Detail, file.Name, _uploadLimits.MaxUploadMegabytes));
+                failed.Add(file);
             }
 
             if (Announce && added.Count > 0)
@@ -290,10 +312,14 @@ public partial class AttachPhotosDialog
             if (added.Count > 0)
                 await OnSubmit.InvokeAsync(added);
             _uploads = failed;
-            // role="alert" on the error line announces it; no second copy in the live region.
-            _error = failed.Count == 1
-                ? $"“{failed[0].Name}” wasn’t added. Try again, or remove it."
-                : $"{failed.Count} photos weren’t added. Try again, or remove them.";
+            // The alert line carries the reasons (issue #449 §6); no toast while the dialog is open.
+            Notice(stoppedText is not null
+                ? (perFile.Count == 0 ? stoppedText : $"{stoppedText} {UploadFailureText.Several(perFile, itemised: true)}")
+                : perFile.Count == 0
+                ? (failed.Count == 1
+                    ? $"“{UploadFailureText.Clean(failed[0].Name)}” wasn’t added. Try again, or remove it."
+                    : $"{failed.Count} photos weren’t added. Try again, or remove them.")
+                : UploadFailureText.Several(perFile, itemised: true));
         }
         finally
         {
@@ -301,37 +327,15 @@ public partial class AttachPhotosDialog
         }
     }
 
-    // One file: store it, then (for a library host) create its library photo. Null when it failed; the
-    // reason is already on screen.
-    private async Task<AttachPhotoItem?> UploadOneAsync(OdsUploadFile file)
+    // The dialog's one announcement for a failure or warning while it is open (issue #449 §6), re-keyed per batch.
+    private string? _notice;
+    private int _noticeKey;
+
+    private void Notice(string? text)
     {
-        if (!_stored.TryGetValue(file.Uid, out var storedId))
-        {
-            try
-            {
-                storedId = (await Files.UploadAsync(file.Source!.ToApiUpload(_uploadLimits.MaxUploadBytes), file.Name)).Id;
-            }
-            catch (Exception)
-            {
-                Snackbar.Add($"Couldn’t upload “{file.Name}”.", Severity.Error);
-                return null;
-            }
-            _stored[file.Uid] = storedId;
-        }
-
-        if (!CreateLibraryPhoto)
-            return new AttachPhotoItem(AttachDocumentSource.Upload, null, storedId, file.Name);
-
-        var created = await Photos.CreateAsync(new NewPhoto { FileId = storedId });
-        if (created.IsSuccess && created.Value is { } photo)
-            return new AttachPhotoItem(AttachDocumentSource.Upload, photo.PhotoId, storedId, file.Name);
-
-        // A 409 means this file is already a library photo, so no new one was made and there is no id
-        // to link. Name the way out rather than dropping the file silently.
-        Snackbar.Add(created.Status == HttpStatusCode.Conflict
-            ? $"“{file.Name}” is already in your library — pick it from From Photos instead."
-            : $"Couldn’t add “{file.Name}”: {created.Error}", Severity.Error);
-        return null;
+        _notice = text;
+        if (text is not null)
+            _noticeKey++;
     }
 
     private async Task FinishAsync(IReadOnlyList<AttachPhotoItem> items)

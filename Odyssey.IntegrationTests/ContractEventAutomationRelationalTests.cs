@@ -337,9 +337,7 @@ public class ContractEventAutomationRelationalTests(MariaDbFixture fixture)
 
     private async Task MigrateAsync()
     {
-        await RecreateAsync();
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private async Task RecreateAsync()

@@ -13,7 +13,7 @@
 .pl-daycount { color: var(--mud-palette-text-secondary); font-size: 12px; background: var(--mud-palette-surface); padding: 3px 9px; border-radius: 999px; border: 1px solid var(--mud-palette-divider); }
 
 /* ---- Album cards ---- */
-.pl-albgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.pl-albgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr)); gap: 16px; }
 
 .pl-albcard { position: relative; text-align: left; padding: 0; border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); border-radius: var(--radius-lg, 12px); overflow: hidden; cursor: pointer; transition: border-color var(--duration-base), transform var(--duration-base); }
 
@@ -73,3 +73,14 @@
 .pl-backrow-title { color: var(--mud-palette-text-primary); font: 600 15px/1 var(--font-sans); margin-left: 4px; }
 
 .pl-backrow .material-icons { font-size: 18px; }
+
+/* Album icon + colour (issue #406, design system Photos.jsx). The glyph is decorative (aria-hidden); its
+   ink comes from AlbumVisuals.Ink. With no cover photo the glyph sits on the page ground, the ground
+   --user-glyph-l is calibrated for. No forced-colours rule is needed: that mode overrides the inline ink. */
+.pl-albglyph { font-size: var(--icon-lg); line-height: 1; flex: none; }
+.pl-albname-row { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.pl-albname-row .pl-albname { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pl-albcover-empty { display: flex; align-items: center; justify-content: center; background: var(--mud-palette-background); }
+.pl-albcover-empty .pl-albglyph-xl { font-size: var(--icon-2xl); }
+.pl-backrow .pl-albglyph { font-size: var(--icon-lg); margin-left: var(--space-1); }
+.pl-backrow .pl-albglyph + .pl-backrow-title { margin-left: 0; }

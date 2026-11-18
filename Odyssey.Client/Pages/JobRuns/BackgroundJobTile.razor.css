@@ -1,0 +1,18 @@
+/* Job tile (Odyssey Design System · ui_kits/web/background-jobs.css, .bgj-tile*). */
+.bgj-tile { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; height: 100%; }
+.bgj-tile-head { display: flex; align-items: center; gap: var(--space-2); }
+.bgj-tile-ic { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); }
+.bgj-tile-h { margin: 0; font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-tile-chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.bgj-held { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--pending-text); }
+.bgj-facts ::deep .odc-meta-tile-value { font-size: var(--fs-body2); display: flex; flex-direction: column; gap: var(--space-1); }
+.bgj-abs { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-mono); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .bgj-facts { grid-template-columns: 1fr; }
+}
+/* The news job's quota warning lines (Odyssey Design System · background-jobs.css, .bgj-warns; issue #473 §3.6). */
+.bgj-warns { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.bgj-warn { display: flex; align-items: flex-start; gap: var(--space-2); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-warn .material-icons { font-size: var(--icon-sm); color: var(--pending-text); margin-top: var(--space-1); }
+.bgj-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
+.bgj-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using MudBlazor;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos.Authorization;
@@ -41,7 +42,8 @@ public partial class PhotosCard
     private bool _canCreateContacts;
     private Dictionary<Guid, string> _tagNames = [];
     private Dictionary<Guid, string?> _tagIcons = [];
-    private Dictionary<Guid, string> _albumNames = [];
+    private Dictionary<Guid, string?> _tagColors = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
     private Dictionary<Guid, string> _personNames = [];
     private IReadOnlyList<PhotoAlbumSummary> _albumSummaries = [];
     private int _libraryTotal;
@@ -61,8 +63,7 @@ public partial class PhotosCard
     private bool _canDelete;
     private bool _canManageAlbums;
     private bool _canCreateTags;
-    private bool _canRenameFile;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "photos-page";
 
@@ -94,7 +95,6 @@ public partial class PhotosCard
         _canDelete = user.HasPermission(PermissionClaims.PhotosDelete);
         _canManageAlbums = user.HasPermission(PermissionClaims.PhotoAlbumsUpdate);
         _canCreateTags = user.HasPermission(PermissionClaims.PhotoTagsCreate);
-        _canRenameFile = user.HasPermission(PermissionClaims.FilesUpdate);
         _imageAccess = PhotoImageAccess.From(user);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
 
@@ -111,6 +111,7 @@ public partial class PhotosCard
         _libraryTotal = (await Photos.ListAsync(1, 1, status: null))
             .PagedOrToast(Snackbar, "the library count").TotalCount;
 
+    /// <summary>An album row: the album glyph and colour the overview's By album row uses.</summary>
     private async Task LoadOptionsAsync()
     {
         // A failed fetch keeps the lookups already held, so a reload after a save never blanks them.
@@ -118,9 +119,10 @@ public partial class PhotosCard
         var tags = tagsResult.ItemsOrToast(Snackbar, "photo tags");
         if (tagsResult.IsSuccess)
         {
-            _tagOptions = [.. tags.Select(t => new OdsOption(t.PhotoTagId.ToString(), t.Name))];
+            _tagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
+            _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
         }
 
         var albumsResult = await Albums.ListAllAsync();
@@ -128,8 +130,9 @@ public partial class PhotosCard
         if (albumsResult.IsSuccess)
         {
             _albumSummaries = albums;
-            _albumOptions = [.. _albumSummaries.Select(a => new OdsOption(a.PhotoAlbumId.ToString(), a.Name))];
-            _albumNames = _albumSummaries.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+            // Each option carries its Overview row's glyph and tone (issue #406 surface D1).
+            _albumOptions = [.. _albumSummaries.Select(AlbumVisuals.FilterOption)];
+            _albumById = _albumSummaries.ToDictionary(a => a.PhotoAlbumId);
         }
 
         // People come from the caller's Person contacts (requires contacts.read; degrades to empty).
@@ -137,7 +140,9 @@ public partial class PhotosCard
         var people = peopleResult.ItemsOrToast(Snackbar, "people");
         if (peopleResult.IsSuccess)
         {
-            _peopleOptions = OdsContactOptions.Active(people);
+            // A Person filter row wears its People Overview row's muted person glyph, not the contact
+            // type's colour, so filter and Overview read alike (DS Photos peopleOpts).
+            _peopleOptions = [.. OdsContactOptions.Active(people).Select(o => o with { Icon = PhotoLibraryOverview.PersonGlyph, IconColor = PhotoLibraryOverview.PersonInk })];
             _personNames = people.ToDictionary(c => c.ContactId, c => c.ResolvedDisplayName);
         }
     }
@@ -297,13 +302,15 @@ public partial class PhotosCard
     }
 
     private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files),
+        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
             string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
             p.Archived is not null, p.Favourited is not null);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
     private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
-    private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
+
+    private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
+    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     // ── Selection ──

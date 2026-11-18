@@ -1,0 +1,18 @@
+@*
+    A photo-thumbnail run's detail (issue #410 §3.6): rendered, failed, re-queued, crashes and hangs. There is no
+    "poisoned" count: #409 v3 withdrew the poison marker, so the server sends none (the artifact's open point).
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Rendered")">@N(Thumbnails.PhotosRendered)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Failed")">@N(Thumbnails.PhotosFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Re-queued")">@N(Thumbnails.PhotosRequeued)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Crashes")">@N(Thumbnails.Crashes)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Hangs")">@N(Thumbnails.Hangs)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private PhotoThumbnailJobRunDetail Thumbnails => (PhotoThumbnailJobRunDetail)Run;
+}

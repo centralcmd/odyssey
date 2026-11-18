@@ -16,7 +16,7 @@ namespace Odyssey.Core.Tests.Thumbnails;
 /// The thumbnail job on EF InMemory with a fake renderer (issue #362 test tiers, "Job logic"): the pipeline, the
 /// failure codes, the lanes, the watchdog, the crash rule, the breaker, the outage and the heartbeat.
 /// </summary>
-public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
+public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
 {
     // ── Pipeline (AC 1, 2, 3, 6) ───────────────────────────────────────────────────────────────────────
 
@@ -557,7 +557,7 @@ public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
         var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync());
         await using (var scope = host.Scope())
         {
-            await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId, default);
+            await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
             await scope.ServiceProvider.GetRequiredService<OdysseyContext>().SaveChangesAsync();
         }
 
@@ -571,7 +571,7 @@ public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
         Assert.Equal(job.LastClaimedAtUtc + PhotoThumbnailTiming.RenameCooldown, job.NextAttemptAtUtc);
         Assert.Empty(await ThumbnailsAsync(host, photoId));
         Assert.All(await WithContextAsync(host, c => c.StoredObjects.Where(o => o.FeatureKey == PhotoThumbnailStorage.FeatureKey).ToListAsync()),
-            o => Assert.Equal((StoredObjectState.PendingDelete, true), (o.State, o.DeleteImmediately)));
+            o => Assert.Equal((StoredObjectState.PendingDelete, false), (o.State, o.DeleteImmediately)));
     }
 
     // ── Concurrency and rename races (AC 17, AC 24; rerun on MariaDB) ───────────────────────────────
@@ -701,7 +701,7 @@ public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         var fileId = await context.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync();
-        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId, default);
+        await scope.ServiceProvider.GetRequiredService<PhotoThumbnailService>().StageRenameAsync(fileId!.Value, default);
         await context.SaveChangesAsync();
     }
 
@@ -814,6 +814,9 @@ public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
 
         public Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken) =>
             factory.Store.StageReleaseAsync(storedObjectId, immediate, cancellationToken);
+
+        public Task<string> ReadBackHashAsync(StoredObject storedObject, CancellationToken cancellationToken) =>
+            factory.Store.ReadBackHashAsync(storedObject, cancellationToken);
     }
 
     private sealed class UnavailableStore(ObjectStoreFactory factory) : IObjectStore
@@ -829,6 +832,9 @@ public abstract class PhotoThumbnailJobScenarios : PhotoThumbnailTestBase
 
         public Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken) =>
             factory.Store.StageReleaseAsync(storedObjectId, immediate, cancellationToken);
+
+        public Task<string> ReadBackHashAsync(StoredObject storedObject, CancellationToken cancellationToken) =>
+            factory.Store.ReadBackHashAsync(storedObject, cancellationToken);
     }
 
     /// <summary>The real <see cref="ObjectStore"/> for the request scope, built from that scope's services.</summary>

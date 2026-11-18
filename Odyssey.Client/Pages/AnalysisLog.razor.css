@@ -222,3 +222,6 @@
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
+/* A fact recorded before its column existed (issue #434): secondary text, the words carry the meaning. */
+.fal-unrec { color: var(--mud-palette-text-secondary); }

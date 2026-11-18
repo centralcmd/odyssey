@@ -71,13 +71,16 @@ public class AuthorizationPolicyTests
     /// account terms onto contracts and deleted the account-term read/write claim pair. 98 once issue
     /// #167 added the six <c>properties.*</c> claims. 101 once issue #350 added <c>locations.read</c>,
     /// <c>.create</c> and <c>.update</c> (deliberately no delete). 106 once issue #348 added
-    /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.locations.read</c>,
-    /// <c>weather.locations.update</c> and <c>weather.history.delete</c>. 107 once issue #346 added
-    /// <c>file-storage.read</c>.
+    /// <c>weather.read</c>, <c>weather.preferences.update</c>, <c>weather.points.read</c>,
+    /// <c>weather.points.update</c> and <c>weather.points.delete</c>. 107 once issue #346 added
+    /// <c>file-storage.read</c>. 108 once issue #380 added <c>locations.delete</c>, the claim #350
+    /// deliberately left out. 107 once the whole-database JSON export was removed with its
+    /// <c>data.export</c> claim. 115 once issue #446 added the eight instrument claims, and 123 once issue
+    /// #470 added the eight news-reader claims.
     /// </summary>
     [Fact]
     public void Permission_claim_vocabulary_has_the_expected_size() =>
-        Assert.Equal(107, DeclaredClaims().Count());
+        Assert.Equal(123, DeclaredClaims().Count());
 
     /// <summary>
     /// Pins the premise the system-settings claim split rests on (issue #421 §10.10).
@@ -116,7 +119,8 @@ public class AuthorizationPolicyTests
                      select $"{role.Role} holds '{claim}'").ToList();
 
         Assert.True(leaks.Count == 0,
-            "system-settings.* is Admin-only by design, and issue #421 §10.10 relies on it. "
+            "system-settings.* is Admin-only by design, and issue #421 §10.10 relies on it, as does issue "
+            + "#433 §7.2 (the prompt guidance takes the ordinary claim because only Admin holds it). "
             + "Revisit that reasoning before granting these: " + string.Join(", ", leaks));
 
         // The other half of the premise: Admin must actually hold all three, or the settings page is
@@ -220,25 +224,6 @@ public class AuthorizationPolicyTests
     }
 
     /// <summary>
-    /// Issue #350 §7.12 adds locations to the whole-database export, which is gated on <c>data.export</c>
-    /// alone. That only discloses nothing new while every holder of <c>data.export</c> can already read
-    /// locations live — so a role granted the export without <c>locations.read</c> fails the build.
-    /// </summary>
-    [Fact]
-    public void No_role_holds_DataExport_without_LocationsRead()
-    {
-        var gaps = MappedRoles()
-            .Where(role => role.Claims.Contains(PermissionClaims.DataExport, StringComparer.Ordinal))
-            .Where(role => !role.Claims.Contains(PermissionClaims.LocationsRead, StringComparer.Ordinal))
-            .Select(role => role.Role)
-            .ToList();
-
-        Assert.True(gaps.Count == 0,
-            "The data export carries every location; a role that can export must be able to read them. Roles that do not: "
-            + string.Join(", ", gaps));
-    }
-
-    /// <summary>
     /// Issue #348 §7.2: every weather response names a location, so a role that reads weather must be able
     /// to read the locations it names.
     /// </summary>
@@ -261,7 +246,7 @@ public class AuthorizationPolicyTests
     [Fact]
     public void Only_Admin_holds_the_weather_admin_claims()
     {
-        string[] adminOnly = [PermissionClaims.WeatherHistoryDelete, PermissionClaims.WeatherLocationsRead, PermissionClaims.WeatherLocationsUpdate];
+        string[] adminOnly = [PermissionClaims.WeatherPointsDelete, PermissionClaims.WeatherPointsRead, PermissionClaims.WeatherPointsUpdate];
         Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AllClaims));
         Assert.All(adminOnly, claim => Assert.Contains(claim, RolePermissions.AdminClaims));
 
@@ -272,9 +257,48 @@ public class AuthorizationPolicyTests
         Assert.Equal(["Admin"], holders);
     }
 
+    /// <summary>The three values issue #387 §7.2 renamed away. Release notes and the changelog name them; nothing else may.</summary>
+    internal static readonly string[] RetiredWeatherClaimValues =
+        ["weather.locations.read", "weather.locations.update", "weather.history.delete"];
+
+    /// <summary>
+    /// Issue #387 AC 9: no role holds a retired weather value, so <c>RoleClaimSeeder</c> — which reconciles
+    /// <c>AspNetRoleClaims</c> to this mapping, removals included — revokes them on its next run.
+    /// </summary>
+    [Fact]
+    public void No_role_holds_a_retired_weather_claim_value()
+    {
+        Assert.All(RetiredWeatherClaimValues, value => Assert.DoesNotContain(value, RolePermissions.AllClaims));
+        Assert.All(MappedRoles(), role => Assert.Empty(role.Claims.Intersect(RetiredWeatherClaimValues, StringComparer.Ordinal)));
+        var constants = typeof(PermissionClaims)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+            .Where(field => field.IsLiteral)
+            .Select(field => (string)field.GetRawConstantValue()!);
+        Assert.Empty(constants.Intersect(RetiredWeatherClaimValues, StringComparer.Ordinal));
+    }
+
+    /// <summary>
+    /// Issue #387 §7.2, AC 10: linking a place to a weather point needs <c>locations.update</c> and
+    /// <c>weather.read</c>; the holders of both are exactly Admin, Owner and User, and Guest lacks the first.
+    /// </summary>
+    [Fact]
+    public void The_weather_link_is_held_by_exactly_Admin_Owner_and_User()
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.LocationsUpdate, StringComparer.Ordinal)
+                && role.Claims.Contains(PermissionClaims.WeatherRead, StringComparer.Ordinal))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(["Admin", "Owner", "User"], holders);
+        Assert.DoesNotContain(PermissionClaims.LocationsUpdate, RolePermissions.GuestClaims);
+        Assert.Contains(PermissionClaims.WeatherRead, RolePermissions.GuestClaims);
+    }
+
     /// <summary>
     /// Issue #350 §7.2/§7.3: Guest reads the household's locations — a product decision — and writes none
-    /// of them, and no location delete claim exists for anyone to hold.
+    /// of them. Issue #380 decision 4 added <c>locations.delete</c>, and Guest does not hold it either.
     /// </summary>
     [Fact]
     public void Guest_holds_exactly_locations_read_among_the_location_claims()
@@ -285,7 +309,221 @@ public class AuthorizationPolicyTests
             .ToArray();
 
         Assert.Equal([PermissionClaims.LocationsRead], guestLocationClaims);
-        Assert.DoesNotContain(DeclaredClaims(), claim => claim == "locations.delete");
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 4 (AC 12): <c>locations.delete</c> is the erasure path and reaches Admin, Owner
+    /// and User through <c>JournalModuleClaims</c> — never Guest.
+    /// </summary>
+    [Fact]
+    public void LocationsDelete_is_held_by_exactly_Admin_Owner_and_User()
+    {
+        Assert.Equal("locations.delete", PermissionClaims.LocationsDelete);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.JournalModuleClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.AdminClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.OwnerClaims);
+        Assert.Contains(PermissionClaims.LocationsDelete, RolePermissions.UserClaims);
+        Assert.DoesNotContain(PermissionClaims.LocationsDelete, RolePermissions.GuestClaims);
+    }
+
+    /// <summary>
+    /// Issue #446 §7.2: every role reads instruments and prices; only Admin and Owner write them. Source
+    /// administration is the Admin's <c>system-settings.*</c> pair, so it is not part of this table.
+    /// </summary>
+    [Theory]
+    [InlineData(PermissionClaims.InstrumentsRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.InstrumentPricesRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.InstrumentsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentsDelete, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.InstrumentPricesDelete, new[] { "Admin", "Owner" })]
+    public void The_instrument_claims_are_held_by_exactly_the_specified_roles(string claim, string[] expected)
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(claim))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected, holders);
+    }
+
+    /// <summary>
+    /// Issue #470 §7.2: every role reads the household's news, Guest included; Admin, Owner and User keep its shared
+    /// read state and article tags; only Admin and Owner manage feeds and news tags.
+    /// </summary>
+    [Theory]
+    [InlineData(PermissionClaims.NewsRead, new[] { "Admin", "Guest", "Owner", "User" })]
+    [InlineData(PermissionClaims.NewsUpdate, new[] { "Admin", "Owner", "User" })]
+    [InlineData(PermissionClaims.NewsFeedsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsFeedsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsFeedsDelete, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsCreate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsUpdate, new[] { "Admin", "Owner" })]
+    [InlineData(PermissionClaims.NewsTagsDelete, new[] { "Admin", "Owner" })]
+    public void The_news_claims_are_held_by_exactly_the_specified_roles(string claim, string[] expected)
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(claim))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(expected, holders);
+    }
+
+    /// <summary>
+    /// Issue #470 AC 64: <c>GET /api/news-status</c> is gated on <c>file-storage.read</c> and shows feed display titles,
+    /// custom titles included, so it may never reach a caller who could not read the feed.
+    /// </summary>
+    [Fact]
+    public void Every_role_holding_FileStorageRead_also_holds_NewsRead()
+    {
+        Assert.Contains(MappedRoles(), role => role.Claims.Contains(PermissionClaims.FileStorageRead));
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.FileStorageRead) && !role.Claims.Contains(PermissionClaims.NewsRead));
+    }
+
+    /// <summary>Issue #470 §7.2: no role manages feeds or tags, or keeps the read state, without reading the news.</summary>
+    [Fact]
+    public void No_role_holds_a_news_write_claim_without_NewsRead()
+    {
+        string[] writes =
+        [
+            PermissionClaims.NewsUpdate, PermissionClaims.NewsFeedsCreate, PermissionClaims.NewsFeedsUpdate, PermissionClaims.NewsFeedsDelete,
+            PermissionClaims.NewsTagsCreate, PermissionClaims.NewsTagsUpdate, PermissionClaims.NewsTagsDelete,
+        ];
+
+        Assert.DoesNotContain(MappedRoles(), role =>
+            writes.Any(role.Claims.Contains) && !role.Claims.Contains(PermissionClaims.NewsRead));
+    }
+
+    /// <summary>Issue #446 §7.3: every price read embeds instrument fields, so a price reader must read instruments.</summary>
+    [Fact]
+    public void No_role_holds_InstrumentPricesRead_without_InstrumentsRead() =>
+        Assert.DoesNotContain(MappedRoles(), role =>
+            role.Claims.Contains(PermissionClaims.InstrumentPricesRead) && !role.Claims.Contains(PermissionClaims.InstrumentsRead));
+
+    /// <summary>
+    /// Issue #380 decision 3 (S-R6): <c>locations.read</c> sees every address in the app, so the set of roles
+    /// holding it is pinned exactly — widening it is a visible change, not a side effect.
+    /// </summary>
+    [Fact]
+    public void LocationsRead_is_held_by_exactly_Admin_Owner_User_and_Guest()
+    {
+        var holders = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+
+        Assert.Equal(["Admin", "Guest", "Owner", "User"], holders);
+    }
+
+    /// <summary>
+    /// The contact vCard export writes each geocoded address's coordinates and time zone under
+    /// <c>contacts.read</c> alone — a product decision (PR #510) that is safe only while reading contacts
+    /// implies reading places. A role granted contacts.read without locations.read must fail here, so that
+    /// decision is re-opened rather than silently widened.
+    /// </summary>
+    [Fact]
+    public void Contacts_read_implies_locations_read()
+    {
+        var gaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsRead) && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(gaps);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 3: after the conversion, the place text of a linked event, series or entry lives
+    /// only in the <c>locations.read</c>-gated embed, so every role that reads the calendar or the journal
+    /// must also read places.
+    /// </summary>
+    [Fact]
+    public void Calendar_read_and_journal_read_each_imply_locations_read()
+    {
+        var gaps = MappedRoles()
+            .Where(role => (role.Claims.Contains(PermissionClaims.CalendarRead) || role.Claims.Contains(PermissionClaims.JournalRead))
+                && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(gaps);
+    }
+
+    /// <summary>
+    /// Issue #380 §7.1.4 and v8-L3: entering an address on a contact or property creates or finds a place, so
+    /// every role with <c>contacts.create</c>/<c>.update</c> or <c>properties.create</c>/<c>.update</c> holds
+    /// <c>locations.create</c>; and every role with <c>contacts.create</c> holds <c>locations.read</c>, since a
+    /// vCard import's <c>AddressesLinked − PlacesCreated</c> is a count of matched places.
+    /// </summary>
+    [Fact]
+    public void Contact_and_property_writers_hold_locations_create_and_contact_creators_locations_read()
+    {
+        string[] writers =
+        [
+            PermissionClaims.ContactsCreate, PermissionClaims.ContactsUpdate,
+            PermissionClaims.PropertiesCreate, PermissionClaims.PropertiesUpdate,
+        ];
+
+        var createGaps = MappedRoles()
+            .Where(role => writers.Any(role.Claims.Contains) && !role.Claims.Contains(PermissionClaims.LocationsCreate))
+            .Select(role => role.Role)
+            .ToArray();
+        var readGaps = MappedRoles()
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsCreate) && !role.Claims.Contains(PermissionClaims.LocationsRead))
+            .Select(role => role.Role)
+            .ToArray();
+
+        Assert.Empty(createGaps);
+        Assert.Empty(readGaps);
+    }
+
+    /// <summary>
+    /// Issue #380 decision 7 (v7, D3): an editor's <c>otherUses</c> must be a full count of record uses, so
+    /// "nothing else uses it" is true for every kind before an <c>AllUses</c> edit. Every role with
+    /// <c>contacts.update</c> or <c>properties.update</c> therefore holds the three location write claims and
+    /// all four record read claims.
+    /// </summary>
+    [Fact]
+    public void Contact_and_property_editors_hold_every_claim_an_AllUses_edit_relies_on() =>
+        Assert.Empty(AllUsesEditorGaps(MappedRoles()));
+
+    /// <summary>The decision 7 guard is not decorative: it fails for a role missing a read claim (AC 26).</summary>
+    [Fact]
+    public void The_AllUses_editor_guard_fails_for_a_role_that_cannot_read_every_kind()
+    {
+        (string, string[])[] hypothetical =
+        [
+            ("Editor", [
+                PermissionClaims.ContactsUpdate, PermissionClaims.LocationsRead,
+                PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate,
+            ]),
+        ];
+
+        Assert.Equal(["Editor"], AllUsesEditorGaps(hypothetical));
+    }
+
+    private static string[] AllUsesEditorGaps(IEnumerable<(string Role, string[] Claims)> roles)
+    {
+        string[] required =
+        [
+            PermissionClaims.LocationsRead, PermissionClaims.LocationsCreate, PermissionClaims.LocationsUpdate,
+            PermissionClaims.ContactsRead, PermissionClaims.PropertiesRead,
+            PermissionClaims.CalendarRead, PermissionClaims.JournalRead,
+        ];
+
+        return roles
+            .Where(role => role.Claims.Contains(PermissionClaims.ContactsUpdate) || role.Claims.Contains(PermissionClaims.PropertiesUpdate))
+            .Where(role => required.Any(claim => !role.Claims.Contains(claim)))
+            .Select(role => role.Role)
+            .ToArray();
     }
 
     /// <summary>
@@ -769,5 +1007,81 @@ public class AuthorizationPolicyTests
         }
 
         throw new InvalidOperationException("Could not locate RoleClaimSeeder.cs from " + AppContext.BaseDirectory);
+    }
+
+    // ── Background jobs (issue #409 §3.1, S1, A1/S5, A-N4) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// The manual-run claims beyond <c>system-settings.update</c>, pinned per job (AC 22). The file-storage pass is
+    /// gated on <c>file-storage.read</c> BY DECISION (A-N4, S-N5): no file-storage write claim exists, the claim is
+    /// Admin-only and the pass is identical to a scheduled one. Adding a file-storage write claim is the trigger to
+    /// move this gate onto it.
+    /// </summary>
+    [Fact]
+    public void Each_jobs_manual_run_claims_are_pinned()
+    {
+        var claims = Odyssey.Core.Jobs.JobCatalogue.Entries.ToDictionary(entry => entry.JobType, entry => entry.ManualRunClaims);
+
+        Assert.Empty(claims[Dtos.Application.JobType.ExchangeRateSync]);
+        Assert.Equal([PermissionClaims.WeatherPointsUpdate], claims[Dtos.Application.JobType.Weather]);
+        Assert.Equal([PermissionClaims.FileStorageRead], claims[Dtos.Application.JobType.FileStorageMaintenance]);
+        Assert.Equal([PermissionClaims.PhotosUpdate], claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal([PermissionClaims.NewsFeedsUpdate], claims[Dtos.Application.JobType.NewsFeedFetch]);
+        Assert.Equal(PermissionClaims.SystemSettingsUpdate, Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim);
+        Assert.DoesNotContain(DeclaredClaims(), claim => claim.StartsWith("file-storage.", StringComparison.Ordinal)
+            && claim != PermissionClaims.FileStorageRead);
+    }
+
+    /// <summary>The detail-read claims (A1/S5): a field from a job's own domain follows that domain's read claim.</summary>
+    [Fact]
+    public void Each_jobs_detail_read_claim_is_pinned()
+    {
+        var claims = Odyssey.Core.Jobs.JobCatalogue.Entries.ToDictionary(entry => entry.JobType, entry => entry.DetailReadClaim);
+
+        Assert.Null(claims[Dtos.Application.JobType.ExchangeRateSync]);
+        Assert.Equal(PermissionClaims.WeatherPointsRead, claims[Dtos.Application.JobType.Weather]);
+        Assert.Equal(PermissionClaims.FileStorageRead, claims[Dtos.Application.JobType.FileStorageMaintenance]);
+        Assert.Equal(PermissionClaims.PhotosRead, claims[Dtos.Application.JobType.PhotoThumbnails]);
+        Assert.Equal(PermissionClaims.NewsFeedsUpdate, claims[Dtos.Application.JobType.NewsFeedFetch]);
+    }
+
+    /// <summary>
+    /// S1 and the cross-claim rule, as the shipped roles stand: every role holding <c>system-settings.update</c> holds
+    /// each job's manual-run claims, and every role holding <c>system-settings.read</c> holds each detail-read claim —
+    /// so splitting them later is a deliberate act that fails here first, never a silent narrowing of the page.
+    /// </summary>
+    [Fact]
+    public void Every_role_that_can_open_the_page_holds_every_job_claim()
+    {
+        foreach (var (role, roleClaims) in MappedRoles())
+        {
+            foreach (var entry in Odyssey.Core.Jobs.JobCatalogue.Entries)
+            {
+                if (roleClaims.Contains(PermissionClaims.SystemSettingsUpdate))
+                {
+                    Assert.All(entry.ManualRunClaims, claim => Assert.True(roleClaims.Contains(claim),
+                        $"{role} holds system-settings.update but not {claim}, so it cannot run {entry.JobType}."));
+                }
+
+                if (roleClaims.Contains(PermissionClaims.SystemSettingsRead) && entry.DetailReadClaim is { } read)
+                {
+                    Assert.True(roleClaims.Contains(read), $"{role} holds system-settings.read but not {read}.");
+                }
+            }
+        }
+    }
+
+    /// <summary>The controller's policies agree with the catalogue: read on the class, the base claim on the run action.</summary>
+    [Fact]
+    public void The_background_jobs_controller_policies_match_the_catalogue()
+    {
+        var controller = typeof(Odyssey.Api.Controllers.BackgroundJobsController);
+        Assert.Equal(
+            Odyssey.Core.Jobs.JobCatalogue.ReadBaseClaim,
+            Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        var post = controller.GetMethod(nameof(Odyssey.Api.Controllers.BackgroundJobsController.PostRun))!;
+        Assert.Equal(
+            Odyssey.Core.Jobs.JobCatalogue.ManualRunBaseClaim,
+            Assert.Single(post.GetCustomAttributes<AuthorizeAttribute>()).Policy);
     }
 }

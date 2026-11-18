@@ -50,7 +50,7 @@
                                         DebounceInterval="300" OnSearch="GetAccounts"
                                         Placeholder="Search name, description, account number…"
                                         Class="ph-search" />
-                        <OdsMultiSelect Label="Account type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
+                        <OdsMultiSelect Label="Account type" Fit="true" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged"
                                         Options="_typeOptions" Class="ph-select" />
                         <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged"
                                         Options="_statusOptions" Class="ph-select" />
@@ -380,7 +380,7 @@
 
 @if (_uploadAccount is not null)
 {
-    <AttachDocumentsDialog @key="_uploadKey"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Finance" @key="_uploadKey"
                            @bind-Open="_uploadOpen"
                            Subtitle="@($"Keep statements, receipts, or documents with {_uploadAccount.Name}. Files stay in Files; attaching links them here.")"
                            Kinds="OdsTypeRegistries.AccountFileTypes"

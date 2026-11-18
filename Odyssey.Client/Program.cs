@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Auth;
 using Odyssey.Client;
@@ -38,6 +39,10 @@ var localDebugApiBaseAddress = (string?)null;
 var apiBaseAddress = shouldUseRelativeBase
     ? localDebugApiBaseAddress ?? new Uri(new Uri(builder.HostEnvironment.BaseAddress), "api/").ToString()
     : configuredApiBaseAddress;
+
+// The clock (issue #415): the weather hours cache expires answers by it, and ContractDetailView injects it.
+// One registration, so a test host can substitute its own.
+builder.Services.TryAddSingleton(TimeProvider.System);
 
 // The request pipeline is browser-specific only at its outermost layer: BrowserCredentialsHandler
 // opts fetch into sending the auth cookie cross-origin, then hands off to the library's portable
@@ -88,7 +93,9 @@ builder.Services.AddScoped(sp =>
 // Every typed API client + the transport core live in Odyssey.ApiClient.
 builder.Services.AddOdysseyApiClient();
 
-builder.Services.AddMudServices();
+// The snackbar provider's one configuration (issue #473 §6.7): bottom-right, a close icon, no duplicate stacking.
+// Error snackbars set RequireInteraction per call so they stay until dismissed; the Undo one sets its 8 s.
+builder.Services.AddMudServices(config => Odyssey.Client.Services.SnackbarDefaults.Configure(config.SnackbarConfiguration));
 builder.Services.AddScoped<CookieAuthenticationStateProvider>();
 builder.Services.AddScoped<AuthenticationStateProvider>(sp => sp.GetRequiredService<CookieAuthenticationStateProvider>());
 builder.Services.AddScoped<IUserPreferenceService, UserPreferenceService>();
@@ -99,11 +106,21 @@ builder.Services.AddScoped<Odyssey.Client.Services.IClipboardService, Odyssey.Cl
 builder.Services.AddScoped<Odyssey.Client.Services.IReferenceDataCache, Odyssey.Client.Services.ReferenceDataCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IImportLimitsCache, Odyssey.Client.Services.ImportLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IUploadLimitsCache, Odyssey.Client.Services.UploadLimitsCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.INativeTransfer, Odyssey.Client.Services.NativeTransfer>();
 builder.Services.AddScoped<Odyssey.Client.Services.IMapStylesCache, Odyssey.Client.Services.MapStylesCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.IWeatherPointOptionsCache, Odyssey.Client.Services.WeatherPointOptionsCache>();
+// One claims refresh per signed-in session after a 403, shared by every page that asks (issue #509 §7.3, v5 §5).
+builder.Services.AddScoped<Odyssey.Client.Services.IClaimsRefresher, Odyssey.Client.Services.ClaimsRefresher>();
+builder.Services.AddScoped<Odyssey.Client.Services.IWeatherClaimsRefresher, Odyssey.Client.Services.WeatherClaimsRefresher>();
 builder.Services.AddScoped<Odyssey.Client.Services.IAccountLimitsCache, Odyssey.Client.Services.AccountLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IContractLimitsCache, Odyssey.Client.Services.ContractLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IPropertyLimitsCache, Odyssey.Client.Services.PropertyLimitsCache>();
 builder.Services.AddScoped<Odyssey.Client.Services.IFileAnalysisDisclosureCache, Odyssey.Client.Services.FileAnalysisDisclosureCache>();
+// One 60-second clock for every OdsRelativeTime on a page (issue #473 §4.1).
+builder.Services.AddScoped<Odyssey.Client.Services.RelativeTimeTicker>();
+// The news feed catalogue and tag list, per signed-in user (issue #473 §4.1, §8.3).
+builder.Services.AddScoped<Odyssey.Client.Services.INewsCatalogueCache, Odyssey.Client.Services.NewsCatalogueCache>();
+builder.Services.AddScoped<Odyssey.Client.Services.NewsStoreGate>();
 // Transient: one creator per dialog — the temporary ids it hands out are only meaningful to the
 // surface holding them.
 builder.Services.AddTransient<Odyssey.Client.Services.IContactQuickCreate, Odyssey.Client.Services.ContactQuickCreate>();

@@ -22,6 +22,27 @@ public sealed record JournalEntryIcsImportResult
     public int SkippedAttachmentCount { get; set; }
 
     public int SkippedPhotoCount { get; set; }
+
+    /// <summary>Inline files stored as new files by this import.</summary>
+    public int StoredFileCount { get; set; }
+
+    /// <summary>Inline files matched to a file already stored (same id or same content), so no copy was made.</summary>
+    public int ReusedFileCount { get; set; }
+
+    /// <summary>Inline photos added to the library by this import.</summary>
+    public int StoredPhotoCount { get; set; }
+
+    /// <summary>Inline photos matched to a library photo (same id or same content), so no copy was made.</summary>
+    public int ReusedPhotoCount { get; set; }
+
+    /// <summary>
+    /// Entries linked to a place, whether it already existed or was created by this import (issue #380 §8.4).
+    /// Zero unless the importer holds both <c>locations.read</c> and <c>locations.create</c>.
+    /// </summary>
+    public int PlacesLinked { get; set; }
+
+    /// <summary>Places this import created (a subset of what <see cref="PlacesLinked"/> counts).</summary>
+    public int PlacesCreated { get; set; }
 }
 
 /// <summary>A group of blocks skipped for the same reason, with a capped list of sample titles.</summary>

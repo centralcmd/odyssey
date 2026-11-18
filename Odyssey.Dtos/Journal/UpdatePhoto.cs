@@ -5,13 +5,12 @@ namespace Odyssey.Dtos.Journal;
 /// <summary>
 /// Update request for a library photo: replaces the editable metadata fields and the tag/person/album
 /// link sets, and sets the archived state (<see cref="Archived"/> = true archives, false restores).
-/// The underlying <c>FileId</c> is immutable and extraction never re-runs on update — the user's edited
-/// values are authoritative.
+/// The original is immutable and extraction never re-runs on update — the user's edited values are authoritative.
 /// </summary>
 public sealed record UpdatePhoto
 {
-    /// <summary>Optional new name for the backing file (Files store). Ignored when blank; applying a
-    /// rename requires the caller to hold <c>files.update</c>. The photo's <c>FileId</c> is immutable.</summary>
+    /// <summary>Optional new file name for the photo (issue #428 §5.4). Ignored when blank. Renames the photo's
+    /// download name under <c>photos.update</c>; the stored copy keeps its upload-time name.</summary>
     [StringLength(256)]
     public string? FileName { get; set; }
 

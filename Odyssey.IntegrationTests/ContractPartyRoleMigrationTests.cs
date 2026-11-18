@@ -129,7 +129,7 @@ public class ContractPartyRoleMigrationTests(MariaDbFixture fixture)
     public async Task The_unique_indexes_reject_a_duplicate_role_on_either_target_column()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contract = Guid.NewGuid();
         var account = Guid.NewGuid();
@@ -139,7 +139,6 @@ public class ContractPartyRoleMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
                 await SeedTargetsAsync(context, account, contact);
                 await SeedContractAsync(context, contract);
             }

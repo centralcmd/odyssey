@@ -147,7 +147,6 @@ public static class SystemSettingsKeys
     // ---------------------------------------------------------------------------------------------
 
     public const string FileAnalysisMaxTokens = "FileAnalysisMaxTokens";
-    public const string FileAnalysisMatchMaxVocabulary = "FileAnalysisMatchMaxVocabulary";
     public const string FileAnalysisMatchTimeoutSeconds = "FileAnalysisMatchTimeoutSeconds";
     public const string PhotoMetadataReadMegabytes = "PhotoMetadataReadMegabytes";
     public const string PhotoMetadataExtractionTimeoutSeconds = "PhotoMetadataExtractionTimeoutSeconds";
@@ -196,17 +195,22 @@ public static class SystemSettingsKeys
     public const string FileAnalysisModel = "FileAnalysisModel";
     public const string FileAnalysisBaseUrl = "FileAnalysisBaseUrl";
 
+    // Administrator guidance appended to the extraction and match prompts (issue #433). Multi-line,
+    // normalised by PromptAdditionRule; "" means no addition.
+    public const string FileAnalysisExtractionPromptAddition = "FileAnalysisExtractionPromptAddition";
+    public const string FileAnalysisMatchPromptAddition = "FileAnalysisMatchPromptAddition";
+
     // ---------------------------------------------------------------------------------------------
     // Weather (issue #348). The contact travels to MET Norway in the User-Agent of every weather
     // request, as MET's terms require; empty means nothing is fetched. The household default is a
-    // location id with no FK — WeatherLocationRules checks it is selectable on every write, and an
+    // location id with no FK — WeatherPointRules checks it is selectable on every write, and an
     // archived default is treated as unset on read.
     // ---------------------------------------------------------------------------------------------
 
     public const string WeatherUserAgentContact = "WeatherUserAgentContact";
     public const string WeatherRefreshIntervalMinutes = "WeatherRefreshIntervalMinutes";
-    public const string WeatherMaxTrackedLocations = "WeatherMaxTrackedLocations";
-    public const string WeatherDefaultLocationId = "WeatherDefaultLocationId";
+    public const string WeatherMaxTrackedPoints = "WeatherMaxTrackedPoints";
+    public const string WeatherDefaultPointId = "WeatherDefaultPointId";
 
     // ---------------------------------------------------------------------------------------------
     // Exchange-rate sync (issue #349). The global history start date is a string so that EMPTY can
@@ -218,12 +222,47 @@ public static class SystemSettingsKeys
     public const string ExchangeRateSyncIntervalHours = "ExchangeRateSyncIntervalHours";
 
     // ---------------------------------------------------------------------------------------------
+    // Instrument prices (issue #446 §8.4): when a watchlist price reads as stale, how long the price sync
+    // waits between scheduled runs, and how deep a new source binding backfills.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string InstrumentPriceStaleAfterDays = "InstrumentPriceStaleAfterDays";
+    public const string InstrumentPriceSyncIntervalHours = "InstrumentPriceSyncIntervalHours";
+    public const string InstrumentPriceSyncHistoryDays = "InstrumentPriceSyncHistoryDays";
+
+    // ---------------------------------------------------------------------------------------------
     // Filesystem object storage (issue #346). How long a released file stays on disk before the
     // worker's maintenance job removes it — the window a backup has to copy the file volumes after the
     // database dump. It is the retention period for deleted personal data, so it takes the security claim.
     // ---------------------------------------------------------------------------------------------
 
     public const string FileStorageDeletionGraceHours = "FileStorageDeletionGraceHours";
+
+    // ---------------------------------------------------------------------------------------------
+    // Background jobs (issue #409). How long a finished run stays in the shared run log before the
+    // worker's maintenance job prunes it.
+    // ---------------------------------------------------------------------------------------------
+
+    public const string JobRunRetentionDays = "JobRunRetentionDays";
+
+    // ---------------------------------------------------------------------------------------------
+    // News reader (issue #470 §11.1): the feed defaults and caps, the image and text quotas, the per-feed
+    // daily caps, and the private-host allow-list the worker's egress policy reads (security claim).
+    // ---------------------------------------------------------------------------------------------
+
+    public const string NewsDefaultFetchIntervalMinutes = "NewsDefaultFetchIntervalMinutes";
+    public const string NewsMaxFeeds = "NewsMaxFeeds";
+    public const string NewsImageMaxPerArticle = "NewsImageMaxPerArticle";
+    public const string NewsImageMaxSizeKb = "NewsImageMaxSizeKb";
+    public const string NewsImageStoreMaxGiB = "NewsImageStoreMaxGiB";
+    public const string NewsTextStoreMaxGiB = "NewsTextStoreMaxGiB";
+    public const string NewsFeedMaxArticlesPerDay = "NewsFeedMaxArticlesPerDay";
+    public const string NewsFeedMaxImageMbPerDay = "NewsFeedMaxImageMbPerDay";
+    public const string NewsPrivateHostAllowList = "NewsPrivateHostAllowList";
+
+    // News OPML import (issue #508 §8.5): the size cap (security claim, like every import size cap) and the entry cap.
+    public const string NewsOpmlMaxImportMegabytes = "NewsOpmlMaxImportMegabytes";
+    public const string NewsOpmlMaxImportEntries = "NewsOpmlMaxImportEntries";
 
     public static readonly string[] AllKeys =
     [
@@ -273,7 +312,6 @@ public static class SystemSettingsKeys
         JournalTaskMaxLinksPerKind,
         FileStorageMaxUploadMegabytes,
         FileAnalysisMaxTokens,
-        FileAnalysisMatchMaxVocabulary,
         FileAnalysisMatchTimeoutSeconds,
         PhotoMetadataReadMegabytes,
         PhotoMetadataExtractionTimeoutSeconds,
@@ -292,13 +330,30 @@ public static class SystemSettingsKeys
         FileAnalysisEnabled,
         FileAnalysisModel,
         FileAnalysisBaseUrl,
+        FileAnalysisExtractionPromptAddition,
+        FileAnalysisMatchPromptAddition,
         WeatherUserAgentContact,
         WeatherRefreshIntervalMinutes,
-        WeatherMaxTrackedLocations,
-        WeatherDefaultLocationId,
+        WeatherMaxTrackedPoints,
+        WeatherDefaultPointId,
         ExchangeRateHistoryStartDate,
         ExchangeRateSyncIntervalHours,
+        InstrumentPriceStaleAfterDays,
+        InstrumentPriceSyncIntervalHours,
+        InstrumentPriceSyncHistoryDays,
         FileStorageDeletionGraceHours,
+        JobRunRetentionDays,
+        NewsDefaultFetchIntervalMinutes,
+        NewsMaxFeeds,
+        NewsImageMaxPerArticle,
+        NewsImageMaxSizeKb,
+        NewsImageStoreMaxGiB,
+        NewsTextStoreMaxGiB,
+        NewsFeedMaxArticlesPerDay,
+        NewsFeedMaxImageMbPerDay,
+        NewsPrivateHostAllowList,
+        NewsOpmlMaxImportMegabytes,
+        NewsOpmlMaxImportEntries,
     ];
 
     /// <summary>

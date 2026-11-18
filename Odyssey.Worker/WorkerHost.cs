@@ -1,9 +1,13 @@
+using Odyssey.Core.FileStorage.Files;
+using Odyssey.Core.Journal.Originals;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Configuration;
 using Odyssey.Core.FileStorage;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.Journal.Thumbnails;
+using Odyssey.Core.Finance;
 using Odyssey.Core.Finance.ExchangeRateSync;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Core.Weather;
@@ -37,6 +41,10 @@ public static class WorkerHost
         services.AddPeriodicJob<WeatherScheduleJob>();
         services.AddExchangeRateSync();
         services.AddPeriodicJob<ExchangeRateSyncJob>();
+        // Instrument prices (issue #446): no production source is registered yet, so the job writes nothing but its
+        // heartbeat until one is.
+        Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(services);
+        services.AddPeriodicJob<Odyssey.Core.Finance.Instruments.Sync.InstrumentPriceSyncJob>();
         // The file store (issue #346 A3): shared with the API, which serves and writes; here the maintenance job
         // erases released files, sweeps abandoned writes, scrubs and reconciles the disk. The job verifies the volumes
         // before its first pass, so a failing verdict holds it alone.
@@ -45,9 +53,32 @@ public static class WorkerHost
         // Photo thumbnails (issue #362): the job and the Magick.NET decoder run here and nowhere else. A failing
         // self-test or volume holds this job alone (it reports PolicyFailed or StorageUnavailable); the others run on.
         services.AddPhotoThumbnails();
+        // Photo originals (issue #428): the content source the thumbnail job reads through, and the backfill that moves
+        // legacy originals out of FileBlob. The lease elects one runner per tick across replicas.
+        services.AddPhotoOriginals();
+        services.AddPeriodicJob<PhotoOriginalBackfillJob>();
+        // Files on the store (issue #448): the three file areas and the move of every remaining FileBlob onto them. The
+        // lease elects one runner per tick; a file a legacy photo wraps waits for the photo move above.
+        services.AddStoredFiles();
+        services.AddPeriodicJob<FileBlobBackfillJob>();
+        // News reader (issue #470): the NewsArticles storage feature and the egress client, shared with the API, and the
+        // fetch job — purge, fetch, ingest, images and maintenance — which runs here only (§7.9: the API makes no
+        // outbound request). Every replica runs it; the per-feed leases and the host throttle rows coordinate them.
+        Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsReader(services);
+        Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsFeedFetching(services);
+        services.AddPeriodicJob<Odyssey.Core.Internet.News.Jobs.NewsFeedJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();
+        // AI file analysis (issue #444): extraction runs here, never in the API. The registration is shared with the
+        // API (one redirect, credential and retry posture); the job re-checks each consent before sending, one job per
+        // process at a time. This container therefore needs egress to the provider host (docs/deployment.md).
+        services.AddFileAnalysis(builder.Configuration);
+        services.AddPeriodicJob<FileAnalysisQueueJob>();
+        // The shared run log's upkeep (issue #409 §3.4, §3.6): the stale-run sweep every 5 minutes, the retention
+        // prune once an hour. Infrastructure, not a catalogue job: it records no runs of its own.
+        services.AddJobRunRecording();
+        services.AddPeriodicJob<JobRunMaintenanceJob>();
 
         return builder;
     }

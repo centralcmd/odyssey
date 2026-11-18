@@ -31,7 +31,14 @@ public static class FileAnalysisConsent
     /// that is not a bare English noun, and the value is admin-editable.
     /// </summary>
     public static string Compose(string processor) =>
-        $"I\u2019m authorized to share this document and consent to sending the complete file to {processor} for analysis.";
+        $"I\u2019m authorized to share this document and consent to sending the complete file to {processor} for analysis. {BackgroundSentence}";
+
+    /// <summary>
+    /// The sentence the queued analysis adds (issue #445). Part of the composed consent, so the server stores it
+    /// verbatim with every consent; not part of the disclosure version, so adding it invalidates no open gate.
+    /// </summary>
+    public const string BackgroundSentence =
+        "The document is sent in the background shortly after you confirm. Once confirmed, it can\u2019t be cancelled, and closing this window won\u2019t stop it.";
 }
 
 /// <summary>

@@ -3,6 +3,7 @@
 // issued outside the services, so the ENGINE resolves the foreign keys rather than application code.
 #pragma warning disable EF1002
 
+using Odyssey.Core.Locations;
 using System.Collections.Concurrent;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
@@ -418,7 +419,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
             Type = PropertyType.RealEstate,
             CurrencyCode = "USD",
             RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.House, City = "Oslo", CountryCode = "NO" },
-        }, userId: null)).PropertyId;
+        }, userId: null, claims: LocationClaims.Trusted)).PropertyId;
 
     private static async Task<Guid> SeedFileAsync(OdysseyContext context, string uploaderId = Attacher)
     {
@@ -546,9 +547,7 @@ public class PropertyFileRelationalTests(MariaDbFixture fixture)
 
     private async Task MigrateAsync()
     {
-        await RecreateAsync();
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext(IInterceptor? interceptor = null)

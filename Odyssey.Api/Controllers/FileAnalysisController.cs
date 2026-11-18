@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.RateLimiting;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos;
 using Odyssey.Api.Identity;
@@ -20,6 +21,9 @@ namespace Odyssey.Api.Controllers;
 [Route("api/file-analysis")]
 public sealed class FileAnalysisController : ControllerBase
 {
+    /// <summary>The advisory poll interval a non-terminal job read carries (issue #444 §5.2).</summary>
+    private const string PollIntervalSeconds = "2";
+
     private readonly ILogger<FileAnalysisController> logger;
     private readonly FileAnalysisService fileAnalysisService;
     private readonly UserManager<ApplicationUser> userManager;
@@ -128,23 +132,34 @@ public sealed class FileAnalysisController : ControllerBase
     [Authorize(Policy = PermissionClaims.FileAnalysisRead)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingFileAnalysisJob))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Get the status and candidate transactions for an analysis job.",
-        Description = "Returns the job metadata and all extracted candidate transactions.")]
+        Description = "The polling endpoint (issue #444): while the job is Queued or Running the response carries "
+            + "Retry-After: 2; candidates arrive with Completed. Readable while analysis is switched off.")]
     public async Task<IActionResult> GetJob(
         [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
         Guid analysisJobId, CancellationToken cancellationToken = default)
     {
         var job = await fileAnalysisService.GetJobAsync(analysisJobId, cancellationToken);
+
+        // The read can fail a stale job inline (a write under a read claim, deliberately), so no cache may keep an
+        // answer: every poll must see the job as it is now.
+        Response.Headers.CacheControl = "no-store";
         if (job is null)
             return this.NotFoundProblem($"Analysis job {analysisJobId} not found.");
+
+        // Advisory polling interval while the job can still change.
+        if (job.Status is Odyssey.Dtos.Finance.FileAnalysisJobStatus.New or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Queued
+            or Odyssey.Dtos.Finance.FileAnalysisJobStatus.Running)
+            Response.Headers.RetryAfter = PollIntervalSeconds;
         return Ok(job);
     }
 
     [HttpPost("{analysisJobId}/match", Name = "MatchAnalysisCandidates")]
     [Authorize(Policy = PermissionClaims.FileAnalysisCreate)]
+    [EnableRateLimiting(FileAnalysisRateLimiting.MatchPolicy)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingFileAnalysisJob))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
@@ -152,9 +167,11 @@ public sealed class FileAnalysisController : ControllerBase
     [ProducesResponseType(StatusCodes.Status500InternalServerError, Type = typeof(ProblemDetails))]
     [SwaggerOperation(
         Summary = "Run (or re-run) the AI match step for an extraction-completed analysis job.",
-        Description = "Sends the user's contact and tag names to the AI provider to resolve each candidate's " +
+        Description = "Sends the user's active contacts (names, and aliases when the job's consent covers them) and " +
+                      "tags (names, and descriptions likewise) to the AI provider to resolve each candidate's " +
                       "merchant/category, persists the matches, and returns the updated job. Synchronous. A provider " +
-                      "failure or over-cap is recorded on matchStatus and never blocks importing the candidates.")]
+                      "failure is recorded on matchStatus and never blocks importing the candidates. 409 with code " +
+                      "file_analysis_destination_changed when the provider settings changed since the analysis.")]
     public async Task<IActionResult> MatchCandidates(
         [FromRoute(Name = "analysisJobId")] [SwaggerParameter("Analysis Job ID", Required = true)]
         Guid analysisJobId, CancellationToken cancellationToken = default)

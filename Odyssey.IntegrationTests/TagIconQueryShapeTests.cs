@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -40,33 +41,33 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         {
             var seeded = await SeedAsync();
 
-            var entries = await CountAsync(context => Entries(context).ListAsync(new JournalEntriesQueryParams { Limit = RecordCount }));
+            var entries = await CountAsync(context => Entries(context).ListAsync(new JournalEntriesQueryParams { Limit = RecordCount }, claims: LocationClaims.Trusted));
             Assert.Equal(RecordCount, entries.Result.Items.Count);
-            Assert.All(entries.Result.Items, entry => Assert.Equal("beach_access", entry.DisplayIcon));
+            Assert.All(entries.Result.Items, entry => Assert.Equal(("beach_access", "#B23B3B"), (entry.DisplayIcon, entry.DisplayColor)));
             Assert.Equal(ListEntryCommands, entries.Commands);
 
             var tasks = await CountAsync(context => Tasks(context).ListAsync(new JournalTasksQueryParams { Limit = RecordCount }));
             Assert.Equal(RecordCount, tasks.Result.Items.Count);
-            Assert.All(tasks.Result.Items, task => Assert.Equal("beach_access", task.DisplayIcon));
+            Assert.All(tasks.Result.Items, task => Assert.Equal(("beach_access", "#B23B3B"), (task.DisplayIcon, task.DisplayColor)));
             Assert.Equal(ListTaskCommands, tasks.Commands);
 
             var photos = await CountAsync(context => Photos(context).ListAsync(new PhotosQueryParams { Limit = RecordCount }));
             Assert.Equal(RecordCount, photos.Result.Items.Count);
-            Assert.All(photos.Result.Items, photo => Assert.Equal("beach_access", photo.DisplayIcon));
+            Assert.All(photos.Result.Items, photo => Assert.Equal(("beach_access", "#B23B3B"), (photo.DisplayIcon, photo.DisplayColor)));
             Assert.Equal(ListPhotoCommands, photos.Commands);
 
-            var entry = await CountAsync(context => Entries(context).Get(seeded.EntryId));
-            Assert.Equal("beach_access", entry.Result!.DisplayIcon);
+            var entry = await CountAsync(context => Entries(context).Get(seeded.EntryId, claims: LocationClaims.Trusted));
+            Assert.Equal(("beach_access", "#B23B3B"), (entry.Result!.DisplayIcon, entry.Result.DisplayColor));
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
             Assert.InRange(entry.Commands, GetEntryCommandsBefore, GetEntryCommandsBefore + 1);
 
             var task = await CountAsync(context => Tasks(context).Get(seeded.TaskId));
-            Assert.Equal("beach_access", task.Result!.DisplayIcon);
+            Assert.Equal(("beach_access", "#B23B3B"), (task.Result!.DisplayIcon, task.Result.DisplayColor));
             Assert.InRange(task.Commands, GetTaskCommandsBefore, GetTaskCommandsBefore + 1);
 
             var photo = await CountAsync(context => Photos(context).Get(seeded.PhotoId));
-            Assert.Equal("beach_access", photo.Result!.DisplayIcon);
-            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands);
+            Assert.Equal(("beach_access", "#B23B3B"), (photo.Result!.DisplayIcon, photo.Result.DisplayColor));
+            Assert.InRange(photo.Commands, GetPhotoCommandsBefore, GetPhotoCommandsBefore + 1 + ThumbnailReadinessCommands + OriginalDescriptionCommands);
         }
         finally
         {
@@ -99,7 +100,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             var entry = await CountAsync(context => Entries(context).Create(new NewJournalEntry
             {
                 Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = journalTagIds,
-            }, Author));
+            }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("beach_access", entry.Result.DisplayIcon);
             Assert.Equal([seeded.Art, seeded.Trip, seeded.Zoo], entry.Result.TagIds);
             Assert.InRange(entry.Commands, CreateEntryCommandsBefore, CreateEntryCommandsBefore + 1);
@@ -107,7 +108,7 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
             var updatedEntry = await CountAsync(context => Entries(context).Update(entry.Result.JournalEntryId, new UpdateJournalEntry
             {
                 Title = "New", Content = "Dear journal.", EntryDate = DateTime.UtcNow, TagIds = [seeded.Zoo],
-            }, Author));
+            }, Author, claims: LocationClaims.Trusted));
             Assert.Equal("pets", updatedEntry.Result!.DisplayIcon);
             Assert.InRange(updatedEntry.Commands, UpdateEntryCommandsBefore, UpdateEntryCommandsBefore + 1);
 
@@ -155,6 +156,13 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     // Issue #362: a photo detail read counts its thumbnails in one query — one per read, never one per tag.
     private const int ThumbnailReadinessCommands = 1;
 
+    // Issue #428: a photo detail read describes its original (name, type, size) through PhotoOriginalSource, which
+    // resolves a moved and a legacy photo alike — one query per read, never one per tag.
+    private const int OriginalDescriptionCommands = 1;
+
+    // The winning tag's lower-case colour must come back normalised; the icon-less "art" tag's must not win.
+    private static string? SeedColor(string name) => name switch { "Trip" => "#b23b3b", "art" => "#15803D", _ => null };
+
     private sealed record Seeded(Guid EntryId, Guid TaskId, Guid PhotoId, Guid Art, Guid Trip, Guid Zoo);
 
     private async Task<Seeded> SeedAsync()
@@ -163,11 +171,11 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
         var now = DateTime.UtcNow;
 
         var journal = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new JournalTag { JournalTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new JournalTag { JournalTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         var task = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new JournalTaskTag { JournalTaskTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new JournalTaskTag { JournalTaskTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         var photo = new[] { ("art", (string?)null), ("Trip", "beach_access"), ("zoo", "pets") }
-            .Select(spec => new PhotoTag { PhotoTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2 }).ToList();
+            .Select(spec => new PhotoTag { PhotoTagId = Guid.NewGuid(), Name = spec.Item1, Icon = spec.Item2, Color = SeedColor(spec.Item1) }).ToList();
         context.JournalTags.AddRange(journal);
         context.JournalTaskTags.AddRange(task);
         context.PhotoTags.AddRange(photo);
@@ -231,16 +239,17 @@ public class TagIconQueryShapeTests(MariaDbFixture fixture)
     {
         var files = new FileLookup(context);
         return new JournalEntryService(
-            context, new ContactLookup(context), files, new PhotoLookup(context, files, null!), new StubJournalLimitsLookup());
+            context, new ContactLookup(context), files, new PhotoLookup(context), new StubJournalLimitsLookup());
     }
 
     private static JournalTaskService Tasks(OdysseyContext context) =>
         new(context, new FileLookup(context), new StubJournalLimitsLookup());
 
     private static PhotoService Photos(OdysseyContext context) =>
-        new(context, new ContactLookup(context), new FileLookup(context), new FileReferenceGuard(context), null!,
+        new(context, new ContactLookup(context), new FileReferenceGuard(context), null!,
             new StubJournalLimitsLookup(), NullLogger<PhotoService>.Instance,
-            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System));
+            new Odyssey.Core.Journal.Thumbnails.PhotoThumbnailService(context, null!, TimeProvider.System),
+            null!, null!, new FixedUploadLimits(64L * 1024 * 1024));
 
     private OdysseyContext NewContext(CommandCounter? counter)
     {

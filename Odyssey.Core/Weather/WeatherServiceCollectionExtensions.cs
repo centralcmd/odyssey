@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.DependencyInjection;
+using Odyssey.Core.Jobs;
 using Odyssey.Core.SystemSettings;
 
 namespace Odyssey.Core.Weather;
@@ -20,8 +21,9 @@ public static class WeatherServiceCollectionExtensions
     public static IServiceCollection AddWeatherFetching(this IServiceCollection services)
     {
         services.AddScoped<IWeatherSettingsLookup, WeatherSettingsLookup>();
-        services.AddSingleton<IWeatherLocationRules, WeatherLocationRules>();
+        services.AddSingleton<IWeatherPointRules, WeatherPointRules>();
         services.AddScoped<WeatherFetchService>();
+        services.AddJobRunRecording();
 
         foreach (var (client, baseAddress) in new[]
         {

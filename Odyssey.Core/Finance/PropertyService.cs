@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
+using Odyssey.Core.Locations;
 using Odyssey.Core.Pagination;
+using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
@@ -66,7 +68,7 @@ public class PropertyService
     /// </param>
     public async Task<PagedResult<ExistingProperty>> ListAsync(
         PropertiesQueryParams query, bool includeEstimates = false, CancellationToken cancellationToken = default,
-        bool includeContractCount = false)
+        bool includeContractCount = false, LocationClaims? claims = null)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var q = context.Properties.AsNoTracking().AsQueryable();
@@ -80,8 +82,9 @@ public class PropertyService
                 EF.Functions.Like(p.Description, pattern) ||
                 (p.Notes != null && EF.Functions.Like(p.Notes, pattern)) ||
                 (p.RealEstateDetails != null && (
-                    (p.RealEstateDetails.AddressLine != null && EF.Functions.Like(p.RealEstateDetails.AddressLine, pattern)) ||
-                    (p.RealEstateDetails.City != null && EF.Functions.Like(p.RealEstateDetails.City, pattern)) ||
+                    (p.RealEstateDetails.Location != null && (
+                        (p.RealEstateDetails.Location.Line1 != null && EF.Functions.Like(p.RealEstateDetails.Location.Line1, pattern)) ||
+                        (p.RealEstateDetails.Location.City != null && EF.Functions.Like(p.RealEstateDetails.Location.City, pattern)))) ||
                     (p.RealEstateDetails.CadastralNumber != null && EF.Functions.Like(p.RealEstateDetails.CadastralNumber, pattern)))) ||
                 (p.VehicleDetails != null && (
                     (p.VehicleDetails.RegistrationNumber != null && EF.Functions.Like(p.VehicleDetails.RegistrationNumber, pattern)) ||
@@ -139,7 +142,7 @@ public class PropertyService
         var (safeOffset, safeLimit) = ListQuery.ResolveWindow(query.Offset, query.Limit);
 
         var properties = await ordered
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .Skip(safeOffset)
             .Take(safeLimit)
@@ -147,6 +150,7 @@ public class PropertyService
 
         var items = properties.Select(p => ToDto(p, now)).ToList();
         await EnrichAsync(items, includeEstimates, includeContractCount, now, cancellationToken);
+        await FillOtherUsesAsync(items, claims ?? LocationClaims.None, cancellationToken);
 
         return new PagedResult<ExistingProperty>
         {
@@ -161,11 +165,11 @@ public class PropertyService
     /// <param name="includeContractCount">As on <see cref="ListAsync"/>.</param>
     public async Task<ExistingProperty?> Get(
         Guid id, bool includeEstimates = false, CancellationToken cancellationToken = default,
-        bool includeContractCount = false)
+        bool includeContractCount = false, LocationClaims? claims = null)
     {
         var property = await context.Properties
             .AsNoTracking()
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
 
@@ -175,6 +179,7 @@ public class PropertyService
         var now = timeProvider.GetUtcNow().UtcDateTime;
         var dto = ToDto(property, now);
         await EnrichAsync([dto], includeEstimates, includeContractCount, now, cancellationToken);
+        await FillOtherUsesAsync([dto], claims ?? LocationClaims.None, cancellationToken);
         return dto;
     }
 
@@ -349,9 +354,12 @@ public class PropertyService
     /// from the request body.
     /// </param>
     /// <exception cref="DomainValidationException">A shape, currency, date or year rule fails.</exception>
+    /// <param name="claims">The caller's location claims (issue #380 §5.4); null is no capability at all (pass <see cref="LocationClaims.Trusted"/> explicitly for a trusted, non-HTTP caller).</param>
     public async Task<ExistingProperty> Create(
-        NewProperty newProperty, string? userId, CancellationToken cancellationToken = default)
+        NewProperty newProperty, string? userId, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
+        claims ??= LocationClaims.None;
         var type = ValidateShape(newProperty);
         var currencyCode = CurrencyValidationService.Normalize(newProperty.CurrencyCode);
         await CurrencyValidationService.EnsureSupportedAndActive(
@@ -374,6 +382,8 @@ public class PropertyService
         };
 
         ApplyBaseAndDetails(property, newProperty, now);
+        var resolver = new LocationResolver(context, timeProvider, logger);
+        await ApplyAddressAsync(resolver, property, newProperty, claims, userId, isUpdate: false, cancellationToken);
 
         context.Properties.Add(property);
 
@@ -383,10 +393,11 @@ public class PropertyService
             context, property, PropertyEventCatalogue.Detect(PropertyStamps.None, PropertyStamps.Of(property), now),
             userId, now);
 
-        await context.SaveChangesAsync(cancellationToken);
+        await resolver.SaveChangesAsync(cancellationToken);
 
         var dto = ToDto(property, now);
         await ResolveHomeownerAssociationsAsync([dto], cancellationToken);
+        await FillOtherUsesAsync([dto], claims, cancellationToken);
         return dto;
     }
 
@@ -400,68 +411,94 @@ public class PropertyService
     /// </exception>
     /// <param name="userId">The acting user, attributed on any system events the update records.</param>
     public async Task<ExistingProperty?> Update(
-        Guid id, NewProperty putProperty, string? userId, CancellationToken cancellationToken = default)
+        Guid id, NewProperty putProperty, string? userId, CancellationToken cancellationToken = default,
+        LocationClaims? claims = null)
     {
-        var property = await context.Properties
-            .Include(p => p.RealEstateDetails)
-            .Include(p => p.VehicleDetails)
-            .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
-        if (property is null)
+        claims ??= LocationClaims.None;
+        ExistingProperty? result = null;
+        string? addressChange = null;
+
+        // One transaction: an AllUses address edit locks and recounts the place, and must commit with the
+        // property or not at all (issue #380 §5.4). Every attempt re-reads the property.
+        await LocationTransactions.ExecuteAsync(context, async () =>
+        {
+            result = null;
+            addressChange = null;
+            var property = await context.Properties
+                .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
+                .Include(p => p.VehicleDetails)
+                .FirstOrDefaultAsync(p => p.PropertyId == id, cancellationToken);
+            if (property is null)
+                return;
+
+            var type = ValidateShape(putProperty);
+
+            // A cross-row bound — it depends on the persisted row — so it is a 422 from here, not a 400 from
+            // model validation. The body is not silently re-typed: a caller who believed it was changing the
+            // type is told it did not.
+            if (type != property.Type)
+            {
+                throw new DomainUnprocessableException(
+                    "A property's type cannot be changed. Delete this property and create a new one of the required type.",
+                    nameof(NewProperty.Type));
+            }
+
+            var currencyCode = CurrencyValidationService.Normalize(putProperty.CurrencyCode);
+            await CurrencyValidationService.EnsureSupportedAndActive(
+                context, currencyCode, nameof(NewProperty.CurrencyCode), cancellationToken);
+
+            // Every estimate is stored in the property currency, so changing it would silently reinterpret
+            // the recorded values — the rule AccountService applies to account estimates.
+            if (!string.Equals(property.CurrencyCode, currencyCode, StringComparison.Ordinal)
+                && await context.PropertyEstimates.AnyAsync(e => e.PropertyId == id, cancellationToken))
+            {
+                throw new DomainValidationException(
+                    "Property currency cannot be changed when the property has value estimates.");
+            }
+
+            // Change-only (§8.3): a kept link is never re-validated, so a legacy row whose contact was later
+            // archived or re-typed does not freeze every other field on the property.
+            if (type == PropertyType.RealEstate
+                && putProperty.RealEstateDetails!.HomeownerAssociationId is { } associationId
+                && associationId != property.RealEstateDetails?.HomeownerAssociationId)
+            {
+                await ValidateHomeownerAssociation(associationId, cancellationToken);
+            }
+
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var before = PropertyStamps.Of(property);
+            property.Name = putProperty.Name;
+            property.Description = putProperty.Description;
+            property.CurrencyCode = currencyCode;
+            property.UpdatedAt = now;
+            ApplyArchiveTransition(property, putProperty.Archived, now);
+            ApplyBaseAndDetails(property, putProperty, now);
+            var resolver = new LocationResolver(context, timeProvider, logger);
+            addressChange = await ApplyAddressAsync(resolver, property, putProperty, claims, userId, isUpdate: true, cancellationToken);
+
+            // After ApplyBaseAndDetails, whose date and year rules can still throw: a refused write stages
+            // nothing, and an accepted one commits the change and its events in the same save.
+            PropertyEventRecorder.StageAll(
+                context, property, PropertyEventCatalogue.Detect(before, PropertyStamps.Of(property), now), userId, now);
+
+            await resolver.SaveChangesAsync(cancellationToken);
+
+            result = ToDto(property, now);
+        }, System.Data.IsolationLevel.ReadCommitted, cancellationToken);
+
+        if (result is null)
             return null;
 
-        var type = ValidateShape(putProperty);
-
-        // A cross-row bound — it depends on the persisted row — so it is a 422 from here, not a 400 from
-        // model validation. The body is not silently re-typed: a caller who believed it was changing the
-        // type is told it did not.
-        if (type != property.Type)
+        if (addressChange is not null)
         {
-            throw new DomainUnprocessableException(
-                "A property's type cannot be changed. Delete this property and create a new one of the required type.",
-                nameof(NewProperty.Type));
+            logger.LogInformation(
+                "Property {PropertyId} address {AddressChange} by {ActorUserId}; location {LocationId}.",
+                id, addressChange, userId, result.RealEstateDetails?.LocationId);
         }
 
-        var currencyCode = CurrencyValidationService.Normalize(putProperty.CurrencyCode);
-        await CurrencyValidationService.EnsureSupportedAndActive(
-            context, currencyCode, nameof(NewProperty.CurrencyCode), cancellationToken);
-
-        // Every estimate is stored in the property currency, so changing it would silently reinterpret
-        // the recorded values — the rule AccountService applies to account estimates.
-        if (!string.Equals(property.CurrencyCode, currencyCode, StringComparison.Ordinal)
-            && await context.PropertyEstimates.AnyAsync(e => e.PropertyId == id, cancellationToken))
-        {
-            throw new DomainValidationException(
-                "Property currency cannot be changed when the property has value estimates.");
-        }
-
-        // Change-only (§8.3): a kept link is never re-validated, so a legacy row whose contact was later
-        // archived or re-typed does not freeze every other field on the property.
-        if (type == PropertyType.RealEstate
-            && putProperty.RealEstateDetails!.HomeownerAssociationId is { } associationId
-            && associationId != property.RealEstateDetails?.HomeownerAssociationId)
-        {
-            await ValidateHomeownerAssociation(associationId, cancellationToken);
-        }
-
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var before = PropertyStamps.Of(property);
-        property.Name = putProperty.Name;
-        property.Description = putProperty.Description;
-        property.CurrencyCode = currencyCode;
-        property.UpdatedAt = now;
-        ApplyArchiveTransition(property, putProperty.Archived, now);
-        ApplyBaseAndDetails(property, putProperty, now);
-
-        // After ApplyBaseAndDetails, whose date and year rules can still throw: a refused write stages
-        // nothing, and an accepted one commits the change and its events in the same save.
-        PropertyEventRecorder.StageAll(
-            context, property, PropertyEventCatalogue.Detect(before, PropertyStamps.Of(property), now), userId, now);
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        var dto = ToDto(property, now);
-        await ResolveHomeownerAssociationsAsync([dto], cancellationToken);
-        return dto;
+        await ResolveHomeownerAssociationsAsync([result], cancellationToken);
+        await FillOtherUsesAsync([result], claims, cancellationToken);
+        return result;
     }
 
     /// <summary>
@@ -489,7 +526,7 @@ public class PropertyService
     public async Task<bool> Delete(Guid id, string? userId, CancellationToken cancellationToken = default)
     {
         var property = await context.Properties
-            .Include(p => p.RealEstateDetails)
+            .Include(p => p.RealEstateDetails).ThenInclude(d => d!.Location)
             .Include(p => p.VehicleDetails)
             .Include(p => p.Estimates)
             .Include(p => p.SmartTags)
@@ -606,10 +643,6 @@ public class PropertyService
 
             property.RealEstateDetails ??= new RealEstateDetails();
             property.RealEstateDetails.Kind = details.Kind;
-            property.RealEstateDetails.AddressLine = details.AddressLine;
-            property.RealEstateDetails.PostalCode = details.PostalCode;
-            property.RealEstateDetails.City = details.City;
-            property.RealEstateDetails.CountryCode = details.CountryCode?.Trim().ToUpperInvariant();
             property.RealEstateDetails.CadastralNumber = details.CadastralNumber;
             property.RealEstateDetails.LivingAreaSqm = details.LivingAreaSqm;
             property.RealEstateDetails.PlotAreaSqm = details.PlotAreaSqm;
@@ -634,6 +667,119 @@ public class PropertyService
             property.VehicleDetails.Model = details.Model;
             property.VehicleDetails.ModelYear = details.ModelYear;
             property.VehicleDetails.FirstRegisteredDate = DateTimeNormalization.NormalizeToUtc(details.FirstRegisteredDate);
+        }
+    }
+
+    /// <summary>
+    /// Links a real-estate property to its place (issue #380 §5.4), by id or by the four fields, under the
+    /// contact address rules (§5.3) with three differences: a partial address is accepted; all four fields
+    /// empty with no id unlinks, needing no claim beyond <c>properties.update</c> (v8); and an <c>AllUses</c>
+    /// edit writes only <c>Line1</c>, <c>PostalCode</c>, <c>City</c> and <c>CountryCode</c>, keeping the
+    /// place's <c>Line2</c> and <c>Region</c>. Fields equal to the linked place's four keep the link, which
+    /// covers a partial, keyless address. Nothing here deletes a place.
+    /// </summary>
+    /// <returns>What happened to the link, for the audit line.</returns>
+    private async Task<string?> ApplyAddressAsync(
+        LocationResolver resolver, Property property, NewProperty source, LocationClaims claims, string? userId,
+        bool isUpdate, CancellationToken cancellationToken)
+    {
+        if (property.Type != PropertyType.RealEstate || source.RealEstateDetails is not { } details)
+            return null;
+
+        var target = property.RealEstateDetails!;
+        var current = target.LocationId is null ? null : target.Location;
+        var fields = LocationAddress.Of(details.AddressLine, null, details.PostalCode, details.City, null, details.CountryCode);
+        if (fields.CountryCode is { } country && (country.Length != 2 || !country.All(char.IsAsciiLetter)))
+        {
+            throw new DomainValidationException("The country must be a two-letter code.", null, AddressField(nameof(RealEstateDetailsDto.CountryCode)));
+        }
+
+        if (details.LocationId is { } id)
+        {
+            // A client clearing the address must also null the id (v8-L2): the stored id with empty fields
+            // reads as fields that differ from the place's.
+            if (id == current?.LocationId && fields.IsEmpty && !FourOf(current).IsEmpty)
+            {
+                throw BothSentMismatch();
+            }
+
+            var linked = await resolver.LinkByIdAsync(id, current?.LocationId, requireAddress: true, claims, cancellationToken);
+            if (!fields.IsEmpty && fields != FourOf(linked))
+            {
+                throw BothSentMismatch();
+            }
+
+            target.LocationId = linked.LocationId;
+            target.Location = linked;
+            return linked.LocationId == current?.LocationId ? null : "relinked";
+        }
+
+        if (fields.IsEmpty)
+        {
+            if (current is null)
+                return null;
+
+            target.LocationId = null;
+            target.Location = null;
+            return "unlinked";
+        }
+
+        // The optional geocode (§5.3a, v9): validated on every fields-path write that is not an unlink, and
+        // applied only to a place the resolver creates below — never to a kept link or an in-place edit.
+        var geocode = LocationGeocode.From(
+            details.Latitude, details.Longitude, details.TimeZoneId, details.Source, details.SourceReference);
+
+        if (current is not null && fields == FourOf(current))
+            return null;
+
+        if (current is not null && isUpdate)
+        {
+            var resulting = LocationResolver.Resulting(current, fields, propertyFields: true);
+            var sameKey = resulting.Key is { } key && key == current.AddressKey;
+            if (sameKey || details.ApplyTo == AddressApplyTo.AllUses)
+            {
+                await resolver.EditInPlaceAsync(
+                    new LocationResolver.InPlaceEdit(current.LocationId, fields, PropertyFields: true,
+                        details.ExpectedOtherUses, LocationReferenceGuard.Kind.Property),
+                    claims, userId, cancellationToken);
+                return "edited in place";
+            }
+
+            if (details.ApplyTo != AddressApplyTo.ThisRecord)
+            {
+                throw new DomainUnprocessableException(
+                    "Say whether the new address applies to this property only or to every use of the place.", "applyTo");
+            }
+        }
+
+        var location = (await resolver.FindOrCreateAsync(
+            fields, LocationSource.PropertyAddress, userId, claims, cancellationToken, geocode)).Location;
+        target.LocationId = location.LocationId;
+        target.Location = location;
+        return "linked";
+    }
+
+    private static LocationAddress FourOf(Odyssey.Context.Location location) =>
+        LocationAddress.Of(location.Line1, null, location.PostalCode, location.City, null, location.CountryCode);
+
+    private static string AddressField(string member) => $"{nameof(NewProperty.RealEstateDetails)}.{member}";
+
+    private static DomainUnprocessableException BothSentMismatch() => new(
+        "Send either a place or address fields; these fields do not match that place.", LocationResolver.LocationIdField);
+
+    /// <summary>Fills <see cref="RealEstateDetailsDto.OtherUses"/> from one batch of counts.</summary>
+    private async Task FillOtherUsesAsync(IReadOnlyList<ExistingProperty> dtos, LocationClaims claims, CancellationToken cancellationToken)
+    {
+        var linked = dtos.Select(d => d.RealEstateDetails).Where(d => d?.LocationId is not null).ToList();
+        if (linked.Count == 0)
+            return;
+
+        var counts = await new LocationReferenceGuard(context).CountAsync(linked.Select(d => d!.LocationId!.Value).ToList(), cancellationToken);
+        foreach (var details in linked)
+        {
+            details!.OtherUses = LocationReferenceGuard.OtherUses(
+                counts.GetValueOrDefault(details.LocationId!.Value) ?? LocationReferenceGuard.Counts.Zero,
+                LocationReferenceGuard.Kind.Property, claims);
         }
     }
 

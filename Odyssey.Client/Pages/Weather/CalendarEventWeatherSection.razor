@@ -1,0 +1,172 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@*
+    CalendarEventWeatherSection — the read-only Weather section of the event dialog, Edit mode only (issue #363
+    §3.4, §3.5; design system · WeatherCalendarJournal.jsx). Hourly rows for a timed event, static day tiles for an
+    all-day one, and every state with its way out.
+
+    It is a labelled group under an OdsSectionDivider, not a heading: the modal's title is an h6, so a heading
+    here would sit out of order. Without weather.read nothing renders — no label, no placeholder. It loads after
+    the form and never takes focus on load. Every message is fixed client text: no server string, no toast.
+*@
+
+@if (_canRead)
+{
+    <div class="wx-ev" role="group" aria-labelledby="@LabelId" aria-busy="@(_phase == Phase.Loading ? "true" : null)">
+        <OdsSectionDivider Label="Weather" HeadingId="@LabelId" HeadingLevel="0" />
+        @* Present from the first render, so the first dirty transition is announced once. *@
+        <p class="wx-ev-dirty" role="status">@(Dirty ? "Save to update the weather." : null)</p>
+        @Body
+    </div>
+}
+
+@code {
+    private RenderFragment Body => __builder =>
+    {
+        switch (_phase)
+        {
+            case Phase.Loading:
+                <table class="wx-ev-skel" aria-hidden="true">
+                    <tbody>
+                        @for (var i = 0; i < 3; i++)
+                        {
+                            <OdsSkeletonRow Columns="4" />
+                        }
+                    </tbody>
+                </table>
+                break;
+            case Phase.RateLimited:
+                @Message("status", "hourglass_bottom", "Weather is resting for a moment. You can try again in a few seconds.", RetryButton)
+                break;
+            case Phase.Forbidden:
+                @Message("alert", "lock", "You no longer have access to weather.", null)
+                break;
+            case Phase.NotFound:
+                @Message("alert", "event_busy", "This event no longer exists.", null)
+                break;
+            case Phase.Error:
+                @Message("alert", "cloud_off", "Weather couldn’t be loaded. The event is unaffected.", RetryButton)
+                break;
+            default:
+                @Ready
+                break;
+        }
+    };
+
+    private RenderFragment Ready => __builder =>
+    {
+        if (_response is not { } r)
+            return;
+
+        var name = r.Point?.Name ?? "this point";
+        switch (r.Status)
+        {
+            case WeatherStatus.NoPlace:
+                var noPlace = _canReadPoints ? Action("Go to Weather points", "/weather-points") : Text("An administrator can set one up.");
+                @Message("status", "location_off", "No weather point covers this event’s place, and no default is set.", noPlace)
+                break;
+            case WeatherStatus.NoData:
+            case WeatherStatus.Ok when r.IsAllDay ? r.Days.Count == 0 : r.Steps.Count == 0:
+                var hint = Past && _canReadPoints && _canUpdatePoints && r.Point is not null ? HistoryHint(PointHref(r.Point)) : null;
+                @Message("status", "cloud_queue", $"No weather is stored for {name} on this date.", hint)
+                break;
+            case WeatherStatus.NotConfigured:
+                if (_canReadSettings)
+                {
+                    @Message("status", "settings", "Weather needs a contact address for MET Norway.", Action("Open System settings", "/settings"))
+                }
+                else
+                {
+                    @Message("status", "settings", "Weather isn’t set up yet.", null)
+                }
+                break;
+            case WeatherStatus.OutOfRange:
+                @Message("status", "event_upcoming", "The forecast reaches about 10 days ahead. Check back closer to the date.", null)
+                break;
+            case WeatherStatus.WeatherDisabled:
+                var open = _canReadPoints && r.Point is not null ? Action("Open in Weather points", PointHref(r.Point)) : null;
+                @Message("status", "cloud_off", $"{name}’s forecast is turned off.", open)
+                break;
+            default:
+                <WeatherWhereLine ResolvedFrom="r.ResolvedFrom" Point="r.Point" LinkedLocation="r.LinkedLocation" DistanceKm="r.DistanceKm" Noun="event" />
+                if (!r.IsAllDay)
+                {
+                    <p class="wx-ev-line">@IssuedLine(r)</p>
+                }
+                if (r.Stale)
+                {
+                    <p class="wx-ev-line wx-stale"><span aria-hidden="true"><OdsMIcon Name="cloud_off" Size="15" /></span>Not up to date: showing the last forecast MET Norway sent.</p>
+                }
+                if (r.IsAllDay)
+                {
+                    if (SpanDays > WeatherRules.AllDayMaxDays)
+                    {
+                        <p class="wx-ev-line">Showing the first @WeatherRules.AllDayMaxDays days.</p>
+                    }
+                    <ul class="wx-days wx-days-static" role="list" aria-label="@($"Weather for {EventTitle}, by day")">
+                        @foreach (var day in r.Days)
+                        {
+                            <li class="wx-day" @key="day.Date"><WeatherDayTile Day="day" PreferMeasured="true" /></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    if (WeatherEventText.Utc(End) - WeatherEventText.Utc(Start) > TimeSpan.FromHours(WeatherRules.EventMaxHours))
+                    {
+                        <p class="wx-ev-line">Showing the first @WeatherRules.EventMaxHours hours.</p>
+                    }
+                    <WeatherStepTable Steps="r.Steps" Caption="@($"Hourly weather for {EventTitle}")" TimeHeader="Time (your time)"
+                                      FocusFallbackId="@LabelId" />
+                }
+                <p class="wx-jw-foot"><WeatherAttributionLine Attribution="r.Attribution" /></p>
+                break;
+        }
+    };
+
+    private static RenderFragment Message(string role, string icon, string text, RenderFragment? action) => __builder =>
+    {
+        <div class="wx-ev-msg" role="@role">
+            <span aria-hidden="true"><OdsMIcon Name="@icon" Size="18" /></span>
+            <div>
+                <p>@text</p>
+                @if (action is not null)
+                {
+                    <div class="wx-ev-act">@action</div>
+                }
+            </div>
+        </div>
+    };
+
+    private static RenderFragment Text(string text) => __builder =>
+    {
+        <span>@text</span>
+    };
+
+    private RenderFragment RetryButton => __builder =>
+    {
+        <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" AriaDisabled="@(!RetryEnabled)" OnClick="RetryAsync">Try again</OdsButton>
+    };
+
+    private RenderFragment HistoryHint(string href) => __builder =>
+    {
+        <span>Turn on historical data for this point to get measured days.</span>
+        @Action("Open in Weather points", href)
+    };
+
+    /// <summary>
+    /// A link keyed to its destination's claim. While the form is dirty it is text instead, so following it can
+    /// never drop an unsaved edit. A plain click closes the dialog; a modified or middle click leaves it open.
+    /// </summary>
+    private RenderFragment Action(string label, string href) => __builder =>
+    {
+        if (Dirty)
+        {
+            <span class="wx-ev-hold">Save or cancel first to open @Destination(label).</span>
+        }
+        else
+        {
+            <a class="wx-ev-link" href="@href" @onclick="ActivatedAsync">@label</a>
+        }
+    };
+}

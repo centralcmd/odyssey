@@ -10,7 +10,7 @@
 - **Journal** — entries, tasks, their tags and attachments.
 - **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
   job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
-  derived data and are left out of the data export.
+  derived data.
 - **Calendars** — calendars, events and recurrence patterns.
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
@@ -120,7 +120,8 @@ a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `J
 `JournalTask`, `Photo`, `PhotoAlbum` and `RecurrencePattern`; `Contract.CreatedByUserId`; `AttachedByUserId` on the file-link
 tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
 `FileAnalysisCandidateTransaction.ReviewedByUserId`; and, for the exchange-rate sync (issue #349),
-`ExchangeRateSyncCurrency.UpdatedByUserId` and `ExchangeRateSyncRun.RequestedByUserId`.
+`ExchangeRateSyncCurrency.UpdatedByUserId`; and `JobRun.RequestedByUserId` on the shared background-job run
+log (issue #409), which absorbed the sync's `ExchangeRateSyncRun.RequestedByUserId`.
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of
 them naming an account that no longer existed, and no transaction could span the two contexts to fix

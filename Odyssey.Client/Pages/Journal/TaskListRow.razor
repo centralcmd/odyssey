@@ -102,7 +102,7 @@
         @if (_tags.Count > 0 || Task.AttachmentCount > 0)
         {
             <div class="tk-list-foot">
-                <div class="tk-list-chips"><JournalTagChips Tags="_tags" /></div>
+                <div class="tk-list-chips"><OdsTagChips Tags="_tags" /></div>
                 @if (Task.AttachmentCount > 0)
                 {
                     <JournalFileCount Count="Task.AttachmentCount" Expanded="_filesOpen" Controls="@FilesListId"

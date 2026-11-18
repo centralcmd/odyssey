@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using System.Data.Common;
 using System.Text;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -252,7 +253,9 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 var contacts = new ContactService(context, new ContactReferenceGuard(context));
                 var vCard = new ContactVCardService(
                     context, contacts,
-                    new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024)),
+                    new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+                writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+                source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
                     new UnlimitedLimits(),
                     NullLogger<ContactVCardService>.Instance);
 
@@ -260,7 +263,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                     "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:converted\r\nKIND:org\r\nORG:Hopper Systems\r\nFN:Hopper Systems\r\nEND:VCARD\r\n"
                     + "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:urn:uuid:blocked\r\nKIND:org\r\nORG:Ramos AS\r\nFN:Ramos AS\r\nEND:VCARD\r\n";
                 using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
-                var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+                var outcome = await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
 
                 Assert.Equal([convertedId], outcome.TypeConvertedContactIds);
                 Assert.Equal([blockedId], outcome.TypeChangeBlockedContactIds);
@@ -416,11 +419,13 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
         var contacts = new ContactService(context, new ContactReferenceGuard(context));
         var vCard = new ContactVCardService(
             context, contacts,
-            new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024)),
+            new ContactAvatarService(context, new FileService(context, new FileValidationService()), new FixedUploadLimits(64L * 1024 * 1024),
+                writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer, store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+                source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source),
             new UnlimitedLimits(),
             NullLogger<ContactVCardService>.Instance);
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
-        return await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportWithOutcomeAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     private static async Task TagAsync(string connectionString, Guid photoId, Guid contactId)
@@ -555,18 +560,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
 
     private async Task<string> MigratedSchemaAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var connectionString = fixture.ConnectionStringFor(Database);
-        await using var context = new OdysseyContext(OptionsFor(connectionString));
-        await context.Database.MigrateAsync();
-
-        return connectionString;
+        return await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private async Task DropAsync()
@@ -594,7 +588,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

@@ -33,6 +33,10 @@ public enum OdsReferenceNumberSize { Sm, Md }
 /// <summary>Button intent — filled (primary CTA) · outlined (secondary) · text (tertiary/nav) · danger (destructive).</summary>
 public enum OdsButtonVariant { Filled, Outlined, Text, Danger }
 
+/// <summary>Button size (design system: <c>size="md" | "sm"</c>) — Sm is the compact action inside a
+/// message or a panel (Try again under an inline error), never a dialog footer or a page header.</summary>
+public enum OdsButtonSize { Md, Sm }
+
 /// <summary>
 /// Chip semantic color. Never use brand tide/sea to encode money — use income/expense.
 /// The Status* tones map to the account/budget lifecycle palette (--status-* tokens):
@@ -111,6 +115,10 @@ public enum OdsModalTone { Brand, Warning, Error }
 /// <summary>Where an <c>OdsModal</c> puts focus when it opens (Odyssey Design System · Modal
 /// <c>initialFocus</c>). <c>Cancel</c> opens a destructive confirmation on its safe choice.</summary>
 public enum OdsModalInitialFocus { FirstField, Cancel }
+
+/// <summary>An <c>OdsModal</c>'s role (Odyssey Design System · Modal <c>role</c>, issue #383): a destructive
+/// confirmation is an <c>AlertDialog</c>, opened on Cancel.</summary>
+public enum OdsModalRole { Dialog, AlertDialog }
 
 /// <summary>Live-region role of an <c>OdsAlert</c> (Odyssey Design System · Alert <c>live</c>):
 /// <c>Alert</c> interrupts, <c>Status</c> is polite — for a persistent banner that renders on load.</summary>

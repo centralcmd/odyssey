@@ -28,6 +28,14 @@ public readonly record struct ApiResult
     /// </summary>
     public Uri? Location { get; init; }
 
+    /// <summary>
+    /// How long the server asked the caller to wait, from the response's <c>Retry-After</c> header
+    /// (issue #434) — read for every result, not only the auth session, and on a success as well as a
+    /// failure (a polled job's <c>200</c> carries the poll interval, issue #445). Both header forms are
+    /// parsed (see <see cref="ApiRetryAfter.Of"/>); <c>null</c> when the header is missing or invalid.
+    /// </summary>
+    public TimeSpan? RetryAfter { get; init; }
+
     /// <summary>The id parsed from the trailing segment of <see cref="Location"/>, when it is a GUID.</summary>
     public Guid? CreatedId => ApiLocation.ExtractId(Location);
 
@@ -74,6 +82,16 @@ public readonly record struct ApiResult<T>
     /// </summary>
     public Uri? Location { get; init; }
 
+    /// <inheritdoc cref="ApiResult.RetryAfter"/>
+    public TimeSpan? RetryAfter { get; init; }
+
+    /// <summary>
+    /// The <c>Retry-After</c> header's delta-seconds form only, or <c>null</c> (absent, invalid, or an HTTP-date).
+    /// The analysis poller reads this narrower value (issue #445): a poll interval measured against a client clock
+    /// it cannot trust is not one it should follow. <see cref="RetryAfter"/> keeps parsing both forms.
+    /// </summary>
+    public TimeSpan? RetryAfterDelta { get; init; }
+
     /// <summary>The id parsed from the trailing segment of <see cref="Location"/>, when it is a GUID.</summary>
     public Guid? CreatedId => ApiLocation.ExtractId(Location);
 
@@ -97,7 +115,7 @@ public readonly record struct ApiResult<T>
 
     /// <summary>Carry a failure across a change of payload type, preserving status and problem.</summary>
     public ApiResult<TOther> CastFailure<TOther>() =>
-        new() { Status = Status, Problem = Problem };
+        new() { Status = Status, Problem = Problem, RetryAfter = RetryAfter };
 }
 
 /// <summary>
@@ -115,4 +133,36 @@ public static class ApiLocation
         var segment = location.OriginalString.TrimEnd('/').Split('/').LastOrDefault();
         return Guid.TryParse(segment, out var id) ? id : null;
     }
+}
+
+/// <summary>
+/// Reads a response's <c>Retry-After</c> header (issue #434). Both RFC 9110 forms are accepted:
+/// delta-seconds, and an HTTP-date measured from the response's own <c>Date</c> header (or the client
+/// clock when it has none), so a skewed client clock does not stretch or shrink the wait. A negative
+/// wait clamps to zero; a missing or unparseable header is <c>null</c>.
+/// </summary>
+public static class ApiRetryAfter
+{
+    public static TimeSpan? Of(HttpResponseMessage response, DateTimeOffset? now = null)
+    {
+        var header = response.Headers.RetryAfter;
+        if (header is null)
+            return null;
+
+        if (header.Delta is { } delta)
+            return delta < TimeSpan.Zero ? TimeSpan.Zero : delta;
+
+        if (header.Date is { } date)
+        {
+            var reference = response.Headers.Date ?? now ?? DateTimeOffset.UtcNow;
+            var wait = date - reference;
+            return wait < TimeSpan.Zero ? TimeSpan.Zero : wait;
+        }
+
+        return null;
+    }
+
+    /// <summary>The delta-seconds form alone (a negative value clamps to zero); <c>null</c> for an HTTP-date or no header.</summary>
+    public static TimeSpan? DeltaOf(HttpResponseMessage response) =>
+        response.Headers.RetryAfter?.Delta is { } delta ? (delta < TimeSpan.Zero ? TimeSpan.Zero : delta) : null;
 }

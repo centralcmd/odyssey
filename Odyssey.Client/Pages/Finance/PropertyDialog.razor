@@ -4,6 +4,9 @@
 @inject IReferenceDataCache ReferenceData
 @inject Odyssey.Client.Theme.IUserPreferenceService UserPreferences
 @inject ISnackbar Snackbar
+@inject ILocationsApiClient Locations
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime Js
 
 @*
     PropertyDialog — New / Edit property (issue #167; design system · AddPropertyModal.jsx). Mirrors
@@ -23,7 +26,11 @@
                    : "Record a house, cabin, car or boat. Add its estimated value and smart tags once it exists.")"
                SubmitLabel="@(IsEdit ? "Save changes" : "Create property")"
                SubmitIcon="@(IsEdit ? "check" : "add")"
-               OnSubmit="SaveAsync">
+               SubmitDisabled="@(!_addressReady)" OnSubmit="SaveAsync">
+
+    <OdsLiveAnnouncer @ref="_announcer" />
+    <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors"
+                                                       Links="@Odyssey.Client.Pages.Journal.LocationAddressField.ErrorLinks(AddressIdBase)" />
 
     @if (IsEdit)
     {
@@ -94,13 +101,24 @@
     }
     else
     {
-        <OdsField Label="Address" MaxLength="256" @bind-Value="_addressLine" Placeholder="Street and number" />
-        <OdsFormRow Cols="3">
-            <OdsField Label="Postal code" MaxLength="32" @bind-Value="_postalCode" />
-            <OdsField Label="City" MaxLength="128" @bind-Value="_city" />
-            <OdsField Label="Country" MaxLength="2" Value="@_countryCode" ValueChanged="OnCountryChanged"
-                      Placeholder="NO" Help="ISO code, two letters" Error="@Err("countryCode")" />
-        </OdsFormRow>
+        @* The one Address field (issue #383 v5 §3.3a), property variant: clearing it unlinks the property. *@
+        @if (!string.IsNullOrEmpty(_formAlert))
+        {
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_formAlert</OdsAlert>
+        }
+        @if (_addressReady)
+        {
+            <Odyssey.Client.Pages.Journal.LocationAddressField Model="_address" Errors="_errors" IdBase="@AddressIdBase"
+                                                               OnChange="OnAddressChanged" OnAnnounce="@Announce"
+                                                               OnPlaceEdited="OnSaved" DebounceMs="PickerDebounceMs"
+                                                               AddressDebounceMs="AddressDebounceMs" />
+        }
+        else
+        {
+            @* Until the stored place and its usage load there is no model to type into: an early placeholder
+               block would be replaced, and what was typed in it lost (frontend review N2). *@
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary" role="status">Loading address…</MudText>
+        }
         <OdsField Label="Cadastral number" MaxLength="64" @bind-Value="_cadastralNumber"
                   Placeholder="e.g. 208/451 or APN 3612-044" Help="The land-registry identifier, as written. Not checked." />
         <OdsHomeownerAssociationSelect Value="@_homeownerAssociationId" ValueChanged="OnAssociationChanged"

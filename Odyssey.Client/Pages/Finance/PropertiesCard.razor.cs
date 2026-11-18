@@ -142,6 +142,7 @@ public partial class PropertiesCard
         _canReadTransactions = user.HasPermission(PermissionClaims.TransactionsRead);
         _canReadContracts = user.HasPermission(PermissionClaims.ContractsRead);
         _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _addressPermissions = AddressBlockPermissions.For(user);
     }
 
     // ── Page-state persistence ─────────────────────────────────────────────────
@@ -648,4 +649,35 @@ public partial class PropertiesCard
             OdsMoney.MinorUnitsOf(currencyCode is null ? null : _currenciesByCode.GetValueOrDefault(currencyCode)));
 
     public void Dispose() => _listLoader.Dispose();
+
+    private AddressBlockPermissions _addressPermissions = new(false, false, false);
+
+    /// <summary>
+    /// The address tile's foot: the kind, then — when other records share the place and the caller holds
+    /// <c>locations.read</c> — the muted <i>Shared with N other records</i> line (issue #383 §3.5).
+    /// </summary>
+    private RenderFragment? AddressFoot(string kind, RealEstateDetailsDto re) =>
+        SharedLineFor(re, _addressPermissions) is { } shared
+            ? builder =>
+            {
+                builder.AddContent(0, kind);
+                builder.OpenElement(1, "span");
+                builder.AddAttribute(2, "class", "loc-shared-line");
+                builder.OpenElement(3, "span");
+                builder.AddAttribute(4, "class", "material-icons");
+                builder.AddAttribute(5, "aria-hidden", "true");
+                builder.AddContent(6, "link");
+                builder.CloseElement();
+                builder.OpenElement(7, "span");
+                builder.AddContent(8, shared);
+                builder.CloseElement();
+                builder.CloseElement();
+            }
+            : OdsInfoTile.Caption(kind);
+
+    /// <summary>The shared line for a property address, or null (no place, no other uses, or no <c>locations.read</c>).</summary>
+    internal static string? SharedLineFor(RealEstateDetailsDto re, AddressBlockPermissions permissions) =>
+        permissions.CanReadLocations && re.LocationId is not null && re.OtherUses is > 0
+            ? Odyssey.Client.Pages.Journal.LocationVisuals.SharedWith(re.OtherUses.Value, permissions.AllKindsReadable)
+            : null;
 }

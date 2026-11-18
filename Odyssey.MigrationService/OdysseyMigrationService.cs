@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations.Conversion;
 using Odyssey.Context;
 
 namespace Odyssey.MigrationService;
@@ -21,7 +22,9 @@ public sealed class OdysseyMigrationService(
         // Read before migrating: afterwards the accounts it counts no longer exist (issue #218 §9).
         var retirement = await AccountTypeRetirementReport.ReadIfPendingAsync(dbContext, cancellationToken);
 
-        await MigrationRunner.MigrateAsync(dbContext, cancellationToken);
+        // Staged around the issue #380 location conversion; same scope, so the same context and connection.
+        var conversion = scope.ServiceProvider.GetRequiredService<ILocationConversion>();
+        await MigrationRunner.MigrateAsync(dbContext, conversion, cancellationToken);
 
         retirement?.Log(logger);
     }

@@ -71,7 +71,8 @@
                                    ValidityColumns="true"
                                    IssuerFor="@(row => IssuerName(FileById(row.Id).IssuedBy))"
                                    OnSave="@SaveAction"
-                                   OnDelete="@DeleteAction" />
+                                   OnDelete="@DeleteAction"
+                                   MenuTriggerIdPrefix="@MenuIdPrefix" />
                 </OdsInlinePager>
             }
     </ChildContent>
@@ -100,7 +101,12 @@
                         FileName="@_analysisFile.FileMetadata.FileName"
                         FileSizeBytes="_analysisFile.FileMetadata.SizeBytes"
                         AccountName="@AccountName"
+                        AccountFileId="_analysisFile.Id"
                         Start="_analysisStart"
                         ResumeSummary="_resumeSummary"
+                        JobId="_analysisJobId"
+                        PriorDocumentSent="_analysisPriorSent"
+                        AnnounceAlreadyRunning="_analysisAlreadyRunning"
+                        ReturnFocusToId="@OdsFilesTable.MenuTriggerId(MenuIdPrefix, _analysisFile.FileMetadata.Id.ToString())"
                         OnResolved="HandleAnalysisResolvedAsync" />
 }

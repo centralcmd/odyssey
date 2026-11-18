@@ -67,6 +67,7 @@ public class JournalTagService
     public async Task<ExistingJournalTag> Create(NewJournalTag request, CancellationToken cancellationToken = default)
     {
         TagIconGuard.EnsureKnown(request.Icon);
+        TagColorGuard.EnsureValid(request.Color);
         var name = request.Name.Trim();
         await EnsureNameAvailable(name, null, cancellationToken);
 
@@ -76,6 +77,7 @@ public class JournalTagService
             Description = request.Description,
             Archived = null,
             Icon = request.Icon,
+            Color = HexColor.Normalize(request.Color),
         };
 
         context.JournalTags.Add(tag);
@@ -87,6 +89,7 @@ public class JournalTagService
     public async Task<ExistingJournalTag?> Update(Guid id, UpdateJournalTag request, CancellationToken cancellationToken = default)
     {
         TagIconGuard.EnsureKnown(request.Icon);
+        TagColorGuard.EnsureValid(request.Color);
 
         var tag = await context.JournalTags.FirstOrDefaultAsync(t => t.JournalTagId == id, cancellationToken);
         if (tag is null)
@@ -101,6 +104,7 @@ public class JournalTagService
         tag.Description = request.Description;
         // Full replacement: an omitted or null icon resets the tag to the default.
         tag.Icon = request.Icon;
+        tag.Color = HexColor.Normalize(request.Color);
         ApplyArchiveTransition(tag, request.Archived);
 
         await context.SaveChangesAsync(cancellationToken);

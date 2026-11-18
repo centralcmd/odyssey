@@ -22,3 +22,42 @@
 .odc-combo-wrap.has-lead ::deep .mud-input-slot {
     padding-left: 36px;
 }
+
+/* The clear control (accessibility review 5): focusable, named, and at least 24 × 24 CSS px (WCAG 2.5.8),
+   sitting just inside the dropdown arrow. The input text is inset so it never runs under it. */
+.odc-combo-clear {
+    position: absolute;
+    right: 36px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 24px;
+    min-height: 24px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--mud-palette-text-secondary);
+    cursor: pointer;
+}
+
+.odc-combo-clear:hover {
+    color: var(--mud-palette-text-primary);
+}
+
+.odc-combo-clear:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
+
+.odc-combo-clear .material-icons {
+    font-size: 18px;
+    line-height: 1;
+}
+
+.odc-combo-wrap.has-clear ::deep .mud-input-slot {
+    padding-right: 28px;
+}

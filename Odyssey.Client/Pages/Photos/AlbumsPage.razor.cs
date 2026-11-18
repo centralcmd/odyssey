@@ -27,7 +27,8 @@ public partial class AlbumsPage
 
     private Dictionary<Guid, string> _tagNames = [];
     private Dictionary<Guid, string?> _tagIcons = [];
-    private Dictionary<Guid, string> _albumNames = [];
+    private Dictionary<Guid, string?> _tagColors = [];
+    private Dictionary<Guid, PhotoAlbumSummary> _albumById = [];
     private Dictionary<Guid, string> _personNames = [];
 
     // Header regions (the DS shares the Overview panel + a "Search albums…" field across both views).
@@ -49,7 +50,7 @@ public partial class AlbumsPage
 
     private bool _canCreate;
     private bool _canUpdate;
-    private PhotoImageAccess _imageAccess = new(false, false);
+    private PhotoImageAccess _imageAccess = new(false);
 
     private const string PageStateKey = "albums-page";
 
@@ -100,11 +101,12 @@ public partial class AlbumsPage
         var albums = await Albums.ListAllAsync();
         _albumList = albums.ItemsOrToast(Snackbar, "albums");
         _loadError = !albums.IsSuccess;
-        _albumNames = _albumList.ToDictionary(a => a.PhotoAlbumId, a => a.Name);
+        _albumById = _albumList.ToDictionary(a => a.PhotoAlbumId);
 
         var tags = (await PhotoTags.ListAllAsync()).ItemsOrToast(Snackbar, "photo tags");
         _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
         _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
+        _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
 
         // People come from Person contacts (requires contacts.read; degrades to empty) so
         // the album lightbox's People chips show names, not raw ids (spec §10.5).
@@ -185,14 +187,11 @@ public partial class AlbumsPage
         }
 
         var removed = _selected.Count;
-        var ok = (await Albums.UpdateAsync(album.PhotoAlbumId, new UpdatePhotoAlbum
-        {
-            Name = album.Name,
-            Description = album.Description,
-            PhotoIds = [.. album.PhotoIds.Where(id => !_selected.Contains(id))],
-            CoverPhotoId = album.CoverPhotoId is { } c && _selected.Contains(c) ? null : album.CoverPhotoId,
-            Archived = album.Archived is not null,
-        })).Toast(Snackbar, "Remove failed", $"{removed} photo{(removed == 1 ? "" : "s")} removed from the album.");
+        // Full replacement: start from the loaded album so its icon and colour survive (issue #406 §3.4).
+        var update = AlbumWrites.From(album);
+        update.PhotoIds = [.. album.PhotoIds.Where(id => !_selected.Contains(id))];
+        update.CoverPhotoId = album.CoverPhotoId is { } c && _selected.Contains(c) ? null : album.CoverPhotoId;
+        var ok = (await Albums.UpdateAsync(album.PhotoAlbumId, update)).Toast(Snackbar, "Remove failed", $"{removed} photo{(removed == 1 ? "" : "s")} removed from the album.");
 
         if (ok)
         {
@@ -225,16 +224,18 @@ public partial class AlbumsPage
     }
 
     private OdsPhotoTile.Vm TileVm(PhotoSummary p) =>
-        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.FileId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files),
+        new(p.PhotoId, PhotoImageSources.For(p.PhotoId, p.ThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos),
             string.IsNullOrWhiteSpace(p.Title) ? "Photo" : p.Title!,
             p.Archived is not null, p.Favourited is not null);
 
     private PhotoImageSource Cover(PhotoAlbumSummary a) =>
-        PhotoImageSources.For(a.CoverPhotoId, a.CoverFileId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos, Files);
+        PhotoImageSources.For(a.CoverPhotoId, a.CoverThumbnailsReady, ThumbnailSize.Medium, _imageAccess, Photos);
 
     private string TagName(Guid id) => _tagNames.GetValueOrDefault(id, "—");
     private string? TagIcon(Guid id) => _tagIcons.GetValueOrDefault(id);
-    private string AlbumName(Guid id) => _albumNames.GetValueOrDefault(id, "—");
+
+    private string? TagColor(Guid id) => _tagColors.GetValueOrDefault(id);
+    private OdsTagChips.Tag? AlbumChip(Guid id) => AlbumVisuals.Chip(_albumById.GetValueOrDefault(id));
     private string PersonName(Guid id) => _personNames.GetValueOrDefault(id, "—");
 
     private RenderFragment SubFragment => builder =>

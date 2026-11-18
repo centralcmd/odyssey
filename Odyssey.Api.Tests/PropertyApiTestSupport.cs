@@ -94,7 +94,7 @@ internal static class PropertyApiTestSupport
         };
 
         if (type == PropertyType.RealEstate)
-            property.RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House, City = city };
+            property.RealEstateDetails = new RealEstateDetails { Kind = RealEstateKind.House, Location = AddressLocation(city) };
         else
             property.VehicleDetails = new VehicleDetails { Kind = VehicleKind.Car, Make = "Volvo" };
 
@@ -179,4 +179,20 @@ internal static class PropertyApiTestSupport
 
     public static async Task<ExistingProperty> GetPropertyAsync(HttpClient client, Guid propertyId) =>
         (await client.GetFromJsonAsync<ExistingProperty>(PropertyPath(propertyId)))!;
+
+    /// <summary>
+    /// A property's address is a linked location since issue #380: a city-only one, as the linker would
+    /// store it, or none.
+    /// </summary>
+    internal static Odyssey.Context.Location? AddressLocation(string? city) => city is null
+        ? null
+        : new Odyssey.Context.Location
+        {
+            Name = $"{city} {Guid.NewGuid():N}",
+            City = city,
+            AddressKey = Odyssey.Dtos.Journal.LocationAddressKey.Compute(null, null, city, null, null, null),
+            Source = Odyssey.Dtos.Journal.LocationSource.PropertyAddress,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+        };
 }

@@ -34,7 +34,7 @@
            @attributes="UserAttributes">
     @if (Loading)
     {
-        <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+        <MudProgressCircular Class="mr-2" Size="MudBlazor.Size.Small" Indeterminate="true" />
     }
     else if (!string.IsNullOrEmpty(Icon))
     {
@@ -63,6 +63,9 @@
 
     /// <summary>Trailing Material Icons ligature name.</summary>
     [Parameter] public string? IconRight { get; set; }
+
+    /// <summary>Md (default) or Sm — the compact action inside a message or a panel.</summary>
+    [Parameter] public OdsButtonSize Size { get; set; } = OdsButtonSize.Md;
 
     /// <summary>Stretch to the full width of the container.</summary>
     [Parameter] public bool Full { get; set; }
@@ -106,7 +109,19 @@
     [Parameter(CaptureUnmatchedValues = true)]
     public Dictionary<string, object>? UserAttributes { get; set; }
 
-    private string? ButtonClass => AriaDisabled ? $"odc-btn-aria-disabled {Class}".TrimEnd() : Class;
+    private string? ButtonClass
+    {
+        get
+        {
+            var cls = string.Join(' ', new[]
+            {
+                AriaDisabled ? "odc-btn-aria-disabled" : null,
+                Size == OdsButtonSize.Sm ? "odc-btn-sm" : null,
+                Class,
+            }.Where(c => !string.IsNullOrEmpty(c)));
+            return cls.Length == 0 ? null : cls;
+        }
+    }
 
     private Task HandleClickAsync(MouseEventArgs e) => AriaDisabled || Loading ? Task.CompletedTask : OnClick.InvokeAsync(e);
 

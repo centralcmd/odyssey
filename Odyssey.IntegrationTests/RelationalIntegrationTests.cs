@@ -108,6 +108,35 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    public async Task A_calendar_icon_round_trips_and_a_retired_key_reads_as_null()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await EnsureRelationalSchemaAsync();
+
+        Guid calendarId;
+        await using (var context = NewRelationalContext())
+        {
+            var created = await new CalendarService(context).Create(
+                new NewCalendar { Name = $"Icon {Guid.NewGuid():N}", Color = "#0369A1", Icon = "work" }, userId: null!);
+            calendarId = created.CalendarId;
+        }
+
+        await using (var context = NewRelationalContext())
+        {
+            Assert.Equal("work", (await new CalendarService(context).Get(calendarId))!.Icon);
+
+            // A key the catalogue no longer has (a hand edit, a restore) never reaches a client.
+            await context.Database.ExecuteSqlAsync($"UPDATE `Calendars` SET `Icon` = {"retired_key"} WHERE `CalendarId` = {calendarId}");
+        }
+
+        await using (var context = NewRelationalContext())
+        {
+            Assert.Null((await new CalendarService(context).Get(calendarId))!.Icon);
+            await context.Calendars.Where(c => c.CalendarId == calendarId).ExecuteDeleteAsync();
+        }
+    }
+
+    [SkippableFact]
     public async Task Deleting_an_account_cascades_to_its_transactions()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
@@ -1185,7 +1214,10 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
                 Options.Create(new FileAnalysisOptions { Enabled = true }),
                 // The resumable-jobs read consults no setting; a defaults-only lookup is enough.
                 new StubFileAnalysisSettingsLookup(),
-                NullLogger<FileAnalysisService>.Instance);
+                NullLogger<FileAnalysisService>.Instance,
+                new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
+                    NullLogger<FileAnalysisJobQueue>.Instance),
+                new EmbeddedFileAnalysisPromptTemplate());
             summaries = await service.GetResumableJobsAsync(accountId);
         }
 
@@ -1276,7 +1308,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode,
             string promptTemplate, FileAnalysisTarget target, int maxTokens,
-            CancellationToken cancellationToken = default) =>
+            string? promptAddition, CancellationToken cancellationToken = default) =>
             Task.FromResult(new List<ExtractedTransaction>());
 
         public Task<List<MatchedCandidate>> MatchTransactionsAsync(
@@ -1285,6 +1317,7 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             IReadOnlyList<VocabularyEntry> tagVocabulary,
             FileAnalysisTarget target,
             int maxTokens,
+            MatchPromptOptions prompt,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(new List<MatchedCandidate>());
     }
@@ -1340,16 +1373,15 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         // Claim *identity* is (RoleId, ClaimType, ClaimValue), never Id: IdentityRoleClaim.Id is an int
         // identity the database assigns, and nothing may depend on which numbers the rows land at. This
-        // runs the real RoleClaimSeeder against a real, freshly-migrated MariaDB and proves each role
+        // runs the real RoleClaimSeeder against a real, migrated MariaDB and proves each role
         // ends up with exactly the claims RolePermissions says it should — a claim reconciled onto the
         // wrong role, or dropped entirely, would otherwise only surface as a 403 in production.
-        var connectionString = fixture.ConnectionStringFor("odyssey_roleclaims_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_roleclaims_it");
         var options = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options;
 
         await using var context = new OdysseyContext(options);
-        await context.Database.MigrateAsync();
 
         // The production seeder, resolved the way the migrations job resolves it, rather than a copy of
         // its logic — a reimplementation here would agree with itself while disagreeing with the job.
@@ -1389,16 +1421,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
 
         // A private schema this test fully owns, so seeding AspNetUsers here never disturbs the shared
         // demo dataset the seeder test asserts exact counts against.
-        var connectionString = fixture.ConnectionStringFor("odyssey_userprofile_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_userprofile_it");
 
         OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options);
-
-        await using (var context = NewContext())
-        {
-            await context.Database.MigrateAsync();
-        }
 
         const string userId = "profile-it-user";
         await using (var context = NewContext())
@@ -1438,16 +1465,11 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
         // UserPreference moved into OdysseyContext so UserId could become a real FK. Neither the
         // constraint nor its cascade is representable on EF InMemory, so this is the tier that proves it.
         // A private schema keeps the seeded AspNetUsers rows out of the shared demo dataset.
-        var connectionString = fixture.ConnectionStringFor("odyssey_userpreference_it");
+        var connectionString = await fixture.CreateMigratedDatabaseAsync("odyssey_userpreference_it");
 
         OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
             .Options);
-
-        await using (var context = NewContext())
-        {
-            await context.Database.MigrateAsync();
-        }
 
         const string userId = "preference-it-user";
         await using (var context = NewContext())
@@ -1546,14 +1568,19 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
             .UseMySql(fixture.RelationalConnectionString, ServerVersion.AutoDetect(fixture.RelationalConnectionString))
             .Options);
 
+    /// <summary>
+    /// The seeder test asserts exact row counts, so it runs against a database it owns. The shared <c>odyssey</c>
+    /// database is written by dozens of other classes in this collection (<see cref="AttributionUsers"/> alone adds
+    /// users), and xUnit's class order is not declaration order: adding a test elsewhere reshuffles it, and the counts
+    /// then see another class's rows.
+    /// </summary>
     private ServiceProvider BuildSeederProvider()
     {
+        var connectionString = fixture.ConnectionStringFor("odyssey_seeder_it");
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<OdysseyContext>(options =>
-            options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
-        services.AddDbContext<OdysseyContext>(options =>
-            options.UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)));
+            options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
         services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()
             .AddEntityFrameworkStores<OdysseyContext>();
@@ -1588,11 +1615,14 @@ public class RelationalIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private sealed class StubFileAnalysisSettingsLookup : IFileAnalysisSettingsLookup
     {
+        public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+            GetAsync(cancellationToken);
+
         public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FileAnalysisSettings(
                 "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",
                 "https://www.anthropic.com/legal/privacy", 90, 0.60m,
-                MaxTokens: 8096, MatchMaxVocabulary: 500, MatchTimeoutSeconds: 60,
+                MaxTokens: 8096, MatchTimeoutSeconds: 60,
                 Model: "claude-sonnet-5", BaseUrl: "https://api.anthropic.com", IsDegraded: false));
 
         // The kill switch (issue #439). These fixtures exercise what analysis does, so it reads on.

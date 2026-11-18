@@ -13,7 +13,10 @@ using Xunit;
 
 namespace Odyssey.Api.Tests;
 
-/// <summary>Journal photo unification acceptance criteria (issue #321 v4, §18a–f).</summary>
+/// <summary>
+/// Journal photo links (issue #321 v4, as changed by issue #428 §3.3): a journal entry links library photos by id, the
+/// photos are uploaded through the photo API first, and the journal never creates a photo from a file.
+/// </summary>
 public class JournalPhotoUnificationApiTests
 {
     private const string ActorUserId = "journal-unify-actor-id";
@@ -21,7 +24,7 @@ public class JournalPhotoUnificationApiTests
 
     private static readonly string[] JournalUserNoPhotos =
     [
-        // A user who can add a journal photo today, but holds NO photos.* claim (criterion #18b).
+        // A journal user holding NO photos.* claim: since #428 it cannot link a photo it may not read.
         PermissionClaims.JournalCreate, PermissionClaims.JournalRead, PermissionClaims.JournalUpdate,
         PermissionClaims.JournalDelete, PermissionClaims.FilesRead,
     ];
@@ -30,102 +33,129 @@ public class JournalPhotoUnificationApiTests
     [
         PermissionClaims.JournalCreate, PermissionClaims.JournalRead, PermissionClaims.JournalUpdate,
         PermissionClaims.JournalDelete, PermissionClaims.FilesRead,
-        PermissionClaims.PhotosRead, PermissionClaims.PhotosDelete,
+        PermissionClaims.PhotosCreate, PermissionClaims.PhotosRead, PermissionClaims.PhotosDelete,
     ];
 
     [Fact]
-    public async Task JournalAdd_CreatesLibraryPhoto_AppearingOnTheGrid()
+    public async Task JournalAdd_LinksAnUploadedPhoto_CarryingItsLabel()
     {
         await using var factory = new ApiFactory(JournalAndPhotos);
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
+        var uploaded = await PhotoTestSupport.UploadPhotoAsync(
+            client, new NewPhotoUpload { Title = "Beach" }, fileName: "beach.jpg");
 
-        var entry = await CreateEntryWithPhoto(client, fileId);
+        var entry = await CreateEntryWithPhoto(client, uploaded.PhotoId);
+
         var photo = Assert.Single(entry.Photos);
-        Assert.Equal(fileId, photo.FileId);
-        Assert.NotEqual(Guid.Empty, photo.PhotoId);
-
-        // The transparently-created library Photo is discoverable on /api/photos (criterion #18a).
-        var grid = await client.GetPagedItemsAsync<PhotoSummary>("/api/photos");
-        Assert.Contains(grid!, p => p.PhotoId == photo.PhotoId && p.FileId == fileId);
+        Assert.Equal(uploaded.PhotoId, photo.PhotoId);
+        Assert.Equal("Beach", photo.Title);
+        Assert.Equal("beach.jpg", photo.FileName);
     }
 
     [Fact]
-    public async Task JournalUser_WithoutAnyPhotoClaim_CanStillAddJournalPhoto()
+    public async Task JournalUser_WithoutPhotosRead_CannotLinkAPhoto()
     {
         await using var factory = new ApiFactory(JournalUserNoPhotos);
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
+        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
-        var entry = await CreateEntryWithPhoto(client, fileId);
-        var photo = Assert.Single(entry.Photos);
-        Assert.Equal(fileId, photo.FileId);
+        var post = await client.PostAsJsonAsync(JournalPath, NewEntry([photoId]));
 
-        // The library Photo was created transparently even though the caller holds no photos.* claim.
-        using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.True(await context.Photos.AnyAsync(p => p.FileId == fileId));
+        Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
     }
 
+    /// <summary>Issue #428 AC 16: the retired <c>photoFileIds</c> is ignored — no photo is made from a file.</summary>
     [Fact]
-    public async Task SameFile_InTwoEntries_ProducesExactlyOneLibraryPhoto()
+    public async Task A_body_carrying_photoFileIds_creates_no_photo()
     {
-        // Proves the FileId-keyed find-or-create (the no-duplicate guarantee behind the backfill, #18e).
         await using var factory = new ApiFactory(JournalAndPhotos);
         var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
-        var first = await CreateEntryWithPhoto(client, fileId);
-        var second = await CreateEntryWithPhoto(client, fileId);
+        var post = await client.PostAsJsonAsync(JournalPath, new
+        {
+            title = "Old client",
+            content = "c",
+            entryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+            photoFileIds = new[] { fileId },
+        });
+
+        post.EnsureSuccessStatusCode();
+        var entry = (await post.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
+        Assert.Empty(entry.Photos);
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos);
+    }
+
+    [Fact]
+    public async Task UnknownPhotoId_IsUnprocessable_KeyedPhotoIds()
+    {
+        await using var factory = new ApiFactory(JournalAndPhotos);
+        using var client = factory.CreateClient();
+
+        var post = await client.PostAsJsonAsync(JournalPath, NewEntry([Guid.NewGuid()]));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, post.StatusCode);
+        Assert.Contains("photoIds", await post.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task SamePhoto_InTwoEntries_IsOneLibraryPhoto()
+    {
+        await using var factory = new ApiFactory(JournalAndPhotos);
+        using var client = factory.CreateClient();
+        var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
+
+        var first = await CreateEntryWithPhoto(client, uploaded.PhotoId);
+        var second = await CreateEntryWithPhoto(client, uploaded.PhotoId);
         Assert.Equal(first.Photos[0].PhotoId, second.Photos[0].PhotoId);
 
         using var scope = factory.Services.CreateScope();
-        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        Assert.Equal(1, await context.Photos.CountAsync(p => p.FileId == fileId));
+        Assert.Equal(1, await scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos.CountAsync());
     }
 
     [Fact]
     public async Task DeletingEntry_KeepsTheLibraryPhoto()
     {
         await using var factory = new ApiFactory(JournalAndPhotos);
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
+        var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
 
-        var entry = await CreateEntryWithPhoto(client, fileId);
-        var photoId = entry.Photos[0].PhotoId;
+        var entry = await CreateEntryWithPhoto(client, uploaded.PhotoId);
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{JournalPath}/{entry.JournalEntryId}")).StatusCode);
 
-        // The library Photo (and file) remain — the photo stays in the library (criterion #18c).
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/photos/{photoId}")).StatusCode);
+        // The library Photo remains — the photo stays in the library (criterion #18c).
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"/api/photos/{uploaded.PhotoId}")).StatusCode);
     }
 
     [Fact]
     public async Task DeletingLibraryPhoto_DropsTheStaleJournalLink()
     {
         await using var factory = new ApiFactory(JournalAndPhotos);
-        var fileId = await PhotoTestSupport.SeedImageFileAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
+        var uploaded = await PhotoTestSupport.UploadPhotoAsync(client);
 
-        var entry = await CreateEntryWithPhoto(client, fileId);
-        var photoId = entry.Photos[0].PhotoId;
+        var entry = await CreateEntryWithPhoto(client, uploaded.PhotoId);
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/photos/{photoId}")).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"/api/photos/{uploaded.PhotoId}")).StatusCode);
 
         // The journal entry renders without the photo; the stale link is omitted entirely (criterion #18d).
         var reread = await client.GetFromJsonAsync<ExistingJournalEntry>($"{JournalPath}/{entry.JournalEntryId}");
         Assert.Empty(reread!.Photos);
     }
 
-    private static async Task<ExistingJournalEntry> CreateEntryWithPhoto(HttpClient client, Guid fileId)
+    private static NewJournalEntry NewEntry(Guid[] photoIds) => new()
     {
-        var post = await client.PostAsJsonAsync(JournalPath, new NewJournalEntry
-        {
-            Title = "With a photo",
-            Content = "Dear journal, today had a picture.",
-            EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
-            PhotoFileIds = [fileId],
-        });
+        Title = "With a photo",
+        Content = "Dear journal, today had a picture.",
+        EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc),
+        PhotoIds = photoIds,
+    };
+
+    private static async Task<ExistingJournalEntry> CreateEntryWithPhoto(HttpClient client, Guid photoId)
+    {
+        var post = await client.PostAsJsonAsync(JournalPath, NewEntry([photoId]));
         post.EnsureSuccessStatusCode();
         return (await post.Content.ReadFromJsonAsync<ExistingJournalEntry>())!;
     }

@@ -360,7 +360,7 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
             using var response = await httpClient.SendAsync(request);
             return response.IsSuccessStatusCode
                 ? ApiResult.Success(response.StatusCode)
-                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync());
+                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {
@@ -391,7 +391,7 @@ public sealed class AuthApiClient(HttpClient httpClient, AntiforgeryTokenStore a
             using var response = await httpClient.SendAsync(request);
             return response.IsSuccessStatusCode
                 ? ApiResult.Success(response.StatusCode)
-                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync());
+                : ApiResult.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
         }
         catch (Exception ex)
         {

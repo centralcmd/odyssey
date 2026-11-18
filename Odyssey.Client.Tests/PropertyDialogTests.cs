@@ -39,7 +39,7 @@ public class PropertyDialogTests
         EstimateCount = estimates,
         RealEstateDetails = new RealEstateDetailsDto
         {
-            Kind = RealEstateKind.Apartment, City = "Oslo", CountryCode = "NO",
+            Kind = RealEstateKind.Apartment, AddressLine = "Storgata 14", City = "Oslo", CountryCode = "NO",
             HomeownerAssociationId = withAssociation ? AssociationId : null,
         },
         HomeownerAssociation = withAssociation
@@ -64,6 +64,8 @@ public class PropertyDialogTests
             .ReturnsAsync(updateResult ?? ApiResult.Success(HttpStatusCode.NoContent));
         ctx.Services.AddSingleton(properties.Object);
         ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
+        ctx.Services.AddSingleton(Mock.Of<ILocationsApiClient>());
+        ctx.Services.AddSingleton<Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider>(new SignedInWith([]));
         var preferences = new Mock<IUserPreferenceService>();
         preferences.SetupGet(p => p.DefaultCurrency).Returns("NOK");
         ctx.Services.AddSingleton(preferences.Object);
@@ -97,7 +99,10 @@ public class PropertyDialogTests
         var (cut, properties) = Render();
         await SetField(cut, "Name", "Storgata 14");
         await SetField(cut, "Description", "Primary residence");
+        // Without locations.read the address is entered by hand, and a place needs Line 1, City and Country (#380).
+        await SetField(cut, "Line 1", "Storgata 14");
         await SetField(cut, "City", "Oslo");
+        await SetField(cut, "Country", "no");
 
         Submit(cut, "Create property");
 

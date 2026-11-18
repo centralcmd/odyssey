@@ -16,4 +16,6 @@ public sealed record CalendarEventVm(
     bool IsAllDay,
     string Color,
     string Fg,
-    bool Recurring);
+    bool Recurring,
+    // The linked place's name in words, "(archived)" included — null without a readable place (issue #383 §3.4).
+    string? LocationName = null);

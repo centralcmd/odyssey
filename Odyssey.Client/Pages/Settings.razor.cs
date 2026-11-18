@@ -13,7 +13,7 @@ using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages;
 
-public partial class Settings
+public partial class Settings : IDisposable
 {
     private const string PageStateKey = "settings-page";
     private bool _searchOpen = true;
@@ -156,10 +156,6 @@ public partial class Settings
     // client catalogue with these, so the server stays the single authority on which secrets exist.
     private readonly Dictionary<string, SecretSettingStatusDto> _secretStatuses = new(StringComparer.Ordinal);
 
-    // ── Export controls (unchanged behaviour, moved under the Data group) ─────
-    private bool _exportAvailable;
-    private bool _isExporting;
-
     /// <summary>
     /// The interactivity check, as a seam (issue #444 §13 step 4a). <c>OnInitializedAsync</c> has to
     /// early-return on the prerender pass, but that check is <c>false</c> in a bUnit host too, so a
@@ -187,10 +183,6 @@ public partial class Settings
         _canReadStorage = user.HasPermission(PermissionClaims.FileStorageRead);
         _canReadPhotoStats = user.HasPermission(PermissionClaims.PhotosRead) && user.HasPermission(PermissionClaims.SystemSettingsRead);
 
-        // Gate the Data export control on the data.export permission alone — the feature is always
-        // available to holders of that claim.
-        _exportAvailable = user.HasPermission(PermissionClaims.DataExport);
-
         await Task.WhenAll(LoadSettingsAsync(), LoadSyncCountAsync(), LoadStorageHealthAsync());
     }
 
@@ -217,8 +209,8 @@ public partial class Settings
         StateHasChanged();
     }
 
-    /// <summary>The places that can be the household weather default, served at read time (issue #348).</summary>
-    private IReadOnlyList<WeatherLocationRef> _weatherOptions = [];
+    /// <summary>The points that can be the household weather default, served at read time (issue #348, #387).</summary>
+    private IReadOnlyList<WeatherPointOption> _weatherOptions = [];
 
     private async Task LoadWeatherOptionsAsync()
     {
@@ -226,21 +218,21 @@ public partial class Settings
         // uses. Without it the row still shows its stored value, it just offers nothing else to pick.
         if (!(await Auth.GetUserAsync()).HasPermission(PermissionClaims.WeatherRead))
             return;
-        var options = await Weather.OptionsAsync();
-        _weatherOptions = options.IsSuccess && options.Value is { } value ? value.Locations : [];
+        var options = await WeatherOptions.GetAsync();
+        _weatherOptions = options.IsSuccess && options.Value is { } value ? [.. value.Points.Where(p => p.ForecastEnabled)] : [];
     }
 
     /// <summary>
-    /// <i>None</i>, then every selectable place. A stored default that is no longer selectable stays in the
+    /// <i>None</i>, then every selectable point. A stored default that is no longer selectable stays in the
     /// list, named as such, so opening the page never silently changes what is saved.
     /// </summary>
     internal IReadOnlyList<OdsOption> WeatherDefaultOptions()
     {
         var options = new List<OdsOption> { new("", "None") };
-        options.AddRange(_weatherOptions.Select(l => new OdsOption(l.LocationId.ToString("D"), l.Name)));
-        var stored = _texts.TryGetValue("weatherDefaultLocationId", out var state) ? state.Saved : "";
+        options.AddRange(_weatherOptions.Select(p => new OdsOption(p.WeatherPointId.ToString("D"), p.Name)));
+        var stored = _texts.TryGetValue("weatherDefaultPointId", out var state) ? state.Saved : "";
         if (stored.Length > 0 && options.All(o => !string.Equals(o.Value, stored, StringComparison.OrdinalIgnoreCase)))
-            options.Add(new OdsOption(stored, "A place that no longer has weather"));
+            options.Add(new OdsOption(stored, "A weather point that is no longer selectable"));
         return options;
     }
 
@@ -315,13 +307,12 @@ public partial class Settings
     // (previously "Non-Goal 2": no export cap at all).
     internal enum SettingClaim { None, Security, Count }
     // Date and Action arrived with the exchange-rate sync card. Action is a button that
-    // acts at once or navigates — Export is one use of that shape and keeps its own member and behaviour.
-    // Neither is part of Save.
-    internal enum SettingControl { Toggle, Number, Size, Capacity, Export, Text, Decimal, Percent, Date, Action }
+    // acts at once or navigates, and is not part of Save.
+    internal enum SettingControl { Toggle, Number, Size, Capacity, Text, Decimal, Percent, Date, Action, LongText }
 
-    /// <summary>The one non-saving control kinds — never dirty, never validated, never written.</summary>
+    /// <summary>The one non-saving control kind — never dirty, never validated, never written.</summary>
     internal static bool IsTileOnly(SettingControl control) =>
-        control is SettingControl.Export or SettingControl.Action;
+        control is SettingControl.Action;
 
     /// <summary>
     /// One row. <see cref="Load"/> and <see cref="Write"/> are the catalogue's half of the same
@@ -390,7 +381,15 @@ public partial class Settings
         // pipeline. Drives the "lower only" marker and the range sentence. Stated rather than inferred
         // from MaxFrom: a published bound is not by itself a one-way door — the aggregate calendar caps
         // and the metadata read size publish theirs only so the control can bound itself.
-        bool LowerOnly = false);
+        bool LowerOnly = false,
+        // A client-authored advisory the row ALWAYS carries (the design system's `adviseAlways`, issue
+        // #473 §3.6): the News allow-list's "never list internal service names". It sits below every
+        // server-authored message, so a projection fault on the row still outranks it.
+        string? StandingAdvisory = null,
+        // A row that is NOT RENDERED for a caller who cannot edit it, rather than shown read-only (issue
+        // #473 §3.6: the private-host allow-list). Its Write still sends null for that caller, as every
+        // row the caller cannot edit does.
+        bool HideWithoutClaim = false);
 
     internal sealed record RoundTripPair(string ExportKey, string ImportKey);
 
@@ -530,13 +529,6 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.FileAnalysisMaxTokens),
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMaxTokens", dto.FileAnalysisMaxTokens),
                 Write: (p, req) => req.FileAnalysisMaxTokens = p.IntRequest("fileAnalysisMaxTokens")),
-            new("fileAnalysisMatchMaxVocabulary", "list_alt", "Match vocabulary size",
-                "How many known contacts and tags are offered to the match call. Over the cap the match is "
-                + "skipped, not truncated.",
-                SettingClaim.Count, SettingControl.Number, Min: 1, Max: 5000,
-                Field: nameof(SystemSettingsUpdate.FileAnalysisMatchMaxVocabulary),
-                Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchMaxVocabulary", dto.FileAnalysisMatchMaxVocabulary),
-                Write: (p, req) => req.FileAnalysisMatchMaxVocabulary = p.IntRequest("fileAnalysisMatchMaxVocabulary")),
             new("fileAnalysisMatchTimeoutSeconds", "history_toggle_off", "Match timeout",
                 "How long the match call may run before the job is marked failed and falls back to manual "
                 + "review.",
@@ -545,6 +537,31 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("fileAnalysisMatchTimeoutSeconds", dto.FileAnalysisMatchTimeoutSeconds),
                 Write: (p, req) => req.FileAnalysisMatchTimeoutSeconds = p.IntRequest("fileAnalysisMatchTimeoutSeconds"),
                 Unit: "sec"),
+            // Administrator guidance (issues #433, #434). Multi-line LongText rows: an OdsNoteField counted
+            // against the NORMALISED length the server stores, with no native maxlength — an over-limit
+            // paste is kept and explained, never truncated. Validated by the shared PromptAdditionRule.
+            new("fileAnalysisExtractionPromptAddition", "edit_note", "Extraction guidance",
+                "Optional. Extra instructions added to every statement extraction, after Odyssey's own rules — "
+                + "for example how your bank formats dates or which lines aren't transactions. Sent to "
+                + ProcessorToken + " with each analysis. Don't include personal data or passwords.",
+                SettingClaim.Count, SettingControl.LongText, Max: PromptAdditionRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.FileAnalysisExtractionPromptAddition),
+                Load: (p, dto) => p.SetTextLoaded("fileAnalysisExtractionPromptAddition", dto.FileAnalysisExtractionPromptAddition),
+                Write: (p, req) => req.FileAnalysisExtractionPromptAddition = p.TextRequest("fileAnalysisExtractionPromptAddition"),
+                Placeholder: PromptPlaceholder,
+                AllowEmpty: true,
+                Rule: PromptAdditionRule.Validate),
+            new("fileAnalysisMatchPromptAddition", "rule", "Matching guidance",
+                "Optional. Extra instructions for matching transactions to contacts and tags — for example local "
+                + "prefixes such as VIPPS* or BankAxept. Sent to " + ProcessorToken + " with each match. Don't "
+                + "include personal data or passwords.",
+                SettingClaim.Count, SettingControl.LongText, Max: PromptAdditionRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.FileAnalysisMatchPromptAddition),
+                Load: (p, dto) => p.SetTextLoaded("fileAnalysisMatchPromptAddition", dto.FileAnalysisMatchPromptAddition),
+                Write: (p, req) => req.FileAnalysisMatchPromptAddition = p.TextRequest("fileAnalysisMatchPromptAddition"),
+                Placeholder: PromptPlaceholder,
+                AllowEmpty: true,
+                Rule: PromptAdditionRule.Validate),
         ]),
         // ── Transactional email (issue #421 Wave 2, extended by issue #8) ─────────────────────────
         // Row icons are ligatures the client already renders elsewhere — see the note above the File
@@ -648,9 +665,15 @@ public partial class Settings
         ]),
         new("Data", Icons.Material.Filled.Storage,
         [
-            new("data-export", "download_for_offline", "Export database JSON",
-                "Download finance records as JSON for audit or migration. Excludes uploaded file contents, file analysis, Identity data, and preferences.",
-                SettingClaim.None, SettingControl.Export),
+            // Background jobs (issue #409 §3.6): the worker prunes finished runs older than this once an hour.
+            new("jobRunRetentionDays", "history", "Background job history",
+                "How long a finished background-job run is kept in the run log before it is removed.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.JobRunRetentionDaysMin, Max: SystemSettingsBounds.JobRunRetentionDaysMax,
+                Field: nameof(SystemSettingsUpdate.JobRunRetentionDays),
+                Load: (p, dto) => p.SetIntLoaded("jobRunRetentionDays", dto.JobRunRetentionDays),
+                Write: (p, req) => req.JobRunRetentionDays = p.IntRequest("jobRunRetentionDays"),
+                Unit: "days"),
         ]),
         // ── Weather (issue #348). Nothing is fetched until the contact is set: MET Norway's terms ask
         // every client for one, and it travels in the User-Agent of every request. The Frost client id
@@ -671,7 +694,7 @@ public partial class Settings
                 AllowEmpty: true,
                 Rule: WeatherRules.ValidateContact),
             new("weatherRefreshIntervalMinutes", "update", "Forecast refresh interval",
-                "How often a place set to refresh on a schedule asks MET Norway for a newer forecast. MET's own "
+                "How often a weather point set to refresh on a schedule asks MET Norway for a newer forecast. MET's own "
                 + "Expires header can stretch it; nothing shortens it.",
                 SettingClaim.Count, SettingControl.Number,
                 Min: SystemSettingsBounds.WeatherRefreshIntervalMinutesMin, Max: SystemSettingsBounds.WeatherRefreshIntervalMinutesMax,
@@ -679,24 +702,126 @@ public partial class Settings
                 Load: (p, dto) => p.SetIntLoaded("weatherRefreshIntervalMinutes", dto.WeatherRefreshIntervalMinutes),
                 Write: (p, req) => req.WeatherRefreshIntervalMinutes = p.IntRequest("weatherRefreshIntervalMinutes"),
                 Unit: "min"),
-            new("weatherMaxTrackedLocations", "format_list_numbered", "Places on a schedule",
-                "How many locations may refresh their forecast in the background. Others are fetched only "
+            new("weatherMaxTrackedPoints", "format_list_numbered", "Points on a schedule",
+                "How many weather points may refresh their forecast in the background. Others are fetched only "
                 + "when someone looks. Lowering it pauses the most recently enabled ones first.",
                 SettingClaim.Count, SettingControl.Number,
-                Min: SystemSettingsBounds.WeatherMaxTrackedLocationsMin, Max: SystemSettingsBounds.WeatherMaxTrackedLocationsMax,
-                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedLocations),
-                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedLocations", dto.WeatherMaxTrackedLocations),
-                Write: (p, req) => req.WeatherMaxTrackedLocations = p.IntRequest("weatherMaxTrackedLocations")),
-            new("weatherDefaultLocationId", "home", "Household default location",
-                "The weather everyone sees until they pick their own on the dashboard. Only locations with "
-                + "weather turned on can be chosen.",
+                Min: SystemSettingsBounds.WeatherMaxTrackedPointsMin, Max: SystemSettingsBounds.WeatherMaxTrackedPointsMax,
+                Field: nameof(SystemSettingsUpdate.WeatherMaxTrackedPoints),
+                Load: (p, dto) => p.SetIntLoaded("weatherMaxTrackedPoints", dto.WeatherMaxTrackedPoints),
+                Write: (p, req) => req.WeatherMaxTrackedPoints = p.IntRequest("weatherMaxTrackedPoints")),
+            new("weatherDefaultPointId", "home", "Household default weather point",
+                "The weather everyone sees until they pick their own on the dashboard. Only weather points with "
+                + "their forecast on can be chosen.",
                 SettingClaim.Count, SettingControl.Text,
-                Field: nameof(SystemSettingsUpdate.WeatherDefaultLocationId),
-                Load: (p, dto) => p.SetTextLoaded("weatherDefaultLocationId", dto.WeatherDefaultLocationId),
-                Write: (p, req) => req.WeatherDefaultLocationId = p.TextRequest("weatherDefaultLocationId"),
+                Field: nameof(SystemSettingsUpdate.WeatherDefaultPointId),
+                Load: (p, dto) => p.SetTextLoaded("weatherDefaultPointId", dto.WeatherDefaultPointId),
+                Write: (p, req) => req.WeatherDefaultPointId = p.TextRequest("weatherDefaultPointId"),
                 AllowEmpty: true,
-                Rule: WeatherRules.ValidateDefaultLocationId,
+                Rule: WeatherRules.ValidateDefaultPointId,
                 OptionsFrom: p => p.WeatherDefaultOptions()),
+        ]),
+        // ── News (issue #473 §3.6, §5.4; backend #470 §11.1). Eight caps on the ordinary claim and the
+        // private-host allow-list on the security one — the list decides which addresses on the
+        // household's own network the worker may fetch from, so it is not rendered at all for a caller
+        // who cannot change it. Every bound is the shared SystemSettingsBounds pair; the image size is
+        // also bounded by the server-published ceiling (the object store's file-size limit).
+        new("News", Icons.Material.Filled.RssFeed,
+        [
+            new("newsDefaultFetchIntervalMinutes", "update", "Default check interval",
+                "How often a feed with no interval of its own is checked for new articles.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMin, Max: SystemSettingsBounds.NewsDefaultFetchIntervalMinutesMax,
+                Field: nameof(SystemSettingsUpdate.NewsDefaultFetchIntervalMinutes),
+                Load: (p, dto) => p.SetIntLoaded("newsDefaultFetchIntervalMinutes", dto.NewsDefaultFetchIntervalMinutes),
+                Write: (p, req) => req.NewsDefaultFetchIntervalMinutes = p.IntRequest("newsDefaultFetchIntervalMinutes"),
+                Unit: "min"),
+            new("newsMaxFeeds", "rss_feed", "Maximum feeds",
+                "How many feeds the household may subscribe to. Subscribing beyond it is refused; lowering it "
+                + "keeps every existing feed.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsMaxFeedsMin, Max: SystemSettingsBounds.NewsMaxFeedsMax,
+                Field: nameof(SystemSettingsUpdate.NewsMaxFeeds),
+                Load: (p, dto) => p.SetIntLoaded("newsMaxFeeds", dto.NewsMaxFeeds),
+                Write: (p, req) => req.NewsMaxFeeds = p.IntRequest("newsMaxFeeds")),
+            new("newsImageMaxPerArticle", "image", "Images per article",
+                "How many of an article's images are downloaded. 0 stores no images at all.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageMaxPerArticleMin, Max: SystemSettingsBounds.NewsImageMaxPerArticleMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageMaxPerArticle),
+                Load: (p, dto) => p.SetIntLoaded("newsImageMaxPerArticle", dto.NewsImageMaxPerArticle),
+                Write: (p, req) => req.NewsImageMaxPerArticle = p.IntRequest("newsImageMaxPerArticle")),
+            new("newsImageMaxSizeKb", "photo_size_select_large", "Image size limit",
+                "The largest image a feed may bring; a larger one is skipped. At most " + MaxToken
+                + " KB on this deployment, the file store's own limit.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageMaxSizeKbMin, Max: SystemSettingsBounds.NewsImageMaxSizeKbMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageMaxSizeKb),
+                Load: (p, dto) => p.SetIntLoaded("newsImageMaxSizeKb", dto.NewsImageMaxSizeKb),
+                Write: (p, req) => req.NewsImageMaxSizeKb = p.IntRequest("newsImageMaxSizeKb"),
+                MaxFrom: dto => Math.Min(SystemSettingsBounds.NewsImageMaxSizeKbMax, dto.NewsImageMaxSizeKbCeiling),
+                Unit: "KB"),
+            new("newsImageStoreMaxGiB", "photo_library", "Image storage quota",
+                "How much disk the news images may use in all. At the quota, new images are skipped and "
+                + "articles keep arriving.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsImageStoreMaxGiBMin, Max: SystemSettingsBounds.NewsImageStoreMaxGiBMax,
+                Field: nameof(SystemSettingsUpdate.NewsImageStoreMaxGiB),
+                Load: (p, dto) => p.SetIntLoaded("newsImageStoreMaxGiB", dto.NewsImageStoreMaxGiB),
+                Write: (p, req) => req.NewsImageStoreMaxGiB = p.IntRequest("newsImageStoreMaxGiB"),
+                Unit: "GiB"),
+            new("newsTextStoreMaxGiB", "article", "Text storage quota",
+                "How much disk the articles' text and fetched sources may use in all. At the quota, feeds stop "
+                + "storing new articles until it is raised.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsTextStoreMaxGiBMin, Max: SystemSettingsBounds.NewsTextStoreMaxGiBMax,
+                Field: nameof(SystemSettingsUpdate.NewsTextStoreMaxGiB),
+                Load: (p, dto) => p.SetIntLoaded("newsTextStoreMaxGiB", dto.NewsTextStoreMaxGiB),
+                Write: (p, req) => req.NewsTextStoreMaxGiB = p.IntRequest("newsTextStoreMaxGiB"),
+                Unit: "GiB"),
+            new("newsFeedMaxArticlesPerDay", "today", "Articles per feed per day",
+                "How many new articles one feed may store in a UTC day. Beyond it the feed waits until tomorrow.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsFeedMaxArticlesPerDayMin, Max: SystemSettingsBounds.NewsFeedMaxArticlesPerDayMax,
+                Field: nameof(SystemSettingsUpdate.NewsFeedMaxArticlesPerDay),
+                Load: (p, dto) => p.SetIntLoaded("newsFeedMaxArticlesPerDay", dto.NewsFeedMaxArticlesPerDay),
+                Write: (p, req) => req.NewsFeedMaxArticlesPerDay = p.IntRequest("newsFeedMaxArticlesPerDay")),
+            new("newsFeedMaxImageMbPerDay", "data_usage", "Image MB per feed per day",
+                "How much image data one feed may download in a UTC day. Beyond it, its images wait until tomorrow.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsFeedMaxImageMbPerDayMin, Max: SystemSettingsBounds.NewsFeedMaxImageMbPerDayMax,
+                Field: nameof(SystemSettingsUpdate.NewsFeedMaxImageMbPerDay),
+                Load: (p, dto) => p.SetIntLoaded("newsFeedMaxImageMbPerDay", dto.NewsFeedMaxImageMbPerDay),
+                Write: (p, req) => req.NewsFeedMaxImageMbPerDay = p.IntRequest("newsFeedMaxImageMbPerDay"),
+                Unit: "MB"),
+            new(NewsAllowListKey, "lan", "Private hosts allowed",
+                "Hosts on your own network the worker may fetch feeds from, as host or host:port, separated by "
+                + "commas. Empty blocks every private address. Every change is written to the audit log.",
+                SettingClaim.Security, SettingControl.Text, Max: NewsPrivateHostAllowListRule.MaxLength,
+                Field: nameof(SystemSettingsUpdate.NewsPrivateHostAllowList),
+                Load: (p, dto) => p.SetTextLoaded(NewsAllowListKey, dto.NewsPrivateHostAllowList),
+                Write: (p, req) => req.NewsPrivateHostAllowList = p.TextRequest(NewsAllowListKey),
+                Placeholder: "nas.lan, 192.168.1.20:8080",
+                Rule: NewsPrivateHostAllowListRule.Validate,
+                AllowEmpty: true,
+                StandingAdvisory: NewsAllowListAdvisory,
+                HideWithoutClaim: true),
+            // The OPML import caps close the group (issue #509 §4.2, AC 20): the size cap under the security claim like
+            // the other import size caps, the entry cap a count cap whose ceiling is its shipped default.
+            new("newsOpmlMaxImportMegabytes", "sd_storage", "Maximum OPML import file size",
+                "Largest OPML file the Feeds page accepts for import. Above ~64 MB, also raise the reverse proxy's body-size limit.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportMegabytesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportMegabytes),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportMegabytes", dto.NewsOpmlMaxImportMegabytes),
+                Write: (p, req) => req.NewsOpmlMaxImportMegabytes = p.IntRequest("newsOpmlMaxImportMegabytes")),
+            new("newsOpmlMaxImportEntries", "file_upload", "Maximum feeds per OPML import",
+                "Most distinct feeds one OPML file may list. Feeds beyond the feed limit are reported, not added.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.NewsOpmlMaxImportEntriesMin, Max: SystemSettingsBounds.NewsOpmlMaxImportEntriesMax,
+                Field: nameof(SystemSettingsUpdate.NewsOpmlMaxImportEntries),
+                Load: (p, dto) => p.SetIntLoaded("newsOpmlMaxImportEntries", dto.NewsOpmlMaxImportEntries),
+                Write: (p, req) => req.NewsOpmlMaxImportEntries = p.IntRequest("newsOpmlMaxImportEntries")),
         ]),
         // ── Per-request caps (issue #421 Wave 3) ──────────────────────────────────────────────────
         // These were invisible before: the Contracts and PhotoLibrary config sections had no
@@ -830,7 +955,8 @@ public partial class Settings
             new("fileStorageMaxUploadMegabytes", "sd_storage", "Maximum upload file size",
                 "Largest single file accepted by any upload surface. Cannot be raised above the request-size "
                 + "ceiling the server starts with.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.FileStorageMaxUploadMegabytesMin, Max: SystemSettingsBounds.FileStorageMaxUploadMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.FileStorageMaxUploadMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("fileStorageMaxUploadMegabytes", dto.FileStorageMaxUploadMegabytes),
                 Write: (p, req) => req.FileStorageMaxUploadMegabytes = p.IntRequest("fileStorageMaxUploadMegabytes"),
@@ -975,14 +1101,17 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportTasks),
                 Load: (p, dto) => p.SetCapacityLoaded("taskIcsMaxImportTasks", dto.TaskIcsMaxImportTasks), Write: (p, req) => req.TaskIcsMaxImportTasks = p.CapacityRequest("taskIcsMaxImportTasks")),
             new("taskIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files included — they travel inside "
+                + "it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxExportMegabytes", dto.TaskIcsMaxExportMegabytes), Write: (p, req) => req.TaskIcsMaxExportMegabytes = p.IntRequest("taskIcsMaxExportMegabytes")),
             new("taskIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files included. It cannot usefully exceed the "
+                + "reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.TaskIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.TaskIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.TaskIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("taskIcsMaxImportMegabytes", dto.TaskIcsMaxImportMegabytes), Write: (p, req) => req.TaskIcsMaxImportMegabytes = p.IntRequest("taskIcsMaxImportMegabytes")),
         ],
@@ -1000,14 +1129,17 @@ public partial class Settings
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportEntries),
                 Load: (p, dto) => p.SetCapacityLoaded("journalIcsMaxImportEntries", dto.JournalIcsMaxImportEntries), Write: (p, req) => req.JournalIcsMaxImportEntries = p.CapacityRequest("journalIcsMaxImportEntries")),
             new("journalIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce, attached files and photos included — they "
+                + "travel inside it. An export over this is refused before the download starts.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxExportMegabytes", dto.JournalIcsMaxExportMegabytes), Write: (p, req) => req.JournalIcsMaxExportMegabytes = p.IntRequest("journalIcsMaxExportMegabytes")),
             new("journalIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted, attached files and photos included. It cannot usefully "
+                + "exceed the reverse proxy's body-size limit, which ships at 10 GB.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.JournalIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.JournalIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.JournalIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("journalIcsMaxImportMegabytes", dto.JournalIcsMaxImportMegabytes), Write: (p, req) => req.JournalIcsMaxImportMegabytes = p.IntRequest("journalIcsMaxImportMegabytes")),
         ],
@@ -1084,7 +1216,7 @@ public partial class Settings
         ]),
         // Exchange rates: the two global sync settings save with the page, and
         // Manage currencies links to /currencies, where the sync status, Run now, which currencies are
-        // synced, each one's own start date and the run history live.
+        // synced and each one's own start date live. The run history is on /background-jobs (issue #410).
         new("Exchange rates", Icons.Material.Filled.CurrencyExchange,
         [
             new("exchangeRateHistoryStartDate", "history", "History start date",
@@ -1110,6 +1242,38 @@ public partial class Settings
             new(ExchangeRateCurrenciesKey, "payments", "Currencies",
                 "Choose which currencies are synced and from which date.",
                 SettingClaim.None, SettingControl.Action),
+        ]),
+        // Instrument prices (issue #446). The per-instrument price sources live on /instruments.
+        new("Instrument prices", Icons.Material.Filled.CandlestickChart,
+        [
+            new("instrumentPriceStaleAfterDays", "update", "Stale after",
+                "A dashboard price older than this many days is marked stale.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.InstrumentPriceStaleAfterDaysMin,
+                Max: SystemSettingsBounds.InstrumentPriceStaleAfterDaysMax,
+                Field: nameof(SystemSettingsUpdate.InstrumentPriceStaleAfterDays),
+                Load: (p, dto) => p.SetIntLoaded("instrumentPriceStaleAfterDays", dto.InstrumentPriceStaleAfterDays),
+                Write: (p, req) => req.InstrumentPriceStaleAfterDays = p.IntRequest("instrumentPriceStaleAfterDays"),
+                Unit: "days"),
+            new("instrumentPriceSyncIntervalHours", "schedule", "Sync interval",
+                "How long the price sync waits after a finished run before the next one, once every source has "
+                + "caught up.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMin,
+                Max: SystemSettingsBounds.InstrumentPriceSyncIntervalHoursMax,
+                Field: nameof(SystemSettingsUpdate.InstrumentPriceSyncIntervalHours),
+                Load: (p, dto) => p.SetIntLoaded("instrumentPriceSyncIntervalHours", dto.InstrumentPriceSyncIntervalHours),
+                Write: (p, req) => req.InstrumentPriceSyncIntervalHours = p.IntRequest("instrumentPriceSyncIntervalHours"),
+                Unit: "hours"),
+            new("instrumentPriceSyncHistoryDays", "history", "History depth",
+                "How many days of history a new price source fetches, unless the source names its own start date.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMin,
+                Max: SystemSettingsBounds.InstrumentPriceSyncHistoryDaysMax,
+                Field: nameof(SystemSettingsUpdate.InstrumentPriceSyncHistoryDays),
+                Load: (p, dto) => p.SetIntLoaded("instrumentPriceSyncHistoryDays", dto.InstrumentPriceSyncHistoryDays),
+                Write: (p, req) => req.InstrumentPriceSyncHistoryDays = p.IntRequest("instrumentPriceSyncHistoryDays"),
+                Unit: "days"),
         ]),
         // Its own group, as the design system lays it out (system-settings-data.js): a property is not a
         // kind of contract, and an administrator looking for the property cap looks under Properties.
@@ -1139,13 +1303,21 @@ public partial class Settings
 
     internal const string ExchangeRateCurrenciesKey = "exchangeRateCurrencies";
 
-    private bool IsRowDisabled(SettingItem item) => item.Control switch
-    {
-        SettingControl.Export => false,
-        _ => !Editable(item.Claim) || _phase != Phase.Ready || _isSaving,
-    };
+    /// <summary>Replaced in the help line by the saved processor name (issue #434 §8).</summary>
+    internal const string ProcessorToken = "{processor}";
+
+    /// <summary>Replaced in a row's description by its effective maximum (<see cref="MaxFor"/>).</summary>
+    internal const string MaxToken = "{max}";
+
+    internal const string PromptPlaceholder = "Optional. For example: Lines starting with VIPPS* are Vipps payments.";
+
+    private bool IsRowDisabled(SettingItem item) =>
+        !Editable(item.Claim) || _phase != Phase.Ready || _isSaving;
 
     private bool Matches(SettingItem item, string group) => Matches(item, group, _search);
+
+    /// <summary>A <see cref="SettingItem.HideWithoutClaim"/> row exists only for a caller who can edit it.</summary>
+    private bool Shown(SettingItem item) => !item.HideWithoutClaim || Editable(item.Claim);
 
     /// <summary>
     /// The search predicate, as a pure function so <see cref="FaultSummaryText"/> can count the rows a
@@ -1159,17 +1331,9 @@ public partial class Settings
         item.Description.Contains(search, StringComparison.OrdinalIgnoreCase) ||
         group.Contains(search, StringComparison.OrdinalIgnoreCase);
 
-    // Export controls only earn a place once the server confirms each is available (permission);
-    // every other setting is always present.
-    private bool IsAvailable(SettingItem item) => item.Control switch
-    {
-        SettingControl.Export => _exportAvailable,
-        _ => true,
-    };
-
     private IReadOnlyList<SettingSection> VisibleSections =>
         Sections
-            .Select(s => s with { Items = s.Items.Where(IsAvailable).Where(i => Matches(i, s.Group)).ToList() })
+            .Select(s => s with { Items = s.Items.Where(i => Shown(i) && Matches(i, s.Group)).ToList() })
             // A section survives on its CREDENTIALS alone (issue #445). Searching "SMTP password"
             // filters away every plaintext row in Email, and dropping the section there would hide the
             // one row that matched — the search would answer "no settings match" for a term naming a
@@ -1278,6 +1442,128 @@ public partial class Settings
         Touch();
     }
 
+    // ── Guidance rows: edge-triggered announcements (issue #434 §6) ─────────────────────────────
+    //
+    // Debounced 750 ms after the last keystroke, so typing never chatters. The counter speaks when the
+    // length RISES past 90 % (the actual count, so a paste reads correctly) and on reaching the limit
+    // exactly; above the limit it is silent, because the length error owns that announcement. It re-arms
+    // below 85 %. An error is announced by its KIND (length, character, delimiter) when the kind first
+    // appears and again only after it has cleared, so a moving count or line number never repeats it.
+    private readonly Dictionary<string, LongTextAnnouncerState> _longTextAnnouncers = new(StringComparer.Ordinal);
+
+    private sealed class LongTextAnnouncerState
+    {
+        public CancellationTokenSource? Pending { get; set; }
+        public bool NearArmed { get; set; } = true;
+        public bool LimitArmed { get; set; } = true;
+        public string? LastErrorKind { get; set; }
+    }
+
+    private void SetLongText(SettingItem item, string? value)
+    {
+        SetText(item.Key, value);
+
+        if (!_longTextAnnouncers.TryGetValue(item.Key, out var state))
+        {
+            state = new LongTextAnnouncerState();
+            _longTextAnnouncers[item.Key] = state;
+        }
+
+        state.Pending?.Cancel();
+        state.Pending?.Dispose();
+        var pending = state.Pending = new CancellationTokenSource();
+        _ = AnnounceLongTextAsync(item, state, pending.Token);
+    }
+
+    private async Task AnnounceLongTextAsync(SettingItem item, LongTextAnnouncerState state, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(LongTextAnnounceDelay, token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        var message = LongTextAnnouncement(item, state, GetText(item.Key));
+        if (message is not null)
+        {
+            Announce(message);
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    internal static readonly TimeSpan LongTextAnnounceDelay = TimeSpan.FromMilliseconds(750);
+
+    /// <summary>Cancels any pending guidance announcement, so none fires after the page has gone.</summary>
+    public void Dispose()
+    {
+        foreach (var state in _longTextAnnouncers.Values)
+        {
+            state.Pending?.Cancel();
+            state.Pending?.Dispose();
+        }
+
+        _longTextAnnouncers.Clear();
+    }
+
+    /// <summary>The announcement a settled guidance value owes, or null. Pure apart from the edge state.</summary>
+    private static string? LongTextAnnouncement(SettingItem item, LongTextAnnouncerState state, string text)
+    {
+        var max = item.Max;
+        var length = PromptAdditionRule.NormalisedLength(text);
+        var error = item.Rule?.Invoke(text);
+        var kind = ErrorKind(error);
+
+        string? message = null;
+        if (kind is not null && kind != state.LastErrorKind)
+        {
+            message = $"{item.Title}: {error}";
+        }
+
+        state.LastErrorKind = kind;
+        if (message is not null)
+        {
+            return message;
+        }
+
+        if (length < max * 85 / 100)
+        {
+            state.NearArmed = true;
+        }
+
+        if (length < max)
+        {
+            state.LimitArmed = true;
+        }
+
+        if (length == max && state.LimitArmed)
+        {
+            state.LimitArmed = false;
+            state.NearArmed = false;
+            return $"{item.Title}: Character limit reached";
+        }
+
+        if (length >= max * 90 / 100 && length < max && state.NearArmed)
+        {
+            state.NearArmed = false;
+            return $"{item.Title}: {length} of {max} characters";
+        }
+
+        return null;
+    }
+
+    // Classified by the shared rule's own message openings; GuidanceAndMatchingSurfaceTests pins them,
+    // so a reworded rule fails a test instead of silently re-announcing on every keystroke.
+    internal static string? ErrorKind(string? error) => error switch
+    {
+        null => null,
+        _ when error.StartsWith("Guidance can be at most", StringComparison.Ordinal) => "length",
+        _ when error.StartsWith("Line ", StringComparison.Ordinal) => "character",
+        _ => "delimiter",
+    };
+
     private decimal? GetDecimal(string key) => _decimals.TryGetValue(key, out var state) ? state.Draft : null;
 
     private void SetDecimal(string key, decimal? value)
@@ -1351,7 +1637,7 @@ public partial class Settings
 
     private bool IsDirty(SettingItem item) => item.Control switch
     {
-        SettingControl.Export or SettingControl.Action => false,
+        SettingControl.Action => false,
         SettingControl.Date => _texts.TryGetValue(item.Key, out var date)
             && !string.Equals(date.Draft.Trim(), date.Saved, StringComparison.Ordinal),
         SettingControl.Capacity => _capacities.TryGetValue(item.Key, out var cap) &&
@@ -1359,6 +1645,10 @@ public partial class Settings
         SettingControl.Toggle => _bools.TryGetValue(item.Key, out var b) && b.Draft != b.Saved,
         SettingControl.Text => _texts.TryGetValue(item.Key, out var s)
             && !string.Equals(s.Draft.Trim(), s.Saved, StringComparison.Ordinal),
+        // Compared NORMALISED against the server-returned value: a CRLF or a trailing newline is not a
+        // change, and after Save the row re-binds to the normalised text the server stored.
+        SettingControl.LongText => _texts.TryGetValue(item.Key, out var lt)
+            && !string.Equals(PromptAdditionRule.Normalize(lt.Draft), PromptAdditionRule.Normalize(lt.Saved), StringComparison.Ordinal),
         SettingControl.Decimal or SettingControl.Percent =>
             _decimals.TryGetValue(item.Key, out var d) && d.Draft != d.Saved,
         _ => _ints.TryGetValue(item.Key, out var i) && i.Draft != i.Saved,
@@ -1418,6 +1708,11 @@ public partial class Settings
 
         if (IsTileOnly(item.Control))
             return null;
+
+        // The shared rule owns length, characters and the reserved delimiter, measured on the normalised
+        // value — the same pipeline and the same messages as the server's 400.
+        if (item.Control == SettingControl.LongText)
+            return item.Rule?.Invoke(GetText(item.Key));
 
         if (item.Control is SettingControl.Text or SettingControl.Date)
         {
@@ -1528,7 +1823,6 @@ public partial class Settings
 
     private RenderFragment RenderControl(SettingItem item) => item.Control switch
     {
-        SettingControl.Export => ExportControl(),
         SettingControl.Number => NumberControl(item),
         SettingControl.Size => SizeControl(item),
         SettingControl.Capacity => CapacityControl(item),
@@ -1537,6 +1831,7 @@ public partial class Settings
         SettingControl.Percent => PercentControl(item),
         SettingControl.Date => DateControl(item),
         SettingControl.Action => ActionControl(item),
+        SettingControl.LongText => LongTextControl(item),
         _ => ToggleControl(item),
     };
 
@@ -1560,6 +1855,32 @@ public partial class Settings
         builder.CloseComponent();
     };
 
+    // Administrator guidance (issue #434). Built here rather than in the markup's @code block, which is
+    // at its size limit. READ ONLY, never disabled, for a viewer without the claim: the guidance in force
+    // stays focusable, scrollable and copyable. The frame owns the label (its <label for>), help, error and
+    // advisory; OdsNoteField owns the counter header and appends its sr-only twin after the row's ids.
+    private RenderFragment LongTextControl(SettingItem item) => builder =>
+    {
+        builder.OpenComponent<OdsNoteField>(0);
+        builder.AddComponentParameter(1, nameof(OdsNoteField.Id), ControlId(item.Key));
+        builder.AddComponentParameter(2, nameof(OdsNoteField.Value), GetText(item.Key));
+        builder.AddComponentParameter(3, nameof(OdsNoteField.ValueChanged),
+            EventCallback.Factory.Create<string>(this, v => SetLongText(item, v)));
+        builder.AddComponentParameter(4, nameof(OdsNoteField.Rows), 6);
+        builder.AddComponentParameter(5, nameof(OdsNoteField.CounterMax), item.Max);
+        builder.AddComponentParameter(6, nameof(OdsNoteField.CountLength), (Func<string, int>)PromptAdditionRule.NormalisedLength);
+        builder.AddComponentParameter(7, nameof(OdsNoteField.Placeholder), item.Placeholder);
+        builder.AddComponentParameter(8, nameof(OdsNoteField.ReadOnly), IsRowDisabled(item));
+        builder.AddComponentParameter(9, nameof(OdsNoteField.AriaDescribedBy), DescribedBy(item));
+        builder.AddComponentParameter(10, nameof(OdsNoteField.Spellcheck), "false");
+        builder.AddComponentParameter(11, nameof(OdsNoteField.AutoComplete), "off");
+        builder.AddComponentParameter(12, nameof(OdsNoteField.AutoCapitalize), "off");
+        // aria-invalid without a message on the control: the frame renders the message once, and the
+        // control reaches it through ErrorId in DescribedBy.
+        builder.AddAttribute(13, "aria-invalid", ErrorFor(item) is null ? null : "true");
+        builder.CloseComponent();
+    };
+
     // ── The ids an OdsSettingField and its control share ──────────────────────────────────────────
     //
     // Four elements per row, each addressable: the label (also the jump target for both the problems
@@ -1579,8 +1900,7 @@ public partial class Settings
     /// names itself through <c>aria-labelledby</c> on the title instead.
     /// </summary>
     private static bool HasFocusableControl(SettingItem item) =>
-        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Export
-            or SettingControl.Action)
+        item.Control is not (SettingControl.Capacity or SettingControl.Toggle or SettingControl.Action)
         && item.OptionsFrom is null;
 
     /// <summary>
@@ -1594,6 +1914,14 @@ public partial class Settings
         var description = item.Key == ExchangeRateCurrenciesKey && _syncStatus is { } sync
             ? $"{sync.EnabledCount} currencies synced"
             : item.Description;
+        // The guidance rows name the processor the text travels to, read from the saved setting so the
+        // help line and the consent gate cannot name two different recipients.
+        description = description.Replace(ProcessorToken,
+            string.IsNullOrWhiteSpace(_dto?.FileAnalysisProcessor) ? "the analysis provider" : _dto!.FileAnalysisProcessor,
+            StringComparison.Ordinal);
+        // A row bounded by a server-published ceiling names the EFFECTIVE maximum, never a literal that
+        // would go stale the moment the deployment's file-size limit changes (issue #473 §5.4).
+        description = description.Replace(MaxToken, MaxFor(item).ToString("N0", System.Globalization.CultureInfo.CurrentCulture), StringComparison.Ordinal);
         var parts = new List<string>(3) { description };
 
         // The marker in the outline says WHICH WAY; the range belongs here, where there is room for
@@ -1609,7 +1937,9 @@ public partial class Settings
 
         if (!Editable(item.Claim))
         {
-            parts.Add("Changing this needs an additional permission.");
+            parts.Add(item.Control == SettingControl.LongText
+                ? "Read only."
+                : "Changing this needs an additional permission.");
         }
 
         return string.Join(' ', parts);
@@ -1915,6 +2245,16 @@ public partial class Settings
 
     private string? AdvisoryText(SettingItem item)
     {
+        // A guidance row whose stored value cannot be used says so in its own words, in the advisory
+        // slot (the fault replaces the advisory; it has no separate id). "Not being sent" is the fact
+        // that matters: the analysis runs without it.
+        if (item.Control == SettingControl.LongText && item.Field is { } faultField
+            && _dto?.ProjectionFaults is { Count: > 0 } rowFaults && rowFaults.ContainsKey(faultField))
+        {
+            return "This stored guidance can't be used and is not being sent. "
+                   + (Editable(item.Claim) ? "Save a new value or clear it." : "An administrator can replace it.");
+        }
+
         if (item.Field is { } field && _dto?.Warnings is { Count: > 0 } warnings
             && warnings.TryGetValue(field, out var message))
         {
@@ -1932,6 +2272,11 @@ public partial class Settings
         if (item.Key == ClientBaseUrlKey && OriginMismatchHint is { } hint)
         {
             return hint;
+        }
+
+        if (item.StandingAdvisory is { } standing)
+        {
+            return standing;
         }
 
         // The design system's on-row warning: while one of the three clearing rows is dirty in its
@@ -1995,8 +2340,8 @@ public partial class Settings
     // A SEPARATE collection from SettingItem, not new entries in `Sections`. A secret has no Field, no
     // Load and no Write — it commits through its own per-key endpoint rather than the page's
     // whole-resource PUT — so folding it into the catalogue would force
-    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow a second
-    // exemption beyond SettingControl.Export. Keeping it separate means that test never sees these
+    // SettingsCatalogueTests.Every_stored_row_declares_a_field_a_load_and_a_write to grow an
+    // exemption beyond the tile-only SettingControl.Action. Keeping it separate means that test never sees these
     // rows and no existing guard is weakened.
     //
     // They still RENDER inside the section their Group names, joined at render time. That is the point
@@ -2657,9 +3002,20 @@ public partial class Settings
             return;
         }
 
+        // The News allow-list gate (issue #473 §3.6): a change to the hosts the worker may reach on the
+        // household's network is confirmed with the added and removed hosts listed, before anything is sent.
+        // Checked after the credential gate and before either confirmation is consumed, so a save that trips
+        // both asks twice and sends once.
+        if (!_allowListConfirmed && PendingAllowListChange is { } allowListChange)
+        {
+            OpenAllowListConfirmation(allowListChange);
+            return;
+        }
+
         // One-shot: consumed here so a later save that no longer trips a trigger is not silently
         // pre-confirmed, and so the same confirmation cannot cover a second destructive edit.
         _clearConfirmed = false;
+        _allowListConfirmed = false;
 
         _isSaving = true;
         _justSaved = false;
@@ -2715,6 +3071,8 @@ public partial class Settings
             // the affordance change without a reload. Note this reaches only THIS browser: a user with
             // an open gate is covered server-side by the disclosureVersion check, not by this call.
             Disclosures.Invalidate();
+            // The household default rides on the weather-point picker list (issue #388 §5).
+            WeatherOptions.Invalidate();
             StateHasChanged();
             await Task.Delay(OdsTiming.ConfirmFlashMs);
             _justSaved = false;
@@ -3002,62 +3360,5 @@ public partial class Settings
 
         var cap = Capacity(key);
         return cap.Unlimited ? new CapacityLimit { Unlimited = true } : new CapacityLimit { Value = cap.Value };
-    }
-
-    // ── Data export ───────────────────────────────────────────────────────────
-    private async Task ExportDatabaseJson()
-    {
-        // Guard against duplicate clicks while a request is in flight (the button also shows a
-        // loading state via _isExporting).
-        if (_isExporting)
-            return;
-
-        _isExporting = true;
-        try
-        {
-            var result = await DataExport.DownloadAsync();
-            switch (result.Outcome)
-            {
-                case DataExportOutcome.Success when result.File is not null:
-                    await JS.InvokeVoidAsync("downloadFileFromBytes",
-                        result.File.Bytes, result.File.FileName, "application/json");
-                    ShowExportReadyToast("Database export ready", result.File.FileName);
-                    break;
-                case DataExportOutcome.Forbidden:
-                    Snackbar.Add("You don't have permission to export the database.", Severity.Error);
-                    break;
-                case DataExportOutcome.Incomplete:
-                    // The download was truncated part-way through, so nothing was saved — a partial
-                    // export is worse than none, since it looks like a whole one (issue #401).
-                    Snackbar.Add("The export was cut short and is incomplete, so nothing was saved. Please try again.",
-                                 Severity.Error);
-                    break;
-                default:
-                    Snackbar.Add("Export failed. Please try again.", Severity.Error);
-                    break;
-            }
-        }
-        finally
-        {
-            _isExporting = false;
-        }
-    }
-
-    // Success toast for a finished export — title line plus the generated filename in mono,
-    // mirroring the design-system export toast (Odyssey Design System · SystemSettings).
-    private void ShowExportReadyToast(string title, string fileName)
-    {
-        RenderFragment message = builder =>
-        {
-            builder.OpenElement(0, "div");
-            builder.AddContent(1, title);
-            builder.OpenElement(2, "div");
-            builder.AddAttribute(3, "style",
-                "font-family: var(--font-mono); font-size: 11.5px; opacity: .75; margin-top: 2px; word-break: break-all;");
-            builder.AddContent(4, fileName);
-            builder.CloseElement();
-            builder.CloseElement();
-        };
-        Snackbar.Add(message, Severity.Success);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
@@ -56,7 +57,24 @@ public partial class ContactDetailPanel
     private sealed record ContactTileModel(
         string Kind, string Icon, string Fg, string Soft, string KindTitle,
         string Value, string Label, bool IsPrimary, Guid Id, string GridColumn,
-        Func<Task> Edit, Func<Task> SetPrimary, Func<Task> Delete);
+        Func<Task> Edit, Func<Task> SetPrimary, Func<Task> Delete, string? SharedLine = null);
+
+    private AddressBlockPermissions _addressPermissions = new(false, false, false);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthenticationStateProvider.GetAuthenticationStateAsync()).User;
+        _addressPermissions = AddressBlockPermissions.For(user);
+    }
+
+    /// <summary>
+    /// The muted line under a shared address (issue #383 §3.5): only when other records use the place and
+    /// the caller holds <c>locations.read</c>; <i>… you can see</i> when any kind is hidden.
+    /// </summary>
+    internal static string? SharedLineFor(ExistingAddress a, AddressBlockPermissions permissions) =>
+        permissions.CanReadLocations && a.OtherUses > 0
+            ? Odyssey.Client.Pages.Journal.LocationVisuals.SharedWith(a.OtherUses, permissions.AllKindsReadable)
+            : null;
 
     private IEnumerable<ContactTileModel> Tiles
     {
@@ -65,7 +83,8 @@ public partial class ContactDetailPanel
             foreach (var a in _addresses)
                 yield return new("address", "location_on", "oklch(0.77 0.14 55)", "oklch(0.77 0.14 55 / 0.15)", "Address",
                     AddressSummary(a), OdsTypeRegistries.AddressLabelOf(a.Label.ToString()).Label, a.IsPrimary, a.Id, "1 / -1",
-                    () => OpenEditAddressAsync(a), () => SetPrimaryAddress(a), () => DeleteAddress(a));
+                    () => OpenEditAddressAsync(a), () => SetPrimaryAddress(a), () => DeleteAddress(a),
+                    SharedLineFor(a, _addressPermissions));
             foreach (var e in _emails)
                 yield return new("email", "alternate_email", "oklch(0.72 0.16 295)", "oklch(0.72 0.16 295 / 0.15)", "Email",
                     e.Value, OdsTypeRegistries.EmailLabelOf(e.Label.ToString()).Label, e.IsPrimary, e.Id, "span 2",
@@ -149,9 +168,9 @@ public partial class ContactDetailPanel
             "phone" => draft.Id is { } id
                 ? (await Contacts.UpdatePhoneAsync(Id, id, draft.ToNewPhone())).ToastOrFields(Snackbar, "Update failed", assign, "Phone saved.")
                 : (await Contacts.AddPhoneAsync(Id, draft.ToNewPhone())).ToastOrFields(Snackbar, "Unable to add phone", assign, "Phone added."),
-            _ => draft.Id is { } id
-                ? (await Contacts.UpdateAddressAsync(Id, id, draft.ToNewAddress())).ToastOrFields(Snackbar, "Update failed", assign, "Address saved.")
-                : (await Contacts.AddAddressAsync(Id, draft.ToNewAddress())).ToastOrFields(Snackbar, "Unable to add address", assign, "Address added."),
+            // The address is written by the dialog itself (it owns the address block and its 403/409/422
+            // handling, issue #383); this host only reloads after it.
+            _ => false,
         };
 
         if (ok)
@@ -161,9 +180,7 @@ public partial class ContactDetailPanel
 
     private async Task SetPrimaryAddress(ExistingAddress a)
     {
-        var body = ContactMethodDraft.FromAddress(a);
-        body.IsPrimary = true;
-        if ((await Contacts.UpdateAddressAsync(Id, a.Id, body.ToNewAddress())).Toast(Snackbar, "Update failed", "Primary address updated."))
+        if ((await Contacts.UpdateAddressAsync(Id, a.Id, ContactMethodDraft.PrimaryAddressBody(a))).Toast(Snackbar, "Update failed", "Primary address updated."))
             await ReloadAsync();
     }
     private async Task SetPrimaryEmail(ExistingEmailAddress e)

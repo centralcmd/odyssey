@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:cc02b814237a76c4735fb6eeee87181597b5e56f2ce458a435e527674d91f4d7 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine@sha256:5562fd626eec39f6f53218f9b7d7856ab7195d51d846568304fbe85071a3b6e6 AS build
 
 COPY . /src
 WORKDIR /src
@@ -28,23 +28,26 @@ RUN --mount=type=secret,id=proxy_ca \
     dotnet restore
 RUN dotnet publish Odyssey.Worker/Odyssey.Worker.csproj -c Release -o /app/publish /p:UseAppHost=false
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:254fe017495996d3abcc487ffacdcce2b73affb380d3af87af12c8dff41fe0b0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine@sha256:486297ae006e95ee2ee3112a2c03e3d26e41fbbc64b7a29e28e7a18cc36b12bb AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
 # tzdata (issues #348, #349): the weather job composes each location's days in its own IANA zone, the
 # exchange-rate sync job dates Norges Bank's rates in Europe/Oslo, and the alpine
-# runtime image ships no time-zone database. Asserted at startup by TimeZoneDataGuard, as in the API. No
-# ICU: unlike the API (issue #48), nothing this host runs compares or folds text, and TimeZoneInfo reads
-# the zone files directly. The optional CA mount is the API's, for the same apk-over-TLS reason; nothing
-# from it persists in this shipped layer.
+# runtime image ships no time-zone database. Asserted at startup by TimeZoneDataGuard, as in the API.
+# ICU (issue #470 §8.2): the news reader's URL keys map IDN hosts to punycode and normalise text through ICU,
+# and the worker must key a feed exactly as the API does. Asserted at startup by GlobalizationGuard, and the
+# environment variable is pinned false so a base-image change cannot silently re-enable invariant mode.
+# The optional CA mount is the API's, for the same apk-over-TLS reason; nothing from it persists in this
+# shipped layer.
 RUN --mount=type=secret,id=proxy_ca \
     --mount=type=tmpfs,target=/tmp/ca \
     if [ -s /run/secrets/proxy_ca ]; then \
         cat /etc/ssl/certs/ca-certificates.crt /run/secrets/proxy_ca > /tmp/ca/bundle.crt && \
         export SSL_CERT_FILE=/tmp/ca/bundle.crt; \
     fi; \
-    apk add --no-cache tzdata
+    apk add --no-cache icu-libs icu-data-full tzdata
+ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
 
 # The worker only READS the API's Data Protection key ring, from the API's keys volume mounted read-only
 # at DataProtection__KeysPath (see docker-compose.yml). Holding that ring lets this container decrypt

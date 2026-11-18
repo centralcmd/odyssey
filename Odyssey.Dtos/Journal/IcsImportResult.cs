@@ -15,6 +15,15 @@ public sealed record IcsImportResult
     // client surfaces this as an explicit warning rather than a bare "updated" count.
     public bool AnySeriesRegenerated { get; set; }
 
+    /// <summary>
+    /// Rows linked to a place, whether it already existed or was created by this import (issue #380 §8.4).
+    /// Zero unless the importer holds both <c>locations.read</c> and <c>locations.create</c>.
+    /// </summary>
+    public int PlacesLinked { get; set; }
+
+    /// <summary>Places this import created (a subset of what <see cref="PlacesLinked"/> counts).</summary>
+    public int PlacesCreated { get; set; }
+
     public IReadOnlyList<IcsImportSkipGroup> Skipped { get; set; } = [];
 }
 

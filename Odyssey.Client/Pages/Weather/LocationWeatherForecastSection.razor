@@ -1,0 +1,20 @@
+@using Odyssey.Dtos.Journal
+@*
+    LocationWeatherForecastSection — a linked location's Weather: the linked point's forecast, labelled with where it
+    comes from ("from Oslo · 2 km"; issue #388 flow E). The section itself is WeatherForecastSection, shared with the
+    Weather points record.
+*@
+
+<WeatherForecastSection WeatherPointId="Point.WeatherPointId" PointName="@Point.Name" Label="Weather"
+                        Meta="@WeatherVisuals.SourceLine(Point.Name, DistanceKm)" RecordNoun="location" Class="wx-loc-forecast"
+                        Reads="Reads" OnAnnounce="OnAnnounce" />
+
+@code {
+    [Parameter, EditorRequired] public LinkedWeatherPointRef Point { get; set; } = default!;
+
+    [Parameter] public int? DistanceKm { get; set; }
+
+    [Parameter, EditorRequired] public WeatherPointReads Reads { get; set; } = default!;
+
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+}

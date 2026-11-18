@@ -9,6 +9,10 @@ builder.Configuration.ThrowIfPlaceholderValues(builder.Environment.EnvironmentNa
 // The weather job composes site-local days from IANA zones; the alpine image has none without tzdata.
 TimeZoneDataGuard.EnsureTimeZoneDataAvailable();
 
+// The news reader's URL keys map IDN hosts through ICU (issue #470 §8.2): without it the worker would key a feed
+// differently from the API, so the host refuses to start, as the API does.
+GlobalizationGuard.EnsureIcuAvailable();
+
 builder.AddOdysseyWorker();
 
 var host = builder.Build();

@@ -66,6 +66,13 @@ public class MoneyBoundsTests
         (typeof(Context.ExchangeRate), nameof(Context.ExchangeRate.Rate)),
     ];
 
+    // Instrument closing prices (issue #446): decimal(18, InstrumentPriceRules.MaxDecimals), bounded by
+    // MoneyBounds.InstrumentPriceMin/Max on the write DTOs.
+    private static readonly (Type Entity, string Property)[] PriceColumns =
+    [
+        (typeof(Context.InstrumentPrice), nameof(Context.InstrumentPrice.Close)),
+    ];
+
     // Decimal columns deliberately outside MoneyBounds, each with its reason. A new decimal column must
     // land in one of the three lists, which forces the question "does a request write this?" to be asked.
     private static readonly (Type Entity, string Property)[] OtherDecimalColumns =
@@ -85,11 +92,11 @@ public class MoneyBoundsTests
         // and by CHECK constraints in the database (issue #350).
         (typeof(Context.Location), nameof(Context.Location.Latitude)),
         (typeof(Context.Location), nameof(Context.Location.Longitude)),
-        // Weather (issue #348): never written from a request body. Site coordinates are rounded copies of a
-        // Location's; the run, step, observation and day values are parsed from MET/Frost responses and
+        // Weather (issue #348): never written from a request body. Site coordinates are the rounded copies a
+        // weather-point write (issue #387, range-checked on NewWeatherPoint/UpdateWeatherPoint) produces; the run, step, observation and day values are parsed from MET/Frost responses and
         // range-checked by the parsers (WeatherHttp.InRange) before they are stored.
-        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Latitude)),
-        (typeof(Context.WeatherLocationSite), nameof(Context.WeatherLocationSite.Longitude)),
+        (typeof(Context.WeatherPointSite), nameof(Context.WeatherPointSite.Latitude)),
+        (typeof(Context.WeatherPointSite), nameof(Context.WeatherPointSite.Longitude)),
         (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Latitude)),
         (typeof(Context.WeatherForecastRun), nameof(Context.WeatherForecastRun.Longitude)),
         ..WeatherValueColumns(typeof(Context.WeatherForecastStep)),
@@ -144,10 +151,26 @@ public class MoneyBoundsTests
     }
 
     [Fact]
+    public void PriceColumns_HaveThePricePrecision_FromTheSharedDecimalRule()
+    {
+        using var context = CreateContext();
+        foreach (var (entity, property) in PriceColumns)
+        {
+            var column = ModelProperty(context, entity, property);
+            Assert.Equal(
+                $"{entity.Name}.{property} decimal({MoneyBounds.InstrumentPricePrecision},{InstrumentPriceRules.MaxDecimals})",
+                $"{entity.Name}.{property} decimal({column.GetPrecision()},{column.GetScale()})");
+        }
+
+        Assert.Equal(ColumnMax(MoneyBounds.InstrumentPricePrecision, InstrumentPriceRules.MaxDecimals), Parse(MoneyBounds.InstrumentPriceMax));
+        Assert.Equal(ColumnStep(InstrumentPriceRules.MaxDecimals), Parse(MoneyBounds.InstrumentPriceMin));
+    }
+
+    [Fact]
     public void EveryDecimalColumnInTheModel_IsClassified()
     {
         using var context = CreateContext();
-        var classified = AmountColumns.Concat(RateColumns).Concat(OtherDecimalColumns)
+        var classified = AmountColumns.Concat(RateColumns).Concat(PriceColumns).Concat(OtherDecimalColumns)
             .Select(c => $"{c.Entity.Name}.{c.Property}")
             .ToHashSet(StringComparer.Ordinal);
 
@@ -222,6 +245,13 @@ public class MoneyBoundsTests
         $"{nameof(UpdateExchangeRate)}.{nameof(UpdateExchangeRate.Rate)}",
     };
 
+    // The instrument-close members (issue #446); bounded by the price column, not the amount column.
+    private static readonly HashSet<string> PriceMembers = new(StringComparer.Ordinal)
+    {
+        $"{nameof(NewInstrumentPrice)}.{nameof(NewInstrumentPrice.Close)}",
+        $"{nameof(UpdateInstrumentPrice)}.{nameof(UpdateInstrumentPrice.Close)}",
+    };
+
     // Write-side decimals that are neither a money amount nor a rate, each with its reason. Anything a
     // request can carry as a decimal that is not here must name the MoneyBounds [Range].
     private static readonly Dictionary<string, string> DecimalMembersOutsideMoneyBounds = new(StringComparer.Ordinal)
@@ -240,6 +270,22 @@ public class MoneyBoundsTests
             "A latitude in degrees, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #350).",
         [$"{nameof(Odyssey.Dtos.Journal.UpdateLocation)}.{nameof(Odyssey.Dtos.Journal.UpdateLocation.Longitude)}"] =
             "A longitude in degrees, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #350).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewAddress)}.{nameof(Odyssey.Dtos.Journal.NewAddress.Latitude)}"] =
+            "A geocode latitude for a place the write creates, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #380 §5.3a).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewAddress)}.{nameof(Odyssey.Dtos.Journal.NewAddress.Longitude)}"] =
+            "A geocode longitude for a place the write creates, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #380 §5.3a).",
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.Latitude)}"] =
+            "A geocode latitude for a place the write creates, decimal(7,5); bounded by its own [Range(-90, 90)] (issue #380 §5.3a).",
+        [$"{nameof(RealEstateDetailsDto)}.{nameof(RealEstateDetailsDto.Longitude)}"] =
+            "A geocode longitude for a place the write creates, decimal(8,5); bounded by its own [Range(-180, 180)] (issue #380 §5.3a).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.NewWeatherPoint.Latitude)}"] =
+            "A weather point's latitude, rounded to decimal(6,3); bounded by [Range(WeatherRules.LatitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.NewWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.NewWeatherPoint.Longitude)}"] =
+            "A weather point's longitude, rounded to decimal(7,3); bounded by [Range(WeatherRules.LongitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint.Latitude)}"] =
+            "A weather point's latitude, rounded to decimal(6,3); bounded by [Range(WeatherRules.LatitudeMin/Max)] (issue #387 §8).",
+        [$"{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint)}.{nameof(Odyssey.Dtos.Journal.UpdateWeatherPoint.Longitude)}"] =
+            "A weather point's longitude, rounded to decimal(7,3); bounded by [Range(WeatherRules.LongitudeMin/Max)] (issue #387 §8).",
     };
 
     private sealed record DecimalMember(string Name, RangeAttribute? Range);
@@ -335,11 +381,12 @@ public class MoneyBoundsTests
     {
         var amount = Expected(MoneyBounds.AmountMin, MoneyBounds.AmountMax);
         var rate = Expected(MoneyBounds.ExchangeRateMin, MoneyBounds.ExchangeRateMax);
+        var price = Expected(MoneyBounds.InstrumentPriceMin, MoneyBounds.InstrumentPriceMax);
 
         // Each entry names the member, what it should carry and what it carries.
         var violations = WriteSideDecimalMembers()
             .Where(member => !DecimalMembersOutsideMoneyBounds.ContainsKey(member.Name))
-            .Select(member => (member.Name, Expected: RateMembers.Contains(member.Name) ? rate : amount, Actual: Describe(member.Range)))
+            .Select(member => (member.Name, Expected: RateMembers.Contains(member.Name) ? rate : PriceMembers.Contains(member.Name) ? price : amount, Actual: Describe(member.Range)))
             .Where(member => member.Expected != member.Actual)
             .Select(member => $"{member.Name}: expected {member.Expected}, found {member.Actual}")
             .ToList();

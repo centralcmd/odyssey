@@ -5,6 +5,95 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.45.0](https://github.com/centralcmd/odyssey/compare/v0.44.0...v0.45.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **core:** POST /api/photos takes multipart form data; photo DTOs drop FileId; journal entries take photoIds. MovePhotoOriginalsToObjectStore's Down() works only before the backfill has moved a photo; afterwards a rollback is a backup restore.
+* send aliases, descriptions and admin guidance to file analysis ([#440](https://github.com/centralcmd/odyssey/issues/440))
+* **api:** remove the whole-database JSON export
+
+### Features
+
+* **api:** add instrument, price, purge and watchlist endpoints ([3890982](https://github.com/centralcmd/odyssey/commit/3890982b2b49aef8aa7c7bef99974a7a2c539655))
+* **api:** remove the whole-database JSON export ([cf2efbe](https://github.com/centralcmd/odyssey/commit/cf2efbea4867019cf8f71c9acb8d24af2b42a86f))
+* **client:** design-system sync — instruments UI, table extensions, copy drift ([#457](https://github.com/centralcmd/odyssey/issues/457)) ([b2e0882](https://github.com/centralcmd/odyssey/commit/b2e0882ecfcf6fa3df6e08aea0f98da479288d01))
+* **client:** streamline the background jobs overview ([#464](https://github.com/centralcmd/odyssey/issues/464)) ([64d7d96](https://github.com/centralcmd/odyssey/commit/64d7d961e66a4ae94cb1620e05bf299f922a7fb1))
+* **core:** add the multi-source instrument-price sync framework ([8312916](https://github.com/centralcmd/odyssey/commit/8312916e169aeb256a24569c5e42460893ca7bc6))
+* **core:** store every file on the object store, by area ([#454](https://github.com/centralcmd/odyssey/issues/454)) ([abd4c39](https://github.com/centralcmd/odyssey/commit/abd4c395f6f1a8979a14665273dd8fd8f227d689))
+* **core:** store photo originals on the object store ([#441](https://github.com/centralcmd/odyssey/issues/441)) ([c347014](https://github.com/centralcmd/odyssey/commit/c347014c8bb013ba7264cf5a8f6245b162dcf4f9))
+* **data:** add instrument and instrument-price schema ([4044ecd](https://github.com/centralcmd/odyssey/commit/4044ecda0058105468d853da75e4171c4114d311))
+* one tag chip for tags, albums and calendars ([#443](https://github.com/centralcmd/odyssey/issues/443)) ([00f056a](https://github.com/centralcmd/odyssey/commit/00f056a21481f5cb5554abba8a6123e623f802ef))
+* run statement analysis as a background job in the worker ([#450](https://github.com/centralcmd/odyssey/issues/450)) ([e88a1f4](https://github.com/centralcmd/odyssey/commit/e88a1f4bd487e56dc9ea994284bacd47d40e6abc))
+* send aliases, descriptions and admin guidance to file analysis ([#440](https://github.com/centralcmd/odyssey/issues/440)) ([c376f0a](https://github.com/centralcmd/odyssey/commit/c376f0a74041e42b1ca2cc8a8f6efa5b8de4ecff))
+* weather on calendar events and journal entries ([#438](https://github.com/centralcmd/odyssey/issues/438)) ([0b46460](https://github.com/centralcmd/odyssey/commit/0b46460c2f9d648edfab6c821070600a0f3af124))
+* weather point history windows ([#442](https://github.com/centralcmd/odyssey/issues/442)) ([0a18a1d](https://github.com/centralcmd/odyssey/commit/0a18a1de6156abfd9963f2bd7a5734351c8eb42a))
+
+
+### Bug Fixes
+
+* **client:** align instrument filter, add a status filter and type colours ([#465](https://github.com/centralcmd/odyssey/issues/465)) ([d755910](https://github.com/centralcmd/odyssey/commit/d755910b7e75a64183b17e5fa893032969de976d))
+* **client:** tag chips take their tag's colour instead of a dot ([#432](https://github.com/centralcmd/odyssey/issues/432)) ([d1e74e6](https://github.com/centralcmd/odyssey/commit/d1e74e6fc8438cce118025c9cee888f2228fba77))
+* **core:** address the first review round on instrument prices ([ddeda1f](https://github.com/centralcmd/odyssey/commit/ddeda1fe2d35bfc83b01ac054359966033df953f)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+* **core:** log price-source keys from the catalogue, not the request ([52d2e42](https://github.com/centralcmd/odyssey/commit/52d2e4240f007d0dd420e0ca103d51afd90ebe72)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+
+
+### Refactoring
+
+* **core:** keep the instrument module off the journal namespace ([c4fe816](https://github.com/centralcmd/odyssey/commit/c4fe8165a9b11a0d32911846ffad164205beb253)), closes [#446](https://github.com/centralcmd/odyssey/issues/446)
+
+## [0.44.0](https://github.com/centralcmd/odyssey/compare/v0.43.0...v0.44.0) (2026-11-07)
+
+
+### Features
+
+* **client:** sync the client to design-system artifact version 1794072419-6b02 ([043aa37](https://github.com/centralcmd/odyssey/commit/043aa3730988f4db231d020e2b866583d60b43af))
+* open a day's hourly forecast from the weather day strip ([61d2f73](https://github.com/centralcmd/odyssey/commit/61d2f73ba8937e02ce1f640f70354cb5d3e746e5))
+* unified background-job run history ([75c3a8a](https://github.com/centralcmd/odyssey/commit/75c3a8aef3a0d2a331aa26552bd7adf70abe73ab))
+
+
+### CI/CD
+
+* Bump the actions group with 2 updates ([23a163e](https://github.com/centralcmd/odyssey/commit/23a163e1be78b8de191a55fea5a287c6aefe585e))
+* Bump the docker group across 4 directories with 2 updates ([5afcb65](https://github.com/centralcmd/odyssey/commit/5afcb65f3e3f81d33dc724bac527cf15b9db8282))
+
+## [0.43.0](https://github.com/centralcmd/odyssey/compare/v0.42.0...v0.43.0) (2026-11-06)
+
+
+### Features
+
+* album icon and colour ([#412](https://github.com/centralcmd/odyssey/issues/412)) ([f967fc7](https://github.com/centralcmd/odyssey/commit/f967fc72321de99e8c907a9c1aafd473488fecfc))
+* calendar colors work like tag colors ([#405](https://github.com/centralcmd/odyssey/issues/405)) ([1f0f727](https://github.com/centralcmd/odyssey/commit/1f0f7271e3787a82c015035243b3cc21fe35feb5))
+* **client:** show tag icons on tag chips instead of card titles ([10ad433](https://github.com/centralcmd/odyssey/commit/10ad433f2d593d1292495f80d3c78869694e3c15))
+* **client:** show the map and forecast in an open weather point ([#411](https://github.com/centralcmd/odyssey/issues/411)) ([4d01f8f](https://github.com/centralcmd/odyssey/commit/4d01f8fd31d6fff34ddb3f5ca0f6d8655152ba79))
+* **client:** sync the client to design-system artifact version 1793913330-b7a8 ([#416](https://github.com/centralcmd/odyssey/issues/416)) ([01a12f3](https://github.com/centralcmd/odyssey/commit/01a12f39dff767585a8dc311410d2240d5bc871e))
+* **client:** tag icons and darker tiles in journal module overviews ([379debf](https://github.com/centralcmd/odyssey/commit/379debfd9666e012f591276ca4158ac4eb53070b))
+* **client:** tint overview by-tag rows in each tag's colour ([86a1ae5](https://github.com/centralcmd/odyssey/commit/86a1ae572eddab0ec53bba0eb770b8b75045a850))
+* **client:** widen the tag icon catalogue and enlarge the picker ([#391](https://github.com/centralcmd/odyssey/issues/391)) ([83a5f93](https://github.com/centralcmd/odyssey/commit/83a5f9365d31801e93834315eb0e195d97321574))
+* location map with one pin ([9c2868e](https://github.com/centralcmd/odyssey/commit/9c2868e51712974a4179f4f078b31510c11951a6))
+* sync the client to design-system artifact ([df065c4](https://github.com/centralcmd/odyssey/commit/df065c41e82c1e45a733eb34182e6f7a6a8c6946))
+* tag colors on every tag type ([fa098ef](https://github.com/centralcmd/odyssey/commit/fa098ef5144ed06e45178bf0ed2a7f81ca02ce0e))
+* unified locations ([3b340c2](https://github.com/centralcmd/odyssey/commit/3b340c228c72ad0877cbd2a0e256d3c5bd0ad4ee))
+* weather points shared by many locations ([3aeab0d](https://github.com/centralcmd/odyssey/commit/3aeab0ddc28ee959df795c84200890c0e4e84e71))
+
+
+### Bug Fixes
+
+* **client:** bring the journal, tasks, photos, locations and calendar filters in line ([4506dbf](https://github.com/centralcmd/odyssey/commit/4506dbf0b736ceeb63cd8a15c9dd256ee42538bf))
+* **client:** give the files, users and analysis log filters their glyphs ([#408](https://github.com/centralcmd/odyssey/issues/408)) ([1acfe7c](https://github.com/centralcmd/odyssey/commit/1acfe7c62f2c67bbe96412e2a61392ee28503cd4))
+* **client:** give the tag pages' Status filter its glyphs ([8ac2ae8](https://github.com/centralcmd/odyssey/commit/8ac2ae8f32a7b8d58a0e2c911c6d9cc3b34fad81))
+* **client:** recess the account overview cards like the journal tiles ([#396](https://github.com/centralcmd/odyssey/issues/396)) ([a78d345](https://github.com/centralcmd/odyssey/commit/a78d345dd3d18ff19281c8386a6fc07a666197fb))
+* **client:** repair the search-region date range and single sort label ([#397](https://github.com/centralcmd/odyssey/issues/397)) ([57d60ba](https://github.com/centralcmd/odyssey/commit/57d60ba05f76702d1df714c97b77ddee61eaea13))
+* **client:** size and label the remaining finance filter dropdowns ([274c567](https://github.com/centralcmd/odyssey/commit/274c567e10dec7c4ef35a5cd7c8591e574296341))
+* **client:** standardize the finance filter-bar dropdowns ([a6c6ec6](https://github.com/centralcmd/odyssey/commit/a6c6ec6c96dc447dd8a68d322cba7d9e8e6b30eb))
+* **client:** unify search-region control borders and recess their fill ([109a78b](https://github.com/centralcmd/odyssey/commit/109a78b2c00e16688d02ac98a7b578ad1230775c))
+
+
+### CI/CD
+
+* bound the integration tier's startup and the test job ([#402](https://github.com/centralcmd/odyssey/issues/402)) ([1cb54ea](https://github.com/centralcmd/odyssey/commit/1cb54eaeb9466bd0f034edd18f2e9288cb5a84e0))
+
 ## [0.42.0](https://github.com/centralcmd/odyssey/compare/v0.41.0...v0.42.0) (2026-11-01)
 
 

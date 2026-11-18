@@ -87,6 +87,73 @@ public class LocationSearchTests
         Assert.Matches("^[0-9]+$", place.SourceReference!);
     }
 
+    // AC 28 (issue #380 §5.5a, v9): an address candidate carries its structured fields; nothing else does.
+    [Fact]
+    public async Task Kartverket_address_candidates_carry_the_four_structured_fields_and_place_names_carry_none()
+    {
+        var (service, _, _) = Build();
+
+        var response = await service.SearchAsync(Norway("storgata 1"));
+
+        var addresses = response.Candidates.Where(c => c.Kind == LocationCandidateKind.Address).ToList();
+        Assert.NotEmpty(addresses);
+        var first = addresses[0];
+        Assert.Equal("Storgata 1", first.Line1);
+        Assert.Equal("3611", first.PostalCode);
+        Assert.Equal("KONGSBERG", first.City);
+        Assert.Equal("NO", first.CountryCode);
+        Assert.All(addresses, a =>
+        {
+            Assert.False(string.IsNullOrEmpty(a.Line1));
+            Assert.Equal("NO", a.CountryCode);
+        });
+
+        var places = response.Candidates.Where(c => c.Kind == LocationCandidateKind.PlaceName).ToList();
+        Assert.NotEmpty(places);
+        Assert.All(places, AssertNoStructuredFields);
+    }
+
+    [Fact]
+    public async Task Open_Meteo_candidates_carry_no_structured_fields()
+    {
+        var (service, _, _) = Build();
+
+        var response = await service.SearchAsync(World("lisbon"));
+
+        Assert.NotEmpty(response.Candidates);
+        Assert.All(response.Candidates, AssertNoStructuredFields);
+    }
+
+    [Fact]
+    public async Task Structured_fields_are_cleaned_and_capped_to_the_location_columns()
+    {
+        var longLine = new string('L', LocationRules.AddressLineMaxLength + 20);
+        var longCity = new string('C', LocationRules.CityMaxLength + 20);
+        var body = $$"""
+            {"adresser":[{"adressetekst":"{{longLine}}‮","postnummer":" 0155\u0007","poststed":"{{longCity}}",
+              "kommunenummer":"0301","adressekode":12345,"nummer":1,"bokstav":"",
+              "representasjonspunkt":{"lat":59.91,"lon":10.74} } ] }
+            """;
+        var (service, _, _) = Build(kartverket: request => Task.FromResult(Json(
+            request.RequestUri!.AbsolutePath.StartsWith("/adresser", StringComparison.Ordinal) ? body : """{"navn":[]}""")));
+
+        var candidate = Assert.Single((await service.SearchAsync(Norway("lllll"))).Candidates);
+
+        Assert.Equal(LocationRules.AddressLineMaxLength, candidate.Line1!.Length);
+        Assert.DoesNotContain('‮', candidate.Line1);
+        Assert.Equal("0155", candidate.PostalCode);
+        Assert.Equal(LocationRules.CityMaxLength, candidate.City!.Length);
+        Assert.Equal("NO", candidate.CountryCode);
+    }
+
+    private static void AssertNoStructuredFields(LocationCandidate candidate)
+    {
+        Assert.Null(candidate.Line1);
+        Assert.Null(candidate.PostalCode);
+        Assert.Null(candidate.City);
+        Assert.Null(candidate.CountryCode);
+    }
+
     [Fact]
     public async Task World_calls_only_Open_Meteo_and_maps_its_candidates()
     {

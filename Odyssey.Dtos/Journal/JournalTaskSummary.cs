@@ -43,5 +43,11 @@ public sealed record JournalTaskSummary : ITagIconRecord
     /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
     public string DisplayIcon { get; set; } = TagIcons.Default;
 
+    /// <summary>
+    /// The colour of the tag that supplies <see cref="DisplayIcon"/> (issue #392): normalised <c>#RRGGBB</c>
+    /// or <c>null</c>. Resolved server-side by <see cref="TagIcons.ResolveDisplay(IEnumerable{TagIconCandidate}?)"/>.
+    /// </summary>
+    public string? DisplayColor { get; set; }
+
     public required int AttachmentCount { get; set; }
 }

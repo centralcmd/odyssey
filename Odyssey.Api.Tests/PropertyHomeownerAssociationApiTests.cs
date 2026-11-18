@@ -29,6 +29,9 @@ public class PropertyHomeownerAssociationApiTests
         PermissionClaims.PropertiesCreate,
         PermissionClaims.PropertiesRead,
         PermissionClaims.PropertiesUpdate,
+        PermissionClaims.LocationsRead,
+        PermissionClaims.LocationsCreate,
+        PermissionClaims.LocationsUpdate,
     ];
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);

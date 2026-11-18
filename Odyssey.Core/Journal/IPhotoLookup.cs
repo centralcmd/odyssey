@@ -1,10 +1,13 @@
 namespace Odyssey.Core.Journal;
 
+/// <summary>What the Journal module may know about a linked library photo (issue #428 §5.3): its label, never its bytes.</summary>
+public sealed record PhotoLinkInfo(Guid PhotoId, string? Title, string? FileName);
+
 /// <summary>
-/// Narrow read / find-or-create surface the Photos module exposes to the Journal module (issue #321 v4),
-/// mirroring <c>IFileLookup</c>/<c>IContactLookup</c>. Keeps the Journal→Photos dependency
-/// one-directional and FK-free: a journal entry links a library <c>Photo</c> by id, validated/resolved
-/// through this lookup rather than an EF navigation.
+/// Narrow read surface the Photos module exposes to the Journal module (issue #321 v4), mirroring
+/// <c>IFileLookup</c>/<c>IContactLookup</c>. Keeps the Journal→Photos dependency one-directional and FK-free: a
+/// journal entry links a library <c>Photo</c> by id, validated and resolved through this lookup rather than an EF
+/// navigation. Since issue #428 the journal never creates a photo: it links photos uploaded through the photo API.
 /// </summary>
 public interface IPhotoLookup
 {
@@ -12,25 +15,15 @@ public interface IPhotoLookup
     Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Map each existing photo id to its backing <c>FileId</c> in one batched query (WHERE PhotoId IN …),
-    /// for render enrichment. Ids that no longer resolve are simply absent from the map (caller drops them).
+    /// Each existing photo's label (title and effective file name) in one batched query, for render enrichment. Ids
+    /// that no longer resolve are absent from the map (the caller drops them).
     /// </summary>
-    Task<IReadOnlyDictionary<Guid, Guid>> ResolveFileIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Return the id of the single library <c>Photo</c> for <paramref name="fileId"/>, creating it
-    /// (running scalar metadata extraction) if it does not yet exist. Idempotent and race-safe (keyed on
-    /// the <c>Photo.FileId</c> unique index; a concurrent create's duplicate-key is caught + re-fetched).
-    /// The file must be a known image, else <see cref="Shared.DomainUnprocessableException"/>.
+    /// Resolves ICS <c>odyssey-photo:</c> reference ids (issue #428 §3.3): each id as a <c>PhotoId</c>, then as the
+    /// current <c>FileId</c> of a legacy photo, then as a backfilled photo's <c>LegacyFileId</c>. Unresolved ids are
+    /// absent. Never creates a photo.
     /// </summary>
-    Task<Guid> FindOrCreatePhotoIdForFileAsync(Guid fileId, string userId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Batched find-or-create for many image file ids (issue #339 §5 step 3.7). Callers must pre-filter to
-    /// image-type files (e.g. via <c>IFileLookup.ExistingImageIdsAsync</c>) — this method does not re-check
-    /// content type. Returns <c>fileId → PhotoId</c> for every input, using one query for the already-linked
-    /// rows plus a single batched insert for the rest, rather than one <c>SaveChanges</c> per file.
-    /// </summary>
-    Task<IReadOnlyDictionary<Guid, Guid>> FindOrCreatePhotoIdsForFilesAsync(
-        IReadOnlyCollection<Guid> fileIds, string userId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(IReadOnlyCollection<Guid> referenceIds, CancellationToken cancellationToken = default);
 }

@@ -1,4 +1,7 @@
+using Odyssey.Core.Internet.News;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Journal.Thumbnails;
+using Odyssey.Core.Journal.Originals;
 using Odyssey.Api;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
@@ -23,7 +26,6 @@ using Microsoft.Extensions.Options;
 using System.Reflection;
 using Microsoft.AspNetCore.Authorization;
 using Odyssey.Core.Email;
-using Odyssey.Core.DataExport;
 using Odyssey.Core.FileExport;
 using Odyssey.Core.FileStorage;
 using Odyssey.Core.Finance.ExchangeRateSync;
@@ -97,7 +99,7 @@ builder.Services.AddOptions<IdentityOptions>()
 builder.Services.Replace(
     ServiceDescriptor.Scoped<IUserClaimsPrincipalFactory<ApplicationUser>, LegalComplianceClaimsPrincipalFactory>());
 
-// SecurityStampValidator's revalidation (30-minute ValidationInterval, unmodified) is what re-runs the
+// SecurityStampValidator's revalidation (the one-minute ValidationInterval configured above) is what re-runs the
 // claims factory for an already-active session — the mechanism that bounds how long a session can
 // outlive a newly published ToS. Wrapping the configured handler rather than replacing it keeps that
 // behaviour intact and just records the principal being revalidated, which is how the factory tells an
@@ -274,7 +276,7 @@ builder.Services.AddCors(options =>
                 // same reason: WASM's browser-hosted HttpClient strips any response header not on this
                 // list, so a header the client must read needs the same treatment here regardless of
                 // what the server actually sends.
-                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows");
+                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After", "Location");
         }
         else
         {
@@ -287,7 +289,7 @@ builder.Services.AddCors(options =>
                 // same reason: WASM's browser-hosted HttpClient strips any response header not on this
                 // list, so a header the client must read needs the same treatment here regardless of
                 // what the server actually sends.
-                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows");
+                .WithExposedHeaders("Content-Disposition", "X-Odyssey-Export-Rows", "Retry-After", "Location");
         }
     });
 });
@@ -318,8 +320,15 @@ builder.Services.AddAdminActionRateLimiter(builder.Configuration);
 builder.Services.AddProfileImageRateLimiter(builder.Configuration);
 // The geocoding search proxy's per-user and instance-wide limits (issue #350). Same composition rules.
 builder.Services.AddLocationSearchRateLimiter(builder.Configuration);
+builder.Services.AddFileAnalysisRateLimiter(builder.Configuration);
 // The weather read and Admin-action limits (issue #348). Same composition rules.
 builder.Services.AddWeatherRateLimiter(builder.Configuration);
+// The background-jobs manual run's per-user limit (issue #409 §3.5). Same composition rules.
+builder.Services.AddBackgroundJobsRateLimiter(builder.Configuration);
+// The photo upload's per-user limit (issue #428 §7.9). Same composition rules.
+builder.Services.AddPhotoUploadRateLimiter(builder.Configuration);
+// The file upload's per-user limit (issue #448 §7.9), on POST /api/files and the contact image. Same composition rules.
+builder.Services.AddFileUploadRateLimiter(builder.Configuration);
 
 // The location map's basemap (issue #370): deploy-time, validated at start-up, served by MapStylesController.
 builder.Services.AddMapStyles(builder.Configuration);
@@ -357,6 +366,9 @@ builder.Services.AddScoped<Odyssey.Core.Profiles.UserProfileImageService>();
 builder.Services.AddScoped<CurrencyService>();
 builder.Services.AddScoped<ExchangeRateService>();
 builder.Services.AddScoped<CurrencyConversionService>();
+// Instrument prices (issue #446): the watchlist, manual prices and the price-source catalogue.
+// AddInstrumentPriceSync adds the source status, binding list and run-now; the worker runs the sync itself.
+Odyssey.Core.Finance.Instruments.InstrumentPriceSyncServiceCollectionExtensions.AddInstrumentPriceSync(builder.Services);
 builder.Services.AddScoped<AccountTotalsService>();
 builder.Services.AddScoped<NetWorthHistoryService>();
 builder.Services.AddScoped<FileService>();
@@ -401,10 +413,8 @@ builder.Services.AddScoped<Odyssey.Core.Finance.ISystemSettingsLookup, Odyssey.A
 // services' home) instead.
 builder.Services.AddScoped<Odyssey.Core.Journal.IImportExportLimitsLookup, Odyssey.Api.SystemSettings.ImportExportLimitsLookup>();
 
-// The six AI file-analysis settings (issue #421 Wave 1), same 30s-cached-lookup shape. Its own cache
-// key rather than a method on ISystemSettingsLookup: that one's entry is shared with the Contracts
-// eviction path, so folding these in would make a contracts save evict the analysis settings.
-builder.Services.AddScoped<Odyssey.Core.Finance.IFileAnalysisSettingsLookup, Odyssey.Api.SystemSettings.FileAnalysisSettingsLookup>();
+// The AI file-analysis settings lookup (issue #421 Wave 1) is registered by AddFileAnalysis below, with its own
+// cache key: shared with the worker since issue #444, which reads it uncached before every transfer.
 
 // The photo/journal per-request caps (issue #421 Wave 3). A second lookup rather than a method on
 // ISystemSettingsLookup: the nine Wave 3 caps span two domain projects, and a lookup interface lives
@@ -453,7 +463,7 @@ builder.Services.AddScoped<Odyssey.Core.Journal.TaskIcsService>();
 
 // Photos module (issue #321), now part of the merged OdysseyContext; consumes the Finance lookups above and
 // the bounded image-content reader for in-process EXIF/IPTC/XMP extraction. IPhotoLookup is the narrow
-// surface the Journal module uses to link/find-or-create library photos. Gated by claims only.
+// read surface the Journal module uses to link library photos. Gated by claims only.
 builder.Services.AddScoped<Odyssey.Core.Finance.IImageContentReader, Odyssey.Core.Finance.ImageContentReader>();
 builder.Services.AddSingleton<Odyssey.Core.Journal.IPhotoMetadataExtractor, Odyssey.Core.Journal.PhotoMetadataExtractor>();
 builder.Services.AddScoped<Odyssey.Core.Journal.PhotoMetadataService>();
@@ -513,7 +523,9 @@ builder.Services.AddTransient<Odyssey.Core.Journal.Geocoding.ILocationSearchSour
 // fetches only on demand and for the Admin refresh.
 builder.Services.AddWeatherFetching();
 builder.Services.AddScoped<Odyssey.Core.Weather.WeatherReadService>();
-builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLocationService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherBatchReadService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherPointService>();
+builder.Services.AddScoped<Odyssey.Core.Weather.WeatherLinkService>();
 
 // The purge (N2): bulk ExecuteDelete on a real engine, tracked RemoveRange on the EF InMemory provider,
 // where ExecuteDelete throws.
@@ -541,7 +553,6 @@ else
 }
 
 builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddScoped<DataExportService>();
 
 // Filesystem object storage (issue #346). Shared with Odyssey.Worker, which runs the maintenance job: the API
 // registers NO hosted service for the store (A3.1). Volumes and bindings are deploy-time configuration
@@ -550,70 +561,48 @@ builder.Services.AddFileStorage();
 // Photo thumbnails (issue #362): the storage feature, the service the photo paths use and the rename observer. The
 // job and the decoder are the worker's alone; nothing here decodes an image.
 builder.Services.AddPhotoThumbnails();
+// Photo originals (issue #428): the storage feature, the content source every reader uses and the writer. The
+// backfill that moves legacy originals out of FileBlob runs in the worker.
+builder.Services.AddPhotoOriginals();
+// Files on the store (issue #448): the finance, journal and contact-avatar areas, the writer every upload uses and the
+// content source every download reads through. The move of the legacy FileBlobs runs in the worker.
+builder.Services.AddStoredFiles();
+// News reader (issue #470): the NewsArticles storage feature, which every host with volumes binds. The fetching job runs
+// in the worker; the API makes no outbound request for news.
+builder.Services.AddNewsReader();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.INewsArticleSearch, Odyssey.Core.Internet.News.Reading.NewsArticleSearch>();
+builder.Services.AddSingleton<Odyssey.Core.Internet.News.Reading.NewsListCursor>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsFeedService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsArticleService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsTagService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Reading.NewsStatusService>();
+// OPML import and export (issue #508): the services, and the one-import-at-a-time permit, shared by every request.
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Opml.NewsOpmlImportService>();
+builder.Services.AddScoped<Odyssey.Core.Internet.News.Opml.NewsOpmlExportService>();
+builder.Services.AddSingleton<Odyssey.Api.NewsOpmlImportLimiter>();
+builder.Services.AddNewsSearchLimiter(builder.Configuration);
+// The manual news run (§5.5 item 27): under Testing no worker runs, so it executes inline, as run-now does for the
+// exchange-rate sync.
+if (builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddSingleton<Odyssey.Api.News.INewsRunDispatcher, Odyssey.Api.News.InlineNewsRunDispatcher>();
+}
+else
+{
+    builder.Services.AddSingleton<Odyssey.Api.News.INewsRunDispatcher, Odyssey.Api.News.WorkerNewsRunDispatcher>();
+}
 
 builder.Services.AddScoped<AdminFileExportService>();
 
-builder.Services.Configure<FileAnalysisOptions>(
-    builder.Configuration.GetSection(FileAnalysisOptions.SectionName));
-// Transient, like every DelegatingHandler: IHttpClientFactory owns its lifetime and pools it with the
-// handler chain, so it must resolve nothing scoped in its constructor.
-builder.Services.AddTransient<Odyssey.Api.SystemSettings.FileAnalysisApiKeyHandler>();
+// The background-jobs page (issue #409): the run log's read model and the manual run of every job. The recording
+// services are registered by each job's own registration above; the API runs no job and no sweep on a timer.
+builder.Services.AddScoped<Odyssey.Core.Jobs.BackgroundJobsService>();
+
+// File analysis (issue #444): options, the settings lookup, the prompt template, the API-key handler, the provider's
+// typed client with its resilience pipeline, the enqueue service and the queue. ONE registration shared with the
+// worker, which performs the transfer — so the redirect, credential and retry posture cannot differ between hosts.
+builder.Services.AddFileAnalysis(builder.Configuration);
 builder.Services.AddScoped<FileAnalysisService>();
-builder.Services.AddHttpClient<IFileAnalysisProvider, ClaudeFileAnalysisProvider>((sp, client) =>
-{
-    var opts = sp.GetRequiredService<IOptions<FileAnalysisOptions>>().Value;
-
-    // No BaseAddress (issue #439): the destination is admin-editable now, so it is resolved per run
-    // from the settings snapshot and passed to the provider as part of FileAnalysisTarget. A
-    // registration-time BaseAddress would be fixed at startup and could not follow a repoint — and,
-    // worse, would be the value stamped on jobs while requests went somewhere else.
-    //
-    // The API key is NO LONGER set here (issue #445 Wave 1). It moved to the encrypted secret store,
-    // and this callback is synchronous — it cannot await a scoped OdysseyContext — while a
-    // DefaultRequestHeaders entry is evaluated once at client construction and so could never follow a
-    // rotation anyway. FileAnalysisApiKeyHandler attaches it per request instead. The accepted
-    // consequence is unchanged and still stated on the settings row: repointing the base URL sends the
-    // stored key to the new host.
-    client.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
-
-    // The resilience handler below owns every timeout: HttpClient.Timeout wraps the whole pipeline,
-    // so leaving it at the configured value would cut the retries off mid-flight. The per-call budget
-    // lives on AttemptTimeout instead, which is where it belongs once a call can be retried.
-    client.Timeout = Timeout.InfiniteTimeSpan;
-})
-    // Redirects are NOT followed (issue #439 §5.3a). Without this the client runs on the default
-    // handler with AllowAutoRedirect = true, and .NET strips only Authorization across origins — a
-    // custom x-api-key header survives, and a 307/308 preserves method and body, so the key and the
-    // whole document would be re-POSTed to whatever host the configured one names. That would make the
-    // bound this feature rests on ("the key goes to the host that is set") untrue, and would make
-    // FileAnalysisJob.AnalyzerBaseUrlHost record the configured host rather than the one the data
-    // reached. A 3xx becomes a provider error instead; see ClaudeFileAnalysisProvider.SendAsync.
-    //
-    // This is a fix to CURRENT behaviour, not only to what #439 adds: today's deploy-configured base
-    // URL can already redirect the API key onward.
-    .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler { AllowAutoRedirect = false })
-    // OUTSIDE the resilience pipeline, deliberately (issue #445 Wave 1): handlers registered earlier
-    // sit further out, so an unreadable credential throws once here rather than being retried twice
-    // and counted against the circuit breaker. A credential fault is not transient.
-    .AddHttpMessageHandler<Odyssey.Api.SystemSettings.FileAnalysisApiKeyHandler>()
-    // The slowest, most third-party-dependent path in the app: a transient 429/503 from the provider
-    // used to surface as a hard user-facing failure (issue #382). Retries are safe here because both
-    // call sites treat a failure as a recorded job/match failure, not a partial write.
-    .AddStandardResilienceHandler()
-    .Configure((resilience, sp) =>
-    {
-        var opts = sp.GetRequiredService<IOptions<FileAnalysisOptions>>().Value;
-        var attempt = TimeSpan.FromSeconds(opts.TimeoutSeconds);
-
-        // Keep the configured budget as the per-attempt one, so a single analysis call still gets its
-        // full 120s. Two attempts' worth caps the total, so a timed-out attempt can be retried exactly
-        // once rather than keeping the caller waiting for the full retry ladder. The sampling duration
-        // must be at least double the attempt timeout or the options validator rejects the pipeline.
-        resilience.AttemptTimeout.Timeout = attempt;
-        resilience.TotalRequestTimeout.Timeout = attempt * 2;
-        resilience.CircuitBreaker.SamplingDuration = attempt * 2;
-        resilience.Retry.MaxRetryAttempts = 2;
-    });
 
 // Data Protection, registered UNCONDITIONALLY (issue #444 §10). Before this it was registered only
 // when a keys path was configured, leaving the framework's implicit registration — an ephemeral or

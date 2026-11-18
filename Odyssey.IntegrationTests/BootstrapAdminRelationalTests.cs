@@ -113,19 +113,7 @@ public class BootstrapAdminRelationalTests(MariaDbFixture fixture)
     /// <summary>The migrations job's own service graph, pointed at a freshly migrated real database.</summary>
     private async Task<ServiceProvider> MigratedProviderAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var connectionString = fixture.ConnectionStringFor(Database);
-        await using (var context = new OdysseyContext(OptionsFor(connectionString)))
-        {
-            await context.Database.MigrateAsync();
-        }
-
+        var connectionString = await fixture.CreateMigratedDatabaseAsync(Database);
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDbContext<OdysseyContext>(options =>

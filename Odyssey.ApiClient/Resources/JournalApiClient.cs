@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.ApiClient.Resources;
@@ -120,6 +121,30 @@ public interface ITaskApiClient
         IReadOnlyCollection<string>? ids = null,
         CancellationToken ct = default);
 
+    /// <summary>
+    /// What <see cref="ExportIcsAsync"/> would contain, refused for the same reasons (a cap, or attached files without
+    /// <c>files.read</c>) — asked before a browser-native download, which cannot report an error itself.
+    /// </summary>
+    Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null,
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// The absolute URL of the export, for a download the browser streams to disk itself — an export carrying
+    /// attached files can be far larger than <see cref="ExportIcsAsync"/> can hold in memory.
+    /// </summary>
+    string ExportIcsUrl(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null);
+
+    /// <summary>The absolute URL <see cref="ImportIcsAsync"/> posts to, for an upload the browser streams from disk.</summary>
+    string ImportIcsUrl { get; }
+
     /// <summary>Imports a VTODO <c>.ics</c> file into the shared board (multipart).</summary>
     Task<ApiResult<TaskIcsImportResult>> ImportIcsAsync(ApiUpload file, CancellationToken ct = default);
 
@@ -144,7 +169,7 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
     /// is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
     /// constant exists solely as <c>ImportLimitsCache.Fallback</c>'s input for when that read fails.
     /// </summary>
-    public const long MaxImportBytes = 64L * 1024 * 1024;
+    public const long MaxImportBytes = SystemSettingsBounds.TaskIcsMaxImportMegabytesMax * 1024L * 1024;
 
     public Task<ApiResult<List<JournalTaskSummary>>> ListAsync(
         string? search = null,
@@ -179,15 +204,35 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
         // The export endpoint binds the list filter surface minus paging (it's never paginated), so build
         // just search/tag/status (+ optional ids for the single-task row action) — same param names the
         // list query uses.
-        var query = PagedQuery.For($"{Base}/ics")
+        return api.GetFileAsync(ExportQuery("ics", search, tagIds, statuses, ids), "odyssey-tasks.ics", completenessMarker: "BEGIN:VTODO", ct: ct);
+    }
+
+    public Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null,
+        CancellationToken ct = default) =>
+        api.GetAsync<TaskIcsExportSummary>(ExportQuery("ics/summary", search, tagIds, statuses, ids), ct);
+
+    public string ExportIcsUrl(
+        string? search = null,
+        IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null,
+        IReadOnlyCollection<string>? ids = null) =>
+        new Uri(api.BaseAddress!, ExportQuery("ics", search, tagIds, statuses, ids)).ToString();
+
+    public string ImportIcsUrl => new Uri(api.BaseAddress!, $"{Base}/ics").ToString();
+
+    private static string ExportQuery(
+        string path, string? search, IReadOnlyCollection<string>? tagIds, IReadOnlyCollection<string>? statuses,
+        IReadOnlyCollection<string>? ids) =>
+        PagedQuery.For($"{Base}/{path}")
             .Add("search", search)
             .AddMany("tagIds", tagIds)
             .AddMany("statuses", statuses)
             .AddMany("ids", ids)
             .Build();
-
-        return api.GetFileAsync(query, "odyssey-tasks.ics", completenessMarker: "BEGIN:VTODO", ct: ct);
-    }
 
     public Task<ApiResult<TaskIcsImportResult>> ImportIcsAsync(ApiUpload file, CancellationToken ct = default) =>
         api.UploadAsync<TaskIcsImportResult>(
@@ -208,8 +253,9 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
 
 /// <summary>
 /// Typed client for the journal-entry VJOURNAL (.ics) export/import endpoints (issue #339). Sibling of
-/// <see cref="ITaskApiClient"/>'s ICS surface: export returns raw bytes + a server-supplied filename for
-/// a browser download; import posts the file as multipart and returns the parsed result.
+/// <see cref="ITaskApiClient"/>'s ICS surface. An export carries the entries' files and photos inline, so the
+/// browser page summarizes and then downloads through <see cref="ExportUrl"/>; the byte-returning exports and the
+/// typed import remain for non-browser consumers and for the page's small-file fallback.
 /// </summary>
 public interface IJournalIcsApiClient
 {
@@ -227,6 +273,33 @@ public interface IJournalIcsApiClient
     /// <summary>Exports a single entry as a one-VJOURNAL <c>.ics</c> file.</summary>
     Task<ApiResult<ApiFile>> ExportOneAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Runs the export's checks for the same filters <see cref="ExportUrl"/> takes — the row and byte caps, and
+    /// <c>files.read</c>/<c>photos.read</c> for inline attachments — and reports the entries, attached files and photos
+    /// it would carry, without producing it. An export carries its files inline and can far exceed the WASM heap, so a
+    /// page summarizes first and then lets the browser download <see cref="ExportUrl"/> itself.
+    /// </summary>
+    Task<ApiResult<JournalEntryIcsExportSummary>> SummarizeExportAsync(
+        string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null,
+        CancellationToken ct = default);
+
+    /// <summary>The absolute export URL for the same filters, for a browser-native download.</summary>
+    string ExportUrl(
+        string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null);
+
+    /// <summary>The single-entry counterpart of <see cref="SummarizeExportAsync"/>; a <c>404</c> for an unknown id.</summary>
+    Task<ApiResult<JournalEntryIcsExportSummary>> SummarizeExportOneAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>The absolute single-entry export URL, for a browser-native download.</summary>
+    string ExportOneUrl(Guid id);
+
+    /// <summary>The absolute import URL, for a browser-native multipart upload of a large file.</summary>
+    string ImportUrl { get; }
+
     /// <summary>Imports a VJOURNAL <c>.ics</c> file (multipart), creating/updating by UID.</summary>
     Task<ApiResult<JournalEntryIcsImportResult>> ImportAsync(ApiUpload file, CancellationToken ct = default);
 }
@@ -237,11 +310,11 @@ public sealed class JournalIcsApiClient(IOdysseyApi api) : IJournalIcsApiClient
     private const string Base = "api/journal-entries";
 
     /// <summary>
-    /// The migration-seeded default for <c>JournalIcsMaxImportMegabytes</c> — the real, effective
+    /// The shipped default (and ceiling) for <c>JournalIcsMaxImportMegabytes</c> — the real, effective
     /// cap is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
     /// constant exists solely as <c>ImportLimitsCache.Fallback</c>'s input for when that read fails.
     /// </summary>
-    public const long MaxImportBytes = 64L * 1024 * 1024;
+    public const long MaxImportBytes = SystemSettingsBounds.JournalIcsMaxImportMegabytesMax * 1024L * 1024;
 
     public Task<ApiResult<ApiFile>> ExportAsync(
         string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
@@ -249,22 +322,51 @@ public sealed class JournalIcsApiClient(IOdysseyApi api) : IJournalIcsApiClient
         bool? hasPhotos = null, bool? hasFiles = null,
         CancellationToken ct = default) =>
         api.GetFileAsync(
-            PagedQuery.For($"{Base}/vjournal")
-                .Add("search", search)
-                .AddMany("tagIds", tagIds)
-                .Add("status", status)
-                .AddMany("contactIds", contactIds)
-                .Add("from", from)
-                .Add("to", to)
-                .AddBool("hasPhotos", hasPhotos)
-                .AddBool("hasFiles", hasFiles)
-                .Build(),
+            ExportQuery("vjournal", search, tagIds, status, contactIds, from, to, hasPhotos, hasFiles),
             "odyssey-journal-entries.ics",
             completenessMarker: "BEGIN:VJOURNAL",
             ct: ct);
 
     public Task<ApiResult<ApiFile>> ExportOneAsync(Guid id, CancellationToken ct = default) =>
         api.GetFileAsync($"{Base}/{id}/vjournal", "odyssey-journal-entry.ics", ct: ct);
+
+    public Task<ApiResult<JournalEntryIcsExportSummary>> SummarizeExportAsync(
+        string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null,
+        CancellationToken ct = default) =>
+        api.GetAsync<JournalEntryIcsExportSummary>(
+            ExportQuery("vjournal/summary", search, tagIds, status, contactIds, from, to, hasPhotos, hasFiles), ct);
+
+    public string ExportUrl(
+        string? search = null, IReadOnlyCollection<string>? tagIds = null, string? status = null,
+        IReadOnlyCollection<string>? contactIds = null, DateTime? from = null, DateTime? to = null,
+        bool? hasPhotos = null, bool? hasFiles = null) =>
+        Absolute(ExportQuery("vjournal", search, tagIds, status, contactIds, from, to, hasPhotos, hasFiles));
+
+    public Task<ApiResult<JournalEntryIcsExportSummary>> SummarizeExportOneAsync(Guid id, CancellationToken ct = default) =>
+        api.GetAsync<JournalEntryIcsExportSummary>($"{Base}/{id}/vjournal/summary", ct);
+
+    public string ExportOneUrl(Guid id) => Absolute($"{Base}/{id}/vjournal");
+
+    public string ImportUrl => Absolute($"{Base}/vjournal");
+
+    private string Absolute(string relative) => new Uri(api.BaseAddress!, relative).ToString();
+
+    // The export endpoints bind the list's query model, so the export and its summary take the list's filter names.
+    private static string ExportQuery(
+        string path, string? search, IReadOnlyCollection<string>? tagIds, string? status,
+        IReadOnlyCollection<string>? contactIds, DateTime? from, DateTime? to, bool? hasPhotos, bool? hasFiles) =>
+        PagedQuery.For($"{Base}/{path}")
+            .Add("search", search)
+            .AddMany("tagIds", tagIds)
+            .Add("status", status)
+            .AddMany("contactIds", contactIds)
+            .Add("from", from)
+            .Add("to", to)
+            .AddBool("hasPhotos", hasPhotos)
+            .AddBool("hasFiles", hasFiles)
+            .Build();
 
     public Task<ApiResult<JournalEntryIcsImportResult>> ImportAsync(ApiUpload file, CancellationToken ct = default) =>
         api.UploadAsync<JournalEntryIcsImportResult>(

@@ -1,20 +1,21 @@
 @*
     OdsCoordinateField — paired latitude / longitude entry (Odyssey Design System · CoordinateField).
 
-    Two OdsNumberFields in an OdsFormRow, each with its geographic range enforced (lat −90…90,
-    lng −180…180) and an inline out-of-range error, so every "pin a place" spot reads and validates
+    Two OdsNumberFields in an OdsFormRow, each with its geographic range enforced (WeatherRules'
+    LatitudeMin/Max and LongitudeMin/Max, shared with the server) and an inline out-of-range error, so every "pin a place" spot reads and validates
     identically instead of re-deriving the ranges. Bind the two ends via @bind-Lat / @bind-Lng
     (decimal?, the Blazor-idiomatic form of the design's {lat,lng} pair — mirrors OdsDatePicker's
     DateTime? adaptation).
 *@
 
+@using Odyssey.Dtos.Journal
 <div class="@(string.IsNullOrEmpty(Class) ? "odc-coordfield" : $"odc-coordfield {Class}")">
     <OdsFormRow Cols="2">
         <OdsNumberField Label="@LatLabel" Value="Lat" ValueChanged="OnLatChanged"
-                        Placeholder="−90 … 90" Min="-90" Max="90" Step="0.000001"
+                        Placeholder="@Range(WeatherRules.LatitudeMin, WeatherRules.LatitudeMax, " … ")" Min="WeatherRules.LatitudeMin" Max="WeatherRules.LatitudeMax" Step="0.000001"
                         Required="Required" Disabled="Disabled" Error="@LatError" />
         <OdsNumberField Label="@LngLabel" Value="Lng" ValueChanged="OnLngChanged"
-                        Placeholder="−180 … 180" Min="-180" Max="180" Step="0.000001"
+                        Placeholder="@Range(WeatherRules.LongitudeMin, WeatherRules.LongitudeMax, " … ")" Min="WeatherRules.LongitudeMin" Max="WeatherRules.LongitudeMax" Step="0.000001"
                         Required="Required" Disabled="Disabled" Error="@LngError" />
     </OdsFormRow>
     @if (Message is not null)
@@ -51,9 +52,19 @@
 
     [Parameter] public string? Class { get; set; }
 
-    private string? LatError => Lat is < -90m or > 90m ? "Must be between −90 and 90" : null;
+    // The bounds are WeatherRules' (issue #388 §8), the same constants the server's [Range] attributes name.
+    private string? LatError => Lat is { } lat && ((double)lat < WeatherRules.LatitudeMin || (double)lat > WeatherRules.LatitudeMax)
+        ? $"Must be between {Range(WeatherRules.LatitudeMin, WeatherRules.LatitudeMax, " and ")}" : null;
 
-    private string? LngError => Lng is < -180m or > 180m ? "Must be between −180 and 180" : null;
+    private string? LngError => Lng is { } lng && ((double)lng < WeatherRules.LongitudeMin || (double)lng > WeatherRules.LongitudeMax)
+        ? $"Must be between {Range(WeatherRules.LongitudeMin, WeatherRules.LongitudeMax, " and ")}" : null;
+
+    /// <summary><c>−90 and 90</c>, with a true minus sign.</summary>
+    private static string Range(double min, double max, string separator) =>
+        $"{Signed(min)}{separator}{Signed(max)}";
+
+    private static string Signed(double value) =>
+        value < 0 ? $"−{(-value).ToString(System.Globalization.CultureInfo.InvariantCulture)}" : value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 
     private string? Message =>
         Error ?? (LatError is null && LngError is null ? Help : null);

@@ -47,6 +47,10 @@ public class FileAnalysisResilienceTests
         new(configuration: configuration, configureServices: services =>
         {
             services.AddHttpClient(ClientName).ConfigurePrimaryHttpMessageHandler(() => handler);
+            // A stored key: since issue #444 the handler refuses to send without one, and this test is about
+            // the retry ladder, not the credential.
+            services.AddSingleton<Odyssey.Context.Secrets.ISecretSettingsReader>(
+                new StubSecretSettingsReader().Found(Odyssey.Dtos.Application.SecretSettingKeys.FileAnalysisApiKey, "test-key"));
             // Keep the retry ladder instant — the delays themselves are the library's concern, and
             // the default 2s exponential backoff would add seconds to the suite for nothing.
             services.Configure<HttpStandardResilienceOptions>(ResilienceOptionsName, options =>

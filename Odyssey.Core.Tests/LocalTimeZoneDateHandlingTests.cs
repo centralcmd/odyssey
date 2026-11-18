@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Finance;
@@ -224,7 +225,7 @@ public class LocalTimeZoneDateHandlingTests
             StartDateTime = Tokyo(2026, 10, 1, 9),
             EndDateTime = Tokyo(2026, 10, 2, 9),
             IsAllDay = true,
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(Utc(2026, 10, 1, 0), created.StartDateTime);
         AssertUtc(Utc(2026, 10, 2, 0), created.EndDateTime);
@@ -236,7 +237,7 @@ public class LocalTimeZoneDateHandlingTests
             StartDateTime = Tokyo(2026, 10, 5, 9),
             EndDateTime = Tokyo(2026, 10, 7, 9),
             IsAllDay = true,
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(Utc(2026, 10, 5, 0), updated!.StartDateTime);
         AssertUtc(Utc(2026, 10, 7, 0), updated.EndDateTime);
@@ -263,7 +264,7 @@ public class LocalTimeZoneDateHandlingTests
             IsAllDay = true,
             Frequency = RecurrenceFrequency.Daily,
             RecurrenceEndDate = Tokyo(2026, 10, 5, 9),
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         AssertUtc(Utc(2026, 10, 1, 0), created.StartDateTime);
         AssertUtc(Utc(2026, 10, 2, 0), created.EndDateTime);
@@ -278,7 +279,7 @@ public class LocalTimeZoneDateHandlingTests
             IsAllDay = true,
             Frequency = RecurrenceFrequency.Daily,
             RecurrenceEndDate = Utc(2026, 10, 3, 0),
-        }, "user-id");
+        }, "user-id", claims: LocationClaims.Trusted);
 
         Assert.NotNull(updated);
         AssertUtc(Utc(2026, 10, 3, 0), updated!.StartDateTime);

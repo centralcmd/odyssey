@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Dtos;
 using System.Text;
@@ -30,7 +31,10 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
             new FileService(context, new FileValidationService()),
-            new FixedUploadLimits(64L * 1024 * 1024));
+            new FixedUploadLimits(64L * 1024 * 1024),
+            writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
+            store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+            source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source);
 
     [SkippableFact]
     public async Task Import_UidMatchedUpdate_CommitsTransactionally_AgainstRealEngine()
@@ -63,14 +67,14 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
         });
         await contactService.CreateEmail(created.ContactId,
             new NewEmailAddress { Label = EmailLabel.General, Value = $"old-{suffix}@example.com" });
-        var externalUid = (await contactService.Get(created.ContactId))!.ExternalUid;
+        var externalUid = (await contactService.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid;
 
         var vcf = "BEGIN:VCARD\r\nVERSION:4.0\r\n" +
                   $"UID:{externalUid}\r\nFN:Acme {suffix}\r\nORG:Acme {suffix}\r\n" +
                   $"EMAIL;TYPE=work:new-{suffix}@example.com\r\nEND:VCARD\r\n";
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(vcf));
 
-        var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard");
+        var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
 
         Assert.Equal(1, result.UpdatedCount);
         Assert.Empty(result.Skipped);
@@ -176,13 +180,13 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
 
         using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(clamped)))
         {
-            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard");
+            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
             Assert.Equal(1, result.CreatedCount);
             Assert.Empty(result.Skipped);
         }
 
         var created = Assert.Single(
-            (await contactService.ListAsync(new ContactsQueryParams { Search = $"Clamped {suffix}" })).Items);
+            (await contactService.ListAsync(new ContactsQueryParams { Search = $"Clamped {suffix}" }, claims: LocationClaims.Trusted)).Items);
 
         Assert.Equal(PhoneLabel.Other, Assert.Single(created.PhoneNumbers).Label);
         Assert.Equal(EmailLabel.Other, Assert.Single(created.EmailAddresses).Label);
@@ -198,11 +202,11 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
 
         using (var stream = new MemoryStream(Encoding.UTF8.GetBytes(export.Content)))
         {
-            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard");
+            var result = await vCardService.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
             Assert.Equal(1, result.UpdatedCount);
         }
 
-        var reimported = (await contactService.Get(created.ContactId))!;
+        var reimported = (await contactService.Get(created.ContactId, claims: LocationClaims.Trusted))!;
         Assert.Contains(reimported.PhoneNumbers, p => p.Label == PhoneLabel.Claims);
         Assert.Equal(2, reimported.PhoneNumbers.Count);
     }
@@ -217,7 +221,7 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 2000, 2000, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

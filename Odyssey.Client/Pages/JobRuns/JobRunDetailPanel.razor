@@ -1,0 +1,111 @@
+@*
+    JobRunDetailPanel — the body of an expanded run-history row (issue #410 §3.6, X7, X-N2; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BgjRunDetail). The row's labelled role="group" is OdsRecordTable's (RowLabel); this
+    is what goes in it. It asks the page for the run's detail whenever it has none — on first expand, and again after a
+    Refresh dropped a live entry while it was open — and renders it by $kind through JobRunDetailRegistry.
+
+    While loading the body is aria-busy with a skeleton, and a visually hidden status line says "Loading details", then
+    "Details loaded" (or the failure). Focus stays on the row's toggle throughout: OdsRecordTable's chevron never moves
+    it. The one exception is Retry: its alert leaves the DOM on activation, so focus moves to this body (tabindex -1)
+    rather than falling back to the page (accessibility review on PR #418, WCAG 2.4.3).
+*@
+@inject IJSRuntime Js
+
+<div class="bgj-detail" id="@DetailId" tabindex="-1" aria-busy="@(Loading ? "true" : null)">
+    <span class="sr-only" role="status">@StatusText</span>
+    @switch (State?.Status)
+    {
+        case JobRunDetailStatus.Loaded when State.Value is { } detail:
+            <DynamicComponent Type="@JobRunDetailRegistry.BodyFor(detail)" Parameters="@BodyParameters(detail)" />
+            break;
+        case JobRunDetailStatus.Gone:
+            <p class="bgj-muted">This run is no longer kept.</p>
+            break;
+        case JobRunDetailStatus.Failed:
+            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.None">
+                <span class="bgj-inline-alert">
+                    Couldn’t load these details.
+                    <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" id="@RetryId" OnClick="Retry">Retry</OdsButton>
+                </span>
+            </OdsAlert>
+            break;
+        default:
+            <OdsSkeleton Lines="3" />
+            break;
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public ExistingJobRun Run { get; set; } = default!;
+
+    /// <summary>The page's cache entry for <see cref="Run"/>; <c>null</c> when it has none.</summary>
+    [Parameter] public JobRunDetailState? State { get; set; }
+
+    [Parameter] public bool CanReadDetail { get; set; } = true;
+
+    /// <summary>Fetch the run's detail (the page sets its entry to Loading at once, then to the outcome).</summary>
+    [Parameter, EditorRequired] public Func<Guid, Task> OnLoad { get; set; } = default!;
+
+    private bool Loading => State is null || State.Status == JobRunDetailStatus.Loading;
+
+    private string StatusText => State?.Status switch
+    {
+        JobRunDetailStatus.Loaded => "Details loaded",
+        JobRunDetailStatus.Gone => "This run is no longer kept",
+        JobRunDetailStatus.Failed => "Couldn’t load details",
+        _ => "Loading details",
+    };
+
+    private bool _focusSelf;
+
+    /// <summary>The body's id: the focus target after Retry.</summary>
+    public string DetailId => $"bgj-detail-{Run.Id:N}";
+
+    private string RetryId => $"bgj-detail-retry-{Run.Id:N}";
+
+    protected override void OnParametersSet()
+    {
+        if (State is null)
+            _ = ObserveAsync(OnLoad(Run.Id));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_focusSelf)
+            return;
+        _focusSelf = false;
+        try
+        {
+            await Js.InvokeVoidAsync("odsFocusById", DetailId);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private Task Retry()
+    {
+        _focusSelf = true;
+        return OnLoad(Run.Id);
+    }
+
+    // The load is started from OnParametersSet, which cannot await it; a fault is routed to the renderer rather than
+    // lost, the page's Detach/ObserveAsync pattern (frontend review on PR #418).
+    private async Task ObserveAsync(Task load)
+    {
+        try
+        {
+            await load;
+        }
+        catch (Exception ex)
+        {
+            await DispatchExceptionAsync(ex);
+        }
+    }
+
+    private Dictionary<string, object> BodyParameters(JobRunDetail detail) => new()
+    {
+        [nameof(JobRunDetailBodyBase.Run)] = detail,
+        [nameof(JobRunDetailBodyBase.CanReadDetail)] = CanReadDetail,
+    };
+}

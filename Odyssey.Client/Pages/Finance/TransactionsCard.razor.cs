@@ -70,15 +70,53 @@ public partial class TransactionsCard
 
     // OdsMultiSelect filter option projections (the picker keys on string values).
     private IReadOnlyList<OdsOption> _accountOptions =>
-        [.. _accounts.Select(account => new OdsOption(account.AccountId.ToString(), account.Name))];
+        [.. _accounts.Select(AccountOption)];
+
+    /// <summary>An account row: its type's glyph and colour, as on its Accounts card and the Account type filter.</summary>
+    internal static OdsOption AccountOption(ExistingAccount account) =>
+        new(account.AccountId.ToString(), account.Name)
+        {
+            Icon = AccountTypeVisuals.MaterialIcon(account.AccountType),
+            IconColor = AccountTypeVisuals.FgColor(account.AccountType),
+        };
+    /// <summary>The Tag filter glyph's ink for a tag with no valid colour of its own (DS Transactions).</summary>
+    internal const string TagFilterFallbackInk = "var(--tag-text)";
+
+    internal static OdsOption TagFilterOption(ExistingTransactionTag tag)
+    {
+        var option = OdsTransactionTagOptions.From(tag);
+        return option with { IconColor = option.IconColor ?? TagFilterFallbackInk };
+    }
+
     private IReadOnlyList<OdsOption> _tagOptions =>
-        [.. _tags.Select(OdsTransactionTagOptions.From)];
+        [.. _tags.Select(TagFilterOption)];
     // The merchant picker lists every contact, not just the ones present on the loaded page: the list
     // is server-paged, so "the contacts on these rows" would shrink as the user pages through.
     private IReadOnlyList<OdsOption> _merchantOptions =>
-        [.. _contacts.Select(contact => new OdsOption(contact.ContactId.ToString(), contact.ResolvedDisplayName))];
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [.. Enum.GetValues<TransactionStatus>().Select(status => new OdsOption(status.ToString(), status.ToString()))];
+        // The one contact projection every picker uses: the contact type's glyph and colour (company,
+        // person, …) and the deceased / dissolved suffix.
+        [.. _contacts.Select(MerchantOption)];
+
+    /// <summary>A merchant row: the shared contact projection — the contact type's glyph and colour, and the
+    /// deceased / dissolved suffix every contact picker shows.</summary>
+    internal static OdsOption MerchantOption(ExistingContact contact) => OdsContactOptions.From(contact);
+
+    // One definition for each "By …" tile and its filter, so both wear one glyph and tone.
+    private static readonly OdsBreakdownDef<TransactionStatus>[] StatusDefs =
+    [
+        new(TransactionStatus.New, "New", "info", "fiber_new"),
+        new(TransactionStatus.Approved, "Approved", "income", "check_circle"),
+        new(TransactionStatus.Flagged, "Flagged", "expense", "flag"),
+    ];
+
+    private static readonly OdsBreakdownDef<string>[] DirectionDefs =
+    [
+        new("income", "Money in", "income", "arrow_downward"),
+        new("expense", "Money out", "expense", "arrow_upward"),
+    ];
+
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
+        OdsBreakdown.Options(StatusDefs);
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.CountedStatusRows<TransactionStatus>(
         status => _summary?.CountsByStatus is not { } c ? 0 : status switch
@@ -87,16 +125,12 @@ public partial class TransactionsCard
             TransactionStatus.Flagged => c.Flagged,
             _ => c.New,
         },
-        new OdsBreakdownDef<TransactionStatus>(TransactionStatus.New, "New", "info", "fiber_new"),
-        new OdsBreakdownDef<TransactionStatus>(TransactionStatus.Approved, "Approved", "income", "check_circle"),
-        new OdsBreakdownDef<TransactionStatus>(TransactionStatus.Flagged, "Flagged", "expense", "flag"));
+        StatusDefs);
 
     private IReadOnlyList<OdsBreakdownRow> DirectionRows => OdsBreakdown.CountedStatusRows<string>(
         key => key == "income" ? _summary?.IncomeCount ?? 0 : _summary?.ExpenseCount ?? 0,
-        new OdsBreakdownDef<string>("income", "Money in", "income", "arrow_downward"),
-        new OdsBreakdownDef<string>("expense", "Money out", "expense", "arrow_upward"));
-    private static readonly IReadOnlyList<OdsOption> _directionOptions =
-        [new("income", "Money in"), new("expense", "Money out")];
+        DirectionDefs);
+    internal static readonly IReadOnlyList<OdsOption> _directionOptions = OdsBreakdown.Options(DirectionDefs);
 
     // Header sub totals — the whole ledger's count and its money in / out. Naive cross-currency sums
     // (the app has no FX on this path), so they are written with NO currency code, like the Accounts

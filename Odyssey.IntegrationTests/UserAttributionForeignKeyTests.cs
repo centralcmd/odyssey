@@ -43,8 +43,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("RecurrencePatterns", "CreatedByUserId"), ("RecurrencePatterns", "UpdatedByUserId"),
         // Household locations (issue #350): shared data that outlives its author.
         ("Locations", "CreatedByUserId"), ("Locations", "UpdatedByUserId"),
-        ("WeatherLocations", "CreatedByUserId"), ("WeatherLocations", "UpdatedByUserId"),
-        ("WeatherLocationSites", "AppliedByUserId"),
+        ("WeatherPoints", "CreatedByUserId"), ("WeatherPoints", "UpdatedByUserId"),
+        ("WeatherPointSites", "AppliedByUserId"),
         ("AccountFiles", "AttachedByUserId"),
         ("ContractFiles", "AttachedByUserId"),
         ("PropertyFiles", "AttachedByUserId"),
@@ -61,7 +61,8 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
         ("FileAnalysisCandidateTransactions", "ReviewedByUserId"),
         // Exchange-rate sync (issue #349 §4).
         ("ExchangeRateSyncCurrencies", "UpdatedByUserId"),
-        ("ExchangeRateSyncRuns", "RequestedByUserId"),
+        // Issue #409 §4.4: the sync's declaration moved with its rows onto the shared run log.
+        ("JobRuns", "RequestedByUserId"),
     ];
 
     [SkippableFact]
@@ -223,18 +224,7 @@ public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
 
     private async Task<string> MigratedSchemaAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var connectionString = fixture.ConnectionStringFor(Database);
-        await using var context = new OdysseyContext(OptionsFor(connectionString));
-        await context.Database.MigrateAsync();
-
-        return connectionString;
+        return await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private async Task DropAsync()

@@ -261,8 +261,15 @@ public partial class Files
         _files.Select(f => KindLabel(f.ContentType))
               .Distinct()
               .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
-              .Select(OdsOption.From)
+              .Select(KindOption)
               .ToList();
+
+    /// <summary>A file type as a Type-filter row: the glyph and colour its By type row and file chips use.</summary>
+    internal static OdsOption KindOption(string kindLabel)
+    {
+        var meta = KindMeta(kindLabel);
+        return new OdsOption(kindLabel, kindLabel) { Icon = meta.Icon, IconColor = meta.Color };
+    }
 
     // Edit / Delete are owned by the shared table (the Edit-file dialog · OnDelete);
     // the page supplies only the file-specific items.

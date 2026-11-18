@@ -42,6 +42,15 @@ public partial class OdsTagAdmin<TRow>
     /// </summary>
     [Parameter] public string IconHelp { get; set; } = "Shown for this tag and on every record carrying it. Default keeps the tag icon.";
 
+    /// <summary>
+    /// The tag's colour (issue #394): <c>#RRGGBB</c> or <c>null</c>. Required: every write carries it, an
+    /// archive or restore included, because <c>PUT</c> is full replacement and an omitted colour clears it.
+    /// </summary>
+    [Parameter, EditorRequired] public Func<TRow, string?> ColorOf { get; set; } = default!;
+
+    /// <summary>The Color field's help line — the same on all four tag pages (issue #394 [PO-1]).</summary>
+    public const string ColorHelp = "Shown on this tag's chips and avatar.";
+
     // ── State ────────────────────────────────────────────────────────────────────
     private List<TRow> _tags = [];
     private List<TRow> _allTags = [];
@@ -73,15 +82,20 @@ public partial class OdsTagAdmin<TRow>
         new() { Key = "name", Label = "Name", Type = OdsSortType.Text },
     ];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    // Generic over TRow, so each closed type gets its own copy — harmless for two constant rows.
+    private static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        new("active", "Active", "income", "task_alt"),
+        new("archived", "Archived", "outline", "inventory_2"),
+    ];
+
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions = OdsBreakdown.Options(StatusDefs);
 
     // Overview/breakdown reflect the whole dataset (issue #277 follow-up): derived from the unfiltered
     // _allTags, not the server-filtered display list.
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
-        _allTags, t => Archived(t) is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+        _allTags, t => Archived(t) is not null ? "archived" : "active", StatusDefs);
 
     private int _activeCount => _allTags.Count(t => Archived(t) is null);
     private int _archivedCount => _allTags.Count - _activeCount;
@@ -270,6 +284,12 @@ public partial class OdsTagAdmin<TRow>
     private string? _draftNameError;
     private string? _draftIcon;
     private string? _draftIconError;
+    private string? _draftColor;
+    private bool _draftColorValid = true;
+    private bool _draftColorShowErrors;
+    private string? _draftColorError;
+    private bool _saving;
+    private OdsTagColorPicker? _colorPicker;
 
     private bool _isEditing => _editId != Guid.Empty;
 
@@ -285,6 +305,7 @@ public partial class OdsTagAdmin<TRow>
         _draftNameError = null;
         _draftIcon = null;
         _draftIconError = null;
+        ResetColorDraft(null);
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -302,6 +323,7 @@ public partial class OdsTagAdmin<TRow>
         // An unknown stored key opens as Default, as the server projects it.
         _draftIcon = IconOf is null ? null : TagIcons.Normalize(IconOf(tag));
         _draftIconError = null;
+        ResetColorDraft(ColorOf(tag));
         _formKey = Guid.NewGuid();
         _formOpen = true;
     }
@@ -319,17 +341,38 @@ public partial class OdsTagAdmin<TRow>
 
         _draftNameError = null;
 
+        // Custom with an empty or invalid hex blocks submit with its own message, focus on the field.
+        if (!_draftColorValid)
+        {
+            _draftColorShowErrors = true;
+            StateHasChanged();
+            if (_colorPicker is not null)
+                await _colorPicker.FocusErrorAsync();
+            return false;
+        }
+
         // Archive / restore is a separate row action, so an edit preserves the current state. The icon
         // is always sent where the family has one: Default is null, never the default key.
         var body = WriteFor(
             _draftName!.Trim(),
             string.IsNullOrWhiteSpace(_draftDescription) ? null : _draftDescription!.Trim(),
             archived: _isEditing && _editArchived,
-            icon: _draftIcon);
+            icon: _draftIcon,
+            color: _draftColor);
 
-        var result = _isEditing
-            ? await Tags.UpdateAsync(_editId, body)
-            : await Tags.CreateAsync(body);
+        Odyssey.ApiClient.ApiResult result;
+        _saving = true;
+        StateHasChanged();
+        try
+        {
+            result = _isEditing
+                ? await Tags.UpdateAsync(_editId, body)
+                : await Tags.CreateAsync(body);
+        }
+        finally
+        {
+            _saving = false;
+        }
 
         // A duplicate name is a 409 keyed to `name` (issue #75 §5.11). Rendering it at the FIELD is the
         // point: the generic handling below would surface "a tag called X already exists" as an
@@ -348,6 +391,16 @@ public partial class OdsTagAdmin<TRow>
             return false;
         }
 
+        // The picker only offers what the server accepts, so this is a stale client or a race.
+        if (result.Problem?.ErrorFor("color") is { } colorError)
+        {
+            _draftColorError = colorError;
+            StateHasChanged();
+            if (_colorPicker is not null)
+                await _colorPicker.FocusErrorAsync();
+            return false;
+        }
+
         return Invalidated(result.Toast(Snackbar,
             _isEditing ? "Update failed" : "Unable to create tag",
             _isEditing ? "Tag updated." : "Tag created."));
@@ -358,11 +411,36 @@ public partial class OdsTagAdmin<TRow>
     /// normalised, so Default (and an unknown key) is <c>null</c>, never the default key — and a
     /// family without them never carries one.
     /// </summary>
-    private TagWrite WriteFor(string name, string? description, bool archived, string? icon) =>
-        WriteFor(IconOf is not null, name, description, archived, icon);
+    private TagWrite WriteFor(string name, string? description, bool archived, string? icon, string? color) =>
+        WriteFor(IconOf is not null, name, description, archived, icon, color);
 
-    internal static TagWrite WriteFor(bool hasIcons, string name, string? description, bool archived, string? icon) =>
-        new(name, description, archived, hasIcons ? TagIcons.Normalize(icon) : null);
+    /// <remarks>
+    /// The colour is sent as received or picked, through <see cref="Odyssey.Client.Theme.UserColor.Canonical"/>
+    /// — the server already projects an invalid stored value to <c>null</c>, so an archive never invents one.
+    /// </remarks>
+    internal static TagWrite WriteFor(bool hasIcons, string name, string? description, bool archived, string? icon, string? color) =>
+        new(name, description, archived, hasIcons ? TagIcons.Normalize(icon) : null, Odyssey.Client.Theme.UserColor.Canonical(color));
+
+    private void ResetColorDraft(string? color)
+    {
+        _draftColor = Odyssey.Client.Theme.UserColor.Canonical(color);
+        _draftColorValid = true;
+        _draftColorShowErrors = false;
+        _draftColorError = null;
+    }
+
+    private void OnDraftColorChanged(string? value)
+    {
+        _draftColor = value;
+        _draftColorError = null;
+    }
+
+    private void OnDraftColorValidChanged(bool valid)
+    {
+        _draftColorValid = valid;
+        if (valid)
+            _draftColorShowErrors = false;
+    }
 
     private void OnDraftIconChanged(string? value)
     {
@@ -399,7 +477,7 @@ public partial class OdsTagAdmin<TRow>
             return;
 
         // The icon rides along: a full-replacement PUT without it would reset the tag to the default.
-        var body = WriteFor(Name(tag), Description(tag), archived: Archived(tag) is null, icon: IconOf?.Invoke(tag));
+        var body = WriteFor(Name(tag), Description(tag), archived: Archived(tag) is null, icon: IconOf?.Invoke(tag), color: ColorOf(tag));
         if (Invalidated((await Tags.UpdateAsync(Id(tag), body)).Toast(Snackbar, "Update failed", "Tag updated.")))
             await RefreshCurrentPageAsync();
 

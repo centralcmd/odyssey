@@ -98,7 +98,7 @@
             // Up to TagCap chips then a "+N" overflow so the dense column keeps its height.
             Key = "tag", HeaderText = "Tag", Sortable = true,
             SortValue = t => TagSortValue(t),
-            Cell = (t, ctx) => @<OdsTagChips Tags="t.TransactionTags" Max="TagCap" />
+            Cell = (t, ctx) => @<OdsTagChips Tags="OdsTagChips.Tag.Of(t.TransactionTags)" Max="TagCap" Empty="—" />
         });
 
         columns.Add(new()

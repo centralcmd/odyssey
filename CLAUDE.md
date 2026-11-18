@@ -131,7 +131,7 @@ Guard the boundary with:
 | `Journal/` | `Odyssey.Core.Journal` (plus `Journal/Interop/` → `…Journal.Interop`) |
 
 Account-level services sit in their own folders beside these (`UserAdministration/`, `Profiles/`,
-`Preferences/`, `Legal/`, `DataExport/`, `FileExport/`), moved out of `Odyssey.Api` by issue #287 M10.
+`Preferences/`, `Legal/`, `FileExport/`), moved out of `Odyssey.Api` by issue #287 M10.
 Where one needs something only the host can provide — mail delivery, the send throttle, the
 pseudonymization key, display-name resolution — the **interface** lives in Core (`Email/`, `Identity/`,
 `Legal/`) and the implementation stays in `Odyssey.Api`. `Odyssey.Api` keeps controllers (all under
@@ -483,10 +483,9 @@ already see *named*") is **false**: `ExistingTransactionFile.AttachedByUserId`,
 user ids with no name attached, and Guest holds `transactions.read`, `accounts.read` and `files.read`.
 That raw-id leak is pre-existing and out of scope here; it has its own issue.
 
-Both tables are declared **out of scope** on `DataExportTableCoverageTests`, alongside the identity
-tables they belong with — that guard reflects over every `DbSet` and fails the build otherwise. Adding
-the picture to the whole-database admin export would export a face from a document that deliberately
-omits the subject's name and birth date, to a `data.export` holder who is never the data subject.
+There is deliberately **no whole-database JSON export** any more — the `data.export` claim, its
+endpoint and its Settings row were removed. Reinstating one re-opens this question: such a document
+would carry a face to a holder who is never the data subject.
 
 **A property is a `Contact`-shaped aggregate that only contract parties reference** (issue #167;
 issue #208 added the party link, which cascades with the property and never blocks its delete).
@@ -507,8 +506,10 @@ and #191 undid it for terms. Four rules are easy to get backwards:
   fails *silently*, which is why they are shared while the scalar checks (non-negative value, owner
   currency) stay duplicated like the smart-tag services' are. A source-lint in
   `EstimateEffectiveDatingTests` fails on a second copy in any estimate file under `Odyssey.Core/Finance/`.
-- **The address, registration number and VIN are personal data** behind `properties.read` alone. They
-  go in no cross-claim projection, no embed, no error body and no log line; messages echo the route id.
+- **The registration number and VIN are personal data** behind `properties.read` alone, and so is the
+  address *as part of the property*. The address itself is a linked `Location` since issue #380, which
+  `locations.read` reads directly (product decision 3). None of them goes in a cross-claim projection, an
+  embed, an error body or a log line; messages echo the route id.
 - **`TransactionTagService.CountDeleteBlockers` has a fifth clause** for `PropertySmartTags`, and the
   `RESTRICT` key behind it is the backstop, not the guard — the same shape as the other four.
 - **The estimate figures outside the estimate endpoints follow `properties.estimates.read`, not
@@ -554,17 +555,82 @@ into two tables. What contains it, and must not be loosened:
   event is read under `properties.read`, and an "estimate added" line would disclose what
   `properties.estimates.read` withholds.
 
+**Every place and address in the app is a `Location`** (issue #380). Events, series and entries link one
+by id beside an optional detail string; a contact `Address` is a link row; `RealEstateDetails.LocationId`
+is the property's address. Every key to `Locations` is `RESTRICT`. Six rules are easy to get backwards:
+
+- **One write path: `LocationResolver` (`Odyssey.Core/Locations/`).** By id, `locations.read` is needed
+  only when the link *changes* (re-sending the stored id needs no claim), a *new* link to an archived
+  place is a `422`, and a contact or property link needs `Line1`/`City`/`CountryCode`. By fields,
+  `locations.create` is checked *before* the lookup so a match and a miss look the same. Saves go through
+  `resolver.SaveChangesAsync`, which re-reads on a `1062` on `AddressKey` and maps a `1452` to `422`.
+  A geocode sent on the fields path (`latitude`/`longitude`/`timeZoneId`/`source`/`sourceReference` on
+  `NewAddress` and `RealEstateDetailsDto`, `LocationGeocode`) **never overwrites an existing place**: it
+  applies only to a place that path creates, while a match on `AddressKey` (a forwarder's survivor
+  included), a `locationId`, a kept link and an in-place edit all ignore it. It is write-only — no read
+  echoes it.
+- **`AddressKey` is the identity, computed by `LocationAddressKey` (in `Odyssey.Dtos`, shared with the
+  client), never by the database.** Case and whitespace fold; letters never do (`Å` ≠ `A`). A merged-away
+  place keeps its key and forwards through `MergedIntoLocationId` (one hop), so find-or-create lands on
+  the survivor.
+- **`applyTo: AllUses` is the one path where a contact or property write edits a `Location`.** It needs
+  `locations.update` and `expectedOtherUses`, recounted under `FOR UPDATE` inside one transaction with
+  the record (`LocationTransactions`); a property writes its four fields only. It recomposes a `Name`
+  or `AddressText` only when it equals the old auto-composition, and never touches coordinates. A
+  case/whitespace-only change is promoted to it whatever `applyTo` says.
+- **`LocationReferenceGuard` is the one definition of "used"**: the five tables plus a forwarder. Weather
+  is not a use (issue #387): a place's weather link is a column on the place, and the preference and the
+  household default name a weather point. Delete, merge, `?referenced=`, `usage` and
+  `otherUses` all read it; a sixth referencing table extends it. Counts of a kind the caller cannot read
+  are `null`, never `0`, and there is deliberately no total.
+- **Merge and delete decide inside their own transaction**, first statement `FOR UPDATE` (both rows in
+  ascending id order for a merge). The merge's per-class claim is the `DomainForbiddenException` shape,
+  with a generic body; the delete `409` is generic too.
+- **`locations.read` is pinned to exactly Admin, Owner, User and Guest**, `calendar.read` and
+  `journal.read` each imply it, and every contact/property editor holds all three location write claims
+  and all four record read claims (`AuthorizationPolicyTests`). Widening `locations.read` widens who
+  reads every address. Logs carry ids and counts only — never a name, address or detail.
+
+**Weather is kept per weather POINT, and a place only links to one** (issue #387). `WeatherPoint` is a named
+position with its own versioned sites, schedule and data; every weather table is keyed on `WeatherPointId`,
+and `Locations.WeatherPointId` (nullable, `SET NULL`) is the link — many places per point, never a point to a
+point. Rules that are easy to get backwards:
+
+- **The link has one writer**, `WeatherLinkService` (`PUT /api/locations/{id}/weather-point`, `locations.update`
+  + `weather.read`), which locks the place `FOR UPDATE` first and maps a `1452` to `422` keyed
+  `weatherPointId`. No location, contact, property or point write takes a point id or a location list; a merge
+  keeps the survivor's link, else inherits the source's.
+- **`WeatherPoints.CurrentSiteVersion` has no foreign key** — the site depends on the point, so a key back
+  would be a cycle. The point service writes both in one save. `SettingsVersion` is the Admin's concurrency
+  token (rotated by create, `PUT` and purge start only); the fetch fence stays on `WeatherPointSchedule.Version`.
+- **Runs, observations and days reference the point with `RESTRICT`** (delete goes through the batched purger);
+  sites, schedule and stations cascade; `WeatherForecastSteps` has no key to the point at all.
+- **Distances are whole kilometres** (`WeatherDistance`), computed at read time, never stored.
+- **A converted point kept its location's GUID.** Nothing may resolve a bare id across `Locations` and
+  `WeatherPoints`.
+
 **Exchange rates sync from Norges Bank, stored as currency ↔ NOK only, and every other pair converts
 through NOK** (issue #349). `ExchangeRate.Provider` is `NULL` for a manual row and `NorgesBank` for a
-fetched one; there is no separate source column. Four rules are easy to get backwards:
+fetched one; there is no separate source column. Five rules are easy to get backwards:
 
 - **The newest-rate ordering is written once, in `ExchangeRateOrdering`** — `AsOf`, then
-  `UpdatedAt ?? CreatedAt`, then the id — and source plays no part. `CurrencyConversionService` (direct
-  vs. hop: the later UTC date wins, the same date goes to direct) and every status rule in
-  `ExchangeRateService` read it; a source-lint fails on a second copy in `Odyssey.Core`.
+  `UpdatedAt ?? CreatedAt`, then a stored row before an inverted one, then the id — and source plays no
+  part. `CurrencyConversionService` (direct vs. hop: the later UTC date wins, the same date goes to direct)
+  and every status rule in `ExchangeRateService` read it; a source-lint fails on a second copy in
+  `Odyssey.Core`.
+- **Readers invert FETCHED rows, never manual ones** (issue #472). A fetched `B → A` row competes for
+  `A → B` as `1 / Rate`, unrounded, through a second, fetched-only branch whose `Provider` filter runs
+  *before* its grouped MAX, so a newer manual row of the same stored pair cannot hide it. A manual rate may
+  be a buy or sell quote and is never turned around. On a full tie the stored row wins, which is what keeps
+  a database still holding both directions giving exactly the results it gave before. A row's Current
+  badge, the `status=` filter and the summary count only a winner that is a stored row **of its own pair**:
+  an inverted winner names the other pair's row and must never mark it Current. `GET
+  /api/exchange-rates/resolved` reports the rate a conversion uses and its legs; `/latest` returns an
+  inverted row with `inverted: true` and the stored row's id. `CK_ExchangeRates_RatePositive` keeps the
+  division safe.
 - **"In force" means `AsOf ≤ now`.** A future-dated row is `Upcoming` and converts nothing until its
   date; the bounded lookups keep their exclusive `AsOf < bound`.
-- **The run guard is the `RunningGuard` generated column's unique index**, real MariaDB only; a purge
+- **The run guard is the `JobRuns.ExclusiveGuard` generated column's unique index**, real MariaDB only; a purge
   takes it too, through a `Purge` run row. Runs execute in `Odyssey.Worker` (`ExchangeRateSyncJob`), which
   keeps no schedule in memory. The API only *starts* a manual run: it inserts the `Running` row unclaimed,
   and the first worker replica to set `ClaimedAtUtc` — a concurrency token — executes it. A scheduled run
@@ -575,6 +641,23 @@ fetched one; there is no separate source column. Four rules are easy to get back
 - **A fetched row is never edited in place nor deleted on its own** (both `422` keyed `source`, for
   every caller) — the sync fills only beyond its fetched extents, so a row removed from inside them is
   never refetched. Fetched rates leave only through the per-currency purge.
+
+**The news reader fetches untrusted feeds from the worker, and its egress policy is the SSRF control**
+(issues #470, #473; specs in `docs/specs/news-reader-*.md`). Six rules are easy to get backwards:
+
+- **Every outbound request goes through `NewsEgress`** (`Odyssey.Core/Internet/News/Fetching/`): one DNS answer
+  per connection, every address vetted at connect time (wrapped IPv4 forms unwrapped), manual redirects re-checked
+  per hop, decompression capped in layers and bytes. A private host is reachable only through the
+  `NewsPrivateHostAllowList` setting, gated on `system-settings.security.update`, and only for that feed's own host.
+  Never send news traffic through another `HttpClient`.
+- **The worker shares no network with the API or the client.** It sits on its own database network and the
+  `egress` network only, in both compose files; a fetched host must never be able to reach the API's port.
+- **The worker needs ICU** (`GlobalizationGuard`, now in `Odyssey.Core/Configuration`, runs in both hosts).
+- **`NewsArticles` must be bound on every host with volumes**, the API and the worker alike.
+- **The API never writes a worker-owned column.** `NewsFeedFetchStates` is the worker's, behind `FetchFence`; the
+  API changes it only through `INewsFetchStateFlags`, and a suggested feed URL is applied only by a user's `PUT`.
+- **Feed HTML is reduced to text and never re-serialised**, behind a 256-level and 2 MiB cap per fragment, so no
+  feed markup ever reaches the browser.
 
 **`IContactMutationLock` is retired, and a source-lint keeps it that way.** It existed to serialize a
 write path against a contact delete; once that path's call sites were gone it was a mutex with no
@@ -602,10 +685,10 @@ is gone, and with it the one `__EFMigrationsHistory` table shared between two co
 job is an `Odyssey.Core.Jobs.IPeriodicJob`, written and tested in `Odyssey.Core` like any other business
 service, and registered with one `services.AddPeriodicJob<TJob>()` line in `Odyssey.Worker/WorkerHost.cs`.
 `PeriodicJobService` owns the loop — first run at once, one run per interval, a failed run logged and the
-next one going ahead, runs never overlapping. Four rules:
+next one going ahead, runs never overlapping. Five rules:
 
 - **Every replica runs every job.** A job that must not run twice at once coordinates through the rows it
-  works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherLocationSchedule.Version`
+  works on (a lease, a concurrency token — `WeatherScheduleJob`'s claim on `WeatherPointSchedule.Version`
   is the working pattern), never through process state. That is also why the worker has no in-memory
   database mode: a private, empty copy would coordinate with nothing.
 - **Share a dependency, don't copy it.** When a job needs something the API already has, move it into
@@ -616,8 +699,16 @@ next one going ahead, runs never overlapping. Four rules:
   the keys volume is mounted `:ro` and automatic key generation is off, so the API stays the only key
   writer. Holding the ring means the worker can decrypt every stored credential — see
   `docs/deployment.md` → *Two containers hold the key ring*. The migrations job still holds none.
-- **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (hourly)
-  erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
+- **Every catalogued job records into one shared run log** (issues #409/#410). `JobRuns` (TPH by `JobType`)
+  holds every run, burst and held period, and `JobHeartbeats` one row per process and job; `JobCatalogue`
+  (`Odyssey.Core/Jobs/`) declares each recorded job once, and `JobRunRecorder` is the only writer a job calls.
+  `Generation` is rotated on every save, so the worker, the stale sweep and the API lose a race cleanly; the
+  `ExclusiveGuard`/`OpenHeldGuard` generated unique indexes are the real guards on MariaDB. `JobRunMaintenanceJob`
+  sweeps stale rows every 5 minutes and prunes past `JobRunRetentionDays` hourly. The Admin page is
+  `/background-jobs` over `GET/POST /api/background-jobs/...`, gated on `system-settings.read`/`.update` plus
+  each job's own claims, which never leave the server.
+- **The worker mounts and verifies the file volumes** (issue #346 A3). `FileStorageMaintenanceJob` (ticking
+  every 30 s, one pass per 1 h `PassInterval`) erases released files, sweeps abandoned writes, scrubs integrity and reconciles the disk, elected per tick
   by the single-row `FileStorageMaintenanceLeases` lease. **The job runs the worker's storage checks itself**
   (`FileStorageWorkerVerification`, the API's checks in verify-only mode, waiting up to 2 minutes for the API to
   initialise a new volume), so **a failing volume verdict holds that job alone** — weather and exchange-rate
@@ -630,6 +721,13 @@ next one going ahead, runs never overlapping. Four rules:
   them in the client.
   `api` and `worker` must get identical `FileStorage__Volumes__*`/`__Bindings__*` and mounts in both
   compose files and the AppHost; `FileStorageDeploymentParityTests` enforces it.
+- **Statement extraction is a queue, not a request** (issue #444). `POST …/analyze` only enqueues (`202` +
+  `Location`); `FileAnalysisQueueJob` claims one job per tick per process, re-checks requester, file, uncached
+  settings, destination, disclosure, template hash, credential and the kill switch (last) **before** it stamps
+  `TransferStartedAt` and sends, and never re-sends: a lost lease is `Failed / interrupted`, an unclaimed row
+  `Failed / not_started`. `DocumentSent` is derived from that stamp alone. The sweep also runs inline in the API
+  for the one file or job a request touches, and under `Testing` the API runs the job inline. It has no manual
+  run (`ManualRunSupported: false` → `409 job-run.manual-run-unsupported`). Match and import stay synchronous.
 - **Settings reach the worker within the cache TTL, not instantly.** A `/settings` save evicts the API's
   `IMemoryCache`, not the worker's, so a changed value applies to jobs on the next read after the 30 s TTL.
   A setting that must bind on the very next job run is read uncached, as `FileAnalysisEnabled` is.
@@ -637,9 +735,10 @@ next one going ahead, runs never overlapping. Four rules:
 **Files on disk go through the filesystem object store, `Odyssey.Core/FileStorage/`** (issue #346).
 Deploy-time volumes (`FileStorage:Volumes:<name>:RootPath`) hold the bytes; `StoredObjects` rows say what is
 where; code-declared *storage features* (`StorageFeature`, registered in DI, assembled into
-`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **Photo
-thumbnails (#362) are the production catalogue's one feature**, so every host with volumes must bind
-`PhotoThumbnails` (check B1); the three `TestShared/FileStorage` features exercise the store's own tests.
+`StorageFeatureCatalogue`) are bound to a volume at deploy time (`FileStorage:Bindings:<Feature>`). **The production
+catalogue holds two features, `PhotoOriginals` (#428) and `PhotoThumbnails` (#362), both `Graced`**, so every host with
+volumes must bind both (check B1); a guard test fails on an `Immediate` production feature. The three
+`TestShared/FileStorage` features exercise the store's own tests.
 Existing uploads stay in `FileBlob`. Rules a consumer
 inherits, and that are easy to get backwards:
 
@@ -707,7 +806,90 @@ to get backwards:
   `PhotoImageSources.For`, and draws every photo below viewer size through `OdsPhotoImage` (thumbnail → original
   → placeholder). The viewer, lightbox and edit banner always show the original; `PhotoThumbnailSurfaceTests`
   keeps a surface from building a `ContentUrl` or a CSS `background-image`.
-- **The five thumbnail tables are derived data**, out of scope on `DataExportTableCoverageTests`.
+- **The five thumbnail tables are derived data**.
+
+**A photo owns its original on the object store, not in the Files store** (issue #428). Only journal and photo-library
+photos: every other upload stays in `FileBlob`. `Photo.StoredObjectId` (RESTRICT, feature `PhotoOriginals`, laid out
+`<upload year>/<bucket>`) carries the bytes and the photo carries its own `FileName`/`ContentType`/`SizeBytes`/`Sha256Hash`;
+a **legacy** photo still has `FileId` until `PhotoOriginalBackfillJob` (`Odyssey.Worker`) moves it, and
+`CK_Photos_ExactlyOneSource` keeps exactly one of the two set. Rules that are easy to get backwards:
+
+- **Read through `PhotoOriginalSource`**, which resolves either shape, never `FileMetadata` directly. The original is
+  served by `GET /api/photos/{id}/content` under `photos.read` alone; `files.read` reaches no photo, and no photo
+  appears on the Files list. That includes a **legacy** photo's file: `FileService` reads through
+  `FileReferenceCounter.VisibleInFilesStore`, which hides a file a photo names (`FileId` or `LegacyFileId`) unless
+  another referencing column also names it — an attachment's own claim already reaches that one.
+- **Upload is one multipart `POST /api/photos`** (`PhotoService.UploadAsync`): validated, hashed, duplicate-checked
+  (`409 photo-duplicate`, existing id only for a `photos.read` holder), reserve-checked (`507`), written, then one save.
+  There is no "photo from an existing file id" path any more; a JSON body with `fileId` is a `415`.
+- **A rename changes `Photo.FileName` only**, never the file on disk. Journal entries link photos by `PhotoIds`.
+- **The backfill deletes a legacy file only when `IFileReferenceCounter` finds no other user.** That counter is
+  derived from the EF model (every key to `FileMetadata` but `Photo.FileId`), so a new referencing table is counted
+  without a code change — never replace it with a hand-kept list. A shared file is copied and kept.
+- **The backfill is a catalogued, work-driven job** (`JobType.PhotoOriginalBackfill = 5`) on `/background-jobs`:
+  bursts, a held period only while photos are left (`StorageUnavailable`, or `BackingOff` with the lease's
+  `NextAttemptAtUtc` as its resume time), and a manual run that ends a back-off. Its status card is
+  `BackgroundJobsWorkerHealth.PhotoOriginalBackfill`, the same `PhotoBackfillStatus` as
+  `GET /api/file-storage/photo-backfill`; both, and its counters, follow `file-storage.read`.
+- **`OdysseyApiFactory` binds every file feature (both photo features and the three file areas) to one
+  per-factory temp volume** (`FileVolumeRoot`, `FileVolumeSpace`). A test that needs a host with no
+  volume (the settings tests that read an unseeded InMemory store) sets `OdysseyApiFactory.NoFileVolumeKey`; on EF
+  InMemory a host with volumes runs `EnsureCreated` before verifying, so `HasData` rows exist.
+
+**Every other file moves onto the object store too, by AREA** (issue #448). `FileMetadata` keeps its row and gains
+one nullable `RESTRICT` column per feature — `FinanceStoredObjectId` (`FinanceFiles`, `finance-files/`),
+`JournalStoredObjectId` (`JournalFiles`, `journal-files/`) and `ContactAvatarStoredObjectId` (`ContactAvatars`,
+`contact-avatars/`) — and `CK_FileMetadata_ExactlyOneSource` keeps exactly one of those and `FileBlobId` set. All
+of it lives in the module-neutral `Odyssey.Core/FileStorage/Files/`. Rules that are easy to get backwards:
+
+- **The area is chosen at upload and never moves.** `POST /api/files` takes a required `area`
+  (`FileUploadArea`, `Odyssey.Dtos` root); each client host passes its own (`AttachDocumentsDialog.Area` is
+  `EditorRequired`). The avatar path always writes `ContactAvatars`, and no other writer may (source-lint).
+  Placement is not access: the claim of the referencing record still decides who reads a file.
+- **Read bytes through `StoredFileContentSource`, remove a row through `StoredFileRemoval`.** Both resolve a
+  legacy and a disk-backed file alike; a direct `FileBlob`/`FileBlobId` read or a `FileMetadata.Remove` outside
+  the allow-list fails `StoredFilesSourceLintTests`. Removal stages the store release in the same save.
+- **`FileBlobBackfillJob` classifies at move time, from the EF model** (`FileAreaClassifier`): no link or any
+  finance link → Finance, journal-only → Journal, avatar-only **with an image type** → Contacts, else Finance. A
+  photo-wrapped file waits for the photo move. The commit locks the row `FOR UPDATE` and re-classifies. Its
+  per-area health is checked per candidate, so one degraded area never stalls the others.
+- **`FileBlobBackfillFailures` has no foreign key**, so `FileReferenceCounter.Discover` is unchanged by it; an
+  orphan row is pruned on the next tick. It is `JobType.FileBlobBackfill = 7` on `/background-jobs`, status
+  `GET /api/file-storage/file-backfill` under `file-storage.read`.
+- **Every upload surface shares `UploadFailureText`** (`Odyssey.Client/Services/`): a `507`/`503`/`429` stops
+  the batch, anything else is the file's own; inside a dialog the alert line is the only failure channel.
+- **Finance must not gain a `using Odyssey.Core.Journal`.** Three files that predate the rule are allow-listed
+  in the lint; the list may only shrink.
+
+**A task or journal `.ics` export carries its attached files inline — a journal's library photos too — and the
+import stores them without duplicating** (`TaskIcsService`, `JournalEntryIcsService`,
+`Journal/Interop/IcsBinaryAttachments.cs`, `Journal/Interop/InlineAttachmentImporters.cs`). Rules that are easy to
+get backwards:
+
+- **`Ical.Net` never sees a binary value.** The export serializes each VTODO/VJOURNAL without its files and
+  `IcsBinaryAttachmentWriter` splices in `ATTACH;ENCODING=BASE64;VALUE=BINARY` lines streamed from the store; the
+  import's `IcsAttachmentSpooler` decodes them to temp files and hands `Ical.Net` the text with placeholders. A value
+  held as one string caps out near 1 G characters, which is why a 10 GB export is possible at all.
+- **`EncodedLength` must stay exact** — the export refuses an over-cap file from it before sending a byte.
+- **Dedupe is id-then-hash, over `VisibleInFilesStore` only**: the exported file's own id with the same SHA-256 and
+  size, else the oldest visible file with that SHA-256 and size, else a new Journal-area file. A new file passes the
+  same `FileValidationService` checks an upload does, the admin upload cap included.
+- **A photo is its own kind (`X-ODYSSEY-KIND=PHOTO`) and dedupes the same way over `PhotoOriginalSource.Describe`**
+  (legacy photos included); a match is linked as-is, and a new one goes through `PhotoService.StageUploadAsync` — the
+  library upload's checks — carrying only the exported file name, title and caption. Tags, people and albums stay
+  library-only.
+- **Files make the claims stricter, never optional**: an export with attached files needs `files.read` (photos:
+  `photos.read`), an import carrying inline files needs `files.read` and `files.create` (photos: `photos.read` and
+  `photos.create`), and either is refused whole (`403`) without them — the import at its first such attachment,
+  inside the spooler, before a byte of it is decoded.
+- **The browser transfers these files itself.** The client asks `GET api/tasks/ics/summary` or `…/vjournal/summary` (same checks) and then
+  navigates to the export URL; the import posts the picked `File` from disk (`INativeTransfer`). The service worker
+  must not answer an `/api/` navigation with `index.html`.
+- **The 10 GB transport ceiling is not every endpoint's limit.** `ImportSizeLimitMiddleware` holds any endpoint
+  without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
+  photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
+  attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
+  timeouts to the task-ICS, photo and file routes alone.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the
@@ -1051,8 +1233,10 @@ either/or with `ChildContent`.
 Some things deliberately stay in deploy-time config, and the reasons are recorded in issue #421's
 Non-Goals so they are not re-litigated: connection strings and secrets; `RateLimiting:*` (the
 partitioner is synchronous and caches its limiter per partition key, so a changed limit never reaches a
-live partition); and `FileAnalysis:PromptVersion`/`PromptTemplatePath` (the prompt template is a deployed file, and a version
-string that can drift from the file it names is worse than one that cannot). `Map:*` (issue #370) stays too: the
+live partition). `FileAnalysis:PromptVersion`/`PromptTemplatePath` were on that list and are now **gone from
+configuration altogether** (issue #444): the template is an embedded resource in `Odyssey.Core`, its version a
+`const` beside it, and every job is stamped with the template's SHA-256 — a version string that can drift from
+the file it names was the worry, and a hash cannot drift. `Map:*` (issue #370) stays too: the
 browser can only reach a tile host the client container's CSP allows, and nginx renders that CSP from
 `MAP_ALLOWED_ORIGINS` at container start, so an admin-editable style URL would either be silently blocked
 or force a CSP wide enough to defeat it. `FileAnalysis:Model` was
@@ -1073,7 +1257,9 @@ Issue #434 adds one more of the same class:
 `FileAnalysis:TimeoutSeconds`, consumed once at startup inside `.AddStandardResilienceHandler()`, so a
 runtime value could never reach a live pipeline — and worse than inert, since the options validator
 rejects the handler unless `SamplingDuration >= 2 x AttemptTimeout`. Note the contrast with
-`FileAnalysis:Match:TimeoutSeconds`, which *is* per-call and *did* move.
+`FileAnalysis:Match:TimeoutSeconds`, which *is* per-call and *did* move. Since issue #444 it is read by
+**both** hosts through the shared `AddFileAnalysis` registration and bounded `[Range(10, 140)]` with
+`ValidateOnStart`, because it also sizes the queue's lease; `WorkerHostTests` pins the two shipped values equal.
 
 **Issue #8 moved the last four `Email:*` values and left the section empty.** `Email:SmtpHost`,
 `SmtpPort`, `UseStartTls` and `ClientBaseUrl` were the strongest entries on that Non-Goal list, and
@@ -1129,7 +1315,7 @@ that same blind spot today and the same property would close it.
 
 | | Where | What |
 |---|---|---|
-| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 107 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
+| The **vocabulary** | `Odyssey.Dtos/Authorization/PermissionClaims.cs` | `Type` + the 123 claim string constants. Shared by the API, the Blazor client and the tests — one definition, so the server and client can't drift. |
 | The **role mapping** | `Odyssey.Context/Authorization/RolePermissions.cs` | `AllClaims`, `AdminClaims`/`OwnerClaims`/`UserClaims`/`GuestClaims`, and the per-module arrays. Server-only, so the browser never ships the role-to-claim mapping. |
 
 **Adding a claim:** add the constant to `PermissionClaims`, then add it to `RolePermissions.AllClaims`
@@ -1154,7 +1340,10 @@ A fixture that signs in for real (rather than through `TestAuthHandler`) has to 
 Claim **values** are a wire contract: they are persisted in `AspNetRoleClaims` and baked into issued
 auth cookies, so renaming one de-authorizes existing rows and sessions. `RolePermissions` is *not*
 named `RoleClaims` because `OdysseyContext` already has an Identity `DbSet` by that name.
-Remember that a role-claim change only reaches existing sessions after a sign-out/sign-in.
+A role-claim change reaches an existing session at its next security-stamp revalidation — within one
+`SecurityStampValidatorOptions.ValidationInterval` (one minute, `Odyssey.Api/Program.cs`) — because
+revalidation re-runs the claims factory; no sign-out is needed (issue #387 AC 9a pins it). Until then the
+session keeps the claims it was issued with.
 
 ## Testing & Demo Data
 
@@ -1193,8 +1382,9 @@ cleanup to do afterwards.
 single source of truth for demo data — reused by the seeder *and* the tests. They build four
 role-based login users (Admin/Owner/User/Guest; shared password `Odyssey!Demo1`), tags,
 contacts, a 19-account portfolio, per-year budgets, recurring transactions, and exchange
-rates for every currency pair in use (so multi-currency accounts convert — the conversion service
-does no inversion/triangulation, so each directed pair needs a direct rate). Currencies and roles are
+rates for every currency pair in use (so multi-currency accounts convert — demo rates are manual, and
+the conversion service inverts only fetched rows, so each directed pair needs a direct rate; it hops
+through NOK only when both legs exist). Currencies and roles are
 reference data (seeded by the initial migration) and permission claims are reconciled by
 `RoleClaimSeeder`; the demo data references all three and never recreates them.
 

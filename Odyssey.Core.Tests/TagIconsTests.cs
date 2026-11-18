@@ -123,7 +123,7 @@ public class TagIconsTests
     {
         var low = Guid.Parse("00000000-0000-0000-0000-000000000001");
         var high = Guid.Parse("00000000-0000-0000-0000-000000000002");
-        var ordered = TagIcons.Order([new TagIconCandidate(high, null, null), Tag("zebra"), new TagIconCandidate(low, null, "palette")]);
+        var ordered = TagIcons.Order([new TagIconCandidate(high, null, null, null), Tag("zebra"), new TagIconCandidate(low, null, "palette", null)]);
 
         Assert.Equal([null, null], ordered.Skip(1).Select(tag => tag.Name));
         Assert.Equal([low, high], ordered.Skip(1).Select(tag => tag.Id));
@@ -133,7 +133,7 @@ public class TagIconsTests
     [Fact]
     public void A_nameless_candidate_contributes_no_icon_ahead_of_a_named_one() =>
         Assert.Equal("beach_access",
-            TagIcons.Resolve([new TagIconCandidate(Guid.NewGuid(), null, "palette"), Tag("Trip", "beach_access")]));
+            TagIcons.Resolve([new TagIconCandidate(Guid.NewGuid(), null, "palette", null), Tag("Trip", "beach_access")]));
 
     [Fact]
     public void The_shape_overloads_sort_and_resolve_any_tag_type_through_its_candidate()
@@ -223,7 +223,8 @@ public class TagIconsTests
         foreach (var name in assigners)
         {
             var code = StripComments(File.ReadAllText(files.Single(path => Path.GetFileName(path) == name)));
-            Assert.Contains("TagIcons.Resolve(", code);
+            // Issue #392: the icon and the colour come from one ResolveDisplay call.
+            Assert.Contains("TagIcons.ResolveDisplay(", code);
             Assert.Contains("TagIcons.Order(", code);
         }
 
@@ -266,7 +267,7 @@ public class TagIconsTests
     }
 
     private static TagIconCandidate Tag(string name, string? icon = null, Guid? id = null) =>
-        new(id ?? Guid.NewGuid(), name, icon);
+        new(id ?? Guid.NewGuid(), name, icon, null);
 
     private static string StripComments(string code) =>
         Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),

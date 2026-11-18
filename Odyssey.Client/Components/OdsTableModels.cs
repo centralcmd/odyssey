@@ -46,12 +46,13 @@ public sealed record OdsFilesRow
     public Guid? IssuedBy { get; init; }
 
     /// <summary>
-    /// Optional additive status indicator rendered as an <c>OdsChip</c> next to the file name —
-    /// e.g. a "Review pending · 12" hint that the file has an open, resumable analysis review.
-    /// Meaning is carried in the chip text (never icon/colour alone). Absent on rows without a
-    /// badge, so the table renders exactly as before.
+    /// Optional additive status indicators rendered as <c>OdsChip</c>s next to the file name, in order —
+    /// e.g. "Review pending · 12" beside "Analysis failed" when a newer analysis failed next to a review that
+    /// is still pending (Odyssey Design System · FilesTable <c>statusBadge</c>, a list since
+    /// centralcmd/odyssey#445). Meaning is carried in the chip text (never icon/colour alone). Empty on rows
+    /// without a badge, so the table renders exactly as before.
     /// </summary>
-    public OdsFilesRowStatusBadge? StatusBadge { get; init; }
+    public IReadOnlyList<OdsFilesRowStatusBadge> StatusBadges { get; init; } = [];
 }
 
 /// <summary>

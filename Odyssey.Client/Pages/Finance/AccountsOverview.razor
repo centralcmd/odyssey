@@ -54,9 +54,15 @@
             "Archived" => c.Archived,
             _ => c.Open,
         },
-        new OdsBreakdownDef<string>("Open", "Open", "income", "lock_open"),
-        new OdsBreakdownDef<string>("Closed", "Closed", "expense", "lock"),
-        new OdsBreakdownDef<string>("Archived", "Archived", "outline", "inventory_2"));
+        StatusDefs);
+
+    /// <summary>The account statuses, shared with the page's Status filter so both wear one glyph and tone.</summary>
+    internal static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        new("Open", "Open", "income", "lock_open"),
+        new("Closed", "Closed", "expense", "lock"),
+        new("Archived", "Archived", "outline", "inventory_2"),
+    ];
 
     // The API sends only non-archived accounts with a non-zero effective value, so the split is a
     // sign partition. OdsAllocationDonuts orders each well largest-magnitude first.

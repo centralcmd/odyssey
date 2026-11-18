@@ -38,14 +38,44 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
+        RotateJobRunGenerations();
         ApplyNewUserDefaults();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
     public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
+        RotateJobRunGenerations();
         await ApplyNewUserDefaultsAsync(cancellationToken);
         return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    /// <summary>
+    /// Every write to a <see cref="JobRun"/> bumps its <see cref="JobRun.Generation"/> (issue #409 §3.3 step 2), here
+    /// rather than at each call site so no writer can forget: the save is then conditional on the value the writer
+    /// read, and a second writer of the same row loses instead of overwriting.
+    /// </summary>
+    private void RotateJobRunGenerations()
+    {
+        foreach (var entry in ChangeTracker.Entries<JobRun>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Generation == Guid.Empty
+                || entry.State == EntityState.Modified && !entry.Property(run => run.Generation).IsModified)
+            {
+                entry.Entity.Generation = Guid.NewGuid();
+            }
+        }
+
+        // The instrument-price source counter (issue #446 §4.4) uses the same rotate-on-save token, so two replicas
+        // reserving a request slot at once cannot both win.
+        foreach (var entry in ChangeTracker.Entries<InstrumentPriceSourceState>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Version == Guid.Empty
+                || entry.State == EntityState.Modified && !entry.Property(state => state.Version).IsModified)
+            {
+                entry.Entity.Version = Guid.NewGuid();
+            }
+        }
     }
 
     // The require-admin-approval rule (issue #349) moved from static config (RegistrationOptions,
@@ -130,6 +160,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         ConfigureCurrencyReferences(modelBuilder);
         ConfigureCrossModuleForeignKeys(modelBuilder);
+        ConfigureLocationReferences(modelBuilder);
         ConfigureUserAttribution(modelBuilder);
     }
 
@@ -262,6 +293,47 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
             .OnDelete(DeleteBehavior.Cascade);
     }
 
+    /// <summary>
+    /// Every reference to a <see cref="Location"/> (issue #380 §4), reviewed as a set. Each is
+    /// <c>RESTRICT</c>: the only delete path refuses a location that is still referenced, and the key backs
+    /// that up so a guard bug fails the save instead of nulling references. Adding a sixth referencing table
+    /// means extending the reference guard's counts too.
+    /// </summary>
+    private static void ConfigureLocationReferences(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CalendarEvent>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(calendarEvent => calendarEvent.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RecurrencePattern>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(pattern => pattern.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<JournalEntry>()
+            .HasOne<Location>()
+            .WithMany()
+            .HasForeignKey(entry => entry.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // A contact address is a link row (ContactId, LocationId, Label, IsPrimary) since issue #380; the
+        // navigation is how the read path projects today's address fields from the linked place.
+        modelBuilder.Entity<Address>()
+            .HasOne(address => address.Location)
+            .WithMany()
+            .HasForeignKey(address => address.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<RealEstateDetails>()
+            .HasOne(details => details.Location)
+            .WithMany()
+            .HasForeignKey(details => details.LocationId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+
     /// <summary>The user-attribution columns, all <c>SET NULL</c> to <c>AspNetUsers</c>.</summary>
     private static void ConfigureUserAttribution(ModelBuilder modelBuilder)
     {
@@ -284,8 +356,8 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         // width is refused outright by MariaDB (errno 150), which is why the previous 450 had to go.
         DeclareUserAttribution<Calendar>(modelBuilder, nameof(Calendar.CreatedByUserId), nameof(Calendar.UpdatedByUserId));
         DeclareUserAttribution<Location>(modelBuilder, nameof(Location.CreatedByUserId), nameof(Location.UpdatedByUserId));
-        DeclareUserAttribution<WeatherLocation>(modelBuilder, nameof(WeatherLocation.CreatedByUserId), nameof(WeatherLocation.UpdatedByUserId));
-        DeclareUserAttribution<WeatherLocationSite>(modelBuilder, nameof(WeatherLocationSite.AppliedByUserId));
+        DeclareUserAttribution<WeatherPoint>(modelBuilder, nameof(WeatherPoint.CreatedByUserId), nameof(WeatherPoint.UpdatedByUserId));
+        DeclareUserAttribution<WeatherPointSite>(modelBuilder, nameof(WeatherPointSite.AppliedByUserId));
         DeclareUserAttribution<CalendarEvent>(modelBuilder, nameof(CalendarEvent.CreatedByUserId), nameof(CalendarEvent.UpdatedByUserId));
         DeclareUserAttribution<JournalEntry>(modelBuilder, nameof(JournalEntry.CreatedByUserId), nameof(JournalEntry.UpdatedByUserId));
         DeclareUserAttribution<JournalTask>(modelBuilder, nameof(JournalTask.CreatedByUserId), nameof(JournalTask.UpdatedByUserId));
@@ -307,7 +379,14 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
         // Exchange-rate sync (issue #349): who last changed a currency's sync, and who started a run.
         DeclareUserAttribution<ExchangeRateSyncCurrency>(modelBuilder, nameof(ExchangeRateSyncCurrency.UpdatedByUserId));
-        DeclareUserAttribution<ExchangeRateSyncRun>(modelBuilder, nameof(ExchangeRateSyncRun.RequestedByUserId));
+
+        // Background-job runs (issue #409 §4.4): who asked for a manual run — the exchange-rate sync's declaration, moved.
+        DeclareUserAttribution<JobRun>(modelBuilder, nameof(JobRun.RequestedByUserId));
+
+        // Instruments and their prices (issue #446): shared records that outlive their author.
+        DeclareUserAttribution<Instrument>(modelBuilder, nameof(Instrument.CreatedByUserId), nameof(Instrument.UpdatedByUserId));
+        DeclareUserAttribution<InstrumentPrice>(modelBuilder, nameof(InstrumentPrice.CreatedByUserId));
+        DeclareUserAttribution<InstrumentPriceSourceBinding>(modelBuilder, nameof(InstrumentPriceSourceBinding.UpdatedByUserId));
     }
 
     /// <summary>
@@ -365,7 +444,6 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<Currency> Currencies { get; set; }
     public DbSet<ExchangeRate> ExchangeRates { get; set; }
     public DbSet<ExchangeRateSyncCurrency> ExchangeRateSyncCurrencies { get; set; }
-    public DbSet<ExchangeRateSyncRun> ExchangeRateSyncRuns { get; set; }
     public DbSet<ExchangeRateProviderSeries> ExchangeRateProviderSeries { get; set; }
     public DbSet<TransactionFile> TransactionFiles { get; set; }
     public DbSet<AccountFile> AccountFiles { get; set; }
@@ -419,14 +497,16 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<Location> Locations { get; set; }
 
     // Weather (issue #348). The four history tables and the sites are append-only; WeatherDays is derived.
-    public DbSet<WeatherLocation> WeatherLocations { get; set; }
-    public DbSet<WeatherLocationSite> WeatherLocationSites { get; set; }
-    public DbSet<WeatherLocationSchedule> WeatherLocationSchedules { get; set; }
+    public DbSet<WeatherPoint> WeatherPoints { get; set; }
+    public DbSet<WeatherPointSite> WeatherPointSites { get; set; }
+    public DbSet<WeatherPointSchedule> WeatherPointSchedules { get; set; }
     public DbSet<WeatherForecastRun> WeatherForecastRuns { get; set; }
     public DbSet<WeatherForecastStep> WeatherForecastSteps { get; set; }
     public DbSet<WeatherStation> WeatherStations { get; set; }
     public DbSet<WeatherObservation> WeatherObservations { get; set; }
     public DbSet<WeatherDay> WeatherDays { get; set; }
+    public DbSet<WeatherPointHistoryWindow> WeatherPointHistoryWindows { get; set; }
+    public DbSet<WeatherObservationCoverage> WeatherObservationCoverages { get; set; }
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
 
@@ -450,8 +530,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     /// A user's one profile picture (issue #94). Deliberately NOT in the domain file store: the pair
     /// below shares no relationship with <see cref="FileMetadata"/>/<see cref="FileBlob"/> in either
     /// direction, which is what keeps a face out of reach of every <c>files.*</c> claim and out of the
-    /// admin file export. Both are declared out of scope on <c>DataExportTableCoverageTests</c>,
-    /// alongside the identity tables they belong with.
+    /// admin file export.
     /// </summary>
     public DbSet<UserProfileImage> UserProfileImages => Set<UserProfileImage>();
 
@@ -495,6 +574,66 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
 
     /// <inheritdoc cref="PhotoThumbnails" />
     public DbSet<PhotoThumbnailWorkerHeartbeat> PhotoThumbnailWorkerHeartbeats => Set<PhotoThumbnailWorkerHeartbeat>();
+
+    /// <summary>
+    /// Photo originals on the object store (issue #428): the per-year bucket counter, the backfill's lease and its
+    /// parked failures. The originals themselves are <see cref="StoredObjects"/> named by <c>Photo.StoredObjectId</c>.
+    /// </summary>
+    public DbSet<PhotoOriginalBucket> PhotoOriginalBuckets => Set<PhotoOriginalBucket>();
+
+    /// <inheritdoc cref="PhotoOriginalBuckets" />
+    public DbSet<PhotoOriginalBackfillLease> PhotoOriginalBackfillLeases => Set<PhotoOriginalBackfillLease>();
+
+    /// <inheritdoc cref="PhotoOriginalBuckets" />
+    public DbSet<PhotoOriginalBackfillFailure> PhotoOriginalBackfillFailures => Set<PhotoOriginalBackfillFailure>();
+
+    /// <summary>
+    /// Files on the object store (issue #448): the per-feature bucket counter, the file move's lease and its parked
+    /// failures. The files themselves are <see cref="StoredObjects"/> named by one of <see cref="Odyssey.Context.FileMetadata"/>'s
+    /// three stored-object columns.
+    /// </summary>
+    public DbSet<StoredFileBucket> StoredFileBuckets => Set<StoredFileBucket>();
+
+    /// <inheritdoc cref="StoredFileBuckets" />
+    public DbSet<FileBlobBackfillLease> FileBlobBackfillLeases => Set<FileBlobBackfillLease>();
+
+    /// <inheritdoc cref="StoredFileBuckets" />
+    public DbSet<FileBlobBackfillFailure> FileBlobBackfillFailures => Set<FileBlobBackfillFailure>();
+
+    /// <summary>
+    /// The background-job run log (issue #409): one TPH table for every job's runs, bursts and held periods, and
+    /// each process's last tick per job. Operational, out of scope for every export. Reach a job's own rows with
+    /// <c>Set&lt;TRun&gt;()</c>.
+    /// </summary>
+    public DbSet<JobRun> JobRuns => Set<JobRun>();
+
+    /// <inheritdoc cref="JobRuns" />
+    public DbSet<JobHeartbeat> JobHeartbeats => Set<JobHeartbeat>();
+
+    // ── Instrument prices (issue #446) ─────────────────────────────────────────────────────────
+    public DbSet<Instrument> Instruments => Set<Instrument>();
+    public DbSet<InstrumentPrice> InstrumentPrices => Set<InstrumentPrice>();
+    public DbSet<InstrumentPriceSourceBinding> InstrumentPriceSourceBindings => Set<InstrumentPriceSourceBinding>();
+    public DbSet<InstrumentPriceSourceState> InstrumentPriceSourceStates => Set<InstrumentPriceSourceState>();
+
+    // ── News reader (issue #470) ───────────────────────────────────────────────────────────────
+    // Shared household data with no user ids. Articles' bodies, sources and images are files on the NewsArticles
+    // storage feature; NewsArticleFiles is its one referencing table.
+    public DbSet<NewsFeed> NewsFeeds => Set<NewsFeed>();
+    public DbSet<NewsFeedFetchState> NewsFeedFetchStates => Set<NewsFeedFetchState>();
+    public DbSet<NewsFeedCounter> NewsFeedCounters => Set<NewsFeedCounter>();
+    public DbSet<NewsStorageTotal> NewsStorageTotals => Set<NewsStorageTotal>();
+    public DbSet<NewsFeedBucket> NewsFeedBuckets => Set<NewsFeedBucket>();
+    public DbSet<NewsHostThrottle> NewsHostThrottle => Set<NewsHostThrottle>();
+    public DbSet<NewsArticle> NewsArticles => Set<NewsArticle>();
+    public DbSet<NewsArticleIdentity> NewsArticleIdentities => Set<NewsArticleIdentity>();
+    public DbSet<NewsArticleRevision> NewsArticleRevisions => Set<NewsArticleRevision>();
+    public DbSet<NewsArticleFile> NewsArticleFiles => Set<NewsArticleFile>();
+    public DbSet<NewsArticleImage> NewsArticleImages => Set<NewsArticleImage>();
+    public DbSet<NewsTag> NewsTags => Set<NewsTag>();
+    public DbSet<NewsFeedTag> NewsFeedTags => Set<NewsFeedTag>();
+    public DbSet<NewsArticleTag> NewsArticleTags => Set<NewsArticleTag>();
+    public DbSet<NewsFeedCrashEvent> NewsFeedCrashEvents => Set<NewsFeedCrashEvent>();
 
     /// <summary>
     /// Encrypted secret settings (issue #444). A deliberately SEPARATE set from

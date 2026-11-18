@@ -1,0 +1,86 @@
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Finance
+@inject IInstrumentsApiClient Instruments
+@inject IInstrumentPricesApiClient Prices
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject TimeProvider Time
+@inject IJSRuntime Js
+
+@*
+    InstrumentPriceDialog — New / Edit a manual closing price (issue #452 §3.3; design system ·
+    InstrumentPrices.jsx AddInstrumentPriceModal). Instrument is a server-searched combobox (archived
+    instruments excluded, 300 ms debounce, results announced) unless the dialog is opened from an instrument
+    (LockedInstrumentId) or edits a price, where it is a read-only field. Close is an amount field, not a money
+    field: a price carries up to InstrumentPriceRules.MaxDecimals, more than its currency's minor units.
+    Every name and symbol renders as plain text.
+*@
+
+<OdsFormDialog Open="Open" OpenChanged="OpenChanged"
+               Icon="candlestick_chart"
+               Title="@(IsEdit ? "Edit price" : "New price")"
+               Subtitle="@(IsEdit ? "Correct this manual closing price." : "Record an instrument’s closing price for one trading day.")"
+               SubmitLabel="@(IsEdit ? "Save changes" : "Create price")"
+               SubmitIcon="@(IsEdit ? "check" : "add")"
+               ReturnFocusToId="@ReturnFocusToId"
+               SubmitDisabled="@_lockedMissing"
+               OnSubmit="SaveAsync">
+
+    <Odyssey.Client.Pages.Journal.LocationErrorSummary Id="@SummaryId" Errors="SummaryErrors" Links="SummaryLinks" />
+
+    @if (_duplicate)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert" Class="ipd-duplicate">
+            <span class="ipd-server-error">
+                <span>A manual price already exists for this date.</span>
+                @if (_canUpdate && _duplicateId is not null)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" OnClick="EditExistingAsync">Edit that price</OdsButton>
+                }
+            </span>
+        </OdsAlert>
+    }
+
+    @if (_lockedMissing)
+    {
+        <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">This instrument no longer exists, so no price can be added to it.</OdsAlert>
+    }
+    else if (FixedLabel is { } fixedLabel)
+    {
+        <OdsFieldShell Label="Instrument" HtmlFor="@InstrumentFieldId"
+                       Help="@(IsEdit ? "A price stays with its instrument." : "Adding a price for this instrument.")">
+            <input id="@InstrumentFieldId" class="odc-input" type="text" readonly aria-readonly="true" value="@fixedLabel" />
+        </OdsFieldShell>
+    }
+    else
+    {
+        <OdsFieldShell Label="Instrument" Required="true" HtmlFor="@InstrumentFieldId" Error="@Err("instrument")"
+                       Help="Search by symbol or name. Archived instruments aren’t listed.">
+            <OdsCombobox Value="@_instrumentValue" ValueChanged="OnInstrumentChanged"
+                         Options="InstrumentOptions"
+                         InputId="@InstrumentFieldId"
+                         Placeholder="Search instruments…"
+                         Required="true"
+                         Error="@(Err("instrument") is not null)"
+                         Clearable="true"
+                         ClearLabel="Clear instrument"
+                         SearchAsync="SearchInstrumentsAsync"
+                         ResolveAsync="ResolveInstrumentAsync"
+                         DebounceMs="300"
+                         MinChars="1"
+                         SearchingText="Searching…"
+                         ResultsText="@(n => $"{n} {(n == 1 ? "instrument" : "instruments")} found")"
+                         EmptyText="No instruments found"
+                         ErrorText="Couldn’t load instruments" />
+        </OdsFieldShell>
+    }
+
+    <OdsDateField Id="@DateFieldId" Label="Trading date" Required="true"
+                  Value="_tradingDate" ValueChanged="OnDateChanged"
+                  Max="@MaxDate" Help="@DateHelp" Error="@Err("date")" />
+
+    <OdsAmountField Id="@CloseFieldId" Label="Close" Required="true" Align="right"
+                    Value="@_close" ValueChanged="OnCloseChanged"
+                    Suffix="@CurrencyCode" Placeholder="0.00"
+                    Help="@CloseHelp" Error="@Err("close")" />
+</OdsFormDialog>

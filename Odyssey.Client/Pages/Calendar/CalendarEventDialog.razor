@@ -11,10 +11,14 @@
 *@
 
 @inject ICalendarApiClient CalendarApi
+@inject ILocationsApiClient Locations
+@inject IDialogService DialogService
 @inject ISnackbar Snackbar
+@using Odyssey.Client.Pages.Weather
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent">
     <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body">
             @if (OccurrenceOfSeries)
             {
@@ -58,8 +62,16 @@
                 </div>
             </OdsFieldShell>
 
-            <OdsField Label="Location" Value="@_draft.Location" MaxLength="300"
-                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Where it happens" />
+            @* Place + Details (issue #383 §3.2). Without locations.read the picker is not rendered at all —
+               no placeholder, no disabled control — and the save keeps the stored link. *@
+            @if (CanReadLocations)
+            {
+                <OdsLocationSelect Label="Place" Value="@_draft.Place.Pick" ValueChanged="OnPlaceChanged"
+                                   AllowCreate="CanCreateLocations" OnStage="OnPlaceStaged" Error="@_draft.Place.Error" />
+            }
+            <OdsField Label="Details" Value="@_draft.Location" MaxLength="300"
+                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Room 4B, a meeting link…"
+                      Help="Not a place? Put meeting links or room numbers here." />
             <OdsNoteField Label="Description" MaxLength="2000" Rows="3"
                           Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
 
@@ -83,6 +95,15 @@
                     </LockedContent>
                     <ChildContent>@RuleFields</ChildContent>
                 </OdsRevealPanel>
+            }
+
+            @* Weather (issue #363 §3.4): Edit mode only, for the event as LOADED — never the draft. Closing the dialog
+               unmounts it, which cancels its read. Renders nothing without weather.read. *@
+            @if (Open && Mode == CalendarEventDialogMode.Edit && _sourceEvent is { } loaded)
+            {
+                <CalendarEventWeatherSection @key="loaded.CalendarEventId" EventId="loaded.CalendarEventId" EventTitle="@loaded.Title"
+                                             Start="loaded.StartDateTime" End="loaded.EndDateTime" Dirty="WeatherDirty"
+                                             OnNavigate="CancelAsync" />
             }
         </div>
     </ChildContent>

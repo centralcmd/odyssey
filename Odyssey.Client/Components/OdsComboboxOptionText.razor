@@ -1,0 +1,31 @@
+@*
+    OdsComboboxOptionText — the label (and optional muted second line) of one OdsCombobox row
+    (Odyssey Design System · Combobox `sub` / `ariaLabel`, issue #383 §4 and §6.1).
+
+    A row with an AriaLabel speaks THAT, once: the full name ("Hytta, Fjellveien 12, no coordinates,
+    archived") is visually hidden and the visible label and second line are aria-hidden, so the
+    option's accessible name is exactly the sentence and is not read twice. The create row's
+    disclosure ("Adds a saved place that everyone who can see locations can see") is its Sub line, and
+    its AriaLabel carries it too — a disclosure is never decoration. Plain text throughout.
+*@
+
+@if (!string.IsNullOrEmpty(Option.AriaLabel))
+{
+    <span class="odc-sr-only">@Option.AriaLabel</span>
+    @Visible
+}
+else
+{
+    @Visible
+}
+
+@code {
+    [Parameter, EditorRequired] public OdsOption Option { get; set; } = default!;
+
+    private RenderFragment Visible => string.IsNullOrEmpty(Option.Sub)
+        ? @<span class="odc-combo-opt-label" aria-hidden="@(string.IsNullOrEmpty(Option.AriaLabel) ? null : "true")">@Option.Label</span>
+        : @<span class="odc-combo-opt-text" aria-hidden="@(string.IsNullOrEmpty(Option.AriaLabel) ? null : "true")">
+              <span class="odc-combo-opt-label">@Option.Label</span>
+              <span class="odc-combo-opt-sub">@Option.Sub</span>
+          </span>;
+}

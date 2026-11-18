@@ -75,6 +75,10 @@ else
     /// </summary>
     [Parameter] public bool HasFilters { get; set; }
 
+    /// <summary>The filtered-empty title, when a page words it itself ("No places match these filters.").
+    /// Defaults to "No {Noun} match".</summary>
+    [Parameter] public string? FilteredEmptyTitle { get; set; }
+
     /// <summary>Clear every filter and search. Omit and the filtered-empty state offers no way out.</summary>
     [Parameter] public EventCallback OnClearFilters { get; set; }
 
@@ -141,7 +145,7 @@ else
 
     private RenderFragment FilteredEmptyBlock =>
         @<OdsEmptyState Icon="search_off" MutedIcon="true"
-                        Title="@Text($"No {Noun} match")"
+                        Title="@Text(FilteredEmptyTitle ?? $"No {Noun} match")"
                         Description="@Text("Try a different search, or clear the filters to see everything.")"
                         Action="@ClearFiltersAction" />;
 

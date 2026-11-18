@@ -25,6 +25,11 @@ public class PropertiesApiTests
         PermissionClaims.PropertiesRead,
         PermissionClaims.PropertiesUpdate,
         PermissionClaims.PropertiesDelete,
+        // A property address is a link to a place since issue #380: entering one needs locations.create,
+        // and the read-back of a changed one locations.read — as every role holding properties.update has.
+        PermissionClaims.LocationsRead,
+        PermissionClaims.LocationsCreate,
+        PermissionClaims.LocationsUpdate,
     ];
 
     // ── AC 1-2: create round-trips every field ────────────────────────────────
@@ -71,7 +76,15 @@ public class PropertiesApiTests
             Assert.Equal("Inherited", property.Notes);
             Assert.Equal(PropertyStatus.Owned, property.Status);
             Assert.Null(property.VehicleDetails);
-            Assert.Equal(details, property.RealEstateDetails);
+
+            // The address is now a linked place (issue #380): the four fields round-trip, and the response
+            // adds the link and its two read-only counterparts.
+            Assert.NotNull(property.RealEstateDetails!.LocationId);
+            Assert.Equal(0, property.RealEstateDetails.OtherUses);
+            Assert.False(property.RealEstateDetails.PlaceHasCoordinates);
+            Assert.Equal(
+                details,
+                property.RealEstateDetails with { LocationId = null, OtherUses = null, PlaceHasCoordinates = null });
         }
     }
 
@@ -261,7 +274,10 @@ public class PropertiesApiTests
         var replacement = RealEstateBody("Renamed house") with
         {
             Notes = "Renovated",
-            RealEstateDetails = new RealEstateDetailsDto { Kind = RealEstateKind.Apartment, City = "Oslo", BuildYear = 2001 },
+            RealEstateDetails = new RealEstateDetailsDto
+            {
+                Kind = RealEstateKind.Apartment, City = "Oslo", BuildYear = 2001, ApplyTo = Odyssey.Dtos.Journal.AddressApplyTo.ThisRecord,
+            },
         };
         var response = await client.PutAsJsonAsync(PropertyPath(created.PropertyId), replacement);
 
@@ -374,11 +390,11 @@ public class PropertiesApiTests
 
         await ReadAsync(factory, async context =>
         {
-            var details = await context.RealEstateDetails.AsNoTracking().ToListAsync();
+            var details = await context.RealEstateDetails.AsNoTracking().Include(d => d.Location).ToListAsync();
             Assert.Equal(2, details.Count);
-            Assert.Equal("Tromsø", details.Single(d => d.PropertyId == victimId).City);
+            Assert.Equal("Tromsø", details.Single(d => d.PropertyId == victimId).Location!.City);
             Assert.Equal(RealEstateKind.House, details.Single(d => d.PropertyId == victimId).Kind);
-            Assert.Equal("Injected", details.Single(d => d.PropertyId == created.PropertyId).City);
+            Assert.Equal("Injected", details.Single(d => d.PropertyId == created.PropertyId).Location!.City);
             Assert.Equal("Victim", (await context.Properties.AsNoTracking().SingleAsync(p => p.PropertyId == victimId)).Name);
             return true;
         });

@@ -98,9 +98,28 @@ public class ImportExportSettingsApiTests
     }
 
     [Theory]
+    [InlineData(10240, HttpStatusCode.OK)] // 10 GB, the task ceiling
+    [InlineData(10241, HttpStatusCode.BadRequest)]
+    public async Task Put_TaskAndJournalSizeFields_AcceptUpTo10Gb(int megabytes, HttpStatusCode expected)
+    {
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var import = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { TaskIcsMaxImportMegabytes = megabytes });
+        var export = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { TaskIcsMaxExportMegabytes = megabytes });
+        var journalImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { JournalIcsMaxImportMegabytes = megabytes });
+        var journalExport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { JournalIcsMaxExportMegabytes = megabytes });
+
+        Assert.Equal(expected, import.StatusCode);
+        Assert.Equal(expected, export.StatusCode);
+        Assert.Equal(expected, journalImport.StatusCode);
+        Assert.Equal(expected, journalExport.StatusCode);
+    }
+
+    [Theory]
     [InlineData(1024)] // at the shared ceiling — succeeds for all eight fields
-    [InlineData(1025)] // one above it — rejected for all eight fields
-    public async Task Put_AllEightSizeFields_ShareTheSame1024MbCeiling(int megabytes)
+    [InlineData(1025)] // one above it — rejected for the four contact/calendar fields, accepted for task and journal
+    public async Task Put_FourSizeFields_ShareThe1024MbCeiling_TaskAndJournalFieldsGoHigher(int megabytes)
     {
         // Follow-up to #343: contacts' size range was originally narrower ([1,512]) than the three ICS
         // surfaces' ([1,1024]); a later request unified all four surfaces to the same [1,1024] range,
@@ -136,29 +155,30 @@ public class ImportExportSettingsApiTests
         });
         Assert.Equal(expected, calendarExport.StatusCode);
 
+        // The task and journal surfaces carry attached files inline, so their pairs are [1, 10240] instead.
         var taskImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             TaskIcsMaxImportMegabytes = megabytes,
         });
-        Assert.Equal(expected, taskImport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, taskImport.StatusCode);
 
         var taskExport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             TaskIcsMaxExportMegabytes = megabytes,
         });
-        Assert.Equal(expected, taskExport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, taskExport.StatusCode);
 
         var journalImport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             JournalIcsMaxImportMegabytes = megabytes,
         });
-        Assert.Equal(expected, journalImport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, journalImport.StatusCode);
 
         var journalExport = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate
         {
             JournalIcsMaxExportMegabytes = megabytes,
         });
-        Assert.Equal(expected, journalExport.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, journalExport.StatusCode);
     }
 
     [Fact]
@@ -529,16 +549,21 @@ public class ImportExportSettingsApiTests
         Assert.Equal(2000, dto.CalendarIcsMaxImportEvents);
         Assert.Equal(64, dto.CalendarIcsMaxImportMegabytes);
         Assert.Equal(64, dto.CalendarIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.TaskIcsMaxExportTasks);
-        Assert.Equal(2000, dto.TaskIcsMaxImportTasks);
-        Assert.Equal(64, dto.TaskIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.TaskIcsMaxExportMegabytes);
-        Assert.Equal(2000, dto.JournalIcsMaxExportRows);
-        Assert.Equal(2000, dto.JournalIcsMaxImportEntries);
-        Assert.Equal(64, dto.JournalIcsMaxImportMegabytes);
-        Assert.Equal(64, dto.JournalIcsMaxExportMegabytes);
+        // The task surface ships unlimited on counts and at 10 GB on size: its files carry attached files inline.
+        Assert.Null(dto.TaskIcsMaxExportTasks);
+        Assert.Null(dto.TaskIcsMaxImportTasks);
+        Assert.Equal(10240, dto.TaskIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.TaskIcsMaxExportMegabytes);
+        // The journal surface follows it: entries carry their files and photos inline too.
+        Assert.Null(dto.JournalIcsMaxExportRows);
+        Assert.Null(dto.JournalIcsMaxImportEntries);
+        Assert.Equal(10240, dto.JournalIcsMaxImportMegabytes);
+        Assert.Equal(10240, dto.JournalIcsMaxExportMegabytes);
     }
 
+    // No photo volume: these tests read the settings table as EF InMemory leaves it without EnsureCreated (no seeded
+    // rows), and verifying a volume ensures the store is created.
     private sealed class ApiFactory(IReadOnlyCollection<string>? permissions)
-        : OdysseyApiFactory(permissions, ActorUserId);
+        : OdysseyApiFactory(permissions, ActorUserId,
+            configuration: new Dictionary<string, string?> { [NoFileVolumeKey] = "true" });
 }

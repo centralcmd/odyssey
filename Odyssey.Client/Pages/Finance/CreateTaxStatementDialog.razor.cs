@@ -151,7 +151,7 @@ public partial class CreateTaxStatementDialog
         var tags = await ReferenceData.TransactionTagsAsync();
         _tagOptions = [.. tags.Where(t => t.Archived is null)
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
-            .Select(t => new OdsOption(t.TransactionTagId.ToString(), t.Name))];
+            .Select(OdsTransactionTagOptions.From)];
     }
 
     private async Task LoadCurrencies()

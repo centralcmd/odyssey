@@ -7,7 +7,6 @@
     is fetched per-photo; ids are hydrated to names by the page. Escape closes; ←/→ navigate.
 *@
 @using Odyssey.Dtos
-@inject IFilesApiClient Files
 @inject IPhotosApiClient Api
 @inject IJSRuntime Js
 
@@ -17,9 +16,9 @@
           HeaderActions="@HeaderActionsFragment" Footer="@FooterFragment">
     <div class="odc-modal-body pl-ods2" tabindex="-1" @ref="_body" @onkeydown="OnKeyDown">
         <div class="pl-ods2-stage">
-            @if (Current is { FileId: var fid })
+            @if (Current is { PhotoId: var pid })
             {
-                <img class="pl-ods-img" style="object-fit: contain;" src="@Files.ContentUrl(fid)" alt="@Label(Current)" />
+                <img class="pl-ods-img" style="object-fit: contain;" src="@Api.ContentUrl(pid)" alt="@Label(Current)" />
             }
             @if (Photos.Count > 1)
             {
@@ -52,10 +51,6 @@
                         </div>
                     </div>
                 }
-                @if (d.AlbumIds.Count > 0)
-                {
-                    @Row("photo_album", string.Join(", ", d.AlbumIds.Select(AlbumName)))
-                }
                 @if (!string.IsNullOrWhiteSpace(d.LocationName))
                 {
                     @Row("place", d.LocationName!)
@@ -70,7 +65,17 @@
                         <span class="pl-vgroup-lab">Tags</span>
                         @* The journal / task footer chip: tag tone, led by the tag's own icon (issue #345). *@
                         <span class="pl-vchips">
-                            <JournalTagChips Tags="_tagChips" />
+                            <OdsTagChips Tags="_tagChips" />
+                        </span>
+                    </div>
+                }
+                @if (_albumChips.Count > 0)
+                {
+                    <div class="pl-vgroup">
+                        <span class="pl-vgroup-lab">Albums</span>
+                        @* The same chip as the tags: the album's own icon (else the album glyph) in its colour. *@
+                        <span class="pl-vchips">
+                            <OdsTagChips Tags="_albumChips" DefaultIcon="@PhotoAlbumIcons.Default" Tone="OdsChipTone.Default" Noun="albums" />
                         </span>
                     </div>
                 }
@@ -120,11 +125,15 @@
     [Parameter] public Func<Guid, string> TagName { get; set; } = id => id.ToString();
     /// <summary>A tag's stored icon key, or <c>null</c> for none — its chip then shows the generic glyph.</summary>
     [Parameter] public Func<Guid, string?> TagIcon { get; set; } = _ => null;
+    /// <summary>A tag's colour, or <c>null</c> for none — its chip then has no dot (issue #394).</summary>
+    [Parameter] public Func<Guid, string?> TagColor { get; set; } = _ => null;
     [Parameter] public Func<Guid, string> PersonName { get; set; } = id => id.ToString();
-    [Parameter] public Func<Guid, string> AlbumName { get; set; } = id => id.ToString();
+    /// <summary>An album as its chip (name, icon, colour), or <c>null</c> for one the host does not hold — it is then left out.</summary>
+    [Parameter] public Func<Guid, OdsTagChips.Tag?> AlbumChip { get; set; } = _ => null;
 
     private ExistingPhoto? _detail;
-    private IReadOnlyList<JournalTagChips.Tag> _tagChips = [];
+    private IReadOnlyList<OdsTagChips.Tag> _tagChips = [];
+    private IReadOnlyList<OdsTagChips.Tag> _albumChips = [];
     private Guid _loadedFor;
     private ElementReference _body;
     private bool _focused;
@@ -193,7 +202,8 @@
 
         // Built once per parameter set rather than per render: a host refreshes its tag names by
         // re-rendering us, which is exactly when this runs again.
-        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new JournalTagChips.Tag(TagName(t), TagIcon(t)))];
+        _tagChips = _detail is null ? [] : [.. _detail.TagIds.Select(t => new OdsTagChips.Tag(TagName(t), TagIcon(t), TagColor(t)))];
+        _albumChips = _detail is null ? [] : [.. _detail.AlbumIds.Select(AlbumChip).OfType<OdsTagChips.Tag>()];
     }
 
     // Focus the stage once the teleported dialog body is in the DOM so ←/→ navigation works without a
@@ -221,9 +231,9 @@
 
     private async Task DownloadAsync()
     {
-        if (Current is { FileId: var fid })
+        if (Current is { PhotoId: var pid })
         {
-            await Js.InvokeVoidAsync("open", Files.ContentUrl(fid), "_blank", "noopener");
+            await Js.InvokeVoidAsync("open", Api.ContentUrl(pid), "_blank", "noopener");
         }
     }
 

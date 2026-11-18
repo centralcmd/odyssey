@@ -128,19 +128,7 @@ public class ContactExternalUidCollationTests(MariaDbFixture fixture)
 
     private async Task<DbContextOptions<OdysseyContext>> MigratedSchemaAsync()
     {
-        await DropAsync();
-
-        await using (var admin = new OdysseyContext(OptionsFor(fixture.OdysseyConnectionString)))
-        {
-            await admin.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        var options = OptionsFor(fixture.ConnectionStringFor(Database));
-        await using (var context = new OdysseyContext(options))
-        {
-            await context.Database.MigrateAsync();
-        }
-
+        var options = OptionsFor(await fixture.CreateMigratedDatabaseAsync(Database));
         return options;
     }
 

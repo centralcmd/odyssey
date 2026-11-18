@@ -36,6 +36,8 @@ public partial class ContactsCard
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
+
+    [Inject] private IDialogService DialogService { get; set; } = default!;
     // The other halves of the composed detach gate (issue #27 §7 #6, widened by issue #157 §7.3).
     // The server enforces them with a 403 — per blocker class actually present — and these only keep
     // the blocked-delete dialog from offering an action it knows will fail.
@@ -74,13 +76,19 @@ public partial class ContactsCard
 
     private IReadOnlyList<OdsBreakdownRow> StatusRows => OdsBreakdown.StatusRows(
         _allContacts, c => c.Archived is not null ? "archived" : "active",
-        new OdsBreakdownDef<string>("active", "Active", "income", "task_alt"),
-        new OdsBreakdownDef<string>("archived", "Archived", "outline", "inventory_2"));
+        StatusDefs);
+
+    // One definition for the "By status" tile and the Status filter, so both wear one glyph and tone.
+    private static readonly OdsBreakdownDef<string>[] StatusDefs =
+    [
+        new("active", "Active", "income", "task_alt"),
+        new("archived", "Archived", "outline", "inventory_2"),
+    ];
     private IReadOnlyCollection<string> _typeFilter = [];
     private IReadOnlyCollection<string> _statusFilter = [];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("active", "Active"), new("archived", "Archived")];
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
+        OdsBreakdown.Options(StatusDefs);
 
     private int _activeCount => _allContacts.Count(c => c.Archived is null);
     private int _archivedCount => _allContacts.Count - _activeCount;
@@ -284,7 +292,13 @@ public partial class ContactsCard
 
         // Per-row vCard export (issue #338 §7.1) — requires only contacts.read, so it's always
         // available to anyone who can see the page.
-        items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c)) });
+        items.Add(new OdsMenuItem { Icon = "download", Label = "Export vCard", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c, includeImages: false)) });
+
+        // Only offered when there is a picture to embed; the plain export stays byte-identical.
+        if (c.AvatarFileId is not null)
+        {
+            items.Add(new OdsMenuItem { Icon = "photo", Label = "Export vCard with picture", OnClick = EventCallback.Factory.Create(this, () => ExportRowAsync(c, includeImages: true)) });
+        }
 
         // Add a contact method from the row menu (DS): expands the row and opens the matching form.
         // contacts.update, not .create — the server writes every child collection under it (#287 M3).
@@ -457,9 +471,18 @@ public partial class ContactsCard
         }
     }
 
+    /// <summary>The delete confirmation's body (issue #383 §3.9): the contact goes, its address stays.</summary>
+    internal static string DeleteMessage(string name) =>
+        $"Permanently delete ‘{name}’? This cannot be undone. {Odyssey.Client.Pages.Journal.LocationVisuals.RecordDeleteSentence}";
+
     private async Task HandleDelete(ExistingContact contact)
     {
         if (!_canDelete)
+            return;
+
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete contact", DeleteMessage(contact.ResolvedDisplayName), yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
             return;
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts
@@ -627,7 +650,7 @@ public partial class ContactsCard
 
     // Per-row export (§7.1) — requires only contacts.read; no cap. _exporting guards a
     // re-entrant double-click firing concurrent downloads (mirrors the Calendar ICS export).
-    private async Task ExportRowAsync(ExistingContact c)
+    private async Task ExportRowAsync(ExistingContact c, bool includeImages)
     {
         if (_exporting)
             return;
@@ -635,12 +658,12 @@ public partial class ContactsCard
         _exporting = true;
         try
         {
-            var result = await VCardApi.ExportOneAsync(c.ContactId);
+            var result = await VCardApi.ExportOneAsync(c.ContactId, includeImages);
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
                 return;
 
             await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
-            Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+            Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
         {
@@ -650,7 +673,9 @@ public partial class ContactsCard
 
     // Page-level export (§7.2): "all" omits filters; "filtered" sends the same search/type/status
     // query the list view is currently using (minus paging — export is unpaginated server-side).
-    private async Task ExportAsync(bool filtered)
+    // includeImages embeds each contact's picture; the server's output cap makes a cut-short file likely
+    // for a large set, and the API client turns that into a failure toast naming the delivered count.
+    private async Task ExportAsync(bool filtered, bool includeImages = false)
     {
         if (_exporting)
             return;
@@ -659,13 +684,13 @@ public partial class ContactsCard
         try
         {
             var result = filtered
-                ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter)
-                : await VCardApi.ExportManyAsync();
+                ? await VCardApi.ExportManyAsync(_search, _typeFilter, _statusFilter, includeImages)
+                : await VCardApi.ExportManyAsync(includeImages: includeImages);
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
                 return;
 
             await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
-            Snackbar.Add($"Exported {file.FileName}", Severity.Success);
+            Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
         {

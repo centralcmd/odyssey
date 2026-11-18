@@ -29,4 +29,11 @@ public sealed record ExistingExchangeRate
 
     /// <summary>Computed by the same server rule the list's <c>status</c> filter uses (issue #349 §5.6).</summary>
     public ExchangeRateStatus Status { get; set; }
+
+    /// <summary>
+    /// True when this is a fetched row returned for the reverse pair (issue #472 §5.2): <see cref="Rate"/> is
+    /// 1 / the stored rate, the currency codes are swapped, and <see cref="ExchangeRateId"/>, <see cref="AsOf"/>,
+    /// <see cref="CreatedAt"/> and <see cref="UpdatedAt"/> are the stored row's. Only <c>/latest</c> sets it.
+    /// </summary>
+    public bool Inverted { get; set; }
 }

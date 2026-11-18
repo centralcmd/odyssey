@@ -19,9 +19,6 @@ namespace Odyssey.Core.Finance;
 /// completeness <em>and</em> per-request provider spend, which is why it carries the security claim
 /// and is stamped on each job.
 /// </param>
-/// <param name="MatchMaxVocabulary">
-/// Per-list vocabulary cap for the match step. Over the cap the LLM match is skipped, not truncated.
-/// </param>
 /// <param name="MatchTimeoutSeconds">
 /// Hard per-match-call timeout. On timeout the job records <c>MatchStatus = Failed</c> and the
 /// candidates stay importable by hand.
@@ -60,6 +57,19 @@ namespace Odyssey.Core.Finance;
 /// returns <c>503</c> on this rather than presenting a fallback as authoritative — the same reason
 /// <c>ImportLimitsController</c> does, and a stronger one here, since this is legal disclosure text.
 /// </param>
+/// <param name="ExtractionPromptAddition">
+/// The administrator's guidance appended to the extraction prompt (issue #433), normalised, or
+/// <see langword="null"/> when none is set <em>or</em> the stored value fails
+/// <c>PromptAdditionRule</c>. An unusable addition is omitted, never sent: omitting falls back to the
+/// shipped prompt, which is the conservative direction.
+/// </param>
+/// <param name="MatchPromptAddition">The same, for the match prompt.</param>
+/// <param name="ReadFailed">
+/// True only when the settings query itself failed (issue #433 §8). Unlike <see cref="IsDegraded"/>,
+/// which also covers one unusable row, this means nothing in the snapshot is known — including the
+/// guidance flags the disclosure version is computed from — so analyze and match refuse with
+/// <c>503</c> rather than verify consent against values nobody read.
+/// </param>
 public sealed record FileAnalysisSettings(
     string Processor,
     string ProcessorRegion,
@@ -68,11 +78,13 @@ public sealed record FileAnalysisSettings(
     int MaxFutureTransactionDays,
     decimal AutoLinkThreshold,
     int MaxTokens,
-    int MatchMaxVocabulary,
     int MatchTimeoutSeconds,
     string? Model,
     string? BaseUrl,
-    bool IsDegraded);
+    bool IsDegraded,
+    string? ExtractionPromptAddition = null,
+    string? MatchPromptAddition = null,
+    bool ReadFailed = false);
 
 /// <summary>
 /// Where one analysis call goes and what it runs on, resolved once per run from the settings snapshot
@@ -111,6 +123,13 @@ public sealed record FileAnalysisTarget(string BaseUrl, string Model);
 public interface IFileAnalysisSettingsLookup
 {
     Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// The same snapshot, read fresh from the store and never from the cache (issue #444 §3 step 4.3):
+    /// the worker compares a job's consent stamps against this immediately before a transfer, because a
+    /// settings save evicts only the API process's cache.
+    /// </summary>
+    Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// The kill switch, read <strong>live on every call</strong> — never cached, and deliberately not a

@@ -313,7 +313,7 @@ public class ContactConvertDialogTests : IAsyncLifetime
                 It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<PagedResult<PhotoSummary>>.Success(new PagedResult<PhotoSummary>
             {
-                Items = [new PhotoSummary { PhotoId = listed, FileId = Guid.NewGuid(), Title = "Everyone in one frame", PersonCount = 1, AlbumCount = 0 }],
+                Items = [new PhotoSummary { PhotoId = listed, Title = "Everyone in one frame", PersonCount = 1, AlbumCount = 0 }],
                 TotalCount = 1,
             }, HttpStatusCode.OK));
 

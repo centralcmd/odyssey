@@ -5,6 +5,7 @@ using MudBlazor;
 using Odyssey.ApiClient;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance.ExchangeRateSync;
+using Odyssey.Client.Services;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
 
@@ -217,7 +218,7 @@ public partial class CurrenciesCard
     {
         null or { Locked: true } => null,
         { OldestFetchedDate: { } oldest, NewestFetchedDate: { } newest } =>
-            $"{ExchangeRateSyncTime.Date(oldest)} – {ExchangeRateSyncTime.Date(newest)}",
+            $"{RunTime.Date(oldest)} – {RunTime.Date(newest)}",
         { Enabled: true } => "Not fetched yet",
         _ => null,
     };
@@ -234,7 +235,7 @@ public partial class CurrenciesCard
     private string AvailableFromText(ExistingExchangeRateSyncCurrency s) => s.Locked
         ? $"Every {ProviderName} rate is quoted against {s.CurrencyCode}"
         : s.FirstAvailableDate is { } first
-            ? $"{ProviderName} has data from {ExchangeRateSyncTime.Date(first)}"
+            ? $"{ProviderName} has data from {RunTime.Date(first)}"
             : $"{ProviderName} doesn’t publish {s.CurrencyCode}";
 
     // Patches both lists: the cards read _currencies, the "By status" tile _allCurrencies.

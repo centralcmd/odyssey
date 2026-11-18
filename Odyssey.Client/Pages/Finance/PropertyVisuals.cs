@@ -47,7 +47,11 @@ public static class PropertyVisuals
     ];
 
     public static readonly IReadOnlyList<OdsOption> StatusOptions =
-        [.. Statuses.Select(s => new OdsOption(s.Status.ToString(), s.Label))];
+        [.. Statuses.Select(s => new OdsOption(s.Status.ToString(), s.Label) { Icon = s.Icon, IconColor = StatusColor(s) })];
+
+    /// <summary>The status glyph's colour — one rule for the overview's "By status" tile and the Status filter.</summary>
+    public static string StatusColor(PropertyStatusInfo status) =>
+        status.Tone == OdsChipTone.Income ? "var(--finance-income)" : "var(--mud-palette-text-secondary)";
 
     public static IReadOnlyList<OdsOption> KindOptions(PropertyType type) =>
         [.. (type == PropertyType.Vehicle ? VehicleKinds : RealEstateKinds)

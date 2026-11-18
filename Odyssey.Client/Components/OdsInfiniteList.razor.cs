@@ -9,8 +9,11 @@ public partial class OdsInfiniteList<TItem>
     /// <summary>The full (already-loaded) item set.</summary>
     [Parameter, EditorRequired] public IReadOnlyList<TItem> Items { get; set; } = [];
 
-    /// <summary>Renders one card.</summary>
-    [Parameter, EditorRequired] public RenderFragment<TItem> RenderItem { get; set; } = default!;
+    /// <summary>
+    /// Renders one card. Required in the card modes; <see cref="FooterOnly"/> renders no items and
+    /// leaves it unset (which is why it is not <c>EditorRequired</c>).
+    /// </summary>
+    [Parameter] public RenderFragment<TItem>? RenderItem { get; set; }
 
     /// <summary>Stable per-item key (for @key + RevealKey matching).</summary>
     [Parameter] public Func<TItem, object>? ItemKey { get; set; }
@@ -49,6 +52,9 @@ public partial class OdsInfiniteList<TItem>
     /// <summary>Clear every filter and search — offered from the filtered-empty state.</summary>
     [Parameter] public EventCallback OnClearFilters { get; set; }
 
+    /// <summary>The filtered-empty title, when the page words it itself (see <c>OdsListStatus</c>).</summary>
+    [Parameter] public string? FilteredEmptyTitle { get; set; }
+
     /// <summary>Material Icons ligature for the first-run empty state.</summary>
     [Parameter] public string EmptyIcon { get; set; } = "inbox";
 
@@ -66,6 +72,91 @@ public partial class OdsInfiniteList<TItem>
 
     /// <summary>Utility classes for the refetch bar.</summary>
     [Parameter] public string? BarClass { get; set; }
+
+    /// <summary>
+    /// Raised after render whenever the MEMBERSHIP of the rendered window changes, compared by
+    /// <see cref="ItemKey"/>: the first render, each reveal, a list whose rendered keys differ. A new
+    /// <see cref="Items"/> instance with the same rendered keys — a freshly sorted array — does not raise it.
+    /// For a host that fetches something per rendered item (the journal's weather, issue #363 §3.6); optional,
+    /// and a host that leaves it unset renders exactly as before.
+    /// </summary>
+    [Parameter] public EventCallback<IReadOnlyList<TItem>> OnShownChanged { get; set; }
+
+    // ── Remote mode (issue #473 §4.4) ────────────────────────────────────────
+    /// <summary>
+    /// The server pages by cursor: every item in <see cref="Items"/> renders (no windowing), and the
+    /// sentinel or the pill asks the page for the next page through <see cref="LoadMore"/>. Off by
+    /// default, so every in-memory page is unchanged.
+    /// </summary>
+    [Parameter] public bool Remote { get; set; }
+
+    /// <summary>The server total from the first page, for the pill. <c>null</c> leaves "of N" out.</summary>
+    [Parameter] public int? RemoteTotal { get; set; }
+
+    /// <summary>The server stopped counting at <see cref="RemoteTotal"/>: the pill reads "10,000+".</summary>
+    [Parameter] public bool RemoteTotalCapped { get; set; }
+
+    /// <summary>There is a next page (<c>nextCursor != null</c>).</summary>
+    [Parameter] public bool HasMoreRemote { get; set; }
+
+    /// <summary>
+    /// Asks the page for the next page. The argument is <c>true</c> when the user pressed the pill (the
+    /// page then moves focus to the first new card, §6.6) and <c>false</c> for a scroll-driven load. Never
+    /// called concurrently, and not on scroll after a failure until the pill's Retry is pressed.
+    /// </summary>
+    [Parameter] public EventCallback<bool> LoadMore { get; set; }
+
+    /// <summary>An append is in flight (owned by the page). The pill reads "Loading more …".</summary>
+    [Parameter] public bool LoadingMore { get; set; }
+
+    /// <summary>The last append failed (owned by the page). The pill reads "Couldn't load more. Retry".</summary>
+    [Parameter] public bool LoadMoreFailed { get; set; }
+
+    /// <summary>
+    /// Changes on every fresh first page. Only a change of this resets the remote list's append
+    /// tracking; a growing <see cref="Items"/> under the same key is an append.
+    /// </summary>
+    [Parameter] public object? ResetKey { get; set; }
+
+    // ── Footer-only mode (issue #473 §3.4, decision 4 at merge) ──────────────
+    /// <summary>
+    /// Renders only the sentinel and the pill — no items and no loading, error or empty states — after
+    /// another component (an <c>OdsRecordTable</c>) that draws the page-held window. <see cref="Items"/>
+    /// is the whole (sorted, filtered) set and gives the total; <see cref="WindowSize"/> is the window.
+    /// </summary>
+    [Parameter] public bool FooterOnly { get; set; }
+
+    /// <summary>The page-held window size in <see cref="FooterOnly"/> mode. Bind it with <c>@bind-WindowSize</c>.</summary>
+    [Parameter] public int WindowSize { get; set; }
+
+    /// <summary>Raised with the grown window (<see cref="BatchSize"/> more, capped at the total).</summary>
+    [Parameter] public EventCallback<int> WindowSizeChanged { get; set; }
+
+    private bool _inFlight;
+    private bool _appendPending;
+    private bool _recheck;
+    private bool _lastLoadingMore;
+    private bool _lastLoadMoreFailed;
+    private int _lastRemoteCount = -1;
+    private object? _lastResetKey;
+    private string _announcement = string.Empty;
+
+    private bool RemoteHasMore => HasMoreRemote && !Loading && !Error;
+
+    // One load at a time, and none on scroll after a failure.
+    private bool RemoteCanLoad => RemoteHasMore && !LoadingMore && !LoadMoreFailed && !_inFlight;
+
+    private string RemotePillClass => LoadMoreFailed && !LoadingMore
+        ? "odc-infinite-pill odc-infinite-btn is-error"
+        : "odc-infinite-pill odc-infinite-btn";
+
+    private int FooterShown => Math.Clamp(WindowSize, 0, Total);
+
+    private bool FooterHasMore => FooterShown < Total;
+
+    private bool ShouldObserve => FooterOnly ? FooterHasMore : Remote ? RemoteCanLoad : HasMore;
+
+    private HashSet<object>? _lastShownKeys;
 
     private readonly string _id = $"odc-inf-{Guid.NewGuid():N}";
     private ElementReference _sentinel;
@@ -86,6 +177,12 @@ public partial class OdsInfiniteList<TItem>
 
     protected override void OnParametersSet()
     {
+        if (Remote && !FooterOnly)
+        {
+            TrackRemote();
+            return;
+        }
+
         // Reset the window to the first batch when the RESULT SET changes (a search / filter that
         // changes the count) or the batch size changes — keyed on the count, not the array identity
         // (a freshly sorted array changes every render and would pin the list to the first batch).
@@ -109,6 +206,84 @@ public partial class OdsInfiniteList<TItem>
         }
     }
 
+    private void TrackRemote()
+    {
+        var count = Items.Count;
+        if (_lastRemoteCount < 0 || !Equals(ResetKey, _lastResetKey))
+        {
+            // A fresh first page: the new rows are not an append, and the page announces its own count.
+            _lastResetKey = ResetKey;
+            _lastRemoteCount = count;
+            _appendPending = false;
+            _announcement = string.Empty;
+            _recheck = true;
+        }
+        else
+        {
+            if (LoadingMore)
+            {
+                _appendPending = true;
+                if (!_lastLoadingMore)
+                    _announcement = string.Empty;   // a retry clears the old failure, so a second one is read again
+            }
+
+            if (count > _lastRemoteCount && _appendPending)
+            {
+                _announcement = $"{count - _lastRemoteCount:N0} more {Noun} loaded, {count:N0} {OfTotal()}.";
+                _appendPending = false;
+                _recheck = true;
+            }
+            else if (LoadMoreFailed && !_lastLoadMoreFailed)
+            {
+                _announcement = $"Couldn’t load more {Noun}.";
+                _appendPending = false;
+            }
+
+            _lastRemoteCount = count;
+        }
+
+        if (_lastLoadingMore && !LoadingMore)
+            _recheck = true;
+        _lastLoadingMore = LoadingMore;
+        _lastLoadMoreFailed = LoadMoreFailed;
+    }
+
+    private string OfTotal() => RemoteTotal switch
+    {
+        { } total when RemoteTotalCapped => $"of more than {total:N0}",
+        { } total => $"of {total:N0}",
+        _ => "loaded",
+    };
+
+    private async Task OnPillPressed()
+    {
+        // aria-disabled while loading: a press is a no-op, and focus stays on the pill.
+        if (LoadingMore || !RemoteHasMore)
+            return;
+        await RequestMoreAsync(fromPill: true);
+    }
+
+    private async Task RequestMoreAsync(bool fromPill)
+    {
+        if (_inFlight)
+            return;
+        _inFlight = true;
+        _appendPending = true;
+        try
+        {
+            await LoadMore.InvokeAsync(fromPill);
+        }
+        finally
+        {
+            _inFlight = false;
+            _recheck = true;
+        }
+
+        // The page's own render may not reach this component (nothing changed), and the sentinel
+        // still needs its re-check: a tall screen fills itself page by page (§4.4 "no stall").
+        await InvokeAsync(StateHasChanged);
+    }
+
     private int IndexOfKey(object key)
     {
         for (var i = 0; i < Items.Count; i++)
@@ -121,8 +296,17 @@ public partial class OdsInfiniteList<TItem>
     }
 
     // Append the next batch — shared by the sentinel auto-load and the keyboard "load more" button.
-    private void Grow()
+    private async Task Grow()
     {
+        if (FooterOnly)
+        {
+            if (!FooterHasMore)
+                return;
+            _recheck = true;
+            await WindowSizeChanged.InvokeAsync(Math.Min(FooterShown + BatchSize, Total));
+            return;
+        }
+
         if (!HasMore)
             return;
 
@@ -133,8 +317,9 @@ public partial class OdsInfiniteList<TItem>
     [JSInvokable]
     public Task OnSentinelVisible()
     {
-        Grow();
-        return Task.CompletedTask;
+        if (Remote && !FooterOnly)
+            return RemoteCanLoad ? RequestMoreAsync(fromPill: false) : Task.CompletedTask;
+        return InvokeAsync(Grow);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -145,19 +330,40 @@ public partial class OdsInfiniteList<TItem>
             _module = await JS.InvokeAsync<IJSObjectReference>("import", "./js/infinite-scroll.js");
         }
 
-        if (_module is null)
+        if (_module is not null)
+        {
+            // A re-check re-observes: a fresh IntersectionObserver reports the sentinel's CURRENT state,
+            // so one still in view after an append asks again instead of stalling (§4.4).
+            var recheck = _recheck && (Remote || FooterOnly);
+            _recheck = false;
+            if (ShouldObserve && (!_observing || recheck))
+            {
+                await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
+                _observing = true;
+            }
+            else if (!ShouldObserve && _observing)
+            {
+                await _module.InvokeVoidAsync("unobserve", _id);
+                _observing = false;
+            }
+        }
+
+        // Last, so a host callback that throws cannot leave the sentinel unobserved and the list unable to grow.
+        await RaiseShownChangedAsync();
+    }
+
+    private async Task RaiseShownChangedAsync()
+    {
+        if (!OnShownChanged.HasDelegate || Loading || Error || FooterOnly)
             return;
 
-        if (HasMore && !_observing)
-        {
-            await _module.InvokeVoidAsync("observe", _id, _sentinel, _selfRef);
-            _observing = true;
-        }
-        else if (!HasMore && _observing)
-        {
-            await _module.InvokeVoidAsync("unobserve", _id);
-            _observing = false;
-        }
+        var shown = (Remote ? Items : Items.Take(Shown)).ToList();
+        var keys = shown.Select(item => ItemKey?.Invoke(item) ?? item!).ToHashSet();
+        if (_lastShownKeys is not null && _lastShownKeys.SetEquals(keys))
+            return;
+
+        _lastShownKeys = keys;
+        await OnShownChanged.InvokeAsync(shown);
     }
 
     public async ValueTask DisposeAsync()

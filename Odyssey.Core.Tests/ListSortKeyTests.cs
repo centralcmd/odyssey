@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Context;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
@@ -85,7 +86,7 @@ public class ListSortKeyTests
         var ids = new HashSet<Guid> { c1.ContactId, c2.ContactId, c3.ContactId };
 
         async Task<List<Guid>> List(ContactSortBy key, SortDirection dir) =>
-            (await service.ListAsync(new ContactsQueryParams { SortBy = key, SortDir = dir }))
+            (await service.ListAsync(new ContactsQueryParams { SortBy = key, SortDir = dir }, claims: LocationClaims.Trusted))
             .Items.Select(i => i.ContactId).ToList();
 
         // Name (default, by resolved display name): Xray, Yankee, Zeta

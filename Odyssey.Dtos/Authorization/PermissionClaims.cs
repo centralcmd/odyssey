@@ -65,6 +65,18 @@ public static class PermissionClaims
     public const string ExchangeRatesUpdate = "exchangerates.update";
     public const string ExchangeRatesDelete = "exchangerates.delete";
 
+    // Instruments and their daily closing prices (issue #446). Every holder of instrument-prices.read also holds
+    // instruments.read, and no role holds a write claim of either without both reads — AuthorizationPolicyTests pins it.
+    public const string InstrumentsCreate = "instruments.create";
+    public const string InstrumentsRead = "instruments.read";
+    public const string InstrumentsUpdate = "instruments.update";
+    public const string InstrumentsDelete = "instruments.delete";
+
+    public const string InstrumentPricesCreate = "instrument-prices.create";
+    public const string InstrumentPricesRead = "instrument-prices.read";
+    public const string InstrumentPricesUpdate = "instrument-prices.update";
+    public const string InstrumentPricesDelete = "instrument-prices.delete";
+
     public const string UserPreferencesCreate = "user-preferences.create";
     public const string UserPreferencesRead = "user-preferences.read";
     public const string UserPreferencesUpdate = "user-preferences.update";
@@ -87,8 +99,6 @@ public static class PermissionClaims
     // Admin-only accountability surface — the external-AI transfer audit trail. Granted to Admin
     // only (via AllClaims), never to Owner/User/Guest, so it can diverge from users.read.
     public const string FileAnalysisAudit = "file-analysis.audit";
-
-    public const string DataExport = "data.export";
 
     public const string FilesExportAll = "files.export-all";
 
@@ -148,21 +158,29 @@ public static class PermissionClaims
     public const string CalendarUpdate = "calendar.update";
     public const string CalendarDelete = "calendar.delete";
 
-    // Household locations (issue #350). There is deliberately no delete claim: a location is archived,
-    // never deleted. Read is granted to Guest as well — see RolePermissions.GuestClaims.
+    // Household locations (issue #350). Read is granted to Guest as well — see RolePermissions.GuestClaims.
+    // locations.read sees every address in the app since issue #380 made a location the one address
+    // record (product decision 3): no implication guard ties it to contacts.read or properties.read.
     public const string LocationsCreate = "locations.create";
     public const string LocationsRead = "locations.read";
     public const string LocationsUpdate = "locations.update";
 
-    // Weather (issue #348). Reading weather and choosing one's own weather location are every role's;
-    // configuring which locations have weather, and purging a location's weather history, are Admin's
-    // alone. weather.history.delete is separate from weather.locations.update so the one destructive,
-    // erasure-shaped action can be revoked on its own.
+    // Deleting a location (issue #380 decision 4): explicit, one at a time, and only while nothing uses it
+    // — the erasure path. Owner, User and Admin hold it; Guest does not. Before #380 there was
+    // deliberately no delete claim and a location could only be archived.
+    public const string LocationsDelete = "locations.delete";
+
+    // Weather (issue #348; weather points, issue #387). Reading weather and choosing one's own weather
+    // point are every role's; managing weather points — creating, moving, refreshing, purging and
+    // deleting them — is Admin's alone. weather.points.delete is separate from weather.points.update so
+    // the one destructive, erasure-shaped action can be revoked on its own. Linking a place to a point
+    // reuses locations.update plus weather.read. The three point values replaced the per-location
+    // weather claims (issue #387 §7.2); RoleClaimSeeder revokes the old values on its next run.
     public const string WeatherRead = "weather.read";
     public const string WeatherPreferencesUpdate = "weather.preferences.update";
-    public const string WeatherLocationsRead = "weather.locations.read";
-    public const string WeatherLocationsUpdate = "weather.locations.update";
-    public const string WeatherHistoryDelete = "weather.history.delete";
+    public const string WeatherPointsRead = "weather.points.read";
+    public const string WeatherPointsUpdate = "weather.points.update";
+    public const string WeatherPointsDelete = "weather.points.delete";
 
     /// <summary>
     /// Read another user's profile picture (issue #94 §10.5). A deliberately <b>low-tier</b> claim,
@@ -216,4 +234,20 @@ public static class PermissionClaims
     // telemetry, not a setting, so it is its own claim rather than system-settings.read, which keeps a
     // revocation lever. It reads counts and byte totals only; no path, file name or object id.
     public const string FileStorageRead = "file-storage.read";
+
+    // News reader (issue #470 §7.2). Shared household data: every role reads it, Guest included; Admin, Owner and User
+    // keep the shared read state and article tags; only Admin and Owner manage feeds and news tags. The status
+    // endpoint uses file-storage.read and the private-host allow-list system-settings.security.update, so neither has
+    // a news claim of its own. Every file-storage.read holder also holds news.read (AuthorizationPolicyTests), because
+    // the status endpoint shows feed titles.
+    public const string NewsRead = "news.read";
+    public const string NewsUpdate = "news.update";
+
+    public const string NewsFeedsCreate = "news-feeds.create";
+    public const string NewsFeedsUpdate = "news-feeds.update";
+    public const string NewsFeedsDelete = "news-feeds.delete";
+
+    public const string NewsTagsCreate = "news-tags.create";
+    public const string NewsTagsUpdate = "news-tags.update";
+    public const string NewsTagsDelete = "news-tags.delete";
 }

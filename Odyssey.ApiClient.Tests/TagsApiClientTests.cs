@@ -52,7 +52,7 @@ public class TagsApiClientTests
     public async Task Every_operation_stays_on_the_route_the_client_was_bound_to(string basePath)
     {
         var id = Guid.NewGuid();
-        var tag = new TagWrite("Rent", "Monthly", Archived: false);
+        var tag = new TagWrite("Rent", "Monthly", Archived: false, Icon: null, Color: null);
 
         var (client, handler) = Create<ExistingJournalTag>(basePath);
 
@@ -90,11 +90,11 @@ public class TagsApiClientTests
         var (client, handler) = Create<ExistingPhotoTag>(basePath);
 
         handler.Response = new HttpResponseMessage(HttpStatusCode.Created);
-        await client.CreateAsync(new TagWrite("Holidays", null, Archived: false, Icon: "beach_access"));
+        await client.CreateAsync(new TagWrite("Holidays", null, Archived: false, Icon: "beach_access", Color: null));
         Assert.Contains("\"icon\":\"beach_access\"", handler.LastBody);
 
         handler.Response = new HttpResponseMessage(HttpStatusCode.OK);
-        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Holidays", null, Archived: true));
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Holidays", null, Archived: true, Icon: null, Color: null));
         Assert.DoesNotContain("icon", handler.LastBody);
 
         handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
@@ -204,7 +204,7 @@ public class TagsApiClientTests
         var (client, handler) = Create<ExistingJournalTag>("api/journal-tags");
         handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
 
-        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: false));
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: false, Icon: null, Color: null));
 
         using var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!);
         Assert.False(body.RootElement.TryGetProperty("icon", out _));
@@ -216,7 +216,7 @@ public class TagsApiClientTests
         var (client, handler) = Create<ExistingTransactionTag>("api/transaction-tags");
         handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
 
-        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: true, Icon: "home"));
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Rent", null, Archived: true, Icon: "home", Color: null));
 
         using var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!);
         Assert.Equal("home", body.RootElement.GetProperty("icon").GetString());
@@ -227,6 +227,49 @@ public class TagsApiClientTests
     {
         static int MaxLengthOf(Type type) =>
             type.GetProperty("Icon")!.GetCustomAttribute<StringLengthAttribute>()!.MaximumLength;
+
+        Assert.Equal(MaxLengthOf(typeof(NewTransactionTag)), MaxLengthOf(typeof(TagWrite)));
+    }
+
+    // Issue #392: the colour is always on the wire — an explicit null included — so an edit or an
+    // archive from a writer that knows the colour can never clear it by omission.
+    [Theory]
+    [InlineData("api/transaction-tags")]
+    [InlineData("api/journal-tags")]
+    [InlineData("api/task-tags")]
+    [InlineData("api/photo-tags")]
+    public async Task The_color_round_trips_and_a_null_color_is_still_sent(string basePath)
+    {
+        var (client, handler) = Create<ExistingPhotoTag>(basePath);
+
+        handler.Response = new HttpResponseMessage(HttpStatusCode.NoContent);
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Holidays", null, Archived: true, Icon: null, Color: "#15803D"));
+        using (var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!))
+        {
+            Assert.Equal("#15803D", body.RootElement.GetProperty("color").GetString());
+        }
+
+        await client.UpdateAsync(Guid.NewGuid(), new TagWrite("Holidays", null, Archived: false, Icon: null, Color: null));
+        using (var body = System.Text.Json.JsonDocument.Parse(handler.LastBody!))
+        {
+            Assert.Equal(System.Text.Json.JsonValueKind.Null, body.RootElement.GetProperty("color").ValueKind);
+        }
+
+        handler.Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                """{"items":[{"photoTagId":"11111111-1111-1111-1111-111111111111","name":"Holidays","color":"#15803D"}],"offset":0,"limit":50,"totalCount":1}""",
+                System.Text.Encoding.UTF8, "application/json"),
+        };
+        var tags = (await client.ListAllAsync()).ValueOr([]);
+        Assert.Equal("#15803D", Assert.Single(tags).Color);
+    }
+
+    [Fact]
+    public void TagWrite_color_limit_matches_the_transaction_tag_DTO()
+    {
+        static int MaxLengthOf(Type type) =>
+            type.GetProperty("Color")!.GetCustomAttribute<StringLengthAttribute>()!.MaximumLength;
 
         Assert.Equal(MaxLengthOf(typeof(NewTransactionTag)), MaxLengthOf(typeof(TagWrite)));
     }

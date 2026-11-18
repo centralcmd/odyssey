@@ -5,17 +5,19 @@ namespace Odyssey.Dtos.Journal;
 /// <summary>
 /// Full photo read model. Cross-module links are returned as ids only (§10.5); the client hydrates
 /// names (tag ids → tag names, person ids → contact names, album ids → album names). The image
-/// bytes are served separately via the existing authenticated <c>GET /api/files/{FileId}/content</c>.
+/// bytes are served separately via <c>GET /api/photos/{PhotoId}/content</c> (issue #428).
 /// </summary>
 public sealed record ExistingPhoto : ITagIconRecord
 {
     public required Guid PhotoId { get; set; }
 
-    public required Guid FileId { get; set; }
-
-    /// <summary>The backing file's name (from the Files store), resolved at the API edge.</summary>
+    /// <summary>The effective file name (issue #428 §5.4): the download name, renamable under <c>photos.update</c>.</summary>
     [StringLength(256)]
     public string? FileName { get; set; }
+
+    public string? ContentType { get; set; }
+
+    public long? SizeBytes { get; set; }
 
     [StringLength(PhotoLimits.MaxTitleLength)]
     public string? Title { get; set; }
@@ -64,6 +66,12 @@ public sealed record ExistingPhoto : ITagIconRecord
 
     /// <summary>The icon resolved from the record's tags; <see cref="TagIcons.Default"/> with none. Never <c>null</c>.</summary>
     public string DisplayIcon { get; set; } = TagIcons.Default;
+
+    /// <summary>
+    /// The colour of the tag that supplies <see cref="DisplayIcon"/> (issue #392): normalised <c>#RRGGBB</c>
+    /// or <c>null</c>. Resolved server-side by <see cref="TagIcons.ResolveDisplay(IEnumerable{TagIconCandidate}?)"/>.
+    /// </summary>
+    public string? DisplayColor { get; set; }
 
     public List<Guid> PersonContactIds { get; set; } = [];
 

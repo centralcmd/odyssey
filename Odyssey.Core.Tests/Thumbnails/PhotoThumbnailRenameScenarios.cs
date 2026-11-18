@@ -19,7 +19,7 @@ namespace Odyssey.Core.Tests.Thumbnails;
 public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
 {
     [SkippableFact]
-    public async Task A_rename_releases_both_thumbnails_at_once_and_requeues_a_done_job_behind_the_cooldown()
+    public async Task A_rename_releases_both_thumbnails_graced_and_requeues_a_done_job_behind_the_cooldown()
     {
         var host = await NewThumbnailHostAsync();
         var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
@@ -34,7 +34,7 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
         foreach (var id in objectIds)
         {
             var stored = await StoredAsync(host, id);
-            Assert.Equal((StoredObjectState.PendingDelete, true), (stored.State, stored.DeleteImmediately));
+            Assert.Equal((StoredObjectState.PendingDelete, false), (stored.State, stored.DeleteImmediately));
         }
 
         var job = await JobRowAsync(host, photoId);
@@ -174,13 +174,15 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
         Clock.Advance(PhotoThumbnailTiming.RenameCooldown);
         await Job(host).RunOnceAsync(default);
         Assert.Equal(PhotoThumbnailJobState.Unsupported, (await JobRowAsync(host, photoId)).State);
+        // Thumbnails are graced since issue #428 §3.5: the old-stem files go once the grace has run.
+        Clock.Advance(TimeSpan.FromHours(24));
         await InScopeAsync(host, sp => sp.GetRequiredService<FileStorageSweeper>().SweepDeferredDeletesAsync(24, default));
 
         Assert.Empty(Directory.GetFiles(Path.Combine(PrimaryRoot, "photo-thumbnails"), "Secret Name*", SearchOption.AllDirectories));
     }
 
     [SkippableFact]
-    public async Task Deleting_a_photo_releases_both_thumbnails_immediately_in_the_same_save()
+    public async Task Deleting_a_photo_releases_both_thumbnails_graced_in_the_same_save()
     {
         var host = await NewThumbnailHostAsync();
         var photoId = await AddPhotoAsync(host, ThumbnailFixtures.Gif(), "image/gif");
@@ -197,7 +199,7 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
 
         foreach (var id in objectIds)
         {
-            Assert.Equal((StoredObjectState.PendingDelete, true), ((await StoredAsync(host, id)).State, (await StoredAsync(host, id)).DeleteImmediately));
+            Assert.Equal((StoredObjectState.PendingDelete, false), ((await StoredAsync(host, id)).State, (await StoredAsync(host, id)).DeleteImmediately));
         }
 
         Assert.Equal(0, await WithContextAsync(host, c => c.PhotoThumbnailJobs.CountAsync()));
@@ -209,13 +211,38 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
 
     private static async Task RenameAsync(FileStorageTestHost host, Guid photoId, string name)
     {
+        var fileId = await FileIdAsync(host, photoId);
         await using var scope = host.Scope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-        await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(await FileIdAsync(host, photoId), new UpdateFileMetadataRequest { FileName = name });
+        Assert.NotNull(await Service(scope.ServiceProvider, context).UpdateFileMetadataAsync(fileId, new UpdateFileMetadataRequest { FileName = name }));
     }
 
-    private static Task<Guid> FileIdAsync(FileStorageTestHost host, Guid photoId) =>
-        WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId).SingleAsync());
+    /// <summary>
+    /// The legacy photo's file id, made reachable through the Files store first. Since PR #441 a file only a photo names
+    /// is hidden from <c>FileService</c> (it is a photo original, renamed through the photo); a file renamed there and
+    /// re-rendering a photo's thumbnails is one that is also an attachment — so these scenarios attach it to an entry.
+    /// </summary>
+    private static async Task<Guid> FileIdAsync(FileStorageTestHost host, Guid photoId)
+    {
+        var fileId = await WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId).Select(p => p.FileId!.Value).SingleAsync());
+        await WithContextAsync(host, async c =>
+        {
+            if (await c.JournalEntryAttachments.AnyAsync(a => a.FileId == fileId))
+            {
+                return;
+            }
+
+            var entry = new JournalEntry
+            {
+                JournalEntryId = Guid.NewGuid(), ExternalUid = Guid.NewGuid().ToString(), Title = "Shared", Content = "",
+                EntryDate = DateTime.UtcNow, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow,
+            };
+            c.JournalEntries.Add(entry);
+            c.JournalEntryAttachments.Add(new JournalEntryAttachment { JournalEntryId = entry.JournalEntryId, FileId = fileId, CreatedAt = DateTime.UtcNow });
+            await c.SaveChangesAsync();
+        });
+        return fileId;
+    }
 
     private static Task<string> FileNameAsync(FileStorageTestHost host, Guid photoId) =>
         WithContextAsync(host, c => c.Photos.Where(p => p.PhotoId == photoId)

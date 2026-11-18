@@ -1,0 +1,8 @@
+/* Delete all prices (design system · instruments.css). The count line is a polite live region. */
+.ins-purge-count {
+    min-height: 1.5em;
+    font: var(--fw-medium) var(--fs-body2)/1.5 var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    color: var(--mud-palette-text-primary);
+}
+.ins-server-error { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }

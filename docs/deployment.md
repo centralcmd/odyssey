@@ -325,8 +325,34 @@ which is exactly why the setting is **tighten-only**. `PUT /api/system-settings`
 the transport ceiling with a `400` naming it, rather than accepting a number the transport would then
 silently refuse.
 
-Both proxies currently sit at `65MB` for a `67108864`-byte (64 MB) ceiling plus 1 MB of envelope
-headroom. Lowering the cap needs no deploy-time change at all.
+The large-file routes — `/api/api/tasks/ics…`, the journal `…/vjournal` routes (`/api/api/journal-entries/vjournal…`
+and `/api/api/journal-entries/{id}/vjournal…`), `/api/api/photos…` and `/api/api/files…` as the browser
+sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
+behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
+envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
+multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
+default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task or journal export can carry
+its attached files (and a journal's photos) inline and come back in through the matching import; the admin upload cap still seeds at 64 MB, and it also
+bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
+
+Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
+accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to
+the admin upload cap plus 1 MiB. Only the import and upload endpoints, which set their own per-request cap, reach
+further.
+
+> **Upgrading from a release before this change.** The migration raises the task import/export defaults to
+> 10240 MB and unlimited counts (only where no administrator saved a value). A deployment whose `.env` still pins
+> `FILE_UPLOAD_MAX_BYTES=67108864`, or whose own reverse proxy still caps bodies at 65 MB, keeps the old ceiling:
+> a large task import then fails at the proxy with an HTML `413` although the settings page offers 10 GB. Raise
+> both (outermost first), or lower the task import/export sizes at `/settings` to match.
+
+A task import is spooled twice while it is processed — once by the multipart reader, once as the decoded
+attachments — so a 10 GB import needs roughly 20 GB of free space for it. A photo upload is spooled once by the
+multipart reader. All of it goes to `ASPNETCORE_TEMP`, which the API image sets to `/var/odyssey/import-spool`,
+the `import_spool` named volume in `docker-compose.yml` — not `/tmp`, which the production file makes a RAM-backed
+tmpfs. The volume is scratch: nothing in it outlives a request (a decoded attachment a crashed process left behind
+is swept by the next task import after a day), and it needs no backup. On an existing deployment Docker creates it
+app-owned from the image on first start.
 
 > `FileStorage:MaxFileSizeBytes` is **not** retired — it stays as the transport ceiling above, read by
 > the API at startup. The admin-editable cap is a separate value that seeds at 64 MB, so if you raise
@@ -369,10 +395,41 @@ sample counts, the mail throttle's tracked-address table, and the per-account sm
 | Max repeated fields per contact | lower only | Each field costs a sibling query and its own save, multiplied by an import entry cap that ships unlimited. Any number above the shipped 200 would be a guess about a product of three unbounded terms. |
 | Tracked recipient addresses | raise only | The per-recipient mail throttle fails **open** once its table is full, so a smaller table weakens the control instead of tightening it. |
 
+### Release note: file-analysis matching sends more, and the vocabulary cap is gone (issue #433)
+
+- **The match vocabulary cap is retired.** The `FileAnalysisMatchMaxVocabulary` setting (default 500) no
+  longer exists, and matching is never skipped for vocabulary size: every active contact and tag is sent.
+  Rolling the migration back re-inserts the row at **500**, not at an administrator's previous value.
+- **Matching sends contact aliases and tag descriptions** for analyses started after the upgrade. Alias
+  labels, notes and organisation numbers are still never sent. An analysis started before the upgrade
+  keeps matching on names only for its whole life.
+- **Users consent again once.** The consent disclosure now lists the data fields sent and whether
+  administrator guidance is in force, and its version covers both.
+- **Two new settings, `FileAnalysisExtractionPromptAddition` and `FileAnalysisMatchPromptAddition`**,
+  hold administrator guidance (up to 4000 characters each, empty by default) that is added to the
+  extraction and match prompts. Each change is logged with the acting user, the length and a digest,
+  never the text. Turning either on or off makes users consent again; turning **match** guidance on or
+  off, or changing the processor, region, lawful basis or privacy-notice URL, also refuses matches on
+  analyses that are already open (`409`, "start a new analysis").
+- **Two new deploy-time limits**, per user: `RateLimiting:FileAnalysisAnalyze` (default 10 per hour) and
+  `RateLimiting:FileAnalysisMatch` (default 30 per hour). A household importing many statements at once
+  may want to raise the analyze limit. Like every `RateLimiting:*` key they are configuration, not
+  settings, because the limiter is cached per user.
+- **A payload budget** of 200 000 characters bounds each match request: over it, aliases are left out
+  for that run, then tag descriptions. Names are always sent, and are never shed: a household whose
+  names alone exceed the model's context gets a `Failed` match (review the candidates by hand), not a
+  partial one.
+- **Wire change for API consumers.** `fileAnalysisMatchMaxVocabulary` is gone from the system-settings
+  DTOs, and `maxVocabulary` from the file-analysis payloads. The web client in this release no longer
+  reads either; a third-party consumer that did must drop them. Matches refused by the new limits
+  answer `429` with `Retry-After`, and the destination refusal answers `409` with
+  `code: file_analysis_destination_changed`.
+
 ### Release note: three `FileAnalysis` keys retired from `appsettings.json`
 
 `FileAnalysis:MaxTokens`, `FileAnalysis:Match:MaxVocabulary` and `FileAnalysis:Match:TimeoutSeconds` are
-database-backed as of issue #434 and no longer read from configuration.
+database-backed as of issue #434 and no longer read from configuration. (`MaxVocabulary` was later retired altogether by
+issue #433; see the note above.)
 
 Their environment variables (`FILE_ANALYSIS_MAX_TOKENS`, `FILE_ANALYSIS_MATCH_MAX_VOCABULARY`,
 `FILE_ANALYSIS_MATCH_TIMEOUT_SECONDS`, and the `Aspire:` keys) are **gone**, and nothing carries a
@@ -419,7 +476,36 @@ Four operational notes:
 - **The circuit breaker is per typed client, not per host.** After repointing the base URL, a breaker
   opened by failures against the *previous* host stays open for the rest of its sampling window
   (`2 x FileAnalysis:TimeoutSeconds`, so 240s at the shipped 120s). Pre-existing behaviour, but now
-  reachable by an admin action: wait it out, or restart the API.
+  reachable by an admin action: wait it out, or restart the worker (which sends the document since issue
+  #444; the API keeps a breaker of its own for the match step).
+
+### Release note: statement analysis runs in the worker (issue #444)
+
+Extraction moved out of the API request and into `Odyssey.Worker`. What an operator needs to know:
+
+- **The worker now needs egress to the analysis provider** (the base URL host, `api.anthropic.com` by
+  default). The API still needs it for the match step. Neither compose file restricts egress today; a
+  deployment that firewalls containers must open it for both.
+- **`POST /api/accounts/{id}/files/{fileId}/analyze` answers `202 Accepted`** with a `Location` to
+  `GET /api/file-analysis/{jobId}`, which a client polls (it sends `Retry-After: 2` while the job is open and
+  `Cache-Control: no-store` always). A second request while a job is open on the file is a `409` with
+  `code: analysis_in_progress` and the open job's `analysisJobId`. Third-party consumers that read
+  candidates from the old `200` body must poll instead.
+- **A statement above 32 MiB is refused with `422`** (`code: file_too_large_for_analysis`, `limitBytes`),
+  a fixed ceiling, before anything is queued.
+- **`FileAnalysis:PromptVersion` and `FileAnalysis:PromptTemplatePath` are retired.** The prompt is embedded
+  in the build and every job records its SHA-256; a configured value is ignored.
+- **`FileAnalysis:TimeoutSeconds` must be 10–140** and is validated at startup in both the API and the
+  worker; keep the two equal (the shipped `appsettings.json` files are).
+- **An unset API key now refuses before sending.** A gateway that authenticates by network position
+  rather than by key still needs *a* key stored — any placeholder value — or every job fails with
+  `provider_credential_error` and nothing is sent.
+- **Nothing is ever re-sent automatically.** A worker that dies mid-call leaves the job
+  `Failed / interrupted`, reported to the user as "possibly sent"; a job no worker claims within 15
+  minutes fails as `not_started`, "not sent". Jobs left `Running` by the old synchronous path when you
+  upgrade are failed the same way by the first sweep.
+- The run log at `/background-jobs` gains a **File analysis** entry (counts of completed, failed and
+  refused analyses). It has no *Run now*.
 
 ### Release note: five credentials moved into the encrypted secret store (issue #445)
 
@@ -969,6 +1055,10 @@ invariant globalization, which is the alpine runtime's default. The API asserts 
 refuses to serve rather than accept an alias the index will then reject. If you build your own image,
 keep both.
 
+Since the news reader (issue #470) the **worker** image installs ICU and pins the variable too: both hosts compute a
+feed's URL key, which maps an IDN host to punycode through ICU, and they must agree. The worker asserts it at startup
+with the same guard.
+
 ## Household locations: what leaves the deployment, and how to erase one
 
 Issue #350 added **locations** — the household's places, each with a name, an address line,
@@ -978,7 +1068,7 @@ operator's concern.
 ### Release note
 
 - **New claims.** `locations.read` (every role, Guest included), `locations.create` and
-  `locations.update` (Admin, Owner, User). There is no `locations.delete`. Claims are baked into the
+  `locations.update` (Admin, Owner, User). Issue #380 later added `locations.delete` (below). Claims are baked into the
   auth cookie, so **every user must sign out and back in** before the Locations page appears.
 - **Address search sends text to a third party** (below).
 - **The runtime image needs `tzdata`.** The API Dockerfile installs it, and the API refuses to start
@@ -1017,23 +1107,54 @@ viewing a location's map sends the viewer's IP address and the map tiles around 
 tile host (see [Location map](#location-map-what-leaves-the-deployment-and-how-to-switch-it-off));
 and locations are kept until someone overwrites them (next section).
 
+### Release note: unified locations (issue #380)
+
+- **Take and verify a backup first.** The upgrade converts every contact address, every property
+  address and every free-text place on calendar events, recurring series and journal entries into
+  locations, once, and drops the old address columns in the same release. No copy of the old values is
+  kept, so **rollback is a database restore** — a migration `Down()` restores schema, not rows. The
+  migration service logs the conversion's row counts at start and its created and linked counts at the
+  end (counts only).
+- **A contact address with no usable text is removed.** An `Addresses` row whose six fields are all
+  empty once control characters and whitespace are cleaned has no address to link to a place. The
+  conversion deletes such rows before the contract migration and logs how many (a warning, count only);
+  the contact itself is kept. This is an accepted loss, chosen so the upgrade never stops on it.
+- **Link-like values stay text.** A place that looks like a meeting link or carries a passcode is never
+  turned into a location (locations are readable by every `locations.read` holder, Guest included).
+- **New claim `locations.delete`** (Admin, Owner, User; not Guest). **Every user must sign out and back
+  in** to receive it.
+- **Converted places have no coordinates** until someone geocodes them on the Locations page.
+- **An event or entry at a place linked to a weather point uses that point** (issue #387), with no
+  fallback to the caller's preference or the household default even when the point's forecast is off; a
+  place with no link falls through to the preference and then the household default.
+- **`locations.read` sees every address in the app** (product decision 3), including those that used to
+  sit behind `contacts.read` or `properties.read` alone.
+
 ### Erasing a location (data-subject requests)
 
-There is **no delete** in this version — a product decision, recorded in issue #350 §7.8. An update
-overwrites in place and keeps no previous value anywhere in the application, so erasure is an edit:
+Since issue #380 an **unused** location can be deleted outright under `locations.delete` — a real
+`DELETE`, the erasure path. A location something still uses (a contact address, a property, an event,
+a recurring series, a journal entry, or a merge forwarder) refuses with a `409`. Weather does not: since
+issue #387 a place only *links* to a weather point, and the link goes with the place.
 
-1. As **Admin**, find the row on the Locations page (turn on *Archived* in the status filter if it is
-   already archived). **If the location has weather** (issue #348), turn **both** its forecast and its
-   historical data off and then **Delete weather history** first — the weather tables hold their own copies of the coordinates (the
-   frozen sites and every forecast run), and an edit of the location does not reach them. See
+1. As **Admin**, find the row on the Locations page. **If a weather point was created from this place**
+   (or converted from its old per-place weather, under the same id), that point holds its own copy of the
+   rounded coordinates and its name may be the place's — erase or rename it as in
    [Weather](#weather-what-leaves-the-deployment-and-how-to-erase-it).
-2. **Edit** it: replace the name with something neutral (it must stay unique, e.g. `Erased 2026-10-23`),
-   clear the address and the description, and replace the coordinates with a coarse value (e.g. `0, 0`).
-   Save, then **Archive** it.
-3. The audit log records who made the change and which fields changed — never the old values.
-4. Copies outside the live row are **not** purged by the edit: the Admin data export (which includes
-   locations) and database backups age out under your existing export and backup retention.
-5. Record the request, the date and the backup retention that still applies.
+2. **If it is unused** (the *Not used* filter, `?referenced=false`), **delete** it.
+   **Deleting a contact or a property never deletes its address**: the address stays behind as an unused
+   location, readable by every `locations.read` holder (Guest included). When a request follows the
+   deletion of a contact or a property, open the Locations page, choose the **Not used** filter to find
+   the addresses those records left, and delete each one that belonged to the data subject.
+3. **If it is used**, either overwrite it in place — replace the name with something neutral (it must
+   stay unique, e.g. `Erased 2026-10-23`), clear the address fields, the address text and the
+   description, and clear the coordinates; an update keeps no previous value — or **merge** it into
+   another place and then delete the merged-away forwarder. A forwarder must be deleted before the place
+   it forwards to.
+4. The log records who deleted, merged or changed it and which fields changed — never the values.
+5. Copies outside the live row are **not** purged: database backups, and any Admin data export downloaded
+   before that feature was removed, age out under your existing export and backup retention.
+6. Record the request, the date and the backup retention that still applies.
 
 Deleting a user leaves every location they created; only the attribution is cleared.
 
@@ -1280,8 +1401,9 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 
 ### Release note
 
-- **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included);
-  `weather.locations.read`, `weather.locations.update` and `weather.history.delete` (Admin only).
+- **New claims.** `weather.read` and `weather.preferences.update` (every role, Guest included), and
+  three Admin-only management claims — renamed by issue #387 to `weather.points.read`,
+  `weather.points.update` and `weather.points.delete` (see *Weather points* below).
   **Every user must sign out and back in** before the weather widget and the Admin controls appear.
 - **Nothing is fetched until an administrator sets it up.** MET's terms require a contact in the
   `User-Agent`, so set **`/settings` → Weather → Contact for MET Norway** (an email address or an
@@ -1293,7 +1415,8 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
 - Four new settings: the contact, the refresh interval (default 1440 min, i.e. once a day; 30–1440), the cap on scheduled
   places (default 5, 1–20) and the household default place. No configuration keys are added or moved.
 - Two new deploy-time limits: `RateLimiting:WeatherRead` (per user, default 120 per 60 s) and
-  `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering apply, refresh and delete).
+  `RateLimiting:WeatherRefresh` (per user, default 6 per 300 s, covering refresh, history purge and
+  point delete).
 - **A new container, `worker`** (image `odyssey-worker`), runs the schedule: once a minute, at most one
   MET request per second. It is where every background job runs from now on; it has no port and serves
   nothing. Every worker replica runs the schedule, and a lease on each place keeps two from fetching the
@@ -1302,35 +1425,60 @@ Locationforecast (`api.met.no`) and, optionally, measured days from Frost (`fros
   the second container able to decrypt every stored credential; see
   [Two containers hold the key ring](#two-containers-hold-the-key-ring).
 
+### Weather points (issue #387)
+
+Weather is now kept per **weather point** — a named position fetched once — and any number of places
+**link** to one point, so two streets in one city share one forecast and one history.
+
+- **Back up the database before deploying.** Two migrations, `WeatherPointsExpand` and
+  `WeatherPointsContract`, turn every per-place weather row into a point **under the same id**, re-key
+  every weather table onto it, link each place to its point, delete orphaned weather rows, rename the
+  settings keys `WeatherDefaultLocationId` → `WeatherDefaultPointId` and `WeatherMaxTrackedLocations` →
+  `WeatherMaxTrackedPoints` (values kept) and rewrite each weather preference's field. They are data
+  migrations and **not replay-safe**: `Down()` restores the schema only, and a failure is fixed forward,
+  with the backup as the fallback (see [`migration-history-drift.md`](migration-history-drift.md)).
+- **Stop `api` and `worker` before the migrations job runs** when upgrading a running stack: an old
+  worker against the contracted schema fails every tick. Compose and the AppHost already order a fresh
+  start correctly.
+- **Renamed claims.** The three Admin weather claims are now `weather.points.read`,
+  `weather.points.update` and `weather.points.delete`. `RoleClaimSeeder` adds the new values and removes
+  the old ones; an existing session picks the new values up at its next security-stamp revalidation —
+  within about **one minute**, without signing out — and until then the point endpoints answer `403`.
+- **Linking** a place to a point needs `locations.update` and `weather.read` (Admin, Owner, User). It
+  sends nothing to MET; only an Admin creates or moves a point.
+- `/api/weather/locations` is gone; points are `/api/weather/points`, and a place's link is
+  `PUT /api/locations/{id}/weather-point`.
+
 ### The data flow
 
-Only an **Admin** can cause coordinates to be sent. Turning weather on copies the location's position,
-rounded to **3 decimals (≈ 100 m)**, and its time zone into a frozen *site*; every request uses that
-site. Editing the location later changes nothing until an Admin *applies* the move. A read for a place
-nobody schedules may fetch on demand, but still only for its frozen site.
+Only an **Admin** can cause coordinates to be sent. Creating a weather point — from typed coordinates or
+by copying a reviewed place's position — freezes its position, rounded to **3 decimals (≈ 100 m)**, and
+its time zone into a *site*; every request uses that site. Moving a point starts a new site; moving a
+linked place changes nothing about its point. A read for a point nobody schedules may fetch on demand,
+but still only for its frozen site.
 
 What MET receives: the rounded latitude and longitude, the altitude, the contact address in the
 `User-Agent` and, for Frost, the client id. No user id, place name or address is sent. The outbound
-HTTP clients log nothing, and audit lines carry the location id and the actor — never coordinates.
+HTTP clients log nothing, and audit lines carry point and place ids, counts and the actor — never a
+name or coordinates. Distances shown to users are whole kilometres.
 
 Weather is shown with MET's attribution (*Weather data from MET Norway*, NLOD 2.0 / CC BY 4.0) on
 every surface that displays it.
 
-### Erasing a location's weather
+### Erasing a weather point
 
-1. As **Admin**, on the Locations page, open **Weather settings** for the place and turn **both** the
-   forecast and the historical data off. A household default cannot have its forecast turned off:
-   choose another default in `/settings` first.
-2. Choose **Delete weather history** and type the place's name to confirm. With both halves off this
-   removes every weather row of that place — the sites, every forecast and observation, the day
-   summaries and the schedule — and leaves the location itself untouched. **With the forecast still on
-   it deletes only the measured history** (observations, the measured half of each day, the resolved
-   station); the sites and forecast runs, which hold the coordinates, stay. That is not an erasure.
-3. A large history is deleted in batches. If the request is interrupted, the place shows *deleting* and
-   stays blocked; run **Delete weather history** again to finish it.
-4. Then erase the location itself as in the previous section.
-5. Copies outside the live rows age out with your backup retention. The Admin data export carries only
-   the per-place weather *settings*, never coordinates or history.
+1. As **Admin**, turn **both** the point's forecast and its historical data off. A household default
+   cannot have its forecast turned off, nor be deleted: choose another default in `/settings` first.
+2. **Delete the point** (`DELETE /api/weather/points/{id}`). This removes every weather row of the point
+   — the sites, every forecast and observation, the day summaries, the stations and the schedule — and
+   unlinks every place that used it; the places themselves are untouched. **Deleting only the measured
+   history** (`DELETE /api/weather/points/{id}/history`) keeps the sites and forecast runs, which hold
+   the coordinates. That is not an erasure.
+3. A large history is deleted in batches. If the request is interrupted, the point shows *deleting* and
+   stays blocked; repeat the delete to finish it. An interrupted full delete can only be finished by the
+   full delete.
+4. Then erase the place itself as in the previous section, if the request covers it.
+5. Copies outside the live rows age out with your backup retention.
 ## Exchange-rate sync: what leaves the deployment, and what changes for existing rates
 
 Issue #349 added a scheduled sync of exchange rates from **Norges Bank** (`data.norges-bank.no`).
@@ -1377,8 +1525,9 @@ compile-time constant, redirects are not followed, responses are capped at 10 MB
 most 10 requests at least 1 s apart. Rates are published under NLOD 2.0; Odyssey shows the credit
 *Source: Norges Bank (NLOD 2.0)* wherever fetched rates appear.
 
-The run log (`ExchangeRateSyncRuns`, newest 500 kept) records each run's trigger, status, error kind,
-span, currencies and row counts. Per-currency changes and purges are also written to the application
+The run log — since issue #409 the exchange-rate sync's rows of the shared `JobRuns` table (see
+[Background jobs: the run log](#background-jobs-the-run-log)), kept for `JobRunRetentionDays` — records each
+run's trigger, status, error kind, span, currencies and row counts. Per-currency changes and purges are also written to the application
 log under the System settings audit category (`Odyssey.Api.SystemSettings.SystemSettingsService`), and
 manual runs under `Odyssey.Core.Finance.ExchangeRateSync.ExchangeRateSyncService`, each with the acting
 user's id.
@@ -1448,7 +1597,7 @@ defect (`Odyssey.Worker.Tests` compares the two compose blocks).
 | Variable | Meaning |
 |---|---|
 | `FileStorage__Volumes__<name>__RootPath` | An absolute path to an **existing** directory. `<name>` is letters and digits, starting with a letter (`primary`, `fastssd`). |
-| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind `PhotoThumbnails`, the one feature, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
+| `FileStorage__Bindings__<Feature>` | Which volume a storage feature's **new** files go to (`FileStorage__Bindings__PhotoThumbnails=primary`). The shipped files bind both features, `PhotoOriginals` and `PhotoThumbnails`, to `primary`. A host with volumes and an unbound feature refuses to start (check B1). |
 
 Several features may share one volume: each writes under its own folder. Volume names and feature keys
 are matched case-insensitively. Inside a volume, files sit under their sanitized original names
@@ -1565,7 +1714,10 @@ the worker's **hourly maintenance job**:
   volume after the database dump still contains every file the dump references. Removal happens within
   grace + 2 hours: ≤ 26 h at the default, ≤ 170 h at the maximum.
 - **Personal data** — features declared *Immediate*, and any delete driven by erasure such as an account
-  deletion — skips the grace and is removed within **2 hours**.
+  deletion — skips the grace and is removed within **2 hours**. Since issue #428 no shipped feature is
+  *Immediate*: photo originals and thumbnails both wait for the grace, so a deleted photo's bytes stay on
+  disk for up to grace + 2 hours. For a data subject's erasure request that cannot wait, see
+  [Photo originals → Erasure](#erasure-of-a-photo-original).
 - A stored grace that cannot be used (unparseable, `0`, out of range) makes the job use **168 h** and log a
   Warning; the settings page shows the row as faulted. Fix the value at `/settings`.
 
@@ -1644,6 +1796,75 @@ any state** (the panel's per-feature counts show when).
 The deployment model is **one API container**. Worker replicas are safe: the maintenance lease and the
 features' own row claims coordinate them. Each process keeps its own *Degraded* flag; the panel shows the
 API's view, and a volume degraded only in the worker shows in the worker's log.
+
+## Background jobs: the run log
+
+Issue #409 records the runs of the worker jobs — exchange-rate sync, weather, file-storage maintenance, photo
+thumbnails and, since issue #428, the photo-original move — in one table, `JobRuns`, and each worker process's
+last tick per job in `JobHeartbeats`.
+**`/background-jobs`** reads both; everything there is under `system-settings.read` (Admin), and a job's own
+counters additionally need that job's read claim (`weather.points.read`, `file-storage.read`, `photos.read`).
+
+### Release note: the exchange-rate sync's run log moved (data migration)
+
+Two migrations run in order, both automatically before the API starts:
+
+1. **`AddJobRuns`** validates every `ExchangeRateSyncRuns` row against the new table's constraints first — a
+   row that cannot be copied aborts the migration *naming its id*, with nothing created — then creates
+   `JobRuns`, `JobHeartbeats`, the `PhotoThumbnailJobs.ManualRequeues` column and the `JobRunRetentionDays`
+   setting (90 days), and copies every row across **with its id** (`INSERT … WHERE NOT EXISTS`, so a replay
+   after an interruption copies nothing twice).
+2. **`DropExchangeRateSyncRuns`** checks that every legacy row is in `JobRuns` with an equal status, trigger,
+   timestamps and row counters, aborts (dropping nothing) if one is not, and only then drops the old table.
+
+Because MariaDB DDL is not atomic, they are two migrations on purpose: an interruption in the first leaves the
+source intact. If either aborts, follow [`migration-history-drift.md`](migration-history-drift.md).
+
+**Rollback is a backup restore.** `Down()` restores schema, not rows: rolling back past
+`DropExchangeRateSyncRuns` recreates an *empty* `ExchangeRateSyncRuns`. Take the usual pre-upgrade database
+dump. The existing exchange-rate sync endpoints and the Currencies page keep their wire shape.
+
+**Deploy order: migrations, then the worker and the API together.** A worker from before this release would
+write into a table that no longer exists, and an API from before it would read one; both images come from the
+same release tag, so the normal `pull` + `up -d` does this.
+
+### What the worker records
+
+| Job | One run row per | Held rows |
+|---|---|---|
+| Exchange-rate sync | run or purge (unchanged) | — |
+| File-storage maintenance | pass — scheduled hourly, or manual, picked up by a **30 s request poll** | while *this* worker's storage checks fail (`HeldByCheck` names the check, never a path) |
+| Weather, photo thumbnails, photo-original move | **work burst**: consecutive ticks with work share one row; an idle tick, or the burst reaching 1 h, finishes it | thumbnails: while the worker is Paused, Tripped, PolicyFailed or StorageUnavailable. Photo-original move, only while photos are left to move: StorageUnavailable (volume degraded or below its reserve) or BackingOff (after a storage or database error, until the back-off ends) |
+
+Every job writes its heartbeat first on every tick (at most once a minute per process), before any early
+return, so an idle, unconfigured or held job is never mistaken for a dead one. A job with no heartbeat for
+5 minutes reads **Not ticking** on the page.
+
+`JobRunMaintenanceJob` (worker, every 5 minutes) abandons a run whose process has gone (after its job's stale
+window — it never touches a file-storage pass while the maintenance lease is live), closes a held period whose
+process has stopped heartbeating, and once an hour deletes finished runs older than **`JobRunRetentionDays`**
+(`/settings` → Data, 14–730 days; a degraded read keeps the larger value — never prunes more on a fault).
+`Running` rows and open held periods are never pruned. The newest-500 rule of the old sync log is gone.
+
+### Manual runs
+
+`POST /api/background-jobs/{job}/runs` needs `system-settings.update` **and** the job's own claim
+(`weather.points.update`, `file-storage.read` for both file-storage maintenance and the photo-original move,
+`photos.update`; the sync needs none beyond the first). A photo-original move run moves one batch at once and
+**ends a back-off** early; it is refused (`409 held`) only while every live worker is held for storage. The
+file-storage manual pass is gated on `file-storage.read` by decision — no file-storage write claim exists — and
+uses the same deletion grace and lease as a scheduled pass. A thumbnail manual run drains pending jobs and
+re-queues each `Failed` job **once in its lifetime** (`ManualRequeues`); `Unsupported` jobs, crashes and
+timeouts included, are never re-queued.
+
+Each job has a 60 s cooldown, and a per-user limiter sits in front of all of them:
+`RateLimiting:BackgroundJobsRun` (default 5 requests per user per minute). Every accepted manual run is written
+to the application log at Information under the System settings audit category
+(`Odyssey.Api.SystemSettings.SystemSettingsService`) with the acting user's id, the job and the run id —
+independent of the row, which is pruned and whose requester is nulled when the account is deleted.
+
+Under `ASPNETCORE_ENVIRONMENT=Testing` only the exchange-rate sync executes a manual run inline; the others
+stay unclaimed (no test may call MET or load ImageMagick).
 
 ## Photo thumbnails
 
@@ -1756,6 +1977,277 @@ pixels.
   extended window in the incident record.
 - **Returning.** Restore the binding and deploy the patched image. The client falls back to originals
   throughout.
+
+## Photo originals
+
+Issue #428 moves the original of every photo uploaded in the journal or the photo library out of the
+database (`FileBlob`) onto the **`PhotoOriginals`** file-storage feature. Files uploaded anywhere else —
+finance documents, contract and journal attachments, avatars — stay where they were. A photo now owns its
+bytes: it has no Files-store row, `files.read` does not reach it, and its original is served by
+`GET /api/photos/{id}/content` under `photos.read`.
+
+### Release note
+
+- **One migration**, `MovePhotoOriginalsToObjectStore`: new columns on `Photos` (`StoredObjectId`, `FileName`,
+  `ContentType`, `SizeBytes`, `Sha256Hash`, `LegacyFileId`; `FileId` becomes nullable), three tables
+  (`PhotoOriginalBuckets`, `PhotoOriginalBackfillLeases` with its one row, `PhotoOriginalBackfillFailures`) and
+  two checks (`CK_Photos_ExactlyOneSource`, `CK_Photos_OriginalComplete`). **`Down()` only works before the
+  backfill has moved anything**: once a photo's `FileId` is `NULL` the column cannot become `NOT NULL` again.
+  Rolling back after that is a **backup restore**, nothing else.
+- **`FileStorage__Bindings__PhotoOriginals=primary`** on `api` and `worker`, in both compose files and the
+  AppHost. Without it both refuse to start (check B1). Keep the two services identical.
+- **One more background job on `/background-jobs`**, the photo-original move. Its runs are recorded from the
+  first release (migration `AddPhotoOriginalBackfillJobRuns` widens the run log's checks), and its counts need
+  `file-storage.read`.
+- **Upload is one multipart call**, `POST /api/photos`, rate-limited per user by `RateLimiting:PhotoUpload`
+  (120 per 10 minutes by default). It refuses with `507` when the volume's free space is below the reserve —
+  the store's 1 GB floor plus 4 GB — and with `409` (`photo-duplicate`) when the same image is already a photo.
+  Creating a photo from an existing Files-store file is gone.
+- **Thumbnails become graced.** Their release used to be *Immediate*; it now waits for the deletion grace
+  like everything else.
+
+### The backfill
+
+The worker moves existing originals on its own, oldest photo first, 25 per tick every 30 seconds within a
+60-second budget, behind a single lease row so only one replica runs it. For each photo it writes the file,
+reads it back and compares the SHA-256 before the database changes; then, in one transaction that first
+locks the file row, it repoints the photo and deletes the old file **only if nothing else references it**
+(an attachment, an avatar, a contract file — the check is derived from the database model, not a list). A
+file still in use elsewhere is **copied** and kept; the count of those is reported.
+
+It does nothing while the photo volume is degraded or below the reserve. A storage or database error stops
+the tick and backs off 1, 5, 15, then 60 minutes; no photo is blamed for it. A photo that cannot be moved for
+a reason of its own is **parked** with a code and never retried automatically:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete the photo. |
+| `read` | The bytes are missing, a different length, or the type is not a photo type. | Same. |
+| `too-large` | The file is larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the photo in the database. |
+| `error` | An unexpected failure that is neither of the above nor a storage or database outage (the worker log names the exception type and the photo id). | Read the log line, fix the cause, then retry. |
+
+A parked photo stays readable from the database exactly as before. **To retry**, delete its row:
+
+```sql
+DELETE FROM PhotoOriginalBackfillFailures WHERE PhotoId = '{{ PHOTO_ID }}';
+```
+
+Progress — remaining, parked by code, copied-shared, the back-off — is on **`/background-jobs`** (the
+*Photo original move* tile, its status card and its runs, each run counting the photos moved, copied, parked and
+the interruptions) and on `GET /api/file-storage/photo-backfill`, both under `file-storage.read`. They report
+counts and codes only, never a name. A manual run from the page ends a back-off early; it does not retry a parked
+photo — that is still the `DELETE` above. Once nothing is left to move the job records nothing more, and its tile
+keeps showing its last run.
+
+### Erasure of a photo original
+
+A deleted photo's original waits for the deletion grace (default 24 h, at most 168 h) before the hourly job
+removes it, so a backup taken in that window still holds it. For an erasure request that cannot wait, lower
+**Deletion grace** at `/settings` to 1 h, delete the photo, and restore the setting after the next
+maintenance pass. The file name on disk is the sanitized original name; never log or share a volume
+listing.
+
+### Backup
+
+Photo originals are **primary data**, unlike thumbnails: the volume that holds `PhotoOriginals` must be in
+every backup, copied after the database dump and within the grace (see [Backup and
+restore](#backup-and-restore)). A database restored without its volume makes every moved photo unreadable,
+and the disk check's breaker halts clean-up rather than quarantine the volume.
+
+## Files on the object store
+
+Issue #448 moves every other file out of the database (`FileBlob`) onto three file-storage features, one per
+area. Placement is not an access boundary: who may read a file is still decided by the claim of the record it is
+attached to.
+
+| Area | Feature | Root on the volume | What lands there |
+|---|---|---|---|
+| Finance | `FinanceFiles` | `finance-files/` | Account, transaction, contract, tax-statement and property documents; file-analysis uploads; anything not linked to a journal record |
+| Journal | `JournalFiles` | `journal-files/` | Journal-entry and task attachments |
+| Contacts | `ContactAvatars` | `contact-avatars/` | Contact images |
+
+Each file sits at `<root>/<upload year>/<bucket>/<sanitized original name>.<extension>`. The area is chosen once,
+at upload: the upload form sends `area` (`Finance` or `Journal`), the avatar path always writes `ContactAvatars`.
+A file later attached somewhere else stays where it was put.
+
+### Release note
+
+- **Bind the three features before you upgrade.** Add `FileStorage__Bindings__FinanceFiles`,
+  `FileStorage__Bindings__JournalFiles` and `FileStorage__Bindings__ContactAvatars` to **both** `api` and `worker`
+  (the base compose file and the AppHost bind all three to `primary`). Without them both refuse to start (check
+  B1). Keep the two services identical; `FileStorageDeploymentParityTests` enforces it for the shipped files.
+- **One migration**, `MoveFilesToObjectStore`: three nullable columns on `FileMetadata`
+  (`FinanceStoredObjectId`, `JournalStoredObjectId`, `ContactAvatarStoredObjectId`, each `RESTRICT` to
+  `StoredObjects`), `FileBlobId` becomes nullable, the check `CK_FileMetadata_ExactlyOneSource`, and three tables
+  (`StoredFileBuckets`, `FileBlobBackfillLeases` with its one row, `FileBlobBackfillFailures`, which has no
+  foreign key). The run log's checks widen for the new job type. **`Down()` only works before the backfill has
+  moved anything**; after that, rolling back is a **backup restore**.
+- **Uploads go to disk from the first request.** `POST /api/files` takes a required `area` form field and is
+  rate-limited per user by `RateLimiting:FileUpload` (120 per 10 minutes by default); the contact-avatar upload
+  shares that limit. An upload refuses with `507` when the volume is below the reserve (the store's 1 GB floor
+  plus 4 GB), `503` when it is degraded, and `429` past the limit — each with `Retry-After` where it applies.
+  Nothing is stored on a refusal, and no bucket slot is taken.
+- **Downloads are unchanged on the wire** (disposition, content type) and now carry `nosniff`, a strong `ETag`,
+  `Cache-Control: private, no-cache` and range support, whether the file is still in the database or on disk.
+- **`fileBlobId` is gone from every attachment DTO.** A client that read it must stop.
+- **`POST /api/files` validates `description`** at 256 characters and answers `400` where it used to cut the text
+  silently.
+- **One more background job on `/background-jobs`**, the file move. Its counts need `file-storage.read`.
+- **The `FileBlob` table stays** until a later release has seen every deployment report `remaining = 0`. Do
+  not drop it by hand.
+
+### The backfill
+
+The worker moves the remaining files on its own, oldest first, 25 per tick every 30 seconds within a 60-second
+budget, behind a single lease row. Each file's area is decided from what references it **at move time**:
+
+| References | Area |
+|---|---|
+| None, or any finance record | Finance |
+| Only journal entries or tasks | Journal |
+| Only a contact, as its image, with an image content type | Contacts |
+| Only a contact, with any other content type | Finance |
+
+For each file it writes the bytes, reads them back and compares the SHA-256, then, in one transaction that first
+locks the file row and re-classifies it, repoints the row and deletes the blob. A file still wrapped by a photo
+that has not moved yet is left for the photo move and counted as *waiting on photos*. The job skips an area whose
+volume is degraded or below the reserve and keeps moving the others; with nothing movable on a healthy area it
+holds as *storage unavailable*. A storage or database error backs off 1, 5, 15, then 60 minutes.
+
+A file that cannot be moved for a reason of its own is **parked** and never retried automatically:
+
+| Code | Meaning | What to do |
+|---|---|---|
+| `hash` | The stored bytes do not match their recorded SHA-256, or the copy did not read back identically. | Restore the file from a backup, or delete it. |
+| `read` | The bytes are missing or a different length from the recorded size. | Same. |
+| `too-large` | Larger than `FileStorage:MaxFileSizeBytes`. | Raise that limit and retry, or leave the file in the database. |
+| `type` | The content type has no file extension the store accepts. | Leave it in the database, or delete and re-upload it as a supported type. |
+| `error` | An unexpected failure that is neither of the above nor an outage; the worker log names the exception type and the file id. | Fix the cause, then retry. |
+
+A parked file stays readable from the database exactly as before. **To retry**, delete its row:
+
+```sql
+DELETE FROM FileBlobBackfillFailures WHERE FileId = '{{ FILE_ID }}';
+```
+
+A failure row whose file has since been deleted is removed on the next tick. Progress — `remaining` (split into
+`toMove`, `waitingOnPhotos` and `failed`), `remainingBytes`, parked by code, files on disk per area and the
+back-off — is on `/background-jobs` (the *File move* card and its runs) and on `GET /api/file-storage/file-backfill`,
+both under `file-storage.read`. Counts and codes only, never a name or path. Size the volumes from
+`remainingBytes` **before** the upgrade.
+
+### Moving the finance area to its own volume
+
+Every area may bind to its own volume. Rebinding an area that already holds objects is not a configuration
+change: the rows name the volume they were written to, so the new binding applies to new writes only and the
+old volume must stay mounted. Plan the split before the upgrade, while the area is still empty.
+
+### Erasure and backup
+
+A deleted file waits for the deletion grace (default 24 h) before the hourly maintenance pass removes it from disk;
+for an erasure request that cannot wait, follow the procedure under [Erasure of a photo
+original](#erasure-of-a-photo-original). The file name on disk is the sanitized original name — personal data —
+so never log or share a volume listing. All three areas are **primary data**: every volume they are bound to
+must be in every backup, copied after the database dump and within the grace (see [Backup and
+restore](#backup-and-restore)).
+
+## News reader: feeds, what leaves the deployment, and the worker's network
+
+The news reader (issue #470) subscribes to RSS, Atom, RDF and JSON feeds. **Only the worker fetches**: the API makes
+no outbound request for news. The worker's news job runs every 30 seconds on every replica — purge, claim due feeds,
+fetch, ingest, images, and an hourly maintenance pass — and coordinates replicas through per-feed leases on the
+`NewsFeedFetchStates` rows and the shared `NewsHostThrottle` rows, never through process state. It appears on
+`/background-jobs` as **News feeds** (`JobType.NewsFeedFetch = 9`), gated on `news-feeds.update`.
+
+### Release note
+
+- **A new storage binding.** The `NewsArticles` feature keeps every article's source item, plain text and images on the
+  file store, under `news/<feedId>/<bucket>/<articleId>/<storedObjectId>.<ext>` (opaque names: no publisher or user text
+  is ever in a path). Both compose files' base and the AppHost bind it to `primary`. **An operator with their own
+  bindings must add `FileStorage__Bindings__NewsArticles` to both `api` and `worker`**, or startup check B1 fails with
+  `UnboundFeature`.
+- **The worker image gains ICU** (`icu-libs`, `icu-data-full`) and asserts it at startup (`GlobalizationGuard`, now in
+  `Odyssey.Core` and called by both hosts): the API and the worker must map an IDN feed host to the same punycode key.
+- **The compose network topology changed** — see *Network topology* below. If you run your own compose overrides that
+  attach networks, read it before upgrading.
+- **The worker gets `stop_grace_period: 30s`**, so a deploy stops its fetches cleanly (leases cleared, nothing counted
+  as a crash). Keep it if you write your own compose file.
+- **Nine settings** under **`/settings` → News** (`NewsDefaultFetchIntervalMinutes`, `NewsMaxFeeds`, the image and text
+  quotas and caps, and `NewsPrivateHostAllowList`, which needs `system-settings.security.update`). They reach the worker
+  within the 30 s settings TTL; the allow-list is read uncached, so a revoked grant binds on the next fetch.
+- **Rolling back** past this release drops every news table (the migration's `Down()` deletes the job's run-log rows
+  first). The news `StoredObjects` rows remain and log the B4 Critical ("a live row of an unknown feature"). Delete every
+  feed and wait out the deletion grace (168 h by default) **before** rolling back, so the files are gone too.
+
+### What leaves the deployment
+
+Outbound `GET`s go only to the feed hosts users subscribe to and the image hosts those feeds reference. The User-Agent
+is fixed and anonymous (`OdysseyNewsReader/1.0`); there are no cookies, no proxy (`HTTPS_PROXY` is never consulted), and
+the browser never contacts a publisher. Every connection is vetted at connect time: global unicast only, ports 80 and
+443, redirects followed manually (at most five, each re-checked), at least 2 s between requests to one host across all
+replicas. A private or loopback feed host is opened only by an entry in `NewsPrivateHostAllowList`, and only for that
+feed's own host; the hard-denied ranges (metadata endpoints, link-local, `0/8`, `240/4` and the rest) are never opened.
+
+Feed URLs, including any token in a query string, are stored in plain text in MariaDB and its backups (an accepted
+residual). They are never shown to a caller without `news-feeds.update` and are logged by host only. A private feed's
+item links and image URLs can carry tokens too; the stored source files keep them.
+
+### Storage, quotas and headroom
+
+- **Headroom.** News writes stop at the upload threshold **plus 1 GiB** of free space on the volume, so news always stops
+  before user uploads do. A refused write is a per-feed transient skip and the job reports `StorageUnavailable`.
+- **Text and source quota** (`NewsTextStoreMaxGiB`, 20 GiB by default). When it is reached no new article is stored,
+  affected feeds report health `QuotaReached` with reason `TextQuota`, and the job card shows a warning line — it is
+  **not** a held state. Nothing is deleted. To resume, raise the setting; the hourly maintenance pass clears the reason.
+- **Image quota** (`NewsImageStoreMaxGiB`, 50 GiB) and the daily caps defer images rather than failing them; raising the
+  quota makes deferred images due again.
+- **Inodes.** One folder per article holds 2–7 files. Size a dedicated volume's inode count for that, not only its bytes.
+- The per-feed counters and the storage totals are relative increments, recounted hourly; a drift is corrected and logged
+  as a Warning.
+
+### Network topology
+
+`docker-compose.yml` now declares four networks of its own (issue #470 §11.3):
+
+| Network | Internal | Members |
+|---|---|---|
+| `db_api` | yes | `mariadb`, `api` |
+| `db_worker` | yes | `mariadb`, `worker` |
+| `db_migrations` | yes | `mariadb`, `migrations` |
+| `egress` | no | `worker` only |
+
+`api` and `client` stay on `default` for user traffic (Caddy, the client's `/api/` proxy, outbound mail). The dev stack
+also keeps `mariadb` on `default`, solely so its loopback port `3307` can be published; the production overlay drops it
+(`networks: !override`, Compose 2.24.4 or later — the same version `!reset` already needs).
+
+**What it protects.** The worker runs third-party parsers over whatever publishers send. On exactly `db_worker` and
+`egress`, it shares no network with `api` or `client` and cannot reach either directly, and the database is reachable
+from each consumer over its own internal network only.
+
+**What it does not.** `egress` is an ordinary outbound network: the control against every other destination — the
+host's own LAN, cloud metadata, other containers you publish — is still the news egress address policy above, not this
+split. It is defence in depth. The worker still holds the Data Protection key ring read-only (see *Two containers hold
+the key ring*). **If you add networks of your own, never attach the worker to one the `api` is on.**
+
+### OPML import and export (issue #508)
+
+The Feeds page can export the feed list as OPML 2.0 (`GET /api/news-feeds/opml`, or `POST …/opml/export` for chosen
+feeds) and import an OPML file (`POST /api/news-feeds/opml`). The import makes **no outbound request** — no fetch and no
+DNS lookup; the worker fetches the new feeds on its normal schedule, at most four at a time under the per-host throttle,
+so a large import is fetched over its first hours rather than in one burst. Two operator-facing facts:
+
+- **The proxies cap the upload too.** `NewsOpmlMaxImportMegabytes` (**`/settings` → News**, 64 MB by default, the
+  security claim like every import size cap) is enforced by the API, but under Compose the client container's nginx
+  sets `client_max_body_size 65m` (`Odyssey.Client/nginx/templates/default.conf.template`) and Caddy's `request_body`
+  matches it, so a value above 64 MB has no effect there until both are raised — the same chain as *Upload size* above.
+  `NewsOpmlMaxImportEntries` (100,000, the ordinary claim) can only be lowered.
+- **One OPML import at a time is enforced per API process**, not deployment-wide, and the upload must arrive at
+  64 KiB/s or faster after a 10 s grace (HTTP/1.1; on HTTP/2 the server-wide rate applies). Odyssey runs one API
+  replica; if the API ever scales out, the feed-limit bound under concurrent imports holds per replica, not globally.
+
+An export carries every feed's fetch URL, so it is gated on `news-feeds.update`, the claim that already reads them, and
+is sent `Cache-Control: no-store`. A downloaded file keeps any token a private feed URL embeds after the caller's claim
+is revoked — an accepted residual for a single-household instance.
 
 ## Security checklist
 

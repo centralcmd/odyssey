@@ -3,6 +3,8 @@ using Odyssey.Dtos.Finance;
 using Odyssey.Core.Pagination;
 using Odyssey.Dtos;
 using Microsoft.EntityFrameworkCore;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 
 namespace Odyssey.Core.Finance;
 
@@ -16,38 +18,59 @@ public class FileService
     public const int RenameAttempts = 3;
 
     private readonly IReadOnlyList<IFileRenameObserver> renameObservers;
+    private readonly StoredFileWriter? writer;
+    private readonly IObjectStore? store;
+    private readonly StoredFileContentSource source;
 
+    /// <param name="writer">The file store's writer (issue #448): every upload goes to disk. Null only in a host with no
+    /// file store, where an upload is a <c>503</c> and every read is of a legacy file.</param>
     public FileService(
         OdysseyContext context,
         FileValidationService validationService,
         TimeProvider? timeProvider = null,
-        IEnumerable<IFileRenameObserver>? observers = null)
+        IEnumerable<IFileRenameObserver>? observers = null,
+        StoredFileWriter? writer = null,
+        IObjectStore? store = null,
+        StoredFileContentSource? source = null)
     {
         this.context = context;
         this.validationService = validationService;
         this.timeProvider = timeProvider ?? TimeProvider.System;
         renameObservers = [.. observers ?? []];
+        this.writer = writer;
+        this.store = store;
+        this.source = source ?? new StoredFileContentSource(context, store);
     }
 
-    public async Task<FileUploadResponse> UploadFileAsync(FileUpload file, string userId, string? description, CancellationToken cancellationToken = default)
+    /// <summary>The files <c>/api/files</c> may show: every one but a photo's own original (issue #428).</summary>
+    private IQueryable<FileMetadata> VisibleFiles => context.FileMetadata.Where(FileReferenceCounter.VisibleInFilesStore(context));
+
+    /// <summary>
+    /// Validates the upload, writes it to <paramref name="area"/>'s folder on the file store and creates its
+    /// <see cref="FileMetadata"/> in one save (issue #448 §3.3). The body is streamed from the caller's spooled form file —
+    /// never copied into a <c>byte[]</c> — and the size and hash recorded are the store's measurement of what it wrote.
+    /// </summary>
+    public async Task<FileUploadResponse> UploadFileAsync(
+        FileUpload file, FileUploadArea area, string userId, string? description, CancellationToken cancellationToken = default)
     {
+        if (!Enum.IsDefined(area))
+        {
+            throw new DomainValidationException("Choose where the file is stored: Finance or Journal.", code: null, field: "area");
+        }
+
         await validationService.ValidateFileAsync(file, cancellationToken);
+        if (writer is null)
+        {
+            throw new FileStorageUnavailableException("File storage is not set up on this server.");
+        }
 
-        // Compute hash
-        await using var stream = file.OpenReadStream();
-        var hash = await validationService.ComputeSha256HashAsync(stream);
-        stream.Position = 0; // Reset stream for reading content
-
-        var content = new byte[file.Length];
-        await stream.ReadExactlyAsync(content, cancellationToken);
-
-        var fileMetadata = StageUpload(
-            content,
-            validationService.SanitizeFileName(file.FileName),
-            file.ContentType,
-            userId,
-            description,
-            precomputedHash: hash);
+        FileMetadata fileMetadata;
+        await using (var stream = file.OpenReadStream())
+        {
+            fileMetadata = await writer.StageNewFileAsync(
+                context, StoredFileAreas.For(area), stream, validationService.SanitizeFileName(file.FileName), file.ContentType,
+                userId, description, Math.Max(1, file.Length), cancellationToken);
+        }
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -61,65 +84,9 @@ public class FileService
             fileMetadata.Description);
     }
 
-    /// <summary>
-    /// Queues a new <see cref="FileBlob"/> + <see cref="FileMetadata"/> pair onto the caller's context
-    /// and returns the metadata, <b>without saving</b> (issue #86 §5.6) — the same shape
-    /// <c>SecretSettingsService.StageClearAsync</c> was carved out for in issue #8.
-    ///
-    /// <para>
-    /// This exists because <see cref="UploadFileAsync"/> is not composable: it commits, it takes a
-    /// <see cref="FileUpload"/> (which the vCard import path does not have at all), and it hashes the
-    /// <i>original</i> stream — so it can store neither a stripped body nor a generated filename. A
-    /// contact avatar must stage its file, release the previous one and repoint the contact in ONE
-    /// transaction, which a method that saves cannot take part in.
-    /// </para>
-    ///
-    /// <para>
-    /// It performs <b>no validation</b>. The caller owns that, because the two callers validate
-    /// differently: an ordinary upload against the global allow-list and cap, an avatar against the
-    /// narrower image policy that also strips and re-verifies the bytes it hands in here.
-    /// </para>
-    /// </summary>
-    /// <param name="content">The exact bytes to store — already stripped, where the caller strips.</param>
-    /// <param name="fileName">A <b>generated</b> name for an avatar; never the user's original filename.</param>
-    /// <param name="contentType">The <b>validated</b> content type, not the client-declared one.</param>
-    /// <param name="precomputedHash">The SHA-256 when the caller already has it; otherwise it is computed here.</param>
-    public FileMetadata StageUpload(
-        byte[] content,
-        string fileName,
-        string contentType,
-        string? userId,
-        string? description,
-        string? precomputedHash = null)
-    {
-        var fileBlob = new FileBlob
-        {
-            Id = Guid.NewGuid(),
-            Content = content
-        };
-
-        var fileMetadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = userId,
-            FileName = fileName,
-            ContentType = contentType,
-            SizeBytes = content.LongLength,
-            Sha256Hash = precomputedHash ?? Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content)).ToLowerInvariant(),
-            FileBlobId = fileBlob.Id,
-            Description = description?.Length > 256 ? description[..256] : description,
-            UploadedAtUtc = timeProvider.GetUtcNow().UtcDateTime
-        };
-
-        context.FileBlob.Add(fileBlob);
-        context.FileMetadata.Add(fileMetadata);
-
-        return fileMetadata;
-    }
-
     public async Task<FileMetadataResponse?> GetFileMetadataAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
+        var metadata = await VisibleFiles
             .AsNoTracking()
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
@@ -140,17 +107,22 @@ public class FileService
 
     public async Task<(FileMetadataResponse? Metadata, Stream? Content)> GetFileContentAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
-            .Include(fm => fm.FileBlob)
+        var metadata = await VisibleFiles
             .AsNoTracking()
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
-
-        if (metadata?.FileBlob is null)
+        if (metadata is null)
         {
             return (null, null);
         }
 
-        var contentStream = new MemoryStream(metadata.FileBlob.Content);
+        // The one read path (issue #448 §3.4): a file on disk streams from the store, a legacy one from its blob.
+        var content = await source.OpenAsync(VisibleFiles.Where(fm => fm.Id == fileId), cancellationToken);
+        if (content is null)
+        {
+            return (null, null);
+        }
+
+        var contentStream = content.Content;
         var response = new FileMetadataResponse(
             metadata.Id,
             metadata.FileName,
@@ -168,7 +140,7 @@ public class FileService
         FilesQueryParams query,
         CancellationToken cancellationToken = default)
     {
-        var q = context.FileMetadata.AsNoTracking().AsQueryable();
+        var q = VisibleFiles.AsNoTracking();
 
         var term = ListQuery.NormalizeSearch(query.Search);
         if (term is not null)
@@ -223,7 +195,7 @@ public class FileService
 
     public async Task<FileMetadataResponse?> UpdateFileMetadataAsync(Guid fileId, UpdateFileMetadataRequest request, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata.FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
+        var metadata = await VisibleFiles.FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
         if (metadata == null)
         {
@@ -317,8 +289,7 @@ public class FileService
 
     public async Task<bool> DeleteFileAsync(Guid fileId, CancellationToken cancellationToken = default)
     {
-        var metadata = await context.FileMetadata
-            .Include(fm => fm.FileBlob)
+        var metadata = await VisibleFiles
             .FirstOrDefaultAsync(fm => fm.Id == fileId, cancellationToken);
 
         if (metadata is null)
@@ -339,12 +310,8 @@ public class FileService
             contact.AvatarFileId = null;
         }
 
-        if (metadata.FileBlob is not null)
-        {
-            context.FileBlob.Remove(metadata.FileBlob);
-        }
-
-        context.FileMetadata.Remove(metadata);
+        // The blob goes with a legacy file; a file on disk is released for erasure after the deletion grace (issue #448).
+        await StoredFileRemoval.StageRemoveAsync(context, store, metadata, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
         return true;

@@ -45,6 +45,14 @@ public interface IObjectStore
 
     /// <summary><see cref="StageRelease(StoredObject, bool)"/> for an id, loading the row into the caller's context.</summary>
     Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Re-reads the file of a row this caller just wrote — returned by <see cref="PutAsync"/>, committed in the
+    /// caller's context but not yet saved — and returns the SHA-256 of what is on disk, after flushing its folder so
+    /// the rename that placed it is durable too (issue #428 §3.4 step 5). For a caller about to destroy the only other
+    /// copy of the bytes. Residual: the read may be served from the page cache.
+    /// </summary>
+    Task<string> ReadBackHashAsync(StoredObject storedObject, CancellationToken cancellationToken);
 }
 
 public sealed partial class ObjectStore(
@@ -279,6 +287,42 @@ public sealed partial class ObjectStore(
         var row = await context.StoredObjects.SingleOrDefaultAsync(o => o.Id == storedObjectId, cancellationToken)
             ?? throw new DomainNotFoundException("The file was not found.");
         StageRelease(row, immediate);
+    }
+
+    public async Task<string> ReadBackHashAsync(StoredObject storedObject, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(storedObject);
+        if (context.Entry(storedObject).State == EntityState.Detached || storedObject.State != StoredObjectState.Committed)
+        {
+            throw ContractViolation("ReadBackHashAsync needs a committed row tracked by the caller's context.");
+        }
+
+        var feature = Feature(storedObject.FeatureKey);
+        var volume = volumes.ForExisting(storedObject.VolumeId);
+        if (!StorageNames.IsConformingPath(storedObject.RelativePath, feature.RootFolder))
+        {
+            throw Security(volume, $"Stored object {storedObject.Id} has a path that fails the structural check.");
+        }
+
+        var fullPath = VolumeFileSystem.Contain(volume.RootPath, storedObject.RelativePath, feature.RootFolder);
+        VolumeFileSystem.EnsureNoLinks(volume.RootPath, fullPath);
+        try
+        {
+            VolumeFileSystem.FlushDirectory(Path.GetDirectoryName(fullPath)!);
+            await using var stream = new FileStream(fullPath, new FileStreamOptions
+            {
+                Mode = FileMode.Open,
+                Access = FileAccess.Read,
+                Share = FileShare.Read,
+                Options = FileOptions.Asynchronous | FileOptions.SequentialScan,
+            });
+            var digest = await SHA256.HashDataAsync(stream, cancellationToken);
+            return Convert.ToHexString(digest).ToLowerInvariant();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            throw VolumeFailure(volume, ex);
+        }
     }
 
     private bool IsImmediate(string featureKey) => catalogue.Find(featureKey)?.ReleaseMode == StorageReleaseMode.Immediate;

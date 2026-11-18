@@ -75,6 +75,13 @@ public sealed class FileStorageVerifier(
                 return FileStorageVerification.Inactive;
             }
         }
+        else if (!context.Database.IsRelational())
+        {
+            // The EF InMemory provider applies HasData only through EnsureCreated, and only to a store nothing has read
+            // yet: the queries below would otherwise leave a host with volumes (every API test factory since issue
+            // #428 binds PhotoOriginals) without its seeded reference data — currencies, roles, settings.
+            await context.Database.EnsureCreatedAsync(cancellationToken);
+        }
 
         // ── Configuration checks (C1–C5, B1–B3) ──────────────────────────────────────────────────────────
         var roots = new List<(string Name, string Root, string Real)>();

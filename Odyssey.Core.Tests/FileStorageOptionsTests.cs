@@ -6,19 +6,20 @@ namespace Odyssey.Core.Tests;
 public class FileStorageOptionsTests
 {
     [Fact]
-    public void Defaults_Are64MbCapWith1MbEnvelopeHeadroom()
+    public void Defaults_Are10GbCeilingWith1MbEnvelopeHeadroomAnd65MbDefaultBody()
     {
         var options = new FileStorageOptions();
 
-        Assert.Equal(64L * 1024 * 1024, options.MaxFileSizeBytes);
+        Assert.Equal(10L * 1024 * 1024 * 1024, options.MaxFileSizeBytes);
         Assert.Equal(1L * 1024 * 1024, options.RequestEnvelopeHeadroomBytes);
+        Assert.Equal(65L * 1024 * 1024, options.DefaultMaxRequestBodyBytes);
     }
 
     [Fact]
     public void Defaults_MatchAppsettingsValue()
     {
         // appsettings.json pins FileStorage:MaxFileSizeBytes to this literal; keep them in lockstep.
-        Assert.Equal(67108864L, new FileStorageOptions().MaxFileSizeBytes);
+        Assert.Equal(10737418240L, new FileStorageOptions().MaxFileSizeBytes);
     }
 
     [Fact]

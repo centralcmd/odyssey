@@ -1,0 +1,17 @@
+/* The News status panel (Odyssey Design System · ui_kits/web/background-jobs.css, .bgj-news*, .bgj-quota*). */
+.bgj-news { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
+.bgj-news-lead { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-quotas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(18rem, 100%), 1fr)); gap: var(--space-3) var(--space-5); }
+.bgj-quota { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
+.bgj-quota-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-3); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); }
+.bgj-quota-label { font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
+.bgj-quota-value { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
+.bgj-quota-value b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.bgj-quota-full-ic { font-size: var(--icon-sm); color: var(--pending-text); }
+.bgj-news-topwrap { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.bgj-news-cap { margin: 0; font: var(--fw-medium) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.bgj-news-top { margin: 0; padding-inline-start: var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
+.bgj-news-top li { overflow-wrap: anywhere; }
+.bgj-news-top li .mono { margin-inline-start: var(--space-2); color: var(--mud-palette-text-secondary); }
+.bgj-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
+.bgj-link:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }

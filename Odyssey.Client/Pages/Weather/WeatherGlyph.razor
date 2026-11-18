@@ -15,7 +15,7 @@
         }
         else
         {
-            <span class="wx-glyph-ic" role="img" aria-label="@symbol.Label"><OdsMIcon Name="@symbol.Icon" Size="@Size" /></span>
+            <span class="wx-glyph-ic" role="img" aria-label="@(Name ?? symbol.Label)"><OdsMIcon Name="@symbol.Icon" Size="@Size" /></span>
         }
     </span>
 }
@@ -28,6 +28,9 @@
     [Parameter] public bool Labelled { get; set; }
 
     [Parameter] public string? Class { get; set; }
+
+    /// <summary>The accessible name when unlabelled, in place of the condition words (the agenda's <i>Weather: …</i>).</summary>
+    [Parameter] public string? Name { get; set; }
 
     private WeatherSymbolInfo? _symbol;
 

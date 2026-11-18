@@ -39,7 +39,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] RecurrencePatternsQueryParams query, CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken));
+        return Ok(await service.ListAsync(query, cancellationToken, User.LocationClaims()));
     }
 
     [HttpGet("{id}", Name = "GetRecurrencePattern")]
@@ -50,7 +50,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var pattern = await service.Get(id, cancellationToken);
+        var pattern = await service.Get(id, cancellationToken, User.LocationClaims());
         return pattern is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(pattern);
     }
 
@@ -65,7 +65,7 @@ public sealed class RecurrencePatternsController : ControllerBase
         [FromQuery][Range(1, ListDefaults.MaxLimit)] int limit = ListDefaults.DefaultLimit,
         CancellationToken cancellationToken = default)
     {
-        var result = await service.ListEventsAsync(id, offset, limit, cancellationToken);
+        var result = await service.ListEventsAsync(id, offset, limit, cancellationToken, User.LocationClaims());
         return result is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(result);
     }
 
@@ -78,7 +78,7 @@ public sealed class RecurrencePatternsController : ControllerBase
     public async Task<IActionResult> ExportIcs(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        var export = await icsService.ExportPatternAsync(id, cancellationToken);
+        var export = await icsService.ExportPatternAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
         if (export is null)
         {
             return this.NotFoundProblem($"Recurrence pattern ID {id} not found.");
@@ -104,7 +104,7 @@ public sealed class RecurrencePatternsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var created = await service.Create(request, userId, cancellationToken);
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
         return CreatedAtRoute("GetRecurrencePattern", new { id = created.RecurrencePatternId }, created);
     }
 
@@ -123,7 +123,7 @@ public sealed class RecurrencePatternsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken);
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
         return updated is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(updated);
     }
 

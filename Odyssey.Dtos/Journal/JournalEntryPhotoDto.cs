@@ -2,10 +2,10 @@ namespace Odyssey.Dtos.Journal;
 
 /// <summary>
 /// A journal entry's photo link (issue #321 v4): a reference to a library <c>Photo</c> by
-/// <see cref="PhotoId"/> plus its gallery order. The read enriches each link with the library photo's
-/// <see cref="FileId"/> so the existing gallery/lightbox (which builds the content URL from the file id)
-/// keeps working unchanged. A link whose <see cref="PhotoId"/> no longer resolves is omitted from the
-/// read entirely, so <see cref="FileId"/> is never empty on a returned link.
+/// <see cref="PhotoId"/> plus its gallery order. Since issue #428 the client reaches the original through
+/// <c>GET /api/photos/{PhotoId}/content</c>; the read carries the photo's <see cref="Title"/> and effective
+/// <see cref="FileName"/> so the gallery can label it without the Files API. A link whose <see cref="PhotoId"/>
+/// no longer resolves is omitted from the read entirely.
 /// </summary>
 public sealed record JournalEntryPhotoDto
 {
@@ -13,7 +13,10 @@ public sealed record JournalEntryPhotoDto
 
     public required Guid PhotoId { get; set; }
 
-    public required Guid FileId { get; set; }
+    public string? Title { get; set; }
+
+    /// <summary>The effective file name (<c>Photo.FileName ?? FileMetadata.FileName</c>, issue #428 §5.4).</summary>
+    public string? FileName { get; set; }
 
     public required int Position { get; set; }
 

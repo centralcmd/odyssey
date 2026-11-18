@@ -179,20 +179,14 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
     private static FileAnalysisService NewService(OdysseyContext context, NoopAnalysisProvider? provider = null) =>
         new(context, provider ?? new NoopAnalysisProvider(), new ContactLookup(context),
             Options.Create(new FileAnalysisOptions { Enabled = true }),
-            new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance);
+            new EnabledSettingsLookup(), NullLogger<FileAnalysisService>.Instance,
+            new FileAnalysisJobQueue(context, Options.Create(new FileAnalysisOptions()), TimeProvider.System,
+                NullLogger<FileAnalysisJobQueue>.Instance),
+            new EmbeddedFileAnalysisPromptTemplate());
 
     private async Task MigrateAsync()
     {
-        await using (var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options))
-        {
-            await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-            await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-        }
-
-        await using var context = NewContext();
-        await context.Database.MigrateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
     }
 
     private OdysseyContext NewContext(IInterceptor? interceptor = null)
@@ -237,7 +231,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode,
             string promptTemplate, FileAnalysisTarget target, int maxTokens,
-            CancellationToken cancellationToken = default) =>
+            string? promptAddition, CancellationToken cancellationToken = default) =>
             Task.FromResult(new List<ExtractedTransaction>());
 
         public Task<List<MatchedCandidate>> MatchTransactionsAsync(
@@ -246,17 +240,21 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             IReadOnlyList<VocabularyEntry> tagVocabulary,
             FileAnalysisTarget target,
             int maxTokens,
+            MatchPromptOptions prompt,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(match?.Invoke(tagVocabulary) ?? []);
     }
 
     private sealed class EnabledSettingsLookup : IFileAnalysisSettingsLookup
     {
+        public Task<FileAnalysisSettings> GetUncachedAsync(CancellationToken cancellationToken = default) =>
+            GetAsync(cancellationToken);
+
         public Task<FileAnalysisSettings> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new FileAnalysisSettings(
                 "Anthropic", "United States", "Consent · GDPR Art. 6(1)(a)",
                 "https://www.anthropic.com/legal/privacy", 90, 0.60m,
-                MaxTokens: 8096, MatchMaxVocabulary: 500, MatchTimeoutSeconds: 60,
+                MaxTokens: 8096, MatchTimeoutSeconds: 60,
                 Model: "claude-sonnet-5", BaseUrl: "https://api.anthropic.com", IsDegraded: false));
 
         public Task<bool> IsEnabledAsync(CancellationToken cancellationToken = default) =>

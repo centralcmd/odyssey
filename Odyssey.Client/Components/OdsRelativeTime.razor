@@ -1,0 +1,48 @@
+@using System.Globalization
+@implements IDisposable
+@inject Odyssey.Client.Services.RelativeTimeTicker Ticker
+@*
+    OdsRelativeTime — "12 min ago" in a <time datetime>, with the absolute date and time as sr-only text
+    (issue #473 §4.1, AC 27): the absolute value is real text, never only a tooltip. The wording is the
+    design-system kit's (just now · N min ago · N h ago · yesterday · N days ago).
+
+    OdsRelativeDay is day-granular and static; this one re-renders once a minute from the ONE shared
+    RelativeTimeTicker, and announces nothing (it sits in no live region).
+*@
+
+<time datetime="@Iso" class="@($"odc-reltime {Class}".TrimEnd())">@Relative(Ticker.UtcNow, Value)<span class="odc-sr-only">@($", {Absolute(Value)}")</span></time>
+
+@code {
+    /// <summary>The instant to describe.</summary>
+    [Parameter, EditorRequired] public DateTimeOffset Value { get; set; }
+
+    [Parameter] public string? Class { get; set; }
+
+    private IDisposable? _subscription;
+
+    private string Iso => Value.UtcDateTime.ToString("yyyy-MM-ddTHH:mm:ssZ", CultureInfo.InvariantCulture);
+
+    protected override void OnInitialized() =>
+        _subscription = Ticker.Subscribe(() => _ = InvokeAsync(StateHasChanged));
+
+    /// <summary>The relative label for <paramref name="value"/> as of <paramref name="now"/>.</summary>
+    public static string Relative(DateTimeOffset now, DateTimeOffset value)
+    {
+        var minutes = (int)Math.Floor((now - value).TotalMinutes);
+        if (minutes < 1)
+            return "just now";   // includes a value slightly in the future (clock skew)
+        if (minutes < 60)
+            return $"{minutes} min ago";
+        var hours = minutes / 60;
+        if (hours < 24)
+            return $"{hours} h ago";
+        var days = hours / 24;
+        return days == 1 ? "yesterday" : $"{days:N0} days ago";
+    }
+
+    /// <summary>The absolute form, in the viewer's local time: "17 Nov 2026, 14:03".</summary>
+    public static string Absolute(DateTimeOffset value) =>
+        value.ToLocalTime().ToString("d MMM yyyy, HH:mm", CultureInfo.InvariantCulture);
+
+    public void Dispose() => _subscription?.Dispose();
+}

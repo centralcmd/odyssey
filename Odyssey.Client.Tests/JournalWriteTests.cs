@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Net;
 using Moq;
 using Odyssey.ApiClient;
@@ -39,8 +40,8 @@ public class JournalWriteTests
         ContactIds = [Guid.NewGuid()],
         Photos =
         [
-            new() { JournalEntryPhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), Position = 1, CreatedAt = Created },
-            new() { JournalEntryPhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), FileId = Guid.NewGuid(), Position = 0, CreatedAt = Created },
+            new() { JournalEntryPhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), Position = 1, CreatedAt = Created },
+            new() { JournalEntryPhotoId = Guid.NewGuid(), PhotoId = Guid.NewGuid(), Position = 0, CreatedAt = Created },
         ],
         Attachments = [.. attachmentFileIds.Select(Attachment)],
     };
@@ -87,7 +88,7 @@ public class JournalWriteTests
 
         var update = JournalWrite.WithoutAttachment(entry, removed);
 
-        Assert.Equal(entry.Photos.OrderBy(p => p.Position).Select(p => p.FileId), update.PhotoFileIds);
+        Assert.Equal(entry.Photos.OrderBy(p => p.Position).Select(p => p.PhotoId), update.PhotoIds);
     }
 
     // An id that is not attached is a no-op rather than an error: the UI can only offer files it just
@@ -137,12 +138,12 @@ public class JournalWriteTests
             Attachments = [Meta(fileA), Meta(fileB)],
         };
 
-        var created = JournalWrite.ToNew(draft);
-        var updated = JournalWrite.ToUpdate(draft, archived: true);
+        var created = JournalWrite.ToNew(draft, LocationLink.Keep(null));
+        var updated = JournalWrite.ToUpdate(draft, archived: true, LocationLink.Keep(null));
 
-        Assert.Equal([photoB, photoA], created.PhotoFileIds);
+        Assert.Equal([photoB, photoA], created.PhotoIds);
         Assert.Equal([fileA, fileB], created.AttachmentFileIds);
-        Assert.Equal(created.PhotoFileIds, updated.PhotoFileIds);
+        Assert.Equal(created.PhotoIds, updated.PhotoIds);
         Assert.Equal(created.AttachmentFileIds, updated.AttachmentFileIds);
         Assert.True(updated.Archived);
     }
@@ -156,10 +157,10 @@ public class JournalWriteTests
         var ordered = entry.Photos.OrderBy(p => p.Position).ToList();
 
         var draft = JournalEntryDraft.From(entry,
-            ordered.Select(p => new JournalDraftPhoto(p.FileId, "photo")), [Meta(file)]);
-        var update = JournalWrite.ToUpdate(draft, archived: false);
+            ordered.Select(p => new JournalDraftPhoto(p.PhotoId, "photo")), [Meta(file)]);
+        var update = JournalWrite.ToUpdate(draft, archived: false, draft.Place.Link(pickerShown: true));
 
-        Assert.Equal(ordered.Select(p => p.FileId), update.PhotoFileIds);
+        Assert.Equal(ordered.Select(p => p.PhotoId), update.PhotoIds);
         Assert.Equal([file], update.AttachmentFileIds);
     }
 

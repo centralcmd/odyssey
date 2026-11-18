@@ -1,4 +1,5 @@
 using DotNet.Testcontainers.Builders;
+using MySqlConnector;
 using Odyssey.Testing;
 using Testcontainers.MySql;
 using Xunit;
@@ -29,6 +30,14 @@ public sealed class MariaDbFixture : IAsyncLifetime
     // seeded dataset the seeder test asserts exact counts against.
     private const string RelationalDatabase = "odyssey_relational";
 
+    // Every wait in startup is bounded. Unbounded, a stuck image pull or a readiness probe that never
+    // succeeds hangs the whole `dotnet test` run until the CI job's 6-hour ceiling, with nothing in the
+    // log to say which (main's CI did exactly that from fa098ef on). A healthy start takes well under a
+    // minute with the image cached and a few minutes on a cold pull; these only end a start that will
+    // never finish, and the failure then names the stage it stopped in.
+    internal static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(10);
+    internal static readonly TimeSpan ReadinessTimeout = TimeSpan.FromMinutes(3);
+
     // Built in InitializeAsync, not a field initialiser: .Build() resolves the Docker endpoint and
     // throws DockerUnavailableException when no daemon is reachable, the one failure that may become a skip.
     private MySqlContainer? container;
@@ -43,6 +52,38 @@ public sealed class MariaDbFixture : IAsyncLifetime
     /// <summary>A connection string for an arbitrary (typically throwaway) database on the same server —
     /// for tests that need a private schema they fully own (the app user has server-wide privileges).</summary>
     public string ConnectionStringFor(string database) => BuildConnectionString(database);
+
+    /// <summary>
+    /// Drops <paramref name="database"/> if it exists and recreates it migrated to head, as a copy of a template the
+    /// collection migrates once (<see cref="MigratedSchemaTemplate"/>). Returns its connection string.
+    /// </summary>
+    /// <remarks>Use it wherever a test would otherwise drop, create and <c>MigrateAsync</c> a private database. A test
+    /// that needs a database before head (a <see cref="MigrationSeam"/> test) still migrates from empty.</remarks>
+    public async Task<string> CreateMigratedDatabaseAsync(string database)
+    {
+        var source = await TemplateAsync();
+        await using var server = new MySqlConnection(OdysseyConnectionString);
+        await server.OpenAsync();
+        await source.CopyToAsync(server, database);
+        return ConnectionStringFor(database);
+    }
+
+    private readonly SemaphoreSlim templateGate = new(1, 1);
+    private MigratedSchemaTemplate? template;
+
+    private async Task<MigratedSchemaTemplate> TemplateAsync()
+    {
+        await templateGate.WaitAsync();
+        try
+        {
+            return template ??= await MigratedSchemaTemplate.BuildAsync(
+                OdysseyConnectionString, ConnectionStringFor(MigratedSchemaTemplate.Database));
+        }
+        finally
+        {
+            templateGate.Release();
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -67,18 +108,42 @@ public sealed class MariaDbFixture : IAsyncLifetime
                 // mariadb image no longer ships — it would loop until timeout. Use the image's own
                 // healthcheck script instead (same one docker-compose uses).
                 .WithWaitStrategy(Wait.ForUnixContainer()
-                    .UntilCommandIsCompleted("healthcheck.sh", "--connect", "--innodb_initialized"))
+                    .UntilCommandIsCompleted(
+                        ["healthcheck.sh", "--connect", "--innodb_initialized"],
+                        strategy => strategy.WithTimeout(ReadinessTimeout)))
                 .Build();
 
-            await container.StartAsync();
+            // The pull, the create and the readiness wait together; a cancellation here is a Faulted start.
+            using (var startup = new CancellationTokenSource(StartupTimeout))
+            {
+                try
+                {
+                    await container.StartAsync(startup.Token);
+                }
+                catch (OperationCanceledException ex) when (startup.IsCancellationRequested)
+                {
+                    throw new TimeoutException(
+                        $"The {Image} container did not start within {StartupTimeout.TotalMinutes:0} minutes " +
+                        "(image pull, create, or the healthcheck.sh readiness wait). On CI, a Docker Hub pull " +
+                        "rate limit (HTTP 429) is the usual cause of a stalled pull.", ex);
+                }
+                catch (TimeoutException ex)
+                {
+                    // The wait strategy's own bound: the container runs, but MariaDB never reported ready.
+                    throw new TimeoutException(
+                        $"The {Image} container started but healthcheck.sh --connect --innodb_initialized did " +
+                        $"not pass within {ReadinessTimeout.TotalMinutes:0} minutes.", ex);
+                }
+            }
 
             // The image creates the shared database; add the isolated relational one too.
+            using var provisioning = new CancellationTokenSource(ReadinessTimeout);
             var result = await container.ExecAsync(
             [
                 "mariadb", "-uroot", $"-p{RootPassword}", "-e",
                 $"CREATE DATABASE IF NOT EXISTS {RelationalDatabase}; " +
                 $"GRANT ALL PRIVILEGES ON *.* TO '{AppUser}'@'%'; FLUSH PRIVILEGES;",
-            ]);
+            ], provisioning.Token);
 
             if (result.ExitCode != 0)
             {

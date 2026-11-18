@@ -47,7 +47,7 @@ public static class GlobalExceptionHandler
                     "Feature disabled on {Method} {Path}: {Message}",
                     context.Request.Method, context.Request.Path, disabled.Message);
                 return WriteAsync(context, disabled.StatusCode, disabled.Message,
-                    extensions: new Dictionary<string, object?> { ["code"] = disabled.Code });
+                    extensions: DomainExtensions(disabled));
 
             // The file store's 503 (issue #346 §9): a degraded volume usually recovers within a probe interval,
             // so the client is told when to try again.
@@ -94,10 +94,18 @@ public static class GlobalExceptionHandler
                     context.Request.Method, context.Request.Path);
                 return WriteAsync(context, StatusCodes.Status409Conflict, ConflictMessage);
 
+            // A body over an endpoint's [RequestSizeLimit] (issue #436 §7.7): the transport refuses it while model
+            // binding reads it. Status 413 only, a generic body, and never the exception's own message.
+            case BadHttpRequestException { StatusCode: StatusCodes.Status413PayloadTooLarge }:
+                // The route template, not the request path: a log line carries nothing the caller wrote.
+                logger.LogInformation("Request body too large on {Route}.",
+                    (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? "an unrouted request");
+                return WriteAsync(context, StatusCodes.Status413PayloadTooLarge, "The request is too large.");
+
             // A client disconnect (browser navigated away, download aborted) cancels RequestAborted and
             // surfaces here as an OperationCanceledException. Logging it as an unhandled 500 pollutes the
             // error dashboards on exactly the long-running paths where it happens most — the ICS/vCard
-            // exports, the data export and file analysis. There is nobody left to write a response to.
+            // exports and file analysis. There is nobody left to write a response to.
             case OperationCanceledException when context.RequestAborted.IsCancellationRequested:
                 logger.LogInformation("Request cancelled by client on {Method} {Path}.",
                     context.Request.Method, context.Request.Path);
@@ -124,12 +132,20 @@ public static class GlobalExceptionHandler
     {
         var errors = domain.Errors;
 
-        if (domain.Code is null && errors is null)
+        if (domain.Code is null && errors is null && domain.Extensions is null)
         {
             return null;
         }
 
         var extensions = new Dictionary<string, object?>();
+        if (domain.Extensions is { } extra)
+        {
+            foreach (var (key, value) in extra)
+            {
+                extensions[key] = value;
+            }
+        }
+
         if (domain.Code is { } code)
         {
             extensions["code"] = code;

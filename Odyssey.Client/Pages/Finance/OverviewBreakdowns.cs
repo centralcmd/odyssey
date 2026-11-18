@@ -42,10 +42,16 @@ public static class OverviewBreakdowns
                 TaxStatementStatusFilter.Archived => c.Archived,
                 _ => throw new ArgumentOutOfRangeException(nameof(key), key, null),
             },
-            new OdsBreakdownDef<TaxStatementStatusFilter>(TaxStatementStatusFilter.New, "New", "info", "fiber_new"),
-            new OdsBreakdownDef<TaxStatementStatusFilter>(TaxStatementStatusFilter.Approved, "Approved", "income", "check_circle"),
-            new OdsBreakdownDef<TaxStatementStatusFilter>(TaxStatementStatusFilter.Flagged, "Flagged", "expense", "flag"),
-            new OdsBreakdownDef<TaxStatementStatusFilter>(TaxStatementStatusFilter.Archived, "Archived", "outline", "inventory_2"));
+            TaxStatementStatusDefs);
+
+    /// <summary>The tax statement statuses; shared with the Tax statements Status filter.</summary>
+    public static readonly OdsBreakdownDef<TaxStatementStatusFilter>[] TaxStatementStatusDefs =
+    [
+        new(TaxStatementStatusFilter.New, "New", "info", "fiber_new"),
+        new(TaxStatementStatusFilter.Approved, "Approved", "income", "check_circle"),
+        new(TaxStatementStatusFilter.Flagged, "Flagged", "expense", "flag"),
+        new(TaxStatementStatusFilter.Archived, "Archived", "outline", "inventory_2"),
+    ];
 
     /// <summary>
     /// Budgets "By status": Active and Archived partition the whole file, so the total is the budget
@@ -54,6 +60,16 @@ public static class OverviewBreakdowns
     public static IReadOnlyList<OdsBreakdownRow> BudgetStatusRows(BudgetSummary? summary) =>
         OdsBreakdown.CountedStatusRows<bool>(
             archived => archived ? summary?.ArchivedCount ?? 0 : summary?.ActiveCount ?? 0,
-            new OdsBreakdownDef<bool>(false, "Active", "income", "task_alt"),
-            new OdsBreakdownDef<bool>(true, "Archived", "outline", "inventory_2"));
+            BudgetStatusDefs);
+
+    /// <summary>The budget statuses, keyed on "is archived"; shared with the Budgets Status filter.</summary>
+    public static readonly OdsBreakdownDef<bool>[] BudgetStatusDefs =
+    [
+        new(false, "Active", "income", "task_alt"),
+        new(true, "Archived", "outline", "inventory_2"),
+    ];
+
+    /// <summary>The Budgets Status filter: the overview's glyphs, on the wire values the list filters on.</summary>
+    public static readonly IReadOnlyList<OdsOption> BudgetStatusOptions =
+        OdsBreakdown.Options(BudgetStatusDefs, archived => archived ? "Archived" : "Active");
 }

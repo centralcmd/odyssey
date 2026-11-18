@@ -118,6 +118,25 @@ public sealed class OdsFileTypeKindTests
         Assert.Contains($"Kinds=\"OdsTypeRegistries.{registry}\"", dialogs[0].Value, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Issue #449: every finance host names the Finance area, so its uploads land under
+    /// <c>finance-files/</c>. The area is <c>EditorRequired</c>; this pins the value.
+    /// </summary>
+    [Theory]
+    [InlineData("Finance/AccountsCard.razor", "Finance")]
+    [InlineData("Finance/TransactionAttachDialog.razor", "Finance")]
+    [InlineData("Finance/TaxStatementsCard.razor", "Finance")]
+    [InlineData("Finance/PropertyDocumentsSection.razor", "Finance")]
+    [InlineData("Finance/ContractsCard.razor", "Finance")]
+    public void Each_attach_documents_host_names_its_upload_area(string file, string area)
+    {
+        var markup = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", file));
+        var dialogs = Regex.Matches(markup, @"<AttachDocumentsDialog\b.*?/>", RegexOptions.Singleline);
+
+        Assert.Single(dialogs);
+        Assert.Contains($"Area=\"Odyssey.Dtos.FileUploadArea.{area}\"", dialogs[0].Value, StringComparison.Ordinal);
+    }
+
     private static IReadOnlyList<OdsOption> OptionsField(string name) =>
         (IReadOnlyList<OdsOption>)typeof(OdsTypeRegistries).GetField(name)!.GetValue(null)!;
 

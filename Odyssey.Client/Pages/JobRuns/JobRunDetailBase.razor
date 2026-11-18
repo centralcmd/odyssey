@@ -1,0 +1,12 @@
+@*
+    The base run detail (issue #410 §3.6): what every run has, for a $kind this client does not know.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Duration")">@DurationText</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Processed")">@N(Run.ItemsProcessed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Failed")">@N(Run.ItemsFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Problem")">@ProblemText</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>

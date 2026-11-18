@@ -147,6 +147,20 @@ public partial class OdsFilesTable
     /// <summary>Accessible name for the table (no visible caption). Defaults to "Files".</summary>
     [Parameter] public string? AriaLabel { get; set; }
 
+    /// <summary>
+    /// A prefix that makes each row's menu-trigger id STABLE — derived from the file id rather than the table's
+    /// per-instance slot — so a host can hand it to a dialog's <c>ReturnFocusToId</c> and still find the trigger
+    /// after a re-render (centralcmd/odyssey#445 §6.8). Null (the default) keeps the slot ids. The prefix must be
+    /// unique on the page; <see cref="MenuTriggerId"/> builds the id the same way for the host.
+    /// </summary>
+    [Parameter] public string? MenuTriggerIdPrefix { get; set; }
+
+    /// <summary>The stable menu-trigger id of the row for <paramref name="fileId"/> under <paramref name="prefix"/>.</summary>
+    public static string MenuTriggerId(string prefix, string fileId) => $"{prefix}-{fileId}-menu";
+
+    private Func<object, string>? MenuTriggerIdForKey =>
+        MenuTriggerIdPrefix is { } prefix ? key => MenuTriggerId(prefix, (string)key) : null;
+
     private static readonly OdsTableSort DefaultUploadedSort = new("uploaded", OdsSortDirection.Desc);
 
     private static readonly OdsFileKindMeta NeutralKind =

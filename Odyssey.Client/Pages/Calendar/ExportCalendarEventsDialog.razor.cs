@@ -44,7 +44,7 @@ public partial class ExportCalendarEventsDialog
     private IReadOnlyCollection<string> _calendarValues => [.. _calendarIds.Select(id => id.ToString())];
 
     private IReadOnlyList<OdsOption> _calendarOptions =>
-        [.. Calendars.Select(c => new OdsOption(c.CalendarId.ToString(), c.Name) { Icon = "circle", IconColor = c.Color })];
+        [.. Calendars.Select(CalendarVisuals.Option)];
 
     protected override void OnParametersSet()
     {

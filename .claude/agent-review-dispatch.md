@@ -6,7 +6,7 @@ Shared mechanics for the skills that drive Odyssey's specialist review agents:
 |---|---|---|---|
 | `odyssey-spec-writer-backend` (Step 4) | A backend spec **issue** | 2 — architect, security | **Yes** — it updates the spec and rebuts findings |
 | `odyssey-spec-writer-frontend` (Step 4) | A frontend spec **issue** | 3 — frontend, accessibility, security | **Yes** — same |
-| `pr-review` | A **pull request** diff | 5 — architect, frontend, accessibility, security, tester | **Never** — pure relay |
+| `pr-review` | A **pull request** diff | 5 — architect, frontend, accessibility, security, tester | **Yes** — new commits on the head branch (only one this session may push to); never approves or merges |
 
 Everything below applies to all three. What differs — which agents, whether the orchestrator may edit,
 and the stop condition — stays in each skill. This file is the **single copy** of the mechanics; a second

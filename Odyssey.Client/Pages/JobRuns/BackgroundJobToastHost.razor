@@ -1,0 +1,71 @@
+@*
+    BackgroundJobToastHost — the Background jobs page's one toast stack (issue #410 §4, V3; Odyssey Design System ·
+    ui_kits/web/BackgroundJobs.jsx, BgjToastHost). OdsToast has no timer or shared stack of its own, so this page-local
+    host keeps them: newest on top, at most MaxVisible — the oldest SUCCESS is dropped first — success closing after
+    SuccessLifetime, an error staying until its keyboard-focusable Dismiss is used. Every toast is Live="false": the
+    page's announcers have already spoken it, so nothing is read twice (X2).
+*@
+@implements IDisposable
+
+@if (_toasts.Count > 0)
+{
+    <div class="odc-toast-stack end bgj-toast-host">
+        @foreach (var toast in _toasts)
+        {
+            <div class="bgj-toast" @key="toast.Id">
+                <OdsToast Live="false" Severity="toast.Severity" Message="@toast.Text" OnClose="@(() => Dismiss(toast.Id))" />
+            </div>
+        }
+    </div>
+}
+
+@code {
+    public const int MaxVisible = 4;
+
+    public static readonly TimeSpan SuccessLifetime = TimeSpan.FromSeconds(5);
+
+    [Inject] private TimeProvider Time { get; set; } = default!;
+
+    private readonly List<Toast> _toasts = [];
+
+    /// <summary>The toasts shown, newest first.</summary>
+    internal IReadOnlyList<Toast> Toasts => _toasts;
+
+    public void Push(OdsToastSeverity severity, string text)
+    {
+        var toast = new Toast(Guid.NewGuid(), severity, text);
+        if (severity == OdsToastSeverity.Success)
+            toast.Timer = Time.CreateTimer(_ => InvokeAsync(() => Dismiss(toast.Id)), null, SuccessLifetime, Timeout.InfiniteTimeSpan);
+
+        _toasts.Insert(0, toast);
+        while (_toasts.Count > MaxVisible)
+        {
+            var drop = _toasts.LastOrDefault(t => t.Severity == OdsToastSeverity.Success) ?? _toasts[^1];
+            drop.Timer?.Dispose();
+            _toasts.Remove(drop);
+        }
+
+        StateHasChanged();
+    }
+
+    private void Dismiss(Guid id)
+    {
+        var toast = _toasts.FirstOrDefault(t => t.Id == id);
+        if (toast is null)
+            return;
+        toast.Timer?.Dispose();
+        _toasts.Remove(toast);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        foreach (var toast in _toasts)
+            toast.Timer?.Dispose();
+    }
+
+    internal sealed record Toast(Guid Id, OdsToastSeverity Severity, string Text)
+    {
+        public ITimer? Timer { get; set; }
+    }
+}

@@ -1,0 +1,47 @@
+@*
+    OdsToast — the design system's Toast (components/Toast.jsx) in its ToastStack, bottom-right. Most of the app
+    toasts through MudBlazor's Snackbar; this atom is for the one toast that must NOT be a live region (issue #388
+    §6.5): with Live="false" the toast drops role="status"/"alert" and is aria-live="off", so the page announces
+    its message once through its own polite region and it is never read twice. It has no auto-dismiss — it stays
+    until OnClose — and a close button whenever OnClose has a delegate.
+*@
+
+<div class="odc-toast-stack end">
+    <div class="odc-toast @SeverityClass" role="@Role" aria-live="@(Live ? null : "off")">
+        @if (Glyph is { } glyph)
+        {
+            <span class="material-icons odc-toast-ic" aria-hidden="true">@glyph</span>
+        }
+        <div class="odc-toast-body">@Message</div>
+        @if (OnClose.HasDelegate)
+        {
+            <button type="button" class="odc-toast-close" aria-label="Dismiss" @onclick="OnClose">
+                <span class="material-icons" aria-hidden="true">close</span>
+            </button>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Message { get; set; } = "";
+
+    [Parameter] public OdsToastSeverity Severity { get; set; } = OdsToastSeverity.Default;
+
+    /// <summary>False: not a live region — the caller announces the message itself, once.</summary>
+    [Parameter] public bool Live { get; set; } = true;
+
+    [Parameter] public EventCallback OnClose { get; set; }
+
+    private string? Role => !Live ? null : Severity == OdsToastSeverity.Error ? "alert" : "status";
+
+    private string SeverityClass => Severity.ToString().ToLowerInvariant();
+
+    private string? Glyph => Severity switch
+    {
+        OdsToastSeverity.Success => "check_circle",
+        OdsToastSeverity.Warning => "warning",
+        OdsToastSeverity.Error => "error",
+        OdsToastSeverity.Info => "info",
+        _ => null,
+    };
+}

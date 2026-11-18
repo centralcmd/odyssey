@@ -15,6 +15,7 @@
   <ItemGroup>
     <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
     <None Include="..\TestShared\Fixtures\met-symbol-codes.txt" Link="Fixtures\met-symbol-codes.txt" CopyToOutputDirectory="PreserveNewest" />
     <!-- The map origin accept/reject table (issue #370), also run against the API's MapOriginRule. -->
     <None Include="..\TestShared\MapOriginVectors.json" Link="Fixtures\MapOriginVectors.json" CopyToOutputDirectory="PreserveNewest" />

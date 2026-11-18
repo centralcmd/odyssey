@@ -9,6 +9,42 @@ using LocationEntity = Odyssey.Context.Location;
 
 namespace Odyssey.Core.Tests;
 
+/// <summary>A weather point a test created, and the place of the same name linked to it.</summary>
+internal sealed record TestPoint(Guid Id, Guid LocationId, string Name);
+
+/// <summary>The former enable/configure call in its point shape: a <c>PUT</c> that keeps the name and position.</summary>
+internal static class WeatherPointServiceTestExtensions
+{
+    public static async Task<WeatherPointUpdateResult?> SetAsync(
+        this WeatherPointService service, Guid pointId, bool forecast, bool history, bool tracked,
+        decimal? latitude = null, decimal? longitude = null, string? zone = null)
+    {
+        var current = await service.GetAsync(pointId, canReadLocations: true, CancellationToken.None);
+        if (current is null)
+        {
+            return null;
+        }
+
+        return await service.UpdateAsync(pointId, Update(current, forecast, history, tracked, latitude, longitude, zone),
+            WeatherTestHarness.AdminId, canReadLocations: true, CancellationToken.None);
+    }
+
+    public static UpdateWeatherPoint Update(
+        ExistingWeatherPoint current, bool? forecast = null, bool? history = null, bool? tracked = null,
+        decimal? latitude = null, decimal? longitude = null, string? zone = null) => new()
+    {
+        Name = current.Name,
+        Latitude = latitude ?? current.Site.Latitude,
+        Longitude = longitude ?? current.Site.Longitude,
+        AltitudeMeters = current.Site.AltitudeMeters,
+        TimeZoneId = zone ?? current.Site.TimeZoneId,
+        ForecastEnabled = forecast ?? current.ForecastEnabled,
+        HistoryEnabled = history ?? current.HistoryEnabled,
+        IsTracked = tracked ?? current.IsTracked,
+        SettingsVersion = current.SettingsVersion,
+    };
+}
+
 /// <summary>A clock the weather tests move by hand.</summary>
 internal sealed class ManualTime(DateTimeOffset now) : TimeProvider
 {
@@ -79,18 +115,26 @@ internal sealed class StubObservationSource : IWeatherObservationSource
         return Task.FromResult(new StationLookupResult(true, id is null ? null : new FoundStation(id, $"STATION {id}", 4.2, 90)));
     }
 
+    /// <summary>Runs while a daily request is "out" — how a test acts from another request mid-fetch.</summary>
+    public Func<Task>? DuringDaily { get; set; }
+
     /// <summary>Answers every requested station with the delegate's days, so each group finds its station's values.</summary>
-    public Task<ObservationFetchResult> FetchDailyAsync(
+    public async Task<ObservationFetchResult> FetchDailyAsync(
         IReadOnlyCollection<string> stationIds, IReadOnlyCollection<string> elements, DateOnly from, DateOnly to,
         string contact, string clientId, CancellationToken cancellationToken)
     {
         DailyCalls.Add((from, to));
         DailyStations.Add(stationIds);
+        if (DuringDaily is { } during)
+        {
+            await during();
+        }
+
         var result = Daily(from, to);
-        return Task.FromResult(result with
+        return result with
         {
             Days = [.. stationIds.SelectMany(id => result.Days.Select(day => day with { StationId = id }))],
-        });
+        };
     }
 }
 
@@ -141,10 +185,13 @@ internal sealed class WeatherTestHarness : IDisposable
     public WeatherReadService Read(OdysseyContext? context = null) =>
         new(context ?? Context, Fetch(context), Settings, Time);
 
-    public WeatherLocationService Admin(OdysseyContext? context = null)
+    public WeatherBatchReadService Batch(OdysseyContext? context = null) =>
+        new(context ?? NewContext(), Settings, Time);
+
+    public WeatherPointService Admin(OdysseyContext? context = null)
     {
         var c = context ?? Context;
-        return new WeatherLocationService(c, Fetch(c), Settings, new TrackedWeatherHistoryPurger(c), Time);
+        return new WeatherPointService(c, Fetch(c), Settings, new TrackedWeatherHistoryPurger(c), Time);
     }
 
     public async Task<LocationEntity> AddLocationAsync(
@@ -170,20 +217,33 @@ internal sealed class WeatherTestHarness : IDisposable
         return location;
     }
 
-    /// <summary>A location with weather turned on through the Admin service, the way production gets one.</summary>
-    public async Task<LocationEntity> EnableAsync(
+    /// <summary>
+    /// A weather point created through the Admin service the way production gets one, at the position
+    /// <see cref="AddLocationAsync"/> gives a place by default, with a place of the same name linked to it.
+    /// </summary>
+    public async Task<TestPoint> EnableAsync(
         string name = "Home", bool tracked = true, string zone = "Europe/Oslo", bool forecast = true, bool history = true)
     {
         var location = await AddLocationAsync(name, zone: zone);
-        await Admin().UpsertAsync(location.LocationId, new UpsertWeatherLocation
+        var point = await Admin().CreateAsync(new NewWeatherPoint
         {
-            ForecastEnabled = forecast, HistoryEnabled = history,
+            Name = name,
+            Latitude = location.Latitude,
+            Longitude = location.Longitude,
+            AltitudeMeters = location.AltitudeMeters,
+            TimeZoneId = zone,
+            ForecastEnabled = forecast,
+            HistoryEnabled = history,
             IsTracked = tracked,
-            ExpectedLocationFingerprint = WeatherCoordinates.Fingerprint(location),
         }, AdminId, CancellationToken.None);
+        await LinkAsync(location.LocationId, point.WeatherPointId);
         Context.ChangeTracker.Clear();
-        return location;
+        return new TestPoint(point.WeatherPointId, location.LocationId, name);
     }
+
+    /// <summary>Links a place to a point through the link service.</summary>
+    public Task<LocationWeatherPointLink?> LinkAsync(Guid locationId, Guid? pointId, OdysseyContext? context = null) =>
+        new WeatherLinkService(context ?? NewContext(), Time).SetAsync(locationId, pointId, AdminId, CancellationToken.None);
 
     /// <summary>A Locationforecast run: hourly steps from <paramref name="fromUtc"/>, all at one temperature.</summary>
     public static ForecastFetchResult Run(DateTime issuedUtc, DateTime fromUtc, int hours, decimal temperature, string symbol = "cloudy") =>

@@ -8,11 +8,11 @@
 @inject ISystemSettingsApiClient SystemSettings
 @inject ISecretSettingsApiClient SecretSettings
 @inject Odyssey.ApiClient.Resources.IWeatherApiClient Weather
+@inject Odyssey.Client.Services.IWeatherPointOptionsCache WeatherOptions
 @inject Odyssey.ApiClient.Resources.IExchangeRateSyncApiClient ExchangeRateSync
 @inject Odyssey.ApiClient.Resources.IFileStorageApiClient FileStorage
 @inject Odyssey.ApiClient.Resources.IPhotosApiClient PhotosApi
 @inject TimeProvider Time
-@inject Odyssey.ApiClient.Resources.IDataExportApiClient DataExport
 @inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
 @inject Odyssey.Client.Services.IUploadLimitsCache UploadLimits
 @inject Odyssey.Client.Services.IAccountLimitsCache AccountLimits
@@ -336,6 +336,32 @@
                                 PendingCount="DirtyCount"
                                 OnConfirm="ConfirmClearAsync" />
 
+    @* The News allow-list gate (issue #473 §3.6): the added and removed hosts as text, before the save is
+       sent. Rendered unconditionally for the reason the credential dialog is; Cancel discards nothing. *@
+    <OdsFormDialog Open="_allowListDialogOpen"
+                   OpenChanged="OnAllowListDialogOpenChanged"
+                   Icon="lan"
+                   IconTone="OdsModalTone.Warning"
+                   Title="Change the private hosts news may reach?"
+                   RequiredLegend="false"
+                   InitialFocus="OdsModalInitialFocus.Cancel"
+                   SubmitLabel="Save changes"
+                   SubmitIcon="save"
+                   OnSubmit="ConfirmAllowListAsync">
+        @if (_allowListChange is { } change)
+        {
+            @if (change.Added.Count > 0)
+            {
+                <p class="nw-dialog-line">@AllowListAddedSentence(change)</p>
+            }
+            @if (change.Removed.Count > 0)
+            {
+                <p class="nw-dialog-line">@AllowListRemovedSentence(change)</p>
+            }
+            <p class="nw-dialog-line nw-muted">@NewsAllowListAdvisory</p>
+        }
+    </OdsFormDialog>
+
     @* Polite live region — save success / load failure announcements (WCAG 2.2 §4.1.3). *@
     <OdsLiveAnnouncer Message="@_announce" />
 </MudStack>
@@ -352,7 +378,7 @@
     // hides the control's own help/error node inside the frame.
     private RenderFragment SettingField(SettingItem item) => item.Control switch
     {
-        SettingControl.Toggle or SettingControl.Export or SettingControl.Action => TileField(item),
+        SettingControl.Toggle or SettingControl.Action => TileField(item),
         _ => FrameField(item),
     };
 
@@ -372,7 +398,7 @@
         Advisory="@AdvisoryFor(item)"
         Bound="@BoundFor(item)"
         Dirty="@IsDirty(item)"
-        Wide="@(item.Control == SettingControl.Text)"
+        Wide="@(item.Control is SettingControl.Text or SettingControl.LongText)"
         Class="@FieldClass(item)"
         data-ss-row="@item.Key">
         @RenderControl(item)
@@ -483,11 +509,4 @@
         Disabled="@IsRowDisabled(item)"
         Error="@FieldStateFor(item)"
         AriaDescribedBy="@DescribedBy(item)" />;
-
-    private RenderFragment ExportControl() => @<OdsButton
-        Icon="file_download"
-        Loading="_isExporting"
-        OnClick="ExportDatabaseJson">
-        Export database JSON
-    </OdsButton>;
 }

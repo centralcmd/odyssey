@@ -26,6 +26,21 @@ public class PhotoAlbum
 
     public Guid? CoverPhotoId { get; set; }
 
+    /// <summary>
+    /// A <c>TagIcons</c> catalogue key, or <c>NULL</c> for the album default (<c>PhotoAlbumIcons.Default</c>,
+    /// issue #404). Never markup or a URL, and never a default key itself. A key the catalogue no longer has
+    /// is projected as <c>null</c> on read, so retiring one needs no data migration.
+    /// </summary>
+    [StringLength(64)]
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// An optional <c>#RRGGBB</c> colour stored upper-case, or <c>NULL</c> for none (issue #404). Every read
+    /// path projects it through <c>HexColor.Normalize</c>, so a hand-edited value reads as <c>null</c>.
+    /// </summary>
+    [StringLength(7)]
+    public string? Color { get; set; }
+
     public DateTime? Archived { get; set; }
 
     public string? CreatedByUserId { get; set; }

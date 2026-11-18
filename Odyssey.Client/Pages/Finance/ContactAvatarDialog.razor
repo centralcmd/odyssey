@@ -79,6 +79,7 @@
         var result = await ContactsApi.UploadAvatarAsync(contact.ContactId, upload);
         return result.IsSuccess
             ? ApiResult.Success(result.Status)
-            : ApiResult.Failure(result.Status, result.Problem!);
+            // RetryAfter rides along, or a 429 would always read "shortly" (issue #449).
+            : ApiResult.Failure(result.Status, result.Problem!) with { RetryAfter = result.RetryAfter };
     }
 }

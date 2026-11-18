@@ -109,4 +109,50 @@ public class NetWorthRangeDialogTests
         Assert.Empty(applied);
         Assert.Equal([false], openChanges);
     }
+
+    // ── OdsRadioGroup regression (issue #383 §4, AC 19): the rebuilt fieldset/legend group, as this consumer uses it ──
+
+    [Fact]
+    public async Task The_date_range_is_a_labelled_fieldset_of_native_radios_with_the_current_preset_checked()
+    {
+        var (ctx, cut, _, _) = Render(new NetWorthRange(NetWorthRangePreset.TwelveMonths));
+        await using var _ctx = ctx;
+
+        var fieldset = cut.Find("fieldset.odc-radiofield");
+        Assert.Equal("Date range", fieldset.QuerySelector("legend")!.TextContent.Trim());
+        var radios = fieldset.QuerySelectorAll("input[type=radio]");
+        Assert.True(radios.Length >= 2);
+        Assert.Single(radios, r => r.HasAttribute("checked"));
+        Assert.Equal(nameof(NetWorthRangePreset.TwelveMonths), radios.Single(r => r.HasAttribute("checked")).GetAttribute("value"));
+    }
+
+    [Fact]
+    public async Task Choosing_custom_by_its_radio_opens_the_dates()
+    {
+        var (ctx, cut, applied, _) = Render(new NetWorthRange(NetWorthRangePreset.TwelveMonths));
+        await using var _ctx = ctx;
+
+        cut.Find($"input[type=radio][value={nameof(NetWorthRangePreset.Custom)}]").Change(true);
+
+        Assert.NotNull(cut.Find(".nw-range-dates"));
+        ClickButton(cut, "Apply");
+        Assert.Equal(NetWorthRangePreset.Custom, applied.Single().Preset);
+    }
+
+    /// <summary>
+    /// Keyboard: native radios sharing one name are one tab stop with arrow-key movement in every browser, so
+    /// the group needs no key handling of its own — what is asserted is the shape that guarantees it.
+    /// </summary>
+    [Fact]
+    public async Task The_radios_share_one_name_so_the_browser_gives_them_arrow_key_movement()
+    {
+        var (ctx, cut, _, _) = Render(new NetWorthRange(NetWorthRangePreset.TwelveMonths));
+        await using var _ctx = ctx;
+
+        var names = cut.FindAll("fieldset.odc-radiofield input[type=radio]").Select(r => r.GetAttribute("name")).Distinct().ToList();
+
+        Assert.Single(names);
+        Assert.False(string.IsNullOrEmpty(names[0]));
+        Assert.Empty(cut.FindAll("fieldset.odc-radiofield input[type=radio][tabindex]"));
+    }
 }

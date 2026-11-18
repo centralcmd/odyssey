@@ -36,6 +36,7 @@ public class OdsTypeRegistriesTests
         { nameof(OdsTypeRegistries.ContractEventTypes), typeof(ContractEventType) },
         { nameof(OdsTypeRegistries.BudgetCategoryTypes), typeof(BudgetCategoryType) },
         { nameof(OdsTypeRegistries.PropertyFileTypes), typeof(PropertyFileType) },
+        { nameof(OdsTypeRegistries.InstrumentTypes), typeof(InstrumentType) },
     };
 
     /// <summary>

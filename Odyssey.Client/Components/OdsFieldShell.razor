@@ -42,7 +42,7 @@
     }
     @if (!string.IsNullOrEmpty(Error))
     {
-        <div class="odc-field-help error" id="@ErrorId" role="alert">@Error</div>
+        <div class="odc-field-help error" id="@ErrorId" role="@(ErrorIsAlert ? "alert" : null)">@Error</div>
     }
 </div>
 
@@ -70,6 +70,13 @@
     /// <summary>Error message — flips the field to its error state. Rendered as its own node,
     /// in addition to (not replacing) the helper text — see <see cref="ErrorId"/>.</summary>
     [Parameter] public string? Error { get; set; }
+
+    /// <summary>
+    /// Whether the error line is a <c>role="alert"</c> (default). Set false for an error raised on submit
+    /// when focus moves to the field: <c>aria-describedby</c> already reads it there, and an alert as well
+    /// would announce it twice (issue #394).
+    /// </summary>
+    [Parameter] public bool ErrorIsAlert { get; set; } = true;
 
     /// <summary>Optional right-aligned slot in the label row (e.g. a character counter).</summary>
     [Parameter] public RenderFragment? Aside { get; set; }

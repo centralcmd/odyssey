@@ -1,0 +1,29 @@
+@*
+    An exchange-rate sync run's detail (issue #410 §3.6): span, currencies, the row counts and the sync's error words.
+*@
+@using Odyssey.Client.Services
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Span")">@SpanText</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Currencies")">@(Sync.CurrencyCodes is { } codes ? codes.Count == 0 ? "None" : string.Join(", ", codes) : Missing)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Inserted")">@N(Sync.RowsInserted)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Skipped")">@N(Sync.RowsSkipped)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Rejected")">@N(Sync.RowsRejected)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Deleted")">@N(Sync.RowsDeleted)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Error")">@Words(Sync.ErrorKind is { } kind ? BackgroundJobPresentation.ExchangeRateErrorOf(kind) : null)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private ExchangeRateSyncJobRunDetail Sync => (ExchangeRateSyncJobRunDetail)Run;
+
+    private string SpanText => (Sync.SpanFrom, Sync.SpanTo) switch
+    {
+        ({ } from, { } to) when from == to => RunTime.Date(from),
+        ({ } from, { } to) => $"{RunTime.Date(from)} – {RunTime.Date(to)}",
+        ({ } from, null) => RunTime.Date(from),
+        (null, { } to) => RunTime.Date(to),
+        _ => Words(null),
+    };
+}

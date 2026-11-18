@@ -8,6 +8,7 @@
 @inject Odyssey.Client.Services.IPageStateService PageState
 @inject IReferenceDataCache ReferenceData
 @inject IWeatherApiClient Weather
+@inject Odyssey.Client.Services.IWeatherPointOptionsCache WeatherOptions
 @inject AuthenticationStateProvider Auth
 
 <PageTitle>Preferences</PageTitle>
@@ -93,23 +94,23 @@
                 </OdsSettingRow>
             }
 
-            @if (ShowWeatherLocationCard)
+            @if (ShowWeatherPointCard)
             {
-                @* The caller's own place for the dashboard weather card — the card picker's choice and
+                @* The caller's own weather point for the dashboard weather card — the card picker's choice and
                    stored value, saved through PUT /api/weather/preferences (design system ·
-                   Preferences.jsx, components-weather.md → Preferences → Weather location). *@
-                <OdsSettingRow Icon="wb_sunny" Title="Weather location"
-                               Desc="Place the weather card on your dashboard shows"
-                               Dirty="@WeatherLocationDirty">
+                   Preferences.jsx, components-weather.md → Preferences → Weather point). *@
+                <OdsSettingRow Icon="wb_sunny" Title="Weather point"
+                               Desc="Weather point the card on your dashboard shows"
+                               Dirty="@WeatherPointDirty">
                     <div class="pref-control pref-weather">
-                        <OdsSelect AriaLabel="Weather location"
-                                   Value="@_weatherLocation" ValueChanged="OnWeatherLocationChanged"
-                                   Options="WeatherLocationOptions" Error="@_weatherError" />
+                        <OdsSelect AriaLabel="Weather point"
+                                   Value="@_weatherPoint" ValueChanged="OnWeatherPointChanged"
+                                   Options="WeatherPickerOptions" Error="@_weatherError" />
                     </div>
                 </OdsSettingRow>
             }
 
-            @if (!ShowDarkModeCard && !ShowCurrencyCard && !ShowMainCurrencyCard && !ShowWeatherLocationCard)
+            @if (!ShowDarkModeCard && !ShowCurrencyCard && !ShowMainCurrencyCard && !ShowWeatherPointCard)
             {
                 <OdsEmptyState Icon="search_off" MutedIcon="true">
                     <Title>No preferences match</Title>

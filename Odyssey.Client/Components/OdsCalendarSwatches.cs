@@ -1,3 +1,5 @@
+using Odyssey.Dtos;
+
 namespace Odyssey.Client.Components;
 
 /// <summary>
@@ -16,20 +18,51 @@ public sealed record OdsCalendarSwatch(string Key, string Name, string Hex, stri
 /// </summary>
 public static class OdsCalendarSwatches
 {
+    /// <summary>
+    /// The design-system ramp stop each swatch must equal — a CSS concern, so it stays client-side, keyed by
+    /// <see cref="ColorSwatch.Key"/>. The hexes and foregrounds come from the shared
+    /// <see cref="ColorPalette"/> (issue #392), so this file declares no colour of its own.
+    /// </summary>
+    internal static readonly IReadOnlyDictionary<string, string> TokenByKey = new Dictionary<string, string>
+    {
+        ["blue"] = "--sea-700",
+        ["teal"] = "--tide-deep",
+        ["green"] = "--mint-700",
+        ["coral"] = "--coral-700",
+        ["violet"] = "--violet-700",
+        ["slate"] = "--ink-500",
+        ["amber"] = "--amber-500",
+        ["sky"] = "--sea-300",
+    };
+
     public static readonly IReadOnlyList<OdsCalendarSwatch> All =
-    [
-        new("blue", "Blue", "#0369A1", "#FFFFFF", "--sea-700"),
-        new("teal", "Teal", "#006B5A", "#FFFFFF", "--tide-deep"),
-        new("green", "Green", "#15803D", "#FFFFFF", "--mint-700"),
-        new("coral", "Coral", "#B23B3B", "#FFFFFF", "--coral-700"),
-        new("violet", "Violet", "#6D28D9", "#FFFFFF", "--violet-700"),
-        new("slate", "Slate", "#4A5670", "#FFFFFF", "--ink-500"),
-        new("amber", "Amber", "#F59E0B", "#0E1525", "--amber-500"), // dark text
-        new("sky", "Sky", "#7DD3FC", "#0E1525", "--sea-300"),     // dark text
-    ];
+        [.. ColorPalette.All.Select(swatch => new OdsCalendarSwatch(swatch.Key, swatch.Name, swatch.Hex, swatch.Foreground, TokenByKey[swatch.Key]))];
 
     /// <summary>The default swatch hex (Blue).</summary>
-    public const string DefaultColor = "#0369A1";
+    public const string DefaultColor = ColorPalette.CalendarDefault;
+
+    /// <summary>
+    /// The fill and text colour an event chip paints with. A palette member keeps its vetted foreground;
+    /// any other valid hex (a Custom calendar colour) takes <see cref="HexColor.TextOn"/> — white or pure
+    /// black, never below 4.58:1, because the all-day chip draws TEXT on it (<see cref="HexColor.Foreground"/>
+    /// can fall to 4.27:1). An invalid one falls back to the default swatch.
+    /// </summary>
+    public static (string Bg, string Fg) PaintFor(string? hex)
+    {
+        var canonical = Odyssey.Client.Theme.UserColor.Canonical(hex);
+        if (canonical is not null && All.FirstOrDefault(s => s.Hex == canonical) is { } swatch)
+        {
+            return (swatch.Hex, swatch.Fg);
+        }
+
+        if (canonical is not null)
+        {
+            return (canonical, HexColor.TextOn(canonical));
+        }
+
+        var fallback = SwatchFor(DefaultColor);
+        return (fallback.Hex, fallback.Fg);
+    }
 
     /// <summary>Look a swatch up by its stored hex; falls back to the default so a legacy/unknown
     /// value still renders a legible chip.</summary>

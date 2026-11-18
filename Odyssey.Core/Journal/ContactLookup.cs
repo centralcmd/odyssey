@@ -92,6 +92,35 @@ public sealed class ContactLookup(OdysseyContext context) : IContactLookup
             .ToList();
     }
 
+    public async Task<IReadOnlyList<ContactMatchRef>> ListActiveContactMatchRefsAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await context.Contacts
+            .AsNoTracking()
+            .Where(c => c.Archived == null)
+            .Include(c => c.PersonDetails)
+            .Include(c => c.OrganizationDetails)
+            .Include(c => c.Aliases)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        return rows
+            .Select(c =>
+            {
+                var name = ContactNaming.Resolve(c);
+                // De-duplicated case-insensitively, without the resolved name itself, in ordinal order so
+                // the request is deterministic. Every alias is sent: there is no per-contact cap.
+                var aliases = c.Aliases
+                    .Select(a => a.Value)
+                    .Where(v => !string.IsNullOrWhiteSpace(v)
+                                && !string.Equals(v, name, StringComparison.OrdinalIgnoreCase))
+                    .OrderBy(v => v, StringComparer.Ordinal)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                return new ContactMatchRef(c.ContactId, name, aliases);
+            })
+            .ToList();
+    }
+
     public async Task<IReadOnlyDictionary<Guid, ContactEmbed>> ResolveContactsAsync(
         IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default)
     {

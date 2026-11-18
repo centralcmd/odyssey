@@ -13,11 +13,14 @@
 
 <OdsFieldShell Label="@Label" HtmlFor="@_id" Required="Required"
                Help="@Help" Error="@Error" Class="@Class">
+    @* The id, description and invalid state go to the INNER input (OdsDatePicker applies them there): splatted onto
+       MudDatePicker they landed on its wrapper, so the label's `for`, a focus-by-id and the error description missed
+       the control (found by issue #437's editor). *@
     <OdsDatePicker Value="Value" ValueChanged="ValueChanged" Placeholder="@Placeholder"
-                   Min="Min" Max="Max" Align="Align" Full="Full" Disabled="Disabled" id="@_id"
-                   aria-label="@AriaLabel"
-                   aria-describedby="@DescribedByIds"
-                   aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")" />
+                   Min="Min" Max="Max" Align="Align" Full="Full" Disabled="Disabled" InputId="@_id"
+                   AriaLabel="@AriaLabel"
+                   AriaDescribedBy="@DescribedByIds"
+                   AriaInvalid="@(!string.IsNullOrEmpty(Error) || Invalid)" />
 </OdsFieldShell>
 
 @code {
@@ -68,6 +71,12 @@
     /// combined "both dates together, up to 92 days" rule) that no single field's own Help covers.
     /// Space-separated, ARIA's standard multi-id format.</summary>
     [Parameter] public string? DescribedBy { get; set; }
+
+    /// <summary>
+    /// Marks the control invalid without an error line of its own — for an error shown elsewhere and tied in through
+    /// <see cref="DescribedBy"/>, such as a history window's row-level overlap (issue #437 §6.5).
+    /// </summary>
+    [Parameter] public bool Invalid { get; set; }
 
     private string _id = default!;
 

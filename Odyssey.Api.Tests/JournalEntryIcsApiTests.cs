@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Xunit;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.FileStorage;
 
 namespace Odyssey.Api.Tests;
 
@@ -24,10 +25,9 @@ public class JournalEntryIcsApiTests
     private const string Path = "/api/journal-entries";
     private const string IcsPath = "/api/journal-entries/vjournal";
 
-    // The shipped defaults for JournalIcsMaxImportEntries / JournalIcsMaxExportRows (issue #343 §6) —
-    // behavior-preserving with the old hard-coded JournalEntryIcsService.MaxVJournals/MaxExportRows.
-    private const int DefaultMaxImportEntries = 2000;
-    private const int DefaultMaxExportRows = 2000;
+    // The shipped counts are unlimited (entries carry their files and photos inline), so the cap tests pin an
+    // administrator's finite value instead.
+    private const int AdminCountCap = 5;
 
     private static readonly string[] ReadOnly = [PermissionClaims.JournalRead];
 
@@ -36,11 +36,21 @@ public class JournalEntryIcsApiTests
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
     ];
 
+    // Photo links need photos.read since issue #428 §3.3; attachments still need files.read.
     private static readonly string[] ReadWriteWithFiles =
     [
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate,
-        PermissionClaims.JournalUpdate, PermissionClaims.FilesRead,
+        PermissionClaims.JournalUpdate, PermissionClaims.FilesRead, PermissionClaims.PhotosRead,
     ];
+
+    // Importing inline content needs the create claims too: files.read + files.create, photos.read + photos.create.
+    private static readonly string[] ReadWriteWithUploads =
+    [
+        PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
+        PermissionClaims.FilesRead, PermissionClaims.FilesCreate, PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate,
+    ];
+
+    private static readonly byte[] NoteBytes = Encoding.UTF8.GetBytes("Packing list: tent, stove, map.");
 
     private static readonly string[] ReadWriteWithContacts =
     [
@@ -121,12 +131,12 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task Export_Entry_EmitsVJournal_WithAllFields()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead]).ToArray());
+        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
         using var client = factory.CreateClient();
         var tagId = await SeedJournalTagAsync(factory, "Travel");
         var cpUid = "urn:uuid:cp-acme";
         var cpId = await SeedContactAsync(factory, "Acme", cpUid);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         var pdfId = await SeedFileAsync(factory, "notes.pdf", "application/pdf");
 
         var created = await CreateAsync(client, NewEntry(
@@ -136,7 +146,7 @@ public class JournalEntryIcsApiTests
             entryDate: new DateTime(2026, 7, 30, 0, 0, 0, DateTimeKind.Utc),
             tagIds: [tagId],
             contactIds: [cpId],
-            photoFileIds: [imageId],
+            photoIds: [imageId],
             attachmentFileIds: [pdfId]));
 
         var body = await (await client.GetAsync(IcsPath)).Content.ReadAsStringAsync();
@@ -149,9 +159,16 @@ public class JournalEntryIcsApiTests
         Assert.Contains("CATEGORIES:Travel", body);
         Assert.Contains("X-ODYSSEY-LOCATION:Oslo\\, Norway", body);
         Assert.Contains($"X-ODYSSEY-CONTACT:{cpUid}", body);
-        Assert.Contains($"ATTACH:odyssey-photo:{imageId}", body);
-        Assert.Contains($"ATTACH:odyssey-file:{pdfId}", body);
+        // The photo and the file travel inline — bytes, name, type, id and hash — not as bare references.
+        var unfolded = Unfold(body);
+        Assert.DoesNotContain($"ATTACH:odyssey-photo:{imageId}", body);
+        Assert.DoesNotContain($"ATTACH:odyssey-file:{pdfId}", body);
+        Assert.Contains($";X-ODYSSEY-KIND=PHOTO;X-ODYSSEY-PHOTO-ID={imageId}", unfolded);
+        Assert.Contains($"ATTACH;FMTTYPE=application/pdf;ENCODING=BASE64;VALUE=BINARY;FILENAME=\"notes.pdf\";SIZE=3;X-ODYSSEY-FILE-ID={pdfId}", unfolded);
     }
+
+    // RFC 5545 unfolding: a CRLF followed by one space or tab is removed.
+    private static string Unfold(string ics) => ics.Replace("\r\n ", string.Empty).Replace("\r\n\t", string.Empty);
 
     [Fact]
     public async Task ExportAll_IncludesArchivedByDefault_StatusFilters()
@@ -234,10 +251,10 @@ public class JournalEntryIcsApiTests
     [Fact]
     public async Task ExportFiltered_ByAttachmentPresence_ReturnsMatchingSet()
     {
-        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead]).ToArray());
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        await using var factory = new ApiFactory(ReadWriteWithContacts.Concat([PermissionClaims.FilesRead, PermissionClaims.PhotosRead]).ToArray());
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
-        var withPhoto = await CreateAsync(client, NewEntry("Trip", photoFileIds: [imageId]));
+        var withPhoto = await CreateAsync(client, NewEntry("Trip", photoIds: [imageId]));
         await CreateAsync(client, NewEntry("Grocery run"));
 
         var body = await (await client.GetAsync($"{IcsPath}?hasPhotos=true")).Content.ReadAsStringAsync();
@@ -640,11 +657,11 @@ public class JournalEntryIcsApiTests
     }
 
     [Fact]
-    public async Task Import_PhotoImage_WithFilesRead_LinksIt()
+    public async Task Import_PhotoReference_WithPhotosRead_LinksIt()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
-        var imageId = await SeedFileAsync(factory, "pic.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "pic.jpg");
 
         var ics = Vcalendar(Vjournal("ph1", "SUMMARY:With photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
             $"ATTACH:odyssey-photo:{imageId}"));
@@ -655,6 +672,55 @@ public class JournalEntryIcsApiTests
         using var scope = factory.Services.CreateScope();
         var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.Single((await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos);
+    }
+
+    /// <summary>
+    /// Issue #428 §3.3: an old export names a photo by the file it wrapped. That id still resolves — through the
+    /// legacy photo's current FileId, and after the backfill through its LegacyFileId.
+    /// </summary>
+    [Fact]
+    public async Task Import_PhotoReferenceByLegacyOrBackfilledFileId_ResolvesToThePhoto()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var (legacyPhoto, legacyFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "legacy.jpg");
+        var (movedPhoto, movedFile) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "moved.jpg");
+        using (var scope = factory.Services.CreateScope())
+        {
+            // What the backfill leaves behind: the old file id kept, no file any more (the original is irrelevant here).
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var moved = await context.Photos.SingleAsync(p => p.PhotoId == movedPhoto);
+            moved.LegacyFileId = movedFile;
+            moved.FileId = null;
+            await context.SaveChangesAsync();
+        }
+
+        var ics = Vcalendar(Vjournal("ph-legacy", "SUMMARY:Old export", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            $"ATTACH:odyssey-photo:{legacyFile}", $"ATTACH:odyssey-photo:{movedFile}"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(0, result.SkippedPhotoCount);
+        using var assertScope = factory.Services.CreateScope();
+        var ctx = assertScope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var linked = (await ctx.JournalEntries.Include(e => e.Photos).SingleAsync()).Photos.Select(p => p.PhotoId).ToHashSet();
+        Assert.Equal(new HashSet<Guid> { legacyPhoto, movedPhoto }, linked);
+    }
+
+    /// <summary>Issue #428 §3.3: an image file no photo wraps is skipped and counted — the import never creates a photo.</summary>
+    [Fact]
+    public async Task Import_ImageFileNoPhotoWraps_IsSkipped_AndNoPhotoIsCreated()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var imageFile = await SeedFileAsync(factory, "receipt.jpg", "image/jpeg");
+
+        var ics = Vcalendar(Vjournal("ph-file", "SUMMARY:A file", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            $"ATTACH:odyssey-photo:{imageFile}"));
+        var result = await ImportAsync(client, ics);
+
+        Assert.Equal(1, result.SkippedPhotoCount);
+        using var scope = factory.Services.CreateScope();
+        Assert.Empty(scope.ServiceProvider.GetRequiredService<OdysseyContext>().Photos);
     }
 
     [Fact]
@@ -696,8 +762,10 @@ public class JournalEntryIcsApiTests
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(
+            factory.Services, SystemSettingsKeys.JournalIcsMaxImportEntries, AdminCountCap.ToString(System.Globalization.CultureInfo.InvariantCulture));
 
-        var blocks = Enumerable.Range(0, DefaultMaxImportEntries + 1)
+        var blocks = Enumerable.Range(0, AdminCountCap + 1)
             .Select(i => Vjournal($"u{i}", $"SUMMARY:T{i}", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101"));
         var response = await PostIcsAsync(client, Vcalendar(blocks.ToArray()));
 
@@ -806,10 +874,10 @@ public class JournalEntryIcsApiTests
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
         using var client = factory.CreateClient();
-        var imgA = await SeedFileAsync(factory, "a.jpg", "image/jpeg");
-        var imgB = await SeedFileAsync(factory, "b.jpg", "image/jpeg");
-        var created = await CreateAsync(client, NewEntry("Gallery", photoFileIds: [imgA, imgB]));
-        Assert.Equal(imgA, created.Photos.OrderBy(p => p.Position).First().FileId);
+        var imgA = await SeedPhotoAsync(factory, "a.jpg");
+        var imgB = await SeedPhotoAsync(factory, "b.jpg");
+        var created = await CreateAsync(client, NewEntry("Gallery", photoIds: [imgA, imgB]));
+        Assert.Equal(imgA, created.Photos.OrderBy(p => p.Position).First().PhotoId);
 
         // Re-import the same entry with the two photos in reverse order → Position must re-sequence
         // (B→0, A→1) over the existing library Photo links, not create new ones.
@@ -821,9 +889,9 @@ public class JournalEntryIcsApiTests
         var reloaded = await GetAsync(client, created.JournalEntryId);
         var ordered = reloaded.Photos.OrderBy(p => p.Position).ToList();
         Assert.Equal(2, ordered.Count);
-        Assert.Equal(imgB, ordered[0].FileId);
+        Assert.Equal(imgB, ordered[0].PhotoId);
         Assert.Equal(0, ordered[0].Position);
-        Assert.Equal(imgA, ordered[1].FileId);
+        Assert.Equal(imgA, ordered[1].PhotoId);
         Assert.Equal(1, ordered[1].Position);
     }
 
@@ -1025,7 +1093,9 @@ public class JournalEntryIcsApiTests
     {
         await using var factory = new ApiFactory(ReadOnly);
         using var client = factory.CreateClient();
-        await SeedManyEntriesAsync(factory, DefaultMaxExportRows + 1);
+        await SystemSettingsSeed.SetAsync(
+            factory.Services, SystemSettingsKeys.JournalIcsMaxExportRows, AdminCountCap.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        await SeedManyEntriesAsync(factory, AdminCountCap + 1);
 
         var response = await client.GetAsync(IcsPath);
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -1085,6 +1155,415 @@ public class JournalEntryIcsApiTests
 
     // ------------------------------------------------------------------ helpers
 
+    // ------------------------------------------------------------------ attached files and photos travel inline
+
+    [Fact]
+    public async Task Export_WithAttachedFile_WithoutFilesRead_IsForbidden_AndSoIsTheSummary()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var entry = await CreateAsync(client, NewEntry("With file", attachmentFileIds: [fileId]));
+
+        await using var readOnly = new ApiFactory([PermissionClaims.JournalRead, PermissionClaims.PhotosRead], sharingStoreWith: factory);
+        using var readOnlyClient = readOnly.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync($"{Path}/{entry.JournalEntryId}/vjournal")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync($"{Path}/{entry.JournalEntryId}/vjournal/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_WithPhoto_WithoutPhotosRead_IsForbidden_AndSoIsTheSummary()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var photoId = await SeedPhotoAsync(factory, "beach.jpg");
+        await CreateAsync(client, NewEntry("With photo", photoIds: [photoId]));
+
+        await using var readOnly = new ApiFactory([PermissionClaims.JournalRead, PermissionClaims.FilesRead], sharingStoreWith: factory);
+        using var readOnlyClient = readOnly.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_WithoutFilesOrPhotos_NeedsOnlyJournalRead()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await CreateAsync(client, NewEntry("Plain"));
+
+        await using var readOnly = new ApiFactory(ReadOnly, sharingStoreWith: factory);
+        using var readOnlyClient = readOnly.CreateClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await readOnlyClient.GetAsync(IcsPath)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await readOnlyClient.GetAsync(IcsPath + "/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Summary_CountsEntriesFilesAndPhotos_ForAllFilteredAndSingle()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", photoBytes);
+        var withBoth = await CreateAsync(client, NewEntry("Alpha", photoIds: [photoId], attachmentFileIds: [fileId]));
+        await CreateAsync(client, NewEntry("Beta"));
+
+        var all = await client.GetFromJsonAsync<JournalEntryIcsExportSummary>(IcsPath + "/summary");
+        var filtered = await client.GetFromJsonAsync<JournalEntryIcsExportSummary>(IcsPath + "/summary?search=Beta");
+        var single = await client.GetFromJsonAsync<JournalEntryIcsExportSummary>($"{Path}/{withBoth.JournalEntryId}/vjournal/summary");
+
+        Assert.Equal((2, 1, 1, (long)(NoteBytes.Length + photoBytes.Length)),
+            (all!.EntryCount, all.AttachmentCount, all.PhotoCount, all.AttachmentBytes));
+        Assert.Equal((1, 0, 0), (filtered!.EntryCount, filtered.AttachmentCount, filtered.PhotoCount));
+        Assert.Equal((1, 1, 1), (single!.EntryCount, single.AttachmentCount, single.PhotoCount));
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Path}/{Guid.NewGuid()}/vjournal/summary")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Export_AllFilteredAndSingle_CarryFileAndPhotoInline_WithThePhotosTitleAndCaption()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        var photoId = await SeedTitledPhotoAsync(factory, photoBytes, "Sunset", "Over the fjord");
+        var entry = await CreateAsync(client, NewEntry("Camping", photoIds: [photoId], attachmentFileIds: [fileId]));
+
+        var all = Unfold(await client.GetStringAsync(IcsPath));
+        var filtered = Unfold(await client.GetStringAsync(IcsPath + "?search=Camp"));
+        var single = Unfold(await client.GetStringAsync($"{Path}/{entry.JournalEntryId}/vjournal"));
+
+        foreach (var body in new[] { all, filtered, single })
+        {
+            Assert.Contains(";ENCODING=BASE64;VALUE=BINARY;FILENAME=\"note.txt\";", body);
+            Assert.Contains($"X-ODYSSEY-SHA256={Sha256(NoteBytes)}:" + Convert.ToBase64String(NoteBytes), body);
+            Assert.Contains($";X-ODYSSEY-KIND=PHOTO;X-ODYSSEY-PHOTO-ID={photoId}", body);
+            Assert.Contains(";X-ODYSSEY-TITLE=\"Sunset\";X-ODYSSEY-CAPTION=\"Over the fjord\"", body);
+            Assert.Contains(Convert.ToBase64String(photoBytes), body);
+        }
+    }
+
+    [Fact]
+    public async Task Export_OverTheByteCap_IsRefusedBeforeAnyByte()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithFiles);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxExportMegabytes, "1");
+        var big = new byte[1024 * 1024]; // 1 MB of content is ~1.4 MB once base64-encoded and folded
+        var fileId = await SeedFileWithContentAsync(factory, "big.bin", "application/octet-stream", big);
+        await CreateAsync(client, NewEntry("Big", attachmentFileIds: [fileId]));
+
+        var summary = await client.GetAsync(IcsPath + "/summary");
+        var export = await client.GetAsync(IcsPath);
+
+        Assert.Equal(HttpStatusCode.BadRequest, summary.StatusCode);
+        Assert.Contains("1 MB export limit", await summary.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, export.StatusCode);
+    }
+
+    [Fact]
+    public async Task RoundTrip_SameInstance_ReusesTheFileAndPhoto_NoDuplicate()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        var fileId = await SeedFileWithContentAsync(factory, "note.txt", "text/plain", NoteBytes);
+        var photoId = await SeedPhotoAsync(factory, "beach.jpg");
+        var entry = await CreateAsync(client, NewEntry("Camping", photoIds: [photoId], attachmentFileIds: [fileId]));
+
+        var result = await ImportAsync(client, await client.GetStringAsync(IcsPath));
+
+        Assert.Equal((1, 0, 1, 0, 1), (result.UpdatedCount, result.StoredFileCount, result.ReusedFileCount, result.StoredPhotoCount, result.ReusedPhotoCount));
+        Assert.Equal((0, 0), (result.SkippedAttachmentCount, result.SkippedPhotoCount));
+        Assert.Single(await PhotosAsync(factory));
+        Assert.Equal(2, (await FilesAsync(factory)).Count); // the file and the legacy photo's wrapped file, nothing new
+        var row = await EntryAsync(factory, entry.ExternalUid!);
+        Assert.Equal(fileId, Assert.Single(row.Attachments).FileId);
+        Assert.Equal(photoId, Assert.Single(row.Photos).PhotoId);
+    }
+
+    [Fact]
+    public async Task RoundTrip_IntoAnotherInstance_StoresTheFile_AndUploadsThePhoto_WithTitleAndCaption()
+    {
+        await using var source = new ApiFactory(ReadWriteWithFiles);
+        using var sourceClient = source.CreateClient();
+        var fileId = await SeedFileWithContentAsync(source, "note.txt", "text/plain", NoteBytes);
+        var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        var photoId = await SeedTitledPhotoAsync(source, photoBytes, "Sunset", "Over the fjord");
+        var entry = await CreateAsync(sourceClient, NewEntry("Camping", photoIds: [photoId], attachmentFileIds: [fileId]));
+        var exported = await sourceClient.GetStringAsync(IcsPath);
+
+        await using var target = new ApiFactory(ReadWriteWithUploads);
+        using var targetClient = target.CreateClient();
+        var result = await ImportAsync(targetClient, exported);
+
+        Assert.Equal((1, 1, 0, 1, 0), (result.ImportedCount, result.StoredFileCount, result.ReusedFileCount, result.StoredPhotoCount, result.ReusedPhotoCount));
+        var file = Assert.Single(await FilesAsync(target));
+        Assert.Equal(("note.txt", "text/plain", Sha256(NoteBytes)), (file.FileName, file.ContentType, file.Sha256Hash));
+        Assert.NotNull(file.JournalStoredObjectId);
+        var photo = Assert.Single(await PhotosAsync(target));
+        Assert.Equal(("Sunset", "Over the fjord"), (photo.Title, photo.Caption));
+        Assert.NotNull(photo.StoredObjectId); // an owned original on the object store, not a Files-store row
+        var row = await EntryAsync(target, entry.ExternalUid!);
+        Assert.Equal(file.Id, Assert.Single(row.Attachments).FileId);
+        Assert.Equal(photo.PhotoId, Assert.Single(row.Photos).PhotoId);
+
+        // Importing the same file again matches what the first import stored.
+        var again = await ImportAsync(targetClient, exported);
+        Assert.Equal((1, 0, 1, 0, 1), (again.UpdatedCount, again.StoredFileCount, again.ReusedFileCount, again.StoredPhotoCount, again.ReusedPhotoCount));
+        Assert.Single(await PhotosAsync(target));
+        Assert.Single(await FilesAsync(target));
+    }
+
+    [Fact]
+    public async Task Import_InlinePhoto_MatchingAStoredPhoto_IsReusedByHash_AndKeepsItsOwnTitle()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        var existingId = await SeedTitledPhotoAsync(factory, photoBytes, "Library title", null);
+
+        // No X-ODYSSEY-PHOTO-ID: a photo from elsewhere whose bytes the library already holds.
+        var result = await ImportAsync(client, Vcalendar(Vjournal("p1", "SUMMARY:Hash match", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(photoBytes, "renamed.jpg", title: "File title"))));
+
+        Assert.Equal((0, 1), (result.StoredPhotoCount, result.ReusedPhotoCount));
+        var photo = Assert.Single(await PhotosAsync(factory));
+        Assert.Equal((existingId, "Library title"), (photo.PhotoId, photo.Title)); // a match is reused as-is
+        Assert.Equal(existingId, Assert.Single((await EntryAsync(factory, "p1")).Photos).PhotoId);
+    }
+
+    [Fact]
+    public async Task Import_SameInlinePhotoOnTwoEntries_IsUploadedOnce()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        var photo = InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg");
+
+        var result = await ImportAsync(client, Vcalendar(
+            Vjournal("d1", "SUMMARY:One", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101", photo),
+            Vjournal("d2", "SUMMARY:Two", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260102", photo)));
+
+        Assert.Equal((2, 1, 1), (result.ImportedCount, result.StoredPhotoCount, result.ReusedPhotoCount));
+        var stored = Assert.Single(await PhotosAsync(factory));
+        Assert.Equal(stored.PhotoId, Assert.Single((await EntryAsync(factory, "d1")).Photos).PhotoId);
+        Assert.Equal(stored.PhotoId, Assert.Single((await EntryAsync(factory, "d2")).Photos).PhotoId);
+    }
+
+    [Theory]
+    [InlineData(PermissionClaims.FilesCreate)]
+    [InlineData(PermissionClaims.FilesRead)]
+    public async Task Import_InlineFile_WithoutBothFileClaims_IsForbidden_NothingImported(string missing)
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads.Where(c => c != missing).ToArray());
+        using var client = factory.CreateClient();
+
+        var response = await PostIcsAsync(client, Vcalendar(Vjournal("f1", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(0, await ctx.JournalEntries.CountAsync());
+        Assert.Empty(await FilesAsync(factory));
+    }
+
+    [Theory]
+    [InlineData(PermissionClaims.PhotosCreate)]
+    [InlineData(PermissionClaims.PhotosRead)]
+    public async Task Import_InlinePhoto_WithoutBothPhotoClaims_IsForbidden_NothingImported(string missing)
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads.Where(c => c != missing).ToArray());
+        using var client = factory.CreateClient();
+
+        var response = await PostIcsAsync(client, Vcalendar(Vjournal("g1", "SUMMARY:Gated", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        Assert.Equal(0, await ctx.JournalEntries.CountAsync());
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    [Fact]
+    public async Task Import_InlinePhoto_ThatIsNotAnImage_IsSkipped_ButTheEntryImports()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+
+        var result = await ImportAsync(client, Vcalendar(Vjournal("n1", "SUMMARY:Not a photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(NoteBytes, "fake.jpg"))));
+
+        Assert.Equal((1, 1, 0), (result.ImportedCount, result.SkippedPhotoCount, result.StoredPhotoCount));
+        var group = Assert.Single(result.Skipped);
+        Assert.StartsWith("Attached photo", group.Reason);
+        Assert.Equal(["Not a photo"], group.SampleTitles);
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    [Fact]
+    public async Task Import_InlineFile_LargerThanTheImportCap_IsRefusedWhole()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxImportMegabytes, "1");
+
+        var response = await PostIcsAsync(client, Vcalendar(Vjournal("b1", "SUMMARY:Big", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(new byte[1024 * 1024], "big.txt", "text/plain"))));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Empty(await FilesAsync(factory));
+    }
+
+    [Fact]
+    public async Task Import_Category_MatchesAnArchivedTag_PreferringAnActiveOne()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var archivedOnly = await SeedJournalTagAsync(factory, "Retired", archived: true);
+        await SeedJournalTagAsync(factory, "Both", archived: true);
+        var activeBoth = await SeedJournalTagAsync(factory, "Both");
+
+        var result = await ImportAsync(client, Vcalendar(Vjournal("t1", "SUMMARY:Tagged", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            "CATEGORIES:retired,BOTH")));
+
+        Assert.Equal(0, result.SkippedTagLinkCount);
+        var tags = (await EntryAsync(factory, "t1")).EntryTags.Select(t => t.JournalTagId).Order().ToArray();
+        Assert.Equal(new[] { archivedOnly, activeBoth }.Order().ToArray(), tags);
+    }
+
+    [Fact]
+    public async Task Import_NewInlinePhoto_OverTheAdminUploadCap_IsSkipped_ButTheEntryImports()
+    {
+        await using var factory = new ApiFactory(ReadWriteWithUploads);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
+        // A JPEG header padded past the 1 MB cap: the size check runs before the image is decoded.
+        var big = PhotoTestData.Jpeg(PhotoTestData.NextSeed()).Concat(new byte[1536 * 1024]).ToArray();
+
+        var result = await ImportAsync(client, Vcalendar(Vjournal("big1", "SUMMARY:Big photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(big, "big.jpg"))));
+
+        Assert.Equal((1, 1, 0), (result.ImportedCount, result.SkippedPhotoCount, result.StoredPhotoCount));
+        var group = Assert.Single(result.Skipped);
+        Assert.Contains("1 MB limit", group.Reason);
+        Assert.Equal(["Big photo"], group.SampleTitles);
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    // The two kinds are gated apart: photo claims never stand in for file claims, nor the reverse.
+    [Fact]
+    public async Task Import_PhotoClaimsAlone_AcceptAnInlinePhoto_ButRefuseAnInlineFile()
+    {
+        string[] photosOnly =
+        [
+            PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
+            PermissionClaims.PhotosRead, PermissionClaims.PhotosCreate,
+        ];
+        await using var factory = new ApiFactory(photosOnly);
+        using var client = factory.CreateClient();
+
+        var photo = await ImportAsync(client, Vcalendar(Vjournal("po1", "SUMMARY:Photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
+        var file = await PostIcsAsync(client, Vcalendar(Vjournal("po2", "SUMMARY:File", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+
+        Assert.Equal((1, 1), (photo.ImportedCount, photo.StoredPhotoCount));
+        Assert.Equal(HttpStatusCode.Forbidden, file.StatusCode);
+    }
+
+    [Fact]
+    public async Task Import_FileClaimsAlone_AcceptAnInlineFile_ButRefuseAnInlinePhoto()
+    {
+        string[] filesOnly =
+        [
+            PermissionClaims.JournalRead, PermissionClaims.JournalCreate, PermissionClaims.JournalUpdate,
+            PermissionClaims.FilesRead, PermissionClaims.FilesCreate,
+        ];
+        await using var factory = new ApiFactory(filesOnly);
+        using var client = factory.CreateClient();
+
+        var file = await ImportAsync(client, Vcalendar(Vjournal("fo1", "SUMMARY:File", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlineAttach(NoteBytes, "note.txt", "text/plain"))));
+        var photo = await PostIcsAsync(client, Vcalendar(Vjournal("fo2", "SUMMARY:Photo", "DESCRIPTION:x", "DTSTART;VALUE=DATE:20260101",
+            InlinePhoto(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "beach.jpg"))));
+
+        Assert.Equal((1, 1), (file.ImportedCount, file.StoredFileCount));
+        Assert.Equal(HttpStatusCode.Forbidden, photo.StatusCode);
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    [Fact]
+    public async Task Export_ThatGrowsPastTheByteCapWhileStreaming_IsAborted_NotTruncated()
+    {
+        // The pre-flight check judges files and photos exactly, but entry text only as it is written. Text alone over
+        // the cap must end the response abnormally, so a browser reports a failed download instead of saving part of it.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.JournalIcsMaxExportMegabytes, "1");
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var now = DateTime.UtcNow;
+            for (var i = 0; i < 400; i++)
+            {
+                context.JournalEntries.Add(new JournalEntry
+                {
+                    ExternalUid = $"urn:uuid:bulk-{i}", Title = $"Bulk {i}", Content = new string('x', 4000),
+                    EntryDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                    CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+                });
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(IcsPath + "/summary")).StatusCode); // nothing to judge up front
+        var failure = await Record.ExceptionAsync(async () =>
+        {
+            using var response = await client.GetAsync(IcsPath);
+            var body = await response.Content.ReadAsStringAsync();
+            Assert.Fail($"The export completed ({body.Length} chars) instead of being aborted.");
+        });
+
+        Assert.True(failure is HttpRequestException or IOException or OperationCanceledException, failure?.ToString());
+    }
+
+    // Both export actions stream gigabytes of inline content, so both take the export permits and deadline; a
+    // single-entry route without them would be an unthrottled path to the same streams.
+    [Theory]
+    [InlineData(nameof(Odyssey.Api.Controllers.JournalEntriesController.ExportVJournal))]
+    [InlineData(nameof(Odyssey.Api.Controllers.JournalEntriesController.ExportSingleVJournal))]
+    public void EveryStreamingExport_TakesTheExportConcurrencyLimiters(string action)
+    {
+        var method = typeof(Odyssey.Api.Controllers.JournalEntriesController).GetMethod(action)!;
+
+        var rateLimit = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute), false)
+            .Cast<Microsoft.AspNetCore.RateLimiting.EnableRateLimitingAttribute>().SingleOrDefault();
+        Assert.Equal(Odyssey.Api.ImportExportRateLimiting.ExportConcurrencyPolicy, rateLimit?.PolicyName);
+        Assert.Contains(method.GetCustomAttributes(typeof(TypeFilterAttribute), false).Cast<TypeFilterAttribute>(),
+            a => a.ImplementationType == typeof(Odyssey.Api.ExportConcurrencyFilter));
+    }
+
+    private static async Task<Guid> SeedTitledPhotoAsync(
+        WebApplicationFactory<Program> factory, byte[] bytes, string? title, string? caption)
+    {
+        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg", bytes);
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var photo = await context.Photos.SingleAsync(p => p.PhotoId == photoId);
+        photo.Title = title;
+        photo.Caption = caption;
+        await context.SaveChangesAsync();
+        return photoId;
+    }
+
     private static int Count(string haystack, string needle)
     {
         var count = 0;
@@ -1115,7 +1594,7 @@ public class JournalEntryIcsApiTests
         DateTime? entryDate = null,
         Guid[]? tagIds = null,
         Guid[]? contactIds = null,
-        Guid[]? photoFileIds = null,
+        Guid[]? photoIds = null,
         Guid[]? attachmentFileIds = null) => new()
     {
         Title = title,
@@ -1124,7 +1603,7 @@ public class JournalEntryIcsApiTests
         Location = location,
         TagIds = tagIds ?? [],
         ContactIds = contactIds ?? [],
-        PhotoFileIds = photoFileIds ?? [],
+        PhotoIds = photoIds ?? [],
         AttachmentFileIds = attachmentFileIds ?? [],
     };
 
@@ -1220,6 +1699,75 @@ public class JournalEntryIcsApiTests
         return id;
     }
 
+    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
+
+    // A legacy file with real content and its real hash, so an import can match it.
+    private static async Task<Guid> SeedFileWithContentAsync(
+        WebApplicationFactory<Program> factory, string fileName, string contentType, byte[] content)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+
+        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
+        var metadataId = Guid.NewGuid();
+        context.FileBlob.Add(blob);
+        context.FileMetadata.Add(new FileMetadata
+        {
+            Id = metadataId,
+            UploadedByUserId = ActorUserId,
+            FileName = fileName,
+            ContentType = contentType,
+            SizeBytes = content.Length,
+            Sha256Hash = Sha256(content),
+            UploadedAtUtc = DateTime.UtcNow,
+            FileBlobId = blob.Id,
+            FileBlob = blob,
+        });
+        await context.SaveChangesAsync();
+        return metadataId;
+    }
+
+    private static string Sha256(byte[] content) => Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(content));
+
+    // One inline attachment line, folded the way a producer might: base64 split over continuation lines.
+    private static string InlineAttach(byte[] content, string fileName, string contentType, string? extraParams = null)
+    {
+        var base64 = Convert.ToBase64String(content);
+        var folded = string.Join("\r\n ", Enumerable.Range(0, (base64.Length + 59) / 60).Select(i => base64.Substring(i * 60, Math.Min(60, base64.Length - i * 60))));
+        return $"ATTACH;FMTTYPE={contentType};ENCODING=BASE64;VALUE=BINARY;FILENAME=\"{fileName}\"{extraParams}:{folded}";
+    }
+
+    private static string InlinePhoto(byte[] content, string fileName, string? title = null, string? caption = null) =>
+        InlineAttach(content, fileName, "image/jpeg",
+            ";X-ODYSSEY-KIND=PHOTO"
+            + (title is null ? "" : $";X-ODYSSEY-TITLE=\"{title}\"")
+            + (caption is null ? "" : $";X-ODYSSEY-CAPTION=\"{caption}\""));
+
+    private static async Task<List<FileMetadata>> FilesAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await context.FileMetadata.AsNoTracking().ToListAsync();
+    }
+
+    private static async Task<List<Photo>> PhotosAsync(WebApplicationFactory<Program> factory)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await context.Photos.AsNoTracking().ToListAsync();
+    }
+
+    private static async Task<JournalEntry> EntryAsync(WebApplicationFactory<Program> factory, string uid)
+    {
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        return await context.JournalEntries.AsNoTracking()
+            .Include(e => e.Attachments).Include(e => e.Photos).Include(e => e.EntryTags)
+            .SingleAsync(e => e.ExternalUid == uid);
+    }
+
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
     {
         using var scope = factory.Services.CreateScope();
@@ -1313,14 +1861,23 @@ public class JournalEntryIcsApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string>? permissions)
-            : base(permissions, ActorUserId, configureServices: IsolateDomainContext)
+        private readonly string databaseName;
+
+        // sharingStoreWith: a second caller (other claims) over the same database and file volume.
+        public ApiFactory(IReadOnlyCollection<string>? permissions, ApiFactory? sharingStoreWith = null)
+            : this(permissions, sharingStoreWith?.databaseName ?? $"journal-entry-ics-{Guid.NewGuid()}", sharingStoreWith)
         {
         }
 
-        private static void IsolateDomainContext(IServiceCollection services)
+        private ApiFactory(IReadOnlyCollection<string>? permissions, string databaseName, ApiFactory? sharingStoreWith)
+            : base(permissions, ActorUserId, configureServices: services => IsolateDomainContext(services, databaseName),
+                sharingStoreWith: sharingStoreWith)
         {
-            var databaseName = $"journal-entry-ics-{Guid.NewGuid()}";
+            this.databaseName = databaseName;
+        }
+
+        private static void IsolateDomainContext(IServiceCollection services, string databaseName)
+        {
             services.RemoveAll<DbContextOptions<OdysseyContext>>();
             services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(databaseName));
         }

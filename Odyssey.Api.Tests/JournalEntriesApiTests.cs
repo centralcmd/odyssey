@@ -26,10 +26,12 @@ public class JournalEntriesApiTests
         PermissionClaims.JournalUpdate, PermissionClaims.JournalDelete,
     ];
 
+    // Linking a new photo needs photos.read (issue #428 §3.3); attachments still need files.read.
     private static readonly string[] ReadWriteWithFiles =
     [
         PermissionClaims.JournalRead, PermissionClaims.JournalCreate,
         PermissionClaims.JournalUpdate, PermissionClaims.JournalDelete, PermissionClaims.FilesRead,
+        PermissionClaims.PhotosRead,
     ];
 
     // ── Authorization matrix (criterion #8) ───────────────────────────────────
@@ -234,14 +236,14 @@ public class JournalEntriesApiTests
     public async Task Post_ImageAsPhoto_AppearsInGallery()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var id = await CreateAsync(client, NewEntry(photoFileIds: [imageId]));
+        var id = await CreateAsync(client, NewEntry(photoIds: [imageId]));
 
         var fetched = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
         var photo = Assert.Single(fetched!.Photos);
-        Assert.Equal(imageId, photo.FileId);
+        Assert.Equal(imageId, photo.PhotoId);
         Assert.Equal(0, photo.Position);
     }
 
@@ -252,7 +254,7 @@ public class JournalEntriesApiTests
         var pdfId = await SeedFileAsync(factory, "notes.pdf", "application/pdf");
         using var client = factory.CreateClient();
 
-        var request = NewEntry(photoFileIds: [pdfId]);
+        var request = NewEntry(photoIds: [pdfId]);
         var post = await client.PostAsJsonAsync(Path, request);
 
         Assert.Equal(HttpStatusCode.UnprocessableEntity, post.StatusCode);
@@ -285,16 +287,50 @@ public class JournalEntriesApiTests
     }
 
     [Fact]
-    public async Task Post_LinkingPhoto_WithoutFilesReadClaim_ReturnsForbidden()
+    public async Task Post_LinkingPhoto_WithoutPhotosReadClaim_ReturnsForbidden()
     {
-        // Confused-deputy guard (criterion #5): journal.create alone cannot link a file.
+        // Issue #428 §3.3: linking a photo the entry does not hold needs photos.read; journal.create alone cannot.
         await using var factory = new ApiFactory(ReadWrite);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var post = await client.PostAsJsonAsync(Path, NewEntry(photoFileIds: [imageId]));
+        var post = await client.PostAsJsonAsync(Path, NewEntry(photoIds: [imageId]));
 
         Assert.Equal(HttpStatusCode.Forbidden, post.StatusCode);
+    }
+
+    /// <summary>Issue #428 §3.3: the photos.read gate is change-only — re-sending the links an entry already holds needs nothing.</summary>
+    [Fact]
+    public async Task Put_KeepingLinkedPhotos_WithoutPhotosReadClaim_Succeeds()
+    {
+        await using var factory = new ApiFactory(ReadWrite);
+        var photoId = await SeedPhotoAsync(factory, "beach.jpg");
+        var id = Guid.NewGuid();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var now = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+            context.JournalEntries.Add(new JournalEntry
+            {
+                JournalEntryId = id, ExternalUid = $"urn:uuid:{Guid.NewGuid()}", Title = "A day", Content = "c",
+                EntryDate = now, CreatedByUserId = ActorUserId, CreatedAt = now, UpdatedAt = now,
+            });
+            context.JournalEntryPhotos.Add(new JournalEntryPhoto
+            {
+                JournalEntryPhotoId = Guid.NewGuid(), JournalEntryId = id, PhotoId = photoId, Position = 0, CreatedAt = now,
+            });
+            await context.SaveChangesAsync();
+        }
+
+        using var client = factory.CreateClient();
+        var update = new UpdateJournalEntry
+        {
+            Title = "Renamed", Content = "c", EntryDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc), PhotoIds = [photoId],
+        };
+
+        var put = await client.PutAsJsonAsync($"{Path}/{id}", update);
+
+        Assert.Equal(HttpStatusCode.OK, put.StatusCode);
     }
 
     [Fact]
@@ -326,7 +362,7 @@ public class JournalEntriesApiTests
             entryDate = "2026-06-01T00:00:00Z",
             tagIds = Array.Empty<Guid>(),
             contactIds = Array.Empty<Guid>(),
-            photoFileIds = Array.Empty<Guid>(),
+            photoIds = Array.Empty<Guid>(),
             attachmentFileIds = Array.Empty<Guid>(),
             contacts = new[] { new { contactId = Guid.NewGuid(), name = "INJECTED", normalizedName = "injected" } },
             tags = new[] { new { journalTagId = Guid.NewGuid(), name = "INJECTED", normalizedName = "injected" } },
@@ -393,18 +429,18 @@ public class JournalEntriesApiTests
     public async Task List_Summary_CarriesPhotoLinks_ForEveryEntryOnThePage()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var shared = await SeedFileAsync(factory, "shared.jpg", "image/jpeg");
-        var own = await SeedFileAsync(factory, "own.jpg", "image/jpeg");
+        var shared = await SeedPhotoAsync(factory, "shared.jpg");
+        var own = await SeedPhotoAsync(factory, "own.jpg");
         using var client = factory.CreateClient();
 
-        var first = await CreateAsync(client, NewEntry(title: "First", photoFileIds: [shared]));
-        var second = await CreateAsync(client, NewEntry(title: "Second", photoFileIds: [shared, own]));
+        var first = await CreateAsync(client, NewEntry(title: "First", photoIds: [shared]));
+        var second = await CreateAsync(client, NewEntry(title: "Second", photoIds: [shared, own]));
         var none = await CreateAsync(client, NewEntry(title: "None"));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
 
-        Assert.Equal([shared], results!.Single(e => e.JournalEntryId == first).Photos.Select(p => p.FileId));
-        Assert.Equal([shared, own], results!.Single(e => e.JournalEntryId == second).Photos.Select(p => p.FileId));
+        Assert.Equal([shared], results!.Single(e => e.JournalEntryId == first).Photos.Select(p => p.PhotoId));
+        Assert.Equal([shared, own], results!.Single(e => e.JournalEntryId == second).Photos.Select(p => p.PhotoId));
         Assert.Empty(results!.Single(e => e.JournalEntryId == none).Photos);
     }
 
@@ -414,21 +450,21 @@ public class JournalEntriesApiTests
     public async Task List_Summary_PhotoLinks_AreOrderedByPosition()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var a = await SeedFileAsync(factory, "a.jpg", "image/jpeg");
-        var b = await SeedFileAsync(factory, "b.jpg", "image/jpeg");
-        var c = await SeedFileAsync(factory, "c.jpg", "image/jpeg");
+        var a = await SeedPhotoAsync(factory, "a.jpg");
+        var b = await SeedPhotoAsync(factory, "b.jpg");
+        var c = await SeedPhotoAsync(factory, "c.jpg");
         using var client = factory.CreateClient();
 
-        var id = await CreateAsync(client, NewEntry(photoFileIds: [c, a, b]));
+        var id = await CreateAsync(client, NewEntry(photoIds: [c, a, b]));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
         var listed = results!.Single(e => e.JournalEntryId == id).Photos;
 
         Assert.Equal([0, 1, 2], listed.Select(p => p.Position));
-        Assert.Equal([c, a, b], listed.Select(p => p.FileId));
+        Assert.Equal([c, a, b], listed.Select(p => p.PhotoId));
 
         var detail = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
-        Assert.Equal(detail!.Photos.Select(p => p.FileId), listed.Select(p => p.FileId));
+        Assert.Equal(detail!.Photos.Select(p => p.PhotoId), listed.Select(p => p.PhotoId));
     }
 
     // A link whose library Photo no longer resolves is DROPPED rather than returned with an empty file
@@ -438,16 +474,16 @@ public class JournalEntriesApiTests
     public async Task List_Summary_DropsAPhotoLinkWhoseLibraryPhotoIsGone()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var kept = await SeedFileAsync(factory, "kept.jpg", "image/jpeg");
-        var lost = await SeedFileAsync(factory, "lost.jpg", "image/jpeg");
+        var kept = await SeedPhotoAsync(factory, "kept.jpg");
+        var lost = await SeedPhotoAsync(factory, "lost.jpg");
         using var client = factory.CreateClient();
 
-        var id = await CreateAsync(client, NewEntry(photoFileIds: [kept, lost]));
+        var id = await CreateAsync(client, NewEntry(photoIds: [kept, lost]));
 
         using (var scope = factory.Services.CreateScope())
         {
             var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var photo = await context.Photos.FirstAsync(p => p.FileId == lost);
+            var photo = await context.Photos.FirstAsync(p => p.PhotoId == lost);
             context.Photos.Remove(photo);
             await context.SaveChangesAsync();
         }
@@ -455,8 +491,8 @@ public class JournalEntriesApiTests
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
         var row = results!.Single(e => e.JournalEntryId == id);
 
-        Assert.Equal([kept], row.Photos.Select(p => p.FileId));
-        Assert.DoesNotContain(row.Photos, p => p.FileId == Guid.Empty);
+        Assert.Equal([kept], row.Photos.Select(p => p.PhotoId));
+        Assert.DoesNotContain(row.Photos, p => p.PhotoId == Guid.Empty);
     }
 
     // The card draws its contact chips from the list row, so the links have to be on it — and an id
@@ -632,10 +668,10 @@ public class JournalEntriesApiTests
     public async Task List_HasPhotosFilter_KeepsOnlyEntriesCarryingAPhoto()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=true");
@@ -667,12 +703,12 @@ public class JournalEntriesApiTests
     public async Task List_HasPhotosAndHasFiles_AreAnded()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         var pdfId = await SeedFileAsync(factory, "receipt.pdf", "application/pdf");
         using var client = factory.CreateClient();
 
-        var both = await CreateAsync(client, NewEntry(title: "Both", photoFileIds: [imageId], attachmentFileIds: [pdfId]));
-        var photoOnly = await CreateAsync(client, NewEntry(title: "Photo only", photoFileIds: [imageId]));
+        var both = await CreateAsync(client, NewEntry(title: "Both", photoIds: [imageId], attachmentFileIds: [pdfId]));
+        var photoOnly = await CreateAsync(client, NewEntry(title: "Photo only", photoIds: [imageId]));
         var fileOnly = await CreateAsync(client, NewEntry(title: "File only", attachmentFileIds: [pdfId]));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=true&hasFiles=true");
@@ -688,10 +724,10 @@ public class JournalEntriesApiTests
     public async Task List_HasPhotosFalse_KeepsOnlyEntriesWithoutPhotos()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>($"{Path}?hasPhotos=false");
@@ -705,10 +741,10 @@ public class JournalEntriesApiTests
     public async Task List_WithoutAttachmentFilters_ReturnsEntriesRegardlessOfMedia()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var imageId = await SeedPhotoAsync(factory, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoFileIds: [imageId]));
+        var withPhoto = await CreateAsync(client, NewEntry(title: "With photo", photoIds: [imageId]));
         var plain = await CreateAsync(client, NewEntry(title: "Plain"));
 
         var results = await client.GetPagedItemsAsync<JournalEntrySummary>(Path);
@@ -796,22 +832,22 @@ public class JournalEntriesApiTests
     public async Task Get_AfterLinkedPhotoFileDeleted_StillReadsWithDanglingId()
     {
         await using var factory = new ApiFactory(ReadWriteWithFiles);
-        var imageId = await SeedFileAsync(factory, "beach.jpg", "image/jpeg");
+        var (imageId, fileId) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, "beach.jpg");
         using var client = factory.CreateClient();
 
-        var id = await CreateAsync(client, NewEntry(photoFileIds: [imageId]));
+        var id = await CreateAsync(client, NewEntry(photoIds: [imageId]));
 
         using (var scope = factory.Services.CreateScope())
         {
             var finance = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
-            var file = await finance.FileMetadata.FirstAsync(f => f.Id == imageId);
+            var file = await finance.FileMetadata.FirstAsync(f => f.Id == fileId);
             finance.FileMetadata.Remove(file);
             await finance.SaveChangesAsync();
         }
 
         var fetched = await client.GetFromJsonAsync<ExistingJournalEntry>($"{Path}/{id}");
         Assert.NotNull(fetched);
-        Assert.Contains(fetched!.Photos, p => p.FileId == imageId);
+        Assert.Contains(fetched!.Photos, p => p.PhotoId == imageId);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────
@@ -933,7 +969,7 @@ public class JournalEntriesApiTests
         string? content = null,
         Guid[]? tagIds = null,
         Guid[]? contactIds = null,
-        Guid[]? photoFileIds = null,
+        Guid[]? photoIds = null,
         Guid[]? attachmentFileIds = null) => new()
     {
         Title = title,
@@ -942,7 +978,7 @@ public class JournalEntriesApiTests
         Location = location,
         TagIds = tagIds ?? [],
         ContactIds = contactIds ?? [],
-        PhotoFileIds = photoFileIds ?? [],
+        PhotoIds = photoIds ?? [],
         AttachmentFileIds = attachmentFileIds ?? [],
     };
 
@@ -999,6 +1035,10 @@ public class JournalEntriesApiTests
         await context.SaveChangesAsync();
         return id;
     }
+
+    /// <summary>A library photo to link (issue #428: the journal links photos by id); seeded as a legacy photo.</summary>
+    private static async Task<Guid> SeedPhotoAsync(WebApplicationFactory<Program> factory, string fileName) =>
+        (await PhotoTestSupport.SeedLegacyPhotoAsync(factory, null, fileName)).PhotoId;
 
     private static async Task<Guid> SeedFileAsync(WebApplicationFactory<Program> factory, string fileName, string contentType)
     {

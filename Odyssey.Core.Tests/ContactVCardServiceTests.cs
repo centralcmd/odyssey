@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal.Avatar;
 using Odyssey.Core.Finance;
 using Odyssey.Core;
@@ -23,7 +24,10 @@ public class ContactVCardServiceTests
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
             new FileService(context, new FileValidationService()),
-            new FixedUploadLimits(64L * 1024 * 1024));
+            new FixedUploadLimits(64L * 1024 * 1024),
+            writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
+            store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,
+            source: Odyssey.Testing.FileStorage.TestFileStores.For(context).Source);
 
     private static (ContactService Service, ContactVCardService VCard) CreateServices(OdysseyContext context) => (
         new ContactService(context, new NoopContactReferenceGuard()),
@@ -87,7 +91,7 @@ public class ContactVCardServiceTests
         Assert.Contains("KIND:org", export!.Content);
         Assert.Contains("ORG:Acme Corp", export.Content);
         Assert.Contains("URL:https://acme.example.com", export.Content);
-        Assert.Contains($"UID:{(await service.Get(created.ContactId))!.ExternalUid}", export.Content);
+        Assert.Contains($"UID:{(await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid}", export.Content);
     }
 
     [Fact]
@@ -187,8 +191,8 @@ public class ContactVCardServiceTests
         Assert.Equal(0, result.UpdatedCount);
         Assert.Empty(result.Skipped);
 
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
-        Assert.Equal("import-uid-1", (await service.Get(created.ContactId))!.ExternalUid);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
+        Assert.Equal("import-uid-1", (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid);
     }
 
     [Fact]
@@ -205,7 +209,7 @@ public class ContactVCardServiceTests
         Assert.Equal(0, result.CreatedCount);
         Assert.Equal(1, result.UpdatedCount);
 
-        var all = await service.ListAsync(new ContactsQueryParams());
+        var all = await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted);
         Assert.Single(all.Items); // no duplicate row created
     }
 
@@ -216,7 +220,7 @@ public class ContactVCardServiceTests
         var (service, vCard) = CreateServices(context);
         var created = await service.Create(Org("Acme"));
         await service.CreateEmail(created.ContactId, new NewEmailAddress { Label = EmailLabel.General, Value = "old@example.com" });
-        var externalUid = (await service.Get(created.ContactId))!.ExternalUid;
+        var externalUid = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid;
 
         var vcf = Vcard(
             $"UID:{externalUid}",
@@ -242,12 +246,12 @@ public class ContactVCardServiceTests
             Type = ContactType.Organization, Archived = true,
             OrganizationDetails = new OrganizationDetailsDto { LegalName = "Acme" },
         });
-        var externalUid = (await service.Get(created.ContactId))!.ExternalUid;
+        var externalUid = (await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.ExternalUid;
 
         var vcf = Vcard($"UID:{externalUid}", "FN:Acme", "ORG:Acme");
         await ImportAsync(vCard, vcf);
 
-        Assert.NotNull((await service.Get(created.ContactId))!.Archived);
+        Assert.NotNull((await service.Get(created.ContactId, claims: LocationClaims.Trusted))!.Archived);
     }
 
     [Fact]
@@ -263,7 +267,7 @@ public class ContactVCardServiceTests
 
         Assert.Equal(1, result.CreatedCount);
         Assert.Equal(1, result.UpdatedCount);
-        var all = await service.ListAsync(new ContactsQueryParams());
+        var all = await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted);
         Assert.Single(all.Items);
         Assert.Equal("Acme Renamed", all.Items.Single().ResolvedDisplayName);
     }
@@ -288,7 +292,7 @@ public class ContactVCardServiceTests
         await service.Delete(created.ContactId);
         await ImportAsync(vCard, exported);
 
-        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         Assert.Equal("Ada (agent)", reimported.DisplayName);
     }
 
@@ -351,26 +355,26 @@ public class ContactVCardServiceTests
         var skipGroup = Assert.Single(result.Skipped);
         Assert.StartsWith("Email address dropped:", skipGroup.Reason);
         Assert.Equal(1, skipGroup.Count);
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         var emails = await service.GetEmails(created.ContactId);
         Assert.Equal("good@example.com", Assert.Single(emails!).Value);
     }
 
     [Fact]
-    public async Task Import_InvalidCountryCode_DropsJustThatAddress()
+    public async Task Import_UnresolvableCountry_DropsJustThatAddress()
     {
         await using var context = TestContextFactory.CreateJournal();
         var (service, vCard) = CreateServices(context);
 
         var result = await ImportAsync(vCard, Vcard(
             "UID:bad-country", "FN:Acme", "ORG:Acme",
-            "ADR;TYPE=work:;;Storgata 1;Oslo;;0150;Norway"));
+            "ADR;TYPE=work:;;Storgata 1;Oslo;;0150;Narnia"));
 
         Assert.Equal(1, result.CreatedCount);
         var skipGroup = Assert.Single(result.Skipped);
         Assert.StartsWith("Address dropped:", skipGroup.Reason);
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
-        Assert.Empty((await service.GetAddresses(created.ContactId))!);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
+        Assert.Empty((await service.GetAddresses(created.ContactId, claims: LocationClaims.Trusted))!);
     }
 
     [Fact]
@@ -384,7 +388,7 @@ public class ContactVCardServiceTests
 
         Assert.Equal(1, result.CreatedCount);
         Assert.Empty(result.Skipped);
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         Assert.Null(created.OrganizationDetails!.Website);
     }
 
@@ -398,7 +402,7 @@ public class ContactVCardServiceTests
             "UID:gender-x", "FN:Sam Rivers", "N:Rivers;Sam;;;", "GENDER:X"));
 
         Assert.Equal(1, result.CreatedCount);
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         Assert.Null(created.PersonDetails!.Sex);
     }
 
@@ -427,7 +431,7 @@ public class ContactVCardServiceTests
         await service.Delete(created.ContactId);
         await ImportAsync(vCard, exported);
 
-        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         Assert.Equal("Comma, Semicolon; & Co.", reimported.OrganizationDetails!.LegalName);
         Assert.Equal("Notes with a comma, a semicolon; and a backslash \\ here", reimported.Notes);
     }
@@ -462,7 +466,7 @@ public class ContactVCardServiceTests
         Assert.Equal(0, result.CreatedCount);
         var group = Assert.Single(result.Skipped);
         Assert.Contains("control characters", group.Reason);
-        Assert.Empty((await service.ListAsync(new ContactsQueryParams())).Items);
+        Assert.Empty((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
     }
 
     [Fact]
@@ -486,7 +490,7 @@ public class ContactVCardServiceTests
         await service.Delete(created.ContactId);
         await ImportAsync(vCard, exported);
 
-        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var reimported = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         Assert.Equal(longNote, reimported.Notes);
     }
 
@@ -545,7 +549,7 @@ public class ContactVCardServiceTests
         Assert.Contains("more than", skipGroup.Reason);
         Assert.Equal(1, skipGroup.Count); // reported once for the entry, not once per dropped email
 
-        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams())).Items);
+        var created = Assert.Single((await service.ListAsync(new ContactsQueryParams(), claims: LocationClaims.Trusted)).Items);
         var emails = await service.GetEmails(created.ContactId);
         Assert.Equal(200, emails!.Count); // capped, not all 1000
     }
@@ -570,7 +574,7 @@ public class ContactVCardServiceTests
 
         var overCap = new FakeImportExportLimitsLookup().ContactVCardMaxImportBytes + 1;
         await Assert.ThrowsAsync<DomainValidationException>(
-            () => vCard.ImportAsync(stream, overCap, "text/vcard"));
+            () => vCard.ImportAsync(stream, overCap, "text/vcard", claims: LocationClaims.Trusted));
     }
 
     [Fact]
@@ -624,7 +628,7 @@ public class ContactVCardServiceTests
     private static async Task<VCardImportResult> ImportAsync(ContactVCardService vCard, string content)
     {
         using var stream = new MemoryStream(Encoding.UTF8.GetBytes(content));
-        return await vCard.ImportAsync(stream, stream.Length, "text/vcard");
+        return await vCard.ImportAsync(stream, stream.Length, "text/vcard", claims: LocationClaims.Trusted);
     }
 
     // Drives the streaming export (issue #343 §5 Goal 8) into an in-memory buffer and reassembles the

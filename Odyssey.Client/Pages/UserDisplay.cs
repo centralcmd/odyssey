@@ -1,5 +1,6 @@
 using System.Globalization;
 using MudBlazor;
+using Odyssey.Client.Components;
 using Odyssey.Dtos.Application;
 
 namespace Odyssey.Client.Pages;
@@ -91,6 +92,23 @@ internal static class UserDisplay
         "guest" => Icons.Material.Filled.Visibility,
         _ => Icons.Material.Filled.Person,
     };
+
+    /// <summary>
+    /// The role's glyph as an icon-font ligature — the same glyph <see cref="RoleIcon"/> draws as an SVG on
+    /// the role pill, for surfaces that take a ligature (a filter row).
+    /// </summary>
+    public static string RoleGlyph(string role) => role.ToLowerInvariant() switch
+    {
+        "owner" => "verified_user",
+        "admin" => "shield",
+        "user" => "how_to_reg",
+        "guest" => "visibility",
+        _ => "person",
+    };
+
+    /// <summary>A role as a Role-filter row: the role pill's glyph in the role's own avatar colour.</summary>
+    public static OdsOption RoleOption(string role) =>
+        new(role, role) { Icon = RoleGlyph(role), IconColor = AvatarFg(role) };
 
     /// <summary>
     /// The role tint as a <c>{ bg, fg }</c> pair for <c>OdsAvatar</c> — <b>the only copy</b>, and the

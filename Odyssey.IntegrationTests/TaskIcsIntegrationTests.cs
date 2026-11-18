@@ -78,7 +78,7 @@ public class TaskIcsIntegrationTests(MariaDbFixture fixture)
         var query = new JournalTasksQueryParams { Search = suffix }; // Search alone still hits the same chunked loop
         string? fileName = null;
         var reportedCount = 0;
-        await service.ExportStreamingAsync(query, output, (name, count) =>
+        await service.ExportStreamingAsync(query, canReadFiles: true, output, (name, count) =>
         {
             fileName = name;
             reportedCount = count;
@@ -121,7 +121,7 @@ public class TaskIcsIntegrationTests(MariaDbFixture fixture)
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
                 null, null, 64L * 1024 * 1024, 64L * 1024 * 1024,
-                20_000, 5_000, 92, 200, 100,
+                20_000, 5_000, 92, 200, 100, 64L * 1024 * 1024,
             IsDegraded: false));
     }
 }

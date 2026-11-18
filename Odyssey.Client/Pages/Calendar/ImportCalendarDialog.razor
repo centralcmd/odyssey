@@ -45,7 +45,14 @@
                 <h3 class="cal-imp-result-h" tabindex="-1" @ref="_resultHeading">
                     Imported into
                     <span class="cal-imp-result-cal">
-                        <span class="cal-imp-dot" style="@($"background:{_targetColor}")" aria-hidden="true"></span>@_targetName
+                        @if (_target is { } target)
+                        {
+                            <OdsTagChip Name="@target.Name" Icon="@target.Icon" Color="@target.Color" DefaultIcon="@Odyssey.Dtos.CalendarIcons.Default" />
+                        }
+                        else
+                        {
+                            <span>calendar</span>
+                        }
                     </span>
                 </h3>
 
@@ -72,6 +79,9 @@
                         </div>
                     </div>
                 </div>
+
+                <Odyssey.Client.Pages.Journal.LocationImportLines
+                    Lines="@([Odyssey.Client.Pages.Journal.LocationVisuals.PlacesImportLine(_result.PlacesLinked, _result.PlacesCreated)])" />
 
                 @if (_result.AnySeriesRegenerated)
                 {

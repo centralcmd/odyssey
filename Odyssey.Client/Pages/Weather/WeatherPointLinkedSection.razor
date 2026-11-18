@@ -1,0 +1,98 @@
+@using Odyssey.ApiClient.Resources
+@using Odyssey.Client.Components
+@using Odyssey.Dtos.Journal
+@inject IWeatherApiClient Weather
+@*
+    WeatherPointLinkedSection — a weather point's Linked locations (issue #388 §5.3; design system · Weather.jsx
+    WeatherPointLinkedSection). Loaded when the record opens — this section mounts with it — once per expand.
+    Names and whole-km distances only, never an address; each name opens the place on Locations by id. Needs
+    locations.read as well as weather.points.read, so the page draws it only for a caller holding both.
+*@
+
+@switch (_phase)
+{
+    case Phase.Loading:
+        <OdsRecordSection Class="acct-section wx-section" Label="Linked locations">
+            <div class="wx-linked-skel" aria-busy="true">
+                <OdsSkeleton Variant="OdsSkeletonVariant.Text" Width="52%" />
+                <OdsSkeleton Variant="OdsSkeletonVariant.Text" Width="38%" />
+            </div>
+        </OdsRecordSection>
+        break;
+    case Phase.Error:
+        <OdsRecordSection Class="acct-section wx-section" Label="Linked locations">
+            <div class="wx-sec-empty" role="alert">
+                <span>The linked locations couldn’t be loaded.</span>
+                <OdsButton Variant="OdsButtonVariant.Text" Icon="refresh" OnClick="LoadAsync">Try again</OdsButton>
+            </div>
+        </OdsRecordSection>
+        break;
+    default:
+        @if (_linked.Count == 0)
+        {
+            <OdsRecordSection Class="acct-section wx-section" Label="Linked locations" Empty="true"
+                              EmptyText="@(b => b.AddContent(0, "No location uses this weather point yet. Link places to it from the Locations page."))" />
+        }
+        else
+        {
+            <OdsRecordSection Class="acct-section wx-section" Label="Linked locations"
+                              Meta="@($"{_linked.Count} {(_linked.Count == 1 ? "place" : "places")}")">
+                <ul class="wx-linked">
+                    @foreach (var place in _linked)
+                    {
+                        <li @key="place.LocationId">
+                            <a class="wx-link wx-linked-name" href="@($"/locations?open={place.LocationId}")">@place.Name</a>
+                            <span class="wx-linked-km">@(place.DistanceKm is { } km ? WeatherVisuals.Km(km) : "distance unknown")</span>
+                        </li>
+                    }
+                </ul>
+            </OdsRecordSection>
+        }
+        break;
+}
+
+@code {
+    [Parameter, EditorRequired] public Guid WeatherPointId { get; set; }
+
+    [Parameter] public string PointName { get; set; } = "";
+
+    /// <summary>The page's polite region: announced once on load, then only an empty or failed outcome (§6.5).</summary>
+    [Parameter] public EventCallback<string> OnAnnounce { get; set; }
+
+    /// <summary>A 403 from the point endpoint — the page hands it to the claims refresher.</summary>
+    [Parameter] public EventCallback<System.Net.HttpStatusCode> OnStatus { get; set; }
+
+    internal enum Phase { Loading, Ready, Error }
+
+    private Phase _phase = Phase.Loading;
+    private IReadOnlyList<WeatherPointLinkedLocation> _linked = [];
+    private Guid _loadedFor;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (_loadedFor == WeatherPointId)
+            return;
+        _loadedFor = WeatherPointId;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _phase = Phase.Loading;
+        StateHasChanged();
+        await OnAnnounce.InvokeAsync($"Loading linked locations for {PointName}…");
+        var result = await Weather.LinkedLocationsAsync(WeatherPointId);
+        await OnStatus.InvokeAsync(result.Status);
+        if (!result.IsSuccess || result.Value is null)
+        {
+            _phase = Phase.Error;
+            await OnAnnounce.InvokeAsync($"The linked locations for {PointName} couldn't be loaded.");
+            return;
+        }
+
+        _linked = [.. result.Value.OrderBy(l => l.Name, StringComparer.CurrentCultureIgnoreCase)];
+        _phase = Phase.Ready;
+        if (_linked.Count == 0)
+            await OnAnnounce.InvokeAsync($"No location uses {PointName} yet.");
+    }
+}

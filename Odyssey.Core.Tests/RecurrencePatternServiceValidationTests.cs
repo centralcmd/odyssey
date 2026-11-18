@@ -1,3 +1,4 @@
+using Odyssey.Core.Locations;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
 using Xunit;
@@ -32,7 +33,7 @@ public class RecurrencePatternServiceValidationTests
             Frequency = RecurrenceFrequency.Weekly,
             DaysOfWeek = (DaysOfWeekFlags)rawDays,
             OccurrenceCount = 3,
-        }, "user-id"));
+        }, "user-id", claims: LocationClaims.Trusted));
 
         Assert.Empty(context.RecurrencePatterns);
         Assert.Empty(context.CalendarEvents);
@@ -56,10 +57,10 @@ public class RecurrencePatternServiceValidationTests
             DaysOfWeek = DaysOfWeekFlags.Monday,
             OccurrenceCount = 3,
         };
-        var created = await service.Create(request, "user-id");
+        var created = await service.Create(request, "user-id", claims: LocationClaims.Trusted);
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.Update(created.RecurrencePatternId, request with { DaysOfWeek = (DaysOfWeekFlags)128 }, "user-id"));
+            service.Update(created.RecurrencePatternId, request with { DaysOfWeek = (DaysOfWeekFlags)128 }, "user-id", claims: LocationClaims.Trusted));
 
         Assert.Equal(Context.DaysOfWeekFlags.Monday, context.RecurrencePatterns.Single().DaysOfWeek);
         Assert.Equal(3, context.CalendarEvents.Count());

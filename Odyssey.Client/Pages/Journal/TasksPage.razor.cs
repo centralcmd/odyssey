@@ -38,6 +38,7 @@ public partial class TasksPage
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "tasks-page";
+    private bool _overviewOpen = true;
     private bool _searchOpen = true;
     private string _search = string.Empty;
     private IReadOnlyCollection<string> _tagFilter = [];
@@ -75,6 +76,11 @@ public partial class TasksPage
 
     // ── Computed ─────────────────────────────────────────────────────────────────
     private int Count(JournalTaskStatus s) => _allTasks.Count(t => t.Status == s);
+
+    // The Overview's figures, over the same unfiltered set as the sub-line. Computed when the tasks or
+    // the tags load — every mutation on this page reloads one or the other — not on every render.
+    private JournalOverviews.TaskOverview _overview = JournalOverviews.TaskOverview.Empty;
+    private void RefreshOverview() => _overview = JournalOverviews.Tasks(_tags, _allTasks);
     private bool _hasFilters => !string.IsNullOrWhiteSpace(_search) || _tagFilter.Count > 0 || _statusFilter.Count > 0;
     private bool _showArchived => _statusFilter.Count == 0 || _statusFilter.Contains(nameof(JournalTaskStatus.Archived));
 
@@ -111,8 +117,8 @@ public partial class TasksPage
         }
     }
 
-    private IReadOnlyList<JournalTagChips.Tag> TagChips(JournalTaskSummary t) =>
-        JournalTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon);
+    private IReadOnlyList<OdsTagChips.Tag> TagChips(JournalTaskSummary t) =>
+        OdsTagChips.Tag.For(t.TagIds, _tagById, tag => tag.Name, tag => tag.Icon, tag => tag.Color);
 
     // ── Lifecycle ────────────────────────────────────────────────────────────────
     protected override async Task OnInitializedAsync()
@@ -140,11 +146,12 @@ public partial class TasksPage
     {
         _tags = (await TaskTags.ListAllAsync()).ItemsOrToast(Snackbar, "task tags");
         _tagById = _tags.ToDictionary(t => t.JournalTaskTagId);
+        RefreshOverview();
         _tagOptions =
         [
             .. _tags.Where(t => t.Archived is null)
                 .OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase)
-                .Select(t => new OdsOption(t.JournalTaskTagId.ToString(), t.Name)),
+                .Select(JournalOverviews.TaskTagOption),
         ];
     }
 
@@ -181,6 +188,7 @@ public partial class TasksPage
         // genuinely empty set and would render the onboarding empty state after a 500.
         var result = await Tasks.ListAsync(statuses: AllStatuses);
         _allTasks = result.ItemsOrToast(Snackbar, "tasks");
+        RefreshOverview();
         _loadError = !result.IsSuccess;
 
         _announce = _loadError ? "Couldn't load tasks."
@@ -195,6 +203,7 @@ public partial class TasksPage
 
     private void ApplyPageState(TasksPageState state)
     {
+        _overviewOpen = state.OverviewOpen;
         _searchOpen = state.SearchOpen;
         _search = state.Search ?? string.Empty;
         _tagFilter = state.TagFilter ?? [];
@@ -205,6 +214,7 @@ public partial class TasksPage
 
     private TasksPageState BuildPageState() => new()
     {
+        OverviewOpen = _overviewOpen,
         SearchOpen = _searchOpen,
         Search = _search,
         TagFilter = [.. _tagFilter],
@@ -216,6 +226,7 @@ public partial class TasksPage
 
     private void PersistPageState() => PageState.QueueSave(PageStateKey, BuildPageState());
 
+    private void OnOverviewToggled(bool open) { _overviewOpen = open; PersistPageState(); }
     private void OnSearchToggled(bool open) { _searchOpen = open; PersistPageState(); }
     private void OnSearchChanged(string value) { _search = value ?? string.Empty; PersistPageState(); StateHasChanged(); }
     private void OnTagFilterChanged(IReadOnlyCollection<string> values) { _tagFilter = values ?? []; PersistPageState(); StateHasChanged(); }
@@ -232,8 +243,9 @@ public partial class TasksPage
         StateHasChanged();
     }
 
-    private sealed class TasksPageState
+    internal sealed class TasksPageState
     {
+        public bool OverviewOpen { get; set; } = true;
         public bool SearchOpen { get; set; } = true;
         public string Search { get; set; } = string.Empty;
         public List<string> TagFilter { get; set; } = [];
@@ -352,8 +364,8 @@ public partial class TasksPage
     private enum TaskExportScope { All, Filtered }
 
     // All ignores the page filters and exports every task (all four statuses, incl. archived); Filtered
-    // forwards the current search/tag/status set so the download matches the visible view. The browser
-    // download is handled by the shared downloadFileFromBytes interop (same as the calendar export).
+    // forwards the current search/tag/status set so the download matches the visible view. The browser downloads the
+    // file itself (DownloadIcsAsync below), never through the WASM heap.
     private async Task ExportTasksAsync(TaskExportScope scope)
     {
         if (_exporting) return;
@@ -361,14 +373,14 @@ public partial class TasksPage
         _announce = "Preparing task export…";
         try
         {
-            var result = scope == TaskExportScope.Filtered
-                ? await Tasks.ExportIcsAsync(_search, [.. _tagFilter], [.. _statusFilter])
-                : await Tasks.ExportIcsAsync(statuses: AllStatuses);
-            if (result.OrToast(Snackbar, "Unable to export tasks") is not { } file) return;
+            var exported = scope == TaskExportScope.Filtered
+                ? await DownloadIcsAsync("Unable to export tasks", _search, [.. _tagFilter], [.. _statusFilter])
+                : await DownloadIcsAsync("Unable to export tasks", statuses: AllStatuses);
+            if (exported is not { } summary) return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            _announce = $"Exported {file.FileName}.";
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
+            var message = $"Exporting {Plural(summary.TaskCount, "task")}{AttachedSuffix(summary)} — your browser is downloading the file.";
+            _announce = message;
+            Snackbar.Add(message, Severity.Success);
         }
         finally
         {
@@ -384,18 +396,35 @@ public partial class TasksPage
         _exporting = true;
         try
         {
-            var result = await Tasks.ExportIcsAsync(statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]);
-            if (result.OrToast(Snackbar, "Unable to export the task") is not { } file) return;
+            if (await DownloadIcsAsync("Unable to export the task", statuses: AllStatuses, ids: [t.JournalTaskId.ToString()]) is not { } summary) return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            _announce = $"Exported {t.Title}.";
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
+            _announce = $"Exporting {t.Title}.";
+            Snackbar.Add($"Exporting {t.Title}{AttachedSuffix(summary)} — your browser is downloading the file.", Severity.Success);
         }
         finally
         {
             _exporting = false;
         }
     }
+
+    // Every export carries its attached files inline, so it can be far larger than the WASM heap: the summary runs the
+    // server's checks first (caps, files.read for attachments) and reports a refusal as a toast, then the browser
+    // downloads the file straight to disk. A failure after that point shows in the browser's own download list.
+    private async Task<TaskIcsExportSummary?> DownloadIcsAsync(
+        string failureLead, string? search = null, IReadOnlyCollection<string>? tagIds = null,
+        IReadOnlyCollection<string>? statuses = null, IReadOnlyCollection<string>? ids = null)
+    {
+        var summary = (await Tasks.SummarizeIcsExportAsync(search, tagIds, statuses, ids)).OrToast(Snackbar, failureLead);
+        if (summary is null) return null;
+
+        await NativeTransfer.DownloadAsync(Tasks.ExportIcsUrl(search, tagIds, statuses, ids));
+        return summary;
+    }
+
+    private static string Plural(int count, string noun) => $"{count} {noun}{(count == 1 ? "" : "s")}";
+
+    private static string AttachedSuffix(TaskIcsExportSummary summary) =>
+        summary.AttachmentCount == 0 ? "" : $" with {Plural(summary.AttachmentCount, "attached file")} ({ByteSize.Format(summary.AttachmentBytes)})";
 
     private void OpenImport()
     {

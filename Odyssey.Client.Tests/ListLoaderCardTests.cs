@@ -219,7 +219,8 @@ public class ListLoaderCardTests
             .Add(c => c.Id, t => t.JournalTagId)
             .Add(c => c.Name, t => t.Name)
             .Add(c => c.Description, t => t.Description)
-            .Add(c => c.Archived, t => t.Archived));
+            .Add(c => c.Archived, t => t.Archived)
+            .Add(c => c.ColorOf, t => t.Color));
         var field = cut.FindComponent<OdsSearchField>().Instance;
 
         await cut.InvokeAsync(() => field.ValueChanged.InvokeAsync("gro"));
@@ -246,7 +247,6 @@ public class ListLoaderCardTests
     private static PhotoSummary Photo(string title) => new()
     {
         PhotoId = Guid.NewGuid(),
-        FileId = Guid.NewGuid(),
         Title = title,
         PersonCount = 0,
         AlbumCount = 0,
@@ -386,7 +386,7 @@ public class ListLoaderCardTests
 
     private static Task ShowActiveAndArchived(IRenderedComponent<JournalCard> cut)
     {
-        var status = cut.FindComponents<OdsMultiSelect>().Single(m => m.Instance.Label == "Active").Instance;
+        var status = cut.FindComponents<OdsMultiSelect>().Single(m => m.Instance.Label == "Status").Instance;
         return cut.InvokeAsync(() => status.ValuesChanged.InvokeAsync(
             [nameof(Odyssey.Dtos.ArchivalStatus.Active), nameof(Odyssey.Dtos.ArchivalStatus.Archived)]));
     }

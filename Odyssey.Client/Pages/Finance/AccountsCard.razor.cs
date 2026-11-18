@@ -73,8 +73,8 @@ public partial class AccountsCard
         [.. AccountTypeVisuals.Selectable.Select(t => new OdsOption(t.ToString(), AccountTypeVisuals.Label(t))
             { Icon = AccountTypeVisuals.MaterialIcon(t), IconColor = AccountTypeVisuals.FgColor(t) })];
 
-    private static readonly IReadOnlyList<OdsOption> _statusOptions =
-        [new("Open", "Open"), new("Closed", "Closed"), new("Archived", "Archived")];
+    internal static readonly IReadOnlyList<OdsOption> _statusOptions =
+        OdsBreakdown.Options(AccountsOverview.StatusDefs);
 
     // ── Sort (§6.1) ──────────────────────────────────────────────────────────
     // The toolbar OdsSortSelect is the SOLE sort surface — this card list has no

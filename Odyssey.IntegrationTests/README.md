@@ -35,3 +35,23 @@ ODYSSEY_REQUIRE_TIER=integration dotnet test Odyssey.IntegrationTests
 `ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api` or `all`; an unknown
 name fails the run rather than being ignored. The rule lives in `TestShared/TestTierGate.cs`, linked
 into all three self-skipping test projects.
+
+## A private database at head: copy, don't migrate
+
+A test that needs a database of its own at the current schema calls
+`fixture.CreateMigratedDatabaseAsync(name)`. It drops `name` if it exists, recreates it as a copy of
+`odyssey_template` and returns its connection string. The fixture migrates that template through the
+real migration chain once per container (`MigratedSchemaTemplate`). Locally a copy takes about 70 ms and
+a migration from empty about 2.8 s.
+
+Two kinds of test still migrate for real:
+
+- a **migration test** (`MigrationSeam`) that needs the database *before* head, where a copy of head is
+  no use;
+- the **seeder test** and `MigrationDriftIntegrationTests`, whose point is that the migrations
+  themselves apply.
+
+`MigratedSchemaTemplateTests` compares a copy with a database migrated from empty: every column,
+index, constraint, foreign key and table option, and every row (`CHECKSUM TABLE`). A copy comes from
+`SHOW CREATE TABLE`, so the template refuses to build if a migration ever creates an object that does
+not reproduce: a view, trigger, routine, event or sequence.

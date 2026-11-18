@@ -132,4 +132,66 @@ public class LocationsApiClientTests
         Assert.Equal("/api/locations", handler.LastRequest.RequestUri!.PathAndQuery);
         Assert.Equal("Cabin", result.Value!.Name);
     }
+
+    // ── Issue #383 §5.4: the two filters, merge and delete ───────────────────────
+
+    [Theory]
+    [InlineData(true, null, "hasCoordinates=true")]
+    [InlineData(false, null, "hasCoordinates=false")]
+    [InlineData(null, true, "referenced=true")]
+    [InlineData(null, false, "referenced=false")]
+    public async Task List_sends_a_filter_only_when_it_is_set(bool? hasCoordinates, bool? referenced, string expected)
+    {
+        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":25,"totalCount":0}""");
+
+        await CreateClient(handler).ListAsync(1, 25, hasCoordinates: hasCoordinates, referenced: referenced);
+
+        var query = handler.LastRequest!.RequestUri!.Query;
+        Assert.Contains(expected, query);
+        if (hasCoordinates is null)
+            Assert.DoesNotContain("hasCoordinates", query);
+        if (referenced is null)
+            Assert.DoesNotContain("referenced", query);
+    }
+
+    [Fact]
+    public async Task ListAll_carries_both_filters()
+    {
+        var handler = new RecordingHandler("""{"items":[],"offset":0,"limit":100,"totalCount":0}""");
+
+        await CreateClient(handler).ListAllAsync(hasCoordinates: false, referenced: false);
+
+        var query = handler.LastRequest!.RequestUri!.Query;
+        Assert.Contains("hasCoordinates=false", query);
+        Assert.Contains("referenced=false", query);
+    }
+
+    [Fact]
+    public async Task Merge_posts_the_target_to_the_source_route_and_returns_the_target()
+    {
+        var target = Guid.NewGuid();
+        var handler = new RecordingHandler($$"""{"locationId":"{{target}}","name":"Hytta"}""");
+        var source = Guid.NewGuid();
+
+        var result = await CreateClient(handler).MergeAsync(source, target);
+
+        Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
+        Assert.Equal($"/api/locations/{source}/merge", handler.LastRequest.RequestUri!.PathAndQuery);
+        using var body = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal(target, body.RootElement.GetProperty("targetLocationId").GetGuid());
+        Assert.Equal(target, result.Value!.LocationId);
+    }
+
+    [Fact]
+    public async Task Delete_is_a_DELETE_to_the_location_route()
+    {
+        var handler = new RecordingHandler();
+        var id = Guid.NewGuid();
+
+        var result = await CreateClient(handler).DeleteAsync(id);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(HttpMethod.Delete, handler.LastRequest!.Method);
+        Assert.Equal($"/api/locations/{id}", handler.LastRequest.RequestUri!.PathAndQuery);
+    }
 }

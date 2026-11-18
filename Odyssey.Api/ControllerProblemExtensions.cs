@@ -55,6 +55,11 @@ public static class ControllerProblemExtensions
     public static ObjectResult TooManyRequestsProblem(this ControllerBase controller, string detail) =>
         Problem(StatusCodes.Status429TooManyRequests, detail);
 
+    /// <summary>A throttle that tells the client when to try again (issue #409 §5.4: <c>retryAfterUtc</c>).</summary>
+    public static ObjectResult TooManyRequestsProblem(
+        this ControllerBase controller, string detail, IDictionary<string, object?> extensions) =>
+        Problem(StatusCodes.Status429TooManyRequests, detail, extensions);
+
     public static ObjectResult ForbiddenProblem(this ControllerBase controller, string detail) =>
         Problem(StatusCodes.Status403Forbidden, detail);
 

@@ -64,7 +64,7 @@
 
 @if (_attachKey != Guid.Empty)
 {
-    <AttachDocumentsDialog @key="_attachKey" @bind-Open="_attachOpen"
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Finance" @key="_attachKey" @bind-Open="_attachOpen"
                            Subtitle="@AttachSubtitle"
                            Kinds="OdsTypeRegistries.PropertyFileTypes"
                            GuessKind="PropertyFileTypeGuess.GuessKey"

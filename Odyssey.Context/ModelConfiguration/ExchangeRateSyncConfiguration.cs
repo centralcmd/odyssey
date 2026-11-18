@@ -16,21 +16,3 @@ internal sealed class ExchangeRateSyncCurrencyConfiguration : IEntityTypeConfigu
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
-
-internal sealed class ExchangeRateSyncRunConfiguration : IEntityTypeConfiguration<ExchangeRateSyncRun>
-{
-    public void Configure(EntityTypeBuilder<ExchangeRateSyncRun> entity)
-    {
-        entity.Property(run => run.RunningGuard)
-            .HasComputedColumnSql("IF(`Status` = 0, 1, NULL)", stored: false);
-
-        entity.ToTable(tb =>
-        {
-            tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Trigger", "`Trigger` IN (0, 1, 2)");
-            tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Status", "`Status` IN (0, 1, 2, 3, 4)");
-            tb.HasCheckConstraint(
-                "CK_ExchangeRateSyncRuns_ErrorKind", "`ErrorKind` IS NULL OR `ErrorKind` BETWEEN 1 AND 9");
-            tb.HasCheckConstraint("CK_ExchangeRateSyncRuns_Provider", "`Provider` IN (1)");
-        });
-    }
-}

@@ -1,4 +1,8 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Core;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
@@ -7,8 +11,25 @@ using Xunit;
 
 namespace Odyssey.Core.Tests;
 
-public class FileServiceTests
+public class FileServiceTests : FileStorage.FileStorageTestBase
 {
+    /// <summary>
+    /// A FileService over a real file-store host (issue #448): every upload writes a file to disk, so the tests run against
+    /// the writer and the content source a production host has. The scope is the caller's to dispose.
+    /// </summary>
+    private async Task<(AsyncServiceScope Scope, OdysseyContext Context, FileService Service)> NewFileServiceAsync()
+    {
+        var host = await NewFilesHostAsync();
+        var scope = host.Scope();
+        var sp = scope.ServiceProvider;
+        var context = sp.GetRequiredService<OdysseyContext>();
+        var service = new FileService(
+            context, new FileValidationService(), Clock, observers: null,
+            writer: sp.GetRequiredService<StoredFileWriter>(), store: sp.GetRequiredService<IObjectStore>(),
+            source: sp.GetRequiredService<StoredFileContentSource>());
+        return (scope, context, service);
+    }
+
     // A fresh stream per call so content validation (header sniff) and the upload (hash + read) get
     // independent streams — mirroring real FormFile.OpenReadStream().
     private static FileUpload CreateMockFile(string fileName, string contentType, byte[] content) =>
@@ -21,11 +42,11 @@ public class FileServiceTests
     [Fact]
     public async Task UploadFileAsync_ValidFile_ReturnsResponse()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("test.pdf", "application/pdf", Pdf(5));
 
-        var result = await fileService.UploadFileAsync(file, "user-1", "Test description");
+        var result = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "user-1", "Test description");
 
         Assert.NotNull(result);
         Assert.Equal("test.pdf", result.FileName);
@@ -38,12 +59,12 @@ public class FileServiceTests
     [Fact]
     public async Task UploadFileAsync_DescriptionTruncatedAt256Characters()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("doc.pdf", "application/pdf", Pdf(1));
         var longDescription = new string('x', 300);
 
-        var result = await fileService.UploadFileAsync(file, "user-1", longDescription);
+        var result = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "user-1", longDescription);
 
         Assert.Equal(256, result.Description!.Length);
     }
@@ -51,11 +72,11 @@ public class FileServiceTests
     [Fact]
     public async Task GetFileMetadataAsync_ReturnsMetadataWhenFileExists()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("report.pdf", "application/pdf", Pdf(10, 20));
 
-        var uploaded = await fileService.UploadFileAsync(file, "user-2", "My report");
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "user-2", "My report");
 
         var metadata = await fileService.GetFileMetadataAsync(uploaded.Id);
 
@@ -68,8 +89,8 @@ public class FileServiceTests
     [Fact]
     public async Task GetFileMetadataAsync_ReturnsNullWhenNotFound()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
         var result = await fileService.GetFileMetadataAsync(Guid.NewGuid());
 
@@ -79,12 +100,12 @@ public class FileServiceTests
     [Fact]
     public async Task GetFileContentAsync_ReturnsStreamAndMetadata()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var content = Pdf(1, 2, 3, 4);
         var file = CreateMockFile("data.pdf", "application/pdf", content);
 
-        var uploaded = await fileService.UploadFileAsync(file, "user-3", null);
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "user-3", null);
 
         var (metadata, stream) = await fileService.GetFileContentAsync(uploaded.Id);
 
@@ -100,8 +121,8 @@ public class FileServiceTests
     [Fact]
     public async Task GetFileContentAsync_ReturnsNullsWhenNotFound()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
         var (metadata, stream) = await fileService.GetFileContentAsync(Guid.NewGuid());
 
@@ -112,11 +133,11 @@ public class FileServiceTests
     [Fact]
     public async Task ListAsync_ReturnsAllUploadedFiles()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
-        await fileService.UploadFileAsync(CreateMockFile("a.pdf", "application/pdf", Pdf(1)), "u", null);
-        await fileService.UploadFileAsync(CreateMockFile("b.pdf", "application/pdf", Pdf(2)), "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("a.pdf", "application/pdf", Pdf(1)), FileUploadArea.Finance, "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("b.pdf", "application/pdf", Pdf(2)), FileUploadArea.Finance, "u", null);
 
         var result = await fileService.ListAsync(new FilesQueryParams { Limit = 100 });
 
@@ -127,11 +148,11 @@ public class FileServiceTests
     [Fact]
     public async Task ListAsync_FiltersWithSearch()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
-        await fileService.UploadFileAsync(CreateMockFile("invoice_jan.pdf", "application/pdf", Pdf(1)), "u", null);
-        await fileService.UploadFileAsync(CreateMockFile("receipt_feb.pdf", "application/pdf", Pdf(2)), "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("invoice_jan.pdf", "application/pdf", Pdf(1)), FileUploadArea.Finance, "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("receipt_feb.pdf", "application/pdf", Pdf(2)), FileUploadArea.Finance, "u", null);
 
         var result = await fileService.ListAsync(new FilesQueryParams { Search = "invoice" });
 
@@ -142,12 +163,12 @@ public class FileServiceTests
     [Fact]
     public async Task ListAsync_PaginationWorks()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
         for (var i = 1; i <= 5; i++)
         {
-            await fileService.UploadFileAsync(CreateMockFile($"file{i}.pdf", "application/pdf", Pdf((byte)i)), "u", null);
+            await fileService.UploadFileAsync(CreateMockFile($"file{i}.pdf", "application/pdf", Pdf((byte)i)), FileUploadArea.Finance, "u", null);
         }
 
         var page1 = await fileService.ListAsync(new FilesQueryParams { Offset = 0, Limit = 2 });
@@ -163,11 +184,11 @@ public class FileServiceTests
     [Fact]
     public async Task ListAsync_SortsByFilenameAscending()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
-        await fileService.UploadFileAsync(CreateMockFile("zebra.pdf", "application/pdf", Pdf(1)), "u", null);
-        await fileService.UploadFileAsync(CreateMockFile("alpha.pdf", "application/pdf", Pdf(2)), "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("zebra.pdf", "application/pdf", Pdf(1)), FileUploadArea.Finance, "u", null);
+        await fileService.UploadFileAsync(CreateMockFile("alpha.pdf", "application/pdf", Pdf(2)), FileUploadArea.Finance, "u", null);
 
         var result = await fileService.ListAsync(
             new FilesQueryParams { SortBy = FileSortBy.Name, SortDir = SortDirection.Asc, Limit = 100 });
@@ -179,11 +200,11 @@ public class FileServiceTests
     [Fact]
     public async Task UpdateFileMetadataAsync_UpdatesDescription()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("note.pdf", "application/pdf", Pdf(1));
 
-        var uploaded = await fileService.UploadFileAsync(file, "u", "Original desc");
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "u", "Original desc");
 
         var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "New desc" });
 
@@ -194,11 +215,11 @@ public class FileServiceTests
     [Fact]
     public async Task UpdateFileMetadataAsync_RenamesWhenFileNameProvided()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("note.pdf", "application/pdf", Pdf(1));
 
-        var uploaded = await fileService.UploadFileAsync(file, "u", "Keep desc");
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "u", "Keep desc");
 
         var updated = await fileService.UpdateFileMetadataAsync(
             uploaded.Id, new UpdateFileMetadataRequest { Description = "Keep desc", FileName = "statement-2026.pdf" });
@@ -211,11 +232,11 @@ public class FileServiceTests
     [Fact]
     public async Task UpdateFileMetadataAsync_LeavesFileNameWhenNotProvided()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("note.pdf", "application/pdf", Pdf(1));
 
-        var uploaded = await fileService.UploadFileAsync(file, "u", "desc");
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "u", "desc");
 
         var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "desc" });
 
@@ -232,9 +253,9 @@ public class FileServiceTests
     [InlineData("  padded.pdf  ", "padded.pdf")]
     public async Task UpdateFileMetadataAsync_SanitizesRenamedFileName(string requested, string expected)
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
-        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", null);
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
+        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), FileUploadArea.Finance, "u", null);
 
         var updated = await fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { FileName = requested });
 
@@ -248,9 +269,9 @@ public class FileServiceTests
     [InlineData("\"<>|")]
     public async Task UpdateFileMetadataAsync_NameWithNothingLeftAfterSanitizing_IsRefusedAndNothingChanges(string requested)
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
-        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), "u", "old");
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
+        var uploaded = await fileService.UploadFileAsync(CreateMockFile("note.pdf", "application/pdf", Pdf(1)), FileUploadArea.Finance, "u", "old");
 
         var ex = await Assert.ThrowsAsync<DomainValidationException>(() =>
             fileService.UpdateFileMetadataAsync(uploaded.Id, new UpdateFileMetadataRequest { Description = "new", FileName = requested }));
@@ -264,8 +285,8 @@ public class FileServiceTests
     [Fact]
     public async Task UpdateFileMetadataAsync_ReturnsNullWhenNotFound()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
         var result = await fileService.UpdateFileMetadataAsync(Guid.NewGuid(), new UpdateFileMetadataRequest { Description = "desc" });
 
@@ -275,24 +296,26 @@ public class FileServiceTests
     [Fact]
     public async Task DeleteFileAsync_RemovesFileAndBlob()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
         var file = CreateMockFile("todelete.pdf", "application/pdf", Pdf(1, 2));
 
-        var uploaded = await fileService.UploadFileAsync(file, "u", null);
+        var uploaded = await fileService.UploadFileAsync(file, FileUploadArea.Finance, "u", null);
 
         var deleted = await fileService.DeleteFileAsync(uploaded.Id);
 
         Assert.True(deleted);
         Assert.Null(await fileService.GetFileMetadataAsync(uploaded.Id));
         Assert.Equal(0, context.FileBlob.Count());
+        // The file on disk is released for erasure after the deletion grace, never deleted under the row (issue #448).
+        Assert.Equal(StoredObjectState.PendingDelete, context.StoredObjects.AsNoTracking().Single().State);
     }
 
     [Fact]
     public async Task DeleteFileAsync_ReturnsFalseWhenNotFound()
     {
-        await using var context = TestContextFactory.Create();
-        var fileService = new FileService(context, new FileValidationService());
+        var (scope, context, fileService) = await NewFileServiceAsync();
+        await using var disposeScope = scope;
 
         var result = await fileService.DeleteFileAsync(Guid.NewGuid());
 

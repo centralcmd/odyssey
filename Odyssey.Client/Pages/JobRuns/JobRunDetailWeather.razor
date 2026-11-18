@@ -1,0 +1,19 @@
+@*
+    A weather run's detail (issue #410 §3.6): the points it attempted, skipped and failed, what it stored, and the
+    fetch failure's words.
+*@
+@inherits JobRunDetailBodyBase
+
+<div class="odc-meta-grid bgj-detail-grid">
+    <OdsMetaTile Label="@Text("Points attempted")">@N(Weather.PointsAttempted)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Skipped (not expired)")">@N(Weather.PointsSkippedNotExpired)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Points failed")">@N(Weather.PointsFailed)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Forecasts stored")">@N(Weather.ForecastsStored)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Observation days stored")">@N(Weather.ObservationDaysStored)</OdsMetaTile>
+    <OdsMetaTile Label="@Text("Failure")">@Words(Weather.FailureKind is { } kind ? BackgroundJobPresentation.WeatherFailureOf(kind) : null)</OdsMetaTile>
+    <JobRunDetailCommon Run="Run" CanReadDetail="CanReadDetail" />
+</div>
+
+@code {
+    private WeatherJobRunDetail Weather => (WeatherJobRunDetail)Run;
+}

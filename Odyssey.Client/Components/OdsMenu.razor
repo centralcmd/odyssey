@@ -52,7 +52,8 @@
                    not a MudBlazor SVG constant — render it via the icon font in
                    the item content rather than MudMenuItem's Icon (which would
                    leave an empty icon gutter). See ItemContent. *@
-                <MudMenuItem OnClick="item.OnClick">
+                @* A per-item name (issue #383) names the record the item acts on: "Delete Hytta". *@
+                <MudMenuItem OnClick="item.OnClick" aria-label="@(string.IsNullOrEmpty(item.AriaLabel) ? null : item.AriaLabel)">
                     @ItemContent(item)
                 </MudMenuItem>
             }

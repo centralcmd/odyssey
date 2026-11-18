@@ -21,6 +21,12 @@ public sealed record ExistingTransaction
     /// <see cref="TagIcons.Default"/>. Never <c>null</c>.
     /// </summary>
     public string DisplayIcon { get; set; } = TagIcons.Default;
+
+    /// <summary>
+    /// The colour of the tag that supplies <see cref="DisplayIcon"/> (issue #392): normalised <c>#RRGGBB</c>
+    /// or <c>null</c>. Resolved server-side by <see cref="TagIcons.ResolveDisplay(IEnumerable{TagIconCandidate}?)"/>.
+    /// </summary>
+    public string? DisplayColor { get; set; }
     /// <summary>
     /// The counterparty, as the deliberately-narrow <see cref="ContactEmbed"/> — id and resolved
     /// display name, nothing else (issue #48 §10.2). This endpoint is gated by

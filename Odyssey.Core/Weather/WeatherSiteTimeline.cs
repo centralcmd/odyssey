@@ -6,7 +6,7 @@ namespace Odyssey.Core.Weather;
 /// Which frozen site owns a date or an instant (issue #348 §3 Local dates, B1 and amendment 3).
 ///
 /// <list type="bullet">
-/// <item>Site <i>v</i> owns its first date — <see cref="WeatherLocationSite.AppliedAt"/> converted to site
+/// <item>Site <i>v</i> owns its first date — <see cref="WeatherPointSite.AppliedAt"/> converted to site
 /// <i>v</i>'s own zone — through the day before site <i>v+1</i>'s first date. The last site is open-ended,
 /// and site 1 also owns every date before its first date. The apply day belongs to the new site.</item>
 /// <item>An instant is first given the site whose <c>[AppliedAt, next AppliedAt)</c> contains it (site 1
@@ -15,33 +15,33 @@ namespace Odyssey.Core.Weather;
 /// the zone can never make an instant resolve to a date in no zone at all.</item>
 /// </list>
 ///
-/// Built in memory from a location's handful of site rows, once per request.
+/// Built in memory from a point's handful of site rows, once per request.
 /// </summary>
 public sealed class WeatherSiteTimeline
 {
-    private readonly List<WeatherLocationSite> sites;
+    private readonly List<WeatherPointSite> sites;
     private readonly List<DateOnly> firstDates;
 
-    public WeatherSiteTimeline(IEnumerable<WeatherLocationSite> sites)
+    public WeatherSiteTimeline(IEnumerable<WeatherPointSite> sites)
     {
         this.sites = sites.OrderBy(site => site.SiteVersion).ToList();
         if (this.sites.Count == 0)
         {
-            throw new ArgumentException("A weather location always has at least one site.", nameof(sites));
+            throw new ArgumentException("A weather point always has at least one site.", nameof(sites));
         }
 
         firstDates = this.sites.Select(site => LocalDate(site.AppliedAt, site)).ToList();
     }
 
-    public WeatherLocationSite Current => sites[^1];
+    public WeatherPointSite Current => sites[^1];
 
-    public IReadOnlyList<WeatherLocationSite> Sites => sites;
+    public IReadOnlyList<WeatherPointSite> Sites => sites;
 
     /// <summary>The first local date <paramref name="site"/> owns.</summary>
-    public DateOnly FirstOwnedDate(WeatherLocationSite site) => firstDates[sites.IndexOf(site)];
+    public DateOnly FirstOwnedDate(WeatherPointSite site) => firstDates[sites.IndexOf(site)];
 
     /// <summary>The site that owns local date <paramref name="date"/>.</summary>
-    public WeatherLocationSite SiteForDate(DateOnly date)
+    public WeatherPointSite SiteForDate(DateOnly date)
     {
         for (var i = sites.Count - 1; i > 0; i--)
         {
@@ -55,7 +55,7 @@ public sealed class WeatherSiteTimeline
     }
 
     /// <summary>The site whose <c>[AppliedAt, next AppliedAt)</c> contains <paramref name="instantUtc"/>.</summary>
-    public WeatherLocationSite SiteForInstant(DateTime instantUtc)
+    public WeatherPointSite SiteForInstant(DateTime instantUtc)
     {
         for (var i = sites.Count - 1; i > 0; i--)
         {
@@ -85,13 +85,13 @@ public sealed class WeatherSiteTimeline
         return ToUtc(date.ToDateTime(new TimeOnly(12, 0)), zone);
     }
 
-    public static DateOnly LocalDate(DateTime instantUtc, WeatherLocationSite site) =>
+    public static DateOnly LocalDate(DateTime instantUtc, WeatherPointSite site) =>
         DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(AsUtc(instantUtc), Zone(site)));
 
-    public static DateTime LocalTime(DateTime instantUtc, WeatherLocationSite site) =>
+    public static DateTime LocalTime(DateTime instantUtc, WeatherPointSite site) =>
         TimeZoneInfo.ConvertTimeFromUtc(AsUtc(instantUtc), Zone(site));
 
-    public static TimeZoneInfo Zone(WeatherLocationSite site) => TimeZoneInfo.FindSystemTimeZoneById(site.TimeZoneId);
+    public static TimeZoneInfo Zone(WeatherPointSite site) => TimeZoneInfo.FindSystemTimeZoneById(site.TimeZoneId);
 
     /// <summary>Local midnight of <paramref name="date"/>, in UTC. A midnight skipped by DST is the first valid instant.</summary>
     public static DateTime StartOfDayUtc(DateOnly date, TimeZoneInfo zone) =>

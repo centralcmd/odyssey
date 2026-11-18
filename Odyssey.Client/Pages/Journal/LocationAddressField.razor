@@ -1,0 +1,37 @@
+@*
+    LocationAddressField — the ONE Address field of the contact address dialog and the property dialog (issue #383
+    v5 §3.3a; design system · AddLocationModal.jsx LocationAddressField). A composition of two DS components:
+    OdsLocationSelect in address mode (Saved places · Addresses from Kartverket · Enter an address by hand…) and
+    OdsAddressBlock — the hand-entry group, or, under a linked place, the usage line and "Edit address", which
+    opens the location dialog for that place with "Changes apply to every record that uses this address (N)".
+
+    Claims: without locations.read there is no picker and the fields are the field (the pre-v5 behaviour); without
+    locations.create there is no Kartverket group, no hand-entry row and no disclosure; without locations.update
+    there is no Edit address. The state and the request are AddressBlockModel's; the dialog owns it.
+*@
+
+@if (Model.Hand)
+{
+    <OdsAddressBlock Mode="AddressBlockMode.Hand" Model="Model" Errors="Errors" IdBase="@IdBase" OnChange="OnChange"
+                     OnSearchInstead="@(Model.CanSearchInstead ? EventCallback.Factory.Create(this, SearchInsteadAsync) : default)" />
+}
+else
+{
+    <OdsLocationSelect @ref="_picker" Mode="LocationSelectMode.Address" Id="@PickerId"
+                       Value="Model.PickerValue" ValueChanged="OnPickedAsync"
+                       Required="@(Model.Variant == AddressBlockVariant.Contact)"
+                       AllowCreate="Model.Permissions.CanCreateLocations"
+                       OnEnterByHand="EnterByHandAsync"
+                       Help="@Model.PickerHelp" Error="@Err(AddressBlockModel.AddressKey)"
+                       DebounceMs="DebounceMs" AddressDebounceMs="AddressDebounceMs" />
+    <OdsAddressBlock Mode="AddressBlockMode.Linked" Model="Model" IdBase="@IdBase" EditButtonId="@EditButtonId"
+                     OnEditAddress="EditAddressAsync" />
+}
+
+@if (_editing is { } place)
+{
+    <LocationDialog Open="true" OpenChanged="OnEditOpenChanged" Location="place"
+                    CanSearch="Model.Permissions.CanCreateLocations"
+                    ShowSharedUses="true" SharedUses="Model.SharedUses"
+                    ReturnFocusToId="@EditButtonId" OnSaved="OnPlaceSavedAsync" />
+}

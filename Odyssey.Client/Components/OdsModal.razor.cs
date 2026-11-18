@@ -25,6 +25,16 @@ public partial class OdsModal
     /// <summary>Called on Esc, scrim click, and the close button. Omit to hide the close button.</summary>
     [Parameter] public EventCallback OnClose { get; set; }
 
+    /// <summary>
+    /// Whether Escape, a scrim click and the header close button may close the dialog (issue #509 §4.1). Default
+    /// <c>true</c>, which changes nothing. <c>false</c> passes <c>CloseOnEscapeKey = false</c> and
+    /// <c>BackdropClick = false</c> to the dialog and drops the close button, so the dialog cannot close itself
+    /// while, for example, an upload is in flight. A change while open is re-applied to the open dialog.
+    /// </summary>
+    [Parameter] public bool Dismissible { get; set; } = true;
+
+    private bool CanDismiss => OnClose.HasDelegate && Dismissible;
+
     /// <summary>Right-aligned footer actions (typically OdsButtons).</summary>
     [Parameter] public RenderFragment? Footer { get; set; }
 
@@ -46,6 +56,30 @@ public partial class OdsModal
     /// opener if still in the DOM, then the page's <c>h1</c>.
     /// </summary>
     [Parameter] public string? ReturnFocusToId { get; set; }
+
+    /// <summary>
+    /// Render the title as a heading of this level (2–6) — Odyssey Design System · Modal <c>titleLevel</c>
+    /// (centralcmd/odyssey#445). The look is unchanged. Default <c>null</c>: the title keeps the tag it always had,
+    /// so no existing dialog changes. A dialog whose body carries its own <c>h3</c> phase headings sets 2, so the
+    /// body never outranks the title.
+    /// </summary>
+    [Parameter] public int? TitleLevel { get; set; }
+
+    // MudText's own default for Typo.h6 when no level is asked for.
+    private string? TitleTag => TitleLevel is >= 2 and <= 6 ? $"h{TitleLevel}" : null;
+
+    /// <summary>
+    /// The dialog's role (Odyssey Design System · Modal <c>role</c>, issue #383): <c>dialog</c> by default,
+    /// <c>alertdialog</c> for a destructive confirmation — which then opens on Cancel
+    /// (<see cref="InitialFocus"/>).
+    /// </summary>
+    [Parameter] public OdsModalRole Role { get; set; } = OdsModalRole.Dialog;
+
+    /// <summary>
+    /// Id of an element in the body that describes the dialog, read on open as its
+    /// <c>aria-describedby</c> (Odyssey Design System · Modal <c>describedById</c>, issue #383).
+    /// </summary>
+    [Parameter] public string? DescribedById { get; set; }
 
     /// <summary>Wide variant — for batch grids / file analysis.</summary>
     [Parameter] public bool Wide { get; set; }
@@ -111,6 +145,13 @@ public partial class OdsModal
     // and the closed edge so we restore focus to whatever triggered the open (WCAG 2.4.3) —
     // without either, focus silently drops to <body> when the dialog closes.
     private bool wasOpen;
+    /// <summary>
+    /// This modal's own class token, so the open-edge script finds THIS dialog rather than whichever
+    /// <c>.ods-modal</c> happens to be last in the DOM — an older dialog still closing, or none yet while
+    /// MudDialog's portal renders (frontend review N5).
+    /// </summary>
+    internal string ModalKey { get; } = $"ods-modal-{Guid.NewGuid():N}";
+
     private bool focusPending;
     private bool restorePending;
 
@@ -126,16 +167,39 @@ public partial class OdsModal
         {
             MaxWidth = Wide ? MaxWidth.ExtraExtraLarge : MaxWidth.Small,
             FullWidth = true,
-            CloseOnEscapeKey = OnClose.HasDelegate,
-            BackdropClick = OnClose.HasDelegate,
+            CloseOnEscapeKey = CanDismiss,
+            BackdropClick = CanDismiss,
             // Without it MudDialog still renders an empty title element and points aria-labelledby
             // at it, so a header-less dialog is named "" and AriaLabel never reaches the reader.
             NoHeader = HideHeader,
         };
     }
 
+    // The open dialog snapshots its options when it is shown (MudDialog.ShowAsync), so a later change to
+    // Dismissible has to be pushed to the live instance; the probe in the dialog body hands it over, and the
+    // instance's own effective options say whether it is out of date.
+    private IMudDialogInstance? _instance;
+
+    private void OnInstance(IMudDialogInstance? instance) => _instance = instance;
+
+    private async Task ApplyDismissalAsync()
+    {
+        if (_instance is not { } instance || !Open)
+            return;
+
+        var live = instance.Options;
+        if ((live.CloseOnEscapeKey ?? false) == CanDismiss && (live.BackdropClick ?? false) == CanDismiss)
+            return;
+
+        try
+        { await instance.SetOptionsAsync(_options); }
+        catch (ObjectDisposedException) { /* closed meanwhile */ }
+    }
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
+        await ApplyDismissalAsync();
+
         // The teleported dialog body is in the DOM by now — focus its first field (DS Modal behavior).
         if (focusPending)
         {
@@ -145,6 +209,10 @@ public partial class OdsModal
                 // Capture (synchronously, before MudBlazor's own deferred focus-trap can run) whatever
                 // had focus — the row action that opened us — so the close edge below can restore it.
                 await Js.InvokeVoidAsync("odsCaptureFocusOwner");
+                // Role and description go on before focus moves, so the name, role and description are
+                // what a screen reader reads as focus lands (WCAG 4.1.2).
+                if (Role != OdsModalRole.Dialog || !string.IsNullOrEmpty(DescribedById))
+                    await Js.InvokeVoidAsync("odsDialogA11y", ModalKey, RoleAttribute(Role), DescribedById);
                 await Js.InvokeVoidAsync(InitialFocus == OdsModalInitialFocus.Cancel ? "odsFocusDialogCancel" : "odsFocusFirstField");
             }
             catch { /* JS unavailable (e.g. prerender / teardown) */ }
@@ -163,6 +231,9 @@ public partial class OdsModal
             catch { /* JS unavailable (e.g. teardown) */ }
         }
     }
+
+    /// <summary>The ARIA role value for <paramref name="role"/>.</summary>
+    internal static string RoleAttribute(OdsModalRole role) => role == OdsModalRole.AlertDialog ? "alertdialog" : "dialog";
 
     private async Task OnVisibleChanged(bool visible)
     {

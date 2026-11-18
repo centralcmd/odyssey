@@ -28,6 +28,10 @@ Until then, treat **v9** as the truth.
 | `ShowMessageBox` | Removed | Use `ShowMessageBoxAsync` |
 | `MudAutocomplete` free text discarded | Typed value lost on blur | Set `CoerceValue="true"` |
 | `MudAutocomplete<T>` over a record type (`OdsCombobox`) reading typed text in `OnBlur` | Text is already empty: `CoerceText` (default on) resets it to the old value *before* `OnBlur` fires, so a free-text commit sees nothing | Turn `CoerceText`/`CoerceValue` off and commit yourself — `OdsCombobox FreeText="true"` does exactly this. Do it from a wrapper's bubbled `input` (capture) and `focusout` (commit) events, not from the component: its `Text` updates and its `OnBlur` fires asynchronously, so a quick Tab (or a loaded CI runner) moves on before the commit lands. In bUnit, drive it with `.FocusOut()`, since `.Blur()` does not bubble |
+| `OdsCombobox` in async mode (`SearchAsync`, issue #383) | MudAutocomplete's own `MinCharacters` closes the popover and never calls the search below the minimum, so nothing could announce *Type at least 2 characters* | Leave `MinCharacters` unset: `OdsAsyncSearch` owns the minimum, the debounce and latest-wins cancellation, and reports its state on the combobox's own polite status line outside the portaled popover. Test the timing on `OdsAsyncSearch`, not through MudBlazor's popover |
+| Grouped rows or a footer row in `MudAutocomplete` (`OdsCombobox` `Groups` / `FooterOption`, issue #383 v5) | `MaxItems` defaults to **10**, so the last group and the always-last footer row are silently cut off; and the listbox is flat, so a nested `role="group"` cannot be rendered | `OdsCombobox` sets `MaxItems="null"` whenever either is set, draws each heading as an unpickable row (`ItemDisabledFunc`) and opens the group's first row's accessible name with the group's name. A footer pick hands over the typed text and restores the value; NoItemsTemplate never shows (the footer is always a row), so the empty/short text goes in `BeforeItemsTemplate` |
+| A test selecting `fieldset` to find `OdsRadioGroup` | Every outlined `MudTextField` renders its notch as a `<fieldset>`, so a bare `fieldset` selector matches the text fields first | Select `fieldset.odc-radiofield` |
+| A dialog whose save runs from `OdsFormDialog`'s `OnSubmit` and sets state for its own `OnAfterRenderAsync` (focusing an error summary) | The submit is the form dialog's event, not the host component's, so the host does not re-render and its after-render work never runs | Call `StateHasChanged()` before returning `false` from the submit |
 | `OdsModal` head/content/foot CSS override ignored | Base MudBlazor rule wins on source order | Prefix the selector with `.mud-dialog ` |
 | `@*…*@` **inside a component's attribute list** | Attributes after it are silently dropped | Put the comment on the line *above* the tag (`RazorAttributeCommentTests` fails the build on this) |
 | `continue` / `break` **inside an `@foreach` body** | Razor parse error, or control flow that does not compile | Restructure as `@if`/`else` — a code block in a markup region cannot jump out of the loop |
@@ -38,11 +42,12 @@ Until then, treat **v9** as the truth.
 | A key-dependent `preventDefault` (stop ArrowUp/ArrowDown moving the caret only while a list is open) | Either every key is prevented, typing included, or none is — `@onkeydown:preventDefault` is fixed at render time and cannot look at which key was pressed | Do it in a JS `keydown` listener that reads the key and the control's state (`odsComboboxKeys` checks `aria-expanded`), and leave the Blazor handler to update state |
 | `MudDatePicker` (so `OdsDatePicker`) whose `Value` the host sets from code | `ValueChanged` fires with that same date, so a host that treats every change as the user's pick acts on its own update — the Temperature history window flipped to *Custom* whenever a preset moved it | Ignore a value equal to the one the host already holds (`LocationWeatherHistorySection.PickFrom` / `PickTo`) |
 | `.odc-sr-only` on a **`<table>`** | The caption and cells still take up width and the page scrolls sideways at phone size: a table box is not clipped by its own `overflow`, so the 1px/`overflow: hidden` rule does not hide it | Put the class on a wrapping `<div>` (`WeatherTemperatureChart`) |
+| A `<caption>` on `MudTable` | MudTable 9 has no caption slot; `ColGroup` lands inside `<colgroup>`, and splatted attributes land on the outer `<div>`, not the `<table>`. Inserting a `<caption>` from JS puts a node Blazor does not own at the front of a `<table>` whose children Blazor patches by position | Don't. `OdsTable` and `OdsRecordTable` are native `<table>` markup and render `Caption` / `RowHeader` themselves (issue #451, PR #457 review). A row header is `RowHeader`, never a hand-built `<th>` in a cell renderer |
 | A clickable row drawn as `<div role="button" tabindex="0">` | Space scrolls the page before the handler runs — `@onkeydown:preventDefault` is resolved *before* the handler, so it can only reflect the previous keystroke | Use a real `<button type="button">` and reset its styles in CSS; Enter, Space, focus and the role all come free |
 
 ## Project conventions
 
-- **Component library:** `Odyssey.Client/Components/` — 138 `Ods*.razor` atoms today. Shared model
+- **Component library:** `Odyssey.Client/Components/` — 147 `Ods*.razor` atoms today. Shared model
   types live in `OdsModels.cs`; enum icon/colour/label metadata belongs in `OdsTypeRegistries.cs`
   (and the `*Visuals` types beside it), never hardcoded at a call site.
 - **A registry `Icon` may be one typographic glyph, not a ligature** — `ContractEventTypes`'
@@ -187,6 +192,20 @@ Until then, treat **v9** as the truth.
 - **`OdsRecordTable` ignores a row click that lands inside an interactive element**, so a switch or
   link in a cell no longer also expands the row. Focus follows expand/collapse and edit start/end,
   and `OdsRecordEditContext.Done()` ends an edit the template saved itself.
+- **A tag or calendar colour reaches a style only through `Theme/UserColor`** (issues #392, #394).
+  It is user data, so `UserColor` re-validates it with `HexColor.IsValid` and rebuilds the CSS from the
+  parsed bytes; `OdsAvatar.UserColor` and `OdsChip.UserColor` are the typed entry points. Never put
+  `tag.Color`, `calendar.Color` or `DisplayColor` into `style`, `Bg` or `Fg` directly —
+  `UserColorSinkLintTests` fails on it. Code-constant registry colours (`OdsGlyphInk`, charts) are out
+  of that rule's scope.
+- **An album's icon and colour are drawn only through `Pages/Photos/AlbumVisuals`** (issue #406):
+  `Glyph(icon)` for the glyph (an unknown key falls back to `PhotoAlbumIcons.Default`) and
+  `Ink` / `GlyphStyle` for its ink, which go through `UserColor.Glyph`. Never spell the album glyph as a
+  `"photo_album"` literal, and never build an `UpdatePhotoAlbum` by hand outside the album form — start a
+  partial edit from `AlbumWrites.From(album)`, because the album `PUT` is full replacement and a missing
+  icon or colour is cleared. `AlbumSourceLintTests` and `UserColorSinkLintTests` enforce all three.
+- **`OdsFieldShell.ErrorIsAlert="false"`** keeps an error line out of `role="alert"` when the surface
+  announces it another way (the tag colour picker's submit-time errors, which focus the field instead).
 
 ## Running the client while iterating
 

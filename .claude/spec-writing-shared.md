@@ -126,10 +126,14 @@ After the issue exists, drive it through its reviewer agents to consensus. **Rea
 single-message parallel dispatch, `agentId` retention and the relay format. Each skill names its own
 reviewer set; the loop's shape is the same for both.
 
+**Up to four review rounds.** A round is one pass of the reviewers over the current draft followed by
+your triage of their findings. Round 1 dispatches; rounds 2–4 re-review. Stop early whenever a stop
+condition below is met — four is a ceiling, not a target.
+
 **Round 1 — dispatch.** Send the reviewers at the issue number, each asked to post its
 specification-review verdict as a comment.
 
-**Triage — update the spec *or* rebut.** For every finding, do exactly one of:
+**Triage — update the spec *or* rebut.** After every round, for every finding, do exactly one of:
 
 - **Update the spec** — edit the issue body (`gh issue edit <n> --body-file <updated-spec>`), bump the
   `Draft vN` in the title, and note which finding each change addresses ("addresses architect finding
@@ -139,15 +143,20 @@ specification-review verdict as a comment.
   conflicts with a user decision but its underlying *risk* is real, keep the user's decision, mitigate
   the risk another way, and document the trade-off.
 
-**Round 2 — re-review.** Resume the same agents by `agentId` and ask each to re-verify its prior
-findings against the new draft and post a follow-up verdict.
+**Rounds 2–4 — re-review.** Resume the same agents by `agentId` and ask each to re-verify its prior
+findings against the new draft (and review anything the draft changed) and post a follow-up verdict.
+Re-dispatch only the reviewers that did not approve in the previous round; an approval stands unless a
+later draft changes a section that reviewer owns, in which case resume it too.
 
-**Stop condition.**
+**Stop condition** — check after each round, in this order:
 
-- **All reviewers approve on round 2** → the spec is cleared. Report the consensus with links to the
-  verdict comments.
-- **Not all approve after round 2** → **stop. Do not loop a third time automatically.** Summarize who
-  still requests changes and why, and consult the user for direction.
+- **All reviewers approve** → the spec is cleared. Report the consensus with links to the verdict
+  comments.
+- **A finding needs user input** — a product decision, a conflict between reviewers, or a conflict
+  with an explicit user decision that a rebuttal cannot settle → stop and consult the user, whatever
+  the round number.
+- **Not all approve after round 4** → **stop. Do not start a fifth round automatically.** Summarize
+  who still requests changes and why, and consult the user for direction.
 
 When both halves of a feature are being specced, each issue runs its **own** loop with its own
 reviewers. A finding on one half that implicates the other (most often the API contract) is raised on

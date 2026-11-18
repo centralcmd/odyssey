@@ -41,6 +41,10 @@ public sealed class DemoDataSeeder(
         // After the users exist: the ToS version records its publishing admin, and every demo user needs
         // acceptance rows or each seeded login lands on the /accept-terms interstitial instead of the app.
         await SeedLegalAcceptanceAsync(context, data, cancellationToken);
+        // Locations before anything that links one (issue #380): contact addresses, properties, journal
+        // entries and events reference a location by a RESTRICT key. After the users: a location records
+        // who created it.
+        await SeedLocationsAsync(context, data, cancellationToken);
         // Contacts first: they are FK principals for the finance references (transaction counterparty,
         // account custodian, policy insurer, contract party) as well as for PhotoPerson and
         // JournalEntryContact. Each step below is its own SaveChanges, so the order between them is the
@@ -54,7 +58,6 @@ public sealed class DemoDataSeeder(
         await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
-        await SeedLocationsAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
         // without and cannot be seeded with a fixed value. See its own remarks.
         await SeedClientBaseUrlAsync(context, cancellationToken);
@@ -398,6 +401,8 @@ public sealed class DemoDataSeeder(
         // were committed by SeedContactsAsync, which is why the caller runs it first.
         await context.TransactionTags.AddRangeAsync(data.Tags, cancellationToken);
         await context.ExchangeRates.AddRangeAsync(data.ExchangeRates, cancellationToken);
+        await context.Instruments.AddRangeAsync(data.Instruments, cancellationToken);
+        await context.InstrumentPrices.AddRangeAsync(data.InstrumentPrices, cancellationToken);
         await context.Accounts.AddRangeAsync(data.Accounts, cancellationToken);
         await context.AccountEstimates.AddRangeAsync(data.AccountEstimates, cancellationToken);
         await context.Terms.AddRangeAsync(data.Terms, cancellationToken);
@@ -522,7 +527,14 @@ public sealed class DemoDataSeeder(
         // keyed on the natural keys, so a fresh DB, an already-backfilled DB and a re-run all converge to
         // the same demo set without ever colliding on the unique indexes (FileId, Name, the link pairs).
         var existingPhotoIds = (await context.Photos.Select(p => p.PhotoId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingFileIds = (await context.Photos.Select(p => p.FileId).ToListAsync(cancellationToken)).ToHashSet();
+        // A demo photo the worker's backfill has since moved to the photo store (issue #428) keeps its old file id
+        // as LegacyFileId, so a re-run still recognises it.
+        var existingFileIds = (await context.Photos
+                .Select(p => new { p.FileId, p.LegacyFileId })
+                .ToListAsync(cancellationToken))
+            .SelectMany(p => new[] { p.FileId, p.LegacyFileId })
+            .Where(id => id is not null)
+            .ToHashSet();
         var existingTagNames = (await context.PhotoTags.Select(t => t.Name).ToListAsync(cancellationToken))
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         var existingTagIds = (await context.PhotoTags.Select(t => t.PhotoTagId).ToListAsync(cancellationToken)).ToHashSet();
@@ -638,17 +650,35 @@ public sealed class DemoDataSeeder(
             return;
         }
 
-        var sentinelId = data.Locations[0].LocationId;
-        if (await context.Locations.AnyAsync(location => location.LocationId == sentinelId, cancellationToken))
+        // Record-level rather than one sentinel: a dev database seeded before issue #380 holds the five
+        // household places but none of the address-backed ones the contacts and properties now link.
+        // Matching on id alone is not enough on an upgraded database: the issue #380 conversion turns the
+        // already-seeded contact and property addresses into places under fresh ids, so the demo place for
+        // the same address would collide on the unique Name or AddressKey. Such a converted row stands in
+        // for the demo one — the records that link it were seeded before the conversion and are skipped
+        // below. The folding mirrors the indexes' case-insensitive collation.
+        var existing = await context.Locations
+            .Select(location => new { location.LocationId, location.Name, location.AddressKey })
+            .ToListAsync(cancellationToken);
+        var presentIds = existing.Select(location => location.LocationId).ToHashSet();
+        var takenNames = existing.Select(location => location.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var takenKeys = existing.Where(location => location.AddressKey is not null)
+            .Select(location => location.AddressKey!).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missing = data.Locations
+            .Where(location => !presentIds.Contains(location.LocationId)
+                               && !takenNames.Contains(location.Name)
+                               && (location.AddressKey is null || !takenKeys.Contains(location.AddressKey)))
+            .ToList();
+        if (missing.Count == 0)
         {
             logger.LogInformation("Demo locations already present; skipping location seed.");
             return;
         }
 
-        await context.Locations.AddRangeAsync(data.Locations, cancellationToken);
+        await context.Locations.AddRangeAsync(missing, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
 
-        logger.LogInformation("Seeded {Locations} locations.", data.Locations.Count);
+        logger.LogInformation("Seeded {Locations} locations.", missing.Count);
     }
 
     private async Task SeedCalendarAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)

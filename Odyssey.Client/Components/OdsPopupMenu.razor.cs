@@ -61,7 +61,12 @@ public partial class OdsPopupMenu
     /// <summary>Extra class on the panel (the popover's role="menu" / role="dialog" element).</summary>
     [Parameter] public string? ListClass { get; set; }
 
-    [Parameter] public DropdownWidth RelativeWidth { get; set; } = DropdownWidth.Ignore;
+    /// <summary>
+    /// How the popover's width relates to its trigger. Defaults to <see cref="DropdownWidth.Adaptive"/>:
+    /// the popover is never narrower than the control that opened it (Odyssey Design System ·
+    /// docs/components-data-table-menu-form-controls.md · Dropdowns), and grows past it only when its rows need the room.
+    /// </summary>
+    [Parameter] public DropdownWidth RelativeWidth { get; set; } = DropdownWidth.Adaptive;
 
     [Parameter] public int? MaxHeight { get; set; }
 
@@ -123,6 +128,10 @@ public partial class OdsPopupMenu
 
     private string TriggerClassName =>
         string.IsNullOrWhiteSpace(TriggerClass) ? "odc-popmenu-trigger" : $"odc-popmenu-trigger {TriggerClass.Trim()}";
+
+    // Every popover wears the one shared surface (.odc-popmenu-paper); a consumer's class is added to it.
+    private string PopoverClassName =>
+        string.IsNullOrWhiteSpace(PopoverClass) ? "odc-popmenu-paper" : $"odc-popmenu-paper {PopoverClass.Trim()}";
 
     private string PanelClassName =>
         string.IsNullOrWhiteSpace(ListClass)

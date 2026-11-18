@@ -35,6 +35,7 @@ public sealed class JournalEntryInlineCreateTests : IAsyncLifetime
         ctx.Services.AddSingleton(Mock.Of<IFilesApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IPhotosApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IJournalApiClient>());
+        ctx.Services.AddSingleton(Mock.Of<ILocationsApiClient>());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
         var contacts = new Mock<IContactQuickCreate>();
         contacts.Setup(c => c.Begin(It.IsAny<string>(), It.IsAny<string?>()))

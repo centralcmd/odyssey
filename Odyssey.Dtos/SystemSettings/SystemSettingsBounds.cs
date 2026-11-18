@@ -54,17 +54,18 @@ public static class SystemSettingsBounds
     public const int CalendarIcsMaxExportMegabytesMin = 1;
     public const int CalendarIcsMaxExportMegabytesMax = 1024;
 
+    // The task surface goes to 10 GB, ten times the others: its files carry attached files inline.
     public const int TaskIcsMaxImportMegabytesMin = 1;
-    public const int TaskIcsMaxImportMegabytesMax = 1024;
+    public const int TaskIcsMaxImportMegabytesMax = 10240;
 
     public const int TaskIcsMaxExportMegabytesMin = 1;
-    public const int TaskIcsMaxExportMegabytesMax = 1024;
+    public const int TaskIcsMaxExportMegabytesMax = 10240;
 
     public const int JournalIcsMaxImportMegabytesMin = 1;
-    public const int JournalIcsMaxImportMegabytesMax = 1024;
+    public const int JournalIcsMaxImportMegabytesMax = 10240;
 
     public const int JournalIcsMaxExportMegabytesMin = 1;
-    public const int JournalIcsMaxExportMegabytesMax = 1024;
+    public const int JournalIcsMaxExportMegabytesMax = 10240;
 
     // ── AI file-analysis policy (issue #421 Wave 1) ──────────────────────────────────────────────
 
@@ -151,15 +152,12 @@ public static class SystemSettingsBounds
     // ── The upload cap (issue #421 Wave 4) ───────────────────────────────────────────────────────
 
     public const int FileStorageMaxUploadMegabytesMin = 1;
-    public const int FileStorageMaxUploadMegabytesMax = 1024;
+    public const int FileStorageMaxUploadMegabytesMax = 10240;
 
     // ── The last compiled-in tuning constants (issue #434) ───────────────────────────────────────
 
     public const int FileAnalysisMaxTokensMin = 1024;
     public const int FileAnalysisMaxTokensMax = 64000;
-
-    public const int FileAnalysisMatchMaxVocabularyMin = 1;
-    public const int FileAnalysisMatchMaxVocabularyMax = 5000;
 
     public const int FileAnalysisMatchTimeoutSecondsMin = 5;
     public const int FileAnalysisMatchTimeoutSecondsMax = 600;
@@ -272,15 +270,30 @@ public static class SystemSettingsBounds
 
     public const int WeatherRefreshIntervalMinutesMax = 1440;
 
-    public const int WeatherMaxTrackedLocationsMin = 1;
+    public const int WeatherMaxTrackedPointsMin = 1;
 
     /// <summary>Each tracked location is ≈ 0.8 M forecast-step rows a year; 20 bounds the storage growth.</summary>
-    public const int WeatherMaxTrackedLocationsMax = 20;
+    public const int WeatherMaxTrackedPointsMax = 20;
 
     /// <summary>One hour to one week (issue #349 §8). Below six hours the advisory says why it buys nothing.</summary>
     public const int ExchangeRateSyncIntervalHoursMin = 1;
 
     public const int ExchangeRateSyncIntervalHoursMax = 168;
+
+    /// <summary>One day to two months (issue #446 §8.4).</summary>
+    public const int InstrumentPriceStaleAfterDaysMin = 1;
+
+    public const int InstrumentPriceStaleAfterDaysMax = 60;
+
+    /// <summary>One hour to one week, the exchange-rate sync's range.</summary>
+    public const int InstrumentPriceSyncIntervalHoursMin = 1;
+
+    public const int InstrumentPriceSyncIntervalHoursMax = 168;
+
+    /// <summary>No backfill to ten years. A deep backfill costs provider quota over several runs.</summary>
+    public const int InstrumentPriceSyncHistoryDaysMin = 0;
+
+    public const int InstrumentPriceSyncHistoryDaysMax = 3660;
 
     /// <summary>
     /// One hour to one week (issue #346 §4.3). Below 24 h the advisory warns that a backup may outrun it;
@@ -289,4 +302,69 @@ public static class SystemSettingsBounds
     public const int FileStorageDeletionGraceHoursMin = 1;
 
     public const int FileStorageDeletionGraceHoursMax = 168;
+
+    /// <summary>
+    /// Two weeks to two years (issue #409 §8). A degraded read resolves to the larger value — never prune more on a
+    /// fault — so the floor bounds how much a hand-edited row can make the worker delete. The floor is also twice the
+    /// longest exchange-rate sync gap (a 168 h interval, or the 168 h backoff cap): the sync derives its next run and
+    /// its failure streak from its newest finished rows in this log, and a floor of one week pruned that anchor row
+    /// exactly when it was needed (architect review on PR #418).
+    /// </summary>
+    public const int JobRunRetentionDaysMin = 14;
+
+    public const int JobRunRetentionDaysMax = 730;
+
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    /// <summary>The per-feed interval's own range (<see cref="NewsLimits"/>), so the default can name any value a feed can.</summary>
+    public const int NewsDefaultFetchIntervalMinutesMin = NewsLimits.MinFetchIntervalMinutes;
+
+    public const int NewsDefaultFetchIntervalMinutesMax = NewsLimits.MaxFetchIntervalMinutes;
+
+    public const int NewsMaxFeedsMin = 1;
+
+    /// <summary>The feed-list client fetches the whole set at this ceiling in at most five pages (§5.1).</summary>
+    public const int NewsMaxFeedsMax = 1000;
+
+    /// <summary><c>0</c> downloads no image at all.</summary>
+    public const int NewsImageMaxPerArticleMin = 0;
+
+    public const int NewsImageMaxPerArticleMax = 20;
+
+    /// <summary>
+    /// The static pair. The effective maximum is also bounded by the derived ceiling
+    /// (<c>NewsImageSizeCeiling.Kb</c>, from <c>FileStorage:MaxFileSizeBytes</c>), validated on write and published as
+    /// <c>SystemSettingsDto.NewsImageMaxSizeKbCeiling</c>; this floor is that ceiling's floor too.
+    /// </summary>
+    public const int NewsImageMaxSizeKbMin = 64;
+
+    public const int NewsImageMaxSizeKbMax = 10240;
+
+    public const int NewsImageStoreMaxGiBMin = 1;
+
+    public const int NewsImageStoreMaxGiBMax = 10000;
+
+    public const int NewsTextStoreMaxGiBMin = 1;
+
+    public const int NewsTextStoreMaxGiBMax = 1000;
+
+    public const int NewsFeedMaxArticlesPerDayMin = 10;
+
+    public const int NewsFeedMaxArticlesPerDayMax = 5000;
+
+    public const int NewsFeedMaxImageMbPerDayMin = 1;
+
+    public const int NewsFeedMaxImageMbPerDayMax = 10240;
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    /// <summary>The shared import-size pair, as for the vCard and <c>.ics</c> caps.</summary>
+    public const int NewsOpmlMaxImportMegabytesMin = 1;
+
+    public const int NewsOpmlMaxImportMegabytesMax = 1024;
+
+    public const int NewsOpmlMaxImportEntriesMin = 100;
+
+    /// <summary>Pinned at the shipped default, so the entry cap can only be lowered.</summary>
+    public const int NewsOpmlMaxImportEntriesMax = SystemSettingsDefaults.NewsOpmlMaxImportEntries;
 }

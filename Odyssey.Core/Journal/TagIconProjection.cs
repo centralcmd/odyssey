@@ -5,7 +5,7 @@ using Odyssey.Dtos;
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// Fills <see cref="ITagIconRecord.TagIds"/> and <see cref="ITagIconRecord.DisplayIcon"/> on every journal
+/// Fills <see cref="ITagIconRecord.TagIds"/>, <see cref="ITagIconRecord.DisplayIcon"/> and <see cref="ITagIconRecord.DisplayColor"/> on every journal
 /// entry, task and photo response (issue #345) — list, detail, create and update alike.
 /// </summary>
 /// <remarks>
@@ -26,7 +26,10 @@ public static class TagIconProjection
     {
         var ordered = TagIcons.Order(tags);
         record.TagIds = ordered.Select(tag => tag.Id).ToList();
-        record.DisplayIcon = TagIcons.Resolve(ordered);
+        // Issue #392: icon and colour from ONE winner; the raw colour is normalised inside ResolveDisplay.
+        var display = TagIcons.ResolveDisplay(ordered);
+        record.DisplayIcon = display.Icon;
+        record.DisplayColor = display.Color;
         return record;
     }
 
@@ -37,26 +40,26 @@ public static class TagIconProjection
     /// </summary>
     public static T Apply<T>(T record, IEnumerable<Guid> tagIds, IReadOnlyDictionary<Guid, TagIconCandidate> lookup)
         where T : ITagIconRecord =>
-        Apply(record, tagIds.Distinct().Select(id => lookup.GetValueOrDefault(id) ?? new TagIconCandidate(id, null, null)));
+        Apply(record, tagIds.Distinct().Select(id => lookup.GetValueOrDefault(id) ?? new TagIconCandidate(id, null, null, null)));
 
     public static Task<Dictionary<Guid, TagIconCandidate>> JournalTagsAsync(
         OdysseyContext context, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
         context.JournalTags.AsNoTracking()
             .Where(tag => ids.Contains(tag.JournalTagId))
-            .Select(tag => new TagIconCandidate(tag.JournalTagId, tag.Name, tag.Icon))
+            .Select(tag => new TagIconCandidate(tag.JournalTagId, tag.Name, tag.Icon, tag.Color))
             .ToDictionaryAsync(tag => tag.Id, cancellationToken);
 
     public static Task<Dictionary<Guid, TagIconCandidate>> TaskTagsAsync(
         OdysseyContext context, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
         context.JournalTaskTags.AsNoTracking()
             .Where(tag => ids.Contains(tag.JournalTaskTagId))
-            .Select(tag => new TagIconCandidate(tag.JournalTaskTagId, tag.Name, tag.Icon))
+            .Select(tag => new TagIconCandidate(tag.JournalTaskTagId, tag.Name, tag.Icon, tag.Color))
             .ToDictionaryAsync(tag => tag.Id, cancellationToken);
 
     public static Task<Dictionary<Guid, TagIconCandidate>> PhotoTagsAsync(
         OdysseyContext context, IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken) =>
         context.PhotoTags.AsNoTracking()
             .Where(tag => ids.Contains(tag.PhotoTagId))
-            .Select(tag => new TagIconCandidate(tag.PhotoTagId, tag.Name, tag.Icon))
+            .Select(tag => new TagIconCandidate(tag.PhotoTagId, tag.Name, tag.Icon, tag.Color))
             .ToDictionaryAsync(tag => tag.Id, cancellationToken);
 }

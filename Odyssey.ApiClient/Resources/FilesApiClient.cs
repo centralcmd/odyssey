@@ -6,16 +6,22 @@ namespace Odyssey.ApiClient.Resources;
 /// <summary>
 /// Typed client for the file endpoints — upload, attach to an account/transaction, fetch
 /// content, update metadata. Centralizes the multipart construction and content-stream
-/// reading every file-touching page used to hand-roll. Upload/attach <b>throw</b> on
-/// failure (callers run per-file loops that count or report failures); the metadata/content
+/// reading every file-touching page used to hand-roll. Upload returns an <see cref="ApiResult{T}"/>
+/// so the caller can tell storage full, unavailable and rate-limited apart (issue #449); attach
+/// <b>throws</b> on failure (callers run per-file loops that count or report failures); the metadata/content
 /// reads return <c>null</c> on failure; the list, update and delete methods return an
 /// <see cref="ApiResult"/> so the server's reason reaches the caller. User messaging stays
 /// with the caller.
 /// </summary>
 public interface IFilesApiClient
 {
-    /// <summary>Uploads the raw file (multipart) and returns its stored metadata. Throws on failure.</summary>
-    Task<FileUploadResponse> UploadAsync(ApiUpload file, string? fileName = null, CancellationToken ct = default);
+    /// <summary>
+    /// Uploads the raw file (multipart) into <paramref name="area"/>'s folder on the file store (issue #448) and returns its
+    /// stored metadata. Never throws on an HTTP failure: the result carries the status, the problem and any
+    /// <c>Retry-After</c>. Throws <see cref="ArgumentOutOfRangeException"/> on an undefined area, before any request. The
+    /// area is placement only; it is chosen by the uploading surface, never by the user.
+    /// </summary>
+    Task<ApiResult<FileUploadResponse>> UploadAsync(ApiUpload file, FileUploadArea area, string? fileName = null, CancellationToken ct = default);
 
     /// <summary>Attaches an already-uploaded file to an account with the given document type and optional document-validity metadata. Throws on failure.</summary>
     Task AttachToAccountAsync(Guid accountId, Guid fileId, AccountFileType type,
@@ -65,14 +71,14 @@ public sealed class FilesApiClient(IOdysseyApi api) : IFilesApiClient
 
     private const string Base = "api/files";
 
-    public async Task<FileUploadResponse> UploadAsync(ApiUpload file, string? fileName = null, CancellationToken ct = default)
+    public Task<ApiResult<FileUploadResponse>> UploadAsync(ApiUpload file, FileUploadArea area, string? fileName = null, CancellationToken ct = default)
     {
-        var upload = string.IsNullOrWhiteSpace(fileName) ? file : file with { FileName = fileName };
-        var result = await api.UploadAsync<FileUploadResponse>("api/files", upload, ct: ct);
-        if (!result.IsSuccess)
-            throw new Exception($"Upload failed for {upload.FileName}: {result.Error}");
+        if (!Enum.IsDefined(area))
+            throw new ArgumentOutOfRangeException(nameof(area), area, "Choose Finance or Journal.");
 
-        return result.Value ?? throw new Exception($"Empty response when uploading {upload.FileName}.");
+        var upload = string.IsNullOrWhiteSpace(fileName) ? file : file with { FileName = fileName };
+        return api.UploadAsync<FileUploadResponse>(
+            "api/files", upload, ct: ct, fields: [new KeyValuePair<string, string>("area", area.ToString())]);
     }
 
     public async Task AttachToAccountAsync(Guid accountId, Guid fileId, AccountFileType type,

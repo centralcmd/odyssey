@@ -15,4 +15,11 @@ public interface ITagIconRecord
     /// over its tags — the first with a known icon, else <see cref="TagIcons.Default"/>. Never <c>null</c>.
     /// </summary>
     string DisplayIcon { get; set; }
+
+    /// <summary>
+    /// The colour of the SAME tag that supplies <see cref="DisplayIcon"/> (issue #392): a normalised
+    /// <c>#RRGGBB</c>, or <c>null</c> when that tag has none or no tag has an icon. Filled only through
+    /// <see cref="TagIcons.ResolveDisplay(IEnumerable{TagIconCandidate}?)"/>.
+    /// </summary>
+    string? DisplayColor { get; set; }
 }

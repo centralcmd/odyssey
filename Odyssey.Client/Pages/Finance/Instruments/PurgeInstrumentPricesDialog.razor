@@ -1,0 +1,82 @@
+@using Odyssey.Dtos.Finance
+@inject IInstrumentsApiClient Instruments
+@inject IInstrumentPricesApiClient Prices
+@inject NavigationManager Navigation
+@inject IJSRuntime Js
+
+@*
+    PurgeInstrumentPricesDialog — "Delete all prices…" (issue #452 §3.3; design system · PurgeInstrumentPricesDialog,
+    components/DialogPurgeInstrumentPrices). Two calls on purpose: the count is fetched for the chosen scope and shown,
+    the user types that exact number, and the delete sends it as expectedCount, so the server deletes only what was
+    confirmed. A stale count is a 409 that deletes nothing and carries the new count.
+
+    Focus starts on the scope. Fetched and All are offered only to a caller who may delete fetched data. While
+    deleting, every control is locked. Plain text throughout; the server's detail is never rendered as markup.
+*@
+
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync"
+          Icon="delete_sweep" IconTone="OdsModalTone.Error"
+          Role="OdsModalRole.AlertDialog" DescribedById="@CountId"
+          RequiredLegend="false"
+          ReturnFocusToId="@ReturnFocusToId"
+          Title="@TitleFragment">
+    <ChildContent>
+        <div class="ods-modal-body">
+            <OdsLiveAnnouncer @ref="_assertive" Assertive="true" />
+
+            <OdsRadioGroup Label="Which prices" Value="@_scope.ToString()" ValueChanged="OnScopeChanged"
+                           Options="ScopeOptions" Disabled="_deleting" Class="ins-purge-scope" />
+
+            <div id="@CountId" class="ins-purge-count" role="status" aria-live="polite">@CountText</div>
+
+            @if (_phase == CountPhase.Failed)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                    <span class="ins-server-error">
+                        <span>Couldn’t count the prices.</span>
+                        <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="CountAsync">Retry</OdsButton>
+                    </span>
+                </OdsAlert>
+            }
+
+            @if (_changedTo is { } changed)
+            {
+                <OdsAlert Severity="Severity.Warning">@ChangedMessage(changed)</OdsAlert>
+            }
+
+            @if (_error is { } error)
+            {
+                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">
+                    <span class="ins-server-error">
+                        <span>@error</span>
+                        @if (_timedOut)
+                        {
+                            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="Reload">Reload</OdsButton>
+                        }
+                    </span>
+                </OdsAlert>
+            }
+
+            @if (_count is > 0 and var n)
+            {
+                <OdsTextInputField @key="_fieldKey" Id="@FieldId" Label="@($"Type {n} to confirm")"
+                                   Value="@_typed" ValueChanged="OnTyped"
+                                   InputMode="numeric" AutoComplete="off" Placeholder=""
+                                   Help="@(_deleting ? "Deleting…" : "Delete becomes available when the number matches.")"
+                                   @attributes="FieldAttributes" />
+            }
+        </div>
+    </ChildContent>
+    <Footer>
+        @if (_count == 0)
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Close</OdsButton>
+        }
+        else
+        {
+            <OdsButton Variant="OdsButtonVariant.Text" Disabled="_deleting" OnClick="CloseAsync">Cancel</OdsButton>
+            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleting" AriaDisabled="@(!Matches)"
+                       OnClick="DeleteAsync">Delete prices</OdsButton>
+        }
+    </Footer>
+</OdsModal>

@@ -86,7 +86,7 @@ public class ContractPauseMigrationTests(MariaDbFixture fixture)
     public async Task A_written_stamp_round_trips_with_no_precision_loss()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contract = Guid.NewGuid();
         var paused = new DateTime(2026, 9, 19, 13, 47, 5, DateTimeKind.Utc).AddTicks(1234560);
@@ -95,7 +95,6 @@ public class ContractPauseMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
                 context.Contracts.Add(new Contract
                 {
                     ContractId = contract,

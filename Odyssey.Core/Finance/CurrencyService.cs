@@ -267,6 +267,9 @@ public class CurrencyService(OdysseyContext context, TimeProvider? injectedTimeP
             await context.Properties.CountAsync(p => p.CurrencyCode == code, cancellationToken),
             "property", "properties", "Change or delete those properties first.");
         Add(
+            await context.Instruments.CountAsync(i => i.CurrencyCode == code, cancellationToken),
+            "instrument", "instruments", "Delete those instruments first.");
+        Add(
             await context.AccountEstimates.CountAsync(e => e.CurrencyCode == code, cancellationToken),
             "account estimate", "account estimates", "Delete those estimates first.");
         Add(

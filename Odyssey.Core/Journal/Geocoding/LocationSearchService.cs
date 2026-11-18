@@ -121,6 +121,10 @@ public sealed class LocationSearchService
                 TimeZoneId = IanaTimeZones.IsValid(candidate.TimeZoneId) ? candidate.TimeZoneId : null,
                 Source = candidate.Source,
                 SourceReference = reference is not null && LocationRules.IsValidReference(candidate.Source, reference) ? reference : null,
+                Line1 = LocationText.CleanAndTruncate(candidate.Line1, LocationRules.AddressLineMaxLength),
+                PostalCode = LocationText.CleanAndTruncate(candidate.PostalCode, LocationRules.PostalCodeMaxLength),
+                City = LocationText.CleanAndTruncate(candidate.City, LocationRules.CityMaxLength),
+                CountryCode = NormalizeCountryCode(candidate.CountryCode),
             });
 
             if (output.Count == MaxCandidates)
@@ -131,4 +135,10 @@ public sealed class LocationSearchService
 
         return output;
     }
+
+    /// <summary>A provider country code in its stored shape (two ASCII letters, upper case), or null.</summary>
+    private static string? NormalizeCountryCode(string? value) =>
+        LocationText.Clean(value) is { Length: LocationRules.CountryCodeLength } code && code.All(char.IsAsciiLetter)
+            ? code.ToUpperInvariant()
+            : null;
 }

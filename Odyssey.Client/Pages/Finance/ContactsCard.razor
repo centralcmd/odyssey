@@ -32,6 +32,9 @@
         <ActionMenu>
             <MudMenuItem Icon="@Icons.Material.Filled.Download" OnClick="@(() => ExportAsync(filtered: false))">Export all as vCard</MudMenuItem>
             <MudMenuItem Icon="@Icons.Material.Filled.FilterList" OnClick="@(() => ExportAsync(filtered: true))">Export filtered (@_totalCount) as vCard</MudMenuItem>
+            <MudDivider />
+            <MudMenuItem Icon="@Icons.Material.Filled.PhotoLibrary" OnClick="@(() => ExportAsync(filtered: false, includeImages: true))">Export all as vCard with pictures</MudMenuItem>
+            <MudMenuItem Icon="@Icons.Material.Filled.FilterAlt" OnClick="@(() => ExportAsync(filtered: true, includeImages: true))">Export filtered (@_totalCount) as vCard with pictures</MudMenuItem>
             @if (_canImport)
             {
                 <MudDivider />
@@ -49,7 +52,7 @@
                 <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged"
                                 DebounceInterval="300" OnSearch="ReloadAsync"
                                 Placeholder="Search name, alias or notes…" Class="ph-search" />
-                <OdsContactTypeMultiSelect Label="Type" Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
+                <OdsContactTypeMultiSelect Values="_typeFilter" ValuesChanged="OnTypeFilterChanged" Class="ph-select" />
                 <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusFilterChanged" Options="_statusOptions" Class="ph-select" />
                 <OdsSortSelect TRow="ExistingContact" Fields="_sortFields" Sort="_sort" SortChanged="OnSortChanged" />
                 <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Contacts per batch"

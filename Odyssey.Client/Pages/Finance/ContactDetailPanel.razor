@@ -12,6 +12,7 @@
 @inject IClipboardService Clipboard
 @inject IContactsApiClient Contacts
 @inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <div class="cp-contact-wrap">
     @if (_total == 0)
@@ -38,6 +39,14 @@
                         <span class="cp-tile-kind">@t.KindTitle</span>
                     </div>
                     <div class="cp-tile-value" style="color:@(OdsGlyphInk.Text(t.Fg));">@t.Value</div>
+                    @if (t.SharedLine is { } shared)
+                    {
+                        @* Issue #383 §3.5: a shared address says so, under locations.read only. *@
+                        <div class="loc-shared-line">
+                            <span class="material-icons" aria-hidden="true">link</span>
+                            <span>@shared</span>
+                        </div>
+                    }
                     <div class="cp-tile-foot">
                         <span>@t.Label</span>
                         @if (t.IsPrimary)
@@ -60,5 +69,8 @@
                                IsEdit="_dialogIsEdit"
                                IsFirst="_dialogIsFirst"
                                ContactType="Contact.Type"
+                               ContactId="Contact.ContactId"
+                               Permissions="_addressPermissions"
+                               OnAddressSaved="ReloadAsync"
                                OnCommit="CommitContact" />
 }

@@ -71,8 +71,8 @@ public enum StoredObjectState : byte
 /// <remarks>
 /// <para>
 /// <b>Personal data.</b> <see cref="RelativePath"/> carries the sanitized original file name of the user's
-/// upload (unless the feature declares opaque naming), so it is never logged, never returned by an endpoint
-/// and is out of scope for the data export.
+/// upload (unless the feature declares opaque naming), so it is never logged and never returned by an
+/// endpoint.
 /// </para>
 /// <para>
 /// <b>Consumer rule.</b> A table referencing this one declares a <c>RESTRICT</c> key, belongs to exactly one
@@ -149,7 +149,7 @@ public class FileStorageOrphanSighting
 /// <summary>
 /// The single row that elects one runner of the file-store maintenance job (issue #346 Amendment A3). A run
 /// claims it with a tracked save on <see cref="Version"/>, renews it while it works and clears it when done;
-/// a crashed holder's lease simply expires. The same claim pattern as <c>WeatherLocationSchedule</c>.
+/// a crashed holder's lease simply expires. The same claim pattern as <c>WeatherPointSchedule</c>.
 /// </summary>
 public class FileStorageMaintenanceLease
 {

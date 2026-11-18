@@ -1,0 +1,52 @@
+@using Odyssey.Dtos
+@*
+    OdsTagChip — THE chip for a user-labelled record: a tag of any family (transaction, journal, task,
+    photo), a photo album and a calendar (Odyssey Design System · components/Chip, tone="tag"). It draws
+    the three things such a record carries, and nothing else decides them:
+
+      label — the record's name, the chip's meaning;
+      icon  — the record's stored TagIcons key, else the owner's DefaultIcon (the generic "label" glyph
+              for a tag, PhotoAlbumIcons.Default for an album, CalendarIcons.Default for a calendar);
+      color — the record's #RRGGBB through OdsChip.UserColor (text and glyph through --user-text-l on a
+              soft tint), else the chip keeps its Tone.
+
+    Every tag-like chip in the app renders through here (OdsTagChips for a row of them), so a change to
+    how a tag reads is made once. The glyph is decorative (aria-hidden): the name is always beside it.
+*@
+
+<OdsChip Tone="@Tone" Icon="@GlyphFor(Icon, DefaultIcon)" UserColor="@Color" Class="@Class" Title="@Title">@Name</OdsChip>
+
+@code {
+    /// <summary>
+    /// The glyph a tag chip leads with when its tag has no (known) icon. Deliberately <c>label</c>, not
+    /// <see cref="TagIcons.Default"/> (<c>local_offer</c>): <c>label</c> is the chip glyph the design system
+    /// draws, and the two keys answer different questions — this one is a chip's fallback,
+    /// <c>TagIcons.Default</c> is a record's resolved display icon.
+    /// </summary>
+    public const string FallbackGlyph = "label";
+
+    /// <summary>The record's display name.</summary>
+    [Parameter, EditorRequired] public string Name { get; set; } = string.Empty;
+
+    /// <summary>The record's stored <see cref="TagIcons"/> key; null or unknown draws <see cref="DefaultIcon"/>.</summary>
+    [Parameter] public string? Icon { get; set; }
+
+    /// <summary>The record's <c>#RRGGBB</c>; null or invalid keeps <see cref="Tone"/>.</summary>
+    [Parameter] public string? Color { get; set; }
+
+    /// <summary>The owner's default glyph. <see cref="FallbackGlyph"/> for a tag.</summary>
+    [Parameter] public string DefaultIcon { get; set; } = FallbackGlyph;
+
+    /// <summary>The tone an uncoloured chip keeps. <see cref="OdsChipTone.Tag"/> for a tag.</summary>
+    [Parameter] public OdsChipTone Tone { get; set; } = OdsChipTone.Tag;
+
+    [Parameter] public string? Class { get; set; }
+
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>The tag's own icon when it is a known key, else <see cref="FallbackGlyph"/>.</summary>
+    public static string GlyphFor(string? icon) => GlyphFor(icon, FallbackGlyph);
+
+    /// <summary>The record's own icon when it is a known key, else <paramref name="fallback"/>.</summary>
+    public static string GlyphFor(string? icon, string fallback) => TagIcons.IsKnown(icon) ? icon! : fallback;
+}

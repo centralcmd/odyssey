@@ -29,6 +29,12 @@ public class RecurrencePattern
     [StringLength(300)]
     public string? Location { get; set; }
 
+    /// <summary>
+    /// The place this series happened at (issue #380). <c>RESTRICT</c>, indexed; the text column beside it is
+    /// now an optional detail. Declared in <c>OdysseyContext.ConfigureLocationReferences</c>.
+    /// </summary>
+    public Guid? LocationId { get; set; }
+
     // The ICS UID of an imported recurring series (issue #330) — so a re-imported series updates the
     // existing pattern rather than duplicating it. Null for app-native patterns.
     [StringLength(255)]

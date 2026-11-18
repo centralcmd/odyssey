@@ -24,3 +24,8 @@
 .pl-albcreate { margin-top: 10px; padding: 12px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-sm, 4px); background: var(--mud-palette-background); }
 
 .pl-albcreate-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+/* An album with no cover shows its own glyph in the thumbnail cell (issue #406 surface C), on the page
+   ground --user-glyph-l is calibrated for. The ink comes from AlbumVisuals.Ink. */
+.pl-albrow-glyph { display: inline-flex; align-items: center; justify-content: center; background: var(--mud-palette-background); }
+.pl-albglyph { font-size: var(--icon-lg); line-height: 1; }

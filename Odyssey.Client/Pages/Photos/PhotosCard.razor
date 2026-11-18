@@ -1,11 +1,11 @@
 @page "/photos"
 @attribute [Authorize(Policy = PermissionClaims.PhotosRead)]
+@using Odyssey.Dtos
 @using Odyssey.Dtos.Finance
 @implements IDisposable
 @inject IPhotosApiClient Photos
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums
-@inject IFilesApiClient Files
 @inject AuthenticationStateProvider Auth
 @inject IPageStateService PageState
 @inject ISnackbar Snackbar
@@ -44,7 +44,7 @@
             @if (_canManageAlbums)
             {
                 <button type="button" class="pl-selact" @onclick="OpenAddToAlbum">
-                    <span class="material-icons" aria-hidden="true">photo_album</span><span>Add to album</span>
+                    <span class="material-icons" aria-hidden="true">@PhotoAlbumIcons.Default</span><span>Add to album</span>
                 </button>
             }
             @if (_canUpdate && !_archivedView)
@@ -117,7 +117,7 @@
                        OnEdit="OpenEditFromDetail" OnToggleFavourite="ToggleFavouriteAsync"
                        OnToggleArchive="ToggleArchiveAsync" OnDelete="DeleteAsync"
                        CanUpdate="_canUpdate" CanDelete="_canDelete"
-                       TagName="TagName" TagIcon="TagIcon" PersonName="PersonName" AlbumName="AlbumName" />
+                       TagName="TagName" TagIcon="TagIcon" TagColor="TagColor" PersonName="PersonName" AlbumChip="AlbumChip" />
 }
 
 @* Dialogs stay mounted and toggle via Open (@bind-Open pattern) — an inline MudDialog @if-unmounted
@@ -126,7 +126,7 @@
                  PhotoId="@(_editId ?? Guid.Empty)"
                  TagOptions="_tagOptions" PeopleOptions="_peopleOptions" AlbumOptions="_albumOptions"
                  CanCreateTags="_canCreateTags" CanCreateContacts="_canCreateContacts"
-                 CanRenameFile="_canRenameFile" OnSaved="OnPhotoSaved" />
+                 OnSaved="OnPhotoSaved" />
 
 <AddToAlbumDialog Open="_addToAlbumIds is not null" OpenChanged="v => { if (!v) _addToAlbumIds = null; }"
                   PhotoIds="@(_addToAlbumIds ?? [])" OnSaved="OnAlbumsChanged" />
@@ -166,12 +166,12 @@
             <OdsSearchField Class="ph-search" Value="@_search" ValueChanged="OnSearchChanged"
                             DebounceInterval="300" OnSearch="OnSearchSubmitted"
                             Placeholder="Search title, caption, location…" AriaLabel="Search photos" />
-            <OdsMultiSelect Class="ph-select" Label="Any album" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
-                            Options="_albumOptions" Icon="photo_album" />
-            <OdsMultiSelect Class="ph-select" Label="Any tag" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
-                            Options="_tagOptions" Icon="sell" />
-            <OdsMultiSelect Class="ph-select" Label="Anyone" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"
-                            Options="_peopleOptions" Icon="person" />
+            <OdsMultiSelect Class="ph-select" Label="Album" Fit="false" Values="_albums" ValuesChanged="v => ApplyFilter(() => _albums = v)"
+                            Options="_albumOptions" />
+            <OdsMultiSelect Class="ph-select" Label="Tag" Fit="false" Values="_tags" ValuesChanged="v => ApplyFilter(() => _tags = v)"
+                            Options="_tagOptions" />
+            <OdsMultiSelect Class="ph-select" Label="Person" Fit="false" Values="_people" ValuesChanged="v => ApplyFilter(() => _people = v)"
+                            Options="_peopleOptions" />
             <OdsDateRangePicker Label="Taken" AriaLabel="Filter by date taken"
                                 From="_from" FromChanged="v => ApplyFilter(() => _from = v)"
                                 To="_to" ToChanged="v => ApplyFilter(() => _to = v)" />

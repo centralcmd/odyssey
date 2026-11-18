@@ -68,6 +68,12 @@ public class PhotoThumbnailJobEntry
     /// <summary>Counted at claim; an outage, a shutdown or a superseded run gives it back.</summary>
     public int Attempts { get; set; }
 
+    /// <summary>
+    /// Manual re-queues of a <c>Failed</c> job by the background-jobs page's Run now (issue #409 §3.5): 0 or 1. Never
+    /// reset — a row gets one manual re-queue for its lifetime; a re-uploaded photo is a new photo with a new row.
+    /// </summary>
+    public byte ManualRequeues { get; set; }
+
     /// <summary>Expired leases: a second one is <c>Unsupported (crash)</c>. Never reset.</summary>
     public int LeaseExpiries { get; set; }
 

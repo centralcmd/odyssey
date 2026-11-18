@@ -179,6 +179,11 @@ demonstrably complete.
 
 After either option, start the stack normally and confirm the job exits 0.
 
+**`WeatherPointsExpand` / `WeatherPointsContract` (issue #387): fix forward, never replay.** These two data
+migrations are not replay-safe by product decision, and neither Option A nor Option B applies to them as
+written: if either fails, restore the pre-deploy backup, or repair forward with a follow-up migration or a
+manual fix of the half-applied step — do not delete its history row to make it run again.
+
 ## Reducing the chance of hitting it
 
 The job no longer cancels a migration that is already applying DDL: a shutdown signal waits for it,

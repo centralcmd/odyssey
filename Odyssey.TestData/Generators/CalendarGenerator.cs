@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using Odyssey.Dtos;
 using CalendarEntity = Odyssey.Context.Calendar;
 
 namespace Odyssey.TestData.Generators;
@@ -26,7 +27,7 @@ public static class CalendarGenerator
 
         var calendars = new List<CalendarEntity>
         {
-            BuildCalendar("Personal", "Day-to-day personal events", "#0369A1", ownerId, anchor),
+            BuildCalendar("Personal", "Day-to-day personal events", ColorPalette.CalendarDefault, ownerId, anchor),
             BuildCalendar("Bills", "Recurring and one-off payment due dates", "#F59E0B", ownerId, anchor),
             BuildCalendar("Family", "Shared household events", "#15803D", userId, anchor),
         };
@@ -53,6 +54,10 @@ public static class CalendarGenerator
                 CalendarIdFor("Bills"), anchor.AddDays(-30).Date, anchor.AddDays(-30).Date.AddDays(1),
                 isAllDay: true, ownerId),
         };
+
+        // Issue #380: an event at a household place — linked, with the text kept as the detail.
+        events.Single(e => e.CalendarEventId == DeterministicGuid.From("calendar-event::family-bbq")).LocationId =
+            LocationGenerator.LocationIdFor(LocationGenerator.Home);
 
         var (pattern, generatedEvents) = BuildTeamSyncSeries(ownerId);
         events.AddRange(generatedEvents);

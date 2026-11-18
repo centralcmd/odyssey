@@ -9,24 +9,33 @@ namespace Odyssey.Core.Weather;
 /// </summary>
 public sealed class WeatherConflictException : DomainException
 {
-    /// <summary>The location changed between the Admin's review and the write.</summary>
+    /// <summary>The source place changed between the Admin's review and the create (issue #387 §5 endpoint 4).</summary>
     public const string LocationChanged = "location-changed";
 
-    /// <summary>A purge was asked for while a fetch holds the location's lease.</summary>
+    /// <summary>A purge was asked for while a fetch holds the point's lease.</summary>
     public const string FetchInProgress = "fetch-in-progress";
 
-    public const string Archived = "location-archived";
-    public const string Disabled = "weather-disabled";
     public const string PurgeInProgress = "purge-in-progress";
     public const string HouseholdDefault = "household-default";
-    public const string NothingToApply = "nothing-to-apply";
-    public const string StillEnabled = "weather-enabled";
+
+    /// <summary>A purge or delete was asked for while a half it would delete is still on.</summary>
+    public const string StillEnabled = "still-enabled";
+
+    /// <summary>Another point has this name (keyed <c>name</c>).</summary>
+    public const string DuplicateName = "duplicate-name";
+
+    /// <summary>The <c>settingsVersion</c> sent is not the stored one: someone else changed the point.</summary>
+    public const string Stale = "stale";
 
     private readonly string code;
 
-    public WeatherConflictException(string code, string message) : base(message)
+    public WeatherConflictException(string code, string message, string? field = null) : base(message)
     {
         this.code = code;
+        if (field is not null)
+        {
+            Errors = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) { [field] = [message] };
+        }
     }
 
     public override int StatusCode => (int)HttpStatusCode.Conflict;

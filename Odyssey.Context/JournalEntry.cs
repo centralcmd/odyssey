@@ -33,6 +33,12 @@ public class JournalEntry
     [StringLength(300)]
     public string? Location { get; set; }
 
+    /// <summary>
+    /// The place this entry happened at (issue #380). <c>RESTRICT</c>, indexed; the text column beside it is
+    /// now an optional detail. Declared in <c>OdysseyContext.ConfigureLocationReferences</c>.
+    /// </summary>
+    public Guid? LocationId { get; set; }
+
     public string? CreatedByUserId { get; set; }
 
     public string? UpdatedByUserId { get; set; }

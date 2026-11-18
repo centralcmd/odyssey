@@ -9,7 +9,7 @@
     dialog: TransactionFileType per file, no validity, and the transaction's own attach route.
 *@
 
-<AttachDocumentsDialog Open="Open" OpenChanged="OpenChanged"
+<AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Finance" Open="Open" OpenChanged="OpenChanged"
                        Subtitle="@($"Keep the receipt, invoice or payment confirmation with {Transaction.Description}. Files stay in Files; attaching links them here.")"
                        Kinds="OdsTypeRegistries.TransactionFileTypes"
                        GuessKind="AttachDocumentRequests.TransactionGuess"

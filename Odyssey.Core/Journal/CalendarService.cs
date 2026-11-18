@@ -59,7 +59,8 @@ public class CalendarService
     public async Task<ExistingCalendar> Create(NewCalendar request, string userId, CancellationToken cancellationToken = default)
     {
         var name = request.Name.Trim();
-        EnsureColorInPalette(request.Color);
+        EnsureValidColor(request.Color);
+        TagIconGuard.EnsureKnown(request.Icon);
         await EnsureNameAvailable(name, null, cancellationToken);
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
@@ -67,7 +68,8 @@ public class CalendarService
         {
             Name = name,
             Description = request.Description,
-            Color = request.Color,
+            Color = HexColor.Normalize(request.Color)!,
+            Icon = request.Icon,
             CreatedByUserId = userId,
             CreatedAt = now,
             UpdatedAt = now,
@@ -88,12 +90,14 @@ public class CalendarService
         }
 
         var name = request.Name.Trim();
-        EnsureColorInPalette(request.Color);
+        EnsureValidColor(request.Color);
+        TagIconGuard.EnsureKnown(request.Icon);
         await EnsureNameAvailable(name, id, cancellationToken);
 
         calendar.Name = name;
         calendar.Description = request.Description;
-        calendar.Color = request.Color;
+        calendar.Color = HexColor.Normalize(request.Color)!;
+        calendar.Icon = request.Icon;
         calendar.UpdatedByUserId = userId;
         calendar.UpdatedAt = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -139,11 +143,14 @@ public class CalendarService
         }
     }
 
-    private static void EnsureColorInPalette(string color)
+    // The tag rule (TagColorGuard), plus "required": a calendar has no "no colour" state.
+    private static void EnsureValidColor(string? color)
     {
-        if (!CalendarColors.IsValid(color))
+        if (color is null)
         {
-            throw new DomainValidationException($"'{color}' is not a supported calendar colour.");
+            throw new DomainValidationException(HexColor.InvalidMessage, code: null, "Color");
         }
+
+        TagColorGuard.EnsureValid(color);
     }
 }

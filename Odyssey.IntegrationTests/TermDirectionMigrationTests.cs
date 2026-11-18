@@ -98,7 +98,7 @@ public class TermDirectionMigrationTests(MariaDbFixture fixture)
     public async Task A_written_direction_round_trips_and_the_column_rejects_null()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var contractId = Guid.NewGuid();
         var termId = Guid.NewGuid();
@@ -107,7 +107,6 @@ public class TermDirectionMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await context.Database.MigrateAsync();
                 context.Contracts.Add(new Contract
                 {
                     ContractId = contractId,

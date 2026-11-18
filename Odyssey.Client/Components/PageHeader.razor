@@ -49,7 +49,7 @@
                         @* The page's one <h1>: FocusOnNavigate (App.razor) moves focus to "h1" on every
                            route change, and heading navigation needs a top level. Typo.h2 keeps the look;
                            tabindex="-1" makes it a programmatic focus target without entering the tab order. *@
-                        <MudText Typo="Typo.h2" HtmlTag="h1" Class="ph-title" tabindex="-1">@Title</MudText>
+                        <MudText Typo="Typo.h2" HtmlTag="h1" Class="ph-title" tabindex="-1" id="@HeadingId">@Title</MudText>
                         @if (SubLine is not null)
                         {
                             <div class="ph-sub">@SubLine</div>
@@ -115,7 +115,11 @@
                     }
                     @* Overflow menu — always the right-most control. The page supplies the
                        items (MudMenuItems); the header owns the kebab trigger so it looks the
-                       same on every page. *@
+                       same on every page. A page with no applicable item passes ActionMenu = null,
+                       which renders no ⋯ button at all (never an empty menu). ActionMenuId lands on
+                       the MudMenu ROOT, not the button: the built-in icon activator stays as it is
+                       (one tab stop, its name, aria-haspopup / aria-expanded), and a dialog's
+                       ReturnFocusToId resolves the root to its first button (odsRestoreFocusOwner). *@
                     @if (ActionMenu is not null)
                     {
                         <MudMenu Icon="@Icons.Material.Filled.MoreVert"
@@ -123,7 +127,8 @@
                                  AnchorOrigin="Origin.BottomRight"
                                  TransformOrigin="Origin.TopRight"
                                  AriaLabel="@ActionMenuLabel"
-                                 Class="ph-action-menu">
+                                 Class="ph-action-menu"
+                                 id="@ActionMenuId">
                             @ActionMenu
                         </MudMenu>
                     }
@@ -181,9 +186,12 @@
                                     </div>
                                     @if (problem.HasView)
                                     {
+                                        @* The arrow is decoration (aria-hidden), so the name is the label alone —
+                                           or ActionAriaLabel where the page needs a fuller one (issue #473 §4.2). *@
                                         <button type="button" class="alert-fix"
+                                                aria-label="@(string.IsNullOrWhiteSpace(problem.ActionAriaLabel) ? null : problem.ActionAriaLabel)"
                                                 @onclick:stopPropagation="true"
-                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel →</button>
+                                                @onclick="@(() => InvokeView(problem))">@problem.ViewLabel <span aria-hidden="true">→</span></button>
                                     }
                                 </div>
                             }
@@ -197,7 +205,7 @@
             }
             @if (SearchContent is not null && _showSearch)
             {
-                <div class="ph-region" id="@_searchRegionId">@SearchContent</div>
+                <div class="ph-region ph-search-region" id="@_searchRegionId">@SearchContent</div>
             }
             @if (InfoContent is not null && _showInfo)
             {

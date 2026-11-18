@@ -28,6 +28,11 @@
     <ChildContent>
         <div class="ods-modal-body prop-doc-modal">
             <OdsLiveAnnouncer Message="@_announce" />
+            @if (_notice is not null)
+            {
+                @* The dialog's one announcement while it is open (issue #449 §6): words only, re-keyed per batch. *@
+                <div @key="_noticeKey" id="@_noticeId" class="helper aam-err" role="alert">@_notice</div>
+            }
             @if (ShowTabs)
             {
                 <OdsSegmentedControl Full="true" AriaLabel="Where the document comes from"

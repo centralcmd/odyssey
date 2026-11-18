@@ -12,10 +12,21 @@ public static class WeatherCoordinates
 {
     public static decimal Round(decimal value) => WeatherRules.RoundCoordinate(value);
 
-    public static string Fingerprint(LocationEntity location) =>
-        WeatherRules.Fingerprint(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId);
+    /// <summary>
+    /// <c>ExistingLocation.WeatherFingerprint</c> (issue #387 §5 endpoint 11): what a weather point would copy
+    /// from the place, or null for a place with no coordinates.
+    /// </summary>
+    public static string? FingerprintOrNull(LocationEntity location) =>
+        Position(location) is { } position
+            ? WeatherRules.Fingerprint(position.Latitude, position.Longitude, location.AltitudeMeters, position.TimeZoneId)
+            : null;
 
-    public static bool Moved(LocationEntity location, Odyssey.Context.WeatherLocationSite site) =>
-        WeatherRules.Moved(location.Latitude, location.Longitude, location.AltitudeMeters, location.TimeZoneId,
-            site.Latitude, site.Longitude, site.AltitudeMeters, site.TimeZoneId);
+    /// <summary>
+    /// The location's position, or <see langword="null"/> when it has none. The three columns are
+    /// all-or-none (<c>CK_Locations_CoordinatesAllOrNone</c>), so a partial set is treated as none.
+    /// </summary>
+    public static (decimal Latitude, decimal Longitude, string TimeZoneId)? Position(LocationEntity location) =>
+        location is { Latitude: { } latitude, Longitude: { } longitude, TimeZoneId: { } timeZoneId }
+            ? (latitude, longitude, timeZoneId)
+            : null;
 }

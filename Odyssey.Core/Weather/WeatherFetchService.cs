@@ -15,14 +15,14 @@ public enum WeatherFetchMode
     /// <summary>The scheduler: retries on 5xx and timeouts, 10 s per attempt, 30 s in all.</summary>
     Scheduled,
 
-    /// <summary>A read for an untracked location: one attempt within 5 s, no retry.</summary>
+    /// <summary>A read for an untracked point: one attempt within 5 s, no retry.</summary>
     OnDemand,
 
     /// <summary>An Admin's refresh: bypasses the refresh interval, never MET's <c>Expires</c> or a pause.</summary>
     Refresh,
 }
 
-/// <summary>Which half of a location's weather a fetch writes — each is switched on and off on its own.</summary>
+/// <summary>Which half of a point's weather a fetch writes — each is switched on and off on its own.</summary>
 public enum WeatherHalf
 {
     Forecast,
@@ -37,13 +37,13 @@ public enum WeatherAttemptStatus
     /// <summary>A request was sent and failed; the failure and backoff were recorded.</summary>
     Failed,
 
-    /// <summary>Nothing was sent: not due, paused, leased elsewhere, disabled, archived or purging.</summary>
+    /// <summary>Nothing was sent: not due, paused, leased elsewhere, disabled or purging.</summary>
     Skipped,
 
     /// <summary>No usable contact address, so nothing may be sent.</summary>
     NotConfigured,
 
-    /// <summary>A request was sent, but the location was disabled, applied or purged meanwhile: nothing stored.</summary>
+    /// <summary>A request was sent, but the point was disabled, moved or purged meanwhile: nothing stored.</summary>
     Discarded,
 }
 
@@ -54,20 +54,20 @@ public sealed record WeatherAttempt(
     WeatherFetchFailureKind? FailureKind = null);
 
 /// <summary>
-/// Fetching and storing weather for one location (issue #348 §3): claiming, the request, write fencing,
+/// Fetching and storing weather for one point (issue #348 §3; issue #387): claiming, the request, write fencing,
 /// backoff, and the <see cref="WeatherDay"/> rebuild. Shared by the scheduler, the on-demand read and the
 /// Admin refresh, so all three spend one backoff.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Claiming.</b> Before any outbound call the schedule row's <see cref="WeatherLocationSchedule.Version"/>
+/// <b>Claiming.</b> Before any outbound call the schedule row's <see cref="WeatherPointSchedule.Version"/>
 /// is rotated together with a two-minute lease. A concurrency failure means another replica holds the job.
 /// </para>
 /// <para>
 /// <b>Write fencing.</b> The rows a fetch produces and the schedule update are saved in one
 /// <c>SaveChangesAsync</c> under the version it claimed with. Disable, apply and purge each rotate the version,
 /// so a fetch in flight when they happen fails its save and stores nothing (AC 43). Before saving it also
-/// re-reads the location and discards when weather was turned off, a purge started, or the site changed.
+/// re-reads the point and discards when weather was turned off, a purge started, or the site changed.
 /// </para>
 /// </remarks>
 public sealed class WeatherFetchService
@@ -112,7 +112,7 @@ public sealed class WeatherFetchService
 
     // ── Forecast ──────────────────────────────────────────────────────────────────────────────────
 
-    public async Task<WeatherAttempt> FetchForecastAsync(Guid locationId, WeatherFetchMode mode, CancellationToken cancellationToken)
+    public async Task<WeatherAttempt> FetchForecastAsync(Guid pointId, WeatherFetchMode mode, CancellationToken cancellationToken)
     {
         var configured = await settings.GetAsync(cancellationToken);
         if (configured.Contact is not { } contact)
@@ -120,16 +120,15 @@ public sealed class WeatherFetchService
             return new WeatherAttempt(WeatherAttemptStatus.NotConfigured);
         }
 
-        var weather = await context.WeatherLocations.AsNoTracking()
-            .FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
-        if (weather is null || !weather.ForecastEnabled || weather.PurgeStartedAt is not null
-            || await IsArchivedAsync(locationId, cancellationToken))
+        var weather = await context.WeatherPoints.AsNoTracking()
+            .FirstOrDefaultAsync(w => w.WeatherPointId == pointId, cancellationToken);
+        if (weather is null || !weather.ForecastEnabled || weather.PurgeStartedAt is not null)
         {
             return new WeatherAttempt(WeatherAttemptStatus.Skipped);
         }
 
-        var schedule = await context.WeatherLocationSchedules
-            .FirstOrDefaultAsync(s => s.LocationId == locationId, cancellationToken);
+        var schedule = await context.WeatherPointSchedules
+            .FirstOrDefaultAsync(s => s.WeatherPointId == pointId, cancellationToken);
         var now = Now;
         if (schedule is null || !ForecastDue(schedule, mode, now) || schedule.LeaseUntilUtc > now)
         {
@@ -141,8 +140,8 @@ public sealed class WeatherFetchService
             return new WeatherAttempt(WeatherAttemptStatus.Skipped);
         }
 
-        var site = await context.WeatherLocationSites.AsNoTracking()
-            .FirstAsync(s => s.LocationId == locationId && s.SiteVersion == weather.CurrentSiteVersion, cancellationToken);
+        var site = await context.WeatherPointSites.AsNoTracking()
+            .FirstAsync(s => s.WeatherPointId == pointId && s.SiteVersion == weather.CurrentSiteVersion, cancellationToken);
         var query = new WeatherSiteQuery(site.Latitude, site.Longitude, site.AltitudeMeters);
 
         var result = await RequestForecastAsync(query, contact, schedule.ForecastLastModified, mode, cancellationToken);
@@ -156,11 +155,11 @@ public sealed class WeatherFetchService
                 var payload = result.Payload!;
                 issuedAt = payload.UpdatedAtUtc;
                 var newest = await context.WeatherForecastRuns.AsNoTracking()
-                    .Where(r => r.LocationId == locationId && r.SiteVersion == site.SiteVersion)
+                    .Where(r => r.WeatherPointId == pointId && r.SiteVersion == site.SiteVersion)
                     .MaxAsync(r => (DateTime?)r.ProviderUpdatedAt, cancellationToken);
                 if (newest != payload.UpdatedAtUtc)
                 {
-                    run = BuildRun(locationId, site, payload, result.ExpiresUtc, now);
+                    run = BuildRun(pointId, site, payload, result.ExpiresUtc, now);
                     context.WeatherForecastRuns.Add(run);
                 }
 
@@ -181,12 +180,12 @@ public sealed class WeatherFetchService
 
         if (run is not null)
         {
-            var timeline = await TimelineAsync(locationId, cancellationToken);
+            var timeline = await TimelineAsync(pointId, cancellationToken);
             // A step's period can reach into the next date, whose coverage it then changes too.
             var dates = run.Steps
                 .SelectMany(step => new[] { step.TimeUtc, step.TimeUtc.AddHours(step.PeriodHours).AddTicks(-1) })
                 .Select(timeline.DateForInstant).Distinct().ToList();
-            await RebuildDaysAsync(locationId, timeline, dates, cancellationToken);
+            await RebuildDaysAsync(pointId, timeline, dates, cancellationToken);
         }
 
         return result.Outcome == WeatherFetchOutcome.Failed
@@ -195,11 +194,11 @@ public sealed class WeatherFetchService
     }
 
     /// <summary>
-    /// The scheduler and the on-demand read honour <see cref="WeatherLocationSchedule.NextForecastFetchAfterUtc"/>,
+    /// The scheduler and the on-demand read honour <see cref="WeatherPointSchedule.NextForecastFetchAfterUtc"/>,
     /// which carries the interval, MET's <c>Expires</c> and any backoff. A refresh honours <c>Expires</c> and a
     /// pause but not the interval: it may bring a fetch forward, never shorten a pause (§7.14).
     /// </summary>
-    private static bool ForecastDue(WeatherLocationSchedule schedule, WeatherFetchMode mode, DateTime now)
+    private static bool ForecastDue(WeatherPointSchedule schedule, WeatherFetchMode mode, DateTime now)
     {
         if (mode != WeatherFetchMode.Refresh || schedule.ForecastFailureKind is not null)
         {
@@ -233,7 +232,7 @@ public sealed class WeatherFetchService
         return result;
     }
 
-    private void RecordForecastSuccess(WeatherLocationSchedule schedule, ForecastFetchResult result, WeatherSettings configured, DateTime now)
+    private void RecordForecastSuccess(WeatherPointSchedule schedule, ForecastFetchResult result, WeatherSettings configured, DateTime now)
     {
         var interval = now.AddMinutes(configured.RefreshIntervalMinutes);
         var expires = result.ExpiresUtc ?? now;
@@ -246,7 +245,7 @@ public sealed class WeatherFetchService
     }
 
     private static void RecordForecastFailure(
-        WeatherLocationSchedule schedule, WeatherFetchFailureKind kind, TimeSpan? retryAfter, DateTime now)
+        WeatherPointSchedule schedule, WeatherFetchFailureKind kind, TimeSpan? retryAfter, DateTime now)
     {
         schedule.ForecastConsecutiveFailures++;
         schedule.ForecastFailureKind = kind;
@@ -268,12 +267,12 @@ public sealed class WeatherFetchService
     private static TimeSpan Jitter() => TimeSpan.FromSeconds(Random.Shared.Next(0, 121));
 
     private static WeatherForecastRun BuildRun(
-        Guid locationId, WeatherLocationSite site, ForecastPayload payload, DateTime? expires, DateTime now)
+        Guid pointId, WeatherPointSite site, ForecastPayload payload, DateTime? expires, DateTime now)
     {
         var run = new WeatherForecastRun
         {
             WeatherForecastRunId = Guid.NewGuid(),
-            LocationId = locationId,
+            WeatherPointId = pointId,
             SiteVersion = site.SiteVersion,
             Provider = WeatherProvider.MetNorway,
             ProviderUpdatedAt = payload.UpdatedAtUtc,
@@ -289,7 +288,7 @@ public sealed class WeatherFetchService
             run.Steps.Add(new WeatherForecastStep
             {
                 WeatherForecastRunId = run.WeatherForecastRunId,
-                LocationId = locationId,
+                WeatherPointId = pointId,
                 SiteVersion = site.SiteVersion,
                 RunProviderUpdatedAt = payload.UpdatedAtUtc,
                 RunFetchedAtUtc = now,
@@ -332,11 +331,12 @@ public sealed class WeatherFetchService
     }
 
     /// <summary>
-    /// One Frost step for one location (§3 observations): resolve the station, then either the daily fetch
+    /// One Frost step for one point (§3 observations): resolve the station, then either the daily fetch
     /// of the last seven days or one year of backfill — one request per call, so the scheduler stays at or
     /// below 1 request/s. Returns the secret's state so the scheduler can log an unreadable one.
     /// </summary>
-    public async Task<SecretReadState> FetchObservationsAsync(Guid locationId, CancellationToken cancellationToken)
+    public async Task<SecretReadState> FetchObservationsAsync(
+        Guid pointId, CancellationToken cancellationToken, WeatherObservationTally? tally = null)
     {
         var configured = await settings.GetAsync(cancellationToken);
         var secret = await secrets.GetAsync(SecretSettingKeys.WeatherFrostClientId, cancellationToken);
@@ -345,29 +345,38 @@ public sealed class WeatherFetchService
             return secret.State;
         }
 
-        var weather = await context.WeatherLocations
-            .FirstOrDefaultAsync(w => w.LocationId == locationId, cancellationToken);
-        if (weather is null || !weather.HistoryEnabled || weather.PurgeStartedAt is not null
-            || await IsArchivedAsync(locationId, cancellationToken))
+        var weather = await context.WeatherPoints
+            .FirstOrDefaultAsync(w => w.WeatherPointId == pointId, cancellationToken);
+        if (weather is null || !weather.HistoryEnabled || weather.PurgeStartedAt is not null)
         {
             return secret.State;
         }
 
-        var schedule = await context.WeatherLocationSchedules
-            .FirstOrDefaultAsync(s => s.LocationId == locationId, cancellationToken);
+        var schedule = await context.WeatherPointSchedules
+            .FirstOrDefaultAsync(s => s.WeatherPointId == pointId, cancellationToken);
         var now = Now;
         if (schedule is null || (schedule.NextObservationFetchAfterUtc > now && !FirstLookupPending(weather, schedule)) || schedule.LeaseUntilUtc > now)
         {
             return secret.State;
         }
 
-        var timeline = await TimelineAsync(locationId, cancellationToken);
+        var timeline = await TimelineAsync(pointId, cancellationToken);
         var site = timeline.Current;
         var localNow = WeatherSiteTimeline.LocalTime(now, site);
         var today = DateOnly.FromDateTime(localNow);
         var yesterday = today.AddDays(-1);
         var firstOwned = site.SiteVersion == 1 ? DateOnly.MinValue : timeline.FirstOwnedDate(site);
-        var floor = Max(weather.HistoryFrom, firstOwned);
+
+        // History windows (issue #436): only days inside a window are fetched, and the coverage rows say which of them
+        // were already asked for. A gap is an effective day not yet covered.
+        var windows = await context.WeatherPointHistoryWindows.AsNoTracking()
+            .Where(w => w.WeatherPointId == pointId)
+            .Select(w => new WeatherWindow(w.FromDate, w.ToDate))
+            .ToListAsync(cancellationToken);
+        var coverage = await context.WeatherObservationCoverages
+            .Where(c => c.WeatherPointId == pointId && c.SiteVersion == site.SiteVersion)
+            .OrderBy(c => c.FromDate)
+            .ToListAsync(cancellationToken);
 
         // Frost has finished yesterday by ObservationLocalHour; before then the newest complete day is the one before.
         // A place never fetched for its current site does not wait for that hour: it starts at once with the days
@@ -377,13 +386,27 @@ public sealed class WeatherFetchService
         var neverFetched = schedule.ObservationsCheckedThroughDate is null;
         var dailyPending = schedule.ObservationsCheckedThroughDate is not { } checkedThrough || checkedThrough < yesterday;
         var dailyAllowed = dailyPending && (morning || neverFetched);
-        var backfillPending = schedule.ObservationsBackfilledFromDate is { } backfilledFrom && backfilledFrom > floor;
 
-        if (!dailyAllowed && !backfillPending)
+        // The recent re-check re-asks the last seven complete days for late corrections, clipped to the windows.
+        var recheckFrom = Max(firstOwned, lastComplete.AddDays(-6));
+        var recheck = recheckFrom <= lastComplete
+            ? WeatherHistoryPlan.ClipToWindows(new WeatherDateRange(recheckFrom, lastComplete), windows)
+            : [];
+        var gaps = WeatherHistoryPlan.Gaps(windows, Ranges(coverage), firstOwned, lastComplete);
+
+        if (dailyAllowed && recheck.Count == 0)
+        {
+            // No window touches the last seven days: the re-check is satisfied without a request.
+            schedule.ObservationsCheckedThroughDate = lastComplete;
+            dailyAllowed = false;
+            dailyPending = lastComplete < yesterday;
+        }
+
+        if (!dailyAllowed && gaps.Count == 0)
         {
             // Nothing to send: only the wake-up time moves. Saved WITHOUT rotating the version, so it can
-            // never fence off a forecast fetch another worker holds on the same location.
-            schedule.NextObservationFetchAfterUtc = NextObservationWindow(site, now, dailyPending);
+            // never fence off a forecast fetch another worker holds on the same point.
+            schedule.NextObservationFetchAfterUtc = NextIdleWake(site, now, dailyPending, windows, lastComplete);
             try
             {
                 await context.SaveChangesAsync(cancellationToken);
@@ -403,14 +426,16 @@ public sealed class WeatherFetchService
 
         // Station resolution, for the current site only (§3 step 1): one measure group per call, so the scheduler
         // stays at one request per call; a group that found nothing is asked again at most once per 24 h.
-        var stations = await context.WeatherStations.Where(st => st.LocationId == locationId).ToListAsync(cancellationToken);
+        var stations = await context.WeatherStations.Where(st => st.WeatherPointId == pointId).ToListAsync(cancellationToken);
         if (WeatherStationGroups.Pending(stations, now) is { } group)
         {
             var lookup = await observations.FindStationAsync(
                 new WeatherSiteQuery(site.Latitude, site.Longitude, site.AltitudeMeters), group, contact, clientId, cancellationToken);
             now = Now;
+            tally?.Attempt();
             if (!lookup.Succeeded)
             {
+                tally?.Fail(lookup.FailureKind ?? WeatherFetchFailureKind.ProviderError);
                 RecordObservationFailure(schedule, lookup.FailureKind ?? WeatherFetchFailureKind.ProviderError, lookup.RetryAfter, now);
                 await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
                 return secret.State;
@@ -419,7 +444,7 @@ public sealed class WeatherFetchService
             var row = stations.FirstOrDefault(st => st.Group == group);
             if (row is null)
             {
-                row = new WeatherStation { LocationId = locationId, Group = group };
+                row = new WeatherStation { WeatherPointId = pointId, Group = group };
                 context.WeatherStations.Add(row);
                 stations.Add(row);
             }
@@ -436,11 +461,12 @@ public sealed class WeatherFetchService
                 weather.StationResolvedAtUtc ??= now;
             }
 
-            // A group that gained a station measures from the history start again: its days so far are empty.
+            // A group that gained a station measures every window again: its days so far are empty. Only the current
+            // site's coverage goes, in this same fenced save (issue #436 §3.3 step 2).
             if (changed && found is not null && schedule.ObservationsCheckedThroughDate is not null)
             {
+                context.WeatherObservationCoverages.RemoveRange(coverage);
                 schedule.ObservationsCheckedThroughDate = null;
-                schedule.ObservationsBackfilledFromDate = null;
             }
 
             // One request per call keeps the scheduler at ≤ 1 request/s: the lookup was this call's request, so
@@ -464,65 +490,165 @@ public sealed class WeatherFetchService
         var stationIds = chosen.Values.Distinct(StringComparer.Ordinal).ToList();
         var chunkDays = BackfillChunkDays / stationIds.Count;
 
-        DateOnly from, to;
+        // The parts this request answers for, and their hull — what is actually sent.
         var daily = dailyAllowed;
-        if (daily)
-        {
-            from = Max(floor, lastComplete.AddDays(-6));
-            to = lastComplete;
-        }
-        else
-        {
-            var lowest = schedule.ObservationsBackfilledFromDate!.Value;
-            from = Max(floor, lowest.AddDays(-chunkDays));
-            to = lowest.AddDays(-1);
-        }
+        var parts = daily ? recheck : BackfillParts(gaps, chunkDays);
+        var from = parts[0].From;
+        var to = parts[^1].To;
 
         var inserted = new List<DateOnly>();
-        if (from <= to)
+        var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
+        var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
+        now = Now;
+        tally?.Attempt();
+        if (!fetched.Succeeded)
         {
-            var elements = chosen.Keys.SelectMany(FrostObservationSource.Elements).Distinct(StringComparer.Ordinal).ToList();
-            var fetched = await observations.FetchDailyAsync(stationIds, elements, from, to, contact, clientId, cancellationToken);
-            now = Now;
-            if (!fetched.Succeeded)
-            {
-                RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
-                await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
-                return secret.State;
-            }
-
-            inserted = await StageObservationsAsync(locationId, site.SiteVersion, chosen, Compose(chosen, fetched.Days), now, cancellationToken);
+            tally?.Fail(fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError);
+            RecordObservationFailure(schedule, fetched.FailureKind ?? WeatherFetchFailureKind.ProviderError, fetched.RetryAfter, now);
+            await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken);
+            return secret.State;
         }
 
-        // Markers advance even on an empty result, so an empty range is never re-requested (AC 16).
+        // Only days inside a window are stored: the hull of several short gaps also returns the days between them.
+        var wanted = Compose(chosen, fetched.Days).Where(day => parts.Any(part => part.Contains(day.Date))).ToList();
+        inserted = await StageObservationsAsync(pointId, site.SiteVersion, chosen, wanted, now, cancellationToken);
+        tally?.Store(inserted.Count);
+
+        // Coverage advances even on an empty result, so an empty range is never re-requested (AC 16).
+        foreach (var part in parts)
+        {
+            AddCoverage(coverage, pointId, site.SiteVersion, part);
+        }
+
         if (daily)
         {
             schedule.ObservationsCheckedThroughDate = lastComplete;
-            if (schedule.ObservationsBackfilledFromDate is null || schedule.ObservationsBackfilledFromDate > from)
-            {
-                schedule.ObservationsBackfilledFromDate = from;
-            }
-        }
-        else
-        {
-            schedule.ObservationsBackfilledFromDate = from;
         }
 
         schedule.LastObservationSuccessUtc = now;
         schedule.ObservationFailureKind = null;
         schedule.ObservationConsecutiveFailures = 0;
-        var moreBackfill = schedule.ObservationsBackfilledFromDate > floor;
+        var moreBackfill = WeatherHistoryPlan.Gaps(windows, Ranges(coverage), firstOwned, lastComplete).Count > 0;
         // An early first fetch still owes yesterday, so it wakes at this morning's window rather than tomorrow's.
         schedule.NextObservationFetchAfterUtc = moreBackfill
             ? now
-            : NextObservationWindow(site, now, dailyPending: schedule.ObservationsCheckedThroughDate < yesterday);
+            : NextIdleWake(site, now, schedule.ObservationsCheckedThroughDate < yesterday, windows, lastComplete);
 
         if (await FencedSaveAsync(schedule, site.SiteVersion, WeatherHalf.History, cancellationToken) && inserted.Count > 0)
         {
-            await RebuildDaysAsync(locationId, timeline, inserted, cancellationToken);
+            await RebuildDaysAsync(pointId, timeline, inserted, cancellationToken);
         }
 
         return secret.State;
+    }
+
+    /// <summary>
+    /// One backfill request's parts: the newest <paramref name="chunkDays"/> of the newest gap, then older gaps for as
+    /// long as the hull still fits one chunk — so many short windows do not multiply Frost requests (#436 §3.3 step 4).
+    /// </summary>
+    internal static List<WeatherDateRange> BackfillParts(IReadOnlyList<WeatherDateRange> gapsNewestFirst, int chunkDays)
+    {
+        var newest = gapsNewestFirst[0];
+        var to = newest.To;
+        var parts = new List<WeatherDateRange>
+        {
+            new(newest.Days > chunkDays ? to.AddDays(-(chunkDays - 1)) : newest.From, to),
+        };
+        var whole = newest.Days <= chunkDays;
+        for (var k = 1; whole && k < gapsNewestFirst.Count; k++)
+        {
+            var older = gapsNewestFirst[k];
+            if (to.DayNumber - older.From.DayNumber + 1 > chunkDays)
+            {
+                break;
+            }
+
+            parts.Insert(0, older);
+        }
+
+        return parts;
+    }
+
+    /// <summary>
+    /// Records a covered range, merging with overlapping or adjacent rows. A row keeps its key where it can: an
+    /// extension at the upper edge updates <c>ToDate</c> in place; one at the lower edge removes the old row and adds a
+    /// row with a different <c>FromDate</c>, so no save ever deletes and inserts one key (issue #436 §4.2).
+    /// </summary>
+    private void AddCoverage(List<WeatherObservationCoverage> rows, Guid pointId, int siteVersion, WeatherDateRange range)
+    {
+        var from = range.From;
+        var to = range.To;
+        var absorbed = rows.Where(r => r.FromDate.DayNumber <= to.DayNumber + 1 && r.ToDate.DayNumber + 1 >= from.DayNumber).ToList();
+        foreach (var row in absorbed)
+        {
+            if (row.FromDate < from)
+            {
+                from = row.FromDate;
+            }
+
+            if (row.ToDate > to)
+            {
+                to = row.ToDate;
+            }
+        }
+
+        var keep = absorbed.FirstOrDefault(r => r.FromDate == from);
+        foreach (var row in absorbed.Where(r => r != keep))
+        {
+            context.WeatherObservationCoverages.Remove(row);
+            rows.Remove(row);
+        }
+
+        if (keep is not null)
+        {
+            keep.ToDate = to;
+        }
+        else
+        {
+            var added = new WeatherObservationCoverage { WeatherPointId = pointId, SiteVersion = siteVersion, FromDate = from, ToDate = to };
+            context.WeatherObservationCoverages.Add(added);
+            rows.Add(added);
+        }
+
+        rows.Sort((a, b) => a.FromDate.CompareTo(b.FromDate));
+    }
+
+    /// <summary>
+    /// The newest day Frost has finished for <paramref name="site"/>: yesterday from <see cref="ObservationLocalHour"/>
+    /// site-local, the day before until then. The fetcher's and the read path's one definition.
+    /// </summary>
+    internal static DateOnly LastComplete(WeatherPointSite site, DateTime nowUtc)
+    {
+        var local = WeatherSiteTimeline.LocalTime(nowUtc, site);
+        var yesterday = DateOnly.FromDateTime(local).AddDays(-1);
+        return local.Hour >= ObservationLocalHour ? yesterday : yesterday.AddDays(-1);
+    }
+
+    private static List<WeatherDateRange> Ranges(IEnumerable<WeatherObservationCoverage> rows) =>
+        rows.Select(r => new WeatherDateRange(r.FromDate, r.ToDate)).ToList();
+
+    /// <summary>
+    /// When an idle point next needs a look: the next morning while a window reaches past the last complete day; with
+    /// only future windows, the morning after the earliest one's first day completes; with none left, a database-only
+    /// check in 24 h.
+    /// </summary>
+    private static DateTime NextIdleWake(
+        WeatherPointSite site, DateTime now, bool dailyPending, IReadOnlyList<WeatherWindow> windows, DateOnly lastComplete)
+    {
+        var current = windows.Any(w => w.From <= lastComplete && (w.To is null || w.To > lastComplete));
+        if (current)
+        {
+            return NextObservationWindow(site, now, dailyPending);
+        }
+
+        var upcoming = windows.Where(w => w.From > lastComplete).Select(w => (DateOnly?)w.From).Min();
+        if (upcoming is { } first)
+        {
+            var wake = WeatherSiteTimeline.StartOfDayUtc(first.AddDays(1), WeatherSiteTimeline.Zone(site)).AddHours(ObservationLocalHour);
+            return wake > now ? wake : NextObservationWindow(site, now, dailyPending);
+        }
+
+        return now.AddHours(24);
     }
 
     /// <summary>The longest backfill request, in station-days: a year from one station, a third of one from three.</summary>
@@ -554,11 +680,11 @@ public sealed class WeatherFetchService
     }
 
     /// <summary>
-    /// Insert a row only when none exists for (location, site, date), or when a value or a group's station differs
+    /// Insert a row only when none exists for (point, site, date), or when a value or a group's station differs
     /// (§3 step 4).
     /// </summary>
     private async Task<List<DateOnly>> StageObservationsAsync(
-        Guid locationId, int siteVersion, IReadOnlyDictionary<WeatherMeasureGroup, string> chosen,
+        Guid pointId, int siteVersion, IReadOnlyDictionary<WeatherMeasureGroup, string> chosen,
         IReadOnlyList<ObservationDayData> days, DateTime now, CancellationToken cancellationToken)
     {
         if (days.Count == 0)
@@ -572,7 +698,7 @@ public sealed class WeatherFetchService
         var first = days.Min(day => day.Date);
         var last = days.Max(day => day.Date);
         var existing = (await context.WeatherObservations.AsNoTracking()
-                .Where(o => o.LocationId == locationId && o.SiteVersion == siteVersion
+                .Where(o => o.WeatherPointId == pointId && o.SiteVersion == siteVersion
                     && o.LocalDate >= first && o.LocalDate <= last)
                 .ToListAsync(cancellationToken))
             .GroupBy(o => o.LocalDate)
@@ -594,7 +720,7 @@ public sealed class WeatherFetchService
             context.WeatherObservations.Add(new WeatherObservation
             {
                 WeatherObservationId = Guid.NewGuid(),
-                LocationId = locationId,
+                WeatherPointId = pointId,
                 SiteVersion = siteVersion,
                 Provider = WeatherProvider.MetNorway,
                 TemperatureStationId = temperatureStation,
@@ -616,7 +742,7 @@ public sealed class WeatherFetchService
     }
 
     private static void RecordObservationFailure(
-        WeatherLocationSchedule schedule, WeatherFetchFailureKind kind, TimeSpan? retryAfter, DateTime now)
+        WeatherPointSchedule schedule, WeatherFetchFailureKind kind, TimeSpan? retryAfter, DateTime now)
     {
         schedule.ObservationConsecutiveFailures++;
         schedule.ObservationFailureKind = kind;
@@ -629,10 +755,10 @@ public sealed class WeatherFetchService
     /// whatever its wake-up time says. An earlier release parked such a place until the next morning; this lets it
     /// start at once. A failure pause still holds, and after the first lookup the wake-up time governs again.
     /// </summary>
-    internal static bool FirstLookupPending(WeatherLocation weather, WeatherLocationSchedule schedule) =>
+    internal static bool FirstLookupPending(WeatherPoint weather, WeatherPointSchedule schedule) =>
         weather.StationResolvedAtUtc == null && schedule.ObservationsCheckedThroughDate == null && schedule.ObservationFailureKind == null;
 
-    private static DateTime NextObservationWindow(WeatherLocationSite site, DateTime now, bool dailyPending)
+    private static DateTime NextObservationWindow(WeatherPointSite site, DateTime now, bool dailyPending)
     {
         var zone = WeatherSiteTimeline.Zone(site);
         var local = WeatherSiteTimeline.LocalTime(now, site);
@@ -647,7 +773,7 @@ public sealed class WeatherFetchService
 
     // ── Shared ────────────────────────────────────────────────────────────────────────────────────
 
-    private async Task<bool> ClaimAsync(WeatherLocationSchedule schedule, DateTime now, CancellationToken cancellationToken)
+    private async Task<bool> ClaimAsync(WeatherPointSchedule schedule, DateTime now, CancellationToken cancellationToken)
     {
         schedule.LeaseUntilUtc = now.Add(LeaseDuration);
         schedule.Version = Guid.NewGuid();
@@ -668,10 +794,10 @@ public sealed class WeatherFetchService
     /// Returns false — with nothing stored — when the job was fenced off.
     /// </summary>
     private async Task<bool> FencedSaveAsync(
-        WeatherLocationSchedule schedule, int claimedSite, WeatherHalf half, CancellationToken cancellationToken)
+        WeatherPointSchedule schedule, int claimedSite, WeatherHalf half, CancellationToken cancellationToken)
     {
-        var fence = await context.WeatherLocations.AsNoTracking()
-            .Where(w => w.LocationId == schedule.LocationId)
+        var fence = await context.WeatherPoints.AsNoTracking()
+            .Where(w => w.WeatherPointId == schedule.WeatherPointId)
             .Select(w => new { w.ForecastEnabled, w.HistoryEnabled, w.PurgeStartedAt, w.CurrentSiteVersion })
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -679,7 +805,7 @@ public sealed class WeatherFetchService
         var on = fence is not null && (half == WeatherHalf.Forecast ? fence.ForecastEnabled : fence.HistoryEnabled);
         if (fence is null || !on || fence.PurgeStartedAt is not null || fence.CurrentSiteVersion != claimedSite)
         {
-            Discard(schedule.LocationId);
+            Discard(schedule.WeatherPointId);
             return false;
         }
 
@@ -692,29 +818,26 @@ public sealed class WeatherFetchService
         }
         catch (DbUpdateConcurrencyException)
         {
-            Discard(schedule.LocationId);
+            Discard(schedule.WeatherPointId);
             return false;
         }
         catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
         {
             // Another replica stored the same run first; the unique index makes ours a no-op.
-            Discard(schedule.LocationId);
+            Discard(schedule.WeatherPointId);
             return false;
         }
     }
 
-    private void Discard(Guid locationId)
+    private void Discard(Guid pointId)
     {
         context.ChangeTracker.Clear();
-        logger.LogDebug("Weather fetch for location {LocationId} was fenced off; nothing stored.", locationId);
+        logger.LogDebug("Weather fetch for point {WeatherPointId} was fenced off; nothing stored.", pointId);
     }
 
-    private Task<bool> IsArchivedAsync(Guid locationId, CancellationToken cancellationToken) =>
-        context.Locations.AsNoTracking().AnyAsync(l => l.LocationId == locationId && l.Archived != null, cancellationToken);
-
-    internal async Task<WeatherSiteTimeline> TimelineAsync(Guid locationId, CancellationToken cancellationToken) =>
-        new(await context.WeatherLocationSites.AsNoTracking()
-            .Where(s => s.LocationId == locationId)
+    internal async Task<WeatherSiteTimeline> TimelineAsync(Guid pointId, CancellationToken cancellationToken) =>
+        new(await context.WeatherPointSites.AsNoTracking()
+            .Where(s => s.WeatherPointId == pointId)
             .ToListAsync(cancellationToken));
 
     /// <summary>
@@ -722,11 +845,11 @@ public sealed class WeatherFetchService
     /// with neither half is removed, so the derived table never holds an empty row.
     /// </summary>
     public Task RebuildDaysAsync(
-        Guid locationId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, CancellationToken cancellationToken) =>
-        RebuildDaysAsync(locationId, timeline, dates, retried: false, cancellationToken);
+        Guid pointId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, CancellationToken cancellationToken) =>
+        RebuildDaysAsync(pointId, timeline, dates, retried: false, cancellationToken);
 
     private async Task RebuildDaysAsync(
-        Guid locationId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, bool retried, CancellationToken cancellationToken)
+        Guid pointId, WeatherSiteTimeline timeline, IEnumerable<DateOnly> dates, bool retried, CancellationToken cancellationToken)
     {
         var now = Now;
         foreach (var date in dates.Distinct().Order())
@@ -737,7 +860,7 @@ public sealed class WeatherFetchService
             // first hours, which is all it contributes (the coverage); its values belong to its own day.
             var reachFrom = fromUtc.AddHours(-12);
             var candidates = await WeatherComposer
-                .EffectiveStepsQuery(context.WeatherForecastSteps.AsNoTracking(), locationId, reachFrom, toUtc)
+                .EffectiveStepsQuery(context.WeatherForecastSteps.AsNoTracking(), pointId, reachFrom, toUtc)
                 .ToListAsync(cancellationToken);
             var effective = WeatherComposer.EffectiveSteps(candidates);
             var half = WeatherComposer.ForecastHalf(
@@ -745,11 +868,11 @@ public sealed class WeatherFetchService
                 effective.Where(s => s.TimeUtc.AddHours(s.PeriodHours) > fromUtc).ToList());
 
             var observed = await context.WeatherObservations.AsNoTracking()
-                .Where(o => o.LocationId == locationId && o.LocalDate == date)
+                .Where(o => o.WeatherPointId == pointId && o.LocalDate == date)
                 .OrderByDescending(o => o.SiteVersion).ThenByDescending(o => o.FetchedAtUtc)
                 .FirstOrDefaultAsync(cancellationToken);
 
-            var day = await context.WeatherDays.FirstOrDefaultAsync(d => d.LocationId == locationId && d.LocalDate == date, cancellationToken);
+            var day = await context.WeatherDays.FirstOrDefaultAsync(d => d.WeatherPointId == pointId && d.LocalDate == date, cancellationToken);
             if (half is null && observed is null)
             {
                 if (day is not null)
@@ -762,7 +885,7 @@ public sealed class WeatherFetchService
 
             if (day is null)
             {
-                day = new WeatherDay { LocationId = locationId, LocalDate = date };
+                day = new WeatherDay { WeatherPointId = pointId, LocalDate = date };
                 context.WeatherDays.Add(day);
             }
 
@@ -792,12 +915,37 @@ public sealed class WeatherFetchService
         }
         catch (DbUpdateException ex) when (!retried && DbErrors.IsDuplicateKey(ex))
         {
-            // A concurrent rebuild inserted the same (location, date) first: retry ONCE, as an update. A
+            // A concurrent rebuild inserted the same (point, date) first: retry ONCE, as an update. A
             // second collision is left to the next fetch's rebuild — the summary is derived, not lost.
             context.ChangeTracker.Clear();
-            await RebuildDaysAsync(locationId, timeline, dates, retried: true, cancellationToken);
+            await RebuildDaysAsync(pointId, timeline, dates, retried: true, cancellationToken);
         }
     }
 
     private static DateOnly Max(DateOnly left, DateOnly right) => left > right ? left : right;
+}
+
+/// <summary>
+/// What one observation fetch did, for the run log (issue #409 §4.2): requests sent, requests failed and the days
+/// stored. Counts only — never a point, a station or a place.
+/// </summary>
+public sealed class WeatherObservationTally
+{
+    public int Attempted { get; private set; }
+
+    public int Failed { get; private set; }
+
+    public int DaysStored { get; private set; }
+
+    public WeatherFetchFailureKind? FailureKind { get; private set; }
+
+    internal void Attempt() => Attempted++;
+
+    internal void Fail(WeatherFetchFailureKind kind)
+    {
+        Failed++;
+        FailureKind = kind;
+    }
+
+    internal void Store(int days) => DaysStored += days;
 }

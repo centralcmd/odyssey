@@ -12,9 +12,14 @@
     "Z → A"; Number → "Low → High" / "High → Low"; Date → "Oldest first" / "Newest first";
     Status → "Defined order" / "Reversed". Changing the field applies its natural default direction;
     the toggle flips it. With ONE field the dropdown is omitted — a static "Sort by <field>" label +
-    the direction toggle render instead (never a one-option dropdown).
+    the direction toggle render instead (never a one-option dropdown). The static label keeps the
+    trigger's bordered box, minus the chevron and the pointer, so it lines up with the filter bar's
+    other controls while reading as fixed.
 
     Direction is always conveyed as TEXT (the typed label + the aria word), never by the arrow alone.
+
+    The field menu opens at exactly the field's width (DropdownWidth.Relative), and a long option
+    label wraps onto a second line rather than being clipped (issue #473 §4.2; WCAG 1.4.10, 1.4.4).
 *@
 
 @typeparam TRow
@@ -24,7 +29,10 @@
     @if (_single)
     {
         <div class="odc-sortsel single @Class">
-            <span class="odc-sortsel-static">@Label <b>@_field.Label</b></span>
+            <span class="odc-sortsel-static">
+                <span class="odc-sortsel-prefix">@Label</span>
+                <span class="odc-sortsel-val">@_field.Label</span>
+            </span>
             @DirectionToggle
         </div>
     }
@@ -37,6 +45,8 @@
                               TriggerClass="@($"odc-sortsel-trigger {(_open ? "open" : null)}".TrimEnd())"
                               AnchorOrigin="Origin.BottomCenter"
                               TransformOrigin="Origin.TopCenter"
+                              RelativeWidth="DropdownWidth.Relative"
+                              PopoverClass="odc-sortsel-pop"
                               Disabled="@Disabled"
                               RowId="@RowId"
                               RowCount="@Fields.Count"

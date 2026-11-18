@@ -30,6 +30,8 @@ public class ListPageContractTests
         "Pages/Finance/ContractsCard.razor",
         "Pages/Finance/CurrenciesCard.razor",
         "Pages/Finance/ExchangeRatesCard.razor",
+        "Pages/Finance/Instruments/InstrumentPricesPage.razor",
+        "Pages/Finance/Instruments/InstrumentsPage.razor",
         "Pages/Finance/PropertiesCard.razor",
         "Pages/Finance/TaxStatementsCard.razor",
         "Pages/Finance/TransactionsCard.razor",
@@ -325,6 +327,8 @@ public class ListPageContractTests
     {
         ["Pages/Journal/TasksPage.razor"] = "loads every task once; search, tag and status filter client-side",
         ["Pages/Photos/AlbumsPage.razor"] = "loads every album once; search filters client-side",
+        ["Pages/Internet/NewsFeedsPage.razor"] = "loads every feed once (state=All, issue #473 §3.3); search, status, tag and sort filter client-side",
+        ["Pages/Internet/NewsPage.razor"] = "the only unwrapped list is the cached news tag list; the article list pages by cursor under its own generation guard and cancellation (issue #473 §4.4, NewsPageTests)",
         ["Pages/Finance/AccountContractsSection.razor"] = "one read per mounted account, on init",
         ["Pages/Finance/AccountEstimatesSection.razor"] = "one read per mounted account, on init and after its own writes",
         ["Pages/Finance/AccountTransactionsSection.razor"] = "one read per mounted account, on init and after its own row writes",

@@ -15,12 +15,21 @@ public sealed record PhotoAlbumSummary
 
     public Guid? CoverPhotoId { get; set; }
 
+    /// <summary>
+    /// The album's <see cref="TagIcons"/> key, or <c>null</c> for the album default (issue #404). A stored key
+    /// the catalogue no longer has is projected as <c>null</c>, never echoed. Draw it with
+    /// <see cref="PhotoAlbumIcons.Glyph(string?)"/>.
+    /// </summary>
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// The album's colour as normalised <c>#RRGGBB</c>, or <c>null</c> (issue #404). A stored value that is
+    /// not a valid hex is projected as <c>null</c>, never echoed.
+    /// </summary>
+    public string? Color { get; set; }
+
     /// <summary>Both of the cover photo's thumbnails exist (issue #362 §4.4); false without a cover.</summary>
     public bool CoverThumbnailsReady { get; set; }
-
-    /// <summary>The cover photo's backing file id, projected so a list row can render its thumbnail
-    /// without a separate per-photo fetch. Null when there is no cover (or it resolved to nothing).</summary>
-    public Guid? CoverFileId { get; set; }
 
     public DateTime? Archived { get; set; }
 

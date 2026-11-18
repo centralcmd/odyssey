@@ -41,14 +41,21 @@ public class FileAnalysisServiceTests
         /// <summary>How many provider calls were made at all — pins "no request was made" assertions.</summary>
         public int CallCount { get; private set; }
 
+        /// <summary>The extraction guidance the last extract call was handed (issue #433).</summary>
+        public string? LastExtractionAddition { get; private set; }
+
+        /// <summary>The match prompt options the last match call was handed (issue #433).</summary>
+        public MatchPromptOptions? LastMatchPrompt { get; private set; }
+
         public Task<List<ExtractedTransaction>> ExtractTransactionsAsync(
             byte[] fileContent, string contentType, string accountCurrencyCode,
             string promptTemplate, FileAnalysisTarget target, int maxTokens,
-            CancellationToken cancellationToken = default)
+            string? promptAddition, CancellationToken cancellationToken = default)
         {
             CallCount++;
             LastTarget = target;
             LastMaxTokens = maxTokens;
+            LastExtractionAddition = promptAddition;
             return behaviour(fileContent, contentType, accountCurrencyCode, promptTemplate, cancellationToken);
         }
 
@@ -58,11 +65,13 @@ public class FileAnalysisServiceTests
             IReadOnlyList<VocabularyEntry> tagVocabulary,
             FileAnalysisTarget target,
             int maxTokens,
+            MatchPromptOptions prompt,
             CancellationToken cancellationToken = default)
         {
             CallCount++;
             LastTarget = target;
             LastMaxTokens = maxTokens;
+            LastMatchPrompt = prompt;
             LastContactVocabulary = contactVocabulary;
             LastTagVocabulary = tagVocabulary;
             return (matchBehaviour ?? ((_, _, _, _) => Task.FromResult(new List<MatchedCandidate>())))
@@ -93,25 +102,18 @@ public class FileAnalysisServiceTests
 
     private FileAnalysisService CreateService(
         OdysseyContext context, IFileAnalysisProvider provider, FileAnalysisOptions options) =>
-        new(context, provider, TestContextFactory.ContactLookup(journal), Options.Create(options),
-            settingsLookup, NullLogger<FileAnalysisService>.Instance);
+        FileAnalysisTestHarness.Create(context, provider, TestContextFactory.ContactLookup(journal), options, settingsLookup);
 
     // The six file-analysis settings now come from the store, not IOptions (issue #421 Wave 1).
     // Mutate settingsLookup.Settings in a test that needs a non-default value.
     private readonly FakeFileAnalysisSettingsLookup settingsLookup = new();
 
-    // Writes the prompt template the service loads from disk to a temp file and points the options at it.
-    private static FileAnalysisOptions EnabledOptions()
+    // The prompt template is embedded since issue #444; the harness supplies a fixed test one.
+    private static FileAnalysisOptions EnabledOptions() => new()
     {
-        var promptPath = Path.Combine(Path.GetTempPath(), $"odyssey-prompt-{Guid.NewGuid():N}.txt");
-        File.WriteAllText(promptPath, "Extract transactions.");
-        return new FileAnalysisOptions
-        {
-            Enabled = true,
-            PromptTemplatePath = promptPath,
-            MaxFutureTransactionDays = 30,
-        };
-    }
+        Enabled = true,
+        MaxFutureTransactionDays = 30,
+    };
 
     // Seeds an account + a file blob + an AccountFile of the given type, returning the file id.
     private static async Task<(Guid accountId, Guid fileId)> SeedStatementAsync(
@@ -137,7 +139,7 @@ public class FileAnalysisServiceTests
             FileName = "statement.pdf",
             ContentType = "application/pdf",
             SizeBytes = 3,
-            Sha256Hash = "hash",
+            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             FileBlob = blob,
             UploadedAtUtc = DateTime.UtcNow,
@@ -204,17 +206,19 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<FileAnalysisDisabledException>(() =>
-            service.AnalyzeAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+            service.AnalyzeAndRunAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
     }
 
     [Fact]
-    public async Task GetJobAsync_WhenDisabled_ThrowsDisabledException()
+    public async Task GetJobAsync_WhenDisabled_StillReadsTheJob()
     {
+        // Issue #444 (A8): the job is a historical record, so a client polling a job the kill switch cancelled
+        // can read that it was cancelled; an unknown id is still null.
         await using var context = TestContextFactory.Create();
         settingsLookup.Enabled = false;
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisDisabledException>(() => service.GetJobAsync(Guid.NewGuid()));
+        Assert.Null(await service.GetJobAsync(Guid.NewGuid()));
     }
 
     [Fact]
@@ -237,7 +241,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<DomainNotFoundException>(() =>
-            service.AnalyzeAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
+            service.AnalyzeAndRunAsync(Guid.NewGuid(), Guid.NewGuid(), "user-1"));
     }
 
     [Fact]
@@ -248,25 +252,27 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1"));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1"));
     }
 
     // ── Provider failure path ───────────────────────────────────────────────────
 
     [Fact]
-    public async Task AnalyzeAsync_ProviderThrows_MarksJobFailedWithProviderCode_AndPropagates()
+    public async Task AnalyzeAsync_ProviderThrows_MarksJobFailedWithProviderCode()
     {
+        // Since issue #444 the provider is called by the worker, so its failure is recorded on the job, never
+        // thrown back to the (long gone) request.
         await using var context = TestContextFactory.Create();
         var (accountId, fileId) = await SeedStatementAsync(context);
         var service = CreateService(
             context, FakeProvider.Throwing(new FileAnalysisProviderException("upstream 500")), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
-        var job = await context.FileAnalysisJobs.SingleAsync();
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal("provider_error", job.FailureCode);
+        Assert.NotNull(job.TransferStartedAt);
         Assert.NotNull(job.CompletedAt);
         Assert.Empty(context.FileAnalysisCandidateTransactions);
     }
@@ -279,10 +285,9 @@ public class FileAnalysisServiceTests
         var service = CreateService(
             context, FakeProvider.Throwing(new InvalidOperationException("boom")), EnabledOptions());
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
-        var job = await context.FileAnalysisJobs.SingleAsync();
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync();
         Assert.Equal(ContextJobStatus.Failed, job.Status);
         Assert.Equal("internal_error", job.FailureCode);
     }
@@ -298,7 +303,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var job = await context.FileAnalysisJobs.Include(j => j.CandidateTransactions).SingleAsync();
         Assert.Equal(response.AnalysisJobId, job.Id);
@@ -317,7 +322,7 @@ public class FileAnalysisServiceTests
         var (accountId, fileId) = await SeedStatementAsync(context);
         var service = CreateService(context, FakeProvider.Returning(Extracted(DateTime.UtcNow.AddDays(-1), "Coffee")), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent() with
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent() with
         {
             ConsentText = "I consent to sending the complete file.",
             ConsentMethod = "Per-document checkbox",
@@ -346,7 +351,7 @@ public class FileAnalysisServiceTests
             : new AnalyzeFileRequest { ConsentAcknowledged = acknowledged.Value, ConsentText = "text present" };
 
         await Assert.ThrowsAsync<DomainValidationException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", consent));
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", consent));
 
         Assert.False(sent); // the document never reached the provider
         Assert.Empty(context.FileAnalysisJobs); // and no job/consent row was written
@@ -361,7 +366,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent() with { ConsentText = "I consent." });
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent() with { ConsentText = "I consent." });
 
         var log = await service.GetAuditLogAsync();
 
@@ -379,6 +384,36 @@ public class FileAnalysisServiceTests
         Assert.Equal("I consent.", entry.ConsentText);
         Assert.Equal(3, entry.SizeBytes);
         Assert.NotNull(entry.DurationMs);
+    }
+
+    /// <summary>
+    /// Issue #434: the log's "Matched against" fact reads the latest match run's counts and reduction
+    /// off the audit entry itself, never off the job DTO.
+    /// </summary>
+    [Fact]
+    public async Task GetAuditLogAsync_ProjectsMatchCountsAndReduction()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var service = CreateService(context, FakeProvider.Returning(
+            Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
+
+        var job = Assert.Single(context.FileAnalysisJobs);
+        job.ContactCount = 214;
+        job.AliasCount = 0;
+        job.TagCount = 38;
+        job.TagDescriptionCount = 0;
+        job.VocabularyReduction = FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted;
+        await context.SaveChangesAsync();
+
+        var entry = Assert.Single(await service.GetAuditLogAsync());
+
+        Assert.Equal(214, entry.ContactCount);
+        Assert.Equal(0, entry.AliasCount);
+        Assert.Equal(38, entry.TagCount);
+        Assert.Equal(0, entry.TagDescriptionCount);
+        Assert.Equal(FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted, entry.VocabularyReduction);
     }
 
     [Fact]
@@ -417,7 +452,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
 
         var result = await service.ImportCandidatesAsync(
@@ -448,7 +483,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
         (await context.Currencies.SingleAsync(c => c.CurrencyCode == "SEK")).Archived = DateTime.UtcNow;
         await context.SaveChangesAsync();
@@ -472,7 +507,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(context, FakeProvider.Returning(
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
 
         var result = await service.ImportCandidatesAsync(
@@ -495,7 +530,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
         return (service, response.AnalysisJobId, accountId, candidates);
     }
@@ -647,7 +682,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-3), "A", -1m),
             Extracted(DateTime.UtcNow.AddDays(-2), "B", -2m),
             Extracted(DateTime.UtcNow.AddDays(-1), "C", -3m)), EnabledOptions());
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var candidates = await context.FileAnalysisCandidateTransactions.OrderBy(c => c.Amount).ToListAsync();
         var unknownId = Guid.NewGuid();
 
@@ -785,7 +820,7 @@ public class FileAnalysisServiceTests
             Extracted(DateTime.UtcNow.AddDays(-2), "Groceries", -42.10m),
             Extracted(DateTime.UtcNow.AddDays(-1), "Salary", 2000m)), EnabledOptions());
 
-        var response = await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
         var firstCandidate = (await context.FileAnalysisCandidateTransactions.FirstAsync()).Id;
         await service.ImportCandidatesAsync(
             response.AnalysisJobId,
@@ -805,8 +840,7 @@ public class FileAnalysisServiceTests
         var service = CreateService(
             context, FakeProvider.Throwing(new FileAnalysisProviderException("scanned image — no text layer")), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisProviderException>(() =>
-            service.AnalyzeAsync(accountId, fileId, "user-1", Consent()));
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var entry = Assert.Single(await service.GetAuditLogAsync());
         Assert.Equal(DtoJobStatus.Failed, entry.Status);
@@ -824,7 +858,7 @@ public class FileAnalysisServiceTests
         var (accountId, fileId) = await SeedStatementAsync(context);
         var enabled = EnabledOptions();
         await CreateService(context, FakeProvider.Returning(Extracted(DateTime.UtcNow.AddDays(-1), "Coffee")), enabled)
-            .AnalyzeAsync(accountId, fileId, "user-1", Consent());
+            .AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         // The audit trail must survive the switch being turned off — GetAuditLogAsync deliberately does
         // not call EnsureEnabledAsync, since a disabled instance still has to answer "what did we send?".
@@ -845,7 +879,7 @@ public class FileAnalysisServiceTests
             // 400 days out — beyond the 30-day MaxFutureTransactionDays window, must be dropped.
             Extracted(DateTime.UtcNow.AddDays(400), "Dropped")), EnabledOptions());
 
-        await service.AnalyzeAsync(accountId, fileId, "user-1", Consent());
+        await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
 
         var candidate = await context.FileAnalysisCandidateTransactions.SingleAsync();
         Assert.Equal("Kept", candidate.Description);
@@ -903,7 +937,7 @@ public class FileAnalysisServiceTests
             FileName = name,
             ContentType = "application/pdf",
             SizeBytes = 1,
-            Sha256Hash = "hash",
+            Sha256Hash = Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(blob.Content)),
             FileBlobId = blob.Id,
             FileBlob = blob,
             UploadedAtUtc = DateTime.UtcNow,
@@ -922,13 +956,15 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task GetResumableJobsAsync_WhenDisabled_ThrowsDisabledException()
+    public async Task GetResumableJobsAsync_WhenDisabled_StillReads()
     {
+        // Issue #444 (A8): View progress, View result and Resume review keep working while analysis is off.
         await using var context = TestContextFactory.Create();
+        var (accountId, _) = await SeedStatementAsync(context);
         settingsLookup.Enabled = false;
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
 
-        await Assert.ThrowsAsync<FileAnalysisDisabledException>(() => service.GetResumableJobsAsync(Guid.NewGuid()));
+        Assert.Empty(await service.GetResumableJobsAsync(accountId));
     }
 
     [Fact]
@@ -958,29 +994,59 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task GetResumableJobsAsync_ExcludesAllReviewedFailedRunningAndNeverAnalysed_Uniformly()
+    public async Task GetResumableJobsAsync_ReportsEachFilesLatestState_AndOmitsReviewedAndNeverAnalysed()
     {
+        // Issue #444 §5.3: the list carries each file's latest analysis STATE — an open job, a pending review, or
+        // a failure — so the Files row can show it. A fully reviewed or never-analysed file stays absent.
         await using var context = TestContextFactory.Create();
 
-        // File A — completed, but every candidate already reviewed → not resumable.
+        // File A — completed, every candidate already reviewed → absent.
         var (accountId, fileA) = await SeedStatementAsync(context);
         await AddJobAsync(context, await AccountFileIdOf(context, fileA), DateTime.UtcNow, pending: 0, reviewed: 3);
 
-        // File B — only a Failed job (even with would-be pending candidates) → not resumable.
+        // File B — a running job → present as Running, with no counts.
         var fileB = await AddStatementFileAsync(context, accountId, "b.pdf");
-        await AddJobAsync(context, await AccountFileIdOf(context, fileB), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Running);
+        var running = await AddJobAsync(context, await AccountFileIdOf(context, fileB), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Running);
 
-        // File C — only a Failed job → not resumable.
+        // File C — only a failed job → present as Failed.
         var fileC = await AddStatementFileAsync(context, accountId, "c.pdf");
-        await AddJobAsync(context, await AccountFileIdOf(context, fileC), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Failed);
+        var failed = await AddJobAsync(context, await AccountFileIdOf(context, fileC), DateTime.UtcNow, pending: 2, status: ContextJobStatus.Failed);
 
-        // File D — never analysed (no job at all).
+        // File D — never analysed (no job at all) → absent.
         await AddStatementFileAsync(context, accountId, "d.pdf");
 
         var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
+        var summaries = (await service.GetResumableJobsAsync(accountId)).ToDictionary(s => s.FileId);
 
-        // All four non-resumable reasons are uniformly absent — no existence oracle.
-        Assert.Empty(await service.GetResumableJobsAsync(accountId));
+        Assert.Equal(2, summaries.Count);
+        Assert.Equal(running, summaries[fileB].AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Running, summaries[fileB].Status);
+        Assert.Equal(0, summaries[fileB].PendingCount);
+        Assert.Equal(failed, summaries[fileC].AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Failed, summaries[fileC].Status);
+        Assert.Null(summaries[fileC].LatestFailure);
+    }
+
+    [Fact]
+    public async Task GetResumableJobsAsync_ANewerFailure_IsCarriedBesideThePendingReview()
+    {
+        // Issue #444 v4 (maintainer decision): a failed re-analysis never hides Resume review.
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var accountFileId = await AccountFileIdOf(context, fileId);
+        var review = await AddJobAsync(context, accountFileId, new DateTime(2026, 6, 1, 9, 0, 0, DateTimeKind.Utc), pending: 2);
+        var failure = await AddJobAsync(context, accountFileId, new DateTime(2026, 6, 2, 9, 0, 0, DateTimeKind.Utc),
+            pending: 0, status: ContextJobStatus.Failed);
+
+        var service = CreateService(context, FakeProvider.Returning(), EnabledOptions());
+        var summary = Assert.Single(await service.GetResumableJobsAsync(accountId));
+
+        Assert.Equal(review, summary.AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Completed, summary.Status);
+        Assert.Equal(2, summary.PendingCount);
+        Assert.NotNull(summary.LatestFailure);
+        Assert.Equal(failure, summary.LatestFailure!.AnalysisJobId);
+        Assert.Equal(DtoJobStatus.Failed, summary.LatestFailure.Status);
     }
 
     [Fact]
@@ -1125,24 +1191,18 @@ public class FileAnalysisServiceTests
     }
 
     /// <summary>
-    /// Enabled options for the match tests. <c>Match.MaxVocabulary</c> and <c>Match.TimeoutSeconds</c>
-    /// are set here only to prove they are IGNORED: both moved into the system-settings store in issue
-    /// #434 and are read through <see cref="settingsLookup"/> now, so a test that wants a non-default
-    /// cap sets <see cref="MatchVocabularyCap"/> instead. Leaving these values deliberately WRONG is
-    /// what makes a regression to the options class fail rather than pass quietly.
+    /// Enabled options for the match tests. <c>Match.TimeoutSeconds</c> is set here only to prove it is
+    /// IGNORED: it moved into the system-settings store in issue #434 and is read through
+    /// <see cref="settingsLookup"/> now. Leaving it deliberately WRONG is what makes a regression to the
+    /// options class fail rather than pass quietly.
     /// </summary>
     private static FileAnalysisOptions MatchOptions(double threshold = 0.60)
     {
         var opts = EnabledOptions();
         opts.Match.AutoLinkThreshold = threshold;
-        opts.Match.MaxVocabulary = -1;
         opts.Match.TimeoutSeconds = -1;
         return opts;
     }
-
-    /// <summary>Points the fake lookup's vocabulary cap at <paramref name="maxVocab"/>.</summary>
-    private void MatchVocabularyCap(int maxVocab) =>
-        settingsLookup.Settings = settingsLookup.Settings with { MatchMaxVocabulary = maxVocab };
 
     [Fact]
     public async Task MatchAsync_WhenDisabled_ThrowsDisabledException()
@@ -1348,21 +1408,18 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task MatchAsync_ThresholdAndCapEchoedOnJob()
+    public async Task MatchAsync_ThresholdEchoedOnJob()
     {
         await using var context = TestContextFactory.Create();
         var jobId = await SeedMatchJobAsync(context, [("AMZN", "Shopping")], ["Amazon"], ["Groceries"]);
-        // Both the threshold and the vocabulary cap come from the system-settings store now (issue #421
-        // Wave 1 and issue #434 key 2). MatchOptions leaves the options-class values at -1, so if either
-        // read regressed to IOptions this would report -1 rather than the value under test.
+        // The threshold comes from the system-settings store (issue #421 Wave 1). MatchOptions sets the
+        // options-class value to 0.1, so if the read regressed to IOptions this would report 0.1.
         settingsLookup.Settings = settingsLookup.Settings with { AutoLinkThreshold = 0.7m };
-        MatchVocabularyCap(250);
         var service = CreateService(context, FakeProvider.Matching((_, _, _) => []), MatchOptions(threshold: 0.1));
 
         var job = await service.MatchAsync(jobId);
 
         Assert.Equal(0.7, job.AutoLinkThreshold);
-        Assert.Equal(250, job.MaxVocabulary);
     }
 
     /// <summary>
@@ -1427,18 +1484,23 @@ public class FileAnalysisServiceTests
     }
 
     [Fact]
-    public async Task MatchAsync_OverVocabularyCap_SkipsAndKeepsCandidates()
+    public async Task MatchAsync_LargeVocabulary_IsNeverSkipped()
     {
+        // Issue #433 retired the vocabulary cap: every active contact and tag is sent, however many.
         await using var context = TestContextFactory.Create();
-        var jobId = await SeedMatchJobAsync(context, [("AMZN", "Shopping")], ["Amazon", "Rema 1000", "Spotify"], ["Groceries"]);
-        var provider = FakeProvider.Matching((_, _, _) => throw new Exception("should not be called"));
-        MatchVocabularyCap(2);
+        var contacts = Enumerable.Range(0, 1500).Select(i => $"Contact {i:D4}").ToArray();
+        var tags = Enumerable.Range(0, 800).Select(i => $"Tag {i:D3}").ToArray();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", "Shopping")], contacts, tags);
+        var provider = FakeProvider.Matching((_, _, _) => []);
         var service = CreateService(context, provider, MatchOptions());
 
         var job = await service.MatchAsync(jobId);
 
-        Assert.Equal(DtoMatchStatus.Skipped, job.MatchStatus);
-        Assert.Single(job.Candidates); // extracted candidate intact and importable
+        Assert.Equal(DtoMatchStatus.Completed, job.MatchStatus);
+        Assert.Equal(1500, provider.LastContactVocabulary!.Count);
+        Assert.Equal(800, provider.LastTagVocabulary!.Count);
+        Assert.Equal(1500, job.ContactCount);
+        Assert.Equal(800, job.TagCount);
     }
 
     [Fact]
@@ -1493,5 +1555,319 @@ public class FileAnalysisServiceTests
         var amazonId = (await journal.Contacts.SingleAsync(c => c.OrganizationDetails!.LegalName == "Amazon")).ContactId;
         Assert.Equal(amazonId, refreshed.MatchedContactId);
         Assert.Equal(ContextMatchMethod.Llm, refreshed.MatchMethod);
+    }
+
+    // ── Issue #433: richer match vocabulary, guidance, destination check ─────────────────────────
+
+    /// <summary>Marks a seeded job as consented under the extended scope, stamped from the current settings.</summary>
+    private async Task StampExtendedConsentAsync(OdysseyContext context, Guid jobId)
+    {
+        var job = await context.FileAnalysisJobs.SingleAsync(j => j.Id == jobId);
+        job.MatchVocabularyScope = FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions;
+        job.MatchDisclosureVersionInForce = FileAnalysisDisclosureVersion.ComputeForMatch(
+            settingsLookup.Settings, FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions);
+        job.AnalyzerBaseUrlHost = "api.anthropic.com";
+        job.ProcessorInForce = settingsLookup.Settings.Processor;
+        job.ProcessorRegionInForce = settingsLookup.Settings.ProcessorRegion;
+        await context.SaveChangesAsync();
+    }
+
+    private async Task AddAliasesAsync(string contactName, params string[] aliases)
+    {
+        var contact = await journal.Contacts.SingleAsync(c => c.OrganizationDetails!.LegalName == contactName);
+        foreach (var alias in aliases)
+            journal.ContactAliases.Add(new ContactAlias { ContactId = contact.ContactId, Value = alias, Label = "card" });
+        await journal.SaveChangesAsync();
+    }
+
+    private static async Task DescribeTagAsync(OdysseyContext context, string tagName, string description)
+    {
+        var tag = await context.TransactionTags.SingleAsync(t => t.Name == tagName);
+        tag.Description = description;
+        await context.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task MatchAsync_ExtendedScope_SendsAliasesAndDescriptions_WithoutLabels()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("VIPPS*KIWI 123", "Groceries")], ["Kiwi Minipris"], ["Bolig", "Mat"]);
+        await AddAliasesAsync("Kiwi Minipris", "VIPPS*KIWI", "KIWI 123", "kiwi minipris");
+        await DescribeTagAsync(context, "Bolig", "Rent, electricity, municipal fees");
+        await StampExtendedConsentAsync(context, jobId);
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        var job = await service.MatchAsync(jobId);
+
+        var kiwi = Assert.Single(provider.LastContactVocabulary!);
+        // Ordinal order, and the alias equal to the name (case-insensitively) is not sent.
+        Assert.Equal(["KIWI 123", "VIPPS*KIWI"], kiwi.Aliases);
+        Assert.Equal("Rent, electricity, municipal fees",
+            provider.LastTagVocabulary!.Single(t => t.Name == "Bolig").Description);
+        Assert.Null(provider.LastTagVocabulary!.Single(t => t.Name == "Mat").Description);
+        Assert.True(provider.LastMatchPrompt!.Extended);
+        Assert.Equal(FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions, job.MatchVocabularyScope);
+        Assert.Equal(1, job.ContactCount);
+        Assert.Equal(2, job.TagCount);
+        Assert.Equal(2, job.AliasCount);
+        Assert.Equal(1, job.TagDescriptionCount);
+        Assert.Equal(FileAnalysisVocabularyReduction.None, job.VocabularyReduction);
+    }
+
+    [Fact]
+    public async Task MatchAsync_LegacyJob_SendsNamesOnly_WithTheLegacyPrompt()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("VIPPS*KIWI 123", null)], ["Kiwi Minipris"], ["Bolig"]);
+        await AddAliasesAsync("Kiwi Minipris", "VIPPS*KIWI");
+        await DescribeTagAsync(context, "Bolig", "Rent");
+        settingsLookup.Settings = settingsLookup.Settings with { MatchPromptAddition = "Local rule." };
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        var job = await service.MatchAsync(jobId);
+
+        Assert.Null(Assert.Single(provider.LastContactVocabulary!).Aliases);
+        Assert.Null(Assert.Single(provider.LastTagVocabulary!).Description);
+        // A job consented before the feature gets neither the wider vocabulary nor the guidance.
+        Assert.Equal(MatchPromptOptions.Legacy, provider.LastMatchPrompt);
+        Assert.Equal(FileAnalysisMatchVocabularyScope.NamesOnly, job.MatchVocabularyScope);
+        var stored = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == jobId);
+        Assert.Equal("1.0", stored.MatchPromptVersion);
+        Assert.Null(stored.MatchPromptAdditionInForce);
+    }
+
+    [Fact]
+    public async Task MatchAsync_OverBudget_DropsAliasesFirst_ThenDescriptions_ButStillMatches()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("X", null)], ["Kiwi"], ["Bolig"]);
+        await AddAliasesAsync("Kiwi", Enumerable.Range(0, 20).Select(i => $"ALIAS-{i:D2}-" + new string('x', 90)).ToArray());
+        await DescribeTagAsync(context, "Bolig", new string('d', 200));
+        await StampExtendedConsentAsync(context, jobId);
+
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var aliasesOnly = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
+            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
+        { MatchVocabularyBudget = 1000 };
+
+        var first = await aliasesOnly.MatchAsync(jobId);
+
+        Assert.Equal(DtoMatchStatus.Completed, first.MatchStatus);
+        Assert.Equal(FileAnalysisVocabularyReduction.AliasesOmitted, first.VocabularyReduction);
+        Assert.Null(Assert.Single(provider.LastContactVocabulary!).Aliases);
+        Assert.NotNull(Assert.Single(provider.LastTagVocabulary!).Description);
+        Assert.Equal(0, first.AliasCount);
+
+        var tiny = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
+            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
+        { MatchVocabularyBudget = 10 };
+
+        var second = await tiny.MatchAsync(jobId);
+
+        Assert.Equal(DtoMatchStatus.Completed, second.MatchStatus);
+        Assert.Equal(FileAnalysisVocabularyReduction.AliasesAndDescriptionsOmitted, second.VocabularyReduction);
+        Assert.Null(Assert.Single(provider.LastTagVocabulary!).Description);
+        Assert.Equal("Kiwi", Assert.Single(provider.LastContactVocabulary!).Name); // names always sent
+    }
+
+    [Theory]
+    [InlineData("processor")]
+    [InlineData("region")]
+    [InlineData("host")]
+    [InlineData("lawfulBasis")]
+    public async Task MatchAsync_DestinationOrDisclosureChanged_Refuses_SendsNothing(string change)
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        await StampExtendedConsentAsync(context, jobId);
+        settingsLookup.Settings = change switch
+        {
+            "processor" => settingsLookup.Settings with { Processor = "Another processor" },
+            "region" => settingsLookup.Settings with { ProcessorRegion = "Elsewhere" },
+            "host" => settingsLookup.Settings with { BaseUrl = "https://gateway.internal" },
+            _ => settingsLookup.Settings with { LawfulBasis = "Contract" },
+        };
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        var ex = await Assert.ThrowsAsync<FileAnalysisDestinationChangedException>(() => service.MatchAsync(jobId));
+
+        Assert.Equal(0, provider.CallCount);
+        Assert.Equal(FileAnalysisDestinationChangedException.DestinationChangedCode, ex.Code);
+        Assert.DoesNotContain("gateway.internal", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("Another processor", ex.Message, StringComparison.Ordinal);
+        var stored = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == jobId);
+        Assert.Equal(ContextMatchStatus.NotRun, stored.MatchStatus);
+    }
+
+    [Fact]
+    public async Task MatchAsync_MatchGuidanceTurnedOn_Refuses_ButExtractionGuidanceDoesNot()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        await StampExtendedConsentAsync(context, jobId);
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        var baseline = settingsLookup.Settings;
+        settingsLookup.Settings = baseline with { MatchPromptAddition = "Vipps rule." };
+        await Assert.ThrowsAsync<FileAnalysisDestinationChangedException>(() => service.MatchAsync(jobId));
+
+        settingsLookup.Settings = baseline with { ExtractionPromptAddition = "Bank date rule." };
+        var job = await service.MatchAsync(jobId);
+
+        Assert.Equal(DtoMatchStatus.Completed, job.MatchStatus);
+    }
+
+    [Fact]
+    public async Task MatchAsync_SendsAndStampsTheMatchGuidance_ForAnExtendedJob()
+    {
+        await using var context = TestContextFactory.Create();
+        settingsLookup.Settings = settingsLookup.Settings with { MatchPromptAddition = "VIPPS* is Vipps." };
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        await StampExtendedConsentAsync(context, jobId);
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        await service.MatchAsync(jobId);
+
+        Assert.Equal("VIPPS* is Vipps.", provider.LastMatchPrompt!.Addition);
+        var stored = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == jobId);
+        Assert.Equal("VIPPS* is Vipps.", stored.MatchPromptAdditionInForce);
+        Assert.Equal(FileAnalysisTestHarness.Template.Version, stored.MatchPromptVersion);
+    }
+
+    [Fact]
+    public async Task MatchAsync_FailureBeforeTheProviderCall_EndsFailed_NotRunning()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+        await journal.DisposeAsync(); // the vocabulary read now throws, after the claim
+
+        var job = await service.MatchAsync(jobId);
+
+        Assert.Equal(0, provider.CallCount);
+        Assert.Equal(DtoMatchStatus.Failed, job.MatchStatus);
+        Assert.Equal("Matching could not start.", job.MatchFailureMessage);
+    }
+
+    [Fact]
+    public async Task MatchAsync_CallerCancelsDuringTheCall_EndsFailed_AndRethrows()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        using var cts = new CancellationTokenSource();
+        var provider = new FakeProvider(
+            (_, _, _, _, _) => Task.FromResult(new List<ExtractedTransaction>()),
+            (_, _, _, token) =>
+            {
+                cts.Cancel();
+                token.ThrowIfCancellationRequested();
+                return Task.FromResult(new List<MatchedCandidate>());
+            });
+        var service = CreateService(context, provider, MatchOptions());
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.MatchAsync(jobId, cts.Token));
+
+        var stored = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == jobId);
+        Assert.Equal(ContextMatchStatus.Failed, stored.MatchStatus);
+    }
+
+    [Fact]
+    public async Task MatchGeneration_IsAConcurrencyToken_SoASecondClaimFails()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        var options = (DbContextOptions<OdysseyContext>)context.GetService<IDbContextOptions>();
+        await using var first = new OdysseyContext(options);
+        await using var second = new OdysseyContext(options);
+        var a = await first.FileAnalysisJobs.SingleAsync(j => j.Id == jobId);
+        var b = await second.FileAnalysisJobs.SingleAsync(j => j.Id == jobId);
+
+        a.MatchStatus = ContextMatchStatus.Running;
+        a.MatchGeneration++;
+        await first.SaveChangesAsync();
+        b.MatchStatus = ContextMatchStatus.Running;
+        b.MatchGeneration++;
+
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => second.SaveChangesAsync());
+    }
+
+    [Fact]
+    public async Task MatchAsync_SettingsReadFailed_Refuses()
+    {
+        await using var context = TestContextFactory.Create();
+        var jobId = await SeedMatchJobAsync(context, [("AMZN", null)], ["Amazon"], ["Shopping"]);
+        settingsLookup.Settings = settingsLookup.Settings with { ReadFailed = true, IsDegraded = true };
+        var provider = FakeProvider.Matching((_, _, _) => []);
+        var service = CreateService(context, provider, MatchOptions());
+
+        await Assert.ThrowsAsync<FileAnalysisUnavailableException>(() => service.MatchAsync(jobId));
+        Assert.Equal(0, provider.CallCount);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_StampsTheScopeAndVersions_AndSendsTheExtractionGuidance()
+    {
+        await using var context = TestContextFactory.Create();
+        settingsLookup.Settings = settingsLookup.Settings with { ExtractionPromptAddition = "Dates are DD.MM.YYYY." };
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var provider = FakeProvider.Returning();
+        var service = CreateService(context, provider, EnabledOptions());
+
+        var response = await service.AnalyzeAndRunAsync(accountId, fileId, "user-1", Consent());
+
+        Assert.Equal("Dates are DD.MM.YYYY.", provider.LastExtractionAddition);
+        var job = await context.FileAnalysisJobs.AsNoTracking().SingleAsync(j => j.Id == response.AnalysisJobId);
+        Assert.Equal(FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions, job.MatchVocabularyScope);
+        Assert.Equal(FileAnalysisDisclosureVersion.Compute(settingsLookup.Settings), job.DisclosureVersionInForce);
+        Assert.Equal(
+            FileAnalysisDisclosureVersion.ComputeForMatch(
+                settingsLookup.Settings, FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions),
+            job.MatchDisclosureVersionInForce);
+        Assert.Equal("Dates are DD.MM.YYYY.", job.ExtractionPromptAdditionInForce);
+    }
+
+    [Fact]
+    public async Task AnalyzeAsync_SettingsReadFailed_Refuses_BeforeAnyJobExists()
+    {
+        await using var context = TestContextFactory.Create();
+        var (accountId, fileId) = await SeedStatementAsync(context);
+        var consent = Consent();
+        settingsLookup.Settings = settingsLookup.Settings with { ReadFailed = true, IsDegraded = true };
+        var provider = FakeProvider.Returning();
+        var service = CreateService(context, provider, EnabledOptions());
+
+        await Assert.ThrowsAsync<FileAnalysisUnavailableException>(() =>
+            service.AnalyzeAndRunAsync(accountId, fileId, "user-1", consent));
+
+        Assert.Equal(0, provider.CallCount);
+        Assert.Empty(await context.FileAnalysisJobs.ToListAsync());
+    }
+
+    [Fact]
+    public void DisclosureVersion_CoversTheGuidanceFlags_AndTheMatchVersionIgnoresExtractionGuidance()
+    {
+        var baseline = settingsLookup.Settings;
+        var withExtraction = baseline with { ExtractionPromptAddition = "x" };
+        var withMatch = baseline with { MatchPromptAddition = "x" };
+        var scope = FileAnalysisMatchVocabularyScope.NamesAliasesDescriptions;
+
+        Assert.NotEqual(FileAnalysisDisclosureVersion.Compute(baseline), FileAnalysisDisclosureVersion.Compute(withExtraction));
+        Assert.NotEqual(FileAnalysisDisclosureVersion.Compute(baseline), FileAnalysisDisclosureVersion.Compute(withMatch));
+        Assert.Equal(
+            FileAnalysisDisclosureVersion.ComputeForMatch(baseline, scope),
+            FileAnalysisDisclosureVersion.ComputeForMatch(withExtraction, scope));
+        Assert.NotEqual(
+            FileAnalysisDisclosureVersion.ComputeForMatch(baseline, scope),
+            FileAnalysisDisclosureVersion.ComputeForMatch(withMatch, scope));
+        Assert.Equal(["contactName", "contactAlias", "tagName", "tagDescription"],
+            FileAnalysisDisclosureVersion.FieldsFor(scope));
     }
 }

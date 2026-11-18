@@ -33,9 +33,9 @@
 .odc-chip-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: currentColor; }
 .odc-chip.income  { color: var(--finance-income);  background: var(--finance-income-soft); }
 .odc-chip.expense { color: var(--finance-expense); background: var(--finance-expense-soft); }
-/* Text on the pending tint takes --warning-text, not the design system's --pending-text: since the light
-   --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures ~4.4:1 on white
-   (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500 either way. */
+/* Text on the pending tint takes --warning-text, not --pending-text, as in the design system (issue #439):
+   since the light --finance-pending moved to amber-600 its tint darkened, and amber-700 on it measures
+   ~4.4:1 on white (under WCAG 1.4.3's 4.5:1). amber-800 clears ~6.2:1; dark resolves both to amber-500. */
 .odc-chip.pending { color: var(--warning-text);    background: var(--finance-pending-soft); }
 .odc-chip.info    { color: var(--info-text);       background: var(--info-soft); }
 .odc-chip.tag     { color: var(--tag-text);        background: var(--tag-soft); }
@@ -143,7 +143,7 @@
 .odc-breakdown-total .material-icons { color: var(--mud-palette-text-secondary); }
 /* Summary grid — the auto-fitting row of tiles a page's Overview lays out
    (BreakdownTile "By type" / "By status", stat tiles, donut cards). */
-.odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.odc-summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
 
 /* ---------- Badge ---------- */
 .odc-badge {
@@ -508,7 +508,7 @@
    ends at 968, so percentage padding tracks both edges as the SVG scales.
    Left-aligned — the rows read as a list, not a caption. */
 .odc-sc-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 4px 3.2% 2px 6.4%; }
-.odc-sc-leg { display: inline-flex; align-items: center; gap: 7px; }
+.odc-sc-leg { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; max-width: 100%; }
 .odc-sc-swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; }
 .odc-sc-leg-name { font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-sc-leg-val { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
@@ -547,7 +547,8 @@
 .odc-legend-figs { display: flex; align-items: baseline; gap: 14px; flex: none; }
 .odc-legend-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
 .odc-legend-amt { font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
-.odc-donut-total { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider); }
+/* flex-wrap: a long total drops its figures under the label rather than past the card's edge (issue #389). */
+.odc-donut-total { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 14px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--mud-palette-divider); }
 .odc-donut-total-lab { min-width: 0; padding-left: 21px; font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .odc-donut-total-pct { font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); width: 34px; text-align: right; white-space: nowrap; }
 .odc-donut-total-amt { font: var(--fw-medium) var(--fs-h6)/1.2 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); min-width: 76px; text-align: right; white-space: nowrap; }
@@ -666,6 +667,14 @@
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
     outline-offset: var(--focus-ring-offset);
 }
+/* Every MudButton, as the design system's `.odc-btn:focus-visible`: MudBlazor sets `outline: 0` on
+   .mud-button-root and draws keyboard focus as a background tint alone, which no variant clears 3:1 with
+   (WCAG 2.4.7 / 1.4.11). The outlined variant's primary focus edge was the last stronger cue, and it is
+   --control-border in every state since issue #419, so the ring is what marks focus on every variant. */
+.mud-button-root.mud-button:focus-visible {
+    outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));
+    outline-offset: var(--focus-ring-offset);
+}
 
 /* The page-header filter bar (.ph-filter-bar / .ph-search / .ph-select) now has a
    single definition in Components/PageHeader.razor.css — the header renders the
@@ -684,7 +693,7 @@
    inline from the option's IconColor; inherits currentColor otherwise. Compounded with
    .material-icons so the 18px size beats the Google Material Icons base (24px) rule. */
 .odc-select-opt { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
-.material-icons.odc-opt-icon { font-size: var(--icon-md); line-height: 1; flex: none; }
+.material-icons.odc-opt-icon { font-size: var(--icon-md); line-height: 1; flex: none; color: var(--mud-palette-text-secondary); }
 
 /* Inline label prefix (OdsSelect Prefix — DS .odc-select-prefix, "Location  Home ▾"). MudSelect draws
    it as its start-adornment text, so the rule targets that element inside a prefixed select: muted, in
@@ -712,10 +721,12 @@
   display: flex; align-items: flex-start; gap: var(--space-3);
   padding: var(--space-4) var(--space-5);
   margin-bottom: 0;
-  background: rgba(20, 30, 50, 0.04);
+  /* The design system's 0.02 wash (bundle.css .odc-modal-head/-foot). At 0.04 a text button's hover in the
+     footer took --brand-text under 4.5:1 in light (4.47:1); at 0.02 it is 4.65:1 (issue #419). */
+  background: rgba(20, 30, 50, 0.02);
   border-bottom: 1px solid var(--mud-palette-divider);
 }
-[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-title.ods-modal-head { background: rgba(255, 255, 255, 0.02); }
 
 /* Optional leading icon tile — brand-tide by default; warning / error tints for
    destructive or confirm dialogs. */
@@ -741,13 +752,13 @@
   gap: var(--space-3);
   margin: 0;
   padding: var(--space-4) var(--space-5);
-  background: rgba(20, 30, 50, 0.04);
+  background: rgba(20, 30, 50, 0.02);
   border-top: 1px solid var(--mud-palette-divider);
 }
 /* Normalize action heights — MudBlazor text buttons (e.g. Cancel) render shorter
    than filled ones, which reads as a vertical mismatch in the row. */
 .mud-dialog .mud-dialog-actions.ods-modal-foot > .mud-button-root { margin: 0; min-height: 40px; }
-[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.04); }
+[data-theme='dark'] .mud-dialog .mud-dialog-actions.ods-modal-foot { background: rgba(255, 255, 255, 0.02); }
 /* Footer legend explaining the required marker, once per dialog (DS .odc-modal-legend). Always
    rendered, shown only while the body holds a required field — a hand-labelled .odc-field-req or a
    MudBlazor control carrying .mud-input-required — so it tracks conditionally-rendered fields
@@ -803,7 +814,12 @@
 }
 .mud-input-outlined-border { top: 0; background: transparent; }
 .mud-input-outlined-border legend { display: none; }
-.mud-input.mud-input-outlined .mud-input-outlined-border {
+/* The border class is doubled on purpose. MudBlazor.min.css loads AFTER this file and
+   declares the resting colour (--mud-palette-lines-inputs, ~1.9:1) under this exact
+   selector, so at equal specificity it won and no Mud outlined input ever showed
+   --control-border. One more class beats that resting rule only: MudBlazor's hover,
+   focus and disabled rules are as specific or more and load later, so they still win. */
+.mud-input.mud-input-outlined .mud-input-outlined-border.mud-input-outlined-border {
   border-color: var(--control-border);
   border-radius: var(--radius-sm);
 }
@@ -837,6 +853,24 @@
    pickers in the attachments list) stay compact. */
 .aam-field > .odc-popmenu { width: 100%; display: flex; }
 
+/* ---------- Dropdown surface (every OdsPopupMenu popover) ----------
+   ONE surface for every dropdown the app opens from a trigger — the filter bar's
+   Status / Sort by / Load N, a form's type picker, a row's inline select — so they
+   cannot drift apart again (Odyssey Design System · docs/components-data-table-menu-form-controls.md · Dropdowns, the DS
+   .odc-select-pop / .odc-menu-pop chrome). Before this the single-choice menus fell
+   back to MudBlazor's own paper (theme radius, no edge) while the checkbox panels drew
+   a bordered card, so two dropdowns side by side in one filter bar read differently.
+   Width is OdsPopupMenu's DropdownWidth.Adaptive: never narrower than the trigger. */
+.mud-popover.odc-popmenu-paper {
+  background: var(--mud-palette-surface);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+  box-shadow: var(--mud-elevation-8);
+}
+/* Single-choice rows sit inset in the card, each row its own rounded hover target. */
+.mud-popover.odc-popmenu-paper .odc-popmenu-panel[role="menu"] { padding: var(--space-1); }
+.odc-popmenu-panel[role="menu"] > .odc-typesel-opt { border-radius: var(--radius-sm); }
+
 /* ---------- Button icon (OdsButton — leading/trailing Material ligature) ----------
    OdsButton renders Icon/IconRight as material-icons spans (DS uses ligatures,
    not SVG constants). Size to the DS 18px and space from the label only when
@@ -844,6 +878,9 @@
 .odc-btn-icon { font-size: 18px; line-height: 1; }
 .odc-btn-icon.start { margin-inline-end: 8px; }
 .odc-btn-icon.end { margin-inline-start: 8px; }
+/* OdsButton Size="Sm" (design system · bundle.css `.odc-btn.sm`): a compact action inside a message or panel.
+   The label line keeps the target above 24 px. */
+.mud-button-root.odc-btn-sm { padding: var(--space-1) var(--space-3); font-size: var(--fs-body2); }
 /* OdsButton AriaDisabled — the focusable unavailable state: MudBlazor's own disabled
    look, without the native disabled that would drop focus. */
 .mud-button-root.odc-btn-aria-disabled,
@@ -856,6 +893,31 @@
 }
 .mud-button-root.mud-button-text.odc-btn-aria-disabled,
 .mud-button-root.mud-button-outlined.odc-btn-aria-disabled { background-color: transparent; }
+/* Outlined and text buttons (design system · bundle.css `.odc-btn.outlined` / `.odc-btn.text`, issue #419).
+   MudBlazor paints both labels in --mud-palette-primary, which in light is tide-600 on white: 2.49:1,
+   under WCAG 1.4.3's 4.5:1. The design system draws the outlined label in text-primary on the control
+   border, and the text label in --brand-text. Hover tints with the neutral action hover, and the
+   outlined edge stays --control-border in every state, where MudBlazor's state rules re-draw it in primary.
+   :where() keeps both disabled states out at no specificity cost, so these stay three classes (one more
+   for a state) and still out-rank MudBlazor's later sheet; its native-disabled colour is !important. */
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--mud-palette-text-primary);
+    border-color: var(--control-border);
+}
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-outlined.mud-button-outlined-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    border-color: var(--control-border);
+    background-color: var(--mud-palette-action-default-hover);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)) {
+    color: var(--brand-text);
+}
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):hover,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):focus-visible,
+.mud-button-root.mud-button-text.mud-button-text-primary:where(:not(:disabled, .odc-btn-aria-disabled)):active {
+    background-color: var(--mud-palette-action-default-hover);
+}
 
 /* ---------- MultiSelect (OdsMultiSelect — DS components/MultiSelect) ----------
    A trigger button (label + count badge + chevron) over a popover (OdsPopupMenu) whose
@@ -878,7 +940,9 @@
   background: var(--mud-palette-surface);
   border: 1px solid var(--control-border);
   border-radius: var(--radius-sm); padding: 8px 12px; cursor: pointer;
-  font: var(--fw-regular) var(--fs-body2)/1 var(--font-sans);
+  /* body1, the DS MultiSelect value and the size every filter-bar control's text shares (search,
+     sort, Load N) — docs/components-data-table-menu-form-controls.md · Dropdowns. */
+  font: var(--fw-regular) var(--fs-body1)/1 var(--font-sans);
   color: var(--mud-palette-text-primary); white-space: nowrap;
   transition: border-color var(--duration-base) var(--ease-standard), box-shadow var(--duration-base) var(--ease-standard);
 }
@@ -898,6 +962,18 @@
    to sit in the icon's slot, so a trigger reads the same either way. */
 .odc-ms-glyph { font: var(--fw-medium) var(--fs-h5)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .odc-ms-label { overflow: hidden; text-overflow: ellipsis; }
+/* Fit ghosts (OdsMultiSelect, short option lists): the trigger face and an invisible copy of each
+   option row share one grid cell, so the trigger is as wide as the widest row. The trigger's frame
+   (12px padding + 1px edge per side) equals the popover's (--space-3 + 1px), so a ghost takes the
+   row's own 8px inset and gap and the two land on one width (DS components/bundle.css). */
+.odc-ms-fit { display: inline-grid; flex: 1; min-width: 0; align-items: center; }
+.odc-ms-fit > * { grid-area: 1 / 1; min-width: 0; }
+.odc-ms-fit-cur { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.odc-ms-fit-ghost {
+  display: flex; align-items: center; gap: 8px; padding-inline: 8px;
+  visibility: hidden; white-space: nowrap; pointer-events: none;
+}
+.odc-ms-fit-ghost .odc-check-label { white-space: nowrap; }
 .odc-ms-chevron { margin-inline-start: auto; }
 .odc-ms-count {
   display: inline-flex; align-items: center; justify-content: center;
@@ -908,19 +984,27 @@
 
 /* The popover surface lives on the inner .odc-ms-pop panel; neutralise MudBlazor's
    own paper (background / elevation / list padding) so it doesn't double up. */
-.mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; }
-.odc-ms-pop {
-  min-width: 224px;
-  background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-divider);
-  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
-  padding: var(--space-2);
+.mud-popover.odc-popmenu-paper.odc-ms-pop-paper,
+.mud-popover.odc-ms-pop-paper { background: transparent; box-shadow: none; border: none; border-radius: 0; }
+/* A fitted panel (.fit) takes no floor of its own: it is at least as wide as its trigger (Adaptive),
+   and the trigger is sized to its widest row (OdsMultiSelect's fit ghosts), so the two match. Every
+   other panel — an open-ended list, a quiet chart picker, an empty or loading list — keeps the 224px
+   floor, so it never opens as narrow as a small trigger. */
+.odc-ms-pop:not(.fit):not(.open-ended) { min-width: 224px; }
+/* Open-ended lists (accounts, merchants, tags): the popover is capped at the trigger's width
+   (DropdownWidth.Relative) and this panel asks for more than that, so the two land on exactly the
+   trigger's width. A row too long for it WRAPS onto a second line rather than truncating: a hover-only
+   tooltip is unreachable by keyboard, touch and magnification, so the whole name stays on screen
+   (WCAG 1.4.4, 1.4.10, 1.4.13). The checkbox and glyph keep the first line's top edge. */
+.odc-ms-pop.open-ended { width: 100vw; max-width: 100%; box-sizing: border-box; }
+.odc-ms-pop.open-ended .odc-ms-opt { min-width: 0; align-items: flex-start; }
+.odc-ms-pop.open-ended .odc-check-label {
+  flex: 1 1 auto; min-width: 0; white-space: normal; overflow-wrap: anywhere;
 }
-.odc-ms-opt {
-  display: flex; align-items: center; gap: 10px; width: 100%;
-  padding: 6px; border-radius: var(--radius-sm); cursor: pointer;
-}
-.odc-ms-opt:hover { background: var(--mud-palette-action-default-hover); }
+/* An open-ended list (user data: tags, accounts, people) keeps a 240px trigger wherever it sits. */
+/* min(): the floor sets the wide-screen rhythm and never pushes a 320px page sideways (WCAG 1.4.10, issue #389). */
+.odc-ms.open-ended { min-width: min(240px, 100%); }
+.odc-ms.open-ended > .odc-ms-trigger { flex: 1; }
 /* Custom checkbox (.odc-check) — scoped to the generic class, not .odc-ms-opt, so it
    styles every check row (OdsMultiSelect AND OdsTagMultiSelect). Hide the native input
    and drive the .odc-check-box visual from its :checked / :focus-visible state. */
@@ -946,11 +1030,6 @@
    this dedicated class only styles the standalone atom and doesn't disturb those. */
 .odc-checkbox { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
 .odc-checkbox.disabled { opacity: 0.5; cursor: not-allowed; }
-.odc-ms-foot {
-  display: flex; justify-content: space-between; gap: 8px;
-  margin-top: var(--space-2); padding-top: var(--space-2);
-  border-top: 1px solid var(--mud-palette-divider);
-}
 .odc-ms-foot .odc-btn.text, .odc-tagms-foot .odc-btn.text {
   font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans);
   letter-spacing: var(--tracking-wide); text-transform: uppercase;
@@ -1360,6 +1439,13 @@
 .odc-field-head .odc-field-label { margin: 0; }
 .odc-field-count { margin-left: auto; flex: none; font: var(--fw-regular) var(--fs-caption)/1 var(--font-mono); color: var(--mud-palette-text-secondary); font-variant-numeric: tabular-nums; }
 .odc-field-count.over { color: var(--mud-palette-error); }
+/* NoteField limit text and read-only (issue #434). The limit words sit beside the
+   number in the counter's own colour, so the state is text, not hue. Read-only is
+   not disabled: full-strength text, selectable, focusable; the gray surface and a
+   dashed --control-border (3:1 holds) mark it as not editable. */
+.odc-field-count-note { font-family: var(--font-sans); }
+.odc-input[readonly] { background: var(--mud-palette-background-gray); border-style: dashed; cursor: text; }
+.odc-input[readonly]:hover { border-color: var(--control-border); }
 
 /* ---------- ReferenceNumberField / ReferenceNumber — a counterparty identifier (issue #181).
    Mirrors the DS components/bundle.css block of the same name, plus the leading-icon input rule
@@ -1400,7 +1486,7 @@
 .con-ref-tile .odc-infotile-v, .con-ref-tile .odc-refnum { max-width: 100%; }
 
 /* ---------- FormRow (paired-field column grid) ---------- */
-.odc-form-row { display: grid; }
+.odc-form-row { display: grid; grid-template-columns: repeat(var(--odc-form-cols, 2), minmax(0, 1fr)); }
 /* MudBlazor's dense fields carry an 8px top margin that the DS field wrappers
    (.odc-field / .aam-field) don't, so a MudBlazor cell sits 8px below a DS cell
    in the same row (e.g. Policy number vs the Policy type picker). Zero it inside
@@ -1441,25 +1527,28 @@
    The 3px surface-colored border insets the thumb into a rounded pill. */
 .ods-modal-content, .odc-scroll,
 .odc-ms-pop, .odc-tagms-pop, .odc-smarttags-pop, .odc-money-list,
-.odc-tagms-list, .odc-ms-list {
+.odc-tagms-list, .odc-ms-list, .mud-popover.odc-popmenu-paper {
   scrollbar-width: thin;
   scrollbar-color: var(--mud-palette-lines-default) transparent;
 }
 .ods-modal-content::-webkit-scrollbar, .odc-scroll::-webkit-scrollbar,
 .odc-ms-pop::-webkit-scrollbar, .odc-tagms-pop::-webkit-scrollbar,
 .odc-smarttags-pop::-webkit-scrollbar, .odc-money-list::-webkit-scrollbar,
-.odc-tagms-list::-webkit-scrollbar, .odc-ms-list::-webkit-scrollbar { width: 10px; height: 10px; }
+.odc-tagms-list::-webkit-scrollbar, .odc-ms-list::-webkit-scrollbar,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar { width: 10px; height: 10px; }
 .ods-modal-content::-webkit-scrollbar-thumb, .odc-scroll::-webkit-scrollbar-thumb,
 .odc-ms-pop::-webkit-scrollbar-thumb, .odc-tagms-pop::-webkit-scrollbar-thumb,
 .odc-smarttags-pop::-webkit-scrollbar-thumb, .odc-money-list::-webkit-scrollbar-thumb,
-.odc-tagms-list::-webkit-scrollbar-thumb, .odc-ms-list::-webkit-scrollbar-thumb {
+.odc-tagms-list::-webkit-scrollbar-thumb, .odc-ms-list::-webkit-scrollbar-thumb,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar-thumb {
   background: var(--mud-palette-lines-default); border-radius: 5px;
   border: 3px solid var(--mud-palette-surface);
 }
 .ods-modal-content::-webkit-scrollbar-track, .odc-scroll::-webkit-scrollbar-track,
 .odc-ms-pop::-webkit-scrollbar-track, .odc-tagms-pop::-webkit-scrollbar-track,
 .odc-smarttags-pop::-webkit-scrollbar-track, .odc-money-list::-webkit-scrollbar-track,
-.odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track { background: transparent; }
+.odc-tagms-list::-webkit-scrollbar-track, .odc-ms-list::-webkit-scrollbar-track,
+.mud-popover.odc-popmenu-paper::-webkit-scrollbar-track { background: transparent; }
 
 /* ---------- TypeSelect (shared registry type picker) ----------
    Mirrors the DS .odc-select chrome (components/bundle.css). The trigger is a custom
@@ -1526,8 +1615,11 @@
 /* The direction toggle drops under the field rather than past the edge when the two do not fit
    side by side (a filter bar on a phone). */
 .odc-sortsel.split { flex-wrap: wrap; max-width: 100%; }
-.odc-sortsel-field { position: relative; }
-.odc-sortsel-trigger, .odc-sortsel-dir {
+/* The field may shrink inside a narrow filter bar: the value ellipsises (.odc-sortsel-val) and stays in the
+   menu, so a 320px page never scrolls sideways (WCAG 1.4.10, issue #389). */
+.odc-sortsel-field { position: relative; min-width: 0; max-width: 100%; }
+.odc-sortsel-field > *, .odc-sortsel-trigger { max-width: 100%; }
+.odc-sortsel-trigger, .odc-sortsel-dir, .odc-sortsel-static {
   display: inline-flex; align-items: center; gap: 8px;
   box-sizing: border-box; height: var(--control-h); padding: 0 10px 0 12px;
   cursor: pointer; white-space: nowrap; text-align: left;
@@ -1556,9 +1648,10 @@
 .odc-sortsel-stable > * { grid-area: 1 / 1; white-space: nowrap; }
 .odc-sortsel-cur { justify-self: start; }
 .odc-sortsel-ghost { visibility: hidden; }
-/* Single-field pages: static "Sort by <field>" label + the direction toggle. */
-.odc-sortsel-static { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); white-space: nowrap; }
-.odc-sortsel-static b { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+/* Single-field pages: the static "Sort by <field>" label keeps the trigger's box (border, height,
+   fill) so it lines up with the bar's other controls, but drops the pointer and the hover edge —
+   there is nothing to open. */
+.odc-sortsel-static { cursor: default; padding: 0 12px; }
 
 .odc-tagms { position: relative; }
 /* The chips box IS the popup box (OdsPopupMenu) here — .odc-tagms-control below
@@ -1622,22 +1715,43 @@
 .odc-tagms-trigger:disabled { cursor: not-allowed; }
 .odc-tagms-add { flex: none; display: inline-flex; align-items: center; gap: 4px; color: var(--mud-palette-text-secondary); font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); }
 .odc-tagms-add .material-icons { font-size: var(--icon-md); }
-.odc-tagms-pop {
-  box-sizing: border-box; min-width: 240px;
-  background: var(--mud-palette-surface); border: 1px solid var(--mud-palette-divider);
-  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
-  padding: var(--space-2);
+/* The popover shell OdsTagMultiSelect and OdsMultiSelect share (DS components/bundle.css):
+   .odc-*-pop > (.odc-*-search) + .odc-*-list of rows + (.odc-*-loading / .odc-*-empty) + .odc-*-foot.
+   It reads as a layer ABOVE a dialog: a visible edge, a hairline ring and a deep shadow — a popover
+   over a modal shares the modal's surface, so a divider-weight border alone let the two blend. */
+.odc-tagms-pop { box-sizing: border-box; min-width: 240px; }
+.odc-tagms-pop, .odc-ms-pop {
+  padding: var(--space-3); border-radius: var(--radius-md);
+  border: 1px solid color-mix(in oklab, var(--mud-palette-text-secondary) 42%, transparent);
+  background: var(--mud-palette-surface);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), 0 20px 48px rgba(0, 0, 0, 0.55);
 }
-.odc-tagms-search { display: flex; align-items: center; gap: 8px; padding: 4px 8px; margin-bottom: 6px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); }
-.odc-tagms-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
-.odc-tagms-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
-.odc-tagms-search input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
-.odc-tagms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
-.odc-tagms-opt { display: flex; align-items: center; gap: 10px; padding: 7px 6px; border-radius: var(--radius-sm); cursor: pointer; width: 100%; box-sizing: border-box; }
-.odc-tagms-opt:hover { background: var(--mud-palette-action-default-hover); }
+/* Search field — the same box, at the same height as every other input. */
+.odc-tagms-search, .odc-ms-search {
+  display: flex; align-items: center; gap: 8px; box-sizing: border-box;
+  min-height: var(--control-h); padding: 5px 10px; margin-bottom: var(--space-2);
+  border: 1px solid var(--control-border); border-radius: var(--radius-sm);
+  background: var(--mud-palette-background);
+}
+.odc-tagms-search:focus-within, .odc-ms-search:focus-within { border-color: var(--focus-ring, var(--mud-palette-primary)); box-shadow: inset 0 0 0 1px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-tagms-search .material-icons, .odc-ms-search .material-icons { font-size: var(--icon-lg); color: var(--mud-palette-text-secondary); }
+.odc-tagms-search input, .odc-ms-search input {
+  flex: 1; min-width: 0; border: none; outline: none; background: transparent;
+  color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body1)/1.4 var(--font-sans);
+}
+/* The placeholder token every other input uses — never the UA grey (which fails 4.5:1). */
+.odc-tagms-search input::placeholder, .odc-ms-search input::placeholder { color: var(--mud-palette-placeholder); opacity: 1; }
+/* Scroll region + row geometry. */
+.odc-tagms-list, .odc-ms-list { max-height: 232px; overflow-y: auto; display: flex; flex-direction: column; }
+.odc-tagms-opt, .odc-ms-opt {
+  display: flex; align-items: center; gap: 8px; width: 100%; box-sizing: border-box;
+  padding: 8px; border-radius: var(--radius-sm); cursor: pointer;
+  font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
+}
+.odc-tagms-opt:hover, .odc-ms-opt:hover { background: var(--mud-palette-action-default-hover); }
 /* The row's checkbox is visually replaced, so the ROW carries the focus ring — otherwise keyboard
    roving through the list has no visible position. */
-.odc-tagms-opt:has(input:focus-visible) {
+.odc-tagms-opt:has(input:focus-visible), .odc-ms-opt:has(input:focus-visible) {
   outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -1px;
   background: var(--mud-palette-action-default-hover);
 }
@@ -1666,11 +1780,16 @@
   font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans);
 }
 .odc-tagms-create-kind > .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
-.odc-tagms-empty { padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
-/* The async row reads identically to the empty one, so "loading" is never mistaken for "none". */
-.odc-tagms-loading { display: flex; align-items: center; gap: 8px; padding: 10px 6px; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
-.odc-tagms-loading .material-icons { font-size: var(--icon-md); }
-.odc-tagms-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider); }
+/* Async + empty rows read identically, so "loading" is never mistaken for "none". */
+.odc-tagms-loading, .odc-ms-loading, .odc-tagms-empty {
+  display: flex; align-items: center; gap: 8px; padding: 10px 8px;
+  color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.35 var(--font-sans);
+}
+.odc-tagms-loading .material-icons, .odc-ms-loading .material-icons { font-size: var(--icon-md); }
+.odc-tagms-foot, .odc-ms-foot {
+  display: flex; justify-content: space-between; gap: 8px;
+  margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--mud-palette-divider);
+}
 
 /* ---------- Menu item (OdsMenu — ligature/glyph icon + label inside MudMenuItem) ----------
    A custom-content menu item (leading glyph + label, e.g. "Copy ID", "New term") sets no
@@ -1699,6 +1818,45 @@
    surface says so in its own copy — a section notice (.odc-recordsection-notice) or a helper line,
    never a menu row. */
 
+/* ---------- Table (OdsTable · Odyssey DS components/Table) ---------- */
+.odc-table {
+    width: 100%; border-collapse: collapse;
+    font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.odc-table th, .odc-table td {
+    text-align: left; padding: var(--cell-pad-y) var(--space-3);
+    height: var(--row-h);
+    border-bottom: 1px solid var(--mud-palette-table-lines);
+    vertical-align: middle;
+}
+.odc-table thead th {
+    font: var(--fw-medium) var(--fs-overline)/1 var(--font-sans);
+    letter-spacing: var(--tracking-caps); text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+    white-space: nowrap; user-select: none;
+    border-bottom: 1px solid var(--mud-palette-divider);
+}
+.odc-table tbody tr { transition: background-color var(--duration-base) var(--ease-standard); }
+.odc-table tbody tr:hover { background: var(--mud-palette-action-default-hover); }
+.odc-table tbody tr:last-child td { border-bottom: none; }
+.odc-table.clickable tbody tr { cursor: pointer; }
+.odc-table .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.odc-table thead th.num { font-family: var(--font-sans); }
+.odc-table.dense th, .odc-table.dense td { padding: var(--space-2) var(--space-3); height: var(--row-h-dense); }
+.odc-table-empty { text-align: center !important; color: var(--mud-palette-text-secondary); padding: var(--space-12) var(--space-4) !important; }
+.odc-th-btn {
+    appearance: none; background: none; border: none; cursor: pointer; padding: var(--space-1) 0; margin: calc(-1 * var(--space-1)) 0;
+    display: inline-flex; align-items: center; gap: var(--space-1);
+    font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit;
+}
+.odc-th.num .odc-th-btn { flex-direction: row-reverse; }
+.odc-th-btn:hover { color: var(--mud-palette-text-primary); }
+.odc-th-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); border-radius: 2px; }
+.material-icons.odc-th-sort { font-size: var(--icon-sm); opacity: 0; transition: opacity var(--duration-base) var(--ease-standard); }
+.odc-th-btn:hover .odc-th-sort { opacity: 0.5; }
+.odc-th-btn[data-active] .odc-th-sort { opacity: 1; color: var(--brand-text); }
+
 /* ---------- Record table (sortable · expandable · editable) ---------- */
 /* The record table's scroll frame: on a phone a table's columns need more than the page is wide,
    and without a frame of its own that width becomes the page's (Transactions: 1071 px at 420). */
@@ -1721,7 +1879,7 @@
 .odc-rec.odc-rec-flat tbody tr:hover { cursor: default; }
 .odc-rec .odc-rec-numeric { text-align: right; white-space: nowrap; }
 .odc-rec thead th.odc-rec-numeric { font-family: var(--font-sans); }
-.odc-rec td.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.odc-rec td.odc-rec-numeric, .odc-rec tbody th.odc-rec-numeric { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 /* Signed-money tone for amount cells / meta tiles (income mint · expense coral).
    A client-only class under the ods- prefix: the design system has since claimed
    .odc-money for MoneyField's control box, and this is a colored number, not a
@@ -1745,6 +1903,30 @@
 .odc-rec-sort:hover .odc-rec-sort-ic { opacity: 0.45; }
 .material-icons.odc-rec-sort-ic.active { opacity: 1; color: var(--brand-text); }
 .material-icons.odc-rec-sort-ic.desc { transform: rotate(180deg); }
+
+/* Caption + row header + busy row (Odyssey DS · Table / RecordTable, issue #451).
+   A row header is a <th scope="row"> that must read exactly like the <td>s beside it, so the UA's
+   bold / centred th defaults are undone. OdsRecordTable is the DS .tbl/.ua-tbl. */
+.odc-table-caption {
+    caption-side: top; text-align: left;
+    padding: var(--space-3) var(--space-3) var(--space-2);
+    font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+    color: var(--mud-palette-text-primary);
+}
+.odc-rec tbody th[scope="row"] { font-weight: inherit; text-align: left; border-bottom: 1px solid var(--mud-palette-table-lines); }
+.odc-rec tbody th[scope="row"].odc-rec-numeric { text-align: right; }
+.odc-rec tbody tr.expanded > th { border-bottom-color: transparent; }
+.odc-table tbody th[scope="row"] { font-weight: inherit; text-align: left; }
+.odc-table tbody th[scope="row"].num { text-align: right; }
+.odc-table tbody tr:last-child th { border-bottom: none; }
+/* The programmatic focus target while a row is busy (the row header cell). */
+[data-rt-focus]:focus { outline: none; }
+[data-rt-focus]:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: -2px; border-radius: 2px; }
+.odc-rt-menu { display: inline-flex; }
+.odc-rt-busy {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: var(--iconbtn-size, 40px); height: var(--iconbtn-size, 40px);
+}
 
 /* Trailing actions cell: overflow kebab + expand chevron. */
 .odc-rec-actions { display: flex; align-items: center; justify-content: flex-end; gap: 2px; }
@@ -2048,7 +2230,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-chart .nowlabel { font: 500 9.5px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; fill: var(--mud-palette-text-secondary); }
 
 /* ---- CURRENT TERMS — summary tiles (the /terms/current view) ---- */
-.trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: 10px; }
+.trm-summary.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(168px, 100%), 1fr)); gap: 10px; }
 .trm-tile { position: relative; display: flex; flex-direction: column; gap: 9px; padding: 13px 14px; border: 1px solid var(--mud-palette-divider); border-radius: 9px; background: var(--mud-palette-surface); }
 .trm-tile-top { display: flex; align-items: center; gap: 9px; }
 /* A term is NAMED by its label, as text, so no meaning rides on the glyph or its hue
@@ -2512,7 +2694,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Portfolio summary strip (header Overview region) */
 .ins-summary { display: flex; flex-direction: column; gap: 14px; }
-.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .ins-stat {
   border: 1px solid var(--mud-palette-divider); border-radius: 10px;
   background: var(--mud-palette-background); padding: 14px 16px;
@@ -2617,7 +2799,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
    InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */
 .ins-tiles {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px;
   --odc-infotile-accent: var(--ins-accent);
   --odc-infotile-accent-soft: var(--ins-accent-soft);
 }
@@ -2720,7 +2902,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* Summary strip (header Overview region) */
 .con-summary { display: flex; flex-direction: column; gap: 14px; }
-.con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.con-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 12px; }
 
 /* Run-rate stat tiles — FLAT, like the sibling breakdown tiles beneath them, so an elevated surface
    never floats one pair of figures above the rest of the Overview. The figures are recurring spend,
@@ -2728,7 +2910,7 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Run-rate stat tiles — flat, like the sibling breakdown tiles, so an elevated surface tile never
    floats above them. FOUR tiles: each period's two grosses, coloured by the finance semantics of
    their own side. The net is not a tile; it closes each by-type breakdown instead. */
-.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.con-run-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
 .con-run-tiles .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .con-run-tiles .odc-infotile.dir-out .odc-infotile-v { color: var(--finance-expense); }
 .con-run-tiles .odc-infotile.dir-in .odc-infotile-v { color: var(--finance-income); }
@@ -3115,7 +3297,9 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-rpp-prefix { color: var(--mud-palette-text-secondary); }
 .odc-rpp-trigger b { font-weight: var(--fw-medium); font-variant-numeric: tabular-nums; }
 .odc-rpp-chev { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
-.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; }
+/* The toolbar mirror sits in the filter bar, so it takes the bar's control text size (body1); the
+   footer pager copy stays the compact body2. */
+.odc-rpp.mirror .odc-rpp-trigger { height: var(--control-h); padding: 0 8px 0 12px; font-size: var(--fs-body1); }
 /* The menu options are menuitemradio rows styled by the shared .odc-typesel-item (see OdsSortSelect). */
 
 /* ---------- Infinite list (card-list server paging) ----------
@@ -3284,6 +3468,12 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dpr .mud-input.mud-input-outlined { background: transparent; }
 .odc-dpr .mud-input.mud-input-outlined .mud-input-outlined-border { border: none; }
 .odc-dpr .mud-input-slot { width: 96px; padding: 0 2px; font: var(--fw-regular) 13px/1 var(--font-sans); }
+/* Too narrow for both dates on one line (a 320px phone): the range wraps inside its own border instead of
+   pushing the page sideways (WCAG 1.4.10, issue #389). */
+.odc-dpr { max-width: 100%; }
+@media (max-width: 480px) {
+  .odc-dpr { flex-wrap: wrap; height: auto; min-height: var(--control-h); padding-block: 4px; row-gap: 2px; }
+}
 .odc-dpr .mud-input-adornment { margin: 0; }
 .odc-dpr .mud-input-adornment .mud-icon-root { font-size: 18px; color: var(--mud-palette-text-secondary); }
 .odc-dpr-clear { flex: none; width: 26px; height: 26px; border-radius: var(--radius-sm); border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0; background: transparent; color: var(--mud-palette-text-secondary); transition: background-color var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard); }
@@ -3291,21 +3481,13 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-dpr-clear:hover { color: var(--mud-palette-text-primary); background: var(--mud-palette-action-default-hover, rgba(199, 208, 224, 0.08)); }
 .odc-dpr-clear:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
 
-/* ColorSwatchSelect — a radiogroup grid of curated colour swatches. */
-.odc-swatchsel { display: flex; flex-wrap: wrap; gap: 10px; }
-.odc-swatch { appearance: none; cursor: pointer; width: 30px; height: 30px; flex: none; border-radius: var(--radius-pill); background: var(--sw); border: 2px solid transparent; box-shadow: 0 0 0 1px var(--mud-palette-divider) inset; display: inline-flex; align-items: center; justify-content: center; padding: 0; transition: transform var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard); }
-.odc-swatch:hover { transform: scale(1.08); }
-.odc-swatch.selected { box-shadow: 0 0 0 2px var(--mud-palette-surface) inset, 0 0 0 4px var(--sw); }
-.odc-swatch-check { font-size: var(--icon-md); line-height: 1; display: block; color: var(--sw-fg); }
-.odc-swatch:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 3px; }
-.odc-swatch:disabled { cursor: not-allowed; opacity: 0.5; }
-
 /* TagIconPicker — the tag icon chooser for all four tag types (issues #279, #345): a radiogroup grid
    of the TagIcons catalogue, a dashed Default cell first, and a caption naming the selection. */
 .odc-iconpick { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background); overflow: hidden; }
-.odc-iconpick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--space-1); padding: var(--space-2); }
-.odc-iconpick-cell { appearance: none; position: relative; height: 40px; min-width: 40px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
-.odc-iconpick-cell .material-icons { font-size: var(--icon-lg); }
+/* 48px cells, 24px glyphs; the grid scrolls inside a seven-row window (the catalogue is 158 keys). */
+.odc-iconpick-grid { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(48px, 100%), 1fr)); gap: var(--space-1); padding: var(--space-2); max-height: calc(7 * 48px + 6 * var(--space-1) + 2 * var(--space-2)); overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: var(--space-2); }
+.odc-iconpick-cell { appearance: none; position: relative; height: 48px; min-width: 48px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: var(--radius-sm); background: transparent; color: var(--mud-palette-text-secondary); cursor: pointer; padding: 0; }
+.odc-iconpick-cell .material-icons { font-size: var(--icon-xl); }
 .odc-iconpick-cell:hover { background: var(--mud-palette-action-default-hover); color: var(--mud-palette-text-primary); }
 /* --control-border, not the DS's text-disabled: the dashed edge is the cell's only boundary (WCAG 1.4.11, 3:1). */
 .odc-iconpick-cell.default:not(.selected) { box-shadow: none; border: 1px dashed var(--control-border); }
@@ -3321,6 +3503,65 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-iconpick-sub { font-weight: 400; color: var(--mud-palette-text-secondary); }
 .odc-iconpick-peek { color: var(--mud-palette-text-secondary); }
 .odc-iconpick-peek .material-icons { font-size: var(--icon-sm); }
+/* The search box above the grid filters the catalogue (label, keywords, key; typo-tolerant). It is the
+   box's first row, divided from the grid like the caption is below it; the .odc-smarttags-search shape. */
+.odc-iconpick-search { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface); }
+.odc-iconpick-search:focus-within { box-shadow: inset 0 0 0 2px var(--focus-ring, var(--mud-palette-primary)); }
+.odc-iconpick-search .material-icons { font-size: var(--icon-md); color: var(--mud-palette-text-secondary); }
+.odc-iconpick-search-input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+.odc-iconpick-search-input::placeholder { color: var(--mud-palette-text-secondary); opacity: 1; }
+.odc-iconpick-search-input:disabled { cursor: not-allowed; }
+/* The native webkit clear "×" is off-theme (as on .odc-searchfield); Escape clears the query instead. */
+.odc-iconpick-search-input::-webkit-search-cancel-button,
+.odc-iconpick-search-input::-webkit-search-decoration { -webkit-appearance: none; appearance: none; }
+.odc-iconpick-empty { padding: var(--space-4) var(--space-2); text-align: center; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); }
+
+/* ---- TagColorPicker (tag colour, #394) ------------------------------------
+   No color · 8 calendar swatches · Custom. Every cell: 1px --control-border
+   (3:1). Selection = check glyph + aria-checked, never the border alone. The
+   focus ring is two-tone and OUTSIDE the cell, so its outer tone always sits
+   on the dialog surface whatever the fill. A user colour arrives only as the
+   --sw / --sw-fg / --user-color custom properties, set after HexColor.isValid. */
+.odc-colorpick { display: flex; flex-direction: column; gap: var(--space-2); }
+.odc-colorpick-grid { display: grid; grid-template-columns: repeat(auto-fill, 32px); gap: var(--space-2); padding: 4px; }
+.odc-colorpick-cell { appearance: none; position: relative; width: 32px; height: 32px; padding: 0; border-radius: var(--radius-pill); border: 1px solid var(--control-border); background: var(--sw, transparent); color: var(--sw-fg, var(--mud-palette-text-secondary)); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.odc-colorpick-cell.none { border-style: dashed; }
+.odc-colorpick-cell.custom:not(.filled) { border-style: dashed; }
+.odc-colorpick-cell:hover { transform: scale(1.06); }
+.odc-colorpick-glyph { font-size: var(--icon-sm, 18px); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-check { font-size: var(--icon-sm, 18px); font-weight: 700; line-height: 1; color: var(--sw-fg, var(--mud-palette-text-primary)); }
+.odc-colorpick-cell.none.selected .odc-colorpick-glyph,
+.odc-colorpick-cell.custom.selected:not(.filled) .odc-colorpick-glyph { display: none; }
+.odc-colorpick-cell:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--mud-palette-surface), 0 0 0 4px var(--focus-ring, var(--mud-palette-primary)); z-index: 1; }
+.odc-colorpick.disabled .odc-colorpick-cell, .odc-colorpick-grid[aria-disabled="true"] .odc-colorpick-cell { cursor: not-allowed; opacity: 0.6; }
+.odc-colorpick-grid[aria-invalid="true"] { border-radius: var(--radius-md); box-shadow: inset 0 0 0 1px var(--mud-palette-error); }
+.odc-colorpick-caption { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 20px; font: 500 var(--fs-body2, 14px)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-colorpick-dot { display: inline-block; flex: none; width: 8px; height: 8px; border-radius: var(--radius-pill); background: var(--user-color); box-shadow: 0 0 0 1px var(--control-border); }
+.odc-colorpick-dot { width: 12px; height: 12px; }
+.odc-colorpick-custom { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3); }
+.odc-colorpick-hex { display: flex; flex-direction: column; gap: 4px; flex: 1 1 180px; min-width: 0; }
+.odc-colorpick-label { font: 500 var(--fs-caption, 12px)/1.2 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-input { height: 40px; padding: 0 12px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: var(--mud-palette-background); color: var(--mud-palette-text-primary); font: 400 var(--fs-body1, 15px)/1 var(--font-mono); }
+.odc-colorpick-input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 1px; }
+.odc-colorpick-input[aria-invalid="true"] { border-color: var(--mud-palette-error); }
+.odc-colorpick-help { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-colorpick-error { font: 400 var(--fs-caption, 12px)/1.35 var(--font-sans); color: var(--error-text, var(--mud-palette-error)); }
+.odc-colorpick-well { display: inline-flex; align-items: center; gap: var(--space-2); margin-top: 22px; font: 500 var(--fs-body2, 14px)/1 var(--font-sans); color: var(--mud-palette-text-primary); cursor: pointer; }
+.odc-colorpick-well input { width: 40px; height: 40px; padding: 2px; border: 1px solid var(--control-border); border-radius: var(--radius-sm); background: transparent; cursor: pointer; }
+.odc-colorpick-well input:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
+@media (max-width: 360px) { .odc-colorpick-custom { flex-direction: column; } .odc-colorpick-well { margin-top: 0; } }
+/* A tag chip in its tag's own colour (#394): text and icon through the text-grade --user-text-l bound
+   (app.css; 4.5:1 over the whole sRGB cube on this tint), ground a soft tint of the colour. */
+.odc-chip.user-color { color: oklch(from var(--user-color) var(--user-text-l, l) c h); background: color-mix(in srgb, var(--user-color) var(--tint-soft), transparent); }
+.odc-avatar.user-color { border: 1px solid var(--control-border); }
+@media (forced-colors: active) {
+  .odc-colorpick-cell.filled, .odc-colorpick-dot, .odc-avatar.user-color { forced-color-adjust: none; }
+  .odc-colorpick-cell { border-color: CanvasText; }
+  .odc-colorpick-cell:focus-visible { box-shadow: none; outline: 2px solid Highlight; outline-offset: 2px; }
+  /* The icon search's focus cue is an inset box-shadow, which forced colours drop. */
+  .odc-iconpick-search:focus-within { box-shadow: none; outline: 2px solid Highlight; outline-offset: -2px; }
+  .odc-colorpick-dot { box-shadow: 0 0 0 1px CanvasText; }
+}
 
 /* The transaction dialog's live "Row icon" preview under Tags (DS kit.css · .atm-rowicon). */
 .odc-rowicon { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
@@ -3341,6 +3582,9 @@ tr:focus-within > .odc-rowactions.reveal,
    fitting — clipping numbers. Query the region instead. Shared by the Journal (.je-*) and Photos
    (.pl-*) overviews; moved here from their scoped stylesheets so one rule governs both. */
 .ph-region:has(> .je-overview), .ph-region:has(> .pl-overview) { container: ph-overview / inline-size; }
+/* An Overview stat tile sits on the panel's darker ground, like the BreakdownTile beside it —
+   the elevated surface card is for record bodies, not the header's summary row. */
+.je-stat-tiles > .odc-infotile, .pl-stat-tiles > .odc-infotile { background: var(--mud-palette-background); box-shadow: none; }
 .je-overview, .pl-overview { display: grid; grid-template-columns: minmax(220px, 0.8fr) 1.4fr; gap: var(--space-4); align-items: start; }
 .je-stat-tiles, .pl-stat-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
 @container ph-overview (max-width: 820px) { .je-overview, .pl-overview { grid-template-columns: 1fr; } }
@@ -3395,7 +3639,7 @@ tr:focus-within > .odc-rowactions.reveal,
    alpha fails 4.5:1. */
 .odc-aliases { min-width: 0; margin-top: 20px; }
 .odc-aliases-empty { margin: 2px 2px 8px; font: 400 13px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.odc-alias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 10px; }
+.odc-alias-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(196px, 100%), 1fr)); gap: 10px; }
 .odc-alias-tile {
   position: relative; display: flex; flex-direction: column; gap: 7px; min-width: 0;
   padding: 12px 40px 12px 14px; border: 1px solid var(--mud-palette-divider);
@@ -3513,7 +3757,18 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---------- Calendar toolbar ---------- */
 .cal-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-.cal-toolbar-nav { display: flex; align-items: center; gap: 8px; }
+.cal-toolbar-nav { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
+/* On a phone the view switcher takes its own full line and splits it evenly, one column per view (issue #291): the
+   shared segmented control is built for 2–3 short options and cannot shrink, so it ran past the edge.
+   Below 400px the glyphs go and the labels — the accessible names — stay. Scoped to the calendar, as
+   .trm-kind-seg is, so no other segmented control changes. */
+@media (max-width: 600px) {
+  .cal-toolbar .odc-seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; box-sizing: border-box; }
+  .cal-toolbar .odc-seg-btn { justify-content: center; padding-inline: 6px; min-width: 0; }
+}
+@media (max-width: 400px) {
+  .cal-toolbar .odc-seg-btn .material-icons { display: none; }
+}
 
 /* ---------- Week / Day time-grid (OdsCalTimeGrid, issue #329) ---------- */
 .cal-tg { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); overflow: hidden; background: var(--mud-palette-surface); display: flex; flex-direction: column; }
@@ -3594,16 +3849,23 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-ends-ctl { margin-left: auto; width: 200px; }
 
 /* ---------- Manage calendars dialog ---------- */
+.cal-mgr-body { overflow-x: hidden; }
+.cal-mgr-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
 .cal-mgr-item { border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); padding: 4px; }
 .cal-mgr-item.editing { border-color: var(--mud-palette-primary); }
 .cal-mgr-row { display: flex; align-items: center; gap: 12px; padding: 8px 8px 8px 10px; }
-.cal-mgr-swatch { width: 18px; height: 18px; flex: none; border-radius: 5px; }
+.cal-mgr-glyph { font-size: 20px; flex: none; }
 .cal-mgr-id { flex: 1; min-width: 0; }
 .cal-mgr-name { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cal-mgr-sub { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font: var(--fw-regular) var(--fs-caption)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
 .cal-mgr-sub .muted { font-style: italic; }
+.cal-mgr-dot { opacity: 0.5; }
 .cal-mgr-actions { display: flex; gap: 2px; flex: none; }
 .cal-mgr-editor { padding: 4px 10px 12px; display: flex; flex-direction: column; gap: 14px; }
+.cal-mgr-editor-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+@media (max-width: 600px) { .cal-mgr-editor-grid { grid-template-columns: 1fr; } }
+.cal-mgr-editor-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 10px 8px; }
+.cal-mgr-add-open { border-color: var(--mud-palette-primary); }
 .cal-mgr-add-head { display: flex; align-items: center; gap: 8px; padding: 10px 10px 2px; font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cal-mgr-add-head .material-icons { color: var(--brand-text); }
 .cal-mgr-footer { display: flex; align-items: center; gap: 8px; width: 100%; }
@@ -3621,7 +3883,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-imp-result { display: flex; flex-direction: column; gap: 18px; }
 .cal-imp-result-h { margin: 0; font: var(--fw-regular) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); outline: none; }
 .cal-imp-result-cal { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--fw-medium); color: var(--mud-palette-text-primary); }
-.cal-imp-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
 
 .cal-imp-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .cal-imp-stat { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-surface); }
@@ -3883,7 +4144,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .pl-toolbtn .material-icons { font-size: 17px; }
 
 /* ---- Uniform thumbnail grid (PhotosCard, AlbumsPage) ---- */
-.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(158px, 1fr)); gap: 10px; }
+.pl-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(158px, 100%), 1fr)); gap: 10px; }
 
 /* ---- Selection bar (PhotosCard, AlbumsPage) ---- */
 .pl-selbar { position: sticky; top: 0; z-index: var(--z-sticky); display: flex; align-items: center; justify-content: space-between; gap: 16px;
@@ -4300,8 +4561,8 @@ tr:focus-within > .odc-rowactions.reveal,
 /* On a phone the figure column (a nowrap amount + caption) left the identity column a few pixels,
    so the name ellipsised to one letter and its status chips — which never shrink — ran on under the
    amount (a tax statement's "Flagged" over "26,722 USD"). There the figure drops to a second row under
-   the identity instead; wider screens keep the three-column row. The design system has no narrow
-   layout for the record card yet, so this is the implementation's until it does. */
+   the identity instead; wider screens keep the three-column row. Mirrors the design system's
+   bundle.css rule beside .odc-record-figure (issue #289). */
 @media (max-width: 600px) {
     .odc-record-trigger { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-2); }
     .odc-record-figure { grid-column: 2; align-items: flex-start; text-align: left; }
@@ -4354,11 +4615,11 @@ tr:focus-within > .odc-rowactions.reveal,
    Auto-fit, so a full-width card body gets three or four tiles per row instead of two;
    .dense drops the icon chips for records with seven or more facts. */
 .odc-tilegrid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px;
     --odc-infotile-accent: var(--rec, var(--brand-text));
     --odc-infotile-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
 }
-.odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(152px, 1fr)); gap: var(--space-2); }
+.odc-tilegrid.dense { grid-template-columns: repeat(auto-fit, minmax(min(152px, 100%), 1fr)); gap: var(--space-2); }
 .odc-tilegrid.dense .odc-infotile { padding: 11px var(--space-3); gap: 7px; }
 .odc-tilegrid.dense .odc-infotile-ic { display: none; }
 .odc-tilegrid.dense .odc-infotile-v { font-size: var(--fs-body1); }
@@ -4602,7 +4863,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .prop-type-help { font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
 .prop-sort-note { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .prop-sort-note .material-icons { font-size: var(--fs-body2); }
-.prop-stats { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.prop-stats { grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); }
 .prop-excl { color: var(--mud-palette-text-secondary); font-weight: var(--fw-regular); }
 .prop-del-list { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: var(--space-3) var(--space-4); list-style: none; border-radius: 10px; background: var(--mud-palette-background-gray); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-primary); }
 .prop-del-list > li { display: flex; align-items: center; gap: var(--space-3); }
@@ -4633,7 +4894,7 @@ tr:focus-within > .odc-rowactions.reveal,
 
 /* ---------- SmartTagScopeField / SmartTagScopeSyncPrompt (a contract's smart-tag date range) ---------- */
 .odc-stscope { display: flex; flex-direction: column; gap: var(--space-3); }
-.odc-stscope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+.odc-stscope-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: var(--space-4); }
 .odc-stscope-strip { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 6px var(--space-3); padding: var(--space-3) var(--space-4); border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); background: var(--mud-palette-background-gray, var(--mud-palette-background)); }
 .odc-stscope-strip-lab { font: var(--fw-medium) var(--fs-micro)/1 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
 .odc-stscope-track { position: relative; height: 10px; border-radius: var(--radius-pill); background: var(--mud-palette-action-default-hover); }
@@ -4749,3 +5010,249 @@ tr:focus-within > .odc-rowactions.reveal,
 @keyframes odc-switch-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
 
+
+/* ---------- RadioGroup (issue #383 — Odyssey Design System · components/RadioGroup) ----------
+   Native <input type="radio"> under a styled dot, in a <fieldset> whose <legend> is the field label.
+   Ported from components/bundle.css. */
+.odc-radiogroup { display: flex; flex-direction: column; gap: 10px; }
+.odc-radiogroup.row { flex-direction: row; gap: var(--space-4); flex-wrap: wrap; }
+.odc-radio { position: relative; display: inline-flex; align-items: center; gap: 10px; cursor: pointer; min-height: 24px; }
+.odc-radio input { position: absolute; opacity: 0; width: 0; height: 0; }
+.odc-radio-dot {
+  position: relative; flex: none; width: 18px; height: 18px; border-radius: 50%;
+  border: 1.5px solid var(--control-border);
+  display: grid; place-items: center; transition: border-color var(--duration-fast) var(--ease-standard);
+}
+.odc-radio-dot::after {
+  content: ''; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--mud-palette-primary); transform: scale(0); transition: transform var(--duration-fast) var(--ease-standard);
+}
+.odc-radio input:checked + .odc-radio-dot { border-color: var(--mud-palette-primary); }
+.odc-radio input:checked + .odc-radio-dot::after { transform: scale(1); }
+.odc-radio input:focus-visible + .odc-radio-dot { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.odc-radio input:disabled + .odc-radio-dot { opacity: 0.5; cursor: not-allowed; }
+.odc-radio-label { font: var(--fw-regular) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-radiofield { border: 0; margin: 0; padding: 0; min-width: 0; }
+.odc-radiofield > legend.odc-field-label { padding: 0; margin-bottom: 8px; float: none; }
+.odc-radio-reqword { margin-left: 8px; font: var(--fw-regular) var(--fs-caption)/1 var(--font-sans); color: var(--mud-palette-text-secondary); text-transform: none; letter-spacing: 0; }
+.odc-radio.has-desc { align-items: flex-start; }
+.odc-radio.has-desc .odc-radio-dot { margin-top: 1px; }
+.odc-radio-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.odc-radio-desc { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-radio input:disabled ~ .odc-radio-text, .odc-radio input:disabled ~ .odc-radio-label { color: var(--mud-palette-text-disabled); cursor: not-allowed; }
+.odc-radiogroup.described { gap: 12px; }
+
+/* ---------- Combobox two-line option (issue #383 — components/bundle.css) ----------
+   A label over a muted `sub` line (a place's composed address, "No coordinates"); both truncate. */
+.odc-combo-opt-text { flex: 1; min-width: 0; display: flex !important; flex-direction: column; gap: 2px; overflow: hidden; }
+.odc-combo-opt-text > .odc-combo-opt-label { flex: none; }
+.odc-combo-opt-sub { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mud-palette-text-secondary); font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); }
+
+/* ---------- Combobox groups, notes and the footer row (issue #383 v5 — components/bundle.css) ----------
+   MudAutocomplete renders one flat listbox, so a group heading is an unpickable row of its own: it keeps the
+   disabled row's behaviour (no hover, no selection, skipped by the arrow keys) without its dimming. The words
+   carry the meaning; the rules only separate. */
+.mud-list-item:has(.odc-combo-group-label) { opacity: 1; cursor: default; pointer-events: none; padding-block: 0; min-height: 0; }
+.mud-list-item:has(.odc-combo-group-label):not(:first-child) { border-top: 1px solid var(--mud-palette-divider); margin-top: var(--space-1); }
+.odc-combo-group-label { display: block; padding: 8px 0 4px; font: var(--fw-medium) var(--fs-overline)/1.3 var(--font-sans); letter-spacing: var(--tracking-caps); text-transform: uppercase; color: var(--mud-palette-text-secondary); }
+.mud-list-item:has(.odc-combo-group-note) { opacity: 1; cursor: default; pointer-events: none; }
+.odc-combo-group-note { display: flex; gap: 8px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); white-space: normal; text-wrap: pretty; }
+.odc-combo-group-note .material-icons { flex: none; font-size: var(--icon-sm); margin-top: 1px; color: var(--mud-palette-text-secondary); }
+/* The footer row ("Enter an address by hand…") — always last, after a rule, in the action tone like the create row. */
+.mud-list-item:has(.odc-combo-footer) { border-top: 1px solid var(--mud-palette-divider); margin-top: var(--space-1); }
+.odc-combo-footer { color: var(--brand-text); }
+.odc-combo-footer > .odc-combo-opt-ic { color: var(--brand-text); }
+/* LocationSelect address mode — the always-visible Kartverket disclosure. */
+.odc-locsel-disclose { display: flex; gap: 6px; align-items: flex-start; margin-top: 2px; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-locsel-disclose .material-icons { flex: none; font-size: var(--icon-sm); margin-top: 1px; color: var(--mud-palette-text-secondary); }
+
+/* ---------- AddressBlock (issue #383 v5 — components/bundle.css) ----------
+   mode="hand": the hand-entry fieldset (legend "Address") with a "Search instead" link. mode="linked": the usage
+   line and the "Edit address" text button. Plain text with decorative glyphs: never colour alone. Address rows
+   stack to one column below the sm breakpoint (400 % zoom at 1280 px). */
+.odc-addrblock { display: flex; flex-direction: column; gap: var(--space-3, 12px); min-width: 0; }
+fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
+.odc-addrblock-legend { padding: 0; margin: 0 0 4px; font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.odc-addrblock-linked { gap: 2px; align-items: flex-start; }
+.odc-addrblock-usage { display: flex; gap: 8px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.odc-addrblock-usage .material-icons { flex: none; font-size: var(--icon-sm); margin-top: 1px; color: var(--mud-palette-text-secondary); }
+/* Text buttons — "Edit address" and "Search instead". ≥ 24 px targets. */
+.odc-addrblock-edit, .odc-addrblock-link { all: unset; box-sizing: border-box; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding: 4px 8px; margin-left: -8px; border-radius: var(--radius-sm); font: var(--fw-medium) var(--fs-body2)/1.3 var(--font-sans); color: var(--brand-text); }
+.odc-addrblock-link { text-decoration: underline; text-underline-offset: 2px; }
+.odc-addrblock-edit .material-icons { font-size: var(--icon-sm); color: var(--brand-text); }
+.odc-addrblock-edit:hover, .odc-addrblock-link:hover { background: var(--mud-palette-action-default-hover); }
+.odc-addrblock-edit:focus-visible, .odc-addrblock-link:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
+@media (max-width: 600px) { .odc-addrblock .odc-form-row { grid-template-columns: minmax(0, 1fr) !important; } }
+/* Focus not obscured (WCAG 2.4.11, issue #383 §6.6): a field focused at the bottom of a dialog body
+   scrolls clear of the sticky footer. */
+.odc-modal-body, .ods-modal-body { scroll-padding-block: var(--space-2, 8px) var(--space-16, 64px); }
+
+/* ---------- Unified Locations (issue #383 — ui_kits/web/locations.css) ---------- */
+.loc-search-disclose { display: flex; gap: 6px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-search-disclose .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.loc-addr-group { display: flex; flex-direction: column; gap: 12px; }
+@media (max-width: 600px) { .loc-addr-group .odc-form-row { grid-template-columns: minmax(0, 1fr); } }
+.loc-dialog-desc { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.55 var(--font-sans); color: var(--mud-palette-text-secondary); text-wrap: pretty; }
+.loc-dialog-alert { display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-error); background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); }
+.loc-dialog-alert .material-icons { flex: none; color: var(--mud-palette-error); }
+.loc-err-summary { padding: 10px 14px; border-radius: var(--radius-md); border: 1px solid var(--mud-palette-error); background: var(--mud-palette-surface); color: var(--mud-palette-text-primary); font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); }
+.loc-err-summary:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; }
+.loc-err-summary ul { margin: 4px 0 0; padding-left: 18px; }
+.loc-err-summary a { color: var(--brand-text); text-decoration: underline; text-underline-offset: 2px; display: inline-block; min-height: 24px; }
+.loc-err-summary a:focus-visible { outline: var(--focus-ring-width, 2px) solid var(--focus-ring); outline-offset: 2px; border-radius: 2px; }
+.loc-place-line { display: inline-flex; flex-direction: column; gap: 1px; min-width: 0; }
+.loc-place-line-name { display: inline-flex; align-items: center; gap: 4px; }
+.loc-place-line-name .material-icons { font-size: var(--icon-sm); }
+.loc-place-line-details { padding-left: 18px; color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.loc-shared-line { display: flex; align-items: center; gap: 5px; margin-top: 4px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.loc-shared-line .material-icons { color: var(--mud-palette-text-secondary); flex: none; font-size: var(--icon-sm); }
+.loc-find-coords { min-height: 24px; }
+
+/* ---------- Toast / Snackbar ---------- */
+.odc-toast-stack {
+  position: fixed; z-index: var(--z-toast); bottom: var(--space-6); right: var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-2);
+  width: min(380px, calc(100vw - 48px)); pointer-events: none;
+}
+.odc-toast-stack.start { right: auto; left: var(--space-6); }
+.odc-toast-stack.center { right: 50%; transform: translateX(50%); align-items: center; }
+.odc-toast {
+  pointer-events: auto;
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--ink-700); color: var(--ink-50);
+  border: 1px solid var(--mud-palette-divider);
+  border-radius: var(--radius-md); box-shadow: var(--mud-elevation-8);
+  font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans);
+  animation: odc-toast-in var(--duration-slow) var(--ease-standard);
+}
+[data-theme='light'] .odc-toast { background: var(--ink-800); color: var(--ink-50); border-color: transparent; }
+@keyframes odc-toast-in { from { opacity: 0; transform: translateY(8px); } }
+.odc-toast-ic { font-size: var(--icon-lg); flex: none; line-height: 1.4; }
+.odc-toast.success .odc-toast-ic { color: var(--mint-300); }
+.odc-toast.warning .odc-toast-ic { color: var(--amber-500); }
+.odc-toast.error   .odc-toast-ic { color: var(--coral-300); }
+.odc-toast.info    .odc-toast-ic { color: var(--sea-300); }
+.odc-toast-body { flex: 1; min-width: 0; }
+.odc-toast-action {
+  appearance: none; background: none; border: none; cursor: pointer;
+  color: var(--tide-300); padding: 0; margin-top: 2px;
+  font: var(--fw-medium) var(--fs-body2)/1.4 var(--font-sans);
+}
+.odc-toast-action:hover { text-decoration: underline; }
+.odc-toast-close {
+  appearance: none; background: none; border: none; cursor: pointer; flex: none;
+  color: var(--ink-300); width: 20px; height: 20px; display: grid; place-items: center;
+  border-radius: var(--radius-sm); margin: -1px -4px 0 0;
+}
+.odc-toast-close .material-icons { font-size: var(--icon-md); }
+.odc-toast-close:hover { color: var(--ink-50); }
+.odc-toast-close:focus-visible, .odc-toast-action:focus-visible { outline: var(--focus-ring-width) solid var(--tide-400); outline-offset: var(--focus-ring-offset); }
+@media (prefers-reduced-motion: reduce) { .odc-toast { animation: none; } }
+.odc-toast-close { position: relative; }
+.odc-toast-close::after { content: ''; position: absolute; inset: -2px; }
+
+/* ============================================================
+   Internet module — the news reader's shared components (issue #473)
+   Ported from the design-system artifact v227 (project/components/bundle.css).
+   ============================================================ */
+
+/* ---------- InfiniteList remote mode (§4.4) ----------
+   The pill is the same button in every state; while a page is in flight it is
+   aria-disabled (never disabled, so focus stays) and leads with the spinner. */
+.odc-infinite-btn[aria-disabled="true"] { cursor: default; }
+.odc-infinite-btn[aria-disabled="true"]:hover { border-color: var(--mud-palette-lines-default); color: var(--mud-palette-text-secondary); }
+.odc-infinite-btn.is-error { color: var(--mud-palette-text-primary); }
+.odc-infinite-spin {
+  width: var(--icon-xs); height: var(--icon-xs); flex: none; border-radius: 50%;
+  border: var(--border-strong) solid var(--mud-palette-divider); border-top-color: var(--mud-palette-primary);
+  animation: odc-pager-spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .odc-infinite-spin { animation: none; border-top-color: var(--mud-palette-divider); }
+}
+
+/* ---------- MultiSelect MaxSelected (§4.2) ----------
+   Unticked rows at the cap read as unavailable; the reason sits under the list. */
+.odc-ms-opt.is-disabled { opacity: 0.55; cursor: not-allowed; }
+.odc-ms-max:empty { display: none; }
+.odc-ms-max { padding: var(--space-2) var(--space-3) 0; font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+
+/* ---------- SortSelect field menu (§4.2) ----------
+   Opens at exactly the field's width (DropdownWidth.Relative), so a long field
+   label wraps onto a second line instead of being clipped (1.4.10, 1.4.4). */
+.mud-popover.odc-popmenu-paper.odc-sortsel-pop .odc-typesel-item { align-items: flex-start; }
+.mud-popover.odc-popmenu-paper.odc-sortsel-pop .odc-typesel-lab { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+
+/* ---------- ImageCarousel (§6.1) ----------
+   One image at a time. The frame takes ONE ratio for the whole carousel (set
+   inline from the first image), and every image is contained, never cropped.
+   The counter is aria-hidden; the slide label and the polite region speak. */
+.odc-carousel { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; margin: 0; }
+.odc-carousel-slides { min-width: 0; }
+.odc-carousel-slide { margin: 0; display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.odc-carousel-slide[hidden] { display: none; }
+.odc-carousel-frame {
+  position: relative; width: 100%; aspect-ratio: 4 / 3; overflow: hidden;
+  display: grid; place-items: center;
+  background: var(--mud-palette-background);
+  border: var(--border-thin) solid var(--mud-palette-divider);
+  border-radius: var(--radius-md);
+}
+.odc-carousel-img { position: absolute; inset: 0; display: block; max-inline-size: 100%; inline-size: 100%; block-size: 100%; object-fit: contain; }
+.odc-carousel-ph {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-1);
+  inline-size: 100%; block-size: 100%;
+  background-image: repeating-linear-gradient(45deg,
+    var(--mud-palette-action-default-hover) 0, var(--mud-palette-action-default-hover) var(--border-thin),
+    transparent var(--border-thin), transparent var(--space-2));
+  color: var(--mud-palette-text-secondary);
+}
+.odc-carousel-ph .material-icons { font-size: var(--icon-xl); }
+.odc-carousel-ph-text { font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-carousel-caption { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-carousel-controls { display: flex; align-items: center; justify-content: center; gap: var(--space-2); }
+.mud-icon-button.odc-carousel-btn { inline-size: var(--space-10); block-size: var(--space-10); min-width: var(--space-10); min-height: var(--space-10); }
+.mud-icon-button.odc-carousel-btn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.mud-icon-button.odc-carousel-btn[aria-disabled="true"] { color: var(--mud-palette-action-disabled); cursor: default; }
+.mud-icon-button.odc-carousel-btn[aria-disabled="true"]:hover { background: transparent; color: var(--mud-palette-action-disabled); }
+.odc-carousel-count {
+  min-width: var(--space-12); text-align: center;
+  font: var(--fw-medium) var(--fs-body2)/1 var(--font-mono); font-variant-numeric: tabular-nums;
+  color: var(--mud-palette-text-secondary);
+}
+.odc-carousel.animate .odc-carousel-slide:not([hidden]) { animation: odc-carousel-fade var(--duration-base) var(--ease-standard); }
+@keyframes odc-carousel-fade { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .odc-carousel.animate .odc-carousel-slide:not([hidden]) { animation: none; }
+}
+
+/* ---------- NewsFeedHealthChip (§3.3) ----------
+   A plain .odc-chip in its registry tone; the text label carries the meaning. */
+.odc-chip.odc-newshealth { white-space: nowrap; }
+
+/* ---------- ExternalLink (§4.1, §6.2) ----------
+   The URL (ltr, wraps anywhere), the host as its own token, then the actions:
+   a real link styled as a link (≥ 24px target) and a 28px Copy icon button.
+   The status line is the polite live region, shown as text. */
+.odc-extlink { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.odc-extlink.empty { color: var(--mud-palette-text-secondary); }
+.odc-extlink-url { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.odc-extlink-host { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.odc-extlink-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-width: 0; }
+.odc-extlink-open {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--space-6);
+  font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans);
+  color: var(--brand-text); text-decoration: none;
+  border-radius: var(--radius-sm);
+}
+.odc-extlink-open > span:last-child { text-decoration: underline; text-underline-offset: 0.2em; }
+.odc-extlink-open .material-icons { font-size: var(--icon-sm); }
+.odc-extlink-open:hover > span:last-child { text-decoration-thickness: 2px; }
+.odc-extlink-open:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
+.mud-icon-button.odc-extlink-copy { min-width: var(--space-6); min-height: var(--space-6); }
+.odc-extlink-status { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
+.odc-extlink-status.fail { color: var(--mud-palette-error); }
+
+/* ---------- RelativeTime (§4.1) ---------- */
+.odc-reltime { font-variant-numeric: tabular-nums; }

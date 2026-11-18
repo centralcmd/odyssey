@@ -6,7 +6,8 @@ namespace Odyssey.Core.Journal.Thumbnails;
 
 /// <summary>
 /// The thumbnail feature on the #346 store (issue #362 §3.2): <c>photo-thumbnails/&lt;size&gt;/&lt;bucket&gt;/&lt;stem&gt;.webp</c>,
-/// original names, released immediately (photos are personal data).
+/// original names. Released after the deletion grace since issue #428 §3.6: one admin setting
+/// (<c>FileStorageDeletionGraceHours</c>) governs every file on disk, originals and thumbnails alike.
 /// </summary>
 public static class PhotoThumbnailStorage
 {
@@ -17,7 +18,7 @@ public static class PhotoThumbnailStorage
         "photo-thumbnails",
         args => [PhotoThumbnailRecipe.LongSide(args.Size).ToString(System.Globalization.CultureInfo.InvariantCulture),
             args.Bucket.ToString(System.Globalization.CultureInfo.InvariantCulture)],
-        StorageReleaseMode.Immediate,
+        StorageReleaseMode.Graced,
         StorageFeatureReference.To<PhotoThumbnail>(t => t.StoredObjectId));
 }
 

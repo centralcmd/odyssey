@@ -31,7 +31,10 @@ public class ContactChildCollectionClaimApiTests
     [MemberData(nameof(Collections))]
     public async Task UpdateClaimAlone_AddsReplacesAndRemovesAChild(string collection)
     {
-        await using var factory = new OdysseyApiFactory(UpdateOnly);
+        // Entering an address also creates or finds a place, which needs locations.create (issue #380
+        // §5.3); nothing else about the contact's own claim changes.
+        await using var factory = new OdysseyApiFactory(
+            collection == "addresses" ? [.. UpdateOnly, PermissionClaims.LocationsCreate] : UpdateOnly);
         var contactId = await SeedContactAsync(factory);
         using var client = factory.CreateClient();
         var path = $"/api/contacts/{contactId}/{collection}";

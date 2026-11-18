@@ -38,6 +38,9 @@ public sealed class JournalEntriesQueryParams : QueryParams<JournalEntrySortBy>
     public bool? HasFiles { get; set; }
 
     public ArchivalStatus? Status { get; set; }
+
+    /// <summary>Only records linked to this place (issue #380 §5.2).</summary>
+    public Guid? LocationId { get; set; }
 }
 
 /// <summary>Journal-tags list query: filter by archival status.</summary>

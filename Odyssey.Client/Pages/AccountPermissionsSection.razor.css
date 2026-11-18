@@ -39,7 +39,7 @@
 /* ── Permissions: catalog grouped by area ── */
 .ua-cat-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(230px, 100%), 1fr));
     gap: 12px;
 }
 .ua-cat-card {

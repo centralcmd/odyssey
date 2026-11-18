@@ -1,0 +1,91 @@
+@*
+    OdsLocationSelect — THE place picker (Odyssey Design System · components/LocationSelect, issue #383 §4).
+
+    Wherever a record links a household Location — the Place of a calendar event, a recurring series or
+    a journal entry, and the place behind a contact or property address. It is the place counterpart of
+    OdsContactSelect: OdsCombobox in its ASYNC mode inside the standard field chrome.
+
+    Search runs server-side (GET /api/locations?search=, 20 per request) after 2 characters and a
+    250 ms pause; never the unpaged list. Active places only — archived and merged-away places are never
+    offered for a new link — while a stored value outside the loaded rows, archived ones included,
+    still renders through ResolveAsync and reads "‹name› (archived)".
+
+    Value is a LocationPick: an existing place by id, or a STAGED new one. With AllowCreate (the caller
+    gates it on locations.create) the list ends with Create place "‹text›", whose second line discloses
+    who will see the place. Picking it calls no API: the trigger reads "‹name› (new)" and the PARENT
+    creates the place when its own dialog saves (PlaceDraft.EnsureCreatedAsync).
+
+    With AllowCreate the place picker also searches Kartverket (issue #383 v6 §3.2a): the rows are grouped "Saved
+    places" (every active place) and "Addresses from Kartverket", under the same search, debounce, failure note,
+    dedupe and disclosure as address mode below — one implementation, not a copy — and the create row still ends
+    the list. Only the failure note differs, since there is no hand-entry row: "Address search is unavailable —
+    pick a saved place or create one". A Kartverket pick is LocationPick.Address(candidate), staged as "‹address› (new)"; the parent creates
+    it as a geocoded place when its dialog saves (PlaceDraft.EnsureCreatedAsync).
+
+    ADDRESS MODE (Mode=Address, issue #383 v5 §3.3a) is the one Address field of a contact or property: label
+    "Address", address-complete places only, no create row, and the rows in two labelled groups — "Saved places"
+    (each "used by N") and, with AllowCreate (locations.create), "Addresses from Kartverket": from 3 characters
+    and a 400 ms pause the query also goes to POST /api/locations/search, region Norway, and only address results
+    are listed, less any whose address equals a listed saved place. Picking one STAGES it ("‹address› (new)"):
+    the value is LocationPick.Address(candidate) and nothing is created until the record saves. A failed address
+    search says "Address search is unavailable — enter the address by hand" in its group; a cancelled one is
+    silent. The final row, "Enter an address by hand…", calls OnEnterByHand with the typed text. Under the field,
+    always visible while the address search is on and part of the input's description: "Address search sends
+    what you type to Kartverket."
+
+    A caller without locations.read does not render this component at all (no placeholder, no disabled
+    control) — that is the caller's rule, not this component's.
+*@
+
+@if (Bare)
+{
+    @Control
+    @Disclosure
+}
+else
+{
+    @* One element, so a host grid (an OdsFormRow) keeps the disclosure in the field's own cell rather than
+       wrapping it into the next column (PR #385 round 4, WCAG 3.3.2). *@
+    <div class="odc-locsel-field">
+        <OdsFieldShell Label="@EffectiveLabel" HtmlFor="@_inputId" Required="@Required" Help="@Help" Error="@Error" Class="odc-locsel">
+            @Control
+        </OdsFieldShell>
+        @Disclosure
+    </div>
+}
+
+@code {
+    private RenderFragment Control =>
+        @<OdsCombobox Value="@ComboValue"
+                      ValueChanged="OnValueChanged"
+                      Options="CurrentOptions"
+                      Placeholder="@EffectivePlaceholder"
+                      Disabled="@Disabled"
+                      Clearable="true"
+                      ClearLabel="@(IsAddressMode ? "Clear address" : "Clear place")"
+                      InputId="@_inputId"
+                      AriaLabel="@(Bare ? AriaLabel ?? EffectiveLabel : null)"
+                      AriaDescribedBy="@DescribedBy"
+                      Required="@Required"
+                      Error="@(!string.IsNullOrEmpty(Error))"
+                      EmptyText="@EffectiveEmptyText"
+                      SearchAsync="SearchAsync"
+                      ResolveAsync="ResolveAsync"
+                      DebounceMs="@DebounceMs"
+                      MinChars="2"
+                      MinCharsText="Type at least 2 characters"
+                      SearchingText="Searching…"
+                      ResultsText="@(IsAddressMode ? n => $"{n} {(n == 1 ? "address" : "addresses")} found" : n => $"{n} {(n == 1 ? "place" : "places")} found")"
+                      ErrorText="Couldn’t load places"
+                      OnCreate="@(AllowCreate && !IsAddressMode ? Stage : null)"
+                      CreateLabel="Create place"
+                      CreateDescription="@(AllowCreate && !IsAddressMode ? CreateDisclosure : null)"
+                      Groups="@(Grouped ? AddressGroups : null)"
+                      FooterOption="@Footer" />;
+
+    private RenderFragment? Disclosure => !AddressSearchOn ? null :
+        @<div class="odc-locsel-disclose" id="@DisclosureId">
+            <span class="material-icons" aria-hidden="true">info</span>
+            <span>@AddressSearchDisclosure</span>
+        </div>;
+}

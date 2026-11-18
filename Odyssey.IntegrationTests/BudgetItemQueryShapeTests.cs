@@ -198,6 +198,9 @@ public class BudgetItemQueryShapeTests(MariaDbFixture fixture)
         public Task<IReadOnlyList<ContactRef>> ListActiveContactRefsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<ContactRef>>([]);
 
+        public Task<IReadOnlyList<ContactMatchRef>> ListActiveContactMatchRefsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<ContactMatchRef>>([]);
+
         public Task<IReadOnlySet<Guid>> ExistingPersonIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlySet<Guid>>(new HashSet<Guid>());
 

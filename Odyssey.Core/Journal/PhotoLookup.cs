@@ -1,49 +1,12 @@
-using Odyssey.Core;
 using Microsoft.EntityFrameworkCore;
-using Odyssey.Core.Finance;
 using Odyssey.Context;
+using Odyssey.Core.Journal.Originals;
 
 namespace Odyssey.Core.Journal;
 
-/// <summary>
-/// The <see cref="IPhotoLookup"/> implementation. Owns <see cref="OdysseyContext"/>; validates image ids
-/// through the Finance <see cref="IFileLookup"/> so the journal path cannot mint a <c>Photo</c> over a
-/// non-image file. The find-or-create runs <b>scalar</b> metadata extraction only — it never
-/// auto-creates keyword tags (that is gated on <c>photos.tags.create</c> and only happens on the
-/// explicit <c>POST /api/photos</c> path, §5/§10.6).
-/// </summary>
-public sealed class PhotoLookup(
-    OdysseyContext context,
-    IFileLookup files,
-    PhotoMetadataService metadata,
-    TimeProvider? timeProvider = null,
-    Thumbnails.PhotoThumbnailService? thumbnails = null) : IPhotoLookup
+/// <summary>The <see cref="IPhotoLookup"/> implementation. Read-only: it never creates a photo (issue #428).</summary>
+public sealed class PhotoLookup(OdysseyContext context) : IPhotoLookup
 {
-    private readonly TimeProvider timeProvider = timeProvider ?? TimeProvider.System;
-
-    /// <summary>
-    /// A photo created on the journal path is queued for thumbnails in the same save, in its uploader's interactive
-    /// lane, like one created through <c>POST /api/photos</c> (issue #362). Null only in tests that build the lookup
-    /// by hand; such photos are still found later by the worker's discovery sweep.
-    /// </summary>
-    private async Task EnqueueAsync(Photo photo, CancellationToken cancellationToken)
-    {
-        if (thumbnails is not null)
-        {
-            await thumbnails.StageEnqueueAsync(photo, cancellationToken);
-        }
-    }
-
-    /// <summary>Detaches a lost create and the thumbnail job staged with it.</summary>
-    private void Detach(Photo photo)
-    {
-        context.Entry(photo).State = EntityState.Detached;
-        foreach (var job in context.ChangeTracker.Entries<PhotoThumbnailJobEntry>().Where(e => e.Entity.PhotoId == photo.PhotoId).ToList())
-        {
-            job.State = EntityState.Detached;
-        }
-    }
-
     public async Task<IReadOnlySet<Guid>> ExistingIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
     {
         if (photoIds.Count == 0)
@@ -60,152 +23,58 @@ public sealed class PhotoLookup(
         return found.ToHashSet();
     }
 
-    public async Task<IReadOnlyDictionary<Guid, Guid>> ResolveFileIdsAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<Guid, PhotoLinkInfo>> ResolveAsync(IReadOnlyCollection<Guid> photoIds, CancellationToken cancellationToken = default)
     {
         if (photoIds.Count == 0)
         {
-            return new Dictionary<Guid, Guid>();
+            return new Dictionary<Guid, PhotoLinkInfo>();
         }
 
         var ids = photoIds.Distinct().ToList();
-        var rows = await context.Photos
+        var titles = await context.Photos
             .Where(p => ids.Contains(p.PhotoId))
-            .Select(p => new { p.PhotoId, p.FileId })
+            .Select(p => new { p.PhotoId, p.Title })
+            .ToDictionaryAsync(p => p.PhotoId, p => p.Title, cancellationToken);
+        var names = await PhotoOriginalSource.Describe(context, context.Photos.Where(p => ids.Contains(p.PhotoId)))
+            .Select(i => new { i.PhotoId, i.FileName })
             .ToListAsync(cancellationToken);
 
-        return rows.ToDictionary(r => r.PhotoId, r => r.FileId);
+        return names.ToDictionary(n => n.PhotoId, n => new PhotoLinkInfo(n.PhotoId, titles.GetValueOrDefault(n.PhotoId), n.FileName));
     }
 
-    public async Task<Guid> FindOrCreatePhotoIdForFileAsync(Guid fileId, string userId, CancellationToken cancellationToken = default)
-    {
-        var images = await files.ExistingImageIdsAsync([fileId], cancellationToken);
-        if (!images.Contains(fileId))
-        {
-            throw new DomainUnprocessableException($"File is unknown or not an image type: {fileId}.");
-        }
-
-        var existing = await context.Photos
-            .Where(p => p.FileId == fileId)
-            .Select(p => p.PhotoId)
-            .FirstOrDefaultAsync(cancellationToken);
-        if (existing != Guid.Empty)
-        {
-            return existing;
-        }
-
-        var extracted = await metadata.ExtractAsync(fileId, cancellationToken);
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var photo = BuildPhoto(fileId, extracted, userId, now);
-
-        context.Photos.Add(photo);
-        await EnqueueAsync(photo, cancellationToken);
-        try
-        {
-            await context.SaveChangesAsync(cancellationToken);
-            return photo.PhotoId;
-        }
-        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
-        {
-            // Concurrent create raced us on the Photo.FileId unique index — re-fetch the winner so a
-            // routine journal save never turns into a 409 (§5 cross-module write atomicity).
-            Detach(photo);
-            return await context.Photos
-                .Where(p => p.FileId == fileId)
-                .Select(p => p.PhotoId)
-                .FirstAsync(cancellationToken);
-        }
-    }
-
-    public async Task<IReadOnlyDictionary<Guid, Guid>> FindOrCreatePhotoIdsForFilesAsync(
-        IReadOnlyCollection<Guid> fileIds, string userId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyDictionary<Guid, Guid>> ResolveReferencesAsync(
+        IReadOnlyCollection<Guid> referenceIds, CancellationToken cancellationToken = default)
     {
         var result = new Dictionary<Guid, Guid>();
-        if (fileIds.Count == 0)
+        if (referenceIds.Count == 0)
         {
             return result;
         }
 
-        var ids = fileIds.Distinct().ToList();
-
-        // One query for the file ids already linked to a Photo row.
-        var existing = await context.Photos
-            .Where(p => ids.Contains(p.FileId))
-            .Select(p => new { p.FileId, p.PhotoId })
-            .ToListAsync(cancellationToken);
-        foreach (var row in existing)
+        var ids = referenceIds.Distinct().ToList();
+        foreach (var id in await context.Photos.Where(p => ids.Contains(p.PhotoId)).Select(p => p.PhotoId).ToListAsync(cancellationToken))
         {
-            result[row.FileId] = row.PhotoId;
+            result[id] = id;
         }
 
-        var missing = ids.Where(id => !result.ContainsKey(id)).ToList();
-        if (missing.Count == 0)
+        var rest = ids.Where(id => !result.ContainsKey(id)).ToList();
+        if (rest.Count > 0)
         {
-            return result;
-        }
-
-        // One batched insert for the rest. Metadata extraction is per-file (it reads the blob), but the
-        // Photo rows persist in a single SaveChanges rather than one per file (§5 step 3.7 / AC 34).
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var added = new List<(Guid FileId, Photo Photo)>(missing.Count);
-        foreach (var fileId in missing)
-        {
-            var extracted = await metadata.ExtractAsync(fileId, cancellationToken);
-            var photo = BuildPhoto(fileId, extracted, userId, now);
-            context.Photos.Add(photo);
-            await EnqueueAsync(photo, cancellationToken);
-            added.Add((fileId, photo));
-        }
-
-        try
-        {
-            await context.SaveChangesAsync(cancellationToken);
-            foreach (var (fileId, photo) in added)
-            {
-                result[fileId] = photo.PhotoId;
-            }
-
-            return result;
-        }
-        catch (DbUpdateException ex) when (DbErrors.IsDuplicateKey(ex))
-        {
-            // A concurrent import raced us on Photo.FileId for one or more of these. Detach our attempts,
-            // re-fetch the winners, and resolve any residual individually — a routine import never 409s.
-            foreach (var (_, photo) in added)
-            {
-                Detach(photo);
-            }
-
-            var winners = await context.Photos
-                .Where(p => missing.Contains(p.FileId))
-                .Select(p => new { p.FileId, p.PhotoId })
+            var byFile = await context.Photos
+                .Where(p => (p.FileId != null && rest.Contains(p.FileId.Value)) || (p.LegacyFileId != null && rest.Contains(p.LegacyFileId.Value)))
+                .Select(p => new { p.PhotoId, p.FileId, p.LegacyFileId })
                 .ToListAsync(cancellationToken);
-            foreach (var row in winners)
+            foreach (var row in byFile.Where(r => r.FileId is not null))
             {
-                result[row.FileId] = row.PhotoId;
+                result.TryAdd(row.FileId!.Value, row.PhotoId);
             }
 
-            foreach (var fileId in missing.Where(id => !result.ContainsKey(id)))
+            foreach (var row in byFile.Where(r => r.LegacyFileId is not null))
             {
-                result[fileId] = await FindOrCreatePhotoIdForFileAsync(fileId, userId, cancellationToken);
+                result.TryAdd(row.LegacyFileId!.Value, row.PhotoId);
             }
-
-            return result;
         }
-    }
 
-    private Photo BuildPhoto(Guid fileId, PhotoMetadata extracted, string userId, DateTime now) => new()
-    {
-        FileId = fileId,
-        Title = extracted.Title,
-        Caption = extracted.Caption,
-        TakenAt = extracted.TakenAt,
-        CapturedLatitude = extracted.Latitude,
-        CapturedLongitude = extracted.Longitude,
-        LocationName = null,
-        PixelWidth = extracted.PixelWidth,
-        PixelHeight = extracted.PixelHeight,
-        CreatedByUserId = userId,
-        CreatedAt = now,
-        UpdatedAt = now,
-    };
+        return result;
+    }
 }

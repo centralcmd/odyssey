@@ -1,0 +1,4 @@
+/* The 429 notice (issue #434): the alert above a still-focusable action. */
+.fan-ratelimit { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); margin-bottom: var(--space-3); }
+.fan-ratelimit ::deep .fan-focus-alert { align-self: stretch; margin-bottom: 0; }
+.fan-ratelimit ::deep .fan-action-blocked { opacity: 0.6; cursor: not-allowed; }

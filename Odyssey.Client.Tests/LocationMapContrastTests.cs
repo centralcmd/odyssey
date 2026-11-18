@@ -13,7 +13,7 @@ namespace Odyssey.Client.Tests;
 /// <remarks>
 /// <para>
 /// The pairs are <b>read out of the stylesheets</b> — <c>location-map.css</c> for the MapLibre-built parts,
-/// <c>LocationMap.razor.css</c> for the caption — and resolved against the MudTheme palette and
+/// <c>OdsLocationMap.razor.css</c> for the caption — and resolved against the MudTheme palette and
 /// <c>app.css</c>. Re-skinning the pin, the ring or the caption onto other tokens therefore re-runs these
 /// ratios instead of passing on the old pair.
 /// </para>
@@ -32,7 +32,7 @@ public class LocationMapContrastTests
 
     private static readonly string AppCss = Read("wwwroot", "css", "app.css");
     private static readonly string MapCss = Read("wwwroot", "css", "location-map.css");
-    private static readonly string ComponentCss = Read("Pages", "Journal", "LocationMap.razor.css");
+    private static readonly string ComponentCss = Read("Components", "OdsLocationMap.razor.css");
 
     public static TheoryData<bool> Themes => [false, true];
 

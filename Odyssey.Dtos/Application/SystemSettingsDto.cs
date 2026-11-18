@@ -186,8 +186,6 @@ public sealed record SystemSettingsDto
     /// <summary>Model output cap on the file-analysis calls — a direct third-party spend lever.</summary>
     public int FileAnalysisMaxTokens { get; set; }
 
-    public int FileAnalysisMatchMaxVocabulary { get; set; }
-
     public int FileAnalysisMatchTimeoutSeconds { get; set; }
 
     /// <summary>Blob prefix read for photo metadata extraction, in megabytes.</summary>
@@ -243,6 +241,15 @@ public sealed record SystemSettingsDto
     /// </summary>
     public string FileAnalysisBaseUrl { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Administrator guidance appended to every statement extraction prompt, as stored (normalised);
+    /// empty when none (issue #433).
+    /// </summary>
+    public string FileAnalysisExtractionPromptAddition { get; set; } = string.Empty;
+
+    /// <summary>Administrator guidance appended to every match prompt; empty when none (issue #433).</summary>
+    public string FileAnalysisMatchPromptAddition { get; set; } = string.Empty;
+
     // ── Weather (issue #348) ─────────────────────────────────────────────────────────────────────
 
     /// <summary>How MET Norway can reach whoever runs this instance. Empty: nothing is fetched.</summary>
@@ -250,10 +257,10 @@ public sealed record SystemSettingsDto
 
     public int WeatherRefreshIntervalMinutes { get; set; }
 
-    public int WeatherMaxTrackedLocations { get; set; }
+    public int WeatherMaxTrackedPoints { get; set; }
 
     /// <summary>The household default weather location id, or empty for none.</summary>
-    public string WeatherDefaultLocationId { get; set; } = string.Empty;
+    public string WeatherDefaultPointId { get; set; } = string.Empty;
 
     // ── Exchange-rate sync (issue #349) ──────────────────────────────────────────────────────────
 
@@ -262,10 +269,58 @@ public sealed record SystemSettingsDto
 
     public int ExchangeRateSyncIntervalHours { get; set; }
 
+    // ── Instrument prices (issue #446) ───────────────────────────────────────────────────────────
+
+    public int InstrumentPriceStaleAfterDays { get; set; }
+
+    public int InstrumentPriceSyncIntervalHours { get; set; }
+
+    public int InstrumentPriceSyncHistoryDays { get; set; }
+
+    // ── News reader (issue #470 §11.1) ───────────────────────────────────────────────────────────
+
+    public int NewsDefaultFetchIntervalMinutes { get; set; }
+
+    public int NewsMaxFeeds { get; set; }
+
+    public int NewsImageMaxPerArticle { get; set; }
+
+    public int NewsImageMaxSizeKb { get; set; }
+
+    /// <summary>
+    /// Server-computed ceiling on <see cref="NewsImageMaxSizeKb"/>: <c>NewsImageSizeCeiling.Kb</c> of
+    /// <c>FileStorage:MaxFileSizeBytes</c>, never below the setting's floor. The store refuses a larger write than
+    /// that limit, so a higher setting would do nothing; the control bounds itself by
+    /// <c>min(range max, this)</c>.
+    /// </summary>
+    public int NewsImageMaxSizeKbCeiling { get; set; }
+
+    public int NewsImageStoreMaxGiB { get; set; }
+
+    public int NewsTextStoreMaxGiB { get; set; }
+
+    public int NewsFeedMaxArticlesPerDay { get; set; }
+
+    public int NewsFeedMaxImageMbPerDay { get; set; }
+
+    /// <summary>Comma-separated <c>host[:port]</c> grants; empty blocks every private address.</summary>
+    public string NewsPrivateHostAllowList { get; set; } = string.Empty;
+
+    // ── News OPML import (issue #508 §8.5) ────────────────────────────────────────────────────────
+
+    public int NewsOpmlMaxImportMegabytes { get; set; }
+
+    public int NewsOpmlMaxImportEntries { get; set; }
+
     // ── Filesystem object storage (issue #346) ───────────────────────────────────────────────────
 
     /// <summary>Hours a released file stays on disk before the maintenance job removes it.</summary>
     public int FileStorageDeletionGraceHours { get; set; }
+
+    // ── Background jobs (issue #409) ─────────────────────────────────────────────────────────────
+
+    /// <summary>Days a finished background-job run stays in the run log.</summary>
+    public int JobRunRetentionDays { get; set; }
 
     // ── The six bound projections (issue #434 §6) ────────────────────────────────────────────────
     //

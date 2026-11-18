@@ -30,19 +30,40 @@ namespace Odyssey.Core.Journal;
 /// </para>
 /// </remarks>
 public sealed class PhotoMetadataService(
-    IImageContentReader reader,
     IPhotoMetadataExtractor extractor,
     IJournalLimitsLookup limits,
     ILogger<PhotoMetadataService> logger)
 {
-    public async Task<PhotoMetadata> ExtractAsync(Guid fileId, CancellationToken cancellationToken = default)
+    /// <summary>Extraction for a stored photo, reading a bounded prefix through the content source (issue #428).</summary>
+    public Task<PhotoMetadata> ExtractForPhotoAsync(
+        Guid photoId, Originals.PhotoOriginalSource source, CancellationToken cancellationToken = default) =>
+        ExtractAsync(readBytes => source.ReadPrefixAsync(photoId, readBytes, cancellationToken), cancellationToken);
+
+    /// <summary>
+    /// Extraction for an upload not yet stored (issue #428 §3.2): a bounded prefix of <paramref name="content"/>,
+    /// which is left positioned at its start for the write that follows.
+    /// </summary>
+    public Task<PhotoMetadata> ExtractFromStreamAsync(Stream content, CancellationToken cancellationToken = default) =>
+        ExtractAsync(async readBytes =>
+        {
+            content.Position = 0;
+            var prefix = await Originals.PhotoOriginalSource.ReadUpToAsync(content, readBytes, cancellationToken);
+            content.Position = 0;
+            return prefix;
+        }, cancellationToken);
+
+    /// <summary>
+    /// Extraction over a prefix reader: <paramref name="readPrefix"/> is asked for the configured number of bytes (the
+    /// setting is in megabytes; the reader gets bytes). Best-effort — any failure yields <see cref="PhotoMetadata.Empty"/>.
+    /// </summary>
+    public async Task<PhotoMetadata> ExtractAsync(Func<int, Task<byte[]?>> readPrefix, CancellationToken cancellationToken = default)
     {
         try
         {
             var effectiveLimits = await limits.GetAsync(cancellationToken);
             var readBytes = (int)Math.Min(effectiveLimits.PhotoMetadataReadBytes, int.MaxValue);
 
-            var prefix = await reader.ReadPrefixAsync(fileId, readBytes, cancellationToken);
+            var prefix = await readPrefix(readBytes);
             if (prefix is null || prefix.Length == 0)
             {
                 return PhotoMetadata.Empty;
@@ -56,7 +77,7 @@ public sealed class PhotoMetadataService(
         }
         catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
         {
-            logger.LogWarning(ex, "Photo metadata extraction failed for file {FileId}; proceeding with no metadata.", fileId);
+            logger.LogWarning(ex, "Photo metadata extraction failed; proceeding with no metadata.");
             return PhotoMetadata.Empty;
         }
     }

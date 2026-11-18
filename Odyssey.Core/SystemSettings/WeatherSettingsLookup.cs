@@ -30,8 +30,8 @@ public sealed class WeatherSettingsLookup(
     [
         SystemSettingsKeys.WeatherUserAgentContact,
         SystemSettingsKeys.WeatherRefreshIntervalMinutes,
-        SystemSettingsKeys.WeatherMaxTrackedLocations,
-        SystemSettingsKeys.WeatherDefaultLocationId,
+        SystemSettingsKeys.WeatherMaxTrackedPoints,
+        SystemSettingsKeys.WeatherDefaultPointId,
     ];
 
     private static readonly IntSettingSpec Interval = new(
@@ -42,10 +42,10 @@ public sealed class WeatherSettingsLookup(
         ConservativeDirection.Larger);
 
     private static readonly IntSettingSpec MaxTracked = new(
-        SystemSettingsKeys.WeatherMaxTrackedLocations,
-        SystemSettingsDefaults.WeatherMaxTrackedLocations,
-        SystemSettingsBounds.WeatherMaxTrackedLocationsMin,
-        SystemSettingsBounds.WeatherMaxTrackedLocationsMax);
+        SystemSettingsKeys.WeatherMaxTrackedPoints,
+        SystemSettingsDefaults.WeatherMaxTrackedPoints,
+        SystemSettingsBounds.WeatherMaxTrackedPointsMin,
+        SystemSettingsBounds.WeatherMaxTrackedPointsMax);
 
     private readonly IntSettingResolver resolver = new(cache, logger, CacheKey);
 
@@ -76,7 +76,7 @@ public sealed class WeatherSettingsLookup(
         }
 
         Guid? householdDefault = null;
-        if (values.TryGetValue(SystemSettingsKeys.WeatherDefaultLocationId, out var storedDefault) && storedDefault.Length > 0)
+        if (values.TryGetValue(SystemSettingsKeys.WeatherDefaultPointId, out var storedDefault) && storedDefault.Length > 0)
         {
             if (Guid.TryParse(storedDefault, out var id))
             {

@@ -100,6 +100,9 @@
 }
 
 @media (max-width: 600px) {
+    /* The control drops under the title on a phone instead of pushing the row sideways (issue #389). */
+    .odc-setting-row { flex-wrap: wrap; }
+    .odc-setting-control { max-width: 100%; }
     .odc-setting-footer ::deep .odc-setting-text { max-width: none; }
     .odc-setting-footer ::deep .odc-setting-text .odc-input { min-width: 0; width: 100%; }
 }
