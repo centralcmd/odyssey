@@ -43,7 +43,7 @@ public class NewsNavigationAndCacheTests
     }
 
     [Fact]
-    public void Without_news_read_or_weather_points_read_the_module_is_gone_from_the_switcher_and_the_palette()
+    public void The_module_is_gone_without_news_read_or_weather_points_read_and_news_read_alone_shows_the_three_news_pages()
     {
         Assert.DoesNotContain(NavModel.VisibleModules(Holding()), m => m.Key == "internet");
         Assert.DoesNotContain(NavModel.AllVisiblePages(Holding()), hit => hit.ModuleKey == "internet");
