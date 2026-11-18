@@ -209,6 +209,7 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
             attachmentClaims: CalendarIcsImportClaims.Trusted);
 
         Assert.True(deadlock.Fired);
+        Assert.Equal(2, service.AttachmentsDecoded); // phase A ran once: the retry decoded nothing again
         Assert.Equal((1, 1, 1, 0, 0), (result.ImportedCount, result.StoredFileCount, result.StoredPhotoCount, result.ReusedFileCount, result.SkippedAttachmentCount));
         await using var check = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)).Options);
@@ -221,7 +222,7 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         Assert.Equal(file.Id, (await check.CalendarEventAttachments.SingleAsync(a => a.CalendarEventId == eventId)).FileId);
         Assert.Equal(photo.PhotoId, (await check.CalendarEventPhotos.SingleAsync(p => p.CalendarEventId == eventId)).PhotoId);
         var objects = await check.StoredObjects.AsNoTracking()
-            .Where(o => o.Sha256Hash == fileHash || o.Sha256Hash == photoHash || o.State == StoredObjectState.Pending).ToListAsync();
+            .Where(o => o.Sha256Hash == fileHash || o.Sha256Hash == photoHash).ToListAsync();
         Assert.Equal(2, objects.Count);
         Assert.All(objects, o => Assert.Equal(StoredObjectState.Committed, o.State));
     }

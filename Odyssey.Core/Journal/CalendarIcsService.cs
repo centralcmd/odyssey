@@ -1855,7 +1855,7 @@ public class CalendarIcsService
             {
                 await run.Places.SaveChangesAsync(context, cancellationToken);
             }
-            catch (DbUpdateConcurrencyException ex) when (ex.Entries.Any(e => e.Entity is StoredObject))
+            catch (DbUpdateException ex) when (ReservationExpired(ex))
             {
                 // The abandoned-write sweep removed a reservation older than an hour (implementation note 5): the
                 // partial-failure path, never the busy 409.
@@ -1880,6 +1880,14 @@ public class CalendarIcsService
             throw CalendarSeriesConflictException.SeriesBusy();
         }
     }
+
+    // A reservation the sweep already removed surfaces two ways, whichever statement reaches it first: the referencing
+    // row's RESTRICT key to StoredObjects (1452), or the attach's State-token UPDATE matching no row.
+    private static bool ReservationExpired(DbUpdateException exception) =>
+        exception is DbUpdateConcurrencyException concurrency
+            ? concurrency.Entries.Any(e => e.Entity is StoredObject)
+            : exception.InnerException is MySqlConnector.MySqlException { Number: 1452 } mysql
+                && mysql.Message.Contains("REFERENCES `StoredObjects`", StringComparison.Ordinal);
 
     private static BatchLocks LocksOf(BatchResolver resolver) => new(
         resolver.Patterns.Select(p => p.RecurrencePatternId)
