@@ -267,7 +267,7 @@ public class CalendarEventsApiTests
     }
 
     [Fact]
-    public async Task Delete_ReturnsNoContent()
+    public async Task Delete_ReturnsOkWithAnEmptyDetachedReport()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -277,7 +277,11 @@ public class CalendarEventsApiTests
             new DateTime(2026, 8, 10, 9, 0, 0, DateTimeKind.Utc), new DateTime(2026, 8, 10, 10, 0, 0, DateTimeKind.Utc));
 
         var delete = await client.DeleteAsync($"{EventsPath}/{created.CalendarEventId}");
-        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        // Issue #519 v5 §3, PR #528 review A2: one shape on every success.
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        var result = (await delete.Content.ReadFromJsonAsync<CalendarEventDeleteResult>())!;
+        Assert.False(result.Detached);
+        Assert.Equal(0, result.DetachedCount);
     }
 
     private static async Task<ExistingCalendar> CreateCalendarAsync(HttpClient client, string name)

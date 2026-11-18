@@ -198,7 +198,7 @@ public class RecurrencePatternService
             var state = await RecurrenceSeriesState.LoadAsync(context, id, tracked: true, cancellationToken);
             if (state is null)
             {
-                return null;
+                return ((RecurrenceSeriesCounts Counts, int Detached)?)null;
             }
 
             if (request.ExpectedVersion is { } expected && expected != state.Pattern.Version)
@@ -227,30 +227,38 @@ public class RecurrencePatternService
                 throw CalendarSeriesConflictException.Drops(plan.Counts.DroppedOverrides, plan.Counts.DroppedExclusions);
             }
 
+            if (request.ConfirmedDrops is null && plan.Counts.DroppedOverrides + plan.Counts.DroppedExclusions > 0)
+            {
+                // A caller that bound no consent still learns the counts from the response; the log keeps them too.
+                logger?.LogInformation(
+                    "Calendar series {RecurrencePatternId} edited without confirmedDrops: {DroppedOverrideCount} override(s) and "
+                    + "{DroppedExclusionCount} exclusion(s) dropped.",
+                    id, plan.Counts.DroppedOverrides, plan.Counts.DroppedExclusions);
+            }
+
             RecurrenceSeries.Apply(context, state, plan, userId, now);
             // A template-only edit sends null arrays and never touches the links (issue #521 §5.2).
             await new CalendarLinkService(context).ApplyToSeriesAsync(
                 id, isNew: false, request.AttachmentFileIds, request.PhotoIds, linkClaims ?? CalendarLinkClaims.None,
                 effectiveLimits.CalendarEventMaxLinksPerKind, now, cancellationToken);
             await SaveLinkedAsync(resolver, cancellationToken);
-            return new RecurrencePatternUpdateResult
-            {
-                Pattern = null!,
-                DroppedOverrideCount = plan.Counts.DroppedOverrides,
-                DroppedExclusionCount = plan.Counts.DroppedExclusions,
-                DetachedCount = detached,
-                AdjustedCount = plan.Counts.Adjusted,
-            };
+            return (Counts: plan.Counts, Detached: detached);
         }, cancellationToken, logger);
 
-        if (outcome is null)
+        if (outcome is not { } done)
         {
             return null;
         }
 
         var saved = await context.RecurrencePatterns.AsNoTracking().FirstAsync(p => p.RecurrencePatternId == id, cancellationToken);
-        outcome.Pattern = await ToDtoAsync(saved, claims, cancellationToken);
-        return outcome;
+        return new RecurrencePatternUpdateResult
+        {
+            Pattern = await ToDtoAsync(saved, claims, cancellationToken),
+            DroppedOverrideCount = done.Counts.DroppedOverrides,
+            DroppedExclusionCount = done.Counts.DroppedExclusions,
+            DetachedCount = done.Detached,
+            AdjustedCount = done.Counts.Adjusted,
+        };
     }
 
     /// <summary>
@@ -388,7 +396,7 @@ public class RecurrencePatternService
         if (request.RecurrenceEndDate is { } requestedUntil)
         {
             until = CalendarTimeZones.Find(zoneId) is { } zone
-                ? CalendarEventService.ToStored(requestedUntil, zone, kindIgnored: request.TimeZoneId is not null)
+                ? CalendarEventService.ToStored(requestedUntil, zone, kindIgnored: request.TimeZoneId is not null, "recurrenceEndDate")
                 : DateTimeNormalization.NormalizeToUtc(requestedUntil);
         }
 

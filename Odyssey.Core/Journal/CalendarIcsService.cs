@@ -220,8 +220,12 @@ public class CalendarIcsService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    /// <summary>The directory the import spill is written to; the process temp directory unless a test points it elsewhere.</summary>
-    internal string SpillDirectory { get; set; } = Path.GetTempPath();
+    /// <summary>
+    /// The directory the import spill and any upload copy are written to: <see cref="ImportSpool.Directory"/> — the
+    /// <c>import_spool</c> volume behind <c>ASPNETCORE_TEMP</c> in the images, where the upload itself is buffered —
+    /// unless a test points it elsewhere. Never the OS temp directory by default, which can be a RAM-backed tmpfs.
+    /// </summary>
+    internal string SpillDirectory { get; set; } = ImportSpool.Directory();
 
     /// <summary>A fixed grouping key, for a test that must know the order groups commit in; random per import otherwise.</summary>
     internal byte[]? GroupingKey { get; set; }
@@ -1339,6 +1343,8 @@ public class CalendarIcsService
                 SpillDirectory, TempFreeSpace, logger),
         };
 
+        // A crashed process's runs and upload copies are never reached by their own finally; the next import sweeps them.
+        ImportSpool.SweepStale(SpillDirectory, IcsImportGrouper.SpillFilePrefix + "*");
         await using var upload = await SeekableUpload.OpenAsync(icsFile, maxImportBytes, SpillDirectory, cancellationToken);
         using var reservation = IcsSpillReservation.Reserve(SpillDirectory, upload.Stream.Length);
         await using var grouper = await IcsImportGrouper.BuildAsync(
@@ -1745,19 +1751,26 @@ public class CalendarIcsService
         // The batch's references, read-only and outside the locks: one IN query per kind (issue #521 §7.4).
         await run.Importer.ResolveReferencesAsync(
             groups.SelectMany(g => g.Items).SelectMany(i => i.Attachments).ToList(), run.SkipAttachment, cancellationToken);
+
+        // Every run of the batch's work - a re-resolve below, or the execution strategy retrying a deadlock or a lock wait
+        // (PR #528 review A1) - starts from the state the batch began with: a rolled-back attempt may have created places
+        // the index still names and counted them, so the index is reloaded and the counts put back. The tally is per run.
         var placesSnapshot = run.Places.Snapshot();
-        for (var attempt = 1; ; attempt++)
+        var runs = 0;
+        async Task BeforeRunAsync()
         {
-            if (attempt > 1)
+            if (++runs > 1)
             {
-                // A rolled-back attempt may have created places the index still names.
                 run.Places = await IcsPlaces.ForImportAsync(context, run.Claims, run.UserId, timeProvider, cancellationToken);
                 run.Places.Restore(placesSnapshot);
             }
+        }
 
+        for (var attempt = 1; ; attempt++)
+        {
             try
             {
-                var tally = await RunBatchAttemptAsync(groups, uids, locks, run, cancellationToken);
+                var tally = await RunBatchAttemptAsync(groups, uids, locks, run, BeforeRunAsync, cancellationToken);
                 tally.MergeInto(run);
                 await run.Importer.CommitBatchAsync(tally.Links, cancellationToken);
                 run.CommittedBatches++;
@@ -1780,12 +1793,15 @@ public class CalendarIcsService
     }
 
     // One attempt: inside the execution strategy, the locks first (series, then standalone events, each ascending), then
-    // the re-resolve under them, then the groups, then one save (#519 v4 §2, v5 §2).
+    // the re-resolve under them, then the groups, then one save (#519 v4 §2, v5 §2). The strategy is the interactive one
+    // (two retries of a 5 s statement wait), so one batch's worst case stays near 15 s, as an interactive write's does.
     private async Task<ImportTally> RunBatchAttemptAsync(
-        List<ImportGroup> groups, List<string> uids, BatchLocks locks, ImportRun run, CancellationToken cancellationToken)
+        List<ImportGroup> groups, List<string> uids, BatchLocks locks, ImportRun run, Func<Task> beforeRun,
+        CancellationToken cancellationToken)
     {
         async Task<ImportTally> Work()
         {
+            await beforeRun();
             await CalendarSeriesTransactions.LockSeriesAsync(context, locks.PatternIds, cancellationToken);
             await CalendarSeriesTransactions.LockEventsAsync(context, locks.EventIds, cancellationToken);
             var resolver = await ResolveAsync(run.CalendarId, uids, tracked: true, cancellationToken);
@@ -1821,7 +1837,7 @@ public class CalendarIcsService
             return await Work();
         }
 
-        var strategy = context.Database.CreateExecutionStrategy();
+        var strategy = OdysseyDatabaseRetry.InteractiveStrategy(context);
         try
         {
             return await strategy.ExecuteAsync(() => CalendarSeriesTransactions.RunAttemptAsync(context, Work, cancellationToken));
@@ -3300,7 +3316,7 @@ internal sealed class SeekableUpload : IAsyncDisposable
             return new SeekableUpload(source, null);
         }
 
-        var path = Path.Combine(directory, $"odyssey-ics-{Guid.NewGuid():N}.upload");
+        var path = Path.Combine(directory, $"{IcsImportGrouper.SpillFilePrefix}{Guid.NewGuid():N}.upload");
         var file = new FileStream(path, FileMode.CreateNew, FileAccess.ReadWrite, FileShare.None, 1 << 16,
             FileOptions.Asynchronous | FileOptions.DeleteOnClose);
         try

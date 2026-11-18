@@ -310,6 +310,53 @@ public class CalendarRecurrenceFidelityApiTests
         Assert.Contains(await SeriesRowsAsync(client, series.RecurrencePatternId), r => r.Title == "Edited");
     }
 
+    // ------------------------------------------------------------------ Authorization (PR #528 review T1)
+
+    [Fact]
+    public async Task The_preview_needs_calendar_update()
+    {
+        Guid calendarId;
+        Guid patternId;
+        await using (var writer = new ApiFactory(ReadWrite))
+        {
+            using var client = writer.CreateClient();
+            calendarId = (await CreateCalendarAsync(client, "Preview auth")).CalendarId;
+            patternId = (await WeeklyMondaysAsync(client, calendarId, count: 3)).RecurrencePatternId;
+
+            await using var reader = new ApiFactory(
+                [PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarDelete], sharing: writer);
+            using var readOnly = reader.CreateClient();
+            var refused = await readOnly.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3));
+
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3))).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_series_put_that_drops_exceptions_needs_calendar_update_alone()
+    {
+        // v3 §B.6: an interactive series PUT discards exceptions under calendar.update, because the user previewed and
+        // confirmed them; only an import's discards join removals under allowRemovals + calendar.delete.
+        await using var factory = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarUpdate]);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Update alone");
+        var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
+        var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
+        await EditTitleAsync(client, rows[1], "Edited");
+
+        var result = await UpdatePatternAsync(client, series.RecurrencePatternId,
+            Rule(calendar.CalendarId, count: 3) with { DaysOfWeek = DtoDays.Thursday });
+
+        Assert.Equal(1, result.DroppedOverrideCount);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{EventsPath}/{rows[0].CalendarEventId}")).StatusCode);
+
+        await using var withoutUpdate = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarDelete], sharing: factory);
+        using var other = withoutUpdate.CreateClient();
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await other.PutAsJsonAsync($"{PatternsPath}/{series.RecurrencePatternId}", Rule(calendar.CalendarId, count: 3))).StatusCode);
+    }
+
     // ------------------------------------------------------------------ AC 14: server-set fields
 
     [Fact]
@@ -381,6 +428,29 @@ public class CalendarRecurrenceFidelityApiTests
     }
 
     [Fact]
+    public async Task With_a_zone_sent_a_z_time_is_the_same_wall_clock_and_an_offset_is_a_400_on_its_field()
+    {
+        // §5.1 "Their Kind is ignored": Z and no designator name the same wall-clock. An offset cannot be ignored — binding
+        // has already turned it into server-local time — so it is refused rather than read two ways (PR #528 review A3).
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Designators");
+        HttpResponseMessage Post(string start, string end) => client.PostAsync(EventsPath, new StringContent(
+            $$"""{"calendarId":"{{calendar.CalendarId}}","title":"T","startDateTime":"{{start}}","endDateTime":"{{end}}","timeZoneId":"Europe/Oslo"}""",
+            Encoding.UTF8, "application/json")).GetAwaiter().GetResult();
+
+        var plain = (await Post("2030-06-01T09:00:00", "2030-06-01T10:00:00").Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
+        var zulu = (await Post("2030-06-01T09:00:00Z", "2030-06-01T10:00:00Z").Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
+        var offset = Post("2030-06-01T09:00:00+00:00", "2030-06-01T10:00:00");
+
+        Assert.Equal(Utc(2030, 6, 1, 7), plain.StartUtc);
+        Assert.Equal(plain.StartUtc, zulu.StartUtc);
+        Assert.Equal(HttpStatusCode.BadRequest, offset.StatusCode);
+        var problem = (await offset.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
+        Assert.Contains("startDateTime", problem.Errors.Keys);
+    }
+
+    [Fact]
     public async Task An_all_day_zone_is_stored_as_null_and_a_put_without_a_zone_keeps_the_stored_one()
     {
         await using var factory = new ApiFactory(ReadWrite);
@@ -417,7 +487,8 @@ public class CalendarRecurrenceFidelityApiTests
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
 
         var delete = await client.DeleteAsync($"{EventsPath}/{rows[1].CalendarEventId}");
-        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        Assert.False((await delete.Content.ReadFromJsonAsync<CalendarEventDeleteResult>())!.Detached);
         await UpdatePatternAsync(client, series.RecurrencePatternId, Rule(calendar.CalendarId, count: 3) with { Title = "Renamed" });
 
         var after = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -940,20 +1011,33 @@ public class CalendarRecurrenceFidelityApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null)
+        // One root, so two factories naming one database share its store.
+        private static readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot StoreRoot = new();
+
+        private readonly string databaseName;
+
+        // sharing: a second factory over the same InMemory store, with other permissions.
+        public ApiFactory(
+            IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null,
+            ApiFactory? sharing = null)
+            : this(permissions, clock, logs, sharing?.databaseName ?? $"calendar-recurrence-{Guid.NewGuid()}")
+        {
+        }
+
+        private ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock, CapturingLoggerProvider? logs, string name)
             : base(permissions, ActorUserId, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton(clock ?? new FakeTimeProvider(Now));
-                var name = $"calendar-recurrence-{Guid.NewGuid()}";
                 services.RemoveAll<DbContextOptions<OdysseyContext>>();
-                services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(name));
+                services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(name, StoreRoot));
                 if (logs is not null)
                 {
                     services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
                 }
             })
         {
+            databaseName = name;
         }
     }
 }

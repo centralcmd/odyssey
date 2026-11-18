@@ -104,6 +104,9 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
 
         var from = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2026, 4, 15, 0, 0, 0, DateTimeKind.Utc);
+        // The paged window contains the Oslo change on 29 March (PR #528 review T3), so the Oslo view sorts by a CASE over
+        // two offset segments in SQL rather than by the single-offset shortcut.
+        Assert.Equal(2, CalendarWindow.Segments(from, to, TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo"))!.Count);
         foreach (var zone in new[] { "UTC", "Europe/Oslo", "America/New_York" })
         {
             await using var context = new OdysseyContext(options);
@@ -297,6 +300,33 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
         Assert.Equal(3, attempts.Sum());
     }
 
+    [SkippableFact]
+    public async Task A_batch_the_strategy_retries_after_a_deadlock_reloads_its_places_and_counts_them_once()
+    {
+        // PR #528 review A1: 1205 and 1213 are transient for every context, so the execution strategy can re-run a batch
+        // whose first run created a place. The re-run must not reuse that rolled-back place, nor count it twice.
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var deadlock = new FirstInsertDeadlock("INSERT INTO `CalendarEvents`");
+        var options = await OptionsAsync(deadlock);
+        var calendarId = await SeedCalendarAsync(options);
+        var place = $"Brand new cafe {Guid.NewGuid():N}";
+        var text = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\nBEGIN:VEVENT\r\nUID:retried@example.com\r\n"
+            + $"DTSTART:20300107T090000Z\r\nDTEND:20300107T100000Z\r\nSUMMARY:Coffee\r\nLOCATION:{place}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n";
+
+        await using (var context = new OdysseyContext(options))
+        {
+            var result = await Ics(context).ImportAsync(
+                calendarId, Stream(text), text.Length, "text/calendar", User, claims: LocationClaims.Trusted);
+
+            Assert.True(deadlock.Fired);
+            Assert.Equal((1, 1, 1), (result.ImportedCount, result.PlacesLinked, result.PlacesCreated));
+        }
+
+        await using var check = new OdysseyContext(options);
+        var location = Assert.Single(await check.Locations.Where(l => l.Name == place).ToListAsync());
+        Assert.Equal(location.LocationId, (await check.CalendarEvents.SingleAsync(e => e.CalendarId == calendarId)).LocationId);
+    }
+
     // ------------------------------------------------------------------ AC 27: concurrent imports
 
     [SkippableFact]
@@ -457,12 +487,13 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
         }
     }
 
-    private async Task<DbContextOptions<OdysseyContext>> OptionsAsync()
+    private async Task<DbContextOptions<OdysseyContext>> OptionsAsync(params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
     {
         // A fresh copy of the migrated schema per test, so one test's series never reach another's backfill.
         var connectionString = await fixture.CreateMigratedDatabaseAsync(Database);
         var options = new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
+            .AddInterceptors(interceptors)
             .Options;
         await using var migrating = new OdysseyContext(options);
         await AttributionUsers.EnsureAsync(migrating, User);
@@ -504,6 +535,30 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
             .Select(e => $"{e.CalendarEventId}|{e.CalendarId}|{e.Title}|{e.StartDateTime:O}|{e.EndDateTime:O}|{e.IsAllDay}|{e.TimeZoneId}")
             .Order(StringComparer.Ordinal)
             .ToList();
+    }
+
+    // Fails the first command whose text contains the marker with a deadlock (1213), as InnoDB would, then lets every
+    // later one through: what the shared strategy sees when a batch loses a deadlock once.
+    private sealed class FirstInsertDeadlock(string marker) : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
+    {
+        private int fired;
+
+        public bool Fired => fired == 1;
+
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(
+            System.Data.Common.DbCommand command, Microsoft.EntityFrameworkCore.Diagnostics.CommandEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(marker, StringComparison.Ordinal) && Interlocked.CompareExchange(ref fired, 1, 0) == 0)
+            {
+                throw (MySqlException)Activator.CreateInstance(
+                    typeof(MySqlException), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                    null, [MySqlErrorCode.LockDeadlock, "Deadlock found when trying to get lock (injected)"], null)!;
+            }
+
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
     }
 
     private sealed class ImportLimits : IImportExportLimitsLookup

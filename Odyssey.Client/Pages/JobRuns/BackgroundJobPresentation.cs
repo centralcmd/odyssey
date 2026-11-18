@@ -49,7 +49,7 @@ public static class BackgroundJobPresentation
         // The news reader (issue #470, #473 §3.6), catalogued with its fetch job (B3).
         [JobType.NewsFeedFetch] = new("News feeds", "news feeds", "rss_feed", "news feed", "Run news feeds", MudBlazor.Icons.Material.Filled.RssFeed),
         // The recurrence key backfill (issue #519 §11): idle for good once every pre-#519 series is keyed.
-        [JobType.RecurrenceKeyBackfill] = new("Recurrence keys", "recurrence keys", "event_repeat", "recurring series", "Run recurrence keys", MudBlazor.Icons.Material.Filled.EventRepeat),
+        [JobType.RecurrenceKeyBackfill] = new("Recurrence keys", "recurrence keys", "event_repeat", "calendar", "Run recurrence keys", MudBlazor.Icons.Material.Filled.EventRepeat),
     };
 
     public static readonly JobVisual OtherJob = new("Other job", "other job", "work_outline", null, null, null);

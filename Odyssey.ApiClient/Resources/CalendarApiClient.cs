@@ -159,8 +159,8 @@ public interface ICalendarApiClient
     Task<ApiResult> DeleteEventAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
-    /// Deletes one occurrence and reads what keying its legacy series detached (issue #519 v5 §3): a <c>null</c> value
-    /// on the ordinary <c>204</c>, a <see cref="CalendarEventDeleteResult"/> when the server reports detached rows.
+    /// Deletes one occurrence and reads what keying its legacy series detached (issue #519 v5 §3). The server answers
+    /// <c>200</c> with a <see cref="CalendarEventDeleteResult"/>; a <c>null</c> value means an older server's <c>204</c>.
     /// </summary>
     Task<ApiResult<CalendarEventDeleteResult?>> DeleteEventWithResultAsync(Guid id, CancellationToken ct = default);
 

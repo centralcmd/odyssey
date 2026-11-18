@@ -412,7 +412,11 @@ bounded, not estimated:
   itself). Before pass 1 the import reserves **1.5×** the upload against the free space, in a process-wide budget that
   concurrent imports share; crossing 1.25× while sorting, or `ENOSPC`, is a `507` with nothing applied. Budget
   `cap × 2.5 × import concurrency (2)` of free space on the volume for a worst case: the 1× buffer plus the 1.5×
-  reservation. The spill is deleted when the request ends, whatever happened.
+  reservation. The spill is deleted when the request ends, whatever happened; a process that crashed mid-import leaves
+  `odyssey-ics-*` files behind, and the next import sweeps any older than a day. A volume whose free space cannot be
+  read is refused with the `507` rather than assumed to have room. The spill, the upload copy and the attachment spool
+  of the task and journal imports all resolve `ASPNETCORE_TEMP` the same way, falling back to the OS temp directory
+  only when it is unset or missing — which in the production image is a RAM-backed tmpfs, so keep it set.
 
 Because pass 1 reads the whole file before any batch, a structural fault anywhere in a file (an unclosed or oversized
 component, too many events) is now a plain `400` with nothing applied. Batches still commit separately, but in UID-hash

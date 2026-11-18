@@ -171,6 +171,45 @@ public class CalendarIcsGroupedImportTests
         using var again = IcsSpillReservation.Reserve("/tmp", upload, _ => free);
     }
 
+    [Fact]
+    public async Task The_import_spills_to_the_upload_spool_and_sweeps_a_crashed_imports_leftovers()
+    {
+        var spool = Directory.CreateTempSubdirectory("odyssey-spool-").FullName;
+        var previous = Environment.GetEnvironmentVariable("ASPNETCORE_TEMP");
+        try
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_TEMP", spool);
+            await using var context = TestContextFactory.CreateJournal();
+            var service = Service(context, new FakeImportExportLimitsLookup());
+
+            // The import_spool volume behind ASPNETCORE_TEMP, never the OS temp directory (a tmpfs in production).
+            Assert.Equal(spool, service.SpillDirectory);
+            Assert.Equal(spool, ImportSpool.Directory());
+
+            var stale = Path.Combine(spool, IcsImportGrouper.SpillFilePrefix + "crashed.run");
+            var fresh = Path.Combine(spool, IcsImportGrouper.SpillFilePrefix + "live.upload");
+            await File.WriteAllTextAsync(stale, "x");
+            await File.WriteAllTextAsync(fresh, "x");
+            File.SetLastWriteTimeUtc(stale, DateTime.UtcNow - ImportSpool.StaleAfter - TimeSpan.FromHours(1));
+            var calendar = await SeedCalendarAsync(context);
+
+            await ImportAsync(service, calendar, Calendar("BEGIN:VEVENT\r\nUID:a\r\nDTSTART:20300101T090000Z\r\nSUMMARY:A\r\nEND:VEVENT\r\n"));
+
+            Assert.False(File.Exists(stale));
+            Assert.True(File.Exists(fresh));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("ASPNETCORE_TEMP", previous);
+            Directory.Delete(spool, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_volume_whose_free_space_cannot_be_read_is_refused_rather_than_assumed_unlimited() =>
+        Assert.Throws<FileStorageFullException>(() =>
+            IcsSpillReservation.Reserve("/tmp", 1024, _ => throw new IOException("unreadable")));
+
     // ------------------------------------------------------------------ The override cap (AC 15)
 
     [Fact]
