@@ -55,13 +55,15 @@ public class CalendarIcsExportAbortTests(ApiStackFixture fixture)
             var summary = await client.GetAsync($"/api/recurrence-patterns/{series.RecurrencePatternId}/ics/summary");
             Assert.Equal(HttpStatusCode.OK, summary.StatusCode);
 
-            await Assert.ThrowsAnyAsync<Exception>(async () =>
-            {
-                using var response = await client.GetAsync(
-                    $"/api/recurrence-patterns/{series.RecurrencePatternId}/ics", HttpCompletionOption.ResponseHeadersRead);
-                response.EnsureSuccessStatusCode();
-                await response.Content.ReadAsByteArrayAsync();
-            });
+            // The headers must arrive as a 200 with the planned rows, so only the body read may fail: a 400, 429 or 500
+            // must fail this test rather than satisfy it (tester finding 1).
+            using var response = await client.GetAsync(
+                $"/api/recurrence-patterns/{series.RecurrencePatternId}/ics", HttpCompletionOption.ResponseHeadersRead);
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(response.Headers.TryGetValues("X-Odyssey-Export-Rows", out var rows));
+            Assert.Equal("600", Assert.Single(rows));
+
+            await Assert.ThrowsAnyAsync<IOException>(() => response.Content.ReadAsByteArrayAsync());
         }
         finally
         {
