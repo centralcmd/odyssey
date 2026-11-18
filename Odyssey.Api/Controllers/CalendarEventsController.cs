@@ -1,12 +1,9 @@
-using System.Globalization;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Net.Http.Headers;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
@@ -46,7 +43,8 @@ public sealed class CalendarEventsController : ControllerBase
 
     // Aggregate/filtered .ics export (issue #340). Literal "ics" segment takes precedence over the
     // {id} route below (ASP.NET Core prefers literal over parameter segments), mirroring
-    // JournalTasksController's ExportTasksIcs / CalendarIcsController's {id}/ics.
+    // JournalTasksController's ExportTasksIcs / CalendarIcsController's {id}/ics. Both paths stream since
+    // issue #516, and both abort at the byte cap instead of truncating or refusing late.
     [HttpGet("ics", Name = "ExportCalendarEventsIcs")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
     [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
@@ -54,28 +52,26 @@ public sealed class CalendarEventsController : ControllerBase
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export every matching event, across every calendar, as a single multi-VEVENT .ics file.")]
-    public async Task<IActionResult> ExportIcs(
-        [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default)
-    {
-        if (User.ActingUserId() is not { } userId)
-        {
-            return this.MissingUserProblem();
-        }
+    public Task<IActionResult> ExportIcs(
+        [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.StreamAsync(
+            this, icsService, CalendarIcsExportScope.ForAggregate(query), "Not found.", cancellationToken);
 
-        await icsService.ExportAggregateStreamingAsync(query, userId, Response.Body, (fileName, rowCount) =>
-        {
-            Response.Headers.XContentTypeOptions = "nosniff";
-            Response.Headers.CacheControl = "no-store";
-            Response.ContentType = "text/calendar; charset=utf-8";
-            var contentDisposition = new ContentDispositionHeaderValue("attachment");
-            contentDisposition.SetHttpFileName(fileName);
-            Response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
-            Response.Headers["X-Odyssey-Export-Rows"] = rowCount.ToString(CultureInfo.InvariantCulture);
-        }, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
-
-        return new EmptyResult();
-    }
+    // What the aggregate export would contain for the same query, under the same checks and permits (issue #516 §5).
+    [HttpGet("ics/summary", Name = "SummarizeCalendarEventsIcsExport")]
+    [Authorize(Policy = PermissionClaims.CalendarRead)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what the aggregate .ics export would contain for the same query.")]
+    public Task<ActionResult<CalendarIcsExportSummary>> SummarizeIcsExport(
+        [FromQuery] CalendarEventsIcsExportQueryParams query, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.SummarizeAsync(
+            this, icsService, CalendarIcsExportScope.ForAggregate(query), "Not found.", cancellationToken);
 
     [HttpGet("{id}", Name = "GetCalendarEvent")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
@@ -91,24 +87,32 @@ public sealed class CalendarEventsController : ControllerBase
 
     [HttpGet("{id}/ics", Name = "ExportCalendarEventIcs")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
+    // Under the shared export permits and progress guard like every calendar export (issue #516 §5).
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a single event as a standalone RFC 5545 .ics VEVENT.")]
-    public async Task<IActionResult> ExportEventIcs(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
-    {
-        var export = await icsService.ExportEventAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
-        if (export is null)
-        {
-            return this.NotFoundProblem($"Calendar event ID {id} not found.");
-        }
+    public Task<IActionResult> ExportEventIcs(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.StreamAsync(
+            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken);
 
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.CacheControl = "no-store";
-        var bytes = Encoding.UTF8.GetBytes(export.Content);
-        return File(bytes, "text/calendar; charset=utf-8", export.FileName);
-    }
+    [HttpGet("{id}/ics/summary", Name = "SummarizeCalendarEventIcsExport")]
+    [Authorize(Policy = PermissionClaims.CalendarRead)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a single event's .ics export would contain.")]
+    public Task<ActionResult<CalendarIcsExportSummary>> SummarizeEventIcsExport(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.SummarizeAsync(
+            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken);
 
     [HttpPost(Name = "PostCalendarEvent")]
     [Authorize(Policy = PermissionClaims.CalendarCreate)]

@@ -24,6 +24,15 @@ public sealed record IcsImportResult
     /// <summary>Places this import created (a subset of what <see cref="PlacesLinked"/> counts).</summary>
     public int PlacesCreated { get; set; }
 
+    /// <summary>
+    /// Events and series this import removed because the file marked them cancelled (issue #516 §8.4). Zero unless the
+    /// import was sent with <c>allowRemovals</c>; a removed series counts as 1.
+    /// </summary>
+    public int RemovedCount { get; set; }
+
+    /// <summary>Titles of removed events and series, at most <c>ImportMaxSamplesPerSkipReason</c>.</summary>
+    public IReadOnlyList<string> RemovedSampleTitles { get; set; } = [];
+
     public IReadOnlyList<IcsImportSkipGroup> Skipped { get; set; } = [];
 }
 

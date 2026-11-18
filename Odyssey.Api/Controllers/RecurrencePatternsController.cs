@@ -1,9 +1,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Logging;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
@@ -71,24 +71,33 @@ public sealed class RecurrencePatternsController : ControllerBase
 
     [HttpGet("{id}/ics", Name = "ExportRecurrencePatternIcs")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
+    // Under the shared export permits and progress guard like every calendar export (issue #516 §5).
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a recurring series as one RRULE VEVENT (or its per-occurrence fallback).")]
-    public async Task<IActionResult> ExportIcs(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
-    {
-        var export = await icsService.ExportPatternAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
-        if (export is null)
-        {
-            return this.NotFoundProblem($"Recurrence pattern ID {id} not found.");
-        }
+    public Task<IActionResult> ExportIcs(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.StreamAsync(
+            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken);
 
-        Response.Headers.XContentTypeOptions = "nosniff";
-        Response.Headers.CacheControl = "no-store";
-        var bytes = Encoding.UTF8.GetBytes(export.Content);
-        return File(bytes, "text/calendar; charset=utf-8", export.FileName);
-    }
+    [HttpGet("{id}/ics/summary", Name = "SummarizeRecurrencePatternIcsExport")]
+    [Authorize(Policy = PermissionClaims.CalendarRead)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a recurring series' .ics export would contain.")]
+    public Task<ActionResult<CalendarIcsExportSummary>> SummarizeIcsExport(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.SummarizeAsync(
+            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken);
 
     [HttpPost(Name = "PostRecurrencePattern")]
     [Authorize(Policy = PermissionClaims.CalendarCreate)]
