@@ -13,6 +13,7 @@ using Odyssey.Api.Controllers;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
@@ -595,6 +596,46 @@ public class CalendarIcsStreamingApiTests
         await using var scope = factory.Services.CreateAsyncScope();
         Assert.Equal(CalendarIcsService.ImportBatchSize, await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
             .CalendarEvents.CountAsync(e => e.CalendarId == calendar.CalendarId));
+    }
+
+    [Fact]
+    public async Task Standalone_events_beyond_the_occurrence_budget_import_under_the_shipped_limits()
+    {
+        // Architect finding 1: CalendarIcsMaxAggregateOccurrences bounds series expansion only (§3 component 5,
+        // Non-Goal 4). The factory's real ImportExportLimitsLookup serves the shipped defaults.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Many standalone");
+        var count = SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences + 1;
+        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n"
+            + string.Concat(Enumerable.Range(0, count).Select(i => Standalone($"many-{i}@example.com", $"Row {i}")))
+            + "END:VCALENDAR\r\n";
+
+        var result = await ImportAsync(client, calendar.CalendarId, file);
+
+        Assert.Equal(count, result.ImportedCount);
+        Assert.Empty(result.Skipped);
+    }
+
+    [Fact]
+    public async Task Generated_series_occurrences_still_count_against_the_budget_across_the_whole_import()
+    {
+        await using var factory = new ApiFactory(WithSettings);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Budgeted");
+        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 15 });
+        var series = Enumerable.Range(0, 2).Select(i => Vevent(
+            $"series-{i}@example.com", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:Series {i}",
+            "RRULE:FREQ=DAILY;COUNT=10"));
+        // Twenty standalone events first: none of them spends the budget, so only the second series crosses it.
+        var file = Vcalendar([
+            .. Enumerable.Range(0, 20).Select(i => Standalone($"plain-{i}@example.com", $"Plain {i}")), .. series]);
+
+        var response = await PostIcsAsync(client, calendar.CalendarId, file);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
+        Assert.Contains("more than 15 series occurrences", problem.Detail);
     }
 
     [Fact]

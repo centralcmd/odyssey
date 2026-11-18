@@ -1260,9 +1260,10 @@ public class CalendarIcsService
 
     // ----- Apply
 
+    // A standalone event is never counted against CalendarIcsMaxAggregateOccurrences: that cap bounds series
+    // expansion (§3 component 5, Non-Goal 4), and counting plain rows would reinstate a file-wide event ceiling.
     private void ApplyStandalone(ImportItem item, ImportRun run, BatchState state, BatchResolver resolver)
     {
-        CountOccurrences(run, 1);
         var (locationId, detail, keepLink) = ResolvePlace(run.Places, item.Place);
         var existing = MatchEvent(item.Uid, state, resolver);
         if (existing is not null)
@@ -1482,13 +1483,14 @@ public class CalendarIcsService
         }
     }
 
+    // Generated series occurrences only, cumulative across the whole import (§3 pipeline step 3).
     private static void CountOccurrences(ImportRun run, int count)
     {
         run.Aggregate += count;
         if (run.Aggregate > run.MaxAggregateOccurrences)
         {
             throw new DomainValidationException(
-                $"The import would create or regenerate more than {run.MaxAggregateOccurrences} occurrences.");
+                $"The import would create or regenerate more than {run.MaxAggregateOccurrences} series occurrences.");
         }
     }
 
