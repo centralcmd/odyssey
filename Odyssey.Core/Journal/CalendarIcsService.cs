@@ -7,7 +7,6 @@ using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Core.Locations;
-using Ical.Net.Serialization;
 using IcalCalendar = Ical.Net.Calendar;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using IcalRecurrencePattern = Ical.Net.DataTypes.RecurrencePattern;
@@ -20,27 +19,83 @@ using WeekDay = Ical.Net.DataTypes.WeekDay;
 using FrequencyType = Ical.Net.FrequencyType;
 using ContextCalendarEvent = Odyssey.Context.CalendarEvent;
 using CalendarEventsIcsExportQueryParams = Odyssey.Dtos.Journal.CalendarEventsIcsExportQueryParams;
+using CalendarIcsExportSummary = Odyssey.Dtos.Journal.CalendarIcsExportSummary;
 using IcsImportResult = Odyssey.Dtos.Journal.IcsImportResult;
 using IcsImportSkipGroup = Odyssey.Dtos.Journal.IcsImportSkipGroup;
 
 namespace Odyssey.Core.Journal;
 
 /// <summary>
-/// ICS (RFC 5545) import/export for a single calendar (issue #330). Export emits an unmodified,
-/// unclamped recurring series as a single <c>RRULE</c> <c>VEVENT</c> (carrying a stable UID so a
-/// re-import is idempotent) and flattens everything else to standalone <c>VEVENT</c>s. Import maps
-/// each <c>VEVENT</c> onto the bounded <see cref="RecurrencePattern"/> model where the rule maps
-/// cleanly, skipping (with a per-event reason) the ones that don't, and matches existing rows by UID
-/// so re-importing the same file creates no duplicates.
+/// What one calendar <c>.ics</c> export covers (issue #516 §2 Goal 1): one calendar, one event, one series, or the
+/// filtered or unfiltered aggregate across calendars.
 /// </summary>
+public sealed record CalendarIcsExportScope
+{
+    private CalendarIcsExportScope()
+    {
+    }
+
+    public Guid? CalendarId { get; private init; }
+
+    public Guid? EventId { get; private init; }
+
+    public Guid? PatternId { get; private init; }
+
+    public CalendarEventsIcsExportQueryParams? Aggregate { get; private init; }
+
+    public static CalendarIcsExportScope ForCalendar(Guid calendarId) => new() { CalendarId = calendarId };
+
+    public static CalendarIcsExportScope ForEvent(Guid eventId) => new() { EventId = eventId };
+
+    public static CalendarIcsExportScope ForPattern(Guid patternId) => new() { PatternId = patternId };
+
+    public static CalendarIcsExportScope ForAggregate(CalendarEventsIcsExportQueryParams query) => new() { Aggregate = query };
+}
+
+/// <summary>
+/// ICS (RFC 5545) import/export for calendars (issues #330, #340, #516).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>Export</b> plans up front and streams (issue #516 §3). The planner projects keys and the few columns the collapse
+/// decision needs — never whole entities — and captures the ordered ids of the standalone rows and the series that
+/// collapse to one <c>RRULE</c>. It is the single definition of what an export contains, shared by the export and its
+/// summary. The writer then fetches rows in id batches of <see cref="ExportChunking.ChunkSize"/> and writes one
+/// <c>VEVENT</c> at a time, counting bytes; past the byte cap it throws <see cref="IcsExportSizeExceededException"/>
+/// and the controller aborts the connection. <b>No export opens a transaction</b> (B1): <c>OdysseyContext</c> uses
+/// <c>EnableRetryOnFailure</c>, so a retry would re-emit chunks already streamed, and an hour-long snapshot would stall
+/// InnoDB purge. An export therefore reflects its plan — a row deleted after planning is skipped, one edited is written
+/// as it stands when its batch is read, one created is not included (Non-Goal 7).
+/// </para>
+/// <para>
+/// A series collapses only when <see cref="CanExportAsRule"/> holds and every generated row sits in the series' own
+/// calendar (gap 3); otherwise its rows are written one by one, and an occurrence moved into another calendar is
+/// written in that calendar's file instead.
+/// </para>
+/// <para>
+/// <b>Import</b> streams too (§3 components 4–6): <see cref="IcsComponentSplitter"/> yields one <c>VEVENT</c> at a
+/// time, and events are applied in batches of <see cref="ImportBatchSize"/>, each resolved by keyed queries against the
+/// target calendar and saved in its own transaction. No state spans the whole file except the counters, the place
+/// cache and the occurrence budget; a UID seen again later resolves to the row the earlier component wrote, so the
+/// last component wins.
+/// </para>
+/// </remarks>
 public class CalendarIcsService
 {
-    // The three aggregate bounds — occurrences, fetched export rows and the export window — were
-    // compile-time constants here until issue #434 (keys 8, 9, 10). They are now read from the
-    // IImportExportLimitsLookup snapshot this service already takes once per request, and threaded
-    // into the static helpers below as parameters so one request can never observe two values.
+    /// <summary>Events applied per import batch (issue #516 §8.5): a constant, not a setting.</summary>
+    public const int ImportBatchSize = 500;
+
+    public const string CancelledUnknownReason = "Event is cancelled.";
+
+    public const string CancelledKeptReason =
+        "Event is cancelled in the file; kept, because removing cancelled events was not requested.";
+
+    public const string RecurrenceIdReason = "Modified occurrence of a series (RECURRENCE-ID) — not supported yet.";
+
     private const string SyntheticUidSuffix = "@odyssey.local";
     private const string UntitledEvent = "(untitled)";
+    private const string ProductId = "-//Odyssey//Calendar//EN";
+    private const int MaxLocationLength = 300;
 
     private readonly OdysseyContext context;
     private readonly ILogger<CalendarIcsService> logger;
@@ -65,105 +120,161 @@ public class CalendarIcsService
         this.timeProvider = timeProvider ?? TimeProvider.System;
     }
 
-    // The linked places' names for the export being built — filled only for a locations.read holder
-    // (issue #380 §8.4); empty otherwise, so every VEVENT carries the detail text alone. Never GEO.
-    private Dictionary<Guid, string> placeNames = [];
+    // ---------------------------------------------------------------- Export planning
 
-    private bool exportPlaceNames;
+    // The columns the collapse decision reads, and nothing else: a planner that loaded entities would hold every
+    // description of a 100,000-event calendar at once (A5).
+    private sealed record RowShape(
+        Guid Id, Guid? PatternId, Guid CalendarId, DateTime Start, DateTime End, bool IsAllDay,
+        string Title, string? Description, string? Location, Guid? LocationId);
 
-    private async Task LoadPlaceNamesAsync(bool includePlaceNames, IEnumerable<Guid?> ids, CancellationToken cancellationToken)
+    private readonly record struct PlannedSeries(Guid PatternId, Guid CalendarId);
+
+    private sealed record ExportPlan(
+        string FileName, bool Aggregate, List<PlannedSeries> Series, List<Guid> StandaloneIds, int OccurrenceCount,
+        long MaxBytes)
     {
-        foreach (var (id, name) in await IcsPlaces.NamesAsync(context, ids, includePlaceNames, cancellationToken))
-        {
-            placeNames[id] = name;
-        }
+        public int EventCount => Series.Count + StandaloneIds.Count;
     }
 
-    // ---------------------------------------------------------------- Export
-
-    /// <summary>Serializes a calendar's events to an ICS document. Returns null if the calendar
-    /// doesn't exist (the controller maps that to 404).</summary>
-    /// <param name="includePlaceNames">Whether the caller holds <c>locations.read</c> (issue #380 §8.4).</param>
-    public async Task<IcsExport?> ExportAsync(Guid calendarId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
+    /// <summary>
+    /// What <see cref="ExportStreamingAsync"/> would produce for <paramref name="scope"/>, refusing exactly where it
+    /// would: <see cref="ExportLimitExceededException"/> over the event cap, and the aggregate's window and fetch
+    /// bounds. Null when the named calendar, event or series does not exist. The byte cap is not judged: text size is
+    /// only known as it is written.
+    /// </summary>
+    public async Task<CalendarIcsExportSummary?> SummarizeExportAsync(
+        CalendarIcsExportScope scope, CancellationToken cancellationToken = default)
     {
-        var calendar = await context.Calendars.AsNoTracking()
-            .FirstOrDefaultAsync(c => c.CalendarId == calendarId, cancellationToken);
-        if (calendar is null)
+        var plan = await PlanAsync(scope, cancellationToken);
+        return plan is null
+            ? null
+            : new CalendarIcsExportSummary
+            {
+                EventCount = plan.EventCount,
+                SeriesCount = plan.Series.Count,
+                OccurrenceCount = plan.OccurrenceCount,
+            };
+    }
+
+    /// <summary>
+    /// Streams the export of <paramref name="scope"/> to <paramref name="output"/>. Returns false, having written
+    /// nothing, when the named calendar, event or series does not exist. <paramref name="onReady"/> is called exactly
+    /// once, with the file name and the planned <c>VEVENT</c> count, before the first byte — the caller's only chance
+    /// to set headers. Every refusal the summary makes happens before it.
+    /// </summary>
+    /// <param name="includePlaceNames">Whether the caller holds <c>locations.read</c> (issue #380 §8.4).</param>
+    /// <param name="userId">The caller, for the aggregate export's log line.</param>
+    public async Task<bool> ExportStreamingAsync(
+        CalendarIcsExportScope scope, Stream output, Action<string, int> onReady,
+        CancellationToken cancellationToken = default, bool includePlaceNames = false, string? userId = null)
+    {
+        var plan = await PlanAsync(scope, cancellationToken);
+        if (plan is null)
+        {
+            return false;
+        }
+
+        onReady(plan.FileName, plan.EventCount);
+        await WriteAsync(plan, output, includePlaceNames, cancellationToken);
+
+        if (plan.Aggregate)
+        {
+            logger.LogInformation(
+                "Aggregate calendar events .ics export by {UserId}: {EventCount} event(s) planned.",
+                userId, plan.EventCount);
+        }
+
+        return true;
+    }
+
+    private async Task<ExportPlan?> PlanAsync(CalendarIcsExportScope scope, CancellationToken cancellationToken)
+    {
+        var effectiveLimits = await limits.GetAsync(cancellationToken);
+        var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
+        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
+        var maxEvents = effectiveLimits.CalendarIcsMaxExportEvents;
+        var maxBytes = effectiveLimits.CalendarIcsMaxExportBytes;
+
+        ExportPlan? plan;
+        if (scope.CalendarId is { } calendarId)
+        {
+            plan = await PlanCalendarAsync(calendarId, exportDate, occurrenceCap, maxBytes, cancellationToken);
+        }
+        else if (scope.EventId is { } eventId)
+        {
+            var title = await context.CalendarEvents.AsNoTracking()
+                .Where(e => e.CalendarEventId == eventId)
+                .Select(e => e.Title)
+                .FirstOrDefaultAsync(cancellationToken);
+            plan = title is null
+                ? null
+                : new ExportPlan(BuildFileName(title, exportDate), false, [], [eventId], 1, maxBytes);
+        }
+        else if (scope.PatternId is { } patternId)
+        {
+            plan = await PlanPatternAsync(patternId, exportDate, occurrenceCap, maxBytes, cancellationToken);
+        }
+        else
+        {
+            plan = await PlanAggregateAsync(scope.Aggregate!, effectiveLimits, exportDate, occurrenceCap, maxBytes, cancellationToken);
+        }
+
+        if (plan is not null && maxEvents is { } max && plan.EventCount > max)
+        {
+            throw new ExportLimitExceededException(max, ExportLimitExceededException.CalendarEventsCode, "events");
+        }
+
+        return plan;
+    }
+
+    // At most four planning queries whatever the series count (§10, AC 19): the calendar, its series, every row of
+    // those series (streamed, one series held at a time), and the calendar's own row keys.
+    private async Task<ExportPlan?> PlanCalendarAsync(
+        Guid calendarId, DateTime exportDate, int occurrenceCap, long maxBytes, CancellationToken cancellationToken)
+    {
+        var name = await context.Calendars.AsNoTracking()
+            .Where(c => c.CalendarId == calendarId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (name is null)
         {
             return null;
         }
-
-        var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
-        var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
 
         var patterns = await context.RecurrencePatterns.AsNoTracking()
             .Where(p => p.CalendarId == calendarId)
-            .OrderBy(p => p.StartDateTime).ThenBy(p => p.RecurrencePatternId)
-            .ToListAsync(cancellationToken);
+            .ToDictionaryAsync(p => p.RecurrencePatternId, cancellationToken);
 
-        await LoadPlaceNamesAsync(includePlaceNames, patterns.Select(p => p.LocationId), cancellationToken);
-        foreach (var pattern in patterns)
+        var series = new List<(PlannedSeries Series, int Rows)>();
+        if (patterns.Count > 0)
         {
-            var rows = await context.CalendarEvents.AsNoTracking()
-                .Where(e => e.RecurrencePatternId == pattern.RecurrencePatternId)
-                .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
-                .ToListAsync(cancellationToken);
-            await LoadPlaceNamesAsync(includePlaceNames, rows.Select(r => r.LocationId), cancellationToken);
-
-            if (CanExportAsRule(pattern, rows, occurrenceCap))
-            {
-                ical.Events.Add(BuildRecurringVEvent(pattern));
-            }
-            else
-            {
-                foreach (var row in rows)
-                {
-                    ical.Events.Add(BuildStandaloneVEvent(row));
-                }
-            }
+            var rows = context.CalendarEvents.AsNoTracking()
+                .Where(e => e.RecurrencePatternId != null && e.RecurrencePattern!.CalendarId == calendarId);
+            series = await DecideSeriesAsync(rows, patterns, occurrenceCap, uniformIn: calendarId, cancellationToken);
         }
 
-        var standalone = await context.CalendarEvents.AsNoTracking()
-            .Where(e => e.CalendarId == calendarId && e.RecurrencePatternId == null)
+        var collapsed = series.Select(s => s.Series.PatternId).ToHashSet();
+        var keys = await context.CalendarEvents.AsNoTracking()
+            .Where(e => e.CalendarId == calendarId)
             .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
+            .Select(e => new { e.CalendarEventId, e.RecurrencePatternId })
             .ToListAsync(cancellationToken);
-        await LoadPlaceNamesAsync(includePlaceNames, standalone.Select(r => r.LocationId), cancellationToken);
+        var standalone = keys
+            .Where(k => k.RecurrencePatternId is not { } patternId || !collapsed.Contains(patternId))
+            .Select(k => k.CalendarEventId)
+            .ToList();
 
-        foreach (var row in standalone)
-        {
-            ical.Events.Add(BuildStandaloneVEvent(row));
-        }
-
-        var content = new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
-        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        return new IcsExport(BuildFileName(calendar.Name, exportDate), content);
+        var ordered = series
+            .OrderBy(s => patterns[s.Series.PatternId].StartDateTime).ThenBy(s => s.Series.PatternId)
+            .ToList();
+        return new ExportPlan(
+            BuildFileName(name, exportDate), false, ordered.Select(s => s.Series).ToList(), standalone,
+            ordered.Sum(s => s.Rows) + standalone.Count, maxBytes);
     }
 
-    /// <summary>Exports a single event as a standalone VEVENT (issue #340). Returns null if the event
-    /// doesn't exist (the controller maps that to 404).</summary>
-    public async Task<IcsExport?> ExportEventAsync(Guid eventId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
-    {
-        var row = await context.CalendarEvents.AsNoTracking()
-            .FirstOrDefaultAsync(e => e.CalendarEventId == eventId, cancellationToken);
-        if (row is null)
-        {
-            return null;
-        }
-
-        await LoadPlaceNamesAsync(includePlaceNames, [row.LocationId], cancellationToken);
-
-        var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
-        ical.Events.Add(BuildStandaloneVEvent(row));
-
-        var content = new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
-        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        return new IcsExport(BuildFileName(row.Title, exportDate), content);
-    }
-
-    /// <summary>Exports a recurring series as one RRULE VEVENT, or its documented per-occurrence
-    /// fallback (issue #340). Returns null if the pattern doesn't exist (the controller maps that to
-    /// 404).</summary>
-    public async Task<IcsExport?> ExportPatternAsync(Guid patternId, CancellationToken cancellationToken = default, bool includePlaceNames = false)
+    private async Task<ExportPlan?> PlanPatternAsync(
+        Guid patternId, DateTime exportDate, int occurrenceCap, long maxBytes, CancellationToken cancellationToken)
     {
         var pattern = await context.RecurrencePatterns.AsNoTracking()
             .FirstOrDefaultAsync(p => p.RecurrencePatternId == patternId, cancellationToken);
@@ -172,94 +283,133 @@ public class CalendarIcsService
             return null;
         }
 
-        var rows = await context.CalendarEvents.AsNoTracking()
-            .Where(e => e.RecurrencePatternId == patternId)
-            .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
+        var rows = await Shapes(context.CalendarEvents.AsNoTracking().Where(e => e.RecurrencePatternId == patternId))
+            .OrderBy(r => r.Start).ThenBy(r => r.Id)
             .ToListAsync(cancellationToken);
-        await LoadPlaceNamesAsync(includePlaceNames, rows.Select(r => r.LocationId).Append(pattern.LocationId), cancellationToken);
+        var fileName = BuildFileName(pattern.Title, exportDate);
 
-        var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
-        var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
-        if (CanExportAsRule(pattern, rows, occurrenceCap))
+        return CanExportAsRule(pattern, rows, occurrenceCap) && rows.All(r => r.CalendarId == pattern.CalendarId)
+            ? new ExportPlan(fileName, false, [new PlannedSeries(patternId, pattern.CalendarId)], [], rows.Count, maxBytes)
+            : new ExportPlan(fileName, false, [], rows.Select(r => r.Id).ToList(), rows.Count, maxBytes);
+    }
+
+    private async Task<ExportPlan> PlanAggregateAsync(
+        CalendarEventsIcsExportQueryParams query, ImportExportLimits effectiveLimits, DateTime exportDate,
+        int occurrenceCap, long maxBytes, CancellationToken cancellationToken)
+    {
+        var (from, to) = ValidateAggregateWindow(query.From, query.To, effectiveLimits.CalendarIcsMaxAggregateExportWindowDays);
+        var searchTerm = ListQuery.NormalizeSearch(query.Search);
+        var calendarIds = query.CalendarIds is { Length: > 0 } ids ? ids.Distinct().ToList() : null;
+        var fileName = $"{exportDate:yyyyMMdd}_calendar-events.ics";
+        var rowQuery = BuildAggregateRowQuery(calendarIds, from, to, searchTerm);
+        var maxEvents = effectiveLimits.CalendarIcsMaxExportEvents;
+
+        // A filtered request (From/To and/or Search) never collapses a series: every matched row is its own VEVENT.
+        // The id read is bounded to max+1 when a cap is set, so an over-cap export is refused without a full scan.
+        if (from is not null || searchTerm is not null)
         {
-            ical.Events.Add(BuildRecurringVEvent(pattern));
+            var orderedIds = rowQuery
+                .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
+                .Select(e => e.CalendarEventId);
+            var matched = maxEvents is { } max
+                ? await orderedIds.Take(max + 1).ToListAsync(cancellationToken)
+                : await orderedIds.ToListAsync(cancellationToken);
+            return new ExportPlan(fileName, true, [], matched, matched.Count, maxBytes);
         }
-        else
+
+        // The unfiltered aggregate stays bounded by CalendarIcsMaxAggregateExportRows (Non-Goal 4): the collapse
+        // decision generates every series' occurrences, which is CPU the row cap bounds.
+        var maxRows = effectiveLimits.CalendarIcsMaxAggregateExportRows;
+        if (await rowQuery.Take(maxRows + 1).CountAsync(cancellationToken) > maxRows)
         {
-            foreach (var row in rows)
+            throw new DomainValidationException(
+                $"The export would need to fetch more than {maxRows} events — narrow the calendar selection.");
+        }
+
+        var keys = await rowQuery
+            .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
+            .Select(e => new { e.CalendarEventId, e.RecurrencePatternId })
+            .ToListAsync(cancellationToken);
+        var patternIds = keys.Where(k => k.RecurrencePatternId is not null).Select(k => k.RecurrencePatternId!.Value).Distinct().ToList();
+        var series = new List<(PlannedSeries Series, int Rows)>();
+        if (patternIds.Count > 0)
+        {
+            var patterns = await context.RecurrencePatterns.AsNoTracking()
+                .Where(p => patternIds.Contains(p.RecurrencePatternId))
+                .ToDictionaryAsync(p => p.RecurrencePatternId, cancellationToken);
+            series = await DecideSeriesAsync(
+                rowQuery.Where(e => e.RecurrencePatternId != null), patterns, occurrenceCap, uniformIn: null, cancellationToken);
+        }
+
+        // In the order of each series' first row, so the collapsed blocks keep the read order the file always had.
+        var firstRow = new Dictionary<Guid, int>();
+        for (var i = 0; i < keys.Count; i++)
+        {
+            if (keys[i].RecurrencePatternId is { } patternId)
             {
-                ical.Events.Add(BuildStandaloneVEvent(row));
+                firstRow.TryAdd(patternId, i);
             }
         }
 
-        var content = new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
-        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        return new IcsExport(BuildFileName(pattern.Title, exportDate), content);
+        var collapsed = series.Select(s => s.Series.PatternId).ToHashSet();
+        var standalone = keys
+            .Where(k => k.RecurrencePatternId is not { } patternId || !collapsed.Contains(patternId))
+            .Select(k => k.CalendarEventId)
+            .ToList();
+        var ordered = series.OrderBy(s => firstRow[s.Series.PatternId]).ToList();
+        return new ExportPlan(
+            fileName, true, ordered.Select(s => s.Series).ToList(), standalone, ordered.Sum(s => s.Rows) + standalone.Count,
+            maxBytes);
     }
 
-    /// <summary>
-    /// Exports every <see cref="ContextCalendarEvent"/> the caller can read, across every calendar, as
-    /// one multi-VEVENT .ics file — optionally filtered by date range, calendar, and/or search term
-    /// (issue #340). Every VEVENT carries a synthesized UID (never the row's <c>ExternalUid</c>, which
-    /// is only unique within its own calendar) and a <c>Categories</c> value naming its source
-    /// calendar.
-    ///
-    /// A filtered request (From/To and/or Search present) never collapses a series to a single RRULE —
-    /// it flattens every matched row individually, bounded by the configured
-    /// <c>CalendarIcsMaxExportEvents</c> cap (issue #343 §6). A no-filter
-    /// request (CalendarIds may still be present) fetches rows by their own CalendarId first — not by
-    /// selecting "patterns in scope" and fetching only their rows — so a CalendarId filter correctly
-    /// includes an occurrence moved into scope and excludes one moved out, in both directions; a
-    /// pattern's rows only collapse to one RRULE VEVENT when they exactly satisfy the existing
-    /// <see cref="CanExportAsRule"/> AND every fetched row for that pattern shares one identical
-    /// CalendarId (CanExportAsRule alone never compares CalendarId, so a relocated-but-otherwise-intact
-    /// row could otherwise collapse under the wrong calendar's attribution).
-    /// </summary>
-    /// <summary>
-    /// Streams the aggregate export directly to <paramref name="output"/> (issue #343 §5 Goal 8).
-    /// <paramref name="onReady"/> is called exactly once, with the file name and the count of VEVENTs
-    /// the response will contain, after the pre-fetch/precomputed count is known but before any byte is
-    /// written — the caller's only chance to set response headers (including
-    /// <c>X-Odyssey-Export-Rows</c>). The <b>filtered</b> path (never collapses, 1:1 rows→VEVENTs) is
-    /// chunked; the <b>no-filter aggregate</b> path keeps its existing fully-materialized shape — see
-    /// the class doc and issue #343 §5/§6 for why a row-keyset chunk can't preserve its per-series
-    /// collapse step.
-    /// </summary>
-    public async Task ExportAggregateStreamingAsync(
-        CalendarEventsIcsExportQueryParams query, string userId, Stream output, Action<string, int> onReady,
-        CancellationToken cancellationToken = default, bool includePlaceNames = false)
+    // Streams every row of the given series, grouped by series and ordered within each, holding one series at a time.
+    // A series collapses when CanExportAsRule holds and its rows share one calendar — the series' own one when
+    // uniformIn names it (the calendar export, gap 3), else any one (the aggregate's HasUniformCalendarId rule), under
+    // which it is then attributed.
+    private async Task<List<(PlannedSeries Series, int Rows)>> DecideSeriesAsync(
+        IQueryable<ContextCalendarEvent> seriesRows, IReadOnlyDictionary<Guid, RecurrencePattern> patterns, int occurrenceCap,
+        Guid? uniformIn, CancellationToken cancellationToken)
     {
-        exportPlaceNames = includePlaceNames;
-        var effectiveLimits = await limits.GetAsync(cancellationToken);
-        var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
-        var (from, to) = ValidateAggregateWindow(
-            query.From, query.To, effectiveLimits.CalendarIcsMaxAggregateExportWindowDays);
-        var searchTerm = ListQuery.NormalizeSearch(query.Search);
-        var calendarIds = query.CalendarIds is { Length: > 0 } ids ? ids.Distinct().ToList() : null;
-        var isFiltered = from is not null || searchTerm is not null;
-        var maxExportEvents = effectiveLimits.CalendarIcsMaxExportEvents;
-        var maxExportBytes = effectiveLimits.CalendarIcsMaxExportBytes;
-        var exportDate = timeProvider.GetUtcNow().UtcDateTime;
-        var fileName = $"{exportDate:yyyyMMdd}_calendar-events.ics";
+        var decided = new List<(PlannedSeries Series, int Rows)>();
+        var group = new List<RowShape>();
 
-        int matchedRowCount;
-        if (isFiltered)
+        void Decide()
         {
-            matchedRowCount = await ExportAggregateFilteredStreamingAsync(
-                output, count => onReady(fileName, count), calendarIds, from, to, searchTerm, maxExportEvents,
-                maxExportBytes, cancellationToken);
-        }
-        else
-        {
-            matchedRowCount = await ExportAggregateUnfilteredStreamingAsync(
-                output, count => onReady(fileName, count), calendarIds, maxExportEvents, maxExportBytes,
-                effectiveLimits.CalendarIcsMaxAggregateExportRows, occurrenceCap, cancellationToken);
+            if (group.Count == 0 || !patterns.TryGetValue(group[0].PatternId!.Value, out var pattern))
+            {
+                return;
+            }
+
+            var calendarId = group[0].CalendarId;
+            if ((uniformIn is null || calendarId == uniformIn) && group.All(r => r.CalendarId == calendarId)
+                && CanExportAsRule(pattern, group, occurrenceCap))
+            {
+                decided.Add((new PlannedSeries(pattern.RecurrencePatternId, calendarId), group.Count));
+            }
         }
 
-        logger.LogInformation(
-            "Aggregate calendar events .ics export by {UserId}: {MatchedRowCount} matched row(s).",
-            userId, matchedRowCount);
+        var stream = Shapes(seriesRows)
+            .OrderBy(r => r.PatternId).ThenBy(r => r.Start).ThenBy(r => r.Id)
+            .AsAsyncEnumerable();
+        await foreach (var row in stream.WithCancellation(cancellationToken))
+        {
+            if (group.Count > 0 && group[0].PatternId != row.PatternId)
+            {
+                Decide();
+                group.Clear();
+            }
+
+            group.Add(row);
+        }
+
+        Decide();
+        return decided;
     }
+
+    private static IQueryable<RowShape> Shapes(IQueryable<ContextCalendarEvent> rows) =>
+        rows.Select(e => new RowShape(
+            e.CalendarEventId, e.RecurrencePatternId, e.CalendarId, e.StartDateTime, e.EndDateTime, e.IsAllDay,
+            e.Title, e.Description, e.Location, e.LocationId));
 
     private static (DateTime? From, DateTime? To) ValidateAggregateWindow(
         DateTime? from, DateTime? to, int maxAggregateExportWindowDays)
@@ -286,210 +436,9 @@ public class CalendarIcsService
         return (from, to);
     }
 
-    // Filtered export (From/To and/or Search present): never collapses, so matched rows and output
-    // VEVENTs are 1:1 — bounded and chunked (issue #343 §5 Goal 8), so peak memory is proportional to
-    // the chunk size, not the matched row count.
-    //
-    // No explicit transaction: OdysseyContext enables EnableRetryOnFailure() in production, which
-    // forbids a bare Database.BeginTransactionAsync unless the ENTIRE unit of work (begin, every
-    // query, commit) runs inside one CreateExecutionStrategy().ExecuteAsync call (verified against
-    // real MariaDB, not just from the docs) — that doesn't compose with a chunked read that yields
-    // output as it goes (a retry would re-emit chunks already streamed to the client). Instead, the
-    // ordered CalendarEventId set is captured in one cheap up-front read (bounded to max+1 when a cap
-    // is configured, so an over-cap export still rejects without a full scan), and each chunk is then
-    // fetched independently by a fixed id batch — see ExportChunking.ReorderToSnapshot for the
-    // consistency trade-off this makes relative to the RepeatableRead snapshot this replaced (PR #403
-    // review fix).
-    private async Task<int> ExportAggregateFilteredStreamingAsync(
-        Stream output, Action<int> onCountKnown, List<Guid>? calendarIds, DateTime? from, DateTime? to, string? searchTerm,
-        int? maxExportEvents, long maxExportBytes, CancellationToken cancellationToken)
-    {
-        var baseQuery = BuildAggregateRowQuery(calendarIds, from, to, searchTerm);
-        var orderedIdsQuery = baseQuery
-            .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId)
-            .Select(e => e.CalendarEventId);
-
-        List<Guid> orderedIds;
-        int count;
-        if (maxExportEvents is { } max)
-        {
-            orderedIds = await orderedIdsQuery.Take(max + 1).ToListAsync(cancellationToken);
-            if (orderedIds.Count > max)
-            {
-                throw new DomainValidationException(
-                    $"The filtered export would exceed {max} events — narrow the date range, calendar selection, or search term.");
-            }
-
-            count = orderedIds.Count;
-        }
-        else
-        {
-            orderedIds = await orderedIdsQuery.ToListAsync(cancellationToken);
-            count = orderedIds.Count;
-        }
-
-        onCountKnown(count);
-
-        var (head, tail) = IcsChunkSerializer.BuildEnvelope("-//Odyssey//Calendar//EN");
-        await IcsChunkSerializer.WriteAsync(output, head, cancellationToken);
-        var writtenBytes = (long)Encoding.UTF8.GetByteCount(head);
-
-        var written = 0;
-        foreach (var idBatch in orderedIds.Chunk(ExportChunking.ChunkSize))
-        {
-            var rows = await baseQuery.Where(e => idBatch.Contains(e.CalendarEventId)).ToListAsync(cancellationToken);
-            var ordered = ExportChunking.ReorderToSnapshot(idBatch, rows, e => e.CalendarEventId);
-            if (ordered.Count == 0)
-            {
-                continue; // every id in this batch was deleted between the snapshot and this fetch
-            }
-
-            var calendarNames = await GetCalendarNamesAsync(ordered.Select(r => r.CalendarId), cancellationToken);
-            await LoadPlaceNamesAsync(exportPlaceNames, ordered.Select(r => r.LocationId), cancellationToken);
-            var chunk = new IcalCalendar();
-            foreach (var row in ordered)
-            {
-                chunk.Events.Add(BuildAggregateStandaloneVEvent(row, calendarNames[row.CalendarId]));
-            }
-
-            var chunkText = IcsChunkSerializer.SerializeComponents(chunk);
-            var chunkBytes = Encoding.UTF8.GetByteCount(chunkText);
-
-            // The byte-size cap can't be enforced up front like the row-count cap above (total output
-            // size isn't knowable until it's generated) — once writing this chunk would cross it, stop
-            // without writing it. The response then has fewer rows than X-Odyssey-Export-Rows already
-            // promised, which the API client's existing completeness check treats as a failed download.
-            if (writtenBytes + chunkBytes > maxExportBytes)
-            {
-                logger.LogWarning(
-                    "Filtered calendar events .ics export truncated at {WrittenBytes} bytes (cap {MaxBytes}); " +
-                    "{WrittenRows}/{TotalRows} events delivered.",
-                    writtenBytes, maxExportBytes, written, count);
-                break;
-            }
-
-            await IcsChunkSerializer.WriteAsync(output, chunkText, cancellationToken);
-            writtenBytes += chunkBytes;
-            written += ordered.Count;
-        }
-
-        await IcsChunkSerializer.WriteAsync(output, tail, cancellationToken);
-        return written;
-    }
-
-    // No-filter export (CalendarIds may still be present): row-first fetch, then a referenced-only
-    // pattern lookup and a per-pattern collapse decision, computed entirely before any VEVENT is built.
-    // Exempted from Goal 8 chunking (issue #343 §5/§6): the per-series collapse decision needs a
-    // pattern's COMPLETE row set, which a row-keyset chunk can't guarantee stays together, so this path
-    // keeps its existing fully-materialized shape and bounded fetch guard
-    // (CalendarIcsMaxAggregateExportRows).
-    private async Task<int> ExportAggregateUnfilteredStreamingAsync(
-        Stream output, Action<int> onCountKnown, List<Guid>? calendarIds, int? maxExportEvents, long maxExportBytes,
-        int maxAggregateExportRows, int maxGeneratedOccurrences, CancellationToken cancellationToken)
-    {
-        var ical = new IcalCalendar { ProductId = "-//Odyssey//Calendar//EN" };
-        var rowQuery = BuildAggregateRowQuery(calendarIds, from: null, to: null, searchTerm: null);
-
-        var boundedFetchCount = await rowQuery.Take(maxAggregateExportRows + 1).CountAsync(cancellationToken);
-        if (boundedFetchCount > maxAggregateExportRows)
-        {
-            throw new DomainValidationException(
-                $"The export would need to fetch more than {maxAggregateExportRows} events — narrow the calendar selection.");
-        }
-
-        var rows = await rowQuery.OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId).ToListAsync(cancellationToken);
-
-        var standaloneRows = rows.Where(r => r.RecurrencePatternId is null).ToList();
-        var patternGroups = rows.Where(r => r.RecurrencePatternId is not null)
-            .GroupBy(r => r.RecurrencePatternId!.Value)
-            .ToList();
-
-        var patternIds = patternGroups.Select(g => g.Key).ToList();
-        var patterns = patternIds.Count == 0
-            ? new Dictionary<Guid, RecurrencePattern>()
-            : await context.RecurrencePatterns.AsNoTracking()
-                .Where(p => patternIds.Contains(p.RecurrencePatternId))
-                .ToDictionaryAsync(p => p.RecurrencePatternId, cancellationToken);
-
-        var decisions = new List<(RecurrencePattern Pattern, List<ContextCalendarEvent> Rows, bool Collapse)>();
-        var eventualCount = standaloneRows.Count;
-        foreach (var group in patternGroups)
-        {
-            var groupRows = group.OrderBy(r => r.StartDateTime).ThenBy(r => r.CalendarEventId).ToList();
-            if (!patterns.TryGetValue(group.Key, out var pattern))
-            {
-                eventualCount += groupRows.Count; // pattern missing (shouldn't happen via FK) — flatten
-                decisions.Add((null!, groupRows, false));
-                continue;
-            }
-
-            var collapse = CanExportAsRule(pattern, groupRows, maxGeneratedOccurrences)
-                && HasUniformCalendarId(groupRows);
-            decisions.Add((pattern, groupRows, collapse));
-            eventualCount += collapse ? 1 : groupRows.Count;
-        }
-
-        if (maxExportEvents is { } maxEvents && eventualCount > maxEvents)
-        {
-            throw new DomainValidationException(
-                $"The export would produce more than {maxEvents} events — narrow the calendar selection.");
-        }
-
-        var calendarIdsNeeded = standaloneRows.Select(r => r.CalendarId)
-            .Concat(decisions.SelectMany(d => d.Rows.Select(r => r.CalendarId)));
-        var calendarNames = await GetCalendarNamesAsync(calendarIdsNeeded, cancellationToken);
-        await LoadPlaceNamesAsync(
-            exportPlaceNames,
-            rows.Select(r => r.LocationId).Concat(patterns.Values.Select(p => p.LocationId)),
-            cancellationToken);
-
-        foreach (var (pattern, groupRows, collapse) in decisions)
-        {
-            if (collapse)
-            {
-                ical.Events.Add(BuildAggregateRecurringVEvent(pattern, calendarNames[groupRows[0].CalendarId]));
-            }
-            else
-            {
-                foreach (var row in groupRows)
-                {
-                    ical.Events.Add(BuildAggregateStandaloneVEvent(row, calendarNames[row.CalendarId]));
-                }
-            }
-        }
-
-        foreach (var row in standaloneRows)
-        {
-            ical.Events.Add(BuildAggregateStandaloneVEvent(row, calendarNames[row.CalendarId]));
-        }
-
-        // Not chunked (see the class doc above), so — unlike the filtered/streamed path's byte cap,
-        // which can only be enforced by truncating mid-stream — the whole document is already built
-        // in memory at this point, and no header has been sent yet. A too-large result can therefore
-        // still be rejected cleanly with a 400, the same way the row-count caps above are, rather than
-        // truncated.
-        var content = new CalendarSerializer(ical).SerializeToString() ?? string.Empty;
-        var contentBytes = Encoding.UTF8.GetByteCount(content);
-        if (contentBytes > maxExportBytes)
-        {
-            throw new DomainValidationException(
-                $"The export would produce a {contentBytes / (1024 * 1024)} MB file, which exceeds the "
-                + $"configured maximum of {maxExportBytes / (1024 * 1024)} MB. Narrow the calendar selection.");
-        }
-
-        // eventualCount (events emitted after collapse), not the raw row count — the completeness
-        // header must match what the body actually contains (issue #343 §11).
-        onCountKnown(eventualCount);
-        await IcsChunkSerializer.WriteAsync(output, content, cancellationToken);
-
-        return rows.Count;
-    }
-
     private IQueryable<ContextCalendarEvent> BuildAggregateRowQuery(
         List<Guid>? calendarIds, DateTime? from, DateTime? to, string? searchTerm)
     {
-        // Export-only, so the rows are never written back: skip the change tracker for what are the
-        // largest result sets in the module.
         var q = context.CalendarEvents.AsNoTracking();
 
         if (calendarIds is not null)
@@ -512,31 +461,11 @@ public class CalendarIcsService
         return q;
     }
 
-    // CanExportAsRule never compares CalendarId, so a series where every fetched row still passes it
-    // but the rows don't all share the same CalendarId (an occurrence individually relocated) must not
-    // collapse — it would misattribute the whole RRULE and its Categories to the wrong calendar.
-    private static bool HasUniformCalendarId(List<ContextCalendarEvent> rows) =>
-        rows.Select(r => r.CalendarId).Distinct().Count() == 1;
-
-    private async Task<Dictionary<Guid, string>> GetCalendarNamesAsync(IEnumerable<Guid> calendarIds, CancellationToken cancellationToken)
-    {
-        var ids = calendarIds.Distinct().ToList();
-        if (ids.Count == 0)
-        {
-            return new Dictionary<Guid, string>();
-        }
-
-        return await context.Calendars
-            .Where(c => ids.Contains(c.CalendarId))
-            .ToDictionaryAsync(c => c.CalendarId, c => c.Name, cancellationToken);
-    }
-
     // A stored series exports as a single RRULE VEVENT only when its actual generated rows exactly
     // match — on every field — what a strict RFC 5545 reader would compute for the same rule. Any
     // clamped occurrence, individual edit, or deletion breaks the match and forces a per-occurrence
     // flatten, so the exported file never asserts an RRULE another calendar app would read differently.
-    private static bool CanExportAsRule(
-        RecurrencePattern pattern, List<ContextCalendarEvent> rows, int maxGeneratedOccurrences)
+    private static bool CanExportAsRule(RecurrencePattern pattern, List<RowShape> rows, int maxGeneratedOccurrences)
     {
         List<(DateTime Start, DateTime End)>? literal;
         try
@@ -547,11 +476,8 @@ public class CalendarIcsService
         {
             // A degenerate rule whose requested day never exists (e.g. Yearly, MonthOfYear=2,
             // DayOfMonth=30 — Feb 30 never occurs) climbs years indefinitely without ever tripping
-            // GenerateRfcLiteral's own step guard (every step is skipped as "day doesn't exist", so
-            // the count/end-date break is never reached) until DateTime.DaysInMonth's year argument
-            // exceeds year 9999 (security review, PR #345 F1). Un-exportable-as-RRULE is exactly what
-            // this method already returns false for in every other unrepresentable case — flattening
-            // is the documented, safe fallback (the pattern's stored rows are unaffected either way).
+            // GenerateRfcLiteral's own step guard until DateTime.DaysInMonth's year argument exceeds
+            // year 9999 (security review, PR #345 F1). Flattening is the documented, safe fallback.
             return false;
         }
 
@@ -564,7 +490,7 @@ public class CalendarIcsService
         {
             var row = rows[i];
             var (start, end) = literal[i];
-            if (row.StartDateTime != start || row.EndDateTime != end || row.IsAllDay != pattern.IsAllDay
+            if (row.Start != start || row.End != end || row.IsAllDay != pattern.IsAllDay
                 || row.Title != pattern.Title || row.Description != pattern.Description || row.Location != pattern.Location
                 || row.LocationId != pattern.LocationId)
             {
@@ -575,60 +501,136 @@ public class CalendarIcsService
         return true;
     }
 
-    private IcalEvent BuildRecurringVEvent(RecurrencePattern pattern)
+    // ---------------------------------------------------------------- Export writing
+
+    private async Task WriteAsync(ExportPlan plan, Stream output, bool includePlaceNames, CancellationToken cancellationToken)
+    {
+        var stamp = new CalDateTime(timeProvider.GetUtcNow().UtcDateTime, hasTime: true);
+        var (head, tail) = IcsChunkSerializer.BuildEnvelope(ProductId);
+        await IcsChunkSerializer.WriteAsync(output, head, cancellationToken);
+        var writtenBytes = (long)Encoding.UTF8.GetByteCount(head) + Encoding.UTF8.GetByteCount(tail);
+        var written = 0;
+
+        async Task EmitAsync(IcalEvent ev)
+        {
+            var calendar = new IcalCalendar();
+            calendar.Events.Add(ev);
+            var text = IcsChunkSerializer.SerializeComponents(calendar);
+            var bytes = Encoding.UTF8.GetByteCount(text);
+            if (writtenBytes + bytes > plan.MaxBytes)
+            {
+                logger.LogWarning(
+                    "Calendar .ics export stopped at {WrittenBytes} bytes (cap {MaxBytes}); {WrittenRows}/{TotalRows} events delivered.",
+                    writtenBytes, plan.MaxBytes, written, plan.EventCount);
+                throw new IcsExportSizeExceededException(
+                    $"The export grew past the {plan.MaxBytes / (1024 * 1024)} MB export limit while it was being written.");
+            }
+
+            await IcsChunkSerializer.WriteAsync(output, text, cancellationToken);
+            writtenBytes += bytes;
+            written++;
+        }
+
+        foreach (var batch in plan.Series.Chunk(ExportChunking.ChunkSize))
+        {
+            var ids = batch.Select(s => s.PatternId).ToList();
+            var fetched = await context.RecurrencePatterns.AsNoTracking()
+                .Where(p => ids.Contains(p.RecurrencePatternId))
+                .ToListAsync(cancellationToken);
+            var patterns = ExportChunking.ReorderToSnapshot(ids, fetched, p => p.RecurrencePatternId);
+            if (patterns.Count == 0)
+            {
+                continue; // every series in this batch was deleted between the plan and this fetch
+            }
+
+            var names = await IcsPlaces.NamesAsync(context, patterns.Select(p => p.LocationId), includePlaceNames, cancellationToken);
+            var calendars = plan.Aggregate
+                ? await GetCalendarNamesAsync(batch.Select(s => s.CalendarId), cancellationToken)
+                : null;
+            var attributed = batch.ToDictionary(s => s.PatternId, s => s.CalendarId);
+            foreach (var pattern in patterns)
+            {
+                var uid = plan.Aggregate || pattern.ExternalUid is null
+                    ? $"{pattern.RecurrencePatternId}{SyntheticUidSuffix}"
+                    : pattern.ExternalUid;
+                var ev = BuildVEvent(
+                    uid, pattern.Title, pattern.Description, pattern.LocationId, pattern.Location, pattern.StartDateTime,
+                    pattern.EndDateTime, pattern.IsAllDay, pattern.CreatedAt, pattern.UpdatedAt, stamp, names,
+                    calendars?.GetValueOrDefault(attributed[pattern.RecurrencePatternId]));
+                ev.RecurrenceRule = BuildRRule(pattern);
+                await EmitAsync(ev);
+            }
+        }
+
+        foreach (var batch in plan.StandaloneIds.Chunk(ExportChunking.ChunkSize))
+        {
+            var fetched = await context.CalendarEvents.AsNoTracking()
+                .Where(e => batch.Contains(e.CalendarEventId))
+                .ToListAsync(cancellationToken);
+            var rows = ExportChunking.ReorderToSnapshot(batch, fetched, e => e.CalendarEventId);
+            if (rows.Count == 0)
+            {
+                continue; // every id in this batch was deleted between the plan and this fetch
+            }
+
+            var names = await IcsPlaces.NamesAsync(context, rows.Select(r => r.LocationId), includePlaceNames, cancellationToken);
+            var calendars = plan.Aggregate
+                ? await GetCalendarNamesAsync(rows.Select(r => r.CalendarId), cancellationToken)
+                : null;
+            foreach (var row in rows)
+            {
+                // The aggregate always synthesizes the UID: ExternalUid is only unique within its own calendar.
+                var uid = plan.Aggregate || row.ExternalUid is null
+                    ? $"{row.CalendarEventId}{SyntheticUidSuffix}"
+                    : row.ExternalUid;
+                await EmitAsync(BuildVEvent(
+                    uid, row.Title, row.Description, row.LocationId, row.Location, row.StartDateTime, row.EndDateTime,
+                    row.IsAllDay, row.CreatedAt, row.UpdatedAt, stamp, names, calendars?.GetValueOrDefault(row.CalendarId)));
+            }
+        }
+
+        await IcsChunkSerializer.WriteAsync(output, tail, cancellationToken);
+    }
+
+    // One builder for every VEVENT (standalone, recurring and aggregate), so all of them carry the place codec,
+    // STATUS and the stamps (issue #516 §8.3, §8.4). Categories names the source calendar on the aggregate only.
+    private static IcalEvent BuildVEvent(
+        string uid, string title, string? description, Guid? locationId, string? detail, DateTime start, DateTime end,
+        bool isAllDay, DateTime createdAt, DateTime updatedAt, CalDateTime stamp, IReadOnlyDictionary<Guid, string> placeNames,
+        string? calendarName)
     {
         var ev = new IcalEvent
         {
-            Uid = pattern.ExternalUid ?? $"{pattern.RecurrencePatternId}{SyntheticUidSuffix}",
-            Summary = pattern.Title,
-            Description = pattern.Description,
-            Location = IcsPlaces.ExportText(pattern.LocationId, pattern.Location, placeNames),
-            Start = ToCalDateTime(pattern.StartDateTime, pattern.IsAllDay),
-            End = ToCalDateTime(pattern.EndDateTime, pattern.IsAllDay),
+            Uid = uid,
+            Summary = title,
+            Description = description,
+            Start = ToCalDateTime(start, isAllDay),
+            End = ToCalDateTime(end, isAllDay),
+            Status = "CONFIRMED",
+            Created = new CalDateTime(DateTime.SpecifyKind(createdAt, DateTimeKind.Utc), hasTime: true),
+            LastModified = new CalDateTime(DateTime.SpecifyKind(updatedAt, DateTimeKind.Utc), hasTime: true),
+            DtStamp = stamp,
         };
-        ev.RecurrenceRule = BuildRRule(pattern);
+        IcsPlaces.WriteEventPlace(ev, locationId, detail, placeNames);
+        if (calendarName is not null)
+        {
+            ev.Categories = [calendarName];
+        }
+
         return ev;
     }
 
-    private IcalEvent BuildStandaloneVEvent(ContextCalendarEvent row) => new()
+    private async Task<Dictionary<Guid, string>> GetCalendarNamesAsync(IEnumerable<Guid> calendarIds, CancellationToken cancellationToken)
     {
-        Uid = row.ExternalUid ?? $"{row.CalendarEventId}{SyntheticUidSuffix}",
-        Summary = row.Title,
-        Description = row.Description,
-        Location = IcsPlaces.ExportText(row.LocationId, row.Location, placeNames),
-        Start = ToCalDateTime(row.StartDateTime, row.IsAllDay),
-        End = ToCalDateTime(row.EndDateTime, row.IsAllDay),
-    };
-
-    // Aggregate-export builders (issue #340): unlike BuildStandaloneVEvent/BuildRecurringVEvent, the
-    // UID is ALWAYS synthesized (never ExternalUid, which is only unique within its own calendar — see
-    // ExportAggregateAsync's XML doc), and Categories names the source calendar so a caller can tell
-    // events from different calendars apart in the merged file.
-    private IcalEvent BuildAggregateStandaloneVEvent(ContextCalendarEvent row, string calendarName) => new()
-    {
-        Uid = $"{row.CalendarEventId}{SyntheticUidSuffix}",
-        Summary = row.Title,
-        Description = row.Description,
-        Location = IcsPlaces.ExportText(row.LocationId, row.Location, placeNames),
-        Start = ToCalDateTime(row.StartDateTime, row.IsAllDay),
-        End = ToCalDateTime(row.EndDateTime, row.IsAllDay),
-        Categories = [calendarName],
-    };
-
-    private IcalEvent BuildAggregateRecurringVEvent(RecurrencePattern pattern, string calendarName)
-    {
-        var ev = new IcalEvent
+        var ids = calendarIds.Distinct().ToList();
+        if (ids.Count == 0)
         {
-            Uid = $"{pattern.RecurrencePatternId}{SyntheticUidSuffix}",
-            Summary = pattern.Title,
-            Description = pattern.Description,
-            Location = IcsPlaces.ExportText(pattern.LocationId, pattern.Location, placeNames),
-            Start = ToCalDateTime(pattern.StartDateTime, pattern.IsAllDay),
-            End = ToCalDateTime(pattern.EndDateTime, pattern.IsAllDay),
-            Categories = [calendarName],
-        };
-        ev.RecurrenceRule = BuildRRule(pattern);
-        return ev;
+            return new Dictionary<Guid, string>();
+        }
+
+        return await context.Calendars.AsNoTracking()
+            .Where(c => ids.Contains(c.CalendarId))
+            .ToDictionaryAsync(c => c.CalendarId, c => c.Name, cancellationToken);
     }
 
     private static IcalRecurrencePattern BuildRRule(RecurrencePattern pattern)
@@ -694,266 +696,214 @@ public class CalendarIcsService
 
     // ---------------------------------------------------------------- Import
 
+    private enum ItemKind
+    {
+        Standalone,
+        Series,
+        Cancelled,
+    }
+
+    // One VEVENT that passed validation, ready for its batch to resolve and apply.
+    private sealed class ImportItem
+    {
+        public required ItemKind Kind { get; init; }
+
+        public required string SampleTitle { get; init; }
+
+        public required string? Uid { get; init; }
+
+        public bool HasRule { get; init; }
+
+        public string Title { get; init; } = string.Empty;
+
+        public string? Description { get; init; }
+
+        public ImportedPlace Place { get; init; } = new(null, null, false);
+
+        public DateTime Start { get; init; }
+
+        public DateTime End { get; init; }
+
+        public bool IsAllDay { get; init; }
+
+        public RecurrencePattern? Pattern { get; init; }
+
+        public List<(DateTime Start, DateTime End)> Occurrences { get; init; } = [];
+    }
+
+    // What spans the whole import: the caps read once, the counters, the place cache and the occurrence budget. Nothing
+    // here grows with the file (N1).
+    private sealed class ImportRun
+    {
+        public required Guid CalendarId { get; init; }
+
+        public required string UserId { get; init; }
+
+        public required DateTime Now { get; init; }
+
+        public required IcsPlaces Places { get; init; }
+
+        public required ImportSkipCollector Skipped { get; init; }
+
+        public required bool AllowRemovals { get; init; }
+
+        public required int MaxAggregateOccurrences { get; init; }
+
+        public required int MaxEventDurationDays { get; init; }
+
+        public required int MaxGeneratedOccurrences { get; init; }
+
+        public required int MaxSamples { get; init; }
+
+        public int Imported { get; set; }
+
+        public int Updated { get; set; }
+
+        public int Removed { get; set; }
+
+        public List<string> RemovedSamples { get; } = [];
+
+        public bool AnySeriesRegenerated { get; set; }
+
+        public int Aggregate { get; set; }
+
+        public int CommittedBatches { get; set; }
+
+        public int CommittedEvents { get; set; }
+    }
+
+    // The per-batch view of what this batch already wrote, keyed by UID (R2): a later component for the same UID in the
+    // same batch sees the earlier one's row, or null when that component removed it, so the last component wins.
+    private sealed class BatchState
+    {
+        public Dictionary<string, ContextCalendarEvent?> Events { get; } = new(StringComparer.Ordinal);
+
+        public Dictionary<string, RecurrencePattern?> Patterns { get; } = new(StringComparer.Ordinal);
+
+        // Occurrences this batch added, per series, so regenerating or removing a series created or regenerated
+        // earlier in the batch reaches rows the database does not hold yet.
+        public Dictionary<Guid, List<ContextCalendarEvent>> AddedOccurrences { get; } = [];
+
+        public List<Guid> RemovedEventIds { get; } = [];
+
+        public List<Guid> RemovedSeriesIds { get; } = [];
+    }
+
+    /// <summary>
+    /// Imports an <c>.ics</c> file into <paramref name="targetCalendarId"/>, streaming it one <c>VEVENT</c> at a time
+    /// and committing every <see cref="ImportBatchSize"/> events (issue #516 §3). A failure after a batch committed is
+    /// a <see cref="CalendarIcsImportPartiallyAppliedException"/> carrying the original status; re-running the same file
+    /// is idempotent and completes it. A cancellation stops at the next batch boundary and is never wrapped.
+    /// </summary>
     /// <param name="claims">
     /// The importer's location claims (issue #380 §8.4): places are linked or created only with both
     /// <c>locations.read</c> and <c>locations.create</c>. Null imports every place as detail text.
     /// </param>
+    /// <param name="allowRemovals">Whether a cancelled component may remove the event or series it matches (§8.4).</param>
+    /// <param name="canDelete">
+    /// Whether the importer holds <c>calendar.delete</c>, evaluated once from the request principal. With
+    /// <paramref name="allowRemovals"/> and without it the whole import is refused before anything is read.
+    /// </param>
     public async Task<IcsImportResult> ImportAsync(
         Guid targetCalendarId, Stream icsFile, long contentLength, string? contentType, string userId,
-        CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        bool allowRemovals = false, bool canDelete = false)
     {
         if (!IsAcceptedContentType(contentType))
         {
             throw new DomainValidationException("The uploaded file must be a calendar file (text/calendar).");
         }
 
+        if (allowRemovals && !canDelete)
+        {
+            throw new DomainForbiddenException("Removing cancelled events needs permission to delete calendar events.");
+        }
+
         var cap = await limits.GetAsync(cancellationToken);
         var journalCap = await journalLimits.GetAsync(cancellationToken);
         var maxImportBytes = cap.CalendarIcsMaxImportBytes;
-        var maxImportEvents = cap.CalendarIcsMaxImportEvents ?? int.MaxValue;
-        // One snapshot each, taken before any component is processed, so a concurrent admin write can
-        // never split one import across two values of the same setting.
-        var maxAggregateOccurrences = cap.CalendarIcsMaxAggregateOccurrences;
-        var maxEventDurationDays = journalCap.CalendarMaxEventDurationDays;
-        var maxGeneratedOccurrences = journalCap.RecurrenceMaxGeneratedOccurrences;
+        var maxImportEvents = cap.CalendarIcsMaxImportEvents;
 
         if (contentLength > maxImportBytes)
         {
             throw new DomainValidationException($"The .ics file exceeds the {maxImportBytes / (1024 * 1024)} MB limit.");
         }
 
-        var calendarExists = await context.Calendars.AnyAsync(c => c.CalendarId == targetCalendarId, cancellationToken);
-        if (!calendarExists)
+        if (!await context.Calendars.AnyAsync(c => c.CalendarId == targetCalendarId, cancellationToken))
         {
             throw new DomainNotFoundException($"Calendar ID {targetCalendarId} not found.");
         }
 
-        using var reader = ImportFileReader.OpenBoundedTextReader(icsFile, maxImportBytes, ".ics");
+        // One snapshot of every cap, taken before any component is processed, so a concurrent admin write can never
+        // split one import across two values of the same setting.
+        var run = new ImportRun
+        {
+            CalendarId = targetCalendarId,
+            UserId = userId,
+            Now = timeProvider.GetUtcNow().UtcDateTime,
+            Places = await IcsPlaces.ForImportAsync(context, claims ?? LocationClaims.None, userId, timeProvider, cancellationToken),
+            Skipped = new ImportSkipCollector(cap.ImportMaxSamplesPerSkipReason),
+            AllowRemovals = allowRemovals,
+            MaxAggregateOccurrences = cap.CalendarIcsMaxAggregateOccurrences,
+            MaxEventDurationDays = journalCap.CalendarMaxEventDurationDays,
+            MaxGeneratedOccurrences = journalCap.RecurrenceMaxGeneratedOccurrences,
+            MaxSamples = cap.ImportMaxSamplesPerSkipReason,
+        };
 
-        IcalCalendar? parsed;
+        using var reader = ImportFileReader.OpenBoundedTextReader(icsFile, maxImportBytes, ".ics");
+        var splitter = new IcsComponentSplitter(reader);
+        var batch = new List<IcalEvent?>(ImportBatchSize);
+        var seen = 0;
         try
         {
-            parsed = IcalCalendar.Load(reader);
-        }
-        // DomainValidationException is excluded here (and re-thrown unchanged below by not being
-        // caught) because OpenBoundedTextReader's byte-cap check now runs INSIDE this parse — lazily,
-        // as Ical.Net reads through the wrapped stream — rather than fully before it. Catching it here
-        // would replace the specific "exceeds the N MB limit" message with the generic parse-failure
-        // one (issue #343 §5).
-        catch (Exception ex) when (ex is not OperationCanceledException and not DomainValidationException)
-        {
-            throw new DomainValidationException("The file could not be parsed as a valid iCalendar (.ics) file.");
-        }
-
-        if (parsed is null)
-        {
-            throw new DomainValidationException("The file could not be parsed as a valid iCalendar (.ics) file.");
-        }
-
-        var events = parsed.Events;
-        if (events.Count > maxImportEvents)
-        {
-            throw new DomainValidationException($"The file contains more than {maxImportEvents} events.");
-        }
-
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-
-        var patternIndex = BuildIndex(
-            await context.RecurrencePatterns.Where(p => p.CalendarId == targetCalendarId).ToListAsync(cancellationToken),
-            p => p.ExternalUid, p => p.RecurrencePatternId);
-        var existingEvents = await context.CalendarEvents
-            .Where(e => e.CalendarId == targetCalendarId).ToListAsync(cancellationToken);
-        var eventIndex = BuildIndex(existingEvents, e => e.ExternalUid, e => e.CalendarEventId);
-
-        var places = await IcsPlaces.ForImportAsync(context, claims ?? LocationClaims.None, userId, timeProvider, cancellationToken);
-        var seenUids = new HashSet<string>(StringComparer.Ordinal);
-        var skipped = new ImportSkipCollector(cap.ImportMaxSamplesPerSkipReason);
-        var imported = 0;
-        var updated = 0;
-        var anySeriesRegenerated = false;
-        var aggregate = 0;
-
-        foreach (var ev in events)
-        {
-            var title = ev.Summary?.Trim();
-            var sampleTitle = string.IsNullOrWhiteSpace(title) ? UntitledEvent : title;
-
-            var uid = string.IsNullOrWhiteSpace(ev.Uid) ? null : ev.Uid.Trim();
-            if (uid is not null && !seenUids.Add(uid))
+            await foreach (var component in splitter.ReadEventsAsync(cancellationToken))
             {
-                skipped.Add("Duplicate UID within this file is not supported.", sampleTitle);
-                continue;
-            }
-
-            if (ev.Start is null)
-            {
-                skipped.Add("Event is missing a start date (DTSTART).", sampleTitle);
-                continue;
-            }
-
-            if (string.IsNullOrWhiteSpace(title))
-            {
-                skipped.Add("Event is missing a title (SUMMARY).", sampleTitle);
-                continue;
-            }
-
-            if (title.Length > 200)
-            {
-                skipped.Add("Title exceeds the maximum length of 200 characters.", sampleTitle);
-                continue;
-            }
-
-            var description = ev.Description;
-            if (description is { Length: > 2000 })
-            {
-                skipped.Add("Description exceeds the maximum length of 2000 characters.", sampleTitle);
-                continue;
-            }
-
-            var location = ev.Location;
-            if (location is { Length: > 300 })
-            {
-                skipped.Add("Location exceeds the maximum length of 300 characters.", sampleTitle);
-                continue;
-            }
-
-            var isAllDay = ev.IsAllDay;
-
-            // Resolving DTSTART/DTEND to UTC can throw for an unresolvable TZID or a malformed
-            // duration — that's a per-event problem (skip with a reason), not a 500 for the whole file.
-            DateTime startUtc, endUtc;
-            try
-            {
-                startUtc = ev.Start.AsUtc;
-                endUtc = ev.End?.AsUtc ?? startUtc + ev.EffectiveDuration.ToTimeSpanUnspecified();
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException)
-            {
-                skipped.Add("Event has an unsupported or unresolvable date/time.", sampleTitle);
-                continue;
-            }
-
-            try
-            {
-                CalendarEventService.ValidateTimes(startUtc, endUtc, isAllDay, maxEventDurationDays);
-            }
-            catch (DomainValidationException ex)
-            {
-                skipped.Add(ex.Message, sampleTitle);
-                continue;
-            }
-
-            if (ev.RecurrenceRule is null)
-            {
-                ImportStandalone(targetCalendarId, ev, uid, title, description, location, startUtc, endUtc, isAllDay,
-                    userId, now, eventIndex, maxAggregateOccurrences, places, ref imported, ref updated, ref aggregate);
-                continue;
-            }
-
-            // ----- recurring VEVENT -----
-            if (ev.Properties.ContainsKey("EXDATE") || ev.Properties.ContainsKey("RDATE"))
-            {
-                skipped.Add("Recurrence exceptions (EXDATE/RDATE) are not supported in v1.", sampleTitle);
-                continue;
-            }
-
-            // Ical.Net exposes only a single RecurrenceRule, and no EXRULE at all, so "more
-            // recurrence than v1 models" has to be read off the raw property list.
-            if (ev.Properties.CountOf("RRULE") > 1 || ev.Properties.ContainsKey("EXRULE"))
-            {
-                skipped.Add("Unsupported recurrence rule.", sampleTitle);
-                continue;
-            }
-
-            var (pattern, reason) = MapPattern(
-                targetCalendarId, ev.RecurrenceRule, title, description, location, startUtc, endUtc, isAllDay, userId, now);
-            if (pattern is null)
-            {
-                skipped.Add(reason!, sampleTitle);
-                continue;
-            }
-
-            List<(DateTime Start, DateTime End)> occurrences;
-            try
-            {
-                occurrences = RecurrenceOccurrenceGenerator.Generate(pattern, maxGeneratedOccurrences);
-            }
-            catch (DomainValidationException ex)
-            {
-                skipped.Add(ex.Message, sampleTitle);
-                continue;
-            }
-
-            if (occurrences.Count == 0)
-            {
-                skipped.Add("Recurrence rule produces no occurrences.", sampleTitle);
-                continue;
-            }
-
-            // Mapped once the block is certain to be stored, so a skipped block never creates a place.
-            patternIndex.TryGetValue(uid ?? string.Empty, out var matchedPattern);
-            if (places.Enabled)
-            {
-                (pattern.LocationId, pattern.Location) = places.Map(location);
-            }
-            else
-            {
-                pattern.LocationId = matchedPattern?.LocationId;
-            }
-
-            if (uid is not null && patternIndex.TryGetValue(uid, out var existingPattern))
-            {
-                var futureOccurrences = occurrences.Where(o => o.Start >= now).ToList();
-                aggregate += futureOccurrences.Count;
-                if (aggregate > maxAggregateOccurrences)
+                seen++;
+                if (maxImportEvents is { } max && seen > max)
                 {
-                    throw AggregateExceeded(maxAggregateOccurrences);
+                    throw new DomainValidationException($"The file contains more than {max} events.");
                 }
 
-                ApplyPatternFields(existingPattern, pattern, uid, userId, now);
-
-                var futureRows = existingEvents
-                    .Where(e => e.RecurrencePatternId == existingPattern.RecurrencePatternId && e.StartDateTime >= now)
-                    .ToList();
-                context.CalendarEvents.RemoveRange(futureRows);
-
-                foreach (var (start, end) in futureOccurrences)
+                batch.Add(ParseComponent(component));
+                if (batch.Count == ImportBatchSize)
                 {
-                    context.CalendarEvents.Add(NewOccurrence(existingPattern, start, end, userId, now));
+                    await ApplyBatchAsync(batch, run, cancellationToken);
+                    batch.Clear();
                 }
-
-                updated++;
-                anySeriesRegenerated = true;
             }
-            else
+
+            if (batch.Count > 0)
             {
-                aggregate += occurrences.Count;
-                if (aggregate > maxAggregateOccurrences)
-                {
-                    throw AggregateExceeded(maxAggregateOccurrences);
-                }
-
-                pattern.ExternalUid = PersistableExternalUid(uid);
-                context.RecurrencePatterns.Add(pattern);
-                foreach (var (start, end) in occurrences)
-                {
-                    context.CalendarEvents.Add(NewOccurrence(pattern, start, end, userId, now));
-                }
-
-                imported++;
+                await ApplyBatchAsync(batch, run, cancellationToken);
             }
         }
+        catch (Exception ex) when (run.CommittedBatches > 0 && ex is not OperationCanceledException)
+        {
+            var status = ex is DomainException domain ? domain.StatusCode : StatusCodes500(ex);
+            if (ex is not DomainException)
+            {
+                logger.LogError(ex,
+                    "Calendar .ics import into {CalendarId} by {UserId} failed after {CommittedBatches} committed batch(es).",
+                    targetCalendarId, userId, run.CommittedBatches);
+            }
 
-        await places.SaveChangesAsync(context, cancellationToken);
+            var reason = ex is DomainException ? ex.Message : "The import failed part-way.";
+            throw new CalendarIcsImportPartiallyAppliedException(
+                $"{reason} The first {run.CommittedEvents} events of the file were already imported; importing the same "
+                + "file again is safe and completes it.",
+                status, run.CommittedBatches, run.CommittedEvents, ex);
+        }
 
         return new IcsImportResult
         {
-            ImportedCount = imported,
-            UpdatedCount = updated,
-            AnySeriesRegenerated = anySeriesRegenerated,
-            PlacesLinked = places.Linked,
-            PlacesCreated = places.Created,
-            Skipped = skipped.ToGroups((reason, count, samples) => new IcsImportSkipGroup
+            ImportedCount = run.Imported,
+            UpdatedCount = run.Updated,
+            AnySeriesRegenerated = run.AnySeriesRegenerated,
+            PlacesLinked = run.Places.Linked,
+            PlacesCreated = run.Places.Created,
+            RemovedCount = run.Removed,
+            RemovedSampleTitles = run.RemovedSamples,
+            Skipped = run.Skipped.ToGroups((reason, count, samples) => new IcsImportSkipGroup
             {
                 Reason = reason,
                 Count = count,
@@ -962,64 +912,582 @@ public class CalendarIcsService
         };
     }
 
-    private void ImportStandalone(
-        Guid calendarId, IcalEvent ev, string? uid, string title, string? description, string? location,
-        DateTime startUtc, DateTime endUtc, bool isAllDay, string userId, DateTime now,
-        Dictionary<string, ContextCalendarEvent> eventIndex, int maxAggregateOccurrences, IcsPlaces places,
-        ref int imported, ref int updated, ref int aggregate)
+    // A database outage reads as 503, anything else as 500.
+    private static int StatusCodes500(Exception ex) =>
+        ex is DbUpdateException or System.Data.Common.DbException or TimeoutException ? 503 : 500;
+
+    // A component Ical.Net cannot read is that event's problem, not the file's: it is skipped (null here).
+    private static IcalEvent? ParseComponent(string component)
     {
-        if (uid is not null && eventIndex.TryGetValue(uid, out var existing))
+        try
         {
-            aggregate++;
-            if (aggregate > maxAggregateOccurrences)
-            {
-                throw AggregateExceeded(maxAggregateOccurrences);
-            }
+            return IcalCalendar.Load(component)?.Events.FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return null;
+        }
+    }
 
-            existing.Title = title;
-            existing.Description = description;
-            if (places.Enabled)
-            {
-                (existing.LocationId, existing.Location) = places.Map(location);
-            }
-            else
-            {
-                existing.Location = location;
-            }
+    private async Task ApplyBatchAsync(List<IcalEvent?> events, ImportRun run, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-            existing.StartDateTime = startUtc;
-            existing.EndDateTime = endUtc;
-            existing.IsAllDay = isAllDay;
-            existing.ExternalUid = PersistableExternalUid(uid);
-            existing.UpdatedByUserId = userId;
-            existing.UpdatedAt = now;
-            updated++;
+        var items = new List<ImportItem>(events.Count);
+        foreach (var ev in events)
+        {
+            if (Classify(ev, run) is { } item)
+            {
+                items.Add(item);
+            }
+        }
+
+        var state = new BatchState();
+        var uids = items.Select(i => i.Uid).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
+        var resolver = await ResolveAsync(run.CalendarId, uids, cancellationToken);
+
+        foreach (var item in items)
+        {
+            switch (item.Kind)
+            {
+                case ItemKind.Standalone:
+                    ApplyStandalone(item, run, state, resolver);
+                    break;
+                case ItemKind.Series:
+                    await ApplySeriesAsync(item, run, state, resolver, cancellationToken);
+                    break;
+                default:
+                    await ApplyCancelledAsync(item, run, state, resolver, cancellationToken);
+                    break;
+            }
+        }
+
+        await SaveBatchAsync(run, cancellationToken);
+        run.CommittedBatches++;
+        run.CommittedEvents += events.Count;
+
+        // One line per committed batch that removed anything (§7.7): ids and counts only, never a title or place, so
+        // an import that later fails is audited for exactly what it removed.
+        if (state.RemovedEventIds.Count > 0 || state.RemovedSeriesIds.Count > 0)
+        {
+            logger.LogInformation(
+                "Calendar .ics import by {UserId} into calendar {CalendarId} removed {RemovedCount} cancelled item(s): "
+                + "series {RemovedSeriesIds}; events {RemovedEventIds}.",
+                run.UserId, run.CalendarId, state.RemovedEventIds.Count + state.RemovedSeriesIds.Count,
+                state.RemovedSeriesIds, state.RemovedEventIds);
+        }
+
+        context.ChangeTracker.Clear();
+    }
+
+    // One transaction per batch, inside the execution strategy, because EnableRetryOnFailure makes a bare
+    // BeginTransactionAsync throw. The EF InMemory provider honours neither, so there the save simply runs.
+    private async Task SaveBatchAsync(ImportRun run, CancellationToken cancellationToken)
+    {
+        if (!context.Database.IsRelational())
+        {
+            await run.Places.SaveChangesAsync(context, cancellationToken);
             return;
         }
 
-        aggregate++;
-        if (aggregate > maxAggregateOccurrences)
+        var strategy = context.Database.CreateExecutionStrategy();
+        await strategy.ExecuteAsync(async () =>
         {
-            throw AggregateExceeded(maxAggregateOccurrences);
+            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            await run.Places.SaveChangesAsync(context, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+        });
+    }
+
+    private ImportItem? Classify(IcalEvent? ev, ImportRun run)
+    {
+        if (ev is null)
+        {
+            run.Skipped.Add("Event could not be parsed.", UntitledEvent);
+            return null;
         }
 
-        var (locationId, detail) = places.Map(location);
-        context.CalendarEvents.Add(new ContextCalendarEvent
+        var title = ev.Summary?.Trim();
+        var sampleTitle = string.IsNullOrWhiteSpace(title) ? UntitledEvent : title;
+        var uid = string.IsNullOrWhiteSpace(ev.Uid) ? null : ev.Uid.Trim();
+
+        // Until Spec B models exceptions, a RECURRENCE-ID component is never applied — cancelled or not — so a
+        // cancelled occurrence can never act on a whole series (S1).
+        if (ev.Properties.ContainsKey("RECURRENCE-ID"))
         {
-            CalendarId = calendarId,
-            Title = title,
-            Description = description,
+            run.Skipped.Add(RecurrenceIdReason, sampleTitle);
+            return null;
+        }
+
+        if (string.Equals(ev.Status?.Trim(), "CANCELLED", StringComparison.OrdinalIgnoreCase))
+        {
+            if (uid is null)
+            {
+                run.Skipped.Add(CancelledUnknownReason, sampleTitle);
+                return null;
+            }
+
+            return new ImportItem
+            {
+                Kind = ItemKind.Cancelled, SampleTitle = sampleTitle, Uid = uid, HasRule = ev.RecurrenceRule is not null,
+            };
+        }
+
+        if (ev.Start is null)
+        {
+            run.Skipped.Add("Event is missing a start date (DTSTART).", sampleTitle);
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            run.Skipped.Add("Event is missing a title (SUMMARY).", sampleTitle);
+            return null;
+        }
+
+        if (title.Length > 200)
+        {
+            run.Skipped.Add("Title exceeds the maximum length of 200 characters.", sampleTitle);
+            return null;
+        }
+
+        var description = ev.Description;
+        if (description is { Length: > 2000 })
+        {
+            run.Skipped.Add("Description exceeds the maximum length of 2000 characters.", sampleTitle);
+            return null;
+        }
+
+        var place = IcsPlaces.ReadEventPlace(ev);
+        if (place.Detail is { Length: > MaxLocationLength } || (!place.HasDetailProperty && ev.Location is { Length: > MaxLocationLength }))
+        {
+            run.Skipped.Add("Location exceeds the maximum length of 300 characters.", sampleTitle);
+            return null;
+        }
+
+        var isAllDay = ev.IsAllDay;
+
+        // Resolving DTSTART/DTEND to UTC can throw for an unresolvable TZID or a malformed
+        // duration — that's a per-event problem (skip with a reason), not a 500 for the whole file.
+        DateTime startUtc, endUtc;
+        try
+        {
+            startUtc = ev.Start.AsUtc;
+            endUtc = ev.End?.AsUtc ?? startUtc + ev.EffectiveDuration.ToTimeSpanUnspecified();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            run.Skipped.Add("Event has an unsupported or unresolvable date/time.", sampleTitle);
+            return null;
+        }
+
+        try
+        {
+            CalendarEventService.ValidateTimes(startUtc, endUtc, isAllDay, run.MaxEventDurationDays);
+        }
+        catch (DomainValidationException ex)
+        {
+            run.Skipped.Add(ex.Message, sampleTitle);
+            return null;
+        }
+
+        if (ev.RecurrenceRule is null)
+        {
+            return new ImportItem
+            {
+                Kind = ItemKind.Standalone, SampleTitle = sampleTitle, Uid = uid, Title = title, Description = description,
+                Place = place, Start = startUtc, End = endUtc, IsAllDay = isAllDay,
+            };
+        }
+
+        if (ev.Properties.ContainsKey("EXDATE") || ev.Properties.ContainsKey("RDATE"))
+        {
+            run.Skipped.Add("Recurrence exceptions (EXDATE/RDATE) are not supported in v1.", sampleTitle);
+            return null;
+        }
+
+        // Ical.Net exposes only a single RecurrenceRule, and no EXRULE at all, so "more
+        // recurrence than v1 models" has to be read off the raw property list.
+        if (ev.Properties.CountOf("RRULE") > 1 || ev.Properties.ContainsKey("EXRULE"))
+        {
+            run.Skipped.Add("Unsupported recurrence rule.", sampleTitle);
+            return null;
+        }
+
+        var (pattern, reason) = MapPattern(
+            run.CalendarId, ev.RecurrenceRule, title, description, place.Detail, startUtc, endUtc, isAllDay, run.UserId, run.Now);
+        if (pattern is null)
+        {
+            run.Skipped.Add(reason!, sampleTitle);
+            return null;
+        }
+
+        List<(DateTime Start, DateTime End)> occurrences;
+        try
+        {
+            occurrences = RecurrenceOccurrenceGenerator.Generate(pattern, run.MaxGeneratedOccurrences);
+        }
+        catch (DomainValidationException ex)
+        {
+            run.Skipped.Add(ex.Message, sampleTitle);
+            return null;
+        }
+
+        if (occurrences.Count == 0)
+        {
+            run.Skipped.Add("Recurrence rule produces no occurrences.", sampleTitle);
+            return null;
+        }
+
+        return new ImportItem
+        {
+            Kind = ItemKind.Series, SampleTitle = sampleTitle, Uid = uid, HasRule = true, Title = title,
+            Description = description, Place = place, Start = startUtc, End = endUtc, IsAllDay = isAllDay,
+            Pattern = pattern, Occurrences = occurrences,
+        };
+    }
+
+    // ----- UID resolution (§8.2)
+
+    // The batch's rows in the target calendar that any of its UIDs could name, read by one keyed query per table
+    // (R1): by ExternalUid, by ImportSourceUid for a synthetic UID, and by primary key for a synthetic UID's guid.
+    // Tracked, because the batch updates them. The whole calendar is never loaded.
+    private sealed record BatchResolver(List<ContextCalendarEvent> Events, List<RecurrencePattern> Patterns);
+
+    private async Task<BatchResolver> ResolveAsync(Guid calendarId, List<string> uids, CancellationToken cancellationToken)
+    {
+        if (uids.Count == 0)
+        {
+            return new BatchResolver([], []);
+        }
+
+        var synthetic = uids.Where(IsSyntheticUid).ToList();
+        var guids = synthetic.Select(u => Guid.Parse(u[..^SyntheticUidSuffix.Length])).ToList();
+
+        var events = await context.CalendarEvents
+            .Where(e => e.CalendarId == calendarId
+                && ((e.ExternalUid != null && uids.Contains(e.ExternalUid))
+                    || (e.ImportSourceUid != null && synthetic.Contains(e.ImportSourceUid))
+                    || guids.Contains(e.CalendarEventId)))
+            .OrderBy(e => e.CreatedAt).ThenBy(e => e.CalendarEventId)
+            .ToListAsync(cancellationToken);
+        var patterns = await context.RecurrencePatterns
+            .Where(p => p.CalendarId == calendarId
+                && ((p.ExternalUid != null && uids.Contains(p.ExternalUid))
+                    || (p.ImportSourceUid != null && synthetic.Contains(p.ImportSourceUid))
+                    || guids.Contains(p.RecurrencePatternId)))
+            .OrderBy(p => p.CreatedAt).ThenBy(p => p.RecurrencePatternId)
+            .ToListAsync(cancellationToken);
+        return new BatchResolver(events, patterns);
+    }
+
+    // The first rule that matches wins: a synthetic UID naming a row of the target calendar by its key; a stored
+    // ExternalUid; a synthetic UID stored as ImportSourceUid. A row removed earlier in this batch matches nothing.
+    private static T? Match<T>(
+        string uid, IEnumerable<T> candidates, Func<T, Guid> id, Func<T, string?> externalUid, Func<T, string?> importSourceUid,
+        OdysseyContext context)
+        where T : class
+    {
+        var live = candidates.Where(c => context.Entry(c).State is not (EntityState.Deleted or EntityState.Detached)).ToList();
+        if (IsSyntheticUid(uid) && Guid.TryParse(uid[..^SyntheticUidSuffix.Length], out var key)
+            && live.FirstOrDefault(c => id(c) == key) is { } byKey)
+        {
+            return byKey;
+        }
+
+        if (live.FirstOrDefault(c => string.Equals(externalUid(c), uid, StringComparison.Ordinal)) is { } byExternal)
+        {
+            return byExternal;
+        }
+
+        return IsSyntheticUid(uid)
+            ? live.FirstOrDefault(c => string.Equals(importSourceUid(c), uid, StringComparison.Ordinal))
+            : null;
+    }
+
+    private ContextCalendarEvent? MatchEvent(string? uid, BatchState state, BatchResolver resolver)
+    {
+        if (uid is null)
+        {
+            return null;
+        }
+
+        return state.Events.TryGetValue(uid, out var written)
+            ? written
+            : Match(uid, resolver.Events, e => e.CalendarEventId, e => e.ExternalUid, e => e.ImportSourceUid, context);
+    }
+
+    private RecurrencePattern? MatchPattern(string? uid, BatchState state, BatchResolver resolver)
+    {
+        if (uid is null)
+        {
+            return null;
+        }
+
+        return state.Patterns.TryGetValue(uid, out var written)
+            ? written
+            : Match(uid, resolver.Patterns, p => p.RecurrencePatternId, p => p.ExternalUid, p => p.ImportSourceUid, context);
+    }
+
+    // ----- Places (§8.3)
+
+    // What the stored row's place becomes. KeepLink: an updated row keeps its link and a created one has none — the
+    // file names no place, or the importer may not link one. Map runs only for a row that is about to be stored, so a
+    // skipped block never creates a place.
+    private static (Guid? LocationId, string? Detail, bool KeepLink) ResolvePlace(IcsPlaces places, ImportedPlace place)
+    {
+        if (!places.Enabled)
+        {
+            return (null, place.Detail, true);
+        }
+
+        if (!place.HasDetailProperty)
+        {
+            var (id, detail) = places.Map(place.PlaceText);
+            return (id, detail, false);
+        }
+
+        if (place.PlaceText is null)
+        {
+            return (null, place.Detail, true);
+        }
+
+        var (locationId, mapped) = places.Map(place.PlaceText);
+        return locationId is null ? (null, place.Detail ?? mapped, false) : (locationId, place.Detail, false);
+    }
+
+    // ----- Apply
+
+    private void ApplyStandalone(ImportItem item, ImportRun run, BatchState state, BatchResolver resolver)
+    {
+        CountOccurrences(run, 1);
+        var (locationId, detail, keepLink) = ResolvePlace(run.Places, item.Place);
+        var existing = MatchEvent(item.Uid, state, resolver);
+        if (existing is not null)
+        {
+            existing.Title = item.Title;
+            existing.Description = item.Description;
+            existing.Location = detail;
+            if (!keepLink)
+            {
+                existing.LocationId = locationId;
+            }
+
+            existing.StartDateTime = item.Start;
+            existing.EndDateTime = item.End;
+            existing.IsAllDay = item.IsAllDay;
+            // The stored ExternalUid is kept, never cleared (gap 1): a rule-1 match carries the row's own synthetic
+            // UID, and a rule-2 match carries the ExternalUid itself.
+            existing.UpdatedByUserId = run.UserId;
+            existing.UpdatedAt = run.Now;
+            run.Updated++;
+            Remember(state.Events, item.Uid, existing);
+            return;
+        }
+
+        var created = new ContextCalendarEvent
+        {
+            CalendarId = run.CalendarId,
+            Title = item.Title,
+            Description = item.Description,
             Location = detail,
-            LocationId = locationId,
-            StartDateTime = startUtc,
-            EndDateTime = endUtc,
-            IsAllDay = isAllDay,
-            ExternalUid = PersistableExternalUid(uid),
-            CreatedByUserId = userId,
-            CreatedAt = now,
-            UpdatedAt = now,
-        });
-        imported++;
+            LocationId = keepLink ? null : locationId,
+            StartDateTime = item.Start,
+            EndDateTime = item.End,
+            IsAllDay = item.IsAllDay,
+            ExternalUid = PersistableExternalUid(item.Uid),
+            ImportSourceUid = ImportSourceUidFor(item.Uid),
+            CreatedByUserId = run.UserId,
+            CreatedAt = run.Now,
+            UpdatedAt = run.Now,
+        };
+        context.CalendarEvents.Add(created);
+        run.Imported++;
+        Remember(state.Events, item.Uid, created);
+    }
+
+    private async Task ApplySeriesAsync(
+        ImportItem item, ImportRun run, BatchState state, BatchResolver resolver, CancellationToken cancellationToken)
+    {
+        var pattern = item.Pattern!;
+        var existing = MatchPattern(item.Uid, state, resolver);
+        var (locationId, detail, keepLink) = ResolvePlace(run.Places, item.Place);
+        pattern.Location = detail;
+        pattern.LocationId = keepLink ? existing?.LocationId : locationId;
+
+        if (existing is not null)
+        {
+            var futureOccurrences = item.Occurrences.Where(o => o.Start >= run.Now).ToList();
+            CountOccurrences(run, futureOccurrences.Count);
+            ApplyPatternFields(existing, pattern, run.UserId, run.Now);
+
+            // Regenerating loads only this series' future rows in the target calendar, as it always did.
+            if (context.Entry(existing).State != EntityState.Added)
+            {
+                var futureRows = await context.CalendarEvents
+                    .Where(e => e.RecurrencePatternId == existing.RecurrencePatternId && e.CalendarId == run.CalendarId
+                        && e.StartDateTime >= run.Now)
+                    .ToListAsync(cancellationToken);
+                context.CalendarEvents.RemoveRange(futureRows);
+            }
+
+            if (state.AddedOccurrences.Remove(existing.RecurrencePatternId, out var added))
+            {
+                context.CalendarEvents.RemoveRange(added.Where(o => o.StartDateTime >= run.Now));
+                added.RemoveAll(o => o.StartDateTime >= run.Now);
+                state.AddedOccurrences[existing.RecurrencePatternId] = added;
+            }
+
+            AddOccurrences(existing, futureOccurrences, run, state);
+            run.Updated++;
+            run.AnySeriesRegenerated = true;
+            Remember(state.Patterns, item.Uid, existing);
+            return;
+        }
+
+        CountOccurrences(run, item.Occurrences.Count);
+        pattern.ExternalUid = PersistableExternalUid(item.Uid);
+        pattern.ImportSourceUid = ImportSourceUidFor(item.Uid);
+        context.RecurrencePatterns.Add(pattern);
+        AddOccurrences(pattern, item.Occurrences, run, state);
+        run.Imported++;
+        Remember(state.Patterns, item.Uid, pattern);
+    }
+
+    private void AddOccurrences(
+        RecurrencePattern pattern, List<(DateTime Start, DateTime End)> occurrences, ImportRun run, BatchState state)
+    {
+        if (!state.AddedOccurrences.TryGetValue(pattern.RecurrencePatternId, out var added))
+        {
+            added = [];
+            state.AddedOccurrences[pattern.RecurrencePatternId] = added;
+        }
+
+        foreach (var (start, end) in occurrences)
+        {
+            var occurrence = NewOccurrence(pattern, start, end, run.UserId, run.Now);
+            context.CalendarEvents.Add(occurrence);
+            added.Add(occurrence);
+        }
+    }
+
+    // §8.4: a cancelled component acts on what it matches in the target calendar, and only with allowRemovals.
+    private async Task ApplyCancelledAsync(
+        ImportItem item, ImportRun run, BatchState state, BatchResolver resolver, CancellationToken cancellationToken)
+    {
+        ContextCalendarEvent? matchedEvent = null;
+        RecurrencePattern? matchedPattern = null;
+        if (item.HasRule)
+        {
+            matchedPattern = MatchPattern(item.Uid, state, resolver);
+            matchedEvent = matchedPattern is null ? MatchEvent(item.Uid, state, resolver) : null;
+        }
+        else
+        {
+            matchedEvent = MatchEvent(item.Uid, state, resolver);
+            matchedPattern = matchedEvent is null ? MatchPattern(item.Uid, state, resolver) : null;
+        }
+
+        if (matchedEvent is null && matchedPattern is null)
+        {
+            run.Skipped.Add(CancelledUnknownReason, item.SampleTitle);
+            return;
+        }
+
+        if (!run.AllowRemovals)
+        {
+            run.Skipped.Add(CancelledKeptReason, item.SampleTitle);
+            return;
+        }
+
+        if (matchedEvent is not null)
+        {
+            if (context.Entry(matchedEvent).State != EntityState.Added)
+            {
+                state.RemovedEventIds.Add(matchedEvent.CalendarEventId);
+            }
+
+            context.CalendarEvents.Remove(matchedEvent);
+            Removed(run, matchedEvent.Title);
+            state.Events[item.Uid!] = null;
+            return;
+        }
+
+        await RemoveSeriesAsync(matchedPattern!, run, state, cancellationToken);
+        Removed(run, matchedPattern!.Title);
+        state.Patterns[item.Uid!] = null;
+    }
+
+    // Exactly RecurrencePatternService.Delete's semantics (A3): future generated rows are deleted and past ones are
+    // detached and kept — wherever they sit, rows moved into other calendars included, as the UI's "Delete series"
+    // does. Every deleted row's id goes into the batch's audit line.
+    private async Task RemoveSeriesAsync(RecurrencePattern pattern, ImportRun run, BatchState state, CancellationToken cancellationToken)
+    {
+        var rows = new List<ContextCalendarEvent>();
+        if (context.Entry(pattern).State != EntityState.Added)
+        {
+            rows.AddRange(await context.CalendarEvents
+                .Where(e => e.RecurrencePatternId == pattern.RecurrencePatternId)
+                .ToListAsync(cancellationToken));
+            state.RemovedSeriesIds.Add(pattern.RecurrencePatternId);
+        }
+
+        if (state.AddedOccurrences.Remove(pattern.RecurrencePatternId, out var added))
+        {
+            rows.AddRange(added);
+        }
+
+        foreach (var row in rows.Distinct())
+        {
+            if (context.Entry(row).State is EntityState.Deleted or EntityState.Detached)
+            {
+                continue;
+            }
+
+            if (row.StartDateTime >= run.Now)
+            {
+                if (context.Entry(row).State != EntityState.Added)
+                {
+                    state.RemovedEventIds.Add(row.CalendarEventId);
+                }
+
+                context.CalendarEvents.Remove(row);
+            }
+            else
+            {
+                row.RecurrencePatternId = null;
+            }
+        }
+
+        context.RecurrencePatterns.Remove(pattern);
+    }
+
+    private static void Removed(ImportRun run, string title)
+    {
+        run.Removed++;
+        if (run.RemovedSamples.Count < run.MaxSamples)
+        {
+            run.RemovedSamples.Add(title);
+        }
+    }
+
+    private static void Remember<T>(Dictionary<string, T?> written, string? uid, T row)
+        where T : class
+    {
+        if (uid is not null)
+        {
+            written[uid] = row;
+        }
+    }
+
+    private static void CountOccurrences(ImportRun run, int count)
+    {
+        run.Aggregate += count;
+        if (run.Aggregate > run.MaxAggregateOccurrences)
+        {
+            throw new DomainValidationException(
+                $"The import would create or regenerate more than {run.MaxAggregateOccurrences} occurrences.");
+        }
     }
 
     // Maps an ICS RRULE onto the bounded RecurrencePattern model. Returns (pattern, null) on success
@@ -1163,7 +1631,8 @@ public class CalendarIcsService
         return (pattern, null);
     }
 
-    private static void ApplyPatternFields(RecurrencePattern target, RecurrencePattern source, string uid, string userId, DateTime now)
+    // The stored ExternalUid and ImportSourceUid are kept (gap 1): what matched the row is what names it.
+    private static void ApplyPatternFields(RecurrencePattern target, RecurrencePattern source, string userId, DateTime now)
     {
         target.Title = source.Title;
         target.Description = source.Description;
@@ -1179,7 +1648,6 @@ public class CalendarIcsService
         target.MonthOfYear = source.MonthOfYear;
         target.RecurrenceEndDate = source.RecurrenceEndDate;
         target.OccurrenceCount = source.OccurrenceCount;
-        target.ExternalUid = PersistableExternalUid(uid);
         target.UpdatedByUserId = userId;
         target.UpdatedAt = now;
     }
@@ -1223,45 +1691,21 @@ public class CalendarIcsService
     };
 
     // A VEVENT's UID that is itself one of Odyssey's own synthesized "{primary-key}@odyssey.local"
-    // forms (issue #345 security review, F1) must never be persisted as ExternalUid. Same-calendar
-    // round-trip idempotency doesn't need it — BuildIndex already indexes every row by its own
-    // PK-derived synthetic key regardless of ExternalUid. Persisting it anyway lets an aggregate
-    // export's cross-calendar synthetic UID (embedded because ExternalUid is only unique within its
-    // own calendar) get carried by a *different* row into a *different* calendar; if that row's
-    // calendar is later exported and the file re-imported into the UID's originating calendar,
-    // BuildIndex's synthetic-key entry for the true owner would match it and silently overwrite the
-    // unrelated original row in place.
+    // forms (issue #345 security review, F1) must never be persisted as ExternalUid: an export writes
+    // ExternalUid verbatim, so a row in calendar B carrying A's synthetic UID would put A's key in B's
+    // file, and importing that file into A would overwrite A's unrelated row in place. Such a UID is
+    // matched by key only within the target calendar, and kept as ImportSourceUid (issue #516 §8.2),
+    // which is never exported and never read as a key.
     private static bool IsSyntheticUid(string uid) =>
         uid.EndsWith(SyntheticUidSuffix, StringComparison.Ordinal)
         && Guid.TryParse(uid[..^SyntheticUidSuffix.Length], out _);
 
-    // The value to persist as ExternalUid for a given parsed VEVENT UID — null when the incoming UID
-    // is absent, or is one of Odyssey's own synthetic forms (see IsSyntheticUid); the UID unchanged
-    // otherwise.
+    // The value to persist as ExternalUid for a created row — null when the incoming UID is absent or
+    // synthetic; the UID unchanged otherwise.
     private static string? PersistableExternalUid(string? uid) => uid is null || IsSyntheticUid(uid) ? null : uid;
 
-    // Indexes existing rows by both their native ExternalUid (when set) and their synthesized
-    // "{primary-key}@odyssey.local" form, so a re-imported file matches whether the VEVENT carries the
-    // original UID or the synthesized one Odyssey emits for app-native rows.
-    private static Dictionary<string, T> BuildIndex<T>(IEnumerable<T> rows, Func<T, string?> externalUid, Func<T, Guid> id)
-    {
-        var index = new Dictionary<string, T>(StringComparer.Ordinal);
-        foreach (var row in rows)
-        {
-            var external = externalUid(row);
-            if (!string.IsNullOrEmpty(external))
-            {
-                index.TryAdd(external, row);
-            }
-
-            index.TryAdd($"{id(row)}{SyntheticUidSuffix}", row);
-        }
-
-        return index;
-    }
-
-    private static DomainValidationException AggregateExceeded(int maxAggregateOccurrences) =>
-        new($"The import would create or regenerate more than {maxAggregateOccurrences} occurrences.");
+    // The value to persist as ImportSourceUid for a created row: the UID only when it is synthetic (rule 4).
+    private static string? ImportSourceUidFor(string? uid) => uid is not null && IsSyntheticUid(uid) ? uid : null;
 
     /// <summary>Whether the multipart part's content type is acceptable for an <c>.ics</c> upload. The
     /// <c>.ics</c> extension and the parse itself are the real validity gates; the content type is only
@@ -1285,5 +1729,3 @@ public class CalendarIcsService
         return $"{exportDate:yyyyMMdd}_{cleaned}.ics";
     }
 }
-
-public sealed record IcsExport(string FileName, string Content);

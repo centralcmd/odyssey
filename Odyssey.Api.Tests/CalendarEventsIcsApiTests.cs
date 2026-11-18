@@ -22,9 +22,8 @@ public class CalendarEventsIcsApiTests
     private const string CalendarEventsPath = "/api/calendar-events";
     private const string RecurrencePatternsPath = "/api/recurrence-patterns";
 
-    // The shipped default for CalendarIcsMaxExportEvents (issue #343 §6) — behavior-preserving with
-    // the old hard-coded CalendarIcsService.MaxVEvents this replaces.
-    private const int DefaultMaxExportEvents = 2000;
+    // The event cap these tests set through /api/system-settings: it ships unlimited since issue #516.
+    private const int TestMaxExportEvents = 5;
 
     private static readonly string[] ReadWrite =
     [
@@ -38,7 +37,7 @@ public class CalendarEventsIcsApiTests
     [
         PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate,
         PermissionClaims.CalendarUpdate, PermissionClaims.CalendarDelete,
-        PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsSecurityUpdate,
+        PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate, PermissionClaims.SystemSettingsSecurityUpdate,
     ];
 
     // ------------------------------------------------------------------ single event (AC 1)
@@ -618,39 +617,49 @@ public class CalendarEventsIcsApiTests
         Assert.Contains("SUMMARY:Edge event", body);
     }
 
-    // ------------------------------------------------------------------ aggregate: caps (AC 8, 9)
+    // ------------------------------------------------------------------ aggregate: caps (AC 8, 9; issue #516 AC 4)
+
+    private static async Task CapExportEventsAsync(HttpClient client, int max) =>
+        (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
+        {
+            CalendarIcsMaxExportEvents = new CapacityLimit { Value = max },
+        })).EnsureSuccessStatusCode();
+
+    private static async Task AssertExportLimitAsync(HttpResponseMessage response)
+    {
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
+        Assert.Equal("calendar_events_export_limit_exceeded", problem!.Extensions["code"]?.ToString());
+    }
 
     [Fact]
     public async Task ExportAggregate_FilteredMatchExceedsMaxVEvents_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
         using var client = factory.CreateClient();
+        await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "TooManyFiltered");
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, DefaultMaxExportEvents + 1, "Match");
+        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents + 1, "Match");
 
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics?search=Match");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("would exceed", problem!.Detail);
+        await AssertExportLimitAsync(await client.GetAsync($"{CalendarEventsPath}/ics?search=Match"));
     }
 
-    // Boundary-pass companion: exactly MaxVEvents matches must succeed (the filtered path has a single
-    // cap — matched rows and output VEVENTs are 1:1, so this also proves the count is exact, not off
-    // by one in either direction).
+    // Boundary-pass companion: exactly the cap must succeed (the filtered path has a single cap — matched rows and
+    // output VEVENTs are 1:1, so this also proves the count is exact, not off by one in either direction).
     [Fact]
     public async Task ExportAggregate_FilteredMatchExactlyMaxVEvents_ReturnsOk()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
         using var client = factory.CreateClient();
+        await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "ExactlyMaxFiltered");
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, DefaultMaxExportEvents, "Match");
+        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents, "Match");
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics?search=Match");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
-        Assert.Equal(DefaultMaxExportEvents, CountOccurrences(body, "BEGIN:VEVENT"));
+        Assert.Equal(TestMaxExportEvents, CountOccurrences(body, "BEGIN:VEVENT"));
     }
 
     [Fact]
@@ -668,11 +677,9 @@ public class CalendarEventsIcsApiTests
         Assert.Contains("would need to fetch", problem!.Detail);
     }
 
-    // Boundary-pass companion: exactly the shipped fetch cap in raw rows must NOT trip it.
-    // They're all standalone, so the output cap (2,000) rejects the request next — but the distinct
-    // "would produce" message (vs. "would need to fetch" above) proves it was rejected by the OUTPUT
-    // check, meaning the fetch boundary itself correctly let exactly-cap rows through. A `>` loosened
-    // to `>=` on the fetch check would instead surface the "would need to fetch" message here.
+    // Boundary-pass companion: exactly the shipped fetch cap in raw rows must NOT trip it. With the event cap
+    // unlimited since issue #516, the export then streams every row; a `>` loosened to `>=` on the fetch check would
+    // instead surface the "would need to fetch" 400 here.
     [Fact]
     public async Task ExportAggregate_NoFilterRawRowsExactlyFetchCap_PassesFetchCheck()
     {
@@ -683,33 +690,30 @@ public class CalendarEventsIcsApiTests
 
         var response = await client.GetAsync($"{CalendarEventsPath}/ics");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("would produce", problem!.Detail);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            Odyssey.Dtos.SystemSettingsDefaults.CalendarIcsMaxAggregateExportRows,
+            int.Parse(response.Headers.GetValues("X-Odyssey-Export-Rows").Single()));
     }
 
     [Fact]
     public async Task ExportAggregate_NoFilterPostCollapseCountExceedsOutputCap_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
         using var client = factory.CreateClient();
+        await CapExportEventsAsync(client, TestMaxExportEvents);
         var calendar = await CreateCalendarAsync(client, "TooManyOutput");
-        // Under the fetch cap (20,000) but over the output cap (2,000) — all standalone, so nothing
-        // collapses and the raw count IS the eventual VEVENT count.
-        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, DefaultMaxExportEvents + 1, "Row");
+        // Under the fetch cap but over the output cap — all standalone, so nothing collapses and the raw count IS
+        // the eventual VEVENT count.
+        await SeedStandaloneRowsAsync(factory, calendar.CalendarId, TestMaxExportEvents + 1, "Row");
 
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("would produce", problem!.Detail);
+        await AssertExportLimitAsync(await client.GetAsync($"{CalendarEventsPath}/ics"));
     }
 
-    // ------------------------------------------------------------------ aggregate: export byte-size cap (follow-up to #343)
+    // ------------------------------------------------------------------ aggregate: export byte-size cap (issue #516 AC 3)
 
     // Seeds standalone rows with a long, fixed-length title so a modest row count produces a
-    // multi-hundred-KB export — enough to reliably cross a 1 MB CalendarIcsMaxExportMegabytes cap
-    // well before the (much higher) default row-count cap would ever kick in.
+    // multi-hundred-KB export — enough to reliably cross a 1 MB CalendarIcsMaxExportMegabytes cap.
     private static async Task SeedBulkyStandaloneRowsAsync(ApiFactory factory, Guid calendarId, int count, string titlePrefix)
     {
         using var scope = factory.Services.CreateScope();
@@ -736,12 +740,14 @@ public class CalendarEventsIcsApiTests
         await ctx.SaveChangesAsync();
     }
 
-    [Fact]
-    public async Task ExportAggregate_FilteredExportOverByteCap_TruncatesBelowThePromisedRowCount()
+    // Both aggregate paths abort at the byte cap (issue #516 Goal 2): the filtered one used to truncate below the
+    // promised row count and the unfiltered one to refuse late with a 400. The client sees a failed transfer, never a
+    // complete 200 body.
+    [Theory]
+    [InlineData("?search=Bulky")]
+    [InlineData("")]
+    public async Task ExportAggregate_OverByteCap_AbortsTheConnection(string query)
     {
-        // The byte-size cap can't be rejected up front like the row-count caps above (total output
-        // size isn't knowable until it's generated) — it truncates the stream instead, leaving the
-        // body with fewer VEVENTs than X-Odyssey-Export-Rows already promised.
         await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
         using var client = factory.CreateClient();
 
@@ -753,41 +759,11 @@ public class CalendarEventsIcsApiTests
         var calendar = await CreateCalendarAsync(client, "Bulky");
         await SeedBulkyStandaloneRowsAsync(factory, calendar.CalendarId, 2000, "Bulky");
 
-        // A search filter forces the filtered/chunked path (never the no-filter aggregate one).
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics?search=Bulky");
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var promisedRows = int.Parse(response.Headers.GetValues("X-Odyssey-Export-Rows").Single());
-        Assert.Equal(2000, promisedRows);
-
-        var body = await response.Content.ReadAsStringAsync();
-        var deliveredRows = CountOccurrences(body, "BEGIN:VEVENT");
-        Assert.True(deliveredRows < promisedRows,
-            $"Expected the export to be truncated below {promisedRows} rows, but delivered {deliveredRows}.");
-    }
-
-    [Fact]
-    public async Task ExportAggregate_NoFilterExportOverByteCap_ReturnsBadRequest_NotTruncated()
-    {
-        // Unlike the filtered/chunked path above, the no-filter aggregate export isn't streamed — the
-        // whole document is already built in memory, and no header has been sent yet, so a too-large
-        // result is rejected cleanly with a 400 instead of truncated.
-        await using var factory = new ApiFactory(ReadWriteWithSizeCapControl);
-        using var client = factory.CreateClient();
-
-        (await client.PutAsJsonAsync("/api/system-settings", new SystemSettingsUpdate
+        await Assert.ThrowsAnyAsync<Exception>(async () =>
         {
-            CalendarIcsMaxExportMegabytes = 1,
-        })).EnsureSuccessStatusCode();
-
-        var calendar = await CreateCalendarAsync(client, "BulkyNoFilter");
-        await SeedBulkyStandaloneRowsAsync(factory, calendar.CalendarId, 2000, "Row");
-
-        var response = await client.GetAsync($"{CalendarEventsPath}/ics");
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
-        Assert.Contains("exceeds the configured maximum", problem!.Detail);
+            using var response = await client.GetAsync($"{CalendarEventsPath}/ics{query}", HttpCompletionOption.ResponseHeadersRead);
+            await response.Content.ReadAsStringAsync();
+        });
     }
 
     // ------------------------------------------------------------------ claims (AC 15)
