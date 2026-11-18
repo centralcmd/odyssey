@@ -227,7 +227,7 @@ public class CalendarEventService
         }
 
         var carriesLinks = request.AttachmentFileIds is not null || request.PhotoIds is not null;
-        var written = await CalendarSeriesTransactions.ExecuteAsync(context, async () =>
+        var written = await CalendarLinkService.WithOneLinkRetryAsync(() => CalendarSeriesTransactions.ExecuteAsync(context, async () =>
         {
             var touched = await LockAndKeyAsync(
                 id, patternId.RecurrencePatternId, userId, cancellationToken, lockStandalone: carriesLinks);
@@ -279,7 +279,7 @@ public class CalendarEventService
             await SaveLinkedAsync(resolver, cancellationToken);
             return touched;
         }, cancellationToken, logger,
-            busy: patternId.RecurrencePatternId is null && carriesLinks ? CalendarAttachmentsException.LinksBusy : null);
+            busy: patternId.RecurrencePatternId is null && carriesLinks ? CalendarAttachmentsException.LinksBusy : null));
 
         if (written.Row is not { } saved)
         {

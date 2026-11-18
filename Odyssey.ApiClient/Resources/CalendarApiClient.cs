@@ -84,35 +84,28 @@ public interface ICalendarApiClient
     /// <summary>The absolute URL of the series export.</summary>
     string ExportPatternUrl(Guid patternId);
 
-    // Issue #521 §5.4: the three exports that carry attachments take attachments=include|omit. The defaults keep a test
-    // double that implements only the original members compiling; the real client overrides all six.
+    // Issue #521 §5.4: the three exports that carry attachments take attachments=include|omit.
 
     /// <summary>The calendar export's summary under <paramref name="attachments"/>.</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(
-        Guid calendarId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
-        attachments == IcsAttachmentsMode.Include ? SummarizeExportAsync(calendarId, ct) : throw new NotSupportedException();
+        Guid calendarId, IcsAttachmentsMode attachments, CancellationToken ct = default);
 
     /// <summary>The calendar export's URL under <paramref name="attachments"/>.</summary>
-    string ExportUrl(Guid calendarId, IcsAttachmentsMode attachments) =>
-        attachments == IcsAttachmentsMode.Include ? ExportUrl(calendarId) : throw new NotSupportedException();
+    string ExportUrl(Guid calendarId, IcsAttachmentsMode attachments);
 
     /// <summary>The single-event export's summary under <paramref name="attachments"/>.</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(
-        Guid eventId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
-        attachments == IcsAttachmentsMode.Include ? SummarizeEventExportAsync(eventId, ct) : throw new NotSupportedException();
+        Guid eventId, IcsAttachmentsMode attachments, CancellationToken ct = default);
 
     /// <summary>The single-event export's URL under <paramref name="attachments"/>.</summary>
-    string ExportEventUrl(Guid eventId, IcsAttachmentsMode attachments) =>
-        attachments == IcsAttachmentsMode.Include ? ExportEventUrl(eventId) : throw new NotSupportedException();
+    string ExportEventUrl(Guid eventId, IcsAttachmentsMode attachments);
 
     /// <summary>The series export's summary under <paramref name="attachments"/>.</summary>
     Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(
-        Guid patternId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
-        attachments == IcsAttachmentsMode.Include ? SummarizePatternExportAsync(patternId, ct) : throw new NotSupportedException();
+        Guid patternId, IcsAttachmentsMode attachments, CancellationToken ct = default);
 
     /// <summary>The series export's URL under <paramref name="attachments"/>.</summary>
-    string ExportPatternUrl(Guid patternId, IcsAttachmentsMode attachments) =>
-        attachments == IcsAttachmentsMode.Include ? ExportPatternUrl(patternId) : throw new NotSupportedException();
+    string ExportPatternUrl(Guid patternId, IcsAttachmentsMode attachments);
 
     /// <summary>
     /// The aggregate export's summary with the window read in <paramref name="viewTimeZoneId"/> (issue #519 v3 §A):

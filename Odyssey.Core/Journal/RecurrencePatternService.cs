@@ -192,7 +192,7 @@ public class RecurrencePatternService
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         CalendarTimeZones.ResolveRequest(request.TimeZoneId);
 
-        var outcome = await CalendarSeriesTransactions.ExecuteAsync(context, async () =>
+        var outcome = await CalendarLinkService.WithOneLinkRetryAsync(() => CalendarSeriesTransactions.ExecuteAsync(context, async () =>
         {
             await CalendarSeriesTransactions.LockSeriesAsync(context, [id], cancellationToken);
             var state = await RecurrenceSeriesState.LoadAsync(context, id, tracked: true, cancellationToken);
@@ -243,7 +243,7 @@ public class RecurrencePatternService
                 effectiveLimits.CalendarEventMaxLinksPerKind, now, cancellationToken);
             await SaveLinkedAsync(resolver, cancellationToken);
             return (Counts: plan.Counts, Detached: detached);
-        }, cancellationToken, logger);
+        }, cancellationToken, logger));
 
         if (outcome is not { } done)
         {

@@ -49,6 +49,13 @@ public sealed class CalendarAttachmentsException : DomainException
             + "permission. Nothing was imported.",
             new Dictionary<string, object?> { ["missingClaims"] = missingClaims });
 
+    /// <summary>A concurrent identical add won a link's unique index: retried once by the writer before it is busy.</summary>
+    public bool IsLinkRace { get; private init; }
+
+    public static CalendarAttachmentsException LinkRace() =>
+        new((int)HttpStatusCode.Conflict, LinksBusyCode,
+            "This event's attachments are being changed by another request. Try again in a moment.") { IsLinkRace = true };
+
     public static CalendarAttachmentsException LinksBusy() =>
         new((int)HttpStatusCode.Conflict, LinksBusyCode,
             "This event's attachments are being changed by another request. Try again in a moment.");

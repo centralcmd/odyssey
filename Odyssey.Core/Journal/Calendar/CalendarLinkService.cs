@@ -58,6 +58,35 @@ internal sealed class CalendarLinkService(OdysseyContext context)
         "IX_RecurrencePatternPhotos_RecurrencePatternId_PhotoId",
     ];
 
+    /// <summary>The link tables' keys to a file and to a photo, as the migration names them.</summary>
+    public static readonly string[] FileKeys =
+        ["FK_CalendarEventAttachments_FileMetadata_FileId", "FK_RecurrencePatternAttachments_FileMetadata_FileId"];
+
+    public static readonly string[] PhotoKeys = ["FK_CalendarEventPhotos_Photos_PhotoId", "FK_RecurrencePatternPhotos_Photos_PhotoId"];
+
+    /// <summary>
+    /// Runs a link write, re-running it once when a concurrent identical add won the unique index (v3 §C): the retry
+    /// reloads the links and finds the row already there. A second race is <c>409 calendar-links-busy</c>.
+    /// </summary>
+    public static async Task<T> WithOneLinkRetryAsync<T>(Func<Task<T>> write)
+    {
+        try
+        {
+            return await write();
+        }
+        catch (CalendarAttachmentsException race) when (race.IsLinkRace)
+        {
+            try
+            {
+                return await write();
+            }
+            catch (CalendarAttachmentsException again) when (again.IsLinkRace)
+            {
+                throw CalendarAttachmentsException.LinksBusy();
+            }
+        }
+    }
+
     /// <summary>
     /// Refuses link arrays on a generated occurrence (§3 step 5): a non-null, non-empty array is a <c>422</c> keyed on
     /// it; null and <c>[]</c> are accepted and ignored.
@@ -182,9 +211,14 @@ internal sealed class CalendarLinkService(OdysseyContext context)
 
         if (addedPhotos.Count > 0)
         {
-            var visible = await context.Photos.AsNoTracking().Where(p => addedPhotos.Contains(p.PhotoId))
+            // Through the effective-original projection (§3): a photo whose original resolves. Only its members are
+            // selected — EF composes no filter over the positional record — and the rule is applied here.
+            var visible = (await PhotoOriginalSource.Describe(context, context.Photos.AsNoTracking().Where(p => addedPhotos.Contains(p.PhotoId)))
+                    .Select(p => new { p.PhotoId, p.ContentType })
+                    .ToListAsync(cancellationToken))
+                .Where(p => p.ContentType is not null)
                 .Select(p => p.PhotoId)
-                .ToListAsync(cancellationToken);
+                .ToList();
             var missing = addedPhotos.Except(visible).ToList();
             if (missing.Count > 0)
             {
@@ -502,15 +536,16 @@ internal sealed class CalendarLinkService(OdysseyContext context)
 
             if (mysql.Number == 1062 && LinkIndexes.Any(index => mysql.Message.Contains($"{index}'", StringComparison.Ordinal)))
             {
-                return CalendarAttachmentsException.LinksBusy();
+                return CalendarAttachmentsException.LinkRace();
             }
 
-            if (mysql.Number == 1452 && mysql.Message.Contains("Attachments", StringComparison.Ordinal))
+            // By constraint name, never by a word in the message (PR #529 review).
+            if (mysql.Number == 1452 && FileKeys.Any(key => mysql.Message.Contains($"`{key}`", StringComparison.Ordinal)))
             {
                 return new DomainUnprocessableException("An attached file was removed while the event was being saved.", FilesField);
             }
 
-            if (mysql.Number == 1452 && mysql.Message.Contains("Photos", StringComparison.Ordinal))
+            if (mysql.Number == 1452 && PhotoKeys.Any(key => mysql.Message.Contains($"`{key}`", StringComparison.Ordinal)))
             {
                 return new DomainUnprocessableException("A linked photo was removed while the event was being saved.", PhotosField);
             }
