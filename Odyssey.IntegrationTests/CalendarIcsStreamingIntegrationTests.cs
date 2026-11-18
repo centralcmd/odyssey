@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Context;
 using Odyssey.Core.Journal;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 using Xunit;
 
@@ -359,7 +360,8 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 null, importEvents, 10240 * MiB, 10240 * MiB,
                 null, null, 64 * MiB, 64 * MiB,
                 null, null, 64 * MiB, 64 * MiB,
-                200_000, 1_000_000, 92, 200, 100, 64 * MiB,
+                // The occurrence budget is the shipped default, so a stub can never mask a cap the real lookup applies.
+                200_000, SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences, 92, 200, 100, 64 * MiB,
                 IsDegraded: false));
     }
 
