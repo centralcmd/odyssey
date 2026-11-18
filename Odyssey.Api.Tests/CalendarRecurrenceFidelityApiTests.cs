@@ -310,6 +310,53 @@ public class CalendarRecurrenceFidelityApiTests
         Assert.Contains(await SeriesRowsAsync(client, series.RecurrencePatternId), r => r.Title == "Edited");
     }
 
+    // ------------------------------------------------------------------ Authorization (PR #528 review T1)
+
+    [Fact]
+    public async Task The_preview_needs_calendar_update()
+    {
+        Guid calendarId;
+        Guid patternId;
+        await using (var writer = new ApiFactory(ReadWrite))
+        {
+            using var client = writer.CreateClient();
+            calendarId = (await CreateCalendarAsync(client, "Preview auth")).CalendarId;
+            patternId = (await WeeklyMondaysAsync(client, calendarId, count: 3)).RecurrencePatternId;
+
+            await using var reader = new ApiFactory(
+                [PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarDelete], sharing: writer);
+            using var readOnly = reader.CreateClient();
+            var refused = await readOnly.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3));
+
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3))).StatusCode);
+        }
+    }
+
+    [Fact]
+    public async Task A_series_put_that_drops_exceptions_needs_calendar_update_alone()
+    {
+        // v3 §B.6: an interactive series PUT discards exceptions under calendar.update, because the user previewed and
+        // confirmed them; only an import's discards join removals under allowRemovals + calendar.delete.
+        await using var factory = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarUpdate]);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Update alone");
+        var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
+        var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
+        await EditTitleAsync(client, rows[1], "Edited");
+
+        var result = await UpdatePatternAsync(client, series.RecurrencePatternId,
+            Rule(calendar.CalendarId, count: 3) with { DaysOfWeek = DtoDays.Thursday });
+
+        Assert.Equal(1, result.DroppedOverrideCount);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{EventsPath}/{rows[0].CalendarEventId}")).StatusCode);
+
+        await using var withoutUpdate = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarDelete], sharing: factory);
+        using var other = withoutUpdate.CreateClient();
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await other.PutAsJsonAsync($"{PatternsPath}/{series.RecurrencePatternId}", Rule(calendar.CalendarId, count: 3))).StatusCode);
+    }
+
     // ------------------------------------------------------------------ AC 14: server-set fields
 
     [Fact]
@@ -964,20 +1011,33 @@ public class CalendarRecurrenceFidelityApiTests
 
     private sealed class ApiFactory : OdysseyApiFactory
     {
-        public ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null)
+        // One root, so two factories naming one database share its store.
+        private static readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot StoreRoot = new();
+
+        private readonly string databaseName;
+
+        // sharing: a second factory over the same InMemory store, with other permissions.
+        public ApiFactory(
+            IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null,
+            ApiFactory? sharing = null)
+            : this(permissions, clock, logs, sharing?.databaseName ?? $"calendar-recurrence-{Guid.NewGuid()}")
+        {
+        }
+
+        private ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock, CapturingLoggerProvider? logs, string name)
             : base(permissions, ActorUserId, configureServices: services =>
             {
                 services.RemoveAll<TimeProvider>();
                 services.AddSingleton(clock ?? new FakeTimeProvider(Now));
-                var name = $"calendar-recurrence-{Guid.NewGuid()}";
                 services.RemoveAll<DbContextOptions<OdysseyContext>>();
-                services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(name));
+                services.AddDbContext<OdysseyContext>(options => options.UseInMemoryDatabase(name, StoreRoot));
                 if (logs is not null)
                 {
                     services.AddSingleton<Microsoft.Extensions.Logging.ILoggerProvider>(logs);
                 }
             })
         {
+            databaseName = name;
         }
     }
 }

@@ -104,6 +104,9 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
 
         var from = new DateTime(2026, 3, 15, 0, 0, 0, DateTimeKind.Utc);
         var to = new DateTime(2026, 4, 15, 0, 0, 0, DateTimeKind.Utc);
+        // The paged window contains the Oslo change on 29 March (PR #528 review T3), so the Oslo view sorts by a CASE over
+        // two offset segments in SQL rather than by the single-offset shortcut.
+        Assert.Equal(2, CalendarWindow.Segments(from, to, TimeZoneInfo.FindSystemTimeZoneById("Europe/Oslo"))!.Count);
         foreach (var zone in new[] { "UTC", "Europe/Oslo", "America/New_York" })
         {
             await using var context = new OdysseyContext(options);
