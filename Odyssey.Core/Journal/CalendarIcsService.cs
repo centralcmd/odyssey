@@ -283,8 +283,9 @@ public class CalendarIcsService
             return null;
         }
 
-        var rows = await Shapes(context.CalendarEvents.AsNoTracking().Where(e => e.RecurrencePatternId == patternId))
-            .OrderBy(r => r.Start).ThenBy(r => r.Id)
+        var rows = await Shapes(context.CalendarEvents.AsNoTracking()
+                .Where(e => e.RecurrencePatternId == patternId)
+                .OrderBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId))
             .ToListAsync(cancellationToken);
         var fileName = BuildFileName(pattern.Title, exportDate);
 
@@ -388,8 +389,9 @@ public class CalendarIcsService
             }
         }
 
-        var stream = Shapes(seriesRows)
-            .OrderBy(r => r.PatternId).ThenBy(r => r.Start).ThenBy(r => r.Id)
+        // Ordered before the projection: a positional record's members cannot be translated into ORDER BY.
+        var stream = Shapes(seriesRows
+                .OrderBy(e => e.RecurrencePatternId).ThenBy(e => e.StartDateTime).ThenBy(e => e.CalendarEventId))
             .AsAsyncEnumerable();
         await foreach (var row in stream.WithCancellation(cancellationToken))
         {
