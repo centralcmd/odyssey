@@ -1390,19 +1390,25 @@ public class CalendarIcsService
 
         // Resolve outside the transaction, only to learn what to lock (#519 v4 §2 step 1).
         var locks = LocksOf(await ResolveAsync(run.CalendarId, uids, tracked: false, cancellationToken));
+        // Every run of the batch's work - a re-resolve below, or the execution strategy retrying a deadlock or a lock wait
+        // (PR #528 review A1) - starts from the state the batch began with: a rolled-back attempt may have created places
+        // the index still names and counted them, so the index is reloaded and the counts put back. The tally is per run.
         var placesSnapshot = run.Places.Snapshot();
-        for (var attempt = 1; ; attempt++)
+        var runs = 0;
+        async Task BeforeRunAsync()
         {
-            if (attempt > 1)
+            if (++runs > 1)
             {
-                // A rolled-back attempt may have created places the index still names.
                 run.Places = await IcsPlaces.ForImportAsync(context, run.Claims, run.UserId, timeProvider, cancellationToken);
                 run.Places.Restore(placesSnapshot);
             }
+        }
 
+        for (var attempt = 1; ; attempt++)
+        {
             try
             {
-                var tally = await RunBatchAttemptAsync(groups, uids, locks, run, cancellationToken);
+                var tally = await RunBatchAttemptAsync(groups, uids, locks, run, BeforeRunAsync, cancellationToken);
                 tally.MergeInto(run);
                 run.CommittedBatches++;
                 run.CommittedEvents += components;
@@ -1424,12 +1430,15 @@ public class CalendarIcsService
     }
 
     // One attempt: inside the execution strategy, the locks first (series, then standalone events, each ascending), then
-    // the re-resolve under them, then the groups, then one save (#519 v4 §2, v5 §2).
+    // the re-resolve under them, then the groups, then one save (#519 v4 §2, v5 §2). The strategy is the interactive one
+    // (two retries of a 5 s statement wait), so one batch's worst case stays near 15 s, as an interactive write's does.
     private async Task<ImportTally> RunBatchAttemptAsync(
-        List<ImportGroup> groups, List<string> uids, BatchLocks locks, ImportRun run, CancellationToken cancellationToken)
+        List<ImportGroup> groups, List<string> uids, BatchLocks locks, ImportRun run, Func<Task> beforeRun,
+        CancellationToken cancellationToken)
     {
         async Task<ImportTally> Work()
         {
+            await beforeRun();
             await CalendarSeriesTransactions.LockSeriesAsync(context, locks.PatternIds, cancellationToken);
             await CalendarSeriesTransactions.LockEventsAsync(context, locks.EventIds, cancellationToken);
             var resolver = await ResolveAsync(run.CalendarId, uids, tracked: true, cancellationToken);
@@ -1455,7 +1464,7 @@ public class CalendarIcsService
             return await Work();
         }
 
-        var strategy = context.Database.CreateExecutionStrategy();
+        var strategy = OdysseyDatabaseRetry.InteractiveStrategy(context);
         try
         {
             return await strategy.ExecuteAsync(() => CalendarSeriesTransactions.RunAttemptAsync(context, Work, cancellationToken));
