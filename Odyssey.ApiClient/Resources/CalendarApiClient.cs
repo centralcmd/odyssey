@@ -220,7 +220,13 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
         return parts.Count == 0 ? $"{EventsBase}/{path}" : $"{EventsBase}/{path}?{string.Join('&', parts)}";
     }
 
-    private string Absolute(string relative) => new Uri(api.BaseAddress!, relative).ToString();
+    // A transfer URL is handed to the browser or another process, so it must be absolute; a consumer whose HttpClient
+    // has no BaseAddress gets a message naming the cause instead of a bare NullReferenceException.
+    private string Absolute(string relative) =>
+        new Uri(
+            api.BaseAddress ?? throw new InvalidOperationException(
+                "The calendar transfer URLs are absolute, so the API client's HttpClient needs a BaseAddress."),
+            relative).ToString();
 
     public Task<ApiResult> CreateCalendarAsync(NewCalendar calendar, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, CalendarsBase, calendar, ct);
