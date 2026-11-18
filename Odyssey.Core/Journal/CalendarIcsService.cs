@@ -74,7 +74,8 @@ public sealed record CalendarIcsExportScope
 /// </para>
 /// <para>
 /// <b>Import</b> streams too (§3 components 4–6): <see cref="IcsComponentSplitter"/> yields one <c>VEVENT</c> at a
-/// time, and events are applied in batches of <see cref="ImportBatchSize"/>, each resolved by keyed queries against the
+/// time, and events are applied in batches of <see cref="ImportBatchSize"/> (or fewer, once their source text reaches
+/// <see cref="ImportBatchCharBudget"/>), each resolved by keyed queries against the
 /// target calendar and saved in its own transaction. No state spans the whole file except the counters, the place
 /// cache and the occurrence budget; a UID seen again later resolves to the row the earlier component wrote, so the
 /// last component wins.
@@ -84,6 +85,14 @@ public class CalendarIcsService
 {
     /// <summary>Events applied per import batch (issue #516 §8.5): a constant, not a setting.</summary>
     public const int ImportBatchSize = 500;
+
+    /// <summary>
+    /// The component characters a batch may span before it is applied early (PR #524 security finding 1): with
+    /// components of up to 4 Mi characters, 500 of them could otherwise span 2 Gi characters before the first save.
+    /// Each component is also parsed and reduced to its bounded <c>ImportItem</c> as it arrives, so no parsed
+    /// <c>Ical.Net</c> graph outlives its own component.
+    /// </summary>
+    public const int ImportBatchCharBudget = 16 * 1024 * 1024;
 
     public const string CancelledUnknownReason = "Event is cancelled.";
 
@@ -854,7 +863,9 @@ public class CalendarIcsService
 
         using var reader = ImportFileReader.OpenBoundedTextReader(icsFile, maxImportBytes, ".ics");
         var splitter = new IcsComponentSplitter(reader);
-        var batch = new List<IcalEvent?>(ImportBatchSize);
+        var batch = new List<ImportItem>(ImportBatchSize);
+        var batchComponents = 0;
+        long batchChars = 0;
         var seen = 0;
         try
         {
@@ -866,17 +877,25 @@ public class CalendarIcsService
                     throw new DomainValidationException($"The file contains more than {max} events.");
                 }
 
-                batch.Add(ParseComponent(component));
-                if (batch.Count == ImportBatchSize)
+                batchComponents++;
+                batchChars += component.Length;
+                if (Classify(ParseComponent(component), run) is { } item)
                 {
-                    await ApplyBatchAsync(batch, run, cancellationToken);
+                    batch.Add(item);
+                }
+
+                if (batchComponents == ImportBatchSize || batchChars >= ImportBatchCharBudget)
+                {
+                    await ApplyBatchAsync(batch, batchComponents, run, cancellationToken);
                     batch.Clear();
+                    batchComponents = 0;
+                    batchChars = 0;
                 }
             }
 
-            if (batch.Count > 0)
+            if (batchComponents > 0)
             {
-                await ApplyBatchAsync(batch, run, cancellationToken);
+                await ApplyBatchAsync(batch, batchComponents, run, cancellationToken);
             }
         }
         catch (Exception ex) when (run.CommittedBatches > 0 && ex is not OperationCanceledException)
@@ -931,18 +950,10 @@ public class CalendarIcsService
         }
     }
 
-    private async Task ApplyBatchAsync(List<IcalEvent?> events, ImportRun run, CancellationToken cancellationToken)
+    // components counts every VEVENT the batch spans, skipped ones included, for the partial-failure counts.
+    private async Task ApplyBatchAsync(List<ImportItem> items, int components, ImportRun run, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-
-        var items = new List<ImportItem>(events.Count);
-        foreach (var ev in events)
-        {
-            if (Classify(ev, run) is { } item)
-            {
-                items.Add(item);
-            }
-        }
 
         var state = new BatchState();
         var uids = items.Select(i => i.Uid).OfType<string>().Distinct(StringComparer.Ordinal).ToList();
@@ -966,7 +977,7 @@ public class CalendarIcsService
 
         await SaveBatchAsync(run, cancellationToken);
         run.CommittedBatches++;
-        run.CommittedEvents += events.Count;
+        run.CommittedEvents += components;
 
         // One line per committed batch that removed anything (§7.7): ids and counts only, never a title or place, so
         // an import that later fails is audited for exactly what it removed.

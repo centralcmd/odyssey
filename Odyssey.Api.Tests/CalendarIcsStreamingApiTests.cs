@@ -639,6 +639,35 @@ public class CalendarIcsStreamingApiTests
     }
 
     [Fact]
+    public async Task Near_cap_components_flush_a_batch_by_size_before_it_reaches_its_event_count()
+    {
+        // Security finding 1: a batch is applied once its components reach ImportBatchCharBudget, so 500 near-cap
+        // components can never be held at once. Each component here is ~3 Mi characters, so 16 Mi is crossed by the
+        // sixth: two batches of six commit before the unterminated thirteenth stops the import.
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Sized");
+        var padding = string.Concat(Enumerable.Repeat("X-PAD:" + new string('p', 1018) + "\r\n", 3 * 1024));
+        var big = Enumerable.Range(0, 12).Select(i => "BEGIN:VEVENT\r\nUID:big-" + i + "@example.com\r\n"
+            + "DTSTART:20300101T090000Z\r\nDTEND:20300101T100000Z\r\nSUMMARY:Big " + i + "\r\n" + padding + "END:VEVENT\r\n");
+        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n" + string.Concat(big)
+            + "BEGIN:VEVENT\r\nUID:never\r\n";
+        Assert.InRange(padding.Length * 6, CalendarIcsService.ImportBatchCharBudget, int.MaxValue);
+        Assert.InRange(padding.Length * 5, 0, CalendarIcsService.ImportBatchCharBudget - 64 * 1024);
+
+        var response = await PostIcsAsync(client, calendar.CalendarId, file);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
+        Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
+        Assert.Equal("2", problem.Extensions["committedBatches"]?.ToString());
+        Assert.Equal("12", problem.Extensions["committedEvents"]?.ToString());
+        await using var scope = factory.Services.CreateAsyncScope();
+        Assert.Equal(12, await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
+            .CalendarEvents.CountAsync(e => e.CalendarId == calendar.CalendarId));
+    }
+
+    [Fact]
     public async Task A_file_whose_first_component_is_unclosed_is_a_plain_400()
     {
         await using var factory = new ApiFactory(ReadWrite);
