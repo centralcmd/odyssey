@@ -326,14 +326,53 @@ the transport ceiling with a `400` naming it, rather than accepting a number the
 silently refuse.
 
 The large-file routes — `/api/api/tasks/ics…`, the journal `…/vjournal` routes (`/api/api/journal-entries/vjournal…`
-and `/api/api/journal-entries/{id}/vjournal…`), `/api/api/photos…` and `/api/api/files…` as the browser
+and `/api/api/journal-entries/{id}/vjournal…`), the calendar `…/ics` routes and their `/summary` routes
+(`/api/api/calendars/{id}/ics…`, `/api/api/calendar-events/ics…`, `/api/api/calendar-events/{id}/ics…` and
+`/api/api/recurrence-patterns/{id}/ics…`), `/api/api/photos…` and `/api/api/files…` as the browser
 sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
 behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
 envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
 multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
 default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task or journal export can carry
-its attached files (and a journal's photos) inline and come back in through the matching import; the admin upload cap still seeds at 64 MB, and it also
+its attached files (and a journal's photos) inline and come back in through the matching import, and a calendar
+export or import can stream a large calendar (issue #516); the admin upload cap still seeds at 64 MB, and it also
 bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
+
+The `.ics` routes (task, journal and calendar) sit in their own nginx location with **`proxy_buffering off`**. The
+API's export progress guard measures the bytes it finishes writing; with nginx buffering the response, a slow client
+would look fast to the API and park up to `proxy_max_temp_file_size` (1 GB by default) per export on nginx's temp
+disk instead. Caddy streams responses without buffering them, so it needs nothing equivalent. The photo and Files
+routes keep nginx's default response buffering.
+
+#### Export progress guard
+
+Every bulk export (task, journal and calendar `.ics`, the vCard export and their summaries) holds one of 4 global
+export permits, at most 2 per user, for as long as it streams. Since issue #516 a permit is no longer released by a
+fixed 10-minute deadline but by a **progress guard**: the connection is aborted when no first byte is written within
+10 minutes (planning), when a 5-minute window ends with a write waiting on the client and under 1 MiB written in it
+(a floor of about 3.4 KiB/s; a response that finishes inside its window is never judged), or after 24 hours in
+total. Each abort logs one warning naming the rule. Two accounts reading at the floor can still hold all four permits
+for up to a day; that is an accepted residual for a mostly single-user instance.
+
+#### Calendar `.ics` import and export
+
+The calendar surface ships with **no event-count limit and 10240 MB** for both sizes (issue #516; the migration
+moves only rows no administrator has saved). Both size rows warn above 1024 MB, because a calendar import buffers
+its **whole upload once** to `ASPNETCORE_TEMP` (the `import_spool` volume) before it streams it — budget that cap ×
+the import concurrency limit (2) of free space there. Memory does not grow with the file: the import reads one
+`VEVENT` at a time (an unfolded line is at most 1 Mi characters, a `VEVENT` at most 4 Mi, the file's `VTIMEZONE`
+blocks at most 1 MB in total; anything over is a `400`) and commits every **500 events in their own transaction**.
+An import that fails part-way therefore leaves its earlier batches applied and answers with code
+`calendar_ics_import_partially_applied` and the committed counts; importing the same file again is idempotent and
+completes it. The API sends nothing until an import completes, so one import must finish inside the proxies'
+hour-long read timeout — at the reference rate of about 3,000 events/s, roughly 10 million events; split larger
+calendars. A client that disconnects stops the import at the next batch boundary.
+
+An export over its byte cap is **aborted mid-stream** (the download fails) instead of being truncated, on every
+calendar export. Cancelled events in an imported file are removed only when the importer asks for it
+(`allowRemovals`, which needs `calendar.delete`); each batch that removes anything logs the acting user, the calendar
+and the removed ids. Rolling the migration back restores the old settings rows and drops `ImportSourceUid`, the key
+that makes a second import of another calendar's export update rather than duplicate.
 
 Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
 accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to
