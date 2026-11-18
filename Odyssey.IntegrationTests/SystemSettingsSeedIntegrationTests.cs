@@ -74,6 +74,12 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
         (SystemSettingsKeys.InstrumentPriceStaleAfterDays, $"{SystemSettingsDefaults.InstrumentPriceStaleAfterDays}"),
         (SystemSettingsKeys.InstrumentPriceSyncIntervalHours, $"{SystemSettingsDefaults.InstrumentPriceSyncIntervalHours}"),
         (SystemSettingsKeys.InstrumentPriceSyncHistoryDays, $"{SystemSettingsDefaults.InstrumentPriceSyncHistoryDays}"),
+        // Calendar .ics (issue #516 AC 6): a fresh database seeds unlimited counts and the 10 GB sizes. The fast
+        // tiers read an absent row as the compiled default, so only this tier would see the seed drift.
+        (SystemSettingsKeys.CalendarIcsMaxExportEvents, SystemSettingsDefaults.CalendarIcsMaxExportEvents),
+        (SystemSettingsKeys.CalendarIcsMaxImportEvents, SystemSettingsDefaults.CalendarIcsMaxImportEvents),
+        (SystemSettingsKeys.CalendarIcsMaxImportMegabytes, $"{SystemSettingsDefaults.CalendarIcsMaxImportMegabytes}"),
+        (SystemSettingsKeys.CalendarIcsMaxExportMegabytes, $"{SystemSettingsDefaults.CalendarIcsMaxExportMegabytes}"),
     ];
 
     [SkippableFact]
