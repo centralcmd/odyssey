@@ -182,7 +182,7 @@ internal sealed class CalendarLinkService(OdysseyContext context)
 
         if (addedPhotos.Count > 0)
         {
-            var visible = await PhotoOriginalSource.Describe(context, context.Photos.AsNoTracking().Where(p => addedPhotos.Contains(p.PhotoId)))
+            var visible = await context.Photos.AsNoTracking().Where(p => addedPhotos.Contains(p.PhotoId))
                 .Select(p => p.PhotoId)
                 .ToListAsync(cancellationToken);
             var missing = addedPhotos.Except(visible).ToList();

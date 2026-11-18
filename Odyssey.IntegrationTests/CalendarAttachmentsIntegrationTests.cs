@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
@@ -168,6 +169,90 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         // Measured budget (v4 §6): 9.4 s on the Testcontainers MariaDB here; ~6x headroom so a slow CI container does
         // not flake, while a regression to per-row saves (minutes) still fails.
         Assert.True(clock.Elapsed < TimeSpan.FromSeconds(60), $"took {clock.Elapsed}");
+    }
+
+    // AC 22 (v5 §1, implementation note 1): the strategy re-runs a batch that lost a deadlock. Phase A ran once, before
+    // any attempt, so the retry only re-attaches FRESH rows for the same reservations: one file, one photo, one link of
+    // each, and exactly two stored objects ever written — a second decode would have reserved a third and fourth.
+    [SkippableFact]
+    public async Task An_import_batch_with_inline_attachments_retried_after_a_deadlock_links_and_stores_each_once()
+    {
+        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        var deadlock = new FirstInsertDeadlock("INSERT INTO `CalendarEvents`");
+        await using var host = await PhotoStoreHost.CreateAsync(fixture.OdysseyConnectionString, retryOnFailure: true, interceptors: deadlock);
+        await using var scope = host.Host.Scope();
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<OdysseyContext>();
+        var calendar = new Odyssey.Context.Calendar { Name = $"Retry {Guid.NewGuid():N}", CreatedByUserId = "user" };
+        context.Calendars.Add(calendar);
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var fileBytes = Encoding.UTF8.GetBytes($"Agenda {Guid.NewGuid()}");
+        var photoBytes = PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        var ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:x\r\nBEGIN:VEVENT\r\nUID:retried-" + Guid.NewGuid() + "\r\n"
+            + "DTSTART:20300302T100000Z\r\nDTEND:20300302T110000Z\r\nSUMMARY:Retried\r\n"
+            + Inline(fileBytes, "agenda.txt", "text/plain", string.Empty)
+            + Inline(photoBytes, "beach.jpg", "image/jpeg", ";X-ODYSSEY-KIND=PHOTO;X-ODYSSEY-TITLE=\"Fjord\"")
+            + "END:VEVENT\r\nEND:VCALENDAR\r\n";
+        var service = new CalendarIcsService(
+            context, NullLogger<CalendarIcsService>.Instance, new ImportLimits(), new StubJournalLimitsLookup(),
+            new FakeTimeProvider(Now), services.GetRequiredService<Odyssey.Core.FileStorage.Files.StoredFileContentSource>(),
+            services.GetRequiredService<Odyssey.Core.Journal.Originals.PhotoOriginalSource>(),
+            services.GetRequiredService<Odyssey.Core.FileStorage.Files.StoredFileWriter>(), new Odyssey.Core.Finance.FileValidationService(),
+            services.GetRequiredService<Odyssey.Core.Finance.IUploadLimitsLookup>(), services.GetRequiredService<PhotoService>());
+
+        var result = await service.ImportAsync(
+            calendar.CalendarId, new MemoryStream(Encoding.UTF8.GetBytes(ics)), Encoding.UTF8.GetByteCount(ics), "text/calendar", "user",
+            attachmentClaims: CalendarIcsImportClaims.Trusted);
+
+        Assert.True(deadlock.Fired);
+        Assert.Equal((1, 1, 1, 0, 0), (result.ImportedCount, result.StoredFileCount, result.StoredPhotoCount, result.ReusedFileCount, result.SkippedAttachmentCount));
+        await using var check = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString)).Options);
+        var fileHash = PhotoTestData.Sha256(fileBytes);
+        var photoHash = PhotoTestData.Sha256(photoBytes);
+        var file = Assert.Single(await check.FileMetadata.Where(f => f.Sha256Hash == fileHash).ToListAsync());
+        var photo = Assert.Single(await check.Photos.Where(p => p.Sha256Hash == photoHash).ToListAsync());
+        Assert.Equal("Fjord", photo.Title);
+        var eventId = (await check.CalendarEvents.SingleAsync(e => e.CalendarId == calendar.CalendarId)).CalendarEventId;
+        Assert.Equal(file.Id, (await check.CalendarEventAttachments.SingleAsync(a => a.CalendarEventId == eventId)).FileId);
+        Assert.Equal(photo.PhotoId, (await check.CalendarEventPhotos.SingleAsync(p => p.CalendarEventId == eventId)).PhotoId);
+        var objects = await check.StoredObjects.AsNoTracking()
+            .Where(o => o.Sha256Hash == fileHash || o.Sha256Hash == photoHash || o.State == StoredObjectState.Pending).ToListAsync();
+        Assert.Equal(2, objects.Count);
+        Assert.All(objects, o => Assert.Equal(StoredObjectState.Committed, o.State));
+    }
+
+    private static string Inline(byte[] content, string fileName, string contentType, string extra)
+    {
+        var base64 = Convert.ToBase64String(content);
+        var folded = string.Join("\r\n ", Enumerable.Range(0, (base64.Length + 59) / 60)
+            .Select(i => base64.Substring(i * 60, Math.Min(60, base64.Length - (i * 60)))));
+        return $"ATTACH;FMTTYPE={contentType};ENCODING=BASE64;VALUE=BINARY;FILENAME=\"{fileName}\"{extra}:{folded}\r\n";
+    }
+
+    // The 122bcd53 injection: fails the first command carrying the marker with a 1213, as InnoDB would.
+    private sealed class FirstInsertDeadlock(string marker) : Microsoft.EntityFrameworkCore.Diagnostics.DbCommandInterceptor
+    {
+        private int fired;
+
+        public bool Fired => fired == 1;
+
+        public override ValueTask<Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader>> ReaderExecutingAsync(
+            System.Data.Common.DbCommand command, Microsoft.EntityFrameworkCore.Diagnostics.CommandEventData eventData,
+            Microsoft.EntityFrameworkCore.Diagnostics.InterceptionResult<System.Data.Common.DbDataReader> result,
+            CancellationToken cancellationToken = default)
+        {
+            if (command.CommandText.Contains(marker, StringComparison.Ordinal) && Interlocked.CompareExchange(ref fired, 1, 0) == 0)
+            {
+                throw (MySqlConnector.MySqlException)Activator.CreateInstance(
+                    typeof(MySqlConnector.MySqlException), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance,
+                    null, [MySqlConnector.MySqlErrorCode.LockDeadlock, "Deadlock found when trying to get lock (injected)"], null)!;
+            }
+
+            return base.ReaderExecutingAsync(command, eventData, result, cancellationToken);
+        }
     }
 
     private sealed class ImportLimits : Odyssey.Core.Journal.IImportExportLimitsLookup

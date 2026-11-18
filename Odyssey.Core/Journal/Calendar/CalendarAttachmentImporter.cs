@@ -351,16 +351,16 @@ internal sealed partial class CalendarAttachmentImporter(
                 .Select(f => (Guid?)f.Id).FirstOrDefaultAsync(cancellationToken);
         }
 
-        var described = PhotoOriginalSource.Describe(context, context.Photos.AsNoTracking());
+        var described = PhotoContent();
         if (originalId is { } photoId
-            && await described.Where(p => p.PhotoId == photoId && p.SizeBytes == size && p.Sha256Hash == hash)
-                .Select(p => (Guid?)p.PhotoId).FirstOrDefaultAsync(cancellationToken) is { } originalPhoto)
+            && await described.Where(p => p.Id == photoId && p.Size == size && p.Hash == hash)
+                .Select(p => (Guid?)p.Id).FirstOrDefaultAsync(cancellationToken) is { } originalPhoto)
         {
             return originalPhoto;
         }
 
-        return await described.Where(p => p.SizeBytes == size && p.Sha256Hash == hash)
-            .OrderBy(p => p.PhotoId).Select(p => (Guid?)p.PhotoId).FirstOrDefaultAsync(cancellationToken);
+        return await described.Where(p => p.Size == size && p.Hash == hash)
+            .OrderBy(p => p.Id).Select(p => (Guid?)p.Id).FirstOrDefaultAsync(cancellationToken);
     }
 
     private void CountReuse(CalendarLinkKind kind)
@@ -491,14 +491,27 @@ internal sealed partial class CalendarAttachmentImporter(
         public DateTime Order { get; init; }
     }
 
+    // PhotoOriginalSource.Describe's effective hash and size, as a member-init shape: EF composes a filter over a
+    // positional record's members on the in-memory provider only, so the same rule is restated here translatably.
+    private IQueryable<Candidate> PhotoContent() =>
+        from p in context.Photos.AsNoTracking()
+        join f in context.FileMetadata on p.FileId equals (Guid?)f.Id into files
+        from f in files.DefaultIfEmpty()
+        select new Candidate
+        {
+            Id = p.PhotoId,
+            Hash = p.Sha256Hash ?? (f == null ? null : f.Sha256Hash),
+            Size = p.SizeBytes ?? (f == null ? null : (long?)f.SizeBytes),
+            Order = DateTime.MinValue,
+        };
+
     private async Task<List<(Guid Id, string? Hash, long? Size, DateTime Order)>> Candidates(
         CalendarLinkKind kind, System.Linq.Expressions.Expression<Func<Candidate, bool>> filter, CancellationToken cancellationToken)
     {
         IQueryable<Candidate> source = kind == CalendarLinkKind.File
             ? context.FileMetadata.AsNoTracking().Where(FileReferenceCounter.VisibleInFilesStore(context))
                 .Select(f => new Candidate { Id = f.Id, Hash = f.Sha256Hash, Size = f.SizeBytes, Order = f.UploadedAtUtc })
-            : PhotoOriginalSource.Describe(context, context.Photos.AsNoTracking())
-                .Select(p => new Candidate { Id = p.PhotoId, Hash = p.Sha256Hash, Size = p.SizeBytes, Order = DateTime.MinValue });
+            : PhotoContent();
         var rows = await source.Where(filter).ToListAsync(cancellationToken);
         return rows.Select(r => (r.Id, r.Hash, r.Size, r.Order)).ToList();
     }
