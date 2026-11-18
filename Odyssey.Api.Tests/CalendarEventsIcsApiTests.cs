@@ -759,11 +759,7 @@ public class CalendarEventsIcsApiTests
         var calendar = await CreateCalendarAsync(client, "Bulky");
         await SeedBulkyStandaloneRowsAsync(factory, calendar.CalendarId, 2000, "Bulky");
 
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
-        {
-            using var response = await client.GetAsync($"{CalendarEventsPath}/ics{query}", HttpCompletionOption.ResponseHeadersRead);
-            await response.Content.ReadAsStringAsync();
-        });
+        await CalendarIcsStreamingApiTests.AssertAbortedMidStreamAsync(client, $"{CalendarEventsPath}/ics{query}", expectedRows: 2000);
     }
 
     // ------------------------------------------------------------------ claims (AC 15)

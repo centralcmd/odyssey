@@ -93,11 +93,12 @@ public class CalendarIcsStreamingApiTests
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Counts");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Standup", count: 3);
-        await CreateEventAsync(client, calendar.CalendarId, "One");
+        var one = await CreateEventAsync(client, calendar.CalendarId, "One");
         await CreateEventAsync(client, calendar.CalendarId, "Two");
 
         foreach (var (export, summary, events, rules, occurrences) in new[]
         {
+            ($"{EventsPath}/{one.CalendarEventId}/ics", $"{EventsPath}/{one.CalendarEventId}/ics/summary", 1, 0, 1),
             ($"{CalendarsPath}/{calendar.CalendarId}/ics", $"{CalendarsPath}/{calendar.CalendarId}/ics/summary", 3, 1, 5),
             ($"{PatternsPath}/{series.RecurrencePatternId}/ics", $"{PatternsPath}/{series.RecurrencePatternId}/ics/summary", 1, 1, 3),
             ($"{EventsPath}/ics", $"{EventsPath}/ics/summary", 3, 1, 5),
@@ -152,6 +153,10 @@ public class CalendarIcsStreamingApiTests
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Six", count: 6);
         // An edited occurrence flattens the series to its six rows, so the series export carries six VEVENTs too.
         await EditFirstOccurrenceAsync(factory, series.RecurrencePatternId);
+        var single = await CreateEventAsync(client, calendar.CalendarId, "Single");
+        // The single-event export plans exactly one VEVENT, and the cap's floor is 1, so no cap can refuse it: it is
+        // asserted to pass under the cap rather than left out (tester finding 3).
+        var singleUrl = $"{EventsPath}/{single.CalendarEventId}/ics";
 
         var urls = new[]
         {
@@ -170,29 +175,47 @@ public class CalendarIcsStreamingApiTests
             }
         }
 
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(singleUrl)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Summary(singleUrl))).StatusCode);
+
         await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxExportEvents = new CapacityLimit { Unlimited = true } });
-        foreach (var url in urls)
+        foreach (var url in urls.Append(singleUrl))
         {
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(url)).StatusCode);
             Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Summary(url))).StatusCode);
         }
     }
 
-    [Fact]
-    public async Task Byte_cap_aborts_the_calendar_export_while_its_summary_still_answers()
+    [Theory]
+    [InlineData("calendar")]
+    [InlineData("pattern")]
+    public async Task Byte_cap_aborts_the_export_while_its_summary_still_answers(string kind)
     {
+        // AC 3 on the per-calendar and the series export (the aggregate paths are in CalendarEventsIcsApiTests). A
+        // single event cannot reach the 1 MB floor of the cap, so its writer is covered in CalendarIcsExportByteCapTests.
         await using var factory = new ApiFactory(WithSettings);
         using var client = factory.CreateClient();
         await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxExportMegabytes = 1 });
         var calendar = await CreateCalendarAsync(client, "Bulky");
-        await SeedRowsAsync(factory, calendar.CalendarId, 2000, i => $"Bulky {i} {new string('x', 700)}");
+        var patternId = await SeedBulkySeriesAsync(factory, calendar.CalendarId, 1000);
+        var url = kind == "calendar" ? $"{CalendarsPath}/{calendar.CalendarId}/ics" : $"{PatternsPath}/{patternId}/ics";
 
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics/summary")).StatusCode);
-        await Assert.ThrowsAnyAsync<Exception>(async () =>
-        {
-            using var response = await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics", HttpCompletionOption.ResponseHeadersRead);
-            await response.Content.ReadAsStringAsync();
-        });
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(Summary(url))).StatusCode);
+        await AssertAbortedMidStreamAsync(client, url, expectedRows: 1000);
+    }
+
+    // The headers arrive as a 200 with the planned count, and only the body read fails: any other status, or a
+    // complete body, fails the test (tester finding 2).
+    internal static async Task AssertAbortedMidStreamAsync(HttpClient client, string url, int expectedRows)
+    {
+        using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(expectedRows.ToString(), response.Headers.GetValues("X-Odyssey-Export-Rows").Single());
+
+        // TestServer surfaces HttpContext.Abort() on the body as this chain; any other failure is not the abort.
+        var error = await Assert.ThrowsAsync<HttpRequestException>(() => response.Content.ReadAsStringAsync());
+        var io = Assert.IsType<IOException>(error.InnerException);
+        Assert.Equal("The application aborted the request.", Assert.IsType<OperationCanceledException>(io.InnerException).Message);
     }
 
     [Fact]
@@ -910,6 +933,35 @@ public class CalendarIcsStreamingApiTests
         }
 
         await db.SaveChangesAsync();
+    }
+
+    // A series of `rows` daily occurrences, each with a 2,000-character description (~2 KB a VEVENT); the first is
+    // edited, so every export of it writes row by row.
+    private static async Task<Guid> SeedBulkySeriesAsync(ApiFactory factory, Guid calendarId, int rows)
+    {
+        await using var scope = factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var start = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
+        var stamp = new DateTime(2029, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        var pattern = new RecurrencePattern
+        {
+            CalendarId = calendarId, Title = "Bulky", Description = new string('x', 2000), StartDateTime = start,
+            EndDateTime = start.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = rows,
+            CreatedByUserId = ActorUserId, CreatedAt = stamp, UpdatedAt = stamp,
+        };
+        db.RecurrencePatterns.Add(pattern);
+        for (var i = 0; i < rows; i++)
+        {
+            db.CalendarEvents.Add(new ContextCalendarEvent
+            {
+                CalendarId = calendarId, Title = i == 0 ? "Edited" : "Bulky", Description = new string('x', 2000),
+                StartDateTime = start.AddDays(i), EndDateTime = start.AddDays(i).AddHours(1), RecurrencePattern = pattern,
+                CreatedByUserId = ActorUserId, CreatedAt = stamp, UpdatedAt = stamp,
+            });
+        }
+
+        await db.SaveChangesAsync();
+        return pattern.RecurrencePatternId;
     }
 
     private static async Task<Guid> SeedLocationAsync(ApiFactory factory, string name)
