@@ -48,12 +48,11 @@ public partial class WeatherPointsUiTests : IDisposable
     // ── Navigation and the page gate (AC 1, 22) ───────────────────────────────────────────────────
 
     [Fact]
-    public void The_nav_item_follows_locations_in_journal_and_needs_weather_points_read()
+    public void The_nav_item_sits_in_the_internet_weather_group_and_needs_weather_points_read()
     {
-        var journal = NavModel.All.Single(m => m.Key == "journal");
-        var keys = journal.Groups.SelectMany(g => g.Items).Select(p => p.Key).ToList();
-        Assert.Equal(keys.IndexOf("locations") + 1, keys.IndexOf("weather-points"));
-        var item = journal.Groups.SelectMany(g => g.Items).Single(p => p.Key == "weather-points");
+        Assert.DoesNotContain(NavModel.All.Single(m => m.Key == "journal").Groups.SelectMany(g => g.Items), p => p.Key == "weather-points");
+        var group = NavModel.All.Single(m => m.Key == "internet").Groups.Single(g => g.Label == "Weather");
+        var item = Assert.Single(group.Items);
         Assert.Equal(("Weather points", "wb_sunny", "weather-points", PermissionClaims.WeatherPointsRead),
             (item.Label, item.Icon, item.Href, item.Claim));
 
