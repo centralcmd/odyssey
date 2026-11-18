@@ -23,6 +23,13 @@ public interface ICalendarApiClient
     /// <summary>Lists events overlapping the [from, to) window (max 92 days, enforced server-side).</summary>
     Task<ApiResult<List<ExistingCalendarEvent>>> ListEventsAsync(DateTime from, DateTime to, CancellationToken ct = default);
 
+    /// <summary>
+    /// Lists the events overlapping the <c>[from, to)</c> instants, matching and ordering floating events by their
+    /// wall-clock in <paramref name="viewTimeZoneId"/> (issue #519 v3 §A); null is <c>UTC</c>.
+    /// </summary>
+    Task<ApiResult<List<ExistingCalendarEvent>>> ListEventsAsync(
+        DateTime from, DateTime to, string? viewTimeZoneId, CancellationToken ct = default);
+
     /// <summary>Loads one event. Null on failure.</summary>
     Task<ExistingCalendarEvent?> GetEventAsync(Guid id, CancellationToken ct = default);
 
@@ -47,6 +54,14 @@ public interface ICalendarApiClient
     Task<ApiResult<IcsImportResult>> ImportAsync(
         Guid calendarId, ApiUpload file, bool allowRemovals = false, CancellationToken ct = default);
 
+    /// <summary>
+    /// Imports an <c>.ics</c> file, reading its floating times in <paramref name="defaultTimeZoneId"/> when one is sent
+    /// (issue #519 §5.7). <paramref name="allowRemovals"/> also lets a series change remove stored rows or discard
+    /// stored exceptions, which needs <c>calendar.delete</c>.
+    /// </summary>
+    Task<ApiResult<IcsImportResult>> ImportAsync(
+        Guid calendarId, ApiUpload file, bool allowRemovals, string? defaultTimeZoneId, CancellationToken ct = default);
+
     /// <summary>The absolute URL of a calendar's import, for the browser to upload the picked file itself. The
     /// multipart body carries the file as <c>file</c> and, optionally, <c>allowRemovals=true</c>.</summary>
     string ImportUrl(Guid calendarId);
@@ -68,6 +83,18 @@ public interface ICalendarApiClient
 
     /// <summary>The absolute URL of the series export.</summary>
     string ExportPatternUrl(Guid patternId);
+
+    /// <summary>
+    /// The aggregate export's summary with the window read in <paramref name="viewTimeZoneId"/> (issue #519 v3 §A):
+    /// a floating event matches by its wall-clock in that zone. Null is <c>UTC</c>.
+    /// </summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId,
+        CancellationToken ct = default);
+
+    /// <summary>The absolute URL of the aggregate export with the window read in <paramref name="viewTimeZoneId"/>.</summary>
+    string ExportAggregateUrl(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId);
 
     /// <summary>Exports every matching event across every calendar the caller can read, as one
     /// multi-VEVENT <c>.ics</c> file, optionally filtered by date range / calendar / search term (issue
@@ -101,6 +128,12 @@ public interface ICalendarApiClient
 
     Task<ApiResult> DeleteEventAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Deletes one occurrence and reads what keying its legacy series detached (issue #519 v5 §3): a <c>null</c> value
+    /// on the ordinary <c>204</c>, a <see cref="CalendarEventDeleteResult"/> when the server reports detached rows.
+    /// </summary>
+    Task<ApiResult<CalendarEventDeleteResult?>> DeleteEventWithResultAsync(Guid id, CancellationToken ct = default);
+
     // ── Recurrence patterns ──────────────────────────────────────────────────
     // The series template. Editing a pattern regenerates its occurrences server-side, which is why
     // the calendar page reloads its window after any pattern write.
@@ -108,6 +141,17 @@ public interface ICalendarApiClient
     Task<ApiResult> CreatePatternAsync(NewRecurrencePattern pattern, CancellationToken ct = default);
 
     Task<ApiResult> UpdatePatternAsync(Guid id, NewRecurrencePattern pattern, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a series and reads what it dropped (issue #519 §5): send <see cref="NewRecurrencePattern.ExpectedVersion"/>
+    /// and <see cref="NewRecurrencePattern.ConfirmedDrops"/> to bind the write to what the user saw; a mismatch is a
+    /// <c>409</c> whose <c>code</c> is <c>calendar-series-version-conflict</c> or <c>calendar-series-drops-changed</c>.
+    /// </summary>
+    Task<ApiResult<RecurrencePatternUpdateResult>> UpdatePatternWithResultAsync(
+        Guid id, NewRecurrencePattern pattern, CancellationToken ct = default);
+
+    /// <summary>What a series update with the same body would drop, without saving (issue #519 §5 endpoint 4).</summary>
+    Task<ApiResult<RecurrencePatternPreview>> PreviewPatternAsync(Guid id, NewRecurrencePattern pattern, CancellationToken ct = default);
 
     Task<ApiResult> DeletePatternAsync(Guid id, CancellationToken ct = default);
 }
@@ -134,6 +178,18 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
         api.GetAllAsync<ExistingCalendarEvent>(
             PagedQuery.For(EventsBase).Add("from", from).Add("to", to).Build(), ct);
 
+    public Task<ApiResult<List<ExistingCalendarEvent>>> ListEventsAsync(
+        DateTime from, DateTime to, string? viewTimeZoneId, CancellationToken ct = default)
+    {
+        var query = PagedQuery.For(EventsBase).Add("from", from).Add("to", to);
+        if (!string.IsNullOrWhiteSpace(viewTimeZoneId))
+        {
+            query = query.Add("viewTimeZoneId", viewTimeZoneId);
+        }
+
+        return api.GetAllAsync<ExistingCalendarEvent>(query.Build(), ct);
+    }
+
     public async Task<ExistingCalendarEvent?> GetEventAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingCalendarEvent>($"{EventsBase}/{id}", ct)).Value;
 
@@ -158,6 +214,28 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
             contentTypeOverride: "text/calendar",
             ct: ct,
             fields: allowRemovals ? [new KeyValuePair<string, string>("allowRemovals", "true")] : null);
+
+    public Task<ApiResult<IcsImportResult>> ImportAsync(
+        Guid calendarId, ApiUpload file, bool allowRemovals, string? defaultTimeZoneId, CancellationToken ct = default)
+    {
+        var fields = new List<KeyValuePair<string, string>>();
+        if (allowRemovals)
+        {
+            fields.Add(new KeyValuePair<string, string>("allowRemovals", "true"));
+        }
+
+        if (!string.IsNullOrWhiteSpace(defaultTimeZoneId))
+        {
+            fields.Add(new KeyValuePair<string, string>("defaultTimeZoneId", defaultTimeZoneId));
+        }
+
+        return api.UploadAsync<IcsImportResult>(
+            $"{CalendarsBase}/{calendarId}/ics",
+            string.IsNullOrWhiteSpace(file.FileName) ? file with { FileName = "calendar.ics" } : file,
+            contentTypeOverride: "text/calendar",
+            ct: ct,
+            fields: fields.Count > 0 ? fields : null);
+    }
 
     public string ImportUrl(Guid calendarId) => Absolute($"{CalendarsBase}/{calendarId}/ics");
 
@@ -191,12 +269,27 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public string ExportAggregateUrl(DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search) =>
         Absolute(AggregateQuery("ics", from, to, calendarIds, search));
 
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId,
+        CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>(AggregateQuery("ics/summary", from, to, calendarIds, search, viewTimeZoneId), ct);
+
+    public string ExportAggregateUrl(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId) =>
+        Absolute(AggregateQuery("ics", from, to, calendarIds, search, viewTimeZoneId));
+
     // Built by hand rather than with PagedQuery: these endpoints take no offset/limit, which PagedQuery would always
     // append.
     private static string AggregateQuery(
-        string path, DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search)
+        string path, DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
+        string? viewTimeZoneId = null)
     {
         var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(viewTimeZoneId))
+        {
+            parts.Add($"viewTimeZoneId={Uri.EscapeDataString(viewTimeZoneId)}");
+        }
+
         if (from is { } f)
         {
             parts.Add($"from={Uri.EscapeDataString(f.ToString("o"))}");
@@ -248,6 +341,9 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public Task<ApiResult> DeleteEventAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{EventsBase}/{id}", null, ct);
 
+    public Task<ApiResult<CalendarEventDeleteResult?>> DeleteEventWithResultAsync(Guid id, CancellationToken ct = default) =>
+        api.SendOptionalAsync<CalendarEventDeleteResult>(HttpMethod.Delete, $"{EventsBase}/{id}", null, ct);
+
     // ── Recurrence patterns ──────────────────────────────────────────────────
 
     public Task<ApiResult> CreatePatternAsync(NewRecurrencePattern pattern, CancellationToken ct = default) =>
@@ -255,6 +351,14 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public Task<ApiResult> UpdatePatternAsync(Guid id, NewRecurrencePattern pattern, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Put, $"{PatternsBase}/{id}", pattern, ct);
+
+    public Task<ApiResult<RecurrencePatternUpdateResult>> UpdatePatternWithResultAsync(
+        Guid id, NewRecurrencePattern pattern, CancellationToken ct = default) =>
+        api.SendAsync<RecurrencePatternUpdateResult>(HttpMethod.Put, $"{PatternsBase}/{id}", pattern, ct);
+
+    public Task<ApiResult<RecurrencePatternPreview>> PreviewPatternAsync(
+        Guid id, NewRecurrencePattern pattern, CancellationToken ct = default) =>
+        api.SendAsync<RecurrencePatternPreview>(HttpMethod.Post, $"{PatternsBase}/{id}/preview", pattern, ct);
 
     public Task<ApiResult> DeletePatternAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{PatternsBase}/{id}", null, ct);

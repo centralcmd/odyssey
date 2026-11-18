@@ -12,14 +12,22 @@ public sealed class CalendarEventsQueryParams : QueryParams<CalendarEventSortBy>
     // Nullable at the binding layer (a missing non-nullable value type silently defaults rather than
     // failing to bind); CalendarEventService enforces that both are present and span <= 92 days,
     // returning a 400 DomainValidationException otherwise.
-    public DateTime? From { get; set; } // UTC
+    public DateTime? From { get; set; } // UTC instant
 
-    public DateTime? To { get; set; } // UTC
+    public DateTime? To { get; set; } // UTC instant
 
     public Guid[]? CalendarIds { get; set; }
 
     /// <summary>Only records linked to this place (issue #380 §5.2).</summary>
     public Guid? LocationId { get; set; }
+
+    /// <summary>
+    /// The viewer's zone (issue #519 v3 §A): a floating row is matched and ordered by its wall-clock in this zone.
+    /// Defaults to <c>UTC</c>, which is exactly the behaviour before #519.
+    /// </summary>
+    [StringLength(IanaTimeZones.MaxLength)]
+    [IanaTimeZone]
+    public string? ViewTimeZoneId { get; set; }
 }
 
 public sealed class RecurrencePatternsQueryParams : QueryParams<RecurrencePatternSortBy>
@@ -47,4 +55,9 @@ public sealed class CalendarEventsIcsExportQueryParams
     // Matches Title only (EF.Functions.Like), same as CalendarEventsQueryParams.Search — not Location.
     [StringLength(ListDefaults.MaxSearchLength)]
     public string? Search { get; set; }
+
+    /// <summary>The viewer's zone for the window (issue #519 v3 §A); defaults to <c>UTC</c>.</summary>
+    [StringLength(IanaTimeZones.MaxLength)]
+    [IanaTimeZone]
+    public string? ViewTimeZoneId { get; set; }
 }

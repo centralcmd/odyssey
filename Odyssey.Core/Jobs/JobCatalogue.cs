@@ -143,6 +143,14 @@ public static class JobCatalogue
             StaleAfter: NewsJobTiming.StaleAfter,
             ManualRunClaims: [PermissionClaims.NewsFeedsUpdate],
             DetailReadClaim: PermissionClaims.NewsFeedsUpdate),
+        // The recurrence key backfill (issue #519 §11): work-driven, idle for good once every pre-#519 series is keyed.
+        // Its counts are calendar operations data, so the card follows calendar.read; a manual run only keys what the
+        // next tick would, so it needs calendar.update, the claim a series edit (which also keys inline) already needs.
+        new(JobType.RecurrenceKeyBackfill, typeof(Odyssey.Core.Journal.RecurrenceKeyBackfillJob), Odyssey.Core.Journal.RecurrenceKeyBackfillJob.Tick,
+            Cadence: null, DynamicCadence: false,
+            StaleAfter: Odyssey.Core.Journal.RecurrenceKeyBackfillJob.RunBudget + TimeSpan.FromMinutes(5),
+            ManualRunClaims: [PermissionClaims.CalendarUpdate],
+            DetailReadClaim: PermissionClaims.CalendarRead),
     ];
 
     /// <summary>Periodic jobs that keep the run log itself; they record no runs and have no entry.</summary>

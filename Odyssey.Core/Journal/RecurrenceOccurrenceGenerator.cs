@@ -22,19 +22,25 @@ namespace Odyssey.Core.Journal;
 /// </remarks>
 internal static class RecurrenceOccurrenceGenerator
 {
-    public static List<(DateTime Start, DateTime End)> Generate(RecurrencePattern pattern, int maxGeneratedOccurrences)
+    /// <summary>
+    /// The rule's occurrences, clamping a day-of-month the month lacks to its last day (issue #519 §3 component 1). Each
+    /// occurrence carries its <see cref="GeneratedOccurrence.Key"/> — the local wall-clock start — and its stored
+    /// start and end: the instant on a zoned series, the wall-clock on a floating one.
+    /// </summary>
+    public static List<GeneratedOccurrence> Generate(RecurrencePattern pattern, int maxGeneratedOccurrences)
     {
-        var duration = pattern.EndDateTime - pattern.StartDateTime;
-        var occurrences = new List<(DateTime Start, DateTime End)>();
+        var frame = Frame.Of(pattern);
+        var occurrences = new List<GeneratedOccurrence>();
 
-        foreach (var start in EnumerateStarts(pattern))
+        foreach (var key in EnumerateStarts(pattern, frame.LocalStart))
         {
-            if (pattern.RecurrenceEndDate is { } endDate && start > endDate)
+            var occurrence = frame.Occurrence(key);
+            if (frame.PastUntil(occurrence))
             {
                 break;
             }
 
-            occurrences.Add((start, start + duration));
+            occurrences.Add(occurrence);
 
             if (occurrences.Count > maxGeneratedOccurrences)
             {
@@ -54,43 +60,42 @@ internal static class RecurrenceOccurrenceGenerator
     /// <summary>
     /// Projects the pattern's rule the way a strict RFC 5545 reader would — a month/year whose
     /// requested day-of-month doesn't exist (e.g. the 31st of a 30-day month, Feb 30) is *skipped*
-    /// rather than clamped to the last valid day (which is what <see cref="Generate"/> does). Used by
-    /// the ICS exporter (issue #330) to decide whether a stored series can be faithfully re-emitted as
-    /// a single <c>RRULE</c>: only when its actual generated rows exactly match this unclamped
-    /// projection is the RRULE safe to export (otherwise an external reader would compute different
-    /// dates than Odyssey stores). Returns <c>null</c> if the rule can never reach its
+    /// rather than clamped to the last valid day (which is what <see cref="Generate"/> does). Zone-aware
+    /// like <see cref="Generate"/> (issue #519): the ICS exporter compares its key set with the series'
+    /// (<c>CanExportWithExceptions</c>). Returns <c>null</c> if the rule can never reach its
     /// <see cref="RecurrencePattern.OccurrenceCount"/> (a rule whose day never exists), so the caller
     /// falls back to flattening.
     /// </summary>
-    internal static List<(DateTime Start, DateTime End)>? GenerateRfcLiteral(
+    internal static List<GeneratedOccurrence>? GenerateRfcLiteral(
         RecurrencePattern pattern, int maxGeneratedOccurrences)
     {
         // A bounded pattern that produces valid dates finishes far below this; the guard only trips on
         // a degenerate rule (e.g. FEB 30 yearly) that skips forever, in which case flattening is right.
         const int maxSteps = 500_000;
 
-        var duration = pattern.EndDateTime - pattern.StartDateTime;
-        var occurrences = new List<(DateTime, DateTime)>();
+        var frame = Frame.Of(pattern);
+        var occurrences = new List<GeneratedOccurrence>();
         var steps = 0;
 
-        foreach (var start in EnumerateRfcLiteralStarts(pattern))
+        foreach (var start in EnumerateRfcLiteralStarts(pattern, frame.LocalStart))
         {
             if (++steps > maxSteps)
             {
                 return null;
             }
 
-            if (start is not { } value)
+            if (start is not { } key)
             {
                 continue; // a non-existent day (skipped under strict RFC rules)
             }
 
-            if (pattern.RecurrenceEndDate is { } endDate && value > endDate)
+            var occurrence = frame.Occurrence(key);
+            if (frame.PastUntil(occurrence))
             {
                 break;
             }
 
-            occurrences.Add((value, value + duration));
+            occurrences.Add(occurrence);
 
             if (occurrences.Count > maxGeneratedOccurrences)
             {
@@ -106,18 +111,55 @@ internal static class RecurrenceOccurrenceGenerator
         return occurrences;
     }
 
+    // The rule's local frame: the zone (null when floating), the local anchor and the nominal local duration.
+    private sealed record Frame(RecurrencePattern Pattern, TimeZoneInfo? Zone, DateTime LocalStart, TimeSpan LocalDuration)
+    {
+        public static Frame Of(RecurrencePattern pattern)
+        {
+            var zone = pattern.IsAllDay ? null : CalendarTimeZones.Find(pattern.TimeZoneId);
+            var localStart = zone is null
+                ? DateTime.SpecifyKind(pattern.StartDateTime, DateTimeKind.Unspecified)
+                : CalendarTimeZones.ToWall(pattern.StartDateTime, zone);
+            var localEnd = zone is null
+                ? DateTime.SpecifyKind(pattern.EndDateTime, DateTimeKind.Unspecified)
+                : CalendarTimeZones.ToWall(pattern.EndDateTime, zone);
+            return new Frame(pattern, zone, localStart, localEnd - localStart);
+        }
+
+        public GeneratedOccurrence Occurrence(DateTime key)
+        {
+            key = DateTime.SpecifyKind(key, DateTimeKind.Unspecified);
+            if (Zone is null)
+            {
+                return new GeneratedOccurrence(key, key, key + LocalDuration, Adjusted: false);
+            }
+
+            var start = CalendarTimeZones.ToUtc(key, Zone, out var adjusted);
+            var end = CalendarTimeZones.ToUtc(key + LocalDuration, Zone);
+            if (end <= start)
+            {
+                end = start + LocalDuration; // a nominal end that a gap swallowed keeps the duration
+            }
+
+            return new GeneratedOccurrence(key, start, end, adjusted);
+        }
+
+        // UNTIL is inclusive: an instant on a zoned series, a wall-clock on a floating one (#519 v3 §C).
+        public bool PastUntil(GeneratedOccurrence occurrence) =>
+            Pattern.RecurrenceEndDate is { } until && occurrence.Start > until;
+    }
+
     // Mirrors EnumerateStarts but yields null for a month/year whose requested day does not exist,
     // instead of clamping it to the last valid day.
-    private static IEnumerable<DateTime?> EnumerateRfcLiteralStarts(RecurrencePattern pattern)
+    private static IEnumerable<DateTime?> EnumerateRfcLiteralStarts(RecurrencePattern pattern, DateTime anchor)
     {
-        var anchor = pattern.StartDateTime;
         var timeOfDay = anchor.TimeOfDay;
 
         switch (pattern.Frequency)
         {
             case RecurrenceFrequency.Daily:
             case RecurrenceFrequency.Weekly:
-                foreach (var start in EnumerateStarts(pattern))
+                foreach (var start in EnumerateStarts(pattern, anchor))
                 {
                     yield return start; // Daily/Weekly never clamp — identical to the generator
                 }
@@ -127,7 +169,7 @@ internal static class RecurrenceOccurrenceGenerator
             case RecurrenceFrequency.Monthly:
                 for (var k = 0; ; k++)
                 {
-                    var baseMonth = new DateTime(anchor.Year, anchor.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(k * pattern.Interval);
+                    var baseMonth = new DateTime(anchor.Year, anchor.Month, 1, 0, 0, 0, DateTimeKind.Unspecified).AddMonths(k * pattern.Interval);
                     var requestedDay = pattern.DayOfMonth ?? anchor.Day;
                     if (requestedDay > DateTime.DaysInMonth(baseMonth.Year, baseMonth.Month))
                     {
@@ -135,7 +177,7 @@ internal static class RecurrenceOccurrenceGenerator
                         continue;
                     }
 
-                    yield return new DateTime(baseMonth.Year, baseMonth.Month, requestedDay, 0, 0, 0, DateTimeKind.Utc) + timeOfDay;
+                    yield return new DateTime(baseMonth.Year, baseMonth.Month, requestedDay, 0, 0, 0, DateTimeKind.Unspecified) + timeOfDay;
                 }
 
             case RecurrenceFrequency.Yearly:
@@ -150,7 +192,7 @@ internal static class RecurrenceOccurrenceGenerator
                         continue;
                     }
 
-                    yield return new DateTime(year, month, requestedDay, 0, 0, 0, DateTimeKind.Utc) + timeOfDay;
+                    yield return new DateTime(year, month, requestedDay, 0, 0, 0, DateTimeKind.Unspecified) + timeOfDay;
                 }
 
             default:
@@ -158,9 +200,8 @@ internal static class RecurrenceOccurrenceGenerator
         }
     }
 
-    private static IEnumerable<DateTime> EnumerateStarts(RecurrencePattern pattern)
+    private static IEnumerable<DateTime> EnumerateStarts(RecurrencePattern pattern, DateTime anchor)
     {
-        var anchor = pattern.StartDateTime;
         var timeOfDay = anchor.TimeOfDay;
 
         switch (pattern.Frequency)
@@ -201,9 +242,9 @@ internal static class RecurrenceOccurrenceGenerator
                 // next-charge projection).
                 for (var k = 0; ; k++)
                 {
-                    var baseMonth = new DateTime(anchor.Year, anchor.Month, 1, 0, 0, 0, DateTimeKind.Utc).AddMonths(k * pattern.Interval);
+                    var baseMonth = new DateTime(anchor.Year, anchor.Month, 1, 0, 0, 0, DateTimeKind.Unspecified).AddMonths(k * pattern.Interval);
                     var day = Math.Min(pattern.DayOfMonth ?? anchor.Day, DateTime.DaysInMonth(baseMonth.Year, baseMonth.Month));
-                    yield return new DateTime(baseMonth.Year, baseMonth.Month, day, 0, 0, 0, DateTimeKind.Utc) + timeOfDay;
+                    yield return new DateTime(baseMonth.Year, baseMonth.Month, day, 0, 0, 0, DateTimeKind.Unspecified) + timeOfDay;
                 }
 
             case RecurrenceFrequency.Yearly:
@@ -212,7 +253,7 @@ internal static class RecurrenceOccurrenceGenerator
                     var year = anchor.Year + (k * pattern.Interval);
                     var month = pattern.MonthOfYear ?? anchor.Month;
                     var day = Math.Min(pattern.DayOfMonth ?? anchor.Day, DateTime.DaysInMonth(year, month));
-                    yield return new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Utc) + timeOfDay;
+                    yield return new DateTime(year, month, day, 0, 0, 0, DateTimeKind.Unspecified) + timeOfDay;
                 }
 
             default:
@@ -244,4 +285,18 @@ internal static class RecurrenceOccurrenceGenerator
         DayOfWeek.Sunday => flags.HasFlag(DaysOfWeekFlags.Sunday),
         _ => false,
     };
+}
+
+/// <summary>
+/// One generated occurrence (issue #519 §3 component 1): its key — the local wall-clock start under the rule, with
+/// <c>Kind = Unspecified</c> — and its stored start and end, the instant on a zoned series and the wall-clock on a
+/// floating one. <see cref="Adjusted"/> is set when the key fell in a DST gap and the start moved forward.
+/// </summary>
+internal readonly record struct GeneratedOccurrence(DateTime Key, DateTime Start, DateTime End, bool Adjusted)
+{
+    public void Deconstruct(out DateTime start, out DateTime end)
+    {
+        start = Start;
+        end = End;
+    }
 }

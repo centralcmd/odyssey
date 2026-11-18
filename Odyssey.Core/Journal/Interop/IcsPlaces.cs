@@ -54,6 +54,12 @@ internal sealed class IcsPlaces
     /// <summary>Places this import created.</summary>
     public int Created { get; private set; }
 
+    /// <summary>The counters, to put back after a retried batch reloads the index (issue #519 v5 §2).</summary>
+    public (int Linked, int Created) Snapshot() => (Linked, Created);
+
+    /// <summary>Puts back the counters <see cref="Snapshot"/> took.</summary>
+    public void Restore((int Linked, int Created) snapshot) => (Linked, Created) = snapshot;
+
     /// <summary>Whether this import links places at all.</summary>
     public bool Enabled => index is not null;
 

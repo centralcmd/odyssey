@@ -119,10 +119,11 @@ public sealed class RecurrencePatternsController : ControllerBase
 
     [HttpPut("{id}", Name = "PutRecurrencePattern")]
     [Authorize(Policy = PermissionClaims.CalendarUpdate)]
-    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingRecurrencePattern))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(RecurrencePatternUpdateResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update a series' template/rule fields; regenerates its future (>= now) generated events only.")]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Update a series' template, rule and zone; reconciles its future rows in place by occurrence key, keeping every override and exclusion whose key survives, and reports what it dropped.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
@@ -136,11 +137,30 @@ public sealed class RecurrencePatternsController : ControllerBase
         return updated is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(updated);
     }
 
+    // What the PUT with the same body would drop (issue #519 §5 endpoint 4). It saves nothing and takes no lock, and runs
+    // under the summaries' per-user limiter (v3 §F).
+    [HttpPost("{id}/preview", Name = "PreviewRecurrencePattern")]
+    [Authorize(Policy = PermissionClaims.CalendarUpdate)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(RecurrencePatternPreview))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Preview a series edit: the overrides and exclusions it would drop, without saving.")]
+    public async Task<IActionResult> Preview(
+        [FromRoute(Name = "id")] Guid id,
+        [FromBody] NewRecurrencePattern request, CancellationToken cancellationToken = default)
+    {
+        var preview = await service.PreviewAsync(id, request, cancellationToken, User.LocationClaims());
+        return preview is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(preview);
+    }
+
     [HttpDelete("{id}", Name = "DeleteRecurrencePattern")]
     [Authorize(Policy = PermissionClaims.CalendarDelete)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete a series: hard-deletes its future generated events, detaches past/current ones.")]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete a series: hard-deletes its future generated events, detaches past/current ones and removes its exclusions.")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {

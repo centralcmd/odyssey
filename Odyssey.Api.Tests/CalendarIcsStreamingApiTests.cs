@@ -154,7 +154,9 @@ public class CalendarIcsStreamingApiTests
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Capped");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Six", count: 6);
-        // An edited occurrence flattens the series to its six rows, so the series export carries six VEVENTs too.
+        // An edited occurrence is a RECURRENCE-ID component since issue #519: the calendar export carries the master, the
+        // override and the single event (3), the series export the master and the override (2), and the unfiltered
+        // aggregate — flat for a series with any exception — the six rows and the single event (7).
         await EditFirstOccurrenceAsync(factory, series.RecurrencePatternId);
         var single = await CreateEventAsync(client, calendar.CalendarId, "Single");
         // The single-event export plans exactly one VEVENT, and the cap's floor is 1, so no cap can refuse it: it is
@@ -166,7 +168,7 @@ public class CalendarIcsStreamingApiTests
             $"{CalendarsPath}/{calendar.CalendarId}/ics", $"{PatternsPath}/{series.RecurrencePatternId}/ics", $"{EventsPath}/ics",
         };
 
-        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxExportEvents = new CapacityLimit { Value = 5 } });
+        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxExportEvents = new CapacityLimit { Value = 1 } });
         foreach (var url in urls)
         {
             foreach (var target in new[] { url, Summary(url) })
@@ -253,7 +255,7 @@ public class CalendarIcsStreamingApiTests
     // ------------------------------------------------------------------ AC 12: the moved-occurrence rule
 
     [Fact]
-    public async Task An_occurrence_moved_to_another_calendar_is_exported_in_that_calendar_and_the_series_flattens()
+    public async Task An_occurrence_moved_to_another_calendar_is_an_exdate_here_and_a_standalone_event_there()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -267,13 +269,18 @@ public class CalendarIcsStreamingApiTests
         var bBody = await (await client.GetAsync($"{CalendarsPath}/{b.CalendarId}/ics")).Content.ReadAsStringAsync();
         var seriesBody = await (await client.GetAsync($"{PatternsPath}/{series.RecurrencePatternId}/ics")).Content.ReadAsStringAsync();
 
-        Assert.DoesNotContain("RRULE:", aBody);
-        Assert.Equal(2, Count(aBody, "BEGIN:VEVENT"));
+        // Issue #519 AC 17: the series keeps its rule in its own calendar with the moved key as an EXDATE, the moved row
+        // is a standalone event under its own synthetic UID in B, and the series export carries it as a RECURRENCE-ID.
+        Assert.Equal(1, Count(aBody, "RRULE:"));
+        Assert.Equal(1, Count(aBody, "BEGIN:VEVENT"));
+        Assert.Contains("EXDATE:20300101T090000", aBody);
         Assert.DoesNotContain(movedUid, aBody);
         Assert.Equal(1, Count(bBody, "BEGIN:VEVENT"));
         Assert.Contains(movedUid, bBody);
-        Assert.DoesNotContain("RRULE:", seriesBody);
-        Assert.Equal(3, Count(seriesBody, "BEGIN:VEVENT"));
+        Assert.DoesNotContain("RRULE:", bBody);
+        Assert.Equal(1, Count(seriesBody, "RRULE:"));
+        Assert.Equal(2, Count(seriesBody, "BEGIN:VEVENT"));
+        Assert.Contains("RECURRENCE-ID:20300101T090000", seriesBody);
     }
 
     [Fact]
@@ -553,23 +560,30 @@ public class CalendarIcsStreamingApiTests
     }
 
     [Fact]
-    public async Task A_cancelled_recurrence_id_component_is_skipped_and_its_series_untouched()
+    public async Task A_cancelled_recurrence_id_component_excludes_that_occurrence_and_keeps_the_series()
     {
+        // Issue #519 supersedes this test's Spec A form (S6): a cancelled override is an exclusion, gated like a removal.
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Exception");
         var series = await CreateSeriesAsync(client, calendar.CalendarId, "Weekly", count: 3);
         var file = Vcalendar(Vevent($"{series.RecurrencePatternId}@odyssey.local", "STATUS:CANCELLED", "SUMMARY:Weekly",
-            "RECURRENCE-ID:20300108T090000Z", "DTSTART:20300108T090000Z"));
+            "RECURRENCE-ID:20300102T090000Z", "DTSTART:20300102T090000Z"));
+
+        var gated = await ImportAsync(client, calendar.CalendarId, file);
+        Assert.Equal(1, gated.GatedSeriesCount);
+        Assert.Equal(CalendarIcsService.GatedReason, Assert.Single(gated.Skipped).Reason);
 
         var result = await ImportAsync(client, calendar.CalendarId, file, allowRemovals: true);
 
-        Assert.Equal(0, result.RemovedCount);
-        Assert.Equal(CalendarIcsService.RecurrenceIdReason, Assert.Single(result.Skipped).Reason);
+        Assert.Equal(1, result.ExclusionsApplied);
+        Assert.Empty(result.Skipped);
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         Assert.True(await db.RecurrencePatterns.AnyAsync(p => p.RecurrencePatternId == series.RecurrencePatternId));
-        Assert.Equal(3, await db.CalendarEvents.CountAsync(e => e.RecurrencePatternId == series.RecurrencePatternId));
+        Assert.Equal(2, await db.CalendarEvents.CountAsync(e => e.RecurrencePatternId == series.RecurrencePatternId));
+        Assert.Equal(new DateTime(2030, 1, 2, 9, 0, 0),
+            Assert.Single(await db.RecurrenceExclusions.Where(x => x.RecurrencePatternId == series.RecurrencePatternId).ToListAsync()).OccurrenceKey);
     }
 
     [Theory]
@@ -642,7 +656,7 @@ public class CalendarIcsStreamingApiTests
     [InlineData("line")]
     [InlineData("component")]
     [InlineData("unterminated")]
-    public async Task An_oversized_or_unclosed_component_stops_the_import_and_keeps_the_batches_before_it(string shape)
+    public async Task An_oversized_or_unclosed_component_refuses_the_whole_file_before_anything_is_applied(string shape)
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -661,12 +675,14 @@ public class CalendarIcsStreamingApiTests
 
         var response = await PostIcsAsync(client, calendar.CalendarId, file);
 
+        // Issue #519 §3 component 6: pass 1 reads the whole file before any batch, so a structural fault anywhere in it
+        // is a plain 400 and the batches before it are never applied.
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
-        Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
+        Assert.False(problem.Extensions.ContainsKey("code"));
         Assert.Contains("too large or not closed", problem.Detail);
         await using var scope = factory.Services.CreateAsyncScope();
-        Assert.Equal(CalendarIcsService.ImportBatchSize, await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
+        Assert.Equal(0, await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
             .CalendarEvents.CountAsync(e => e.CalendarId == calendar.CalendarId));
     }
 
@@ -715,28 +731,22 @@ public class CalendarIcsStreamingApiTests
     {
         // Security finding 1: a batch is applied once its components reach ImportBatchCharBudget, so 500 near-cap
         // components can never be held at once. Each component here is ~3 Mi characters, so 16 Mi is crossed by the
-        // sixth: two batches of six commit before the unterminated thirteenth stops the import.
-        await using var factory = new ApiFactory(ReadWrite);
+        // sixth: twelve components commit as two batches of six, which the per-batch log line shows.
+        var logs = new CapturingLoggerProvider();
+        await using var factory = new ApiFactory(ReadWrite, logs);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Sized");
         var padding = string.Concat(Enumerable.Repeat("X-PAD:" + new string('p', 1018) + "\r\n", 3 * 1024));
         var big = Enumerable.Range(0, 12).Select(i => "BEGIN:VEVENT\r\nUID:big-" + i + "@example.com\r\n"
             + "DTSTART:20300101T090000Z\r\nDTEND:20300101T100000Z\r\nSUMMARY:Big " + i + "\r\n" + padding + "END:VEVENT\r\n");
-        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n" + string.Concat(big)
-            + "BEGIN:VEVENT\r\nUID:never\r\n";
+        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n" + string.Concat(big) + "END:VCALENDAR\r\n";
         Assert.InRange(padding.Length * 6, CalendarIcsService.ImportBatchCharBudget, int.MaxValue);
         Assert.InRange(padding.Length * 5, 0, CalendarIcsService.ImportBatchCharBudget - 64 * 1024);
 
-        var response = await PostIcsAsync(client, calendar.CalendarId, file);
+        var result = await ImportAsync(client, calendar.CalendarId, file);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
-        Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
-        Assert.Equal("2", problem.Extensions["committedBatches"]?.ToString());
-        Assert.Equal("12", problem.Extensions["committedEvents"]?.ToString());
-        await using var scope = factory.Services.CreateAsyncScope();
-        Assert.Equal(12, await scope.ServiceProvider.GetRequiredService<OdysseyContext>()
-            .CalendarEvents.CountAsync(e => e.CalendarId == calendar.CalendarId));
+        Assert.Equal(12, result.ImportedCount);
+        Assert.Equal(2, logs.ForCategory(nameof(CalendarIcsService)).Count(e => e.Message.Contains("batch committed")));
     }
 
     [Fact]
@@ -756,18 +766,15 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_failure_in_batch_three_keeps_batches_one_and_two_and_a_rerun_completes_the_file()
     {
+        // Groups commit in UID-hash order since issue #519 (AR3), so the failure is one every group spends alike: 1,500
+        // single-occurrence series against an occurrence budget of 1,000 fail in batch three whatever the order.
         await using var factory = new ApiFactory(WithSettings);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Partial");
-        // The event cap stops the import in batch 3.
-        await SetAsync(client, new SystemSettingsUpdate
-        {
-            CalendarIcsMaxExportEvents = new CapacityLimit { Value = 1001 },
-            CalendarIcsMaxImportEvents = new CapacityLimit { Value = 1001 },
-        });
-        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n"
-            + string.Concat(Enumerable.Range(0, 1500).Select(i => Standalone($"{SyntheticGuid(i)}@odyssey.local", $"Row {i}")))
-            + "END:VCALENDAR\r\n";
+        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 1000 });
+        var file = Vcalendar([.. Enumerable.Range(0, 1500).Select(i => Vevent(
+            $"{SyntheticGuid(i)}@odyssey.local", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:Row {i}",
+            "RRULE:FREQ=DAILY;COUNT=1"))]);
 
         var failed = await PostIcsAsync(client, calendar.CalendarId, file);
 
@@ -778,44 +785,18 @@ public class CalendarIcsStreamingApiTests
         Assert.Equal("1000", problem.Extensions["committedEvents"]?.ToString());
         await using (var scope = factory.Services.CreateAsyncScope())
         {
-            var rows = await scope.ServiceProvider.GetRequiredService<OdysseyContext>().CalendarEvents
-                .Where(e => e.CalendarId == calendar.CalendarId).ToListAsync();
-            Assert.Equal(1000, rows.Count);
+            var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+            var series = await db.RecurrencePatterns.Where(p => p.CalendarId == calendar.CalendarId).ToListAsync();
+            Assert.Equal(1000, series.Count);
             // The match keys were written in the same batch as their rows, so the re-run finds them.
-            Assert.All(rows, r => Assert.NotNull(r.ImportSourceUid));
+            Assert.All(series, p => Assert.NotNull(p.ImportSourceUid));
         }
 
-        await SetAsync(client, new SystemSettingsUpdate
-        {
-            CalendarIcsMaxExportEvents = new CapacityLimit { Unlimited = true },
-            CalendarIcsMaxImportEvents = new CapacityLimit { Unlimited = true },
-        });
+        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 20000 });
         var rerun = await ImportAsync(client, calendar.CalendarId, file);
 
         Assert.Equal(1000, rerun.UpdatedCount);
         Assert.Equal(500, rerun.ImportedCount);
-    }
-
-    [Fact]
-    public async Task A_removing_import_that_fails_after_batch_one_has_already_audited_batch_one()
-    {
-        // AC 17b.
-        var logs = new CapturingLoggerProvider();
-        await using var factory = new ApiFactory(ReadWrite, logs);
-        using var client = factory.CreateClient();
-        var calendar = await CreateCalendarAsync(client, "AuditedPartial");
-        var id = await SeedRowAsync(factory, calendar.CalendarId, "To remove", externalUid: "remove@example.com");
-        var file = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n"
-            + Cancelled("remove@example.com", "To remove")
-            + string.Concat(Enumerable.Range(1, CalendarIcsService.ImportBatchSize - 1).Select(i => Standalone($"ok-{i}@example.com", $"Ok {i}")))
-            + "BEGIN:VEVENT\r\nUID:never\r\n";
-
-        var response = await PostIcsAsync(client, calendar.CalendarId, file, allowRemovals: true);
-
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Null(await FindRowAsync(factory, id));
-        var audit = Assert.Single(logs.ForCategory(nameof(CalendarIcsService)), e => e.Message.Contains("removed"));
-        Assert.Contains(id.ToString(), audit.Message);
     }
 
     [Fact]
@@ -836,8 +817,6 @@ public class CalendarIcsStreamingApiTests
         var response = await PostIcsAsync(client, calendar.CalendarId, file);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var problem = (await response.Content.ReadFromJsonAsync<ProblemDetails>())!;
-        Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
         Assert.True(probe.SeenDuringRequest, "The upload was never spooled to disk, so this test proves nothing.");
         var deadline = DateTime.UtcNow.AddSeconds(10);
         while (probe.SpoolFiles().Count > 0 && DateTime.UtcNow < deadline)
