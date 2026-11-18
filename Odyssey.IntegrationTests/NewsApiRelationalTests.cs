@@ -33,7 +33,7 @@ public sealed class NewsApiRelationalTests(MariaDbFixture fixture)
         }
 
         return new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connection, ServerVersion.AutoDetect(connection), mySql => mySql.EnableRetryOnFailure())
+            .UseMySql(connection, ServerVersion.AutoDetect(connection), OdysseyDatabaseRetry.Configure)
             .AddInterceptors(new NewsQueryCommandInterceptor(statementSeconds))
             .Options);
     }

@@ -403,7 +403,7 @@ public sealed class FileStorageRelationalTests(MariaDbFixture fixture) : IAsyncL
             [path]);
 
     private void UseDatabase(DbContextOptionsBuilder<OdysseyContext> options) =>
-        options.UseMySql(fixture.ConnectionStringFor(Database), new MariaDbServerVersion(new Version(11, 4)), mySql => mySql.EnableRetryOnFailure());
+        options.UseMySql(fixture.ConnectionStringFor(Database), new MariaDbServerVersion(new Version(11, 4)), OdysseyDatabaseRetry.Configure);
 
     /// <summary>The base context: a derived one would see none of <c>OdysseyContext</c>'s migrations.</summary>
     private OdysseyContext NewContext() =>

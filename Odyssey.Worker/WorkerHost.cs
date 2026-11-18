@@ -29,7 +29,7 @@ public static class WorkerHost
         // works on, and an in-memory database would be a private, empty copy the API never sees.
         var connectionString = builder.Configuration.GetRequiredConnectionString("OdysseyConnection");
         services.AddDbContext<OdysseyContext>(options => options.UseMySql(
-            connectionString, new MariaDbServerVersion(new Version(11, 4)), mySql => mySql.EnableRetryOnFailure()));
+            connectionString, new MariaDbServerVersion(new Version(11, 4)), OdysseyDatabaseRetry.Configure));
 
         services.AddMemoryCache();
         services.AddSingleton(TimeProvider.System);

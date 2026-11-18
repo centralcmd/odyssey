@@ -49,7 +49,7 @@ public sealed class NewsFeedJobRelationalTests(MariaDbFixture fixture) : IAsyncD
         }
 
         var harness = await NewsJobHarness.CreateAsync(
-            options => options.UseMySql(connection, ServerVersion.AutoDetect(connection), mySql => mySql.EnableRetryOnFailure()),
+            options => options.UseMySql(connection, ServerVersion.AutoDetect(connection), OdysseyDatabaseRetry.Configure),
             volume.FullName, clock, server, bucketCapacity, throttleSpacing: throttleSpacing);
         harnesses.Add(harness);
         return harness;

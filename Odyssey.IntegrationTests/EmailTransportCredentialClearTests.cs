@@ -346,7 +346,7 @@ public class EmailTransportCredentialClearTests(MariaDbFixture fixture)
             options.UseMySql(
                 connectionString,
                 ServerVersion.AutoDetect(connectionString),
-                mySql => mySql.EnableRetryOnFailure());
+                OdysseyDatabaseRetry.Configure);
 
             if (failAfterSave)
             {

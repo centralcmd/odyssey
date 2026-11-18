@@ -48,5 +48,5 @@ public static class DatabaseExtension
     // so any service that needs a manual transaction must go through
     // Database.CreateExecutionStrategy().ExecuteAsync(...) — see UserAdministrationService's
     // delete-with-pseudonymization path (issue #354 §6).
-    private static void EnableRetries(MySqlDbContextOptionsBuilder mySql) => mySql.EnableRetryOnFailure();
+    private static void EnableRetries(MySqlDbContextOptionsBuilder mySql) => OdysseyDatabaseRetry.Configure(mySql);
 }

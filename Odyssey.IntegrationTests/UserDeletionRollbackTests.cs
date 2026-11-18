@@ -157,7 +157,7 @@ public class UserDeletionRollbackTests(MariaDbFixture fixture)
             options.UseMySql(
                 connectionString,
                 ServerVersion.AutoDetect(connectionString),
-                mySql => mySql.EnableRetryOnFailure()));
+                OdysseyDatabaseRetry.Configure));
 
         var identity = services.AddIdentityCore<ApplicationUser>()
             .AddRoles<IdentityRole>()

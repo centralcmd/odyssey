@@ -107,7 +107,7 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
         // The context under test retries, which is what makes the transactional assertion below
         // meaningful — an execution strategy rejects an ambient transaction it did not open itself.
         var retryingOptions = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
         await using (var migrating = new OdysseyContext(migrationOptions))
