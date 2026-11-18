@@ -56,13 +56,14 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     private readonly int recordsPerRun;
     private readonly List<string> runs = [];
     private readonly List<string> allFiles = [];
-    private readonly byte[] hashKey = RandomNumberGenerator.GetBytes(32);
+    private readonly byte[] hashKey;
     private Record[]? memory;
     private int memoryCount;
     private long spilledBytes;
 
-    private IcsImportGrouper(Stream source, string spillDirectory, long uploadBytes, int recordsPerRun)
+    private IcsImportGrouper(Stream source, string spillDirectory, long uploadBytes, int recordsPerRun, byte[]? hashKey)
     {
+        this.hashKey = hashKey ?? RandomNumberGenerator.GetBytes(32);
         this.source = source;
         this.spillDirectory = spillDirectory;
         maxSpillBytes = uploadBytes + (uploadBytes / 4);
@@ -87,10 +88,10 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     /// </summary>
     public static async Task<IcsImportGrouper> BuildAsync(
         Stream source, string spillDirectory, int? maxEvents, CancellationToken cancellationToken,
-        int recordsPerRun = RunBufferBytes / RecordSize)
+        int recordsPerRun = RunBufferBytes / RecordSize, byte[]? hashKey = null)
     {
         var uploadBytes = source.Length;
-        var grouper = new IcsImportGrouper(source, spillDirectory, uploadBytes, recordsPerRun);
+        var grouper = new IcsImportGrouper(source, spillDirectory, uploadBytes, recordsPerRun, hashKey);
         try
         {
             await grouper.ScanAsync(uploadBytes, maxEvents, cancellationToken);
@@ -380,11 +381,14 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     /// The UID's keyed hash. The UID is folded the way the database compares it (case- and accent-insensitive), so two
     /// spellings the UID columns treat as one land in one group; a component with no UID gets a group of its own.
     /// </summary>
-    private UInt128 HashUid(string? uid, long offset)
+    private UInt128 HashUid(string? uid, long offset) => HashUid(hashKey, uid, offset);
+
+    /// <summary>The sort hash of a UID under <paramref name="key"/>; a test with a fixed key can predict group order.</summary>
+    internal static UInt128 HashUid(byte[] key, string? uid, long offset)
     {
         var input = uid is null ? $"\u0000{offset.ToString(CultureInfo.InvariantCulture)}" : FoldUid(uid);
         Span<byte> mac = stackalloc byte[32];
-        HMACSHA256.HashData(hashKey, Encoding.UTF8.GetBytes(input), mac);
+        HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(input), mac);
         return BinaryPrimitives.ReadUInt128BigEndian(mac[..16]);
     }
 

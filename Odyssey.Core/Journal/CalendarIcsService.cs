@@ -181,6 +181,12 @@ public class CalendarIcsService
     /// <summary>The directory the import spill is written to; the process temp directory unless a test points it elsewhere.</summary>
     internal string SpillDirectory { get; set; } = Path.GetTempPath();
 
+    /// <summary>A fixed grouping key, for a test that must know the order groups commit in; random per import otherwise.</summary>
+    internal byte[]? GroupingKey { get; set; }
+
+    /// <summary>The grouper's records per run, so a test can force spilled runs and merge rounds on a small file.</summary>
+    internal int GroupingRecordsPerRun { get; set; } = IcsImportGrouper.RunBufferBytes / IcsImportGrouper.RecordSize;
+
     // ---------------------------------------------------------------- Export planning
 
     // The columns the collapse decision reads, and nothing else: a planner that loaded entities would hold every
@@ -1214,7 +1220,8 @@ public class CalendarIcsService
 
         await using var upload = await SeekableUpload.OpenAsync(icsFile, maxImportBytes, SpillDirectory, cancellationToken);
         using var reservation = IcsSpillReservation.Reserve(SpillDirectory, upload.Stream.Length);
-        await using var grouper = await IcsImportGrouper.BuildAsync(upload.Stream, SpillDirectory, maxImportEvents, cancellationToken);
+        await using var grouper = await IcsImportGrouper.BuildAsync(
+            upload.Stream, SpillDirectory, maxImportEvents, cancellationToken, GroupingRecordsPerRun, GroupingKey);
 
         var batch = new List<ImportGroup>(ImportBatchSize);
         var batchComponents = 0;
