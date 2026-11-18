@@ -351,10 +351,12 @@ public class CalendarEventService
 
     /// <summary>
     /// The stored start, end and zone of a write (issue #519 §8.1). All-day rows are zone-less and keep the UTC-midnight
-    /// rule. With a zone sent, the times are its wall-clock (their <c>Kind</c> ignored, except that a value that carried
-    /// an offset is already an instant); with none sent, a <c>PUT</c> keeps <paramref name="storedZoneId"/>, where an
-    /// unspecified time is its wall-clock and a <c>Z</c> or offset time an instant. With no zone at all the time is
-    /// normalized to UTC and stored floating, exactly as before #519.
+    /// rule. With a zone sent, the times are its wall-clock and their <c>Kind</c> is ignored (§5.1), so a trailing
+    /// <c>Z</c> reads as the same wall-clock as no designator; a numeric offset is a <c>400</c> keyed on the field,
+    /// because binding has already converted it to the server's local time and the wall-clock it named is gone (PR #528
+    /// review A3). With none sent, a <c>PUT</c> keeps <paramref name="storedZoneId"/>, where an unspecified time is its
+    /// wall-clock and a <c>Z</c> or offset time an instant (v4 §5). With no zone at all the time is normalized to UTC
+    /// and stored floating, exactly as before #519.
     /// </summary>
     internal static (DateTime Start, DateTime End, string? ZoneId) ResolveWriteTimes(
         DateTime start, DateTime end, bool isAllDay, string? requestedZoneId, string? storedZoneId)
@@ -371,13 +373,16 @@ public class CalendarEventService
             return (DateTimeNormalization.NormalizeToUtc(start), DateTimeNormalization.NormalizeToUtc(end), null);
         }
 
-        return (ToStored(start, zone, kindIgnored: requested is not null),
-            ToStored(end, zone, kindIgnored: requested is not null), zone.Id);
+        return (ToStored(start, zone, kindIgnored: requested is not null, "startDateTime"),
+            ToStored(end, zone, kindIgnored: requested is not null, "endDateTime"), zone.Id);
     }
 
-    // A request time as the stored instant of a zoned row.
-    internal static DateTime ToStored(DateTime value, TimeZoneInfo zone, bool kindIgnored) => value.Kind switch
+    // A request time as the stored instant of a zoned row. With the zone sent (kindIgnored), Z and no designator are the
+    // same wall-clock, and an offset — already converted to server-local time by binding — is refused.
+    internal static DateTime ToStored(DateTime value, TimeZoneInfo zone, bool kindIgnored, string field) => value.Kind switch
     {
+        DateTimeKind.Local when kindIgnored => throw new DomainValidationException(
+            "Send a wall-clock time without an offset when timeZoneId is set.", null, field),
         DateTimeKind.Local => value.ToUniversalTime(),
         DateTimeKind.Utc when !kindIgnored => value,
         _ => CalendarTimeZones.ToUtc(value, zone),

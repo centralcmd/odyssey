@@ -381,6 +381,29 @@ public class CalendarRecurrenceFidelityApiTests
     }
 
     [Fact]
+    public async Task With_a_zone_sent_a_z_time_is_the_same_wall_clock_and_an_offset_is_a_400_on_its_field()
+    {
+        // §5.1 "Their Kind is ignored": Z and no designator name the same wall-clock. An offset cannot be ignored — binding
+        // has already turned it into server-local time — so it is refused rather than read two ways (PR #528 review A3).
+        await using var factory = new ApiFactory(ReadWrite);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client, "Designators");
+        HttpResponseMessage Post(string start, string end) => client.PostAsync(EventsPath, new StringContent(
+            $$"""{"calendarId":"{{calendar.CalendarId}}","title":"T","startDateTime":"{{start}}","endDateTime":"{{end}}","timeZoneId":"Europe/Oslo"}""",
+            Encoding.UTF8, "application/json")).GetAwaiter().GetResult();
+
+        var plain = (await Post("2030-06-01T09:00:00", "2030-06-01T10:00:00").Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
+        var zulu = (await Post("2030-06-01T09:00:00Z", "2030-06-01T10:00:00Z").Content.ReadFromJsonAsync<ExistingCalendarEvent>())!;
+        var offset = Post("2030-06-01T09:00:00+00:00", "2030-06-01T10:00:00");
+
+        Assert.Equal(Utc(2030, 6, 1, 7), plain.StartUtc);
+        Assert.Equal(plain.StartUtc, zulu.StartUtc);
+        Assert.Equal(HttpStatusCode.BadRequest, offset.StatusCode);
+        var problem = (await offset.Content.ReadFromJsonAsync<ValidationProblemDetails>())!;
+        Assert.Contains("startDateTime", problem.Errors.Keys);
+    }
+
+    [Fact]
     public async Task An_all_day_zone_is_stored_as_null_and_a_put_without_a_zone_keeps_the_stored_one()
     {
         await using var factory = new ApiFactory(ReadWrite);
@@ -417,7 +440,8 @@ public class CalendarRecurrenceFidelityApiTests
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
 
         var delete = await client.DeleteAsync($"{EventsPath}/{rows[1].CalendarEventId}");
-        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, delete.StatusCode);
+        Assert.False((await delete.Content.ReadFromJsonAsync<CalendarEventDeleteResult>())!.Detached);
         await UpdatePatternAsync(client, series.RecurrencePatternId, Rule(calendar.CalendarId, count: 3) with { Title = "Renamed" });
 
         var after = await SeriesRowsAsync(client, series.RecurrencePatternId);
