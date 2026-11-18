@@ -154,11 +154,10 @@ public sealed class CalendarEventsController : ControllerBase
 
     [HttpDelete("{id}", Name = "DeleteCalendarEvent")]
     [Authorize(Policy = PermissionClaims.CalendarDelete)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventDeleteResult))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Delete this occurrence only. On a series row it also records an exclusion for the occurrence's key, so a later series edit or re-import does not bring it back. 200 with a body only when keying the legacy series detached rows.")]
+    [SwaggerOperation(Summary = "Delete this occurrence only. On a series row it also records an exclusion for the occurrence's key, so a later series edit or re-import does not bring it back. Always 200 with what keying a legacy series detached (zero and false otherwise).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
@@ -168,6 +167,7 @@ public sealed class CalendarEventsController : ControllerBase
             return this.NotFoundProblem($"Calendar event ID {id} not found.");
         }
 
-        return result.Detached || result.DetachedCount > 0 ? Ok(result) : NoContent();
+        // One shape on every success (PR #528 review A2): the detached report is zero and false on an ordinary delete.
+        return Ok(result);
     }
 }

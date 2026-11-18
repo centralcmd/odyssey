@@ -1,8 +1,8 @@
 namespace Odyssey.Dtos.Journal;
 
 /// <summary>
-/// The body of an occurrence <c>DELETE</c> that keyed a legacy series first (issue #519 v5 §3). The ordinary delete
-/// answers <c>204</c> with no body; this is returned with <c>200</c> only when keying detached rows.
+/// The body of every successful <c>DELETE /api/calendar-events/{id}</c> (issue #519 v5 §3): what keying a legacy series
+/// first detached — <c>false</c> and <c>0</c> on an ordinary delete, so the endpoint has one response shape.
 /// </summary>
 public sealed record CalendarEventDeleteResult
 {
