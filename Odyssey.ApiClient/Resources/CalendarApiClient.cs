@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.ApiClient.Resources;
@@ -80,11 +81,11 @@ public interface ICalendarApiClient
 public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 {
     /// <summary>
-    /// The migration-seeded default for <c>CalendarIcsMaxImportMegabytes</c> — the real, effective
-    /// cap is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
+    /// The shipped default (and ceiling) for <c>CalendarIcsMaxImportMegabytes</c> (issue #516) — the real,
+    /// effective cap is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
     /// constant exists solely as <c>ImportLimitsCache.Fallback</c>'s input for when that read fails.
     /// </summary>
-    public const long MaxImportBytes = 64L * 1024 * 1024;
+    public const long MaxImportBytes = SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax * 1024L * 1024;
 
     private const string CalendarsBase = "api/calendars";
     private const string EventsBase = "api/calendar-events";

@@ -581,6 +581,10 @@ namespace Odyssey.Context.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("varchar(255)");
 
+                    b.Property<string>("ImportSourceUid")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
                     b.Property<bool>("IsAllDay")
                         .HasColumnType("tinyint(1)");
 
@@ -619,6 +623,8 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.HasIndex("CalendarId", "ExternalUid");
+
+                    b.HasIndex("CalendarId", "ImportSourceUid");
 
                     b.HasIndex("CalendarId", "StartDateTime");
 
@@ -5247,6 +5253,10 @@ namespace Odyssey.Context.Migrations
                     b.Property<int>("Frequency")
                         .HasColumnType("int");
 
+                    b.Property<string>("ImportSourceUid")
+                        .HasMaxLength(255)
+                        .HasColumnType("varchar(255)");
+
                     b.Property<int>("Interval")
                         .HasColumnType("int");
 
@@ -5294,6 +5304,8 @@ namespace Odyssey.Context.Migrations
                     b.HasIndex("UpdatedByUserId");
 
                     b.HasIndex("CalendarId", "ExternalUid");
+
+                    b.HasIndex("CalendarId", "ImportSourceUid");
 
                     b.ToTable("RecurrencePatterns");
                 });
@@ -5490,19 +5502,19 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "CalendarIcsMaxExportEvents",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "CalendarIcsMaxImportEvents",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "2000"
+                            Value = "unlimited"
                         },
                         new
                         {
                             Key = "CalendarIcsMaxImportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {
@@ -5544,7 +5556,7 @@ namespace Odyssey.Context.Migrations
                         {
                             Key = "CalendarIcsMaxExportMegabytes",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Value = "64"
+                            Value = "10240"
                         },
                         new
                         {

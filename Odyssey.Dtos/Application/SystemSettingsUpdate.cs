@@ -55,10 +55,11 @@ public sealed record SystemSettingsUpdate
 
     public CapacityLimit? CalendarIcsMaxImportEvents { get; set; }
 
-    [Range(1, 1024)]
+    // The calendar export and import stream (issue #516), so its pair goes to 10 GB like the task one.
+    [Range(SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax)]
     public int? CalendarIcsMaxImportMegabytes { get; set; }
 
-    [Range(1, 1024)]
+    [Range(SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax)]
     public int? CalendarIcsMaxExportMegabytes { get; set; }
 
     public CapacityLimit? TaskIcsMaxExportTasks { get; set; }

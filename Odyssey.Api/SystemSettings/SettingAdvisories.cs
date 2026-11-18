@@ -71,6 +71,20 @@ internal static class SettingAdvisories
     /// not there is headroom left to a bound.
     /// </para>
     /// </summary>
+    /// <summary>The size above which a calendar <c>.ics</c> size row warns about the API's temp disk (issue #516 §8.5).</summary>
+    public const int CalendarIcsTempDiskThresholdMegabytes = 1024;
+
+    /// <summary>
+    /// The calendar <c>.ics</c> size advisory (issue #516 §8.5, FN1). The shipped default is the 10 GB ceiling, so
+    /// <see cref="AboveDefault"/> could never fire; this one fires above the old 1 GB ceiling instead, because a calendar
+    /// import buffers its whole upload on the API's temporary disk before it streams it.
+    /// </summary>
+    public static Func<SystemSettingsDto, AdvisoryContext, string?> CalendarIcsTempDisk(Func<SystemSettingsDto, int> read) =>
+        (dto, _) => read(dto) > CalendarIcsTempDiskThresholdMegabytes
+            ? "Each concurrent import can buffer up to this much on the API's temporary disk; check the free space on "
+              + "its temp volume."
+            : null;
+
     public static Func<SystemSettingsDto, AdvisoryContext, string?> AboveDefault(
         Func<SystemSettingsDto, int> read, int shippedDefault, string cost) =>
         (dto, _) =>

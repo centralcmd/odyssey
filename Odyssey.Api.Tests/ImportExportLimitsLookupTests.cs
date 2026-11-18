@@ -130,19 +130,20 @@ public class ImportExportLimitsLookupTests
     public async Task LoosenedSize_DegradesToTheSeededDefault_NotTheLooserConfiguredValue()
     {
         // AC 27c: the mirror image of the tightened case — a value raised ABOVE the seeded default must
-        // fall back to the (tighter) seeded default on a degraded read, never stay at the looser one.
+        // fall back to the (tighter) seeded default on a degraded read, never stay at the looser one. The vCard
+        // key, because the calendar one ships at its ceiling since issue #516 and cannot be raised above it.
         var cache = new MemoryCache(new MemoryCacheOptions());
         var dbName = Guid.NewGuid().ToString();
 
         await using (var healthy = CreateContext(dbName))
         {
             await healthy.Database.EnsureCreatedAsync();
-            var row = await healthy.SystemSettings.SingleAsync(s => s.Key == SystemSettingsKeys.CalendarIcsMaxImportMegabytes);
+            var row = await healthy.SystemSettings.SingleAsync(s => s.Key == SystemSettingsKeys.ContactVCardMaxImportMegabytes);
             row.Value = "100"; // raised above the seeded default of 64, but still inside [1, 1024]
             await healthy.SaveChangesAsync();
 
             var healthyResult = await CreateLookup(healthy, cache).GetAsync();
-            Assert.Equal(100L * 1024 * 1024, healthyResult.CalendarIcsMaxImportBytes);
+            Assert.Equal(100L * 1024 * 1024, healthyResult.ContactVCardMaxImportBytes);
         }
 
         EvictResolvedCache(cache);
@@ -152,7 +153,7 @@ public class ImportExportLimitsLookupTests
         var degraded = await CreateLookup(broken, cache).GetAsync();
 
         Assert.True(degraded.IsDegraded);
-        Assert.Equal(64L * 1024 * 1024, degraded.CalendarIcsMaxImportBytes); // the seeded default, not 100
+        Assert.Equal(64L * 1024 * 1024, degraded.ContactVCardMaxImportBytes); // the seeded default, not 100
     }
 
     [Fact]
@@ -172,8 +173,9 @@ public class ImportExportLimitsLookupTests
 
         Assert.True(result.IsDegraded);
         Assert.Equal(5L * 1024 * 1024, result.TaskIcsMaxImportBytes); // floor, since no LKG was ever cached
-        // An unrelated, well-formed key on the same read is unaffected: the calendar count still reads its seed.
-        Assert.Equal(2000, result.CalendarIcsMaxExportEvents);
+        // An unrelated, well-formed key on the same read is unaffected: the calendar count still reads its seed,
+        // which is unlimited since issue #516.
+        Assert.Null(result.CalendarIcsMaxExportEvents);
     }
 
     [Fact]
