@@ -126,7 +126,7 @@ public class ImportExportSettingsApiTests
     [InlineData(1024, false)]
     [InlineData(1025, true)]
     [InlineData(10240, true)] // the shipped default itself warns: the old 1 GB ceiling is the threshold
-    public async Task Put_CalendarSizeFields_WarnAboutTempDiskAbove1024Mb(int megabytes, bool warns)
+    public async Task Put_CalendarSizeFields_WarnAboutTheirOwnCostAbove1024Mb(int megabytes, bool warns)
     {
         // Issue #516 AC 7 / FN1: an advisory, never a refusal — the write still succeeds.
         await using var factory = new ApiFactory(FullAccess);
@@ -140,11 +140,16 @@ public class ImportExportSettingsApiTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var dto = (await response.Content.ReadFromJsonAsync<SystemSettingsDto>())!;
-        foreach (var field in new[] { nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes), nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes) })
+        // Each row names its own cost: the import buffers on the temp disk, the export streams and takes time.
+        foreach (var (field, cost) in new[]
+        {
+            (nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes), "temporary disk"),
+            (nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes), "streamed, not buffered"),
+        })
         {
             if (warns)
             {
-                Assert.Contains("temporary disk", dto.Warnings[field]);
+                Assert.Contains(cost, dto.Warnings[field]);
             }
             else
             {
