@@ -45,4 +45,16 @@ public sealed record NewCalendarEvent
     [StringLength(IanaTimeZones.MaxLength)]
     [IanaTimeZone]
     public string? TimeZoneId { get; set; }
+
+    /// <summary>
+    /// Files from the Files store to link (issue #521 §5.1), at most the live <c>CalendarEventMaxLinksPerKind</c>. On
+    /// <c>POST</c> null links none; on <c>PUT</c> null keeps the links and an empty array clears them. Adding a file needs
+    /// <c>files.read</c>; keeping or removing one needs nothing. Not accepted on a generated occurrence.
+    /// </summary>
+    [MaxLength(SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public Guid[]? AttachmentFileIds { get; set; }
+
+    /// <summary>Library photos to link, in gallery order, under the same rules; adding one needs <c>photos.read</c>.</summary>
+    [MaxLength(SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public Guid[]? PhotoIds { get; set; }
 }

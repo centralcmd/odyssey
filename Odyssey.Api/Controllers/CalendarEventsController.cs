@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -38,7 +39,9 @@ public sealed class CalendarEventsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] CalendarEventsQueryParams query, CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken, User.LocationClaims()));
+        var page = await service.ListAsync(query, cancellationToken, User.LocationClaims());
+        User.ApplyLinkVisibility(page.Items);
+        return Ok(page);
     }
 
     // Aggregate/filtered .ics export (issue #340). Literal "ics" segment takes precedence over the
@@ -82,6 +85,7 @@ public sealed class CalendarEventsController : ControllerBase
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var calendarEvent = await service.Get(id, cancellationToken, User.LocationClaims());
+        User.ApplyLinkVisibility(calendarEvent);
         return calendarEvent is null ? this.NotFoundProblem($"Calendar event ID {id} not found.") : Ok(calendarEvent);
     }
 
@@ -96,9 +100,11 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a single event as a standalone RFC 5545 .ics VEVENT.")]
     public Task<IActionResult> ExportEventIcs(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.StreamAsync(
-            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken);
+            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken, attachments);
 
     [HttpGet("{id}/ics/summary", Name = "SummarizeCalendarEventIcsExport")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
@@ -110,15 +116,19 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Summarize what a single event's .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeEventIcsExport(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.SummarizeAsync(
-            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken);
+            this, icsService, CalendarIcsExportScope.ForEvent(id), $"Calendar event ID {id} not found.", cancellationToken, attachments);
 
     [HttpPost(Name = "PostCalendarEvent")]
     [Authorize(Policy = PermissionClaims.CalendarCreate)]
     [ProducesResponseType(StatusCodes.Status201Created, Type = typeof(ExistingCalendarEvent))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Create a standalone (non-recurring) calendar event.")]
     public async Task<IActionResult> Post(
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
@@ -128,7 +138,8 @@ public sealed class CalendarEventsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims(), User.LinkClaims());
+        User.ApplyLinkVisibility(created);
         return CreatedAtRoute("GetCalendarEvent", new { id = created.CalendarEventId }, created);
     }
 
@@ -138,6 +149,8 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Update this occurrence only; on a series row it becomes an override that a series edit keeps. Times are wall-clock in timeZoneId. RecurrencePatternId is immutable — use PUT /api/recurrence-patterns/{id} to edit a series.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
@@ -148,7 +161,8 @@ public sealed class CalendarEventsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims(), User.LinkClaims());
+        User.ApplyLinkVisibility(updated);
         return updated is null ? this.NotFoundProblem($"Calendar event ID {id} not found.") : Ok(updated);
     }
 

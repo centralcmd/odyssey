@@ -43,8 +43,11 @@ internal static class CalendarSeriesTransactions
     ];
 
     /// <summary>Runs <paramref name="work"/> as one interactive series transaction.</summary>
+    /// <param name="busy">The refusal once the strategy gives up; <c>409 calendar-series-busy</c> unless a link write on
+    /// a standalone event names <c>409 calendar-links-busy</c> (issue #521 addendum).</param>
     public static async Task<T> ExecuteAsync<T>(
-        OdysseyContext context, Func<Task<T>> work, CancellationToken cancellationToken, ILogger? logger = null)
+        OdysseyContext context, Func<Task<T>> work, CancellationToken cancellationToken, ILogger? logger = null,
+        Func<DomainException>? busy = null)
     {
         if (!context.Database.IsRelational() || context.Database.CurrentTransaction is not null)
         {
@@ -62,7 +65,7 @@ internal static class CalendarSeriesTransactions
             logger?.LogWarning(
                 "A calendar series write gave up after {Seconds:F1} s waiting for another writer.",
                 (DateTime.UtcNow - started).TotalSeconds);
-            throw CalendarSeriesConflictException.SeriesBusy();
+            throw busy?.Invoke() ?? CalendarSeriesConflictException.SeriesBusy();
         }
     }
 

@@ -59,6 +59,21 @@ public sealed record ExistingRecurrencePattern
     // read. Callers fetch the full list via GET /api/recurrence-patterns/{id}/events.
     public int GeneratedEventCount { get; set; }
 
+    /// <summary>
+    /// The linked files (issue #521 §5.3): filled on a detail read, <see langword="null"/> on a list. Every occurrence
+    /// shows them. Names, types and sizes are null without <c>files.read</c>.
+    /// </summary>
+    public List<CalendarLinkFileDto>? Attachments { get; set; }
+
+    /// <summary>The linked photos in gallery order, as <see cref="Attachments"/>; titles and names need <c>photos.read</c>.</summary>
+    public List<CalendarLinkPhotoDto>? Photos { get; set; }
+
+    /// <summary>How many files are linked, on every read. That a document is attached is calendar data.</summary>
+    public int AttachmentCount { get; set; }
+
+    /// <summary>How many photos are linked, on every read.</summary>
+    public int PhotoCount { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

@@ -90,8 +90,12 @@ internal static class RecurrenceSeries
     /// recorded as an exclusion. Rotates <see cref="RecurrencePattern.Version"/>. A no-op on a keyed series.
     /// </summary>
     /// <returns>The rows detached; the caller adds <paramref name="addExclusion"/>'s rows to the context.</returns>
+    /// <param name="detachedRows">
+    /// Receives each row detached, so the caller can copy the series' links onto it (issue #521 v4 §4).
+    /// </param>
     public static int KeyInPlace(
-        RecurrenceSeriesState state, DateTime nowUtc, string? userId, Action<RecurrenceExclusion>? addExclusion)
+        RecurrenceSeriesState state, DateTime nowUtc, string? userId, Action<RecurrenceExclusion>? addExclusion,
+        List<ContextCalendarEvent>? detachedRows = null)
     {
         var pattern = state.Pattern;
         if (pattern.KeysBackfilledAt is not null)
@@ -141,6 +145,7 @@ internal static class RecurrenceSeries
         {
             Detach(row);
             state.Rows.Remove(row);
+            detachedRows?.Add(row);
             detached++;
         }
 

@@ -21,11 +21,14 @@ public sealed class ImportLimitsController : ControllerBase
 {
     private readonly IImportExportLimitsLookup lookup;
     private readonly INewsSettingsLookup newsSettings;
+    private readonly IJournalLimitsLookup journalLimits;
 
-    public ImportLimitsController(IImportExportLimitsLookup lookup, INewsSettingsLookup newsSettings)
+    public ImportLimitsController(
+        IImportExportLimitsLookup lookup, INewsSettingsLookup newsSettings, IJournalLimitsLookup journalLimits)
     {
         this.lookup = lookup;
         this.newsSettings = newsSettings;
+        this.journalLimits = journalLimits;
     }
 
     [HttpGet]
@@ -39,6 +42,9 @@ public sealed class ImportLimitsController : ControllerBase
         // The OPML entry cap is a news setting, read through the news lookup that the import itself enforces it with. A
         // degraded news read withholds that one figure (null) instead of failing the limits every other dialog needs.
         var news = await newsSettings.GetAsync(cancellationToken);
+
+        // The calendar link cap is a journal-limits setting (issue #521 §5.6), withheld the same way when that read degrades.
+        var journal = await journalLimits.GetAsync(cancellationToken);
 
         // A degraded read must never be presented as configuration (issue #343 arch N1, AC 27e) — the
         // import/export SERVICES still use the (monotonically) degraded numbers to keep enforcing a
@@ -69,6 +75,7 @@ public sealed class ImportLimitsController : ControllerBase
             JournalIcsMaxExportMegabytes = (int)(limits.JournalIcsMaxExportBytes / (1024 * 1024)),
             NewsOpmlMaxImportEntries = news.IsDegraded ? null : news.OpmlMaxImportEntries,
             NewsOpmlMaxImportMegabytes = (int)(limits.NewsOpmlMaxImportBytes / (1024 * 1024)),
+            CalendarEventMaxLinksPerKind = journal.IsDegraded ? null : journal.CalendarEventMaxLinksPerKind,
         });
     }
 }

@@ -77,6 +77,17 @@ public sealed class PhotoOriginalBackfillJobTests : PhotoThumbnailTestBase
             public Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken) =>
                 inner.OpenReadAsync(featureKey, storedObjectId, cancellationToken);
 
+            public Task<StoredObjectReservation> ReserveAndWriteAsync(
+                string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
+                Stream content, long maxBytes, CancellationToken cancellationToken) =>
+                inner.ReserveAndWriteAsync(featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+            public StoredObject AttachReserved(Odyssey.Context.OdysseyContext context, StoredObjectReservation reservation) =>
+                inner.AttachReserved(context, reservation);
+
+            public Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken) =>
+                inner.AbandonReservationAsync(reservation, cancellationToken);
+
             public void StageRelease(StoredObject storedObject, bool immediate = false) => inner.StageRelease(storedObject, immediate);
 
             public Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken) =>

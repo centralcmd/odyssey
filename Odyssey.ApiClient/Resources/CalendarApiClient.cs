@@ -84,6 +84,36 @@ public interface ICalendarApiClient
     /// <summary>The absolute URL of the series export.</summary>
     string ExportPatternUrl(Guid patternId);
 
+    // Issue #521 §5.4: the three exports that carry attachments take attachments=include|omit. The defaults keep a test
+    // double that implements only the original members compiling; the real client overrides all six.
+
+    /// <summary>The calendar export's summary under <paramref name="attachments"/>.</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(
+        Guid calendarId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        attachments == IcsAttachmentsMode.Include ? SummarizeExportAsync(calendarId, ct) : throw new NotSupportedException();
+
+    /// <summary>The calendar export's URL under <paramref name="attachments"/>.</summary>
+    string ExportUrl(Guid calendarId, IcsAttachmentsMode attachments) =>
+        attachments == IcsAttachmentsMode.Include ? ExportUrl(calendarId) : throw new NotSupportedException();
+
+    /// <summary>The single-event export's summary under <paramref name="attachments"/>.</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(
+        Guid eventId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        attachments == IcsAttachmentsMode.Include ? SummarizeEventExportAsync(eventId, ct) : throw new NotSupportedException();
+
+    /// <summary>The single-event export's URL under <paramref name="attachments"/>.</summary>
+    string ExportEventUrl(Guid eventId, IcsAttachmentsMode attachments) =>
+        attachments == IcsAttachmentsMode.Include ? ExportEventUrl(eventId) : throw new NotSupportedException();
+
+    /// <summary>The series export's summary under <paramref name="attachments"/>.</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(
+        Guid patternId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        attachments == IcsAttachmentsMode.Include ? SummarizePatternExportAsync(patternId, ct) : throw new NotSupportedException();
+
+    /// <summary>The series export's URL under <paramref name="attachments"/>.</summary>
+    string ExportPatternUrl(Guid patternId, IcsAttachmentsMode attachments) =>
+        attachments == IcsAttachmentsMode.Include ? ExportPatternUrl(patternId) : throw new NotSupportedException();
+
     /// <summary>
     /// The aggregate export's summary with the window read in <paramref name="viewTimeZoneId"/> (issue #519 v3 §A):
     /// a floating event matches by its wall-clock in that zone. Null is <c>UTC</c>.
@@ -254,6 +284,30 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
         api.GetAsync<CalendarIcsExportSummary>($"{PatternsBase}/{patternId}/ics/summary", ct);
 
     public string ExportPatternUrl(Guid patternId) => Absolute($"{PatternsBase}/{patternId}/ics");
+
+    private static string AttachmentsQuery(IcsAttachmentsMode attachments) =>
+        attachments == IcsAttachmentsMode.Omit ? "?attachments=omit" : string.Empty;
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(
+        Guid calendarId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{CalendarsBase}/{calendarId}/ics/summary{AttachmentsQuery(attachments)}", ct);
+
+    public string ExportUrl(Guid calendarId, IcsAttachmentsMode attachments) =>
+        Absolute($"{CalendarsBase}/{calendarId}/ics{AttachmentsQuery(attachments)}");
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(
+        Guid eventId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{EventsBase}/{eventId}/ics/summary{AttachmentsQuery(attachments)}", ct);
+
+    public string ExportEventUrl(Guid eventId, IcsAttachmentsMode attachments) =>
+        Absolute($"{EventsBase}/{eventId}/ics{AttachmentsQuery(attachments)}");
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(
+        Guid patternId, IcsAttachmentsMode attachments, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{PatternsBase}/{patternId}/ics/summary{AttachmentsQuery(attachments)}", ct);
+
+    public string ExportPatternUrl(Guid patternId, IcsAttachmentsMode attachments) =>
+        Absolute($"{PatternsBase}/{patternId}/ics{AttachmentsQuery(attachments)}");
 
     public Task<ApiResult<ApiFile>> ExportAggregateAsync(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,

@@ -75,6 +75,18 @@ public sealed record NewRecurrencePattern
     /// write would actually make, it is a <c>409 calendar-series-drops-changed</c> and nothing is written.
     /// </summary>
     public RecurrenceConfirmedDrops? ConfirmedDrops { get; set; }
+
+    /// <summary>
+    /// Files from the Files store to link (issue #521 §5.1), at most the live <c>CalendarEventMaxLinksPerKind</c>. On
+    /// <c>POST</c> null links none; on <c>PUT</c> null keeps the links and an empty array clears them. Adding a file needs
+    /// <c>files.read</c>; keeping or removing one needs nothing. A template-only edit sends null and leaves them alone.
+    /// </summary>
+    [MaxLength(SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public Guid[]? AttachmentFileIds { get; set; }
+
+    /// <summary>Library photos to link, in gallery order, under the same rules; adding one needs <c>photos.read</c>.</summary>
+    [MaxLength(SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public Guid[]? PhotoIds { get; set; }
 }
 
 /// <summary>The overrides and exclusions a user agreed a series edit may discard (issue #519 v3 §B.3).</summary>

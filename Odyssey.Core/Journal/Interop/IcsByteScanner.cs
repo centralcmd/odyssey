@@ -4,7 +4,29 @@ using System.Text;
 namespace Odyssey.Core.Journal.Interop;
 
 /// <summary>One <c>VEVENT</c> as pass 1 of the import grouper sees it: where it sits in the upload, and its UID.</summary>
-internal sealed record ScannedEvent(long Offset, int Length, string? Uid, bool HasRecurrenceId, string? RecurrenceId);
+internal sealed record ScannedEvent(long Offset, int Length, string? Uid, bool HasRecurrenceId, string? RecurrenceId)
+{
+    /// <summary>The component carries an inline (<c>ENCODING=BASE64</c>) <c>ATTACH</c> (issue #521 §8.3).</summary>
+    public bool HasInlineAttachment { get; init; }
+}
+
+/// <summary>
+/// The kinds of <c>ATTACH</c> a whole file carries, as pass 1 sees them (issue #521 v3 §B.5): four file-level booleans
+/// and nothing per UID. An <c>ATTACH</c> that is neither inline nor an <c>odyssey-file:</c>/<c>odyssey-photo:</c> URI has
+/// no kind (v3 §A.1) and sets none of them.
+/// </summary>
+internal sealed class IcsAttachmentKinds
+{
+    public bool HasFileRef { get; set; }
+
+    public bool HasFileInline { get; set; }
+
+    public bool HasPhotoRef { get; set; }
+
+    public bool HasPhotoInline { get; set; }
+
+    public bool Any => HasFileRef || HasFileInline || HasPhotoRef || HasPhotoInline;
+}
 
 /// <summary>
 /// The byte-level twin of <see cref="IcsComponentSplitter"/> (issue #519 §3 component 6): the same structural rules and
@@ -36,6 +58,10 @@ internal sealed class IcsByteScanner(Stream stream)
     private int logicalChars;
     private long logicalStart;
     private long logicalEnd;
+    private bool skimming;
+
+    /// <summary>What every <c>VEVENT</c> read so far carries.</summary>
+    public IcsAttachmentKinds AttachmentKinds { get; } = new();
 
     public async IAsyncEnumerable<ScannedEvent> ReadEventsAsync([EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
@@ -95,6 +121,7 @@ internal sealed class IcsByteScanner(Stream stream)
         string? uid = null;
         string? recurrenceId = null;
         var hasRecurrenceId = false;
+        var hasInline = false;
         while (await ReadLogicalLineAsync(cancellationToken))
         {
             if (TrimmedEquals("BEGIN:VEVENT") || TrimmedEquals("END:VCALENDAR"))
@@ -121,7 +148,10 @@ internal sealed class IcsByteScanner(Stream stream)
                         throw new DomainValidationException(IcsComponentSplitter.TooLargeMessage);
                     }
 
-                    return new ScannedEvent(offset, checked((int)(logicalEnd - offset)), uid, hasRecurrenceId, recurrenceId);
+                    return new ScannedEvent(offset, checked((int)(logicalEnd - offset)), uid, hasRecurrenceId, recurrenceId)
+                    {
+                        HasInlineAttachment = hasInline,
+                    };
                 }
 
                 depth--;
@@ -137,6 +167,10 @@ internal sealed class IcsByteScanner(Stream stream)
                 {
                     hasRecurrenceId = true;
                     recurrenceId = Value();
+                }
+                else if (IsProperty("ATTACH"))
+                {
+                    hasInline |= RecordAttachment();
                 }
             }
         }
@@ -204,6 +238,69 @@ internal sealed class IcsByteScanner(Stream stream)
             }
         }
     }
+
+    // Classifies the current ATTACH line (issue #521 v3 §A.1); true when it is inline.
+    private bool RecordAttachment()
+    {
+        var head = Head();
+        if (head is null)
+        {
+            return false;
+        }
+
+        var photo = head.Contains(";X-ODYSSEY-KIND=PHOTO", StringComparison.OrdinalIgnoreCase);
+        if (head.Contains(";ENCODING=BASE64", StringComparison.OrdinalIgnoreCase))
+        {
+            if (photo)
+            {
+                AttachmentKinds.HasPhotoInline = true;
+            }
+            else
+            {
+                AttachmentKinds.HasFileInline = true;
+            }
+
+            return true;
+        }
+
+        var value = Value()?.TrimStart() ?? string.Empty;
+        if (value.StartsWith("odyssey-photo:", StringComparison.OrdinalIgnoreCase))
+        {
+            AttachmentKinds.HasPhotoRef = true;
+        }
+        else if (value.StartsWith("odyssey-file:", StringComparison.OrdinalIgnoreCase))
+        {
+            AttachmentKinds.HasFileRef = true;
+        }
+
+        return false;
+    }
+
+    // The property name and parameters, up to the first ':' outside a quoted value; null when there is none yet.
+    private string? Head()
+    {
+        var quoted = false;
+        for (var i = 0; i < logicalLength; i++)
+        {
+            var b = logical[i];
+            if (b == (byte)'"')
+            {
+                quoted = !quoted;
+            }
+            else if (b == (byte)':' && !quoted)
+            {
+                return Encoding.UTF8.GetString(logical, 0, i);
+            }
+        }
+
+        return null;
+    }
+
+    // An inline ATTACH whose head is complete: its base64 continuation lines are counted past, never buffered, so an
+    // attachment never reaches the line or component caps (issue #521 v3 §B.5).
+    private bool IsInlineAttachHead() =>
+        logicalLength > 6 && StartsWith("ATTACH") && logical[6] is (byte)';' or (byte)':'
+        && Head() is { } head && head.Contains(";ENCODING=BASE64", StringComparison.OrdinalIgnoreCase);
 
     // ------------------------------------------------------------------ The current logical line
 
@@ -303,10 +400,18 @@ internal sealed class IcsByteScanner(Stream stream)
         logicalChars = 0;
         logicalStart = current.Start;
         logicalEnd = current.End;
+        skimming = false;
         Append(current.Data, 0, current.Length, current.Chars);
+        skimming = IsInlineAttachHead();
         while (await PeekPhysicalAsync(cancellationToken) && lookahead.Length > 0 && lookahead.Data[0] is (byte)' ' or (byte)'\t')
         {
             await NextPhysicalAsync(cancellationToken);
+            if (skimming)
+            {
+                logicalEnd = current.End;
+                continue;
+            }
+
             if (logicalChars + current.Chars - 1 > IcsComponentSplitter.MaxLineChars)
             {
                 throw new DomainValidationException(IcsComponentSplitter.TooLargeMessage);
@@ -314,6 +419,7 @@ internal sealed class IcsByteScanner(Stream stream)
 
             Append(current.Data, 1, current.Length - 1, current.Chars - 1);
             logicalEnd = current.End;
+            skimming = IsInlineAttachHead();
         }
 
         return true;
