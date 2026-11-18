@@ -29,7 +29,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxImportMegabytes, Value = "64", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportEvents, Value = SystemSettingsDefaults.CalendarIcsMaxExportEvents, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportEvents, Value = SystemSettingsDefaults.CalendarIcsMaxImportEvents, UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxImportMegabytes, Value = $"{SystemSettingsDefaults.CalendarIcsMaxImportMegabytes}", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportTasks, Value = SystemSettingsDefaults.TaskIcsMaxImportTasks, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxImportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportRows, Value = SystemSettingsDefaults.JournalIcsMaxExportRows, UpdatedAt = seededAt },
@@ -38,7 +38,7 @@ internal sealed class SystemSettingConfiguration : IEntityTypeConfiguration<Syst
             // Export-side follow-up (post-#343): a "maximum export file size" per surface, plus a Tasks
             // export row cap (Tasks previously had none — see SystemSettingsKeys' doc comment).
             new SystemSetting { Key = SystemSettingsKeys.ContactVCardMaxExportMegabytes, Value = "64", UpdatedAt = seededAt },
-            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
+            new SystemSetting { Key = SystemSettingsKeys.CalendarIcsMaxExportMegabytes, Value = $"{SystemSettingsDefaults.CalendarIcsMaxExportMegabytes}", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportTasks, Value = SystemSettingsDefaults.TaskIcsMaxExportTasks, UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.TaskIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
             new SystemSetting { Key = SystemSettingsKeys.JournalIcsMaxExportMegabytes, Value = "10240", UpdatedAt = seededAt },
