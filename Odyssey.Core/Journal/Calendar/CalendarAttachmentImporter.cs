@@ -76,7 +76,10 @@ internal sealed partial class CalendarAttachmentImporter(
     OdysseyContext context, FileValidationService validation, StoredFileWriter? writer, PhotoService? photos,
     string userId, long maxNewBytes, string spoolDirectory, Func<string, long> freeSpace, ILogger logger)
 {
-    /// <summary>Staged reservation bytes at which a batch closes early (v3 §B.1, v4 §1).</summary>
+    /// <summary>
+    /// Staged reservation bytes at which a batch closes early (v3 §B.1, v4 §1). Inside one component the same ceiling
+    /// skips further new content once reached, so a batch holds at most this plus one attachment (v5 §2).
+    /// </summary>
     public const long BatchReservedBytesCeiling = 256L * 1024 * 1024;
 
     /// <summary>The cross-batch cache's capacity (v3 §B.4): the journal's <c>MaxInlineAttachments</c>.</summary>

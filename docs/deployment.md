@@ -394,8 +394,12 @@ Events and series link files (stored in the **Journal** area) and library photos
 - The **aggregate** export (`/api/calendar-events/ics`) carries no attachments, and re-importing it keeps every link: a
   kind's links are replaced only when the file carries at least one resolvable attachment of that kind.
 - An import decodes **one attachment at a time** to `ASPNETCORE_TEMP` (each under the admin upload cap, with 1.25× that
-  free or a `507`), and stages new content on the store as `Pending` reservations of at most 256 MiB per batch; a batch
-  that fails leaves only those, which the abandoned-write sweep removes within an hour.
+  free or a `507`), and stages new content on the store as `Pending` reservations: a batch closes once it holds 256 MiB,
+  so it never holds more than 256 MiB plus one attachment. One event that alone carries the batch past 256 MiB has its
+  further new content skipped and counted, since an event is never split across batches. A batch that fails leaves only
+  its reservations, which the abandoned-write sweep removes within an hour.
+- An attachment reference must carry its id, `X-ODYSSEY-SHA256` and `SIZE` together; a bare `odyssey-file:<id>` is
+  skipped as malformed.
 - Rolling the `CalendarEventAttachments` migration back drops the links; the files and photos stay.
 
 #### Calendar recurrence keys and time zones (issue #519)

@@ -933,6 +933,9 @@ attribution column. Rules that are easy to get backwards:
 - **Export: inline once, then a reference** (`ATTACH;VALUE=URI;X-ODYSSEY-SHA256=…;SIZE=…:odyssey-file:<id>`), decided at
   write time. The aggregate export carries none. `attachments=omit` needs neither read claim; `include` is a
   `403 calendar_ics_export_attachments_forbidden` when the plan links a kind the caller cannot read.
+- **One head reader, `IcsAttachHead`**, for pass 1, the spooler and the task and journal imports: a substring test of
+  `X-ODYSSEY-KIND` or `ENCODING` would gate one kind and store the other. The importer re-demands the claims where it
+  stores or links, and only a VEVENT's own `ATTACH` is skimmed or decoded — never one nested in a `VALARM`.
 - **Import: claims by KIND on pass 1, before any batch** (`403 calendar_ics_import_attachments_forbidden`): any
   `odyssey-file:`/`odyssey-photo:` or inline `ATTACH` needs the read claim, inline content also the create claim. Any
   other URI has no kind, needs nothing and replaces nothing. A kind's links are replaced only when one of its `ATTACH`

@@ -382,7 +382,8 @@ public class CalendarAttachmentsApiTests
         var result = await ImportAsync(client, calendar.CalendarId, await client.GetStringAsync($"{CalendarsPath}/{calendar.CalendarId}/ics"));
 
         Assert.Equal((0, 0), (result.StoredFileCount, result.StoredPhotoCount));
-        Assert.True(result.ReusedFileCount >= 1);
+        // The file travels inline once (the event) and by reference after (the master); the photo once.
+        Assert.Equal((1, 1), (result.ReusedFileCount, result.ReusedPhotoCount));
         Assert.Equal(0, result.SkippedAttachmentCount);
         Assert.Equal(filesBefore, (await FilesAsync(factory)).Count);
         Assert.Single(await PhotosAsync(factory));
@@ -708,6 +709,239 @@ public class CalendarAttachmentsApiTests
         var limits = (await client.GetFromJsonAsync<Odyssey.Dtos.Application.ImportLimitsDto>("/api/import-limits"))!;
 
         Assert.Equal(7, limits.CalendarEventMaxLinksPerKind);
+    }
+
+    // ------------------------------------------------------------------ PR #529 S1: one reading of a head
+
+    [Theory]
+    [InlineData(";X-ODYSSEY-KIND=\"PHOTO\"")]
+    [InlineData(";x-odyssey-kind= photo ")]
+    public async Task A_quoted_or_padded_photo_kind_is_gated_as_a_photo_and_stored_as_one(string kind)
+    {
+        // Only the file claims: a head pass 1 read as a file but the spooler as a photo would get through. It must not.
+        string[] filesOnly = [.. Calendar, PermissionClaims.FilesRead, PermissionClaims.FilesCreate];
+        await using var factory = new ApiFactory(filesOnly);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+
+        var response = await PostIcsAsync(client, calendar.CalendarId, Vcalendar(Vevent("kind",
+            "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Kind",
+            InlineAttach(PhotoTestData.Jpeg(PhotoTestData.NextSeed()), "p.jpg", "image/jpeg", kind))));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty(await PhotosAsync(factory));
+        Assert.Empty(await StoredRowsAsync(factory, calendar.CalendarId));
+    }
+
+    [Fact]
+    public async Task A_kind_smuggled_inside_a_quoted_file_name_is_a_file_not_a_photo()
+    {
+        await using var factory = new ApiFactory(WithUploads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent("smuggle",
+            "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Smuggle",
+            $"ATTACH;FMTTYPE=text/plain;ENCODING=BASE64;VALUE=BINARY;FILENAME=\"a;X-ODYSSEY-KIND=PHOTO.txt\":{Convert.ToBase64String(AgendaBytes)}")));
+
+        Assert.Equal((1, 0), (result.StoredFileCount, result.StoredPhotoCount));
+        Assert.Empty(await PhotosAsync(factory));
+    }
+
+    // ------------------------------------------------------------------ T2: refused inline content
+
+    [Fact]
+    public async Task Inline_content_that_fails_its_checksum_its_encoding_or_its_type_is_skipped_with_a_reason_and_stored_nowhere()
+    {
+        await using var factory = new ApiFactory(WithUploads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var wrongHash = new string('d', 64);
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(
+            Vevent("checksum", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Checksum",
+                InlineAttach(AgendaBytes, "a.txt", "text/plain", $";SIZE={AgendaBytes.Length};X-ODYSSEY-SHA256={wrongHash}")),
+            Vevent("damaged", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Damaged",
+                "ATTACH;FMTTYPE=text/plain;ENCODING=BASE64;VALUE=BINARY:@@@@notbase64"),
+            Vevent("type", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Type",
+                InlineAttach(Encoding.UTF8.GetBytes("MZ\u0090 not really"), "tool.exe", "application/x-msdownload"))));
+
+        Assert.Equal((3, 0, 3), (result.ImportedCount, result.StoredFileCount, result.SkippedAttachmentCount));
+        Assert.Contains(result.Skipped, s => s.Reason == "Attached file does not match its checksum.");
+        Assert.Contains(result.Skipped, s => s.Reason == "Attached file is damaged (not valid base64).");
+        Assert.Contains(result.Skipped, s => s.Reason.StartsWith("Attached file is of a type uploads do not accept", StringComparison.Ordinal));
+        Assert.Empty(await FilesAsync(factory));
+    }
+
+    [Fact]
+    public async Task A_wrong_declared_hash_never_enters_the_map_so_a_repeat_is_decoded_and_refused_on_its_own()
+    {
+        // v4 §2: the skip-decode map holds verified entries only, keyed on the hash computed while decoding.
+        await using var factory = new ApiFactory(WithUploads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var attach = InlineAttach(AgendaBytes, "a.txt", "text/plain", $";SIZE={AgendaBytes.Length};X-ODYSSEY-SHA256={new string('e', 64)}");
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(
+            Vevent("first", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:First", attach),
+            Vevent("second", "DTSTART:20260303T100000", "DTEND:20260303T110000", "SUMMARY:Second", attach)));
+
+        Assert.Equal((0, 0), (result.StoredFileCount, result.ReusedFileCount));
+        Assert.Equal(2, Assert.Single(result.Skipped, s => s.Reason == "Attached file does not match its checksum.").Count);
+    }
+
+    [Fact]
+    public async Task New_inline_content_over_the_admin_upload_cap_is_skipped_but_the_event_imports()
+    {
+        await using var factory = new ApiFactory(WithUploads);
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.FileStorageMaxUploadMegabytes, "1");
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var large = Encoding.UTF8.GetBytes(new string('x', (1024 * 1024) + 10));
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(Vevent("large",
+            "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Large", InlineAttach(large, "big.txt", "text/plain"))));
+
+        Assert.Equal((1, 0, 1), (result.ImportedCount, result.StoredFileCount, result.SkippedAttachmentCount));
+        Assert.Empty(await FilesAsync(factory));
+    }
+
+    // ------------------------------------------------------------------ Series writes and reads
+
+    [Fact]
+    public async Task A_series_write_follows_the_same_change_only_claims_visibility_cap_and_clearing_rules()
+    {
+        await using var owner = new ApiFactory(WithReads);
+        using var ownerClient = owner.CreateClient();
+        var calendar = await CreateCalendarAsync(ownerClient);
+        var kept = await SeedFileAsync(owner, "kept.txt", AgendaBytes);
+        var other = await SeedFileAsync(owner, "other.txt", Encoding.UTF8.GetBytes("other"));
+        var photo = await SeedPhotoAsync(owner, title: "Fjord");
+        var series = await CreatePatternAsync(ownerClient, Weekly(calendar.CalendarId, 2) with
+        {
+            AttachmentFileIds = [kept, other, kept], PhotoIds = [photo],
+        });
+        Assert.Equal((2, 1), (series.AttachmentCount, series.PhotoCount)); // the duplicate collapsed
+        var path = $"{PatternsPath}/{series.RecurrencePatternId}";
+
+        await using var editor = new ApiFactory(Calendar, sharingStoreWith: owner);
+        using var client = editor.CreateClient();
+        var seen = (await client.GetFromJsonAsync<ExistingRecurrencePattern>(path))!;
+        Assert.All(seen.Attachments!, a => Assert.Null(a.FileName));
+        Assert.Null(Assert.Single(seen.Photos!).Title);
+
+        Assert.Equal(HttpStatusCode.OK, (await client.PutAsJsonAsync(path, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = [kept] })).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await client.PutAsJsonAsync(path, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = [kept, other] })).StatusCode);
+        Assert.Equal(HttpStatusCode.UnprocessableEntity,
+            (await ownerClient.PutAsJsonAsync(path, Weekly(calendar.CalendarId, 2) with { PhotoIds = [Guid.NewGuid()] })).StatusCode);
+
+        await SystemSettingsSeed.SetAsync(owner.Services, SystemSettingsKeys.CalendarEventMaxLinksPerKind, "1");
+        owner.Services.GetRequiredService<Microsoft.Extensions.Caching.Memory.IMemoryCache>().Remove("system-settings:journal-request-caps");
+        Assert.Equal(HttpStatusCode.UnprocessableEntity,
+            (await ownerClient.PutAsJsonAsync(path, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = [kept, other] })).StatusCode);
+
+        var cleared = await UpdatePatternAsync(ownerClient, series.RecurrencePatternId, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = [], PhotoIds = [] });
+        Assert.Equal((0, 0), (cleared.Pattern.AttachmentCount, cleared.Pattern.PhotoCount));
+    }
+
+    [Fact]
+    public async Task Photo_ids_keep_their_order_as_positions_and_a_duplicate_collapses()
+    {
+        await using var factory = new ApiFactory(WithReads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var (a, b, c) = (await SeedPhotoAsync(factory), await SeedPhotoAsync(factory), await SeedPhotoAsync(factory));
+
+        var created = await CreateEventAsync(client, Event(calendar.CalendarId) with { PhotoIds = [c, a, c, b] });
+        var reordered = await PutEventAsync(client, created.CalendarEventId, Event(calendar.CalendarId) with { PhotoIds = [b, c] });
+
+        Assert.Equal([(c, 0), (a, 1), (b, 2)], created.Photos!.Select(p => (p.PhotoId, p.Position)));
+        Assert.Equal([(b, 0), (c, 1)], reordered.Photos!.Select(p => (p.PhotoId, p.Position)));
+    }
+
+    // ------------------------------------------------------------------ AC 7: every export, each claim alone
+
+    [Theory]
+    [InlineData("event", "files")]
+    [InlineData("event", "photos")]
+    [InlineData("series", "files")]
+    [InlineData("series", "photos")]
+    public async Task The_event_and_series_exports_each_need_exactly_the_read_claim_of_what_they_link(string scope, string kind)
+    {
+        await using var owner = new ApiFactory(WithReads);
+        using var ownerClient = owner.CreateClient();
+        var calendar = await CreateCalendarAsync(ownerClient);
+        Guid[] files = kind == "files" ? [await SeedFileAsync(owner, "a.txt", AgendaBytes)] : [];
+        Guid[] photos = kind == "photos" ? [await SeedPhotoAsync(owner)] : [];
+        var path = scope == "event"
+            ? $"{EventsPath}/{(await CreateEventAsync(ownerClient, Event(calendar.CalendarId) with { AttachmentFileIds = files, PhotoIds = photos })).CalendarEventId}/ics"
+            : $"{PatternsPath}/{(await CreatePatternAsync(ownerClient, Weekly(calendar.CalendarId, 2) with { AttachmentFileIds = files, PhotoIds = photos })).RecurrencePatternId}/ics";
+
+        // The OTHER kind's claim alone is not enough; the matching one alone is.
+        await using var wrong = new ApiFactory(
+            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.PhotosRead : PermissionClaims.FilesRead], sharingStoreWith: owner);
+        await using var right = new ApiFactory(
+            [PermissionClaims.CalendarRead, kind == "files" ? PermissionClaims.FilesRead : PermissionClaims.PhotosRead], sharingStoreWith: owner);
+        using var wrongClient = wrong.CreateClient();
+        using var rightClient = right.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await wrongClient.GetAsync(path + "/summary")).StatusCode);
+        Assert.Equal(HttpStatusCode.Forbidden, (await wrongClient.GetAsync(path)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await wrongClient.GetAsync(path + "?attachments=omit")).StatusCode);
+        var summary = (await rightClient.GetFromJsonAsync<CalendarIcsExportSummary>(path + "/summary"))!;
+        Assert.Equal(kind == "files" ? (1, 0) : (0, 1), (summary.AttachmentCount, summary.PhotoCount));
+        Assert.Contains("ENCODING=BASE64", await rightClient.GetStringAsync(path), StringComparison.Ordinal);
+    }
+
+    // ------------------------------------------------------------------ Series round trip and delete with overrides
+
+    [Fact]
+    public async Task Importing_a_series_export_into_another_instance_creates_the_series_with_its_attachments()
+    {
+        await using var source = new ApiFactory(WithReads);
+        using var sourceClient = source.CreateClient();
+        var sourceCalendar = await CreateCalendarAsync(sourceClient);
+        var file = await SeedFileAsync(source, "agenda.txt", AgendaBytes);
+        var photo = await SeedPhotoAsync(source, title: "Fjord");
+        var series = await CreatePatternAsync(sourceClient, Weekly(sourceCalendar.CalendarId, 3) with { AttachmentFileIds = [file], PhotoIds = [photo] });
+        var exported = await sourceClient.GetStringAsync($"{PatternsPath}/{series.RecurrencePatternId}/ics");
+
+        await using var target = new ApiFactory(WithUploads);
+        using var targetClient = target.CreateClient();
+        var calendar = await CreateCalendarAsync(targetClient);
+        var result = await ImportAsync(targetClient, calendar.CalendarId, exported);
+
+        Assert.Equal((1, 1, 1), (result.ImportedCount, result.StoredFileCount, result.StoredPhotoCount));
+        await using var scope = target.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        var pattern = await db.RecurrencePatterns.AsNoTracking().SingleAsync(p => p.CalendarId == calendar.CalendarId);
+        Assert.Equal(1, await db.RecurrencePatternAttachments.CountAsync(a => a.RecurrencePatternId == pattern.RecurrencePatternId));
+        Assert.Equal(1, await db.RecurrencePatternPhotos.CountAsync(p => p.RecurrencePatternId == pattern.RecurrencePatternId));
+        Assert.False(await db.CalendarEventAttachments.AnyAsync());
+    }
+
+    [Fact]
+    public async Task Deleting_a_series_copies_its_links_onto_a_past_override_too()
+    {
+        await using var factory = new ApiFactory(WithReads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var file = await SeedFileAsync(factory, "agenda.txt", AgendaBytes);
+        var series = await CreatePatternAsync(client, Weekly(calendar.CalendarId, 6) with
+        {
+            StartDateTime = Wall(2025, 12, 1, 9), EndDateTime = Wall(2025, 12, 1, 10), AttachmentFileIds = [file],
+        });
+        var past = (await SeriesRowsAsync(client, series.RecurrencePatternId))[0];
+        var edited = await PutEventAsync(client, past.CalendarEventId, Event(calendar.CalendarId) with
+        {
+            Title = "Moved", StartDateTime = past.StartDateTime, EndDateTime = past.EndDateTime,
+        });
+        Assert.True(edited.IsOverride);
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.DeleteAsync($"{PatternsPath}/{series.RecurrencePatternId}")).StatusCode);
+
+        var detail = await GetEventAsync(client, past.CalendarEventId);
+        Assert.Equal(("Moved", false, 1), (detail.Title, detail.IsOverride, detail.AttachmentCount));
     }
 
     // ------------------------------------------------------------------ helpers
