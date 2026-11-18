@@ -245,7 +245,9 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
     // issue #343 §11: a missing header or a mismatched count both fail closed. A missing header has no
     // legitimate case to protect against here — every server-side surface that sets completenessMarker
     // on its call also always sends X-Odyssey-Export-Rows — so "absent" is treated exactly like "short",
-    // never as "unverifiable, allow it".
+    // never as "unverifiable, allow it". The header is the server's PLANNED count (issue #516 Non-Goal 7), so a row
+    // deleted mid-export also reads as short; that is deliberate, since "fewer than planned" cannot tell a concurrent
+    // delete from a cut-off transfer, and accepting actual <= declared would accept every truncated download.
     private static bool IsComplete(HttpResponseMessage response, ApiFile file, string completenessMarker)
     {
         if (!response.Headers.TryGetValues("X-Odyssey-Export-Rows", out var values))
