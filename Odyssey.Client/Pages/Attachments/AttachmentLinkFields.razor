@@ -1,0 +1,206 @@
+@using Odyssey.Client.Components
+@using Odyssey.Client.Pages.Journal
+@using Odyssey.Dtos.Finance
+@implements IAsyncDisposable
+@inject IFilesApiClient Files
+@inject IPhotosApiClient PhotosApi
+@inject AuthenticationStateProvider Auth
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@*
+    AttachmentLinkFields — the Photos and Attachments fields a record links library photos and stored files through
+    (issue #522 goal 1), extracted from JournalEntryFields so the journal entry dialog and the calendar event dialog share
+    one implementation: the field shells, the staging (StageAttachmentAsync / StagePhotos), the focus chain after a
+    removal and the announcements. Photos and attachments are picked through the shared dialogs — "Add photos"
+    (AttachPhotosDialog: upload new or pick from the library) and "Attach documents" (AttachDocumentsDialog: upload new or
+    pick from Files) — so the lists only ever hold library photo ids and stored file ids, and nothing uploads at save.
+
+    The host owns the lists and the save. The component edits them in place and raises OnChanged with the kind, so a
+    host that sends only changed kinds (the calendar's AttachmentLinks.Keep / Set) knows which ones were touched.
+
+    Per kind, in this order: Loading draws a skeleton (aria-busy, Add aria-disabled); a viewer without the kind's read
+    claim sees the count line only; ReadOnly draws the list with no add or remove control; otherwise the editable field.
+    Cap (calendar only): the server's live number, or null for no pre-check at all — never a client constant.
+*@
+
+@if (Paired)
+{
+    <OdsFormRow>
+        @PhotosField
+        @FilesField
+    </OdsFormRow>
+}
+else
+{
+    @PhotosField
+    @FilesField
+}
+
+@if (_pickingFiles)
+{
+    <AttachDocumentsDialog Area="Odyssey.Dtos.FileUploadArea.Journal" @bind-Open="_pickingFiles"
+                           Subtitle="@FilesSubtitle"
+                           Announce="false"
+                           AttachedIds="@([.. Attachments.Select(a => a.Id)])"
+                           Attach="StageAttachmentAsync"
+                           OnAttached="FilesStagedAsync" />
+}
+
+@if (_pickingPhotos)
+{
+    <AttachPhotosDialog @bind-Open="_pickingPhotos"
+                        Subtitle="@PhotosSubtitle"
+                        AttachedIds="@([.. Photos.Select(p => p.PhotoId)])"
+                        OnSubmit="StagePhotosAsync" />
+}
+
+@code {
+    private RenderFragment PhotosField => __builder =>
+    {
+        if (ReadOnly)
+        {
+            <div class="alf-ro">
+                <p class="alf-sublabel">Photos</p>
+                @if (Loading)
+                {
+                    <div aria-busy="true"><div class="alf-skel" aria-hidden="true"></div></div>
+                }
+                else if (!CanReadPhotos)
+                {
+                    <div class="alf-countline"><span class="material-icons" aria-hidden="true">photo_library</span>@PhotosCountLine</div>
+                }
+                else if (Photos.Count > 0)
+                {
+                    @PhotoList(removable: false)
+                }
+                else
+                {
+                    <div class="alf-countline">No photos attached.</div>
+                }
+            </div>
+            return;
+        }
+
+        <OdsFieldShell Label="Photos" aria-busy="@(Loading ? "true" : null)">
+            @if (Loading)
+            {
+                <div class="alf-skel" aria-hidden="true"></div>
+                @if (CanReadPhotos)
+                {
+                    <div class="alf-add">
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" AriaDisabled="true">Add photos</OdsButton>
+                    </div>
+                }
+            }
+            else if (!CanReadPhotos)
+            {
+                <div class="alf-countline"><span class="material-icons" aria-hidden="true">photo_library</span>@PhotosCountLine</div>
+            }
+            else
+            {
+                @if (Photos.Count > 0)
+                {
+                    @PhotoList(removable: true)
+                }
+                <div id="@($"jef-add-photos-{_uid}")">
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="add_photo_alternate" AriaDisabled="@AtCap(Photos.Count)"
+                               aria-describedby="@(CapText(Photos.Count, "photos") is null ? null : PhotosCapId)"
+                               OnClick="@(() => _pickingPhotos = true)">Add photos</OdsButton>
+                    @if (CapText(Photos.Count, "photos") is { } help)
+                    {
+                        <div class="alf-caphelp" id="@PhotosCapId">@help</div>
+                    }
+                </div>
+            }
+        </OdsFieldShell>
+    };
+
+    private RenderFragment FilesField => __builder =>
+    {
+        if (ReadOnly)
+        {
+            <div class="alf-ro">
+                <p class="alf-sublabel">Attachments</p>
+                @if (Loading)
+                {
+                    <div aria-busy="true"><div class="alf-skel" aria-hidden="true"></div></div>
+                }
+                else if (!CanReadFiles)
+                {
+                    <div class="alf-countline"><span class="material-icons" aria-hidden="true">attach_file</span>@FilesCountLine</div>
+                }
+                else if (Attachments.Count > 0)
+                {
+                    <div class="jef-files">
+                        <JournalFileRows Id="@FilesListId" Attachments="Attachments" CanDownload="CanDownload" SingleColumn="true" />
+                    </div>
+                }
+                else
+                {
+                    <div class="alf-countline">No documents attached.</div>
+                }
+            </div>
+            return;
+        }
+
+        <OdsFieldShell Label="Attachments" aria-busy="@(Loading ? "true" : null)">
+            @if (Loading)
+            {
+                <div class="alf-skel" aria-hidden="true"></div>
+                @if (CanReadFiles)
+                {
+                    <div class="alf-add">
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Icon="attach_file" AriaDisabled="true">Attach documents</OdsButton>
+                    </div>
+                }
+            }
+            else if (!CanReadFiles)
+            {
+                <div class="alf-countline"><span class="material-icons" aria-hidden="true">attach_file</span>@FilesCountLine</div>
+            }
+            else
+            {
+                @if (Attachments.Count > 0)
+                {
+                    <div class="jef-files">
+                        <JournalFileRows Id="@FilesListId" Attachments="Attachments" CanDownload="CanDownload" SingleColumn="true"
+                                         RemoveLabel="@RemoveLabel"
+                                         OnRemove="@(EventCallback.Factory.Create<Guid>(this, RemoveAttachmentAsync))" />
+                    </div>
+                }
+                <div id="@($"jef-attach-{_uid}")">
+                    <OdsButton Variant="OdsButtonVariant.Outlined" Icon="attach_file" AriaDisabled="@AtCap(Attachments.Count)"
+                               aria-describedby="@(CapText(Attachments.Count, "documents") is null ? null : FilesCapId)"
+                               OnClick="@(() => _pickingFiles = true)">Attach documents</OdsButton>
+                    @if (CapText(Attachments.Count, "documents") is { } help)
+                    {
+                        <div class="alf-caphelp" id="@FilesCapId">@help</div>
+                    }
+                </div>
+            }
+        </OdsFieldShell>
+    };
+
+    // A real list; an editable tile carries a named remove button, a read-only one an image named by its title (AX2).
+    private RenderFragment PhotoList(bool removable) => __builder =>
+    {
+        <ul class="jef-photos">
+            @foreach (var p in Photos)
+            {
+                <li class="jef-photo" title="@p.Name" @key="p.PhotoId">
+                    <span class="jef-photo-img">
+                        <OdsPhotoImage Source="ImageOf(p)" Alt="@(removable && Voice == AttachmentLinkVoice.Journal ? string.Empty : p.Name)" Fill="true" />
+                    </span>
+                    @if (removable)
+                    {
+                        <button type="button" class="jef-photo-remove" id="@PhotoRemoveId(p.PhotoId)"
+                                aria-label="@($"Remove {p.Name}")"
+                                @onclick="@(() => RemovePhotoAsync(p))">
+                            <OdsMIcon Name="close" Size="14" />
+                        </button>
+                    }
+                </li>
+            }
+        </ul>
+    };
+}
