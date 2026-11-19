@@ -10,10 +10,15 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IWeatherApiClient WeatherApi
 @inject ILogger<CalendarPage> Log
+@inject INativeTransfer NativeTransfer
 
 <PageTitle>Calendar</PageTitle>
 
 <MudStack Spacing="4">
+
+    @* The page's announcer (issue #517 E1): "Preparing calendar export…" and the "already" message. Mounted from the
+       first render, so it exists before any export or hand-off can settle. *@
+    <OdsLiveAnnouncer @ref="_announcer" />
 
     <PageHeader Title="Calendar"
                 Icon="@Icons.Material.Filled.CalendarMonth"
@@ -144,6 +149,7 @@
                       CanCreateLocations="_canCreateLocations"
                       OnSaved="OnEventSavedAsync"
                       OnEditSeries="OpenSeriesDialog"
+                      ExportBusy="_exporting"
                       OnExport="ExportEventDialogAsync" />
 
 <ManageCalendarsDialog @bind-Open="_manageCalendarsOpen"
@@ -154,6 +160,9 @@
 <ImportCalendarDialog @bind-Open="_importOpen"
                        Calendars="_calendars"
                        DefaultCalendarId="_importDefaultCalendarId"
+                       CanDelete="_canDelete"
+                       ImportPending="_importPending"
+                       OnBackgrounded="OnImportBackgroundedAsync"
                        OnChanged="ReloadEventsAsync" />
 
 <ExportEventScopeDialog Open="_exportScopeOpen" OpenChanged="OnExportScopeOpenChangedAsync"
