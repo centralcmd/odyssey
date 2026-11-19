@@ -170,8 +170,8 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         await MigratedAsync();
         var id = Guid.NewGuid();
 
-        // An unknown job type: 9 is the news reader's since issue #470.
-        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 10, 0, 0, NOW(), NOW(), UUID())");
+        // An unknown job type: 10 is the recurrence-key backfill's since issue #519.
+        await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 11, 0, 0, NOW(), NOW(), UUID())");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `ItemsRevised`) VALUES ('{id}', 9, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `FinishedAtUtc`, `LastActivityAtUtc`, `Generation`, `AnalysesFailed`) VALUES ('{id}', 6, 0, 1, NOW(), NOW(), NOW(), UUID(), -1)");
         await AssertCheckAsync($"INSERT INTO `JobRuns` (`JobRunId`, `JobType`, `Trigger`, `Status`, `StartedAtUtc`, `LastActivityAtUtc`, `Generation`) VALUES ('{id}', 2, 0, 1, NOW(), NOW(), UUID())");
