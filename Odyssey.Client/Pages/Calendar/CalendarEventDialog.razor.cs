@@ -82,6 +82,9 @@ public partial class CalendarEventDialog
     /// <summary>The live link cap (issue #522 §3.1): awaited beside the detail, never a client constant.</summary>
     [Inject] private IImportLimitsCache ImportLimits { get; set; } = default!;
 
+    /// <summary>The clock the slow-load announcement measures against (v3 §C); a test holds it still or moves it.</summary>
+    [Inject] private TimeProvider Time { get; set; } = default!;
+
     internal const string TimeZoneInputId = "cal-ev-tz";
     internal const string TimeZoneHelpId = "cal-ev-tz-help";
     internal const string TwoZoneLineId = "cal-ev-twozone";
@@ -484,7 +487,7 @@ public partial class CalendarEventDialog
         _linksLoading = Mode != CalendarEventDialogMode.Create;
         // The cap loads beside the detail (v3 §C); the cache never throws and resolves to null on a failed load.
         var limits = ImportLimits.GetAsync();
-        var started = System.Diagnostics.Stopwatch.StartNew();
+        var started = Time.GetTimestamp();
         switch (Mode)
         {
             case CalendarEventDialogMode.Edit when EventId is { } id:
@@ -502,7 +505,7 @@ public partial class CalendarEventDialog
         }
 
         _linkCap = (await limits).CalendarEventMaxLinksPerKind;
-        if (_linksLoading && started.Elapsed > SlowLinksThreshold)
+        if (_linksLoading && Time.GetElapsedTime(started) > SlowLinksThreshold)
             Announce(CalendarEventCopy.LinksLoaded);
         _linksLoading = false;
         StateHasChanged();

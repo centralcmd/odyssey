@@ -26,7 +26,7 @@ internal sealed class FixedImportLimits(ImportLimitsDto? limits = null) : IImpor
 
 /// <summary>
 /// What the calendar event dialog's attachment fields inject (issue #522): the Files and Photos clients, the clipboard
-/// the file rows' Copy ID uses, and the import limits the cap comes from. For a test context that registers its own.
+/// the file rows' Copy ID uses, the import limits the cap comes from, and the clock the slow-load announcement reads. For a test context that registers its own.
 /// </summary>
 internal static class CalendarAttachmentServices
 {
@@ -36,5 +36,6 @@ internal static class CalendarAttachmentServices
         services.AddSingleton(Mock.Of<IPhotosApiClient>());
         services.AddSingleton(Mock.Of<IClipboardService>());
         services.AddSingleton(limits ?? new FixedImportLimits());
+        services.AddSingleton(TimeProvider.System);
     }
 }

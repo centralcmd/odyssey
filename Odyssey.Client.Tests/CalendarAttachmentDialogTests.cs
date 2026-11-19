@@ -2,6 +2,8 @@ using System.Net;
 using AngleSharp.Dom;
 using Bunit;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Time.Testing;
 using Moq;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
@@ -99,6 +101,7 @@ public class CalendarAttachmentDialogTests
             ReadPhotos = readPhotos;
             CanUpdate = canUpdate;
             FocusReturn = Context.Ctx.JSInterop.SetupModule("./js/focus-return.js");
+            Context.Ctx.Services.AddSingleton<TimeProvider>(Time);
             var upload = new Mock<IUploadLimitsCache>();
             upload.Setup(u => u.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(UploadLimitsCache.Fallback);
             Microsoft.Extensions.DependencyInjection.ServiceCollectionServiceExtensions.AddSingleton(Context.Ctx.Services, upload.Object);
@@ -133,6 +136,9 @@ public class CalendarAttachmentDialogTests
         public bool CanUpdate { get; }
 
         public BunitJSModuleInterop FocusReturn { get; }
+
+        /// <summary>The dialog's clock: it stands still unless a test moves it.</summary>
+        public FakeTimeProvider Time { get; } = new();
 
         public List<NewCalendarEvent> EventWrites { get; } = [];
 
@@ -515,6 +521,88 @@ public class CalendarAttachmentDialogTests
 
         Assert.Equal(3, h.Cut.FindAll(".jef-photo").Count);
         h.Cut.WaitForAssertion(() => Assert.Equal("Added 1. Photo limit reached: 3.", h.Announced));
+    }
+
+    // ── AC 1 (review): clearing the last item sends [] for that kind, null for the other ──
+
+    [Fact] // AC 1: removing the only file sends an empty file list — a clear — and keeps the photos
+    public async Task Removing_the_last_file_sends_an_empty_list_and_keeps_the_photos()
+    {
+        await using var h = new Harness();
+        var only = File("lease.pdf");
+        h.OpenEvent(Standalone([only], [Photo("Beach", 0)]));
+
+        var rows = h.Cut.FindComponent<JournalFileRows>();
+        await h.Cut.InvokeAsync(() => rows.Instance.OnRemove!.Value.InvokeAsync(only.FileId));
+        h.Save();
+
+        h.Cut.WaitForAssertion(() => Assert.Single(h.EventWrites));
+        Assert.NotNull(h.EventWrites[0].AttachmentFileIds);
+        Assert.Empty(h.EventWrites[0].AttachmentFileIds!);
+        Assert.Null(h.EventWrites[0].PhotoIds);
+    }
+
+    [Fact] // AC 1: removing the only photo sends an empty photo list — a clear — and keeps the files
+    public async Task Removing_the_last_photo_sends_an_empty_list_and_keeps_the_files()
+    {
+        await using var h = new Harness();
+        h.OpenEvent(Standalone([File("lease.pdf")], [Photo("Beach", 0)]));
+
+        h.Button("Remove Beach").Click();
+        h.Save();
+
+        h.Cut.WaitForAssertion(() => Assert.Single(h.EventWrites));
+        Assert.NotNull(h.EventWrites[0].PhotoIds);
+        Assert.Empty(h.EventWrites[0].PhotoIds!);
+        Assert.Null(h.EventWrites[0].AttachmentFileIds);
+    }
+
+    // ── v3 §C: the slow-load announcement ────────────────────────────────────
+
+    private static IRenderedComponent<Bunit.Rendering.ContainerFragment> OpenPending(Harness h, TaskCompletionSource<ExistingCalendarEvent?> pending)
+    {
+        h.Calendar.Setup(c => c.GetEventAsync(EventId, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        return h.Context.Render<CalendarEventDialog>(new Dictionary<string, object?>
+        {
+            [nameof(CalendarEventDialog.Open)] = true,
+            [nameof(CalendarEventDialog.Mode)] = CalendarEventDialogMode.Edit,
+            [nameof(CalendarEventDialog.EventId)] = EventId,
+            [nameof(CalendarEventDialog.Calendars)] = (IReadOnlyList<ExistingCalendar>)[Personal],
+            [nameof(CalendarEventDialog.CanUpdate)] = true,
+            [nameof(CalendarEventDialog.CanReadFiles)] = true,
+            [nameof(CalendarEventDialog.CanReadPhotos)] = true,
+        });
+    }
+
+    [Fact] // v3 §C: a load longer than the threshold says the attachments have arrived
+    public async Task A_slow_load_announces_that_the_attachments_loaded()
+    {
+        await using var h = new Harness();
+        var pending = new TaskCompletionSource<ExistingCalendarEvent?>();
+        var cut = OpenPending(h, pending);
+        cut.WaitForElement(".alf-skel");
+
+        h.Time.Advance(CalendarEventDialog.SlowLinksThreshold + TimeSpan.FromMilliseconds(200));
+        pending.SetResult(Standalone([File("lease.pdf")]));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".alf-skel")));
+        cut.WaitForAssertion(() => Assert.Equal(CalendarEventCopy.LinksLoaded, cut.FindAll("div.sr-only[aria-live=polite]").First().TextContent));
+    }
+
+    [Fact] // v3 §C: a load inside the threshold stays silent
+    public async Task A_fast_load_stays_silent()
+    {
+        await using var h = new Harness();
+        var pending = new TaskCompletionSource<ExistingCalendarEvent?>();
+        var cut = OpenPending(h, pending);
+        cut.WaitForElement(".alf-skel");
+
+        h.Time.Advance(CalendarEventDialog.SlowLinksThreshold - TimeSpan.FromMilliseconds(200));
+        pending.SetResult(Standalone([File("lease.pdf")]));
+
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".alf-skel")));
+        await Task.Delay(100);
+        Assert.DoesNotContain(cut.FindAll("[aria-live]"), r => r.TextContent.Contains(CalendarEventCopy.LinksLoaded, StringComparison.Ordinal));
     }
 
     // ── AC 6: announcements and focus ────────────────────────────────────────
