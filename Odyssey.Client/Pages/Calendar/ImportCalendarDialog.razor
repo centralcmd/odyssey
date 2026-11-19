@@ -213,7 +213,7 @@
                                         <ul class="cal-imp-item-reasons">
                                             @foreach (var (reason, count) in item.Reasons)
                                             {
-                                                <li><span class="cal-imp-item-reason">@reason</span><span class="cal-imp-item-count">@count</span></li>
+                                                <li><span class="cal-imp-item-reason">@reason</span><span class="cal-imp-item-count"><span aria-hidden="true">@count</span><span class="sr-only">@CalendarImportCopy.ReasonCount(count)</span></span></li>
                                             }
                                         </ul>
                                     }

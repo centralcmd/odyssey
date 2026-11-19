@@ -97,8 +97,12 @@ public class CalendarAttachmentImportTests
         ], items);
 
         var reasons = h.Cut.FindAll(".cal-imp-item-reasons li").Select(li => (
-            li.QuerySelector(".cal-imp-item-reason")!.TextContent, li.QuerySelector(".cal-imp-item-count")!.TextContent)).ToList();
-        Assert.Equal([(UriReason, "3"), (UnresolvedReason, "2")], reasons);
+            li.QuerySelector(".cal-imp-item-reason")!.TextContent,
+            li.QuerySelector(".cal-imp-item-count [aria-hidden=true]")!.TextContent,
+            li.QuerySelector(".cal-imp-item-count .sr-only")!.TextContent)).ToList();
+        // The bare count is what is seen; a screen reader hears it with its noun (review nit 4).
+        Assert.Equal([(UriReason, "3", ", 3 attachments"), (UnresolvedReason, "2", ", 2 attachments")], reasons);
+        Assert.Equal(", 1 attachment", CalendarImportCopy.ReasonCount(1));
 
         // The skipped-events tile and groups count events only; the attachment reasons are not event skips.
         Assert.Equal("1", h.Cut.Find(".cal-imp-stat.skip .cal-imp-stat-n").TextContent);

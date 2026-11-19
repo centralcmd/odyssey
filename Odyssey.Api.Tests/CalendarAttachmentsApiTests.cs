@@ -560,6 +560,37 @@ public class CalendarAttachmentsApiTests
         Assert.Equal("Attached content is not in this file or this instance.", Assert.Single(hidden.Skipped).Reason);
     }
 
+    /// <summary>
+    /// The client tells the two kinds of skip group apart by their samples (issue #522 review): an attachment skip is
+    /// counted with no sample title, while an event skip always carries at least one (the per-reason sample setting is at
+    /// least 1). This pins that contract without a DTO change.
+    /// </summary>
+    [Fact]
+    public async Task Attachment_skip_groups_carry_no_sample_titles_and_event_skip_groups_carry_at_least_one()
+    {
+        await using var factory = new ApiFactory(WithReads);
+        using var client = factory.CreateClient();
+        var calendar = await CreateCalendarAsync(client);
+        var unknown = $"ATTACH;VALUE=URI;X-ODYSSEY-SHA256={new string('a', 64)};SIZE=3:odyssey-file:{Guid.NewGuid():D}";
+
+        var result = await ImportAsync(client, calendar.CalendarId, Vcalendar(
+            Vevent("uri", "DTSTART:20260302T100000", "DTEND:20260302T110000", "SUMMARY:Meeting",
+                "ATTACH;FMTTYPE=application/pdf:https://drive.google.com/file/d/abc"),
+            Vevent("unresolved", "DTSTART:20260303T100000", "DTEND:20260303T110000", "SUMMARY:Review", unknown),
+            Vevent("untitled", "DTSTART:20260304T100000", "DTEND:20260304T110000"),
+            Vevent("undated", "SUMMARY:No start")));
+
+        string[] attachmentReasons = ["Linked (URI) attachments are not imported.", "Attached content is not in this file or this instance."];
+        var attachmentGroups = result.Skipped.Where(g => attachmentReasons.Contains(g.Reason)).ToList();
+        var eventGroups = result.Skipped.Except(attachmentGroups).ToList();
+
+        Assert.Equal(2, attachmentGroups.Count);
+        Assert.All(attachmentGroups, g => Assert.Empty(g.SampleTitles));
+        Assert.Equal(result.SkippedAttachmentCount, attachmentGroups.Sum(g => g.Count));
+        Assert.Equal(2, eventGroups.Count);
+        Assert.All(eventGroups, g => Assert.NotEmpty(g.SampleTitles));
+    }
+
     [Theory]
     [InlineData("odyssey-file:not-a-guid")]
     [InlineData("odyssey-file:9b0f9d4e-5c1a-4c7e-9a52-1f5b7d6c0a11;X")]

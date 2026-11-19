@@ -26,7 +26,7 @@
 @inject ISnackbar Snackbar
 @using Odyssey.Client.Pages.Weather
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent" TitleLevel="2"
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent" TitleLevel="2" Class="cal-event-dialog"
           Dismissible="@(_confirm is null)" RequiredLegend="@(CanSubmit && _confirm is null)">
     <ChildContent>
         <OdsLiveAnnouncer @ref="_announcer" />

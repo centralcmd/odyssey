@@ -80,6 +80,32 @@ public class CalendarAttachmentSourceLintTests
         Assert.Matches(@"@media \(forced-colors: active\)\s*\{[\s\S]*?\.jef-photo-remove:focus-visible\s*\{[^}]*Highlight", css);
     }
 
+    [Fact] // review nit 3: the remove button's scrim and glyph are the design system's values
+    public void The_photo_remove_button_uses_the_design_systems_scrim()
+    {
+        var remove = Regex.Match(Raw("Pages/Attachments/AttachmentLinkFields.razor.css"), @"\.jef-photo-remove\s*\{([^}]*)\}").Groups[1].Value;
+        Assert.Contains("background: rgba(8, 12, 24, 0.72)", remove, StringComparison.Ordinal);
+        Assert.Contains("color: #fff", remove, StringComparison.Ordinal);
+    }
+
+    [Theory] // review 1: every class the export step renders is styled, with the design system's values
+    [InlineData(@"\.cal-exp-att-body\s*\{\s*display: flex; flex-direction: column; gap: 12px; \}")]
+    [InlineData(@"\.cal-exp-att-check\s*\{\s*display: flex; flex-direction: column; gap: 4px; \}")]
+    [InlineData(@"\.cal-exp-att-check\.is-disabled \.odc-check\s*\{\s*opacity: 0\.6; cursor: not-allowed; \}")]
+    [InlineData(@"\.cal-exp-att-help\s*\{\s*margin: 0 0 0 28px;")]
+    public void The_export_step_classes_are_styled(string rule)
+    {
+        Assert.Matches(rule, Raw("wwwroot/css/odyssey-components.css"));
+    }
+
+    [Fact] // review 2: the event dialog's footer wraps at a narrow width instead of clipping its actions
+    public void The_event_dialog_footer_wraps()
+    {
+        Assert.Contains("Class=\"cal-event-dialog\"", Code("Pages/Calendar/CalendarEventDialog.razor"), StringComparison.Ordinal);
+        Assert.Matches(@"\.mud-dialog\.cal-event-dialog \.mud-dialog-actions\.ods-modal-foot\s*\{[^}]*flex-wrap: wrap",
+            Raw("wwwroot/css/odyssey-components.css"));
+    }
+
     [Fact] // AC 11: reduced motion — the skeleton pulses only when motion is welcome, and the photo image has no motion of its own
     public void Reduced_motion_is_honoured()
     {

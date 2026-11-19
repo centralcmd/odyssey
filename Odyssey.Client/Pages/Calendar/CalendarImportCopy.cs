@@ -91,6 +91,12 @@ internal static class CalendarImportCopy
     public static IEnumerable<IcsImportSkipGroup> EventSkipGroups(IcsImportResult result) =>
         result.Skipped.Where(g => g.Count > 0 && !IsAttachmentGroup(result, g));
 
+    /// <summary>
+    /// A skip reason's count as a screen reader hears it (issue #522 review): ", 2 attachments" rather than a bare number
+    /// run on after the reason. The visible count stays the bare number.
+    /// </summary>
+    public static string ReasonCount(int count) => $", {count} {Plural(count, "attachment", "attachments")}";
+
     /// <summary>An attachment result item; <paramref name="Reasons"/> are the grouped skip reasons under the skipped one.</summary>
     public sealed record AttachmentItem(string Text, IReadOnlyList<(string Reason, int Count)> Reasons);
 

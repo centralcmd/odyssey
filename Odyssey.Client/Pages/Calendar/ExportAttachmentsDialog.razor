@@ -18,7 +18,7 @@
     <ChildContent>
         <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body cal-exp-att-body">
-            <div class="cal-exp-att-check">
+            <div class="@($"cal-exp-att-check{(Forbidden ? " is-disabled" : null)}")">
                 <OdsCheckbox Id="@CheckboxId" Checked="_include" CheckedChanged="@(v => _include = v)" AriaDisabled="Forbidden"
                              Label="@CheckboxLabel" aria-describedby="@CheckboxDescribedBy" />
                 @if (Forbidden)

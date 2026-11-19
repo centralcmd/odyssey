@@ -143,6 +143,7 @@ public class CalendarAttachmentPageTests
         var box = cut.WaitForElement("#" + ExportAttachmentsDialog.CheckboxId);
         Assert.True(box.HasAttribute("checked"));
         Assert.Null(box.GetAttribute("aria-disabled"));
+        Assert.DoesNotContain("is-disabled", cut.Find(".cal-exp-att-check").ClassName, StringComparison.Ordinal);
         Assert.Equal(ExportAttachmentsDialog.AdvisoryId, box.GetAttribute("aria-describedby"));
         Assert.Equal("Include attachments (2 documents, 1 photo, 3 MB)", cut.Find(".cal-exp-att-check .odc-check-label").TextContent);
         Assert.Contains("Attached photos are exported as originals, including any location data in them.",
@@ -195,6 +196,7 @@ public class CalendarAttachmentPageTests
         Assert.False(box.HasAttribute("checked"));
         Assert.Equal("true", box.GetAttribute("aria-disabled"));
         Assert.False(box.HasAttribute("disabled"));
+        Assert.Contains("is-disabled", cut.Find(".cal-exp-att-check").ClassName, StringComparison.Ordinal);
         Assert.Equal("You don't have permission to export this event's attachments.", cut.Find("#" + box.GetAttribute("aria-describedby")).TextContent);
         var action = cut.Find("#" + ExportAttachmentsDialog.ExportButtonId);
         Assert.Equal("Export without attachments", ImportCalendarDialogTests.Harness.Label(action));

@@ -16,7 +16,7 @@
     position: absolute; top: var(--space-1); right: var(--space-1);
     display: grid; place-items: center; width: var(--icon-xl); height: var(--icon-xl);
     border: 0; border-radius: var(--radius-pill); padding: 0; cursor: pointer;
-    background: color-mix(in srgb, black 60%, transparent); color: white;
+    background: rgba(8, 12, 24, 0.72); color: #fff;
 }
 .jef-photo-remove:focus-visible {
     outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary));

@@ -4009,6 +4009,14 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-ce-fromseries-h { margin: 0; font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cal-ce-fromseries-help { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .cal-ce-fromseries-help .link-btn { margin-left: 6px; }
+/* The event dialog's footer holds up to four actions (Delete / Delete series, Export, Cancel, Save); at the dialog's
+   width they wrap rather than clip (DS calendar.css). */
+.mud-dialog.cal-event-dialog .mud-dialog-actions.ods-modal-foot { flex-wrap: wrap; row-gap: var(--space-2); }
+/* Export with attachments — the commit step (issue #522 v3 §A; DS calendar.css). */
+.cal-exp-att-body { display: flex; flex-direction: column; gap: 12px; }
+.cal-exp-att-check { display: flex; flex-direction: column; gap: 4px; }
+.cal-exp-att-check.is-disabled .odc-check { opacity: 0.6; cursor: not-allowed; }
+.cal-exp-att-help { margin: 0 0 0 28px; font: var(--fw-regular) var(--fs-caption)/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); }
 @media (max-width: 480px) {
   .cal-ce-confirm-actions { justify-content: stretch; }
   .cal-ce-confirm-actions > * { flex: 1 1 auto; }
