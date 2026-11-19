@@ -33,6 +33,13 @@ public partial class CalendarPage
     private bool _searchOpen = true;
     private HashSet<Guid> _visibleCalendarIds = [];
 
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    // The viewer's zone (issue #520 §2): zoned events are drawn in it, and the window is read in it.
+    private ViewerTimeZone? _viewerZone;
+
+    private ViewerTimeZone Viewer => _viewerZone ??= ViewerTimeZone.From(Services);
+
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
@@ -222,14 +229,12 @@ public partial class CalendarPage
         _isLoading = true;
         StateHasChanged();
 
-        var days = CurrentDays;
-        var from = days[0].ToDateTime(TimeOnly.MinValue);
-        var to = days[^1].AddDays(1).ToDateTime(TimeOnly.MinValue);
+        var (from, to) = Window(CurrentDays, Viewer);
 
         // Track failure explicitly: ItemsOrToast falls back to [], which is indistinguishable from a
         // period that genuinely has no events.
         // The range changes on every prev/next/view switch, so a slow earlier range must not land last.
-        var response = await _listLoader.RunAsync(ct => CalendarApi.ListEventsAsync(from, to, ct));
+        var response = await _listLoader.RunAsync(ct => CalendarApi.ListEventsAsync(from, to, Viewer.ViewZoneId, ct));
         if (response.IsSuperseded)
             return;
 
@@ -243,6 +248,14 @@ public partial class CalendarPage
     }
 
     private Task ReloadEventsAsync() => LoadEventsAsync();
+
+    /// <summary>
+    /// The window of <paramref name="days"/> as instants (issue #520 v4 §1): the first day's and the day after the last
+    /// day's local midnights in the viewer's zone, converted to UTC, read together with that zone as viewTimeZoneId.
+    /// </summary>
+    internal static (DateTime From, DateTime To) Window(IReadOnlyList<DateOnly> days, ViewerTimeZone viewer) =>
+        (CalendarZoneClock.ToUtc(days[0].ToDateTime(TimeOnly.MinValue), viewer.Zone),
+            CalendarZoneClock.ToUtc(days[^1].AddDays(1).ToDateTime(TimeOnly.MinValue), viewer.Zone));
 
     private async Task OnCalendarsChangedAsync()
     {
@@ -416,8 +429,8 @@ public partial class CalendarPage
         {
             _ = AnnounceAsync(CalendarIcsExport.Preparing);
             await DownloadAsync(
-                CalendarApi.SummarizeAggregateExportAsync(null, null, null, null), "Unable to export events",
-                () => CalendarApi.ExportAggregateUrl(null, null, null, null), CalendarIcsExport.AllToast);
+                CalendarApi.SummarizeAggregateExportAsync(null, null, null, null, Viewer.ViewZoneId), "Unable to export events",
+                () => CalendarApi.ExportAggregateUrl(null, null, null, null, Viewer.ViewZoneId), CalendarIcsExport.AllToast);
         }
         finally
         {
@@ -491,9 +504,11 @@ public partial class CalendarPage
     {
         var calendar = _calendars.FirstOrDefault(c => c.CalendarId == e.CalendarId);
         var (bg, fg) = OdsCalendarSwatches.PaintFor(calendar?.Color);
+        // A zoned event is drawn — and named — at its instant in the viewer's zone; a floating one at its clock time (§2).
+        var (start, end) = CalendarZoneClock.Displayed(e, Viewer.Zone);
         return new CalendarEventVm(
             e.CalendarEventId, e.CalendarId, calendar?.Name ?? "Unknown",
-            e.Title, e.StartDateTime, e.EndDateTime, e.IsAllDay,
+            e.Title, start, end, e.IsAllDay,
             bg, fg, e.RecurrencePatternId is not null,
             e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null);
     }
@@ -594,18 +609,56 @@ public partial class CalendarPage
             return;
         }
 
-        var update = DropUpdate(existing, args.ToDate, args.FromDate);
-
-        if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
-        {
-            AgendaWeather.Forget(existing.CalendarEventId);
-            await ReloadEventsAsync();
-        }
+        await RescheduleAsync(existing, DropUpdate(existing, args.ToDate, args.FromDate));
     }
 
     /// <summary>
+    /// A drag or resize write (issue #520 §3 "Drag and resize", v3 §J): one toast — the stored time when the server moved
+    /// it out of a daylight-saving gap, or that the occurrence had become a separate event — and, for a generated
+    /// occurrence, the announcement that it is now edited separately. The grid redraws from the server's rows.
+    /// </summary>
+    private async Task RescheduleAsync(ExistingCalendarEvent existing, NewCalendarEvent update)
+    {
+        var result = await CalendarApi.UpdateEventWithResultAsync(existing.CalendarEventId, update);
+        if (!result.IsSuccess)
+        {
+            Snackbar.Add($"Unable to reschedule event: {result.Error}", Severity.Error);
+            return;
+        }
+
+        var saved = result.Value;
+        var parts = new List<string>();
+        if (saved is { Detached: true })
+            parts.Add(CalendarEventCopy.DetachedEdit);
+        if (saved is { DetachedCount: > 0 })
+            parts.Add(CalendarEventCopy.DetachedNow(saved.DetachedCount));
+        var adjusted = AdjustedAfterMove(update, saved);
+        if (adjusted is not null)
+            parts.Add(adjusted);
+
+        if (parts.Count == 0)
+            Snackbar.Add("Event rescheduled.", Severity.Success);
+        else
+            Snackbar.Add(string.Join(' ', parts), Severity.Info, c => c.RequireInteraction = adjusted is not null, Guid.NewGuid().ToString("N"));
+
+        if (existing is { RecurrencePatternId: not null, IsOverride: false } && saved is not { Detached: true })
+            await AnnounceAsync(CalendarEventCopy.MovedOverride);
+
+        AgendaWeather.Forget(existing.CalendarEventId);
+        await ReloadEventsAsync();
+    }
+
+    /// <summary>The DST toast for a move: the server stored a later wall-clock than the one sent (v3 §F).</summary>
+    internal static string? AdjustedAfterMove(NewCalendarEvent sent, ExistingCalendarEvent? saved) =>
+        sent.TimeZoneId is { } zone && saved is not null && saved.StartDateTime != sent.StartDateTime
+            ? CalendarEventCopy.Adjusted(CalendarZoneClock.Hm(saved.StartDateTime), CalendarZoneClock.Hm(sent.StartDateTime),
+                CalendarZoneClock.ShortDate(sent.StartDateTime), zone, repeats: false)
+            : null;
+
+    /// <summary>
     /// A month-grid drag: the event moved by whole days, everything else — its place included — kept
-    /// (issue #383 §5.2). Static so the rule is tested without the page's JS-driven grid.
+    /// (issue #383 §5.2). Static so the rule is tested without the page's JS-driven grid. The days move the event's
+    /// OWN wall-clock — in its zone when it has one — so its local time survives a daylight-saving change (#520 §3).
     /// </summary>
     internal static NewCalendarEvent DropUpdate(ExistingCalendarEvent existing, DateOnly toDate, DateOnly fromDate)
     {
@@ -613,9 +666,20 @@ public partial class CalendarPage
         return CalendarWrites.Retimed(existing, existing.StartDateTime.AddDays(deltaDays), existing.EndDateTime.AddDays(deltaDays));
     }
 
-    /// <summary>A time-grid drag or resize: an explicit start and end, everything else kept.</summary>
-    internal static NewCalendarEvent ResizeUpdate(ExistingCalendarEvent existing, DateTime newStart, DateTime newEnd) =>
-        CalendarWrites.Retimed(existing, newStart, newEnd);
+    /// <summary>
+    /// A time-grid drag or resize: an explicit start and end, everything else kept. The grid hands back the drop in the
+    /// VIEWER's zone; a zoned event's new wall-clock is taken in its own zone from that (issue #520 §3, v3 §J), and a
+    /// floating event's is the dropped clock time itself.
+    /// </summary>
+    internal static NewCalendarEvent ResizeUpdate(ExistingCalendarEvent existing, DateTime newStart, DateTime newEnd, TimeZoneInfo? viewer = null)
+    {
+        if (CalendarZoneClock.IsZoned(existing) && Odyssey.Client.Pages.Journal.LocationVisuals.FindZone(existing.TimeZoneId) is { } zone)
+        {
+            return CalendarWrites.Retimed(existing, CalendarZoneClock.Convert(newStart, viewer ?? TimeZoneInfo.Utc, zone), CalendarZoneClock.Convert(newEnd, viewer ?? TimeZoneInfo.Utc, zone));
+        }
+
+        return CalendarWrites.Retimed(existing, newStart, newEnd);
+    }
 
     // Time-grid drag/resize: set explicit start/end, hydrating the rest from the loaded event so
     // Description/Location/LocationId/CalendarId survive the PUT (the VM carries none of them).
@@ -627,13 +691,7 @@ public partial class CalendarPage
             return;
         }
 
-        var update = ResizeUpdate(existing, args.NewStart, args.NewEnd);
-
-        if ((await CalendarApi.UpdateEventAsync(existing.CalendarEventId, update)).Toast(Snackbar, "Unable to reschedule event", "Event rescheduled."))
-        {
-            AgendaWeather.Forget(existing.CalendarEventId);
-            await ReloadEventsAsync();
-        }
+        await RescheduleAsync(existing, ResizeUpdate(existing, args.NewStart, args.NewEnd, Viewer.Zone));
     }
 
     // ── Page-state persistence ───────────────────────────────────────────────

@@ -204,9 +204,9 @@ public class UnifiedLocationsPlaceSearchTests
         var calls = new List<string>();
         var posts = new List<NewLocation>();
         var calendar = new Mock<ICalendarApiClient>();
-        calendar.Setup(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
+        calendar.Setup(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .Callback(() => calls.Add("event"))
-            .ReturnsAsync(writeResult ?? ApiResult.Success(HttpStatusCode.Created));
+            .ReturnsAsync(CalendarWriteResults.Event(writeResult ?? ApiResult.Success(HttpStatusCode.Created)));
         var locations = Locations(places.Length == 0 ? [PlainHytta()] : places);
         var replies = new Queue<ApiResult<ExistingLocation>>(creates);
         locations.Setup(l => l.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()))
@@ -253,7 +253,7 @@ public class UnifiedLocationsPlaceSearchTests
         Assert.Equal(("Storgata 3", "0155", "OSLO", "NO"), (post.Line1, post.PostalCode, post.City, post.CountryCode));
         Assert.Equal((59.91234m, 10.75012m, "Europe/Oslo"), (post.Latitude, post.Longitude, post.TimeZoneId));
         Assert.Equal((LocationSource.Kartverket, "kv-1"), (post.Source, post.SourceReference));
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Once);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -288,7 +288,7 @@ public class UnifiedLocationsPlaceSearchTests
             It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<bool?>(), It.IsAny<bool?>(), It.IsAny<CancellationToken>()), Times.Once);
         h.Locations.Verify(l => l.CreateAsync(It.IsAny<NewLocation>(), It.IsAny<CancellationToken>()), Times.Once);
         h.Locations.Verify(l => l.UpdateAsync(It.IsAny<Guid>(), It.IsAny<UpdateLocation>(), It.IsAny<CancellationToken>()), Times.Never);
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == ExistingAddressId), It.IsAny<CancellationToken>()), Times.Once);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == ExistingAddressId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public class UnifiedLocationsPlaceSearchTests
 
         h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressAddFailed, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
         Assert.Equal(["place"], h.Calls);
-        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -321,7 +321,7 @@ public class UnifiedLocationsPlaceSearchTests
 
         h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressAddFailed, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
         Assert.Equal(["place"], h.Calls);
-        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -338,7 +338,7 @@ public class UnifiedLocationsPlaceSearchTests
         Click(h.Cut, "Create event");
 
         h.Cut.WaitForAssertion(() => Assert.Equal(["place", "event"], h.Calls));
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == survivor), It.IsAny<CancellationToken>()), Times.Once);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == survivor), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -355,7 +355,7 @@ public class UnifiedLocationsPlaceSearchTests
 
         h.Cut.WaitForAssertion(() => Assert.Equal(PlaceDraft.AddressArchived, h.Cut.FindComponent<OdsLocationSelect>().Instance.Error));
         Assert.Equal(["place"], h.Calls);
-        h.Calendar.Verify(c => c.CreateEventAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -369,7 +369,7 @@ public class UnifiedLocationsPlaceSearchTests
 
         h.Cut.WaitForAssertion(() => Assert.Equal(["place", "place", "place", "event"], h.Calls));
         Assert.Equal(["Storgata 3, 0155 OSLO, NO", "Storgata 3, 0155 OSLO, NO (2)", "Storgata 3, 0155 OSLO, NO (3)"], h.Posts.Select(p => p.Name));
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Once);
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -400,7 +400,7 @@ public class UnifiedLocationsPlaceSearchTests
         Click(h.Cut, "Create event");
 
         h.Cut.WaitForAssertion(() => Assert.Equal(["place", "event", "event"], h.Calls));
-        h.Calendar.Verify(c => c.CreateEventAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        h.Calendar.Verify(c => c.CreateEventWithResultAsync(It.Is<NewCalendarEvent>(e => e.LocationId == CreatedId), It.IsAny<CancellationToken>()), Times.Exactly(2));
     }
 
     [Fact]
@@ -422,7 +422,7 @@ public class UnifiedLocationsPlaceSearchTests
         await using (withCreate.Ctx)
         {
             Assert.Single(withCreate.Cut.FindAll(".odc-locsel-disclose"));
-            Assert.NotNull(withCreate.Cut.FindComponent<OdsCombobox>().Instance.Groups);
+            Assert.NotNull(withCreate.Cut.FindComponent<OdsLocationSelect>().FindComponent<OdsCombobox>().Instance.Groups);
         }
 
         await using var ctx = Context();
@@ -437,7 +437,7 @@ public class UnifiedLocationsPlaceSearchTests
             .Add(x => x.CanCreateLocations, false)));
 
         Assert.Empty(cut.FindAll(".odc-locsel-disclose"));
-        var combo = cut.FindComponent<OdsCombobox>().Instance;
+        var combo = cut.FindComponent<OdsLocationSelect>().FindComponent<OdsCombobox>().Instance;
         Assert.Null(combo.Groups);
         Assert.Null(combo.OnCreate);
     }

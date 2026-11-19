@@ -59,11 +59,13 @@ public class UnifiedLocationsWritePathRenderTests
         var start = DateTime.Today.AddHours(18);
         var puts = new List<NewCalendarEvent>();
         var calendar = new Mock<ICalendarApiClient>(MockBehavior.Strict);
-        calendar.Setup(c => c.ListEventsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), It.IsAny<CancellationToken>()))
+        calendar.Setup(c => c.ListEventsAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>(), "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<ExistingCalendarEvent>>.Success([StoredEvent(start)], HttpStatusCode.OK));
-        calendar.Setup(c => c.UpdateEventAsync(EventId, It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
+        calendar.Setup(c => c.UpdateEventWithResultAsync(EventId, It.IsAny<NewCalendarEvent>(), It.IsAny<CancellationToken>()))
             .Callback((Guid _, NewCalendarEvent body, CancellationToken _) => puts.Add(body))
-            .ReturnsAsync(ApiResult.Success(HttpStatusCode.OK));
+            .ReturnsAsync((Guid _, NewCalendarEvent body, CancellationToken _) =>
+                ApiResult<ExistingCalendarEvent>.Success(new ExistingCalendarEvent { CalendarEventId = EventId, CalendarId = body.CalendarId, Title = body.Title, StartDateTime = body.StartDateTime }, HttpStatusCode.OK));
+        ctx.Services.AddSingleton(new ViewerTimeZone("UTC"));
         ctx.Services.AddSingleton(calendar.Object);
         ctx.Services.AddSingleton(Locations(Hytta()).Object);
         ctx.Services.AddSingleton(Mock.Of<IPageStateService>());
@@ -215,9 +217,12 @@ public class UnifiedLocationsWritePathRenderTests
             DaysOfWeek = DaysOfWeekFlags.Monday,
             OccurrenceCount = 10,
         });
-        calendar.Setup(c => c.UpdatePatternAsync(PatternId, It.IsAny<NewRecurrencePattern>(), It.IsAny<CancellationToken>()))
+        calendar.Setup(c => c.PreviewPatternAsync(PatternId, It.IsAny<NewRecurrencePattern>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ApiResult<RecurrencePatternPreview>.Success(new RecurrencePatternPreview(), HttpStatusCode.OK));
+        calendar.Setup(c => c.UpdatePatternWithResultAsync(PatternId, It.IsAny<NewRecurrencePattern>(), It.IsAny<CancellationToken>()))
             .Callback((Guid _, NewRecurrencePattern body, CancellationToken _) => puts.Add(body))
-            .ReturnsAsync(ApiResult.Success(HttpStatusCode.OK));
+            .ReturnsAsync((Guid _, NewRecurrencePattern body, CancellationToken _) => ApiResult<RecurrencePatternUpdateResult>.Success(
+                new RecurrencePatternUpdateResult { Pattern = new ExistingRecurrencePattern { RecurrencePatternId = PatternId, CalendarId = body.CalendarId, Title = body.Title, StartDateTime = body.StartDateTime } }, HttpStatusCode.OK));
         ctx.Services.AddSingleton(calendar.Object);
         ctx.Services.AddSingleton(Locations(Hytta()).Object);
 

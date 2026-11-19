@@ -41,7 +41,7 @@ public class CalendarPageIcsTests
     {
         var (context, cut, page) = Render();
         await using var _ = context;
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Counts(12, series: 2)));
 
         await cut.InvokeAsync(page.ExportAllEventsAsync);
@@ -61,7 +61,7 @@ public class CalendarPageIcsTests
     {
         var (context, cut, page) = Render();
         await using var _ = context;
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Counts(0)));
 
         await cut.InvokeAsync(page.ExportAllEventsAsync);
@@ -78,7 +78,7 @@ public class CalendarPageIcsTests
     {
         var (context, cut, page) = Render();
         await using var _ = context;
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Fail<CalendarIcsExportSummary>(status, "Too many events to export."));
 
         await cut.InvokeAsync(page.ExportAllEventsAsync);
@@ -95,7 +95,7 @@ public class CalendarPageIcsTests
     {
         var (context, cut, page) = Render();
         await using var _ = context;
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Counts(3)));
 
         await cut.InvokeAsync(page.ExportAllEventsAsync);
@@ -114,14 +114,14 @@ public class CalendarPageIcsTests
         var (context, cut, page) = Render();
         await using var _ = context;
         var summary = new TaskCompletionSource<ApiResult<CalendarIcsExportSummary>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()))
             .Returns(summary.Task);
 
         var first = cut.InvokeAsync(page.ExportAllEventsAsync);
         await cut.InvokeAsync(page.ExportAllEventsAsync);
 
         cut.WaitForAssertion(() => Assert.Equal(CalendarIcsExport.AlreadyPreparing, PageAnnouncer(cut)));
-        context.Calendar.Verify(c => c.SummarizeAggregateExportAsync(null, null, null, null, It.IsAny<CancellationToken>()), Times.Once);
+        context.Calendar.Verify(c => c.SummarizeAggregateExportAsync(null, null, null, null, "UTC", It.IsAny<CancellationToken>()), Times.Once);
 
         summary.SetResult(Ok(Counts(1)));
         await first;

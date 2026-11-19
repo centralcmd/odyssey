@@ -51,6 +51,77 @@ internal static class CalendarImportCopy
 
     public static int Skipped(IcsImportResult result) => result.Skipped.Sum(g => g.Count);
 
+    /// <summary>The longest a skip-sample title is shown (issue #520 v3 §H): longer ones are cut, with an ellipsis.</summary>
+    public const int SampleTitleMaxLength = 120;
+
+    /// <summary>The checkbox for <c>allowRemovals</c> (issue #520 v3 §H, v4 §5; the final name of #517's option).</summary>
+    public const string AllowRemovalsLabel = "Allow removals";
+
+    public const string AllowRemovalsHelp =
+        "Remove events the file marks as cancelled, and apply series changes that would discard separately edited or deleted occurrences.";
+
+    public const string AllowRemovalsWarning =
+        "This import can delete events and discard separately edited or deleted occurrences.";
+
+    public const string RemovalsNote =
+        "Removing events is never automatic: tick Allow removals to remove events this file marks as cancelled.";
+
+    /// <summary>The reworded regenerated-series alert (issue #520 FR7, v3 §H).</summary>
+    public const string SeriesRegenerated =
+        "Updating recurring series replaced their future occurrences. Separately edited or deleted occurrences that still fall on the schedule were kept; the rest are counted below.";
+
+    /// <summary>The compose note's zone line (issue #520 §3, FR15): the zone floating times are read in, or that none is.</summary>
+    public static string ZoneNote(string? defaultZone) => defaultZone is null
+        ? "Times without a time zone in the file are kept as floating times."
+        : $"Times without a time zone in the file are read as {defaultZone}.";
+
+    /// <summary>A skip-sample title as shown: plain text, at most <see cref="SampleTitleMaxLength"/> characters.</summary>
+    public static string SampleTitle(string? title) =>
+        string.IsNullOrWhiteSpace(title) ? "Untitled event"
+        : title.Length <= SampleTitleMaxLength ? title
+        : string.Concat(title.AsSpan(0, SampleTitleMaxLength - 1), "…");
+
+    private static string Plural(int n, string one, string many) => n == 1 ? one : many;
+
+    /// <summary>
+    /// The result list's items (issue #520 §3 "Result notes", v3 §H, v6 F4): fixed text and counts, only the non-zero
+    /// ones, never a value from the file. A gated series is worded for a caller without <c>calendar.delete</c> without
+    /// naming a control they cannot see.
+    /// </summary>
+    public static IReadOnlyList<string> ResultItems(IcsImportResult r, bool canDelete)
+    {
+        var items = new List<string>();
+        if (r.OverridesApplied > 0)
+            items.Add($"{r.OverridesApplied} separately edited {Plural(r.OverridesApplied, "occurrence", "occurrences")} applied.");
+        if (r.ExclusionsApplied > 0)
+            items.Add($"{r.ExclusionsApplied} deleted {Plural(r.ExclusionsApplied, "occurrence", "occurrences")} applied.");
+        var dropped = r.DroppedOverrideCount + r.DroppedExclusionCount;
+        if (dropped > 0)
+        {
+            var parts = string.Join(" and ", new[]
+            {
+                r.DroppedOverrideCount > 0 ? $"{r.DroppedOverrideCount} separately edited" : null,
+                r.DroppedExclusionCount > 0 ? $"{r.DroppedExclusionCount} deleted" : null,
+            }.Where(p => p is not null));
+            items.Add($"{parts} {Plural(dropped, "occurrence", "occurrences")} discarded because {Plural(dropped, "its", "their")} series' schedule changed.");
+        }
+
+        if (r.GatedSeriesCount > 0)
+        {
+            var gated = $"{r.GatedSeriesCount} series left unchanged because applying {Plural(r.GatedSeriesCount, "it", "them")} would remove events or discard edits";
+            items.Add(canDelete ? $"{gated}." : $"{gated}, which needs permission to delete events.");
+        }
+
+        if (r.AdjustedCount > 0)
+            items.Add($"{r.AdjustedCount} {Plural(r.AdjustedCount, "occurrence", "occurrences")} fell in a daylight-saving gap and {Plural(r.AdjustedCount, "was", "were")} moved forward.");
+
+        return items;
+    }
+
+    /// <summary>The result announcement: the counts, then the non-zero items (AX6, AC 12) — never a title.</summary>
+    public static string Announcement(IcsImportResult result, bool canDelete) =>
+        string.Join(' ', new[] { $"{Summary(result)}." }.Concat(ResultItems(result, canDelete)));
+
     /// <summary>"‹i› imported, ‹u› updated, ‹s› skipped[, ‹r› removed]" — counts only, never a title.</summary>
     public static string Summary(IcsImportResult result) =>
         $"{result.ImportedCount} imported, {result.UpdatedCount} updated, {Skipped(result)} skipped"

@@ -57,6 +57,15 @@ public partial class ImportCalendarDialog
     /// </summary>
     [Parameter] public EventCallback<Task<ApiResult<IcsImportResult>>> OnBackgrounded { get; set; }
 
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
+    /// <summary>
+    /// The zone a floating time in the file is read in (issue #520 §3 "Import dialog"): the browser's, sent as
+    /// <c>defaultTimeZoneId</c> on both paths; null when the browser reports none, and then the field is omitted and the
+    /// compose note says floating times stay floating (AC 11).
+    /// </summary>
+    private string? DefaultZone => ViewerTimeZone.From(Services).BrowserZoneId;
+
     private string? _calendarValue;
     private IReadOnlyList<OdsUploadFile> _files = [];
     private string? _calendarError;
@@ -248,7 +257,7 @@ public partial class ImportCalendarDialog
 
     private async Task<Attempt> UploadNativeAsync(int generation, Guid calendarId, IBrowserFile file, bool allowRemovals)
     {
-        IReadOnlyList<KeyValuePair<string, string>>? fields = allowRemovals ? [new("allowRemovals", "true")] : null;
+        var fields = ImportFields(allowRemovals, DefaultZone);
         try
         {
             var outcome = await NativeTransfer.TryUploadAsync<IcsImportResult>(
@@ -276,13 +285,24 @@ public partial class ImportCalendarDialog
     private async Task<Attempt> UploadTypedAsync(Guid calendarId, IBrowserFile file, bool allowRemovals)
     {
         // Same effective value used for the pre-check above and for OpenReadStream (issue #343 fe C2).
-        var result = await CalendarApi.ImportAsync(calendarId, file.ToApiUpload(_maxImportBytes), allowRemovals);
+        var result = await CalendarApi.ImportAsync(calendarId, file.ToApiUpload(_maxImportBytes), allowRemovals, DefaultZone);
 
         // A failure that never reached a parsed response (no status, or a body that was not problem JSON) is a lost
         // connection: the server may already have imported part of the file.
         var lost = !result.IsSuccess
             && (result.Status == 0 || result.Problem is { Title: null, Detail: null, Code: null });
         return new Attempt(result, Aborted: false, UploadComplete: true, ConnectionLost: lost);
+    }
+
+    /// <summary>The native upload's form fields: <c>allowRemovals</c> when ticked, <c>defaultTimeZoneId</c> when known.</summary>
+    internal static IReadOnlyList<KeyValuePair<string, string>>? ImportFields(bool allowRemovals, string? defaultZone)
+    {
+        var fields = new List<KeyValuePair<string, string>>();
+        if (allowRemovals)
+            fields.Add(new("allowRemovals", "true"));
+        if (!string.IsNullOrEmpty(defaultZone))
+            fields.Add(new("defaultTimeZoneId", defaultZone));
+        return fields.Count == 0 ? null : fields;
     }
 
     /// <summary>The browser has sent the whole body: the server is importing now, and nothing can stop it.</summary>
@@ -332,7 +352,7 @@ public partial class ImportCalendarDialog
             _result = result;
             _phase = Phase.Result;
             _focusResultPending = true;
-            Announce($"{CalendarImportCopy.Summary(result)}.");
+            Announce(CalendarImportCopy.Announcement(result, CanDelete));
             StateHasChanged();
 
             if (result.ImportedCount > 0 || result.UpdatedCount > 0 || result.RemovedCount > 0)
