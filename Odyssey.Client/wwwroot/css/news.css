@@ -157,10 +157,3 @@ div.nw-focus-host { display: block; }
 .nw-search-help { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 .nw-search-help.is-error { color: var(--mud-palette-error); }
 
-/* A tile with its own ⋯ menu (Feeds' Feed URL tile, News' Original link tile): the party-tile pattern
-   (.con-tile-menu). The menu sits top-right and the overline leaves room for it; a wide tile's wrapper spans the grid. */
-.nw-tile { position: relative; display: flex; min-width: 0; }
-.nw-tile.wide { grid-column: 1 / -1; }
-.nw-tile > .odc-infotile { flex: 1; min-width: 0; }
-.nw-tile .odc-infotile-k { flex: 1; min-width: 0; padding-right: var(--space-6); }
-.nw-tile-menu { position: absolute; top: var(--space-1); right: var(--space-1); z-index: 1; }

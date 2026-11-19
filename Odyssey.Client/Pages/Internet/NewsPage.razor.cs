@@ -218,7 +218,7 @@ public partial class NewsPage : IDisposable
             Count = _catalogue.Count(f => f.State == NewsFeedState.Active && !OdsNewsFeedHealth.NeedsAttention(f.Health)) },
         new() { Key = "attention", Label = "Need attention", Icon = "error_outline", IconColor = OdsBreakdown.Tone("warning"),
             Count = _catalogue.Count(f => OdsNewsFeedHealth.NeedsAttention(f.Health)) },
-        new() { Key = "paused", Label = "Paused", Icon = "pause_circle", IconColor = OdsBreakdown.Tone("outline"),
+        new() { Key = "paused", Label = "Paused", Icon = "pause_circle", IconColor = OdsBreakdown.Tone("pending"),
             Count = _catalogue.Count(f => f.State == NewsFeedState.Paused) },
         new() { Key = "archived", Label = "Archived", Icon = "inventory_2", IconColor = OdsBreakdown.Tone("outline"),
             Count = _catalogue.Count(f => f.State == NewsFeedState.Archived) },
