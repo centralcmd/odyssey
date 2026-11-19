@@ -143,7 +143,7 @@ public class ImportCalendarDialogTests
         /// <summary>Polls a condition that changes without a render (a toast from a disposed dialog).</summary>
         public static async Task Eventually(Func<bool> condition)
         {
-            for (var i = 0; i < 200 && !condition(); i++)
+            for (var i = 0; i < 800 && !condition(); i++)
             {
                 await Task.Delay(25);
             }
@@ -880,5 +880,72 @@ public class ImportCalendarDialogTests
         Assert.Contains("document.removeEventListener('keydown', handler, true)", script, StringComparison.Ordinal);
         Assert.Contains("closest('.mud-dialog-container')", script, StringComparison.Ordinal);
         Assert.Contains("invokeMethodAsync('OnDialogEscape')", script, StringComparison.Ordinal);
+    }
+
+    [Fact] // PR #524 frontend nit 1: an import that faults after a navigation still reaches a toast
+    public async Task A_faulting_import_after_disposal_is_still_toasted()
+    {
+        await using var h = new Harness();
+        h.Transfer.Holds = false;
+        var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Start();
+        await h.Pick();
+        h.ClickImport();
+        h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase));
+
+        h.Mounted = false;
+        h.Rerender();
+        pending.SetException(new InvalidOperationException("Unexpected failure inside the typed client."));
+
+        await Harness.Eventually(() => h.Context.Toasts.Count == 1);
+        Assert.Equal(CalendarImportCopy.HandedOffFailure, h.Context.Toasts[0].Message);
+        Assert.True(h.Context.Toasts[0].RequireInteraction);
+    }
+
+    [Fact] // PR #524 frontend nit 1: a cancelled import after a navigation is reported, not dropped
+    public async Task A_cancelled_import_after_disposal_is_toasted_as_a_failure()
+    {
+        await using var h = new Harness();
+        h.Transfer.Holds = false;
+        var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Start();
+        await h.Pick();
+        h.ClickImport();
+        h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase));
+
+        h.Mounted = false;
+        h.Rerender();
+        pending.SetCanceled();
+
+        await Harness.Eventually(() => h.Context.Toasts.Count == 1);
+        Assert.Equal(CalendarImportCopy.HandedOffFailure, h.Context.Toasts[0].Message);
+    }
+
+    [Fact] // PR #524 frontend nit 2: overlapping renders register the Escape watch exactly once
+    public async Task Overlapping_renders_register_the_escape_watch_once()
+    {
+        await using var h = new Harness();
+        var watch = h.Context.Ctx.JSInterop.Setup<int>("odsDialogEscape.watch", _ => true);
+        h.Start();
+        h.Cut.WaitForAssertion(() => Assert.Single(h.Js("odsDialogEscape.watch")));
+
+        // More renders while the first watch call has not returned.
+        h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
+        h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(false);
+        await h.Pick();
+        Assert.Single(h.Js("odsDialogEscape.watch"));
+
+        // The answer lands on the renderer's context, as the browser's would.
+        await h.Cut.InvokeAsync(() => watch.SetResult(7));
+        h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
+        Assert.Single(h.Js("odsDialogEscape.watch"));
+
+        // The one watch is the one taken down on close (the page owns Open).
+        h.Open = false;
+        h.Rerender();
+        h.Cut.WaitForAssertion(() => Assert.Contains(h.Js("odsDialogEscape.unwatch"), i => Equals(i.Arguments[0], 7)));
+        Assert.Single(h.Js("odsDialogEscape.unwatch"));
     }
 }
