@@ -10,8 +10,8 @@
         ArrowLeft / ArrowRight work while focus is on either button. Focus never moves on its own.
       • The "2 / 5" counter is aria-hidden; a polite region inside the carousel speaks, only on a user
         action: "Image 3 of 5" and nothing more. The alt is read from the image, never spoken twice.
-      • ONE frame ratio for the whole carousel: the first image's width/height (each clamped to
-        1…4096), the ratio clamped to 4:3 … 16:9; every image is contained, so nothing shifts.
+      • ONE frame ratio for the whole carousel: the first image's width/height (a side outside
+        1…20 000 counts as missing, never clamped), the ratio clamped to 4:3 … 16:9; every image is contained, so nothing shifts.
       • The current slide and both neighbours load eagerly, so the next one is ready before it is
         asked for; a hidden slide is never left lazy when it becomes current.
       • A failed image shows "Image unavailable" as text and stays in the count.

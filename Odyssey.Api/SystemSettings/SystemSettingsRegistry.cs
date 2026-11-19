@@ -1054,7 +1054,7 @@ internal static class SystemSettingsRegistry
             Min = SystemSettingsBounds.NewsImageMaxSizeKbMin,
             Max = SystemSettingsBounds.NewsImageMaxSizeKbMax,
             FieldName = nameof(SystemSettingsUpdate.NewsImageMaxSizeKb),
-            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            RequiredClaim = PermissionClaims.SystemSettingsSecurityUpdate,
             DefaultValue = Int(SystemSettingsDefaults.NewsImageMaxSizeKb),
             Validator = (value, ceilings) => ceilings.ValidateNewsImageMaxSizeKb(value),
             Read = r => r.NewsImageMaxSizeKb,

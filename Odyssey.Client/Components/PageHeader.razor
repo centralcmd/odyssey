@@ -62,6 +62,7 @@
                     </div>
                 </div>
                 <div class="ph-actions">
+                    @LeadActions
                     @* Severity-tinted problem rollup — always first; appears only when
                        something needs attention. Tinted-outline ⇄ filled is its open state. *@
                     @if (HasProblems)
@@ -103,6 +104,7 @@
                                    UserAttributes="@Disclosure(_showInfo, _infoRegionId)"
                                    OnClick="ToggleInfo">@InfoLabel</MudButton>
                     }
+                    @Actions
                     @if (PrimaryAction is not null)
                     {
                         @PrimaryAction
@@ -167,7 +169,7 @@
                                    aria-live="polite" region, so every row became its own live region
                                    and opening a multi-group panel announced the lot. The row's text is
                                    read normally, and its action is the real <button> below. *@
-                                <div class="alert @SeverityClass(problem.Severity) @(problem.HasView ? "signal-row" : null)"
+                                <div class="alert @SeverityClass(problem.Severity) compact @(problem.HasView ? "signal-row" : null)"
                                      @onclick="@(() => InvokeView(problem))">
                                     @* The ligature is decoration; the severity is given as text below, so
                                        a screen reader says "Warning:" rather than "warning amber". *@

@@ -42,7 +42,9 @@ public class NewsSettingsRowsTests : IDisposable
 
         Assert.Equal(MudBlazor.Icons.Material.Filled.RssFeed, section.Icon);
         Assert.Equal(NewsKeys, section.Items.Select(i => i.Key));
-        string[] security = [Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes"];
+        // The image size limit bounds what the worker downloads from an untrusted host, so it takes the
+        // security claim like the allow-list and the OPML size cap (design system · system-settings-data.js).
+        string[] security = ["newsImageMaxSizeKb", Settings.NewsAllowListKey, "newsOpmlMaxImportMegabytes"];
         Assert.All(section.Items.Where(i => security.Contains(i.Key)), item => Assert.Equal(Settings.SettingClaim.Security, item.Claim));
         Assert.All(section.Items.Where(i => !security.Contains(i.Key)),
             item => Assert.Equal(Settings.SettingClaim.Count, item.Claim));
@@ -98,7 +100,7 @@ public class NewsSettingsRowsTests : IDisposable
         var page = ctx.Render<Settings>();
 
         Assert.Equal("2048", page.Find("#ss-in-newsImageMaxSizeKb").GetAttribute("max"));
-        Assert.Contains($"At most {2048.ToString("N0", CultureInfo.CurrentCulture)} KB", page.Markup, StringComparison.Ordinal);
+        Assert.Contains($"Up to {2048.ToString("N0", CultureInfo.CurrentCulture)} KB", page.Markup, StringComparison.Ordinal);
         Assert.DoesNotContain(Settings.MaxToken, page.Markup, StringComparison.Ordinal);
     }
 

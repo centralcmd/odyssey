@@ -57,7 +57,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task Put_above_the_derived_ceiling_is_refused_and_at_it_is_accepted()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary, maxFileSizeBytes: 1024 * 1024);
+        await using var factory = new ApiFactory(ReadAndSecurity, maxFileSizeBytes: 1024 * 1024);
         using var client = factory.CreateClient();
 
         var refused = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsImageMaxSizeKb = 1025 });
@@ -77,7 +77,7 @@ public class NewsSettingsApiTests
     [Fact]
     public async Task A_file_limit_below_64_KiB_still_leaves_the_floor_settable()
     {
-        await using var factory = new ApiFactory(ReadAndOrdinary, maxFileSizeBytes: 16 * 1024);
+        await using var factory = new ApiFactory(ReadAndSecurity, maxFileSizeBytes: 16 * 1024);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsImageMaxSizeKb = SystemSettingsBounds.NewsImageMaxSizeKbMin });
@@ -106,24 +106,44 @@ public class NewsSettingsApiTests
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    /// <summary>§11.1: the eight ordinary keys take <c>system-settings.update</c>.</summary>
+    /// <summary>§11.1: the seven ordinary keys take <c>system-settings.update</c>.</summary>
     [Fact]
-    public async Task The_ordinary_claim_writes_the_eight_ordinary_news_keys()
+    public async Task The_ordinary_claim_writes_the_seven_ordinary_news_keys()
     {
         await using var factory = new ApiFactory(ReadAndOrdinary);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate
         {
-            NewsDefaultFetchIntervalMinutes = 120, NewsMaxFeeds = 300, NewsImageMaxPerArticle = 0, NewsImageMaxSizeKb = 2048,
+            NewsDefaultFetchIntervalMinutes = 120, NewsMaxFeeds = 300, NewsImageMaxPerArticle = 0,
             NewsImageStoreMaxGiB = 10, NewsTextStoreMaxGiB = 5, NewsFeedMaxArticlesPerDay = 50, NewsFeedMaxImageMbPerDay = 20,
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var dto = (await response.Content.ReadFromJsonAsync<SystemSettingsDto>())!;
-        Assert.Equal((120, 300, 0, 2048, 10, 5, 50, 20),
-            (dto.NewsDefaultFetchIntervalMinutes, dto.NewsMaxFeeds, dto.NewsImageMaxPerArticle, dto.NewsImageMaxSizeKb,
+        Assert.Equal((120, 300, 0, 10, 5, 50, 20),
+            (dto.NewsDefaultFetchIntervalMinutes, dto.NewsMaxFeeds, dto.NewsImageMaxPerArticle,
              dto.NewsImageStoreMaxGiB, dto.NewsTextStoreMaxGiB, dto.NewsFeedMaxArticlesPerDay, dto.NewsFeedMaxImageMbPerDay));
+    }
+
+    /// <summary>
+    /// The image size limit bounds what the worker downloads from an untrusted host, so it takes the security
+    /// claim (design system · system-settings-data.js) and writes nothing under the ordinary one.
+    /// </summary>
+    [Fact]
+    public async Task The_image_size_limit_needs_the_security_claim()
+    {
+        await using (var ordinary = new ApiFactory(ReadAndOrdinary))
+        {
+            var refused = await ordinary.CreateClient().PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsImageMaxSizeKb = 2048 });
+            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+            Assert.Contains(nameof(SystemSettingsUpdate.NewsImageMaxSizeKb), await refused.Content.ReadAsStringAsync(), StringComparison.Ordinal);
+        }
+
+        await using var security = new ApiFactory(ReadAndSecurity);
+        var accepted = await security.CreateClient().PutAsJsonAsync(Path, new SystemSettingsUpdate { NewsImageMaxSizeKb = 2048 });
+        Assert.Equal(HttpStatusCode.OK, accepted.StatusCode);
+        Assert.Equal(2048, (await accepted.Content.ReadFromJsonAsync<SystemSettingsDto>())!.NewsImageMaxSizeKb);
     }
 
     /// <summary>§7.9, §11.1: the allow-list decides which private addresses the worker may fetch, so it needs the security claim.</summary>
