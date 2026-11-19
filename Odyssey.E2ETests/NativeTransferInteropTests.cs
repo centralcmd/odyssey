@@ -94,6 +94,13 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
         page.EvaluateAsync(
             """
             ([path, withFields, withCallback]) => {
+                // Records the timeout each request is SENT with: the browser must never cut an upload off.
+                if (!window.__sendWrapped) {
+                    const send = XMLHttpRequest.prototype.send;
+                    XMLHttpRequest.prototype.send = function (body) { window.sentTimeout = this.timeout; return send.call(this, body); };
+                    window.__sendWrapped = true;
+                }
+                window.sentTimeout = null;
                 window.cb = { calls: 0, disposed: 0, respondedAtCall: null,
                     invokeMethodAsync(name) { if (name === 'OnUploadComplete') { this.calls++; this.respondedAtCall = !!window.result; } return Promise.resolve(); },
                     dispose() { this.disposed++; } };
@@ -139,6 +146,7 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
         Assert.Contains("name=\"file\"; filename=\"calendar.ics\"", request.Body, StringComparison.Ordinal);
         Assert.Contains("Content-Type: text/calendar", request.Body, StringComparison.Ordinal);
         Assert.Equal("xsrf", request.Token);
+        Assert.Equal(0, await page.EvaluateAsync<int>("() => window.sentTimeout"));
     }
 
     [SkippableFact] // AC 7: an abort before the body has gone resolves aborted && !uploadComplete and releases the callback
@@ -147,9 +155,10 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
         Skip.If(skipReason is not null, skipReason);
         var page = await PageWithFileAsync(LargeFileBytes);
 
-        // The server never reads the body, so the browser cannot finish sending it.
+        // The server never reads the body, so the browser cannot finish sending it. Abort once the request has
+        // reached the server — its first bytes — rather than after a guessed delay.
         await StartAsync(page, server.Origin + "/stall", withFields: false, withCallback: true);
-        await Task.Delay(500);
+        await server.StallReached.Task.WaitAsync(TimeSpan.FromSeconds(30));
         await page.EvaluateAsync("() => window.odysseyNativeTransfer.abort('box')");
 
         var result = await ResultAsync(page);
@@ -241,6 +250,9 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
 
         public string Origin { get; private set; } = string.Empty;
 
+        /// <summary>Set when a request to <c>/stall</c> has arrived — its headers, the first bytes of the upload.</summary>
+        public TaskCompletionSource StallReached { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
         public void Start()
         {
             var port = ClosedPort();
@@ -300,6 +312,7 @@ public sealed class NativeTransferInteropTests : IAsyncLifetime
 
                 if (path == "/stall")
                 {
+                    StallReached.TrySetResult();
                     await Task.Delay(Timeout.Infinite, stopping.Token);
                     return;
                 }
