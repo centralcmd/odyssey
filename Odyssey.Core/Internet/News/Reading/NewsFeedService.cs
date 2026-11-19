@@ -247,6 +247,10 @@ public sealed class NewsFeedService(
             feed.DownloadImages = request.DownloadImages!.Value;
             feed.IsActive = request.IsActive!.Value;
             feed.SettingsVersion = Guid.NewGuid();
+            if (request.TagIds is not null)
+            {
+                await StageTagsAsync(id, request.TagIds, cancellationToken);
+            }
 
             var accepted = urlChanged && string.Equals(suggestion, feed.Url, StringComparison.Ordinal);
             await NewsTransactions.RunAsync(context, async () =>
@@ -302,14 +306,7 @@ public sealed class NewsFeedService(
                 return false;
             }
 
-            var wanted = NewsFilterIds.Normalize(request.TagIds);
-            var links = await context.NewsFeedTags.News().Where(l => l.NewsFeedId == id).ToListAsync(cancellationToken);
-            await EnsureTagsUsableAsync(wanted, links.Select(l => l.NewsTagId).ToHashSet(), cancellationToken);
-
-            context.NewsFeedTags.RemoveRange(links.Where(l => !wanted.Contains(l.NewsTagId)));
-            var existing = links.Select(l => l.NewsTagId).ToHashSet();
-            context.NewsFeedTags.AddRange(wanted.Where(t => !existing.Contains(t))
-                .Select(t => new NewsFeedTag { NewsFeedTagId = Guid.NewGuid(), NewsFeedId = id, NewsTagId = t }));
+            await StageTagsAsync(id, request.TagIds, cancellationToken);
             feed.SettingsVersion = Guid.NewGuid();
             await SaveVersionedAsync(id, null, cancellationToken);
             return true;
@@ -385,8 +382,10 @@ public sealed class NewsFeedService(
     }
 
     /// <summary>
-    /// <c>DELETE</c> (§5.1 item 10): only an archived feed. Sets <c>DeletionRequestedAtUtc</c>, after which the feed is a
-    /// 404 everywhere; the worker's batched purge removes the rest. False for an unknown feed.
+    /// <c>DELETE</c> (§5.1 item 10): any feed, archived or not — there is no archive-first step (design system,
+    /// NewsFeeds). Sets <c>DeletionRequestedAtUtc</c>, after which the feed is a 404 everywhere; the worker's batched purge
+    /// removes the rest. A live feed is safe to delete mid-fetch: every fenced fetch write re-reads the deletion stamp and
+    /// aborts, and the purge only claims a feed no live lease holds. False for an unknown feed.
     /// </summary>
     public async Task<bool> RequestDeleteAsync(Guid id, string userId, CancellationToken cancellationToken)
     {
@@ -396,11 +395,6 @@ public sealed class NewsFeedService(
             if (feed is null)
             {
                 return false;
-            }
-
-            if (feed.ArchivedAtUtc is null)
-            {
-                throw NewsErrors.FeedNotArchived(id);
             }
 
             feed.DeletionRequestedAtUtc = Now;
@@ -549,6 +543,22 @@ public sealed class NewsFeedService(
             await EnsureUniqueAsync(urlKeyHash, excludeFeedId: feedId, cancellationToken);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Stages the feed's whole tag set on the context, unsaved: shared by <c>PUT …/tags</c> and the tags carried on
+    /// <c>PUT /api/news-feeds/{id}</c>, so both apply one rule (a kept tag may be archived, a new one may not).
+    /// </summary>
+    private async Task StageTagsAsync(Guid id, IReadOnlyCollection<Guid>? tagIds, CancellationToken cancellationToken)
+    {
+        var wanted = NewsFilterIds.Normalize(tagIds);
+        var links = await context.NewsFeedTags.News().Where(l => l.NewsFeedId == id).ToListAsync(cancellationToken);
+        await EnsureTagsUsableAsync(wanted, links.Select(l => l.NewsTagId).ToHashSet(), cancellationToken);
+
+        context.NewsFeedTags.RemoveRange(links.Where(l => !wanted.Contains(l.NewsTagId)));
+        var existing = links.Select(l => l.NewsTagId).ToHashSet();
+        context.NewsFeedTags.AddRange(wanted.Where(t => !existing.Contains(t))
+            .Select(t => new NewsFeedTag { NewsFeedTagId = Guid.NewGuid(), NewsFeedId = id, NewsTagId = t }));
     }
 
     private async Task EnsureTagsUsableAsync(IReadOnlyList<Guid> wanted, IReadOnlySet<Guid> alreadyLinked, CancellationToken cancellationToken)

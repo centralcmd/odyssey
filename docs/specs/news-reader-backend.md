@@ -788,7 +788,7 @@ General rules:
 9. `POST /api/news-feeds/{id:guid}/archive` and `POST /api/news-feeds/{id:guid}/unarchive` —
    `news-feeds.update`.
 10. `DELETE /api/news-feeds/{id:guid}` — `news-feeds.delete`. Returns `202`. The feed must be archived
-    first, otherwise `422 news-feed-not-archived`. Sets `DeletionRequestedAtUtc`; the purge is batched
+    first, otherwise `422 news-feed-not-archived`. *(Superseded: since the design-system sync of 2026-11-19 any feed can be deleted, with no archive-first step, and the code is retired.)* Sets `DeletionRequestedAtUtc`; the purge is batched
     (§3.4 step 1).
 11. `POST /api/news-feeds/{id:guid}/release-quarantine` — `news-feeds.update`. Clears
     `QuarantinedAtUtc` and `CrashSuspectCount` with the conditional `UPDATE` in §3.3. It writes no

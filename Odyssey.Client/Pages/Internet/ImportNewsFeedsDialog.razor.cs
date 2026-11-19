@@ -29,14 +29,14 @@ public partial class ImportNewsFeedsDialog : IDisposable
     private const long BytesPerMegabyte = BytesPerKibibyte * BytesPerKibibyte;
 
     internal const string NoFileText = "Choose an OPML file to import.";
-    internal const string WrongTypeText = "That isn't an OPML file. Use a .opml or .xml file.";
-    internal const string UnreadableText = "This file isn't an OPML document, or part of it couldn't be read. Nothing was imported.";
+    internal const string WrongTypeText = "That isn’t an OPML file. Use a .opml or .xml file.";
+    internal const string UnreadableText = "This file isn’t an OPML document, or part of it couldn’t be read. Nothing was imported.";
     internal const string ConflictText = "The feed list changed while importing. No feeds were imported, but new tags may have been added. Try again.";
     internal const string BusyText = "News is busy, and the import may or may not have finished. Close to check the Feeds list, or try again.";
     internal const string RateLimitedText = "Another import is running. Try again in a moment.";
-    internal const string ForbiddenText = "You don't have permission to import feeds.";
-    internal const string DroppedText = "The upload didn't finish, and the import may or may not have run. Close to check the Feeds list, or try again.";
-    internal const string OtherText = "Couldn't import the file.";
+    internal const string ForbiddenText = "You don’t have permission to import feeds.";
+    internal const string DroppedText = "The upload didn’t finish, and the import may or may not have run. Close to check the Feeds list, or try again.";
+    internal const string OtherText = "Couldn’t import the file.";
     internal const string StoppedText = "Stopped waiting. The import may still finish on the server. Check the Feeds list after closing.";
     internal const string ImportingText = "Importing feeds…";
     internal const string StillImportingText = "Still importing. You can stop waiting.";
@@ -385,7 +385,7 @@ public partial class ImportNewsFeedsDialog : IDisposable
     {
         if (r.Feeds == 0)
         {
-            return "This file doesn't list any feeds.";
+            return "This file doesn’t list any feeds.";
         }
 
         var counts = $"{Number(r.Created)} added, {Number(r.AlreadySubscribed)} already subscribed, {Number(NotImported(r))} not imported.";
@@ -403,7 +403,7 @@ public partial class ImportNewsFeedsDialog : IDisposable
         [
             new("news-opml-g-created", "Added feeds", r.Created, Of(NewsOpmlImportOutcome.Created), true, "add_circle_outline", false),
             new("news-opml-g-existing", "Already subscribed", r.AlreadySubscribed, Of(NewsOpmlImportOutcome.AlreadySubscribed), true, "bookmark_border", false),
-            new("news-opml-g-invalid", "Address can't be used", r.Invalid, Of(NewsOpmlImportOutcome.Invalid), false, "playlist_remove", true),
+            new("news-opml-g-invalid", "Address can’t be used", r.Invalid, Of(NewsOpmlImportOutcome.Invalid), false, "playlist_remove", true),
             new("news-opml-g-limit", "Over the feed limit", r.FeedLimit, Of(NewsOpmlImportOutcome.FeedLimit), false, "playlist_remove", false),
             new("news-opml-g-deleting", "Being deleted", r.PendingDeletion, Of(NewsOpmlImportOutcome.PendingDeletion), false, "playlist_remove", false),
             new("news-opml-g-unknown", "Not imported", unknown.Count, unknown, false, "playlist_remove", false),
@@ -413,7 +413,7 @@ public partial class ImportNewsFeedsDialog : IDisposable
 
     internal static string TagReason(NewsOpmlTagSkipReason reason) => reason switch
     {
-        NewsOpmlTagSkipReason.NoPermission => "You can't create tags",
+        NewsOpmlTagSkipReason.NoPermission => "You can’t create tags",
         NewsOpmlTagSkipReason.TagLimit => "The tag limit is reached",
         NewsOpmlTagSkipReason.NameTooLong => $"Name too long (over {NewsLimits.MaxTagNameLength} characters)",
         NewsOpmlTagSkipReason.Archived => "The tag is archived",

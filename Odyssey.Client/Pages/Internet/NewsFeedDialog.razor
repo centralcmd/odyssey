@@ -8,6 +8,10 @@
     field the server changed WINS, one only the user changed keeps the user's value — then reports which fields the
     server updated (role=status) and focuses the first of them. A failed Reload keeps the alert and focus on Reload;
     a 404 means the feed was deleted: Save is disabled and focus moves to Close.
+
+    There is no Active / archive switch: Pause, Resume, Archive and Unarchive live in the card's ⋯ menu only, and the
+    dialog sends the feed's current isActive back unchanged. Tags are part of the feed's own form on create and edit
+    alike — there is no separate Tags dialog; on edit they travel in the same PUT as the settings.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
@@ -51,7 +55,7 @@
     @if (_duplicateOf is { } existing)
     {
         <div>
-            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" IconRight="arrow_forward"
+            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="arrow_forward"
                        OnClick="() => GoToFeed.InvokeAsync(existing)">Go to feed</OdsButton>
         </div>
     }
@@ -61,14 +65,7 @@
                     Min="NewsLimits.MinFetchIntervalMinutes" Max="NewsLimits.MaxFetchIntervalMinutes" Step="1"
                     Placeholder="Default" Help="@NewsFeedForm.IntervalHelp" Error="@_intervalError" />
     <OdsSwitch Label="Download images" Checked="_downloadImages" CheckedChanged="v => { _downloadImages = v; }" />
-    @if (IsEdit)
-    {
-        <OdsSwitch Label="Active" Checked="_active" CheckedChanged="v => { _active = v; }" />
-    }
-    else
-    {
-        <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
-                           Noun="news tag" NounPlural="news tags" Error="@_tagsError"
-                           Help="Every article from this feed carries these tags too." />
-    }
+    <OdsTagMultiSelect Label="Tags" Value="_tagIds" ValueChanged="OnTagsChanged" Options="TagOptions"
+                       Noun="news tag" NounPlural="news tags" Error="@_tagsError"
+                       Help="Every article from this feed carries these tags too." />
 </OdsFormDialog>
