@@ -48,11 +48,12 @@ public static class SystemSettingsBounds
     public const int ContactVCardMaxExportMegabytesMin = 1;
     public const int ContactVCardMaxExportMegabytesMax = 1024;
 
+    // The calendar surface streams its export and import (issue #516), so it goes to 10 GB as well.
     public const int CalendarIcsMaxImportMegabytesMin = 1;
-    public const int CalendarIcsMaxImportMegabytesMax = 1024;
+    public const int CalendarIcsMaxImportMegabytesMax = 10240;
 
     public const int CalendarIcsMaxExportMegabytesMin = 1;
-    public const int CalendarIcsMaxExportMegabytesMax = 1024;
+    public const int CalendarIcsMaxExportMegabytesMax = 10240;
 
     // The task surface goes to 10 GB, ten times the others: its files carry attached files inline.
     public const int TaskIcsMaxImportMegabytesMin = 1;

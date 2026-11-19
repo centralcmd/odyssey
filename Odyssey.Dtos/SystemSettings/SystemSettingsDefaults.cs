@@ -50,10 +50,13 @@ public static class SystemSettingsDefaults
     public const string ContactVCardMaxImportEntries = Unlimited;
     public const int ContactVCardMaxImportMegabytes = 64;
     public const int ContactVCardMaxExportMegabytes = 64;
-    public const int CalendarIcsMaxExportEvents = 2000;
-    public const int CalendarIcsMaxImportEvents = 2000;
-    public const int CalendarIcsMaxImportMegabytes = 64;
-    public const int CalendarIcsMaxExportMegabytes = 64;
+    // The calendar surface streams its export and its import (issue #516), so it ships like the task and
+    // journal ones: unlimited on counts and at its 10 GB ceiling on size. The byte caps, the component caps and
+    // the batch size bound memory now, not the count.
+    public const string CalendarIcsMaxExportEvents = Unlimited;
+    public const string CalendarIcsMaxImportEvents = Unlimited;
+    public const int CalendarIcsMaxImportMegabytes = 10240;
+    public const int CalendarIcsMaxExportMegabytes = 10240;
     // The task surface ships unlimited on counts and at its 10 GB ceiling on size: its files carry attached files
     // inline, and a mostly single-user instance should not meet an arbitrary cap moving its own board.
     public const string TaskIcsMaxExportTasks = Unlimited;

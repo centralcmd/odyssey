@@ -1102,7 +1102,8 @@ public class JournalEntryIcsApiTests
         var problem = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.NotNull(problem);
         Assert.True(problem!.Extensions.TryGetValue("code", out var code));
-        Assert.Contains(ExportLimitExceededException.DiscriminatorCode, code!.ToString());
+        // The wire value itself (issue #516 AC 20): a rename of the constant must fail here, not pass silently.
+        Assert.Equal("journal_entries_export_limit_exceeded", code!.ToString());
     }
 
     // ------------------------------------------------------------------ direct API ExternalUid

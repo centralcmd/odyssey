@@ -20,9 +20,8 @@ public class CalendarIcsApiTests
     private const string ActorUserId = "calendar-ics-actor-id";
     private const string CalendarsPath = "/api/calendars";
 
-    // The shipped default for CalendarIcsMaxImportEvents (issue #343 §6) — behavior-preserving with
-    // the old hard-coded CalendarIcsService.MaxVEvents this replaces.
-    private const int DefaultMaxImportEvents = 2000;
+    // The import event cap Import_TooManyVEvents sets: the setting ships unlimited since issue #516.
+    private const int TestMaxImportEvents = 5;
 
     private static readonly string[] ReadWrite =
     [
@@ -400,8 +399,9 @@ public class CalendarIcsApiTests
     }
 
     [Fact]
-    public async Task Import_DuplicateUidInFile_ImportsFirstSkipsSecond()
+    public async Task Import_DuplicateUidInFile_LastComponentWins()
     {
+        // Issue #516 R2: no whole-file UID set; a UID seen again updates what the earlier component wrote.
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Dupe");
@@ -413,9 +413,12 @@ public class CalendarIcsApiTests
         var result = await ImportAsync(client, calendar.CalendarId, ics);
 
         Assert.Equal(1, result.ImportedCount);
-        var group = Assert.Single(result.Skipped);
-        Assert.Equal(1, group.Count);
-        Assert.Contains("Duplicate UID", group.Reason);
+        Assert.Equal(1, result.UpdatedCount);
+        Assert.Empty(result.Skipped);
+        using var scope = factory.Services.CreateScope();
+        var row = await scope.ServiceProvider.GetRequiredService<CalendarContext>().CalendarEvents
+            .SingleAsync(e => e.CalendarId == calendar.CalendarId);
+        Assert.Equal("Second", row.Title);
     }
 
     [Fact]
@@ -577,11 +580,17 @@ public class CalendarIcsApiTests
     [Fact]
     public async Task Import_TooManyVEvents_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         using var client = factory.CreateClient();
+        (await client.PutAsJsonAsync("/api/system-settings", new Odyssey.Dtos.Application.SystemSettingsUpdate
+        {
+            // The export cap may not exceed the import cap (the round-trip pair rule), so both move.
+            CalendarIcsMaxExportEvents = new Odyssey.Dtos.Application.CapacityLimit { Value = TestMaxImportEvents },
+            CalendarIcsMaxImportEvents = new Odyssey.Dtos.Application.CapacityLimit { Value = TestMaxImportEvents },
+        })).EnsureSuccessStatusCode();
         var calendar = await CreateCalendarAsync(client, "Flood");
 
-        var events = Enumerable.Range(0, DefaultMaxImportEvents + 1)
+        var events = Enumerable.Range(0, TestMaxImportEvents + 1)
             .Select(i => Vevent($"u{i}", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:E{i}"));
         var ics = Vcalendar(events.ToArray());
 

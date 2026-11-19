@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -12,9 +11,9 @@ using Swashbuckle.AspNetCore.Annotations;
 namespace Odyssey.Api.Controllers;
 
 /// <summary>
-/// ICS (RFC 5545) import/export for a calendar (issue #330). Shares the <c>api/calendars</c> prefix
+/// ICS (RFC 5545) import/export for a calendar (issues #330, #516). Shares the <c>api/calendars</c> prefix
 /// with <see cref="CalendarsController"/> (same sub-resource convention as e.g. Terms). Export
-/// is a plain GET; import is a POST to the same URI with a multipart body.
+/// is a streamed GET with a summary beside it; import is a POST to the same URI with a multipart body.
 /// </summary>
 [ApiController]
 [Route("api/calendars")]
@@ -29,33 +28,35 @@ public sealed class CalendarIcsController : ControllerBase
 
     [HttpGet("{id}/ics", Name = "ExportCalendarIcs")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
-    // Reachable at User tier via CalendarRead alone, and — unlike the other four Goal 8 surfaces —
-    // fully-buffered with no cap or chunking (issue #343 §2 Non-Goal 9, out of scope, tracked
-    // separately under #340). It still carries the same availability controls as the four in-scope
-    // surfaces because those bound an instance-wide resource risk this feature introduces regardless
-    // of whether this endpoint's own row count is capped (§5, §10 item 5, sec Z1).
+    // Streams (issue #516 Goal 1) under the shared export permits and the progress guard.
     [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
     [TypeFilter(typeof(ExportConcurrencyFilter))]
     [Produces("text/calendar")]
     [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a calendar's events as an RFC 5545 .ics file.")]
-    public async Task<IActionResult> Export(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
-    {
-        var export = await service.ExportAsync(id, cancellationToken, includePlaceNames: User.HasPermission(PermissionClaims.LocationsRead));
-        if (export is null)
-        {
-            return this.NotFoundProblem($"Calendar ID {id} not found.");
-        }
+    public Task<IActionResult> Export(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.StreamAsync(
+            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken);
 
-        // nosniff mirrors the file-download surface: the browser must not re-interpret the body as
-        // anything other than the declared text/calendar. File(...) sets an attachment disposition
-        // with the (framework-sanitized) filename.
-        Response.Headers.XContentTypeOptions = "nosniff";
-        var bytes = Encoding.UTF8.GetBytes(export.Content);
-        return File(bytes, "text/calendar; charset=utf-8", export.FileName);
-    }
+    // What the calendar export would contain, under the same checks and the same permits (issue #516 §5, S4), so a
+    // refusal or a 429 arrives before the browser starts a download. The permit is released when it returns.
+    [HttpGet("{id}/ics/summary", Name = "SummarizeCalendarIcsExport")]
+    [Authorize(Policy = PermissionClaims.CalendarRead)]
+    [EnableRateLimiting(ImportExportRateLimiting.ExportConcurrencyPolicy)]
+    [TypeFilter(typeof(ExportConcurrencyFilter))]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarIcsExportSummary))]
+    [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Summarize what a calendar's .ics export would contain.")]
+    public Task<ActionResult<CalendarIcsExportSummary>> SummarizeExport(
+        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        CalendarIcsExportResponder.SummarizeAsync(
+            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken);
 
     [HttpPost("{id}/ics", Name = "ImportCalendarIcs")]
     // Import can create or update depending on each VEVENT's UID match, so it requires BOTH claims;
@@ -67,11 +68,16 @@ public sealed class CalendarIcsController : ControllerBase
     [EnableRateLimiting(ImportExportRateLimiting.ImportConcurrencyPolicy)]
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(IcsImportResult))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Import an RFC 5545 .ics file into an existing calendar.")]
     public async Task<IActionResult> Import(
         [FromRoute(Name = "id")] Guid id,
         IFormFile file,
+        // Lets a component the file marks cancelled remove what it matches (issue #516 §8.4). It needs
+        // calendar.delete, evaluated once here from the request principal: without it the whole import is a 403
+        // before any byte is applied.
+        [FromForm(Name = "allowRemovals")] bool allowRemovals = false,
         CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)
@@ -96,8 +102,10 @@ public sealed class CalendarIcsController : ControllerBase
 
         await using var stream = file.OpenReadStream();
         // Places link or are created only with locations.read + locations.create (issue #380 §8.4).
+        // RequestAborted (the bound token) stops the import at the next batch boundary; committed batches stay.
         var result = await service.ImportAsync(
-            id, stream, file.Length, file.ContentType, userId, cancellationToken, User.LocationClaims());
+            id, stream, file.Length, file.ContentType, userId, cancellationToken, User.LocationClaims(),
+            allowRemovals, canDelete: User.HasPermission(PermissionClaims.CalendarDelete));
         return Ok(result);
     }
 }

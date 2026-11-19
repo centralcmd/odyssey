@@ -95,7 +95,7 @@
         // Browser-native transfers for files larger than the WASM heap can hold (a task export carries its
         // attached files inline). watch() remembers the File picked or dropped inside a container, from the
         // input's change event; upload() posts it as multipart straight from disk — the browser streams it, the
-        // bytes never pass through .NET — and returns { status, body }. The File, not a copy, is kept.
+        // bytes never pass through .NET — and returns { status, body, aborted, uploadComplete }. The File, not a copy, is kept.
         window.odysseyNativeTransfer = {
             files: {},
             watch: function (containerId) {
@@ -113,23 +113,99 @@
                 const f = window.odysseyNativeTransfer.files[containerId];
                 return !!f && f.name === name && f.size === size;
             },
-            upload: async function (containerId, url, fieldName, headerName, token, contentType) {
-                const f = window.odysseyNativeTransfer.files[containerId];
-                if (!f) return { status: 0, body: 'The chosen file is no longer available.' };
+            // XMLHttpRequest, not fetch: only XHR says when the BODY has been sent (issue #517), which is what tells
+            // "nothing was imported" (stopped mid-upload) apart from "the server may already be importing". No
+            // timeout: a multi-gigabyte upload must never be cut off by the browser. `fields` go into the form beside
+            // the file; `callback` (a DotNetObjectReference, optional) hears OnUploadComplete exactly once and is
+            // released on every exit. Resolves { status, body, aborted, uploadComplete } — aborted only when abort()
+            // was called.
+            inflight: {},
+            upload: function (containerId, url, fieldName, headerName, token, contentType, fields, callback) {
+                const self = window.odysseyNativeTransfer;
+                const release = function () {
+                    if (callback) { try { callback.dispose(); } catch (e) { /* already released */ } callback = null; }
+                };
+                const f = self.files[containerId];
+                if (!f) {
+                    release();
+                    return Promise.resolve({ status: 0, body: 'The chosen file is no longer available.', aborted: false, uploadComplete: false });
+                }
                 const part = contentType ? new File([f], f.name, { type: contentType }) : f;
                 const form = new FormData();
-                form.append(fieldName, part, f.name);
-                const headers = {};
-                if (token) headers[headerName] = token;
-                try {
-                    const r = await fetch(url, { method: 'POST', body: form, credentials: 'include', headers: headers });
-                    return { status: r.status, body: await r.text() };
-                } catch (e) {
-                    return { status: 0, body: String((e && e.message) || e) };
+                if (fields) {
+                    Object.keys(fields).forEach(function (k) { form.append(k, fields[k]); });
                 }
+                form.append(fieldName, part, f.name);
+                return new Promise(function (resolve) {
+                    const xhr = new XMLHttpRequest();
+                    let uploadComplete = false;
+                    let aborted = false;
+                    let done = false;
+                    const finish = function (status, body) {
+                        if (done) return;
+                        done = true;
+                        if (self.inflight[containerId] === xhr) delete self.inflight[containerId];
+                        release();
+                        resolve({ status: status, body: body, aborted: aborted, uploadComplete: uploadComplete });
+                    };
+                    xhr.open('POST', url, true);
+                    xhr.withCredentials = true;
+                    xhr.timeout = 0;
+                    if (token) xhr.setRequestHeader(headerName, token);
+                    xhr.upload.onload = function () {
+                        if (uploadComplete) return;
+                        uploadComplete = true;
+                        if (callback) callback.invokeMethodAsync('OnUploadComplete').catch(function () { /* the page went away */ });
+                    };
+                    xhr.onload = function () { finish(xhr.status, xhr.responseText || ''); };
+                    xhr.onerror = function () { finish(0, 'The connection was lost.'); };
+                    xhr.onabort = function () { aborted = true; finish(0, 'The upload was stopped.'); };
+                    xhr.ontimeout = function () { finish(0, 'The request timed out.'); };
+                    self.inflight[containerId] = xhr;
+                    try {
+                        xhr.send(form);
+                    } catch (e) {
+                        finish(0, String((e && e.message) || e));
+                    }
+                });
+            },
+            abort: function (containerId) {
+                const xhr = window.odysseyNativeTransfer.inflight[containerId];
+                if (xhr) xhr.abort();
             },
             forget: function (containerId) {
                 delete window.odysseyNativeTransfer.files[containerId];
+            }
+        };
+        // Escape anywhere inside one dialog (issue #517 review): a capture listener on the document, so it fires
+        // whether focus sits on the header, the body, the footer or the dialog container itself — and, when focus
+        // has fallen to <body>, while that dialog is the topmost one. A key pressed inside another dialog stacked
+        // above it (the Stop-upload confirmation) is not this dialog's. The .NET side decides what Escape means.
+        window.odsDialogEscape = {
+            next: 1,
+            handlers: {},
+            watch: function (dialogClass, ref) {
+                const id = window.odsDialogEscape.next++;
+                const handler = function (e) {
+                    if (e.key !== 'Escape') return;
+                    const dialog = document.querySelector('.' + dialogClass);
+                    if (!dialog) return;
+                    const box = dialog.closest('.mud-dialog-container') || dialog;
+                    const containers = document.querySelectorAll('.mud-dialog-container');
+                    const topmost = containers.length === 0 || containers[containers.length - 1] === box;
+                    const inside = box.contains(e.target) || (e.target === document.body && topmost);
+                    if (!inside) return;
+                    ref.invokeMethodAsync('OnDialogEscape').catch(function () { /* the dialog went away */ });
+                };
+                document.addEventListener('keydown', handler, true);
+                window.odsDialogEscape.handlers[id] = handler;
+                return id;
+            },
+            unwatch: function (id) {
+                const handler = window.odsDialogEscape.handlers[id];
+                if (!handler) return;
+                document.removeEventListener('keydown', handler, true);
+                delete window.odsDialogEscape.handlers[id];
             }
         };
         window.revokeBlobUrl = function (url) {

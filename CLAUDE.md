@@ -889,7 +889,32 @@ get backwards:
   without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
   photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
   attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
-  timeouts to the task-ICS, photo and file routes alone.
+  timeouts to the task, journal and calendar `.ics`, photo and file routes alone, and nginx streams the `.ics`
+  responses unbuffered (`proxy_buffering off`) so the export progress guard below sees the real client.
+
+**A calendar `.ics` export and import stream, and both are planned or applied in batches** (issue #516). Rules that
+are easy to get backwards:
+
+- **No export opens a transaction.** The planner (`CalendarIcsService.PlanAsync`) projects keys and the collapse
+  columns once, the writer fetches id batches through `ExportChunking.ReorderToSnapshot`; a retry under
+  `EnableRetryOnFailure` would re-emit streamed chunks. The planner is also the summary — one definition of what an
+  export contains. Past the byte cap the writer throws `IcsExportSizeExceededException` and the controller aborts;
+  it never truncates.
+- **A series collapses only when every row is in the series' own calendar**, so an occurrence moved elsewhere is
+  written in its new calendar's file. The aggregate keeps `HasUniformCalendarId` and synthetic UIDs.
+- **A synthetic UID (`{guid}@odyssey.local`) is never persisted as `ExternalUid`** (#345 F1). It matches a row by key
+  only within the target calendar; a row created from one keeps it as `ImportSourceUid`, which is never exported and
+  never read as a key. An import never clears a stored `ExternalUid`.
+- **The import has no whole-file state**: `IcsComponentSplitter` yields one `VEVENT` (1 Mi-character lines, 4 Mi
+  components), batches of 500 resolve by keyed queries and save in one transaction each, and a UID seen again
+  resolves to what the earlier component wrote — the last component wins. A failure after a commit is
+  `calendar_ics_import_partially_applied` with counts; a cancellation is never wrapped.
+- **`RECURRENCE-ID` components are skipped** until recurrence exceptions are modelled, and a cancelled component
+  removes only with `allowRemovals`, which needs `calendar.delete` (checked once, at the controller). A removed series
+  follows `RecurrencePatternService.Delete`; each batch that removed anything logs ids only.
+- **The export progress guard is `ExportConcurrencyFilter`**, for every guarded export: no first byte in 10 minutes,
+  under 1 MiB in a 5-minute window with a write waiting on the client, or 24 hours. It replaced a fixed 10-minute
+  deadline; don't put one back.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the

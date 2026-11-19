@@ -58,14 +58,15 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         ContactVCardMaxExportRows = null,
         ContactVCardMaxImportEntries = null,
         ContactVCardMaxImportMegabytes = (int)(ContactVCardApiClient.MaxImportBytes / (1024 * 1024)),
-        // No ApiClient MaxExportBytes constant exists for these five (a post-#343 follow-up; exports
-        // were never client-side size-bound before), so — like the count fields above — these mirror
-        // the migration-seeded defaults as plain literals.
+        // No ApiClient MaxExportBytes constant exists for the export sizes (a post-#343 follow-up; exports
+        // were never client-side size-bound before). The vCard one mirrors its migration-seeded default as
+        // a plain literal; the three .ics ones name their shared SystemSettingsBounds ceiling, which is
+        // also their shipped default (issue #516), and the calendar counts ship unlimited (null).
         ContactVCardMaxExportMegabytes = 64,
-        CalendarIcsMaxExportEvents = 2000,
-        CalendarIcsMaxImportEvents = 2000,
+        CalendarIcsMaxExportEvents = null,
+        CalendarIcsMaxImportEvents = null,
         CalendarIcsMaxImportMegabytes = (int)(CalendarApiClient.MaxImportBytes / (1024 * 1024)),
-        CalendarIcsMaxExportMegabytes = 64,
+        CalendarIcsMaxExportMegabytes = SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax,
         TaskIcsMaxExportTasks = null,
         TaskIcsMaxImportTasks = null,
         TaskIcsMaxImportMegabytes = (int)(TaskApiClient.MaxImportBytes / (1024 * 1024)),

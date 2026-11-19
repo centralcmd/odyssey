@@ -11,15 +11,20 @@
     States: Idle · Submitting (button -> "Exporting…", disabled, re-entrant submits blocked) · Error
     (inline OdsAlert, dialog stays open so the user can narrow and retry) · Success (browser downloads,
     dialog closes).
+
+    Issue #517 E2: Export asks the server for the export's summary first. A refusal shows inline and keeps the
+    dialog open; otherwise the dialog closes and the browser downloads the file itself, with a toast saying what it
+    carries. "Preparing calendar export…" goes through the dialog's own announcer.
 *@
 
 @inject ICalendarApiClient CalendarApi
-@inject IJSRuntime JS
+@inject INativeTransfer NativeTransfer
 @inject ISnackbar Snackbar
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="download"
           Title="@TitleContent" Subtitle="@SubtitleContent" Class="cal-exp-dialog">
     <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body cal-exp-form">
             <OdsFieldShell Label="What to export">
                 <OdsSegmentedControl AriaLabel="Export scope" Value="@_scope" ValueChanged="OnScopeChanged" Options="_scopeOptions" />

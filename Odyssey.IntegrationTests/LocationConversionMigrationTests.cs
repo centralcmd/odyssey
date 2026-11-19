@@ -466,24 +466,27 @@ public class LocationConversionMigrationTests(MariaDbFixture fixture)
             ("event-koden", "Koden"),
         };
         texts.AddRange(LinkLike);
+        // Raw SQL for the same reason: these tables later gained ImportSourceUid (issue #516), which an EF insert
+        // through today's model would name at a schema that does not have it yet.
         foreach (var (key, text) in texts)
         {
-            context.CalendarEvents.Add(new CalendarEvent
-            {
-                CalendarEventId = Id(key), CalendarId = calendarId, Title = key, Location = text,
-                StartDateTime = Now, EndDateTime = Now.AddHours(1), CreatedAt = Now, UpdatedAt = Now,
-            });
+            await context.Database.ExecuteSqlAsync($"""
+                INSERT INTO `CalendarEvents` (`CalendarEventId`, `CalendarId`, `Title`, `Location`, `StartDateTime`,
+                    `EndDateTime`, `IsAllDay`, `CreatedAt`, `UpdatedAt`)
+                VALUES ({Id(key)}, {calendarId}, {key}, {text}, {Now}, {Now.AddHours(1)}, {false}, {Now}, {Now})
+                """);
         }
 
         // Three of each, so both tables span two batches of two (the interruption theory, M3). The extra
         // values reuse places the events already created, so they add no location of their own.
         foreach (var (key, text) in new[] { ("pattern-asen", "Asen"), ("pattern-spinneriet", "Spinneriet"), ("pattern-camping", "Camping") })
         {
-            context.RecurrencePatterns.Add(new RecurrencePattern
-            {
-                RecurrencePatternId = Id(key), CalendarId = calendarId, Title = "Series", Location = text,
-                StartDateTime = Now, EndDateTime = Now.AddHours(1), Frequency = Odyssey.Context.RecurrenceFrequency.Weekly, CreatedAt = Now, UpdatedAt = Now,
-            });
+            await context.Database.ExecuteSqlAsync($"""
+                INSERT INTO `RecurrencePatterns` (`RecurrencePatternId`, `CalendarId`, `Title`, `Location`, `StartDateTime`,
+                    `EndDateTime`, `IsAllDay`, `Frequency`, `Interval`, `CreatedAt`, `UpdatedAt`)
+                VALUES ({Id(key)}, {calendarId}, {"Series"}, {text}, {Now}, {Now.AddHours(1)}, {false},
+                    {(int)Odyssey.Context.RecurrenceFrequency.Weekly}, {1}, {Now}, {Now})
+                """);
         }
 
         foreach (var (key, text) in new[] { ("entry-asen", "asen"), ("entry-koden", "Koden"), ("entry-pipe", "A | B") })

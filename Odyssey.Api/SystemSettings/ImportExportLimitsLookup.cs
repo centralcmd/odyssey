@@ -151,9 +151,9 @@ public sealed class ImportExportLimitsLookup(
         contactExport = ClampExport(contactExport, contactImport);
 
         var calendarExport = ResolveCount(
-            SystemSettingsKeys.CalendarIcsMaxExportEvents, IcsCountFloor, SystemSettingsDefaults.CalendarIcsMaxExportEvents);
+            SystemSettingsKeys.CalendarIcsMaxExportEvents, IcsCountFloor, seededDefault: null);
         var calendarImport = ResolveCount(
-            SystemSettingsKeys.CalendarIcsMaxImportEvents, IcsCountFloor, SystemSettingsDefaults.CalendarIcsMaxImportEvents);
+            SystemSettingsKeys.CalendarIcsMaxImportEvents, IcsCountFloor, seededDefault: null);
         calendarExport = ClampExport(calendarExport, calendarImport);
 
         var journalExport = ResolveCount(

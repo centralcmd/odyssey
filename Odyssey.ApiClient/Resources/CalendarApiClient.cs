@@ -1,3 +1,4 @@
+using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.ApiClient.Resources;
@@ -29,17 +30,44 @@ public interface ICalendarApiClient
     Task<ExistingRecurrencePattern?> GetPatternAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Fetches a calendar's events as an <c>.ics</c> file. A non-success status yields a
-    /// failure result rather than a body that would download as a fake <c>.ics</c>.</summary>
+    /// failure result rather than a body that would download as a fake <c>.ics</c>. For a non-browser consumer: the
+    /// browser summarizes with <see cref="SummarizeExportAsync"/> and downloads <see cref="ExportUrl"/> itself
+    /// (issue #516), because a calendar export can be gigabytes.</summary>
     Task<ApiResult<ApiFile>> ExportAsync(Guid calendarId, CancellationToken ct = default);
 
-    /// <summary>Imports an <c>.ics</c> file into an existing calendar (multipart).</summary>
-    Task<ApiResult<IcsImportResult>> ImportAsync(Guid calendarId, ApiUpload file, CancellationToken ct = default);
+    /// <summary>Runs the calendar export's checks and reports its counts without writing it (issue #516 §5).</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(Guid calendarId, CancellationToken ct = default);
+
+    /// <summary>The absolute URL of the calendar export, for the browser to download itself.</summary>
+    string ExportUrl(Guid calendarId);
+
+    /// <summary>Imports an <c>.ics</c> file into an existing calendar (multipart). With
+    /// <paramref name="allowRemovals"/> an event or series the file marks cancelled is removed, which needs
+    /// <c>calendar.delete</c> (issue #516 §8.4).</summary>
+    Task<ApiResult<IcsImportResult>> ImportAsync(
+        Guid calendarId, ApiUpload file, bool allowRemovals = false, CancellationToken ct = default);
+
+    /// <summary>The absolute URL of a calendar's import, for the browser to upload the picked file itself. The
+    /// multipart body carries the file as <c>file</c> and, optionally, <c>allowRemovals=true</c>.</summary>
+    string ImportUrl(Guid calendarId);
 
     /// <summary>Exports a single event as a standalone <c>.ics</c> VEVENT (issue #340).</summary>
     Task<ApiResult<ApiFile>> ExportEventAsync(Guid eventId, CancellationToken ct = default);
 
+    /// <summary>Runs the single-event export's checks and reports its counts (issue #516 §5).</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(Guid eventId, CancellationToken ct = default);
+
+    /// <summary>The absolute URL of the single-event export.</summary>
+    string ExportEventUrl(Guid eventId);
+
     /// <summary>Exports a recurring series as one RRULE VEVENT, or its per-occurrence fallback (issue #340).</summary>
     Task<ApiResult<ApiFile>> ExportPatternAsync(Guid patternId, CancellationToken ct = default);
+
+    /// <summary>Runs the series export's checks and reports its counts (issue #516 §5).</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(Guid patternId, CancellationToken ct = default);
+
+    /// <summary>The absolute URL of the series export.</summary>
+    string ExportPatternUrl(Guid patternId);
 
     /// <summary>Exports every matching event across every calendar the caller can read, as one
     /// multi-VEVENT <c>.ics</c> file, optionally filtered by date range / calendar / search term (issue
@@ -48,6 +76,14 @@ public interface ICalendarApiClient
     Task<ApiResult<ApiFile>> ExportAggregateAsync(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
         CancellationToken ct = default);
+
+    /// <summary>Runs the aggregate export's checks for the same query and reports its counts (issue #516 §5).</summary>
+    Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
+        CancellationToken ct = default);
+
+    /// <summary>The absolute URL of the aggregate export for the same query.</summary>
+    string ExportAggregateUrl(DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search);
 
     Task<ApiResult> CreateCalendarAsync(NewCalendar calendar, CancellationToken ct = default);
 
@@ -80,15 +116,16 @@ public interface ICalendarApiClient
 public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 {
     /// <summary>
-    /// The migration-seeded default for <c>CalendarIcsMaxImportMegabytes</c> — the real, effective
-    /// cap is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
+    /// The shipped default (and ceiling) for <c>CalendarIcsMaxImportMegabytes</c> (issue #516) — the real,
+    /// effective cap is dynamic (System Settings, issue #343) and read via <c>IImportLimitsApiClient</c>; this
     /// constant exists solely as <c>ImportLimitsCache.Fallback</c>'s input for when that read fails.
     /// </summary>
-    public const long MaxImportBytes = 64L * 1024 * 1024;
+    public const long MaxImportBytes = SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax * 1024L * 1024;
 
     private const string CalendarsBase = "api/calendars";
     private const string EventsBase = "api/calendar-events";
     private const string PatternsBase = "api/recurrence-patterns";
+    private const string CompletenessMarker = "BEGIN:VEVENT";
 
     public Task<ApiResult<List<ExistingCalendar>>> ListCalendarsAsync(CancellationToken ct = default) =>
         api.GetAllAsync<ExistingCalendar>(PagedQuery.For(CalendarsBase).Build(), ct);
@@ -103,31 +140,62 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public async Task<ExistingRecurrencePattern?> GetPatternAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingRecurrencePattern>($"{PatternsBase}/{id}", ct)).Value;
 
-    // No completeness marker: CalendarIcsController.Export is fully-buffered with Content-Length
-    // (Content-Length itself already guarantees completeness), not one of the four streamed Goal 8
-    // surfaces, and carries no X-Odyssey-Export-Rows header (issue #343 §10 item 6).
+    // Every calendar export streams since issue #516 and declares X-Odyssey-Export-Rows, so each download checks its
+    // VEVENT count against it: a connection aborted at the byte cap fails rather than saving a short file.
     public Task<ApiResult<ApiFile>> ExportAsync(Guid calendarId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{CalendarsBase}/{calendarId}/ics", "calendar.ics", ct: ct);
+        api.GetFileAsync($"{CalendarsBase}/{calendarId}/ics", "calendar.ics", completenessMarker: CompletenessMarker, ct: ct);
 
-    public Task<ApiResult<IcsImportResult>> ImportAsync(Guid calendarId, ApiUpload file, CancellationToken ct = default) =>
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeExportAsync(Guid calendarId, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{CalendarsBase}/{calendarId}/ics/summary", ct);
+
+    public string ExportUrl(Guid calendarId) => Absolute($"{CalendarsBase}/{calendarId}/ics");
+
+    public Task<ApiResult<IcsImportResult>> ImportAsync(
+        Guid calendarId, ApiUpload file, bool allowRemovals = false, CancellationToken ct = default) =>
         api.UploadAsync<IcsImportResult>(
             $"{CalendarsBase}/{calendarId}/ics",
             string.IsNullOrWhiteSpace(file.FileName) ? file with { FileName = "calendar.ics" } : file,
             contentTypeOverride: "text/calendar",
-            ct: ct);
+            ct: ct,
+            fields: allowRemovals ? [new KeyValuePair<string, string>("allowRemovals", "true")] : null);
+
+    public string ImportUrl(Guid calendarId) => Absolute($"{CalendarsBase}/{calendarId}/ics");
 
     public Task<ApiResult<ApiFile>> ExportEventAsync(Guid eventId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{EventsBase}/{eventId}/ics", "odyssey-event.ics", ct: ct);
+        api.GetFileAsync($"{EventsBase}/{eventId}/ics", "odyssey-event.ics", completenessMarker: CompletenessMarker, ct: ct);
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeEventExportAsync(Guid eventId, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{EventsBase}/{eventId}/ics/summary", ct);
+
+    public string ExportEventUrl(Guid eventId) => Absolute($"{EventsBase}/{eventId}/ics");
 
     public Task<ApiResult<ApiFile>> ExportPatternAsync(Guid patternId, CancellationToken ct = default) =>
-        api.GetFileAsync($"{PatternsBase}/{patternId}/ics", "odyssey-series.ics", ct: ct);
+        api.GetFileAsync($"{PatternsBase}/{patternId}/ics", "odyssey-series.ics", completenessMarker: CompletenessMarker, ct: ct);
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizePatternExportAsync(Guid patternId, CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>($"{PatternsBase}/{patternId}/ics/summary", ct);
+
+    public string ExportPatternUrl(Guid patternId) => Absolute($"{PatternsBase}/{patternId}/ics");
 
     public Task<ApiResult<ApiFile>> ExportAggregateAsync(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
-        CancellationToken ct = default)
+        CancellationToken ct = default) =>
+        api.GetFileAsync(AggregateQuery("ics", from, to, calendarIds, search), "calendar-events.ics",
+            completenessMarker: CompletenessMarker, ct: ct);
+
+    public Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
+        DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search,
+        CancellationToken ct = default) =>
+        api.GetAsync<CalendarIcsExportSummary>(AggregateQuery("ics/summary", from, to, calendarIds, search), ct);
+
+    public string ExportAggregateUrl(DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search) =>
+        Absolute(AggregateQuery("ics", from, to, calendarIds, search));
+
+    // Built by hand rather than with PagedQuery: these endpoints take no offset/limit, which PagedQuery would always
+    // append.
+    private static string AggregateQuery(
+        string path, DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search)
     {
-        // Built by hand rather than with PagedQuery: this endpoint streams a whole .ics and takes no
-        // offset/limit, which PagedQuery would always append.
         var parts = new List<string>();
         if (from is { } f)
         {
@@ -149,9 +217,16 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
             parts.Add($"search={Uri.EscapeDataString(search)}");
         }
 
-        var url = parts.Count == 0 ? $"{EventsBase}/ics" : $"{EventsBase}/ics?{string.Join('&', parts)}";
-        return api.GetFileAsync(url, "calendar-events.ics", completenessMarker: "BEGIN:VEVENT", ct: ct);
+        return parts.Count == 0 ? $"{EventsBase}/{path}" : $"{EventsBase}/{path}?{string.Join('&', parts)}";
     }
+
+    // A transfer URL is handed to the browser or another process, so it must be absolute; a consumer whose HttpClient
+    // has no BaseAddress gets a message naming the cause instead of a bare NullReferenceException.
+    private string Absolute(string relative) =>
+        new Uri(
+            api.BaseAddress ?? throw new InvalidOperationException(
+                "The calendar transfer URLs are absolute, so the API client's HttpClient needs a BaseAddress."),
+            relative).ToString();
 
     public Task<ApiResult> CreateCalendarAsync(NewCalendar calendar, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, CalendarsBase, calendar, ct);
