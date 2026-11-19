@@ -64,6 +64,7 @@ public class UnifiedLocationsDialogTests
             .ReturnsAsync(createResult ?? ApiResult<ExistingLocation>.Success(
                 new ExistingLocation { LocationId = StorgataId, Name = "Storgata" }, HttpStatusCode.Created));
         ctx.Services.AddSingleton(calendar.Object);
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(locations.Object);
         ctx.Services.AddSingleton(Mock.Of<IWeatherApiClient>());
 

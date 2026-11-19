@@ -67,6 +67,7 @@ public class UnifiedLocationsWritePathRenderTests
                 ApiResult<ExistingCalendarEvent>.Success(new ExistingCalendarEvent { CalendarEventId = EventId, CalendarId = body.CalendarId, Title = body.Title, StartDateTime = body.StartDateTime }, HttpStatusCode.OK));
         ctx.Services.AddSingleton(new ViewerTimeZone("UTC"));
         ctx.Services.AddSingleton(calendar.Object);
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(Locations(Hytta()).Object);
         ctx.Services.AddSingleton(Mock.Of<IPageStateService>());
         ctx.Services.AddSingleton(Mock.Of<IClipboardService>());
@@ -224,6 +225,7 @@ public class UnifiedLocationsWritePathRenderTests
             .ReturnsAsync((Guid _, NewRecurrencePattern body, CancellationToken _) => ApiResult<RecurrencePatternUpdateResult>.Success(
                 new RecurrencePatternUpdateResult { Pattern = new ExistingRecurrencePattern { RecurrencePatternId = PatternId, CalendarId = body.CalendarId, Title = body.Title, StartDateTime = body.StartDateTime } }, HttpStatusCode.OK));
         ctx.Services.AddSingleton(calendar.Object);
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(Locations(Hytta()).Object);
 
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CalendarEventDialog>(d => d
