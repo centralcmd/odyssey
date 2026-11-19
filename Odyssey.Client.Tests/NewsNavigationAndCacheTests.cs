@@ -20,20 +20,30 @@ public class NewsNavigationAndCacheTests
     private static Func<NavPage, bool> Holding(params string[] claims) => page => page.Claim is null || claims.Contains(page.Claim);
 
     [Fact]
-    public void The_internet_module_holds_news_feeds_and_news_tags_behind_news_read()
+    public void The_internet_module_holds_news_weather_points_and_news_tags()
     {
         var module = NavModel.All.Single(m => m.Key == "internet");
 
         Assert.Equal(("Internet", "public"), (module.Label, module.Icon));
-        Assert.Equal(["News", "Reference"], module.Groups.Select(g => g.Label));
+        Assert.Equal(["News", "Weather", "Reference"], module.Groups.Select(g => g.Label));
         var pages = module.Groups.SelectMany(g => g.Items).ToList();
-        Assert.Equal([("News", "news", "feed"), ("Feeds", "news-feeds", "rss_feed"), ("News Tags", "news-tags", "local_offer")],
-            pages.Select(p => (p.Label, p.Href, p.Icon)));
-        Assert.All(pages, p => Assert.Equal(PermissionClaims.NewsRead, p.Claim));
+        Assert.Equal([("News", "news", "feed", PermissionClaims.NewsRead), ("Feeds", "news-feeds", "rss_feed", PermissionClaims.NewsRead),
+                ("Weather points", "weather-points", "wb_sunny", PermissionClaims.WeatherPointsRead),
+                ("News Tags", "news-tags", "local_offer", PermissionClaims.NewsRead)],
+            pages.Select(p => (p.Label, p.Href, p.Icon, p.Claim)));
     }
 
     [Fact]
-    public void Without_news_read_the_module_is_gone_from_the_switcher_and_the_palette()
+    public void Weather_points_read_alone_shows_the_module_with_only_weather_points()
+    {
+        Assert.Contains(NavModel.VisibleModules(Holding(PermissionClaims.WeatherPointsRead)), m => m.Key == "internet");
+        var hit = Assert.Single(NavModel.AllVisiblePages(Holding(PermissionClaims.WeatherPointsRead)), h => h.ModuleKey == "internet");
+        Assert.Equal("weather-points", hit.Page.Key);
+        Assert.Equal("internet", NavModel.ModuleOf("weather-points").Key);
+    }
+
+    [Fact]
+    public void The_module_is_gone_without_news_read_or_weather_points_read_and_news_read_alone_shows_the_three_news_pages()
     {
         Assert.DoesNotContain(NavModel.VisibleModules(Holding()), m => m.Key == "internet");
         Assert.DoesNotContain(NavModel.AllVisiblePages(Holding()), hit => hit.ModuleKey == "internet");
