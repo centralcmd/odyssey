@@ -5,6 +5,50 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.46.0](https://github.com/centralcmd/odyssey/compare/v0.45.0...v0.46.0) (2026-11-19)
+
+
+### Features
+
+* carry files and photos on calendar events through links and ics ([2d20375](https://github.com/centralcmd/odyssey/commit/2d2037547ed9a73264644ae41fffc9dd97149016))
+* carry journal files and photos inline in vjournal export and import ([#515](https://github.com/centralcmd/odyssey/issues/515)) ([9c73359](https://github.com/centralcmd/odyssey/commit/9c73359ed6b545cd414ea8cad0232cadf8a01fda))
+* **client:** add icon search and 48 icons to the tag icon picker ([#512](https://github.com/centralcmd/odyssey/issues/512)) ([8ad3920](https://github.com/centralcmd/odyssey/commit/8ad3920db807a8bd8bcb90041d42b38cdbaa237f))
+* **client:** move weather points into the internet module ([289a333](https://github.com/centralcmd/odyssey/commit/289a333ccd8c5b4a4a0a8de0223e2a1386f8b2d5))
+* **core:** carry attached files inline in task ics export and import ([#511](https://github.com/centralcmd/odyssey/issues/511)) ([82ab548](https://github.com/centralcmd/odyssey/commit/82ab548972b383e48975d82c773f1444208ed5af))
+* **core:** invert fetched exchange rates at read time ([3aa881a](https://github.com/centralcmd/odyssey/commit/3aa881a193666cb983d593ddb7d34c4835782398))
+* **core:** stream calendar ics export and import ([69a4bdc](https://github.com/centralcmd/odyssey/commit/69a4bdc2ed2139a5010cc191ea9b8af88243111f))
+* keep calendar series faithful across edits, zones and ics ([8298574](https://github.com/centralcmd/odyssey/commit/82985745348e7d1b73f4ead89e873e95ce20f64a))
+* news reader for the internet module ([#507](https://github.com/centralcmd/odyssey/issues/507)) ([15c2b39](https://github.com/centralcmd/odyssey/commit/15c2b39992cfb51f853be02516bf78dba595d532))
+* opml import and export for news feeds ([#513](https://github.com/centralcmd/odyssey/issues/513)) ([184fbb5](https://github.com/centralcmd/odyssey/commit/184fbb5af8d0096ca08aab752b2eb1625712d459))
+
+
+### Bug Fixes
+
+* **core:** carry line 2, coordinates, country names and archive state through vcard ([#510](https://github.com/centralcmd/odyssey/issues/510)) ([9ee56ba](https://github.com/centralcmd/odyssey/commit/9ee56baeb2779e86583b3d12c559fc7788154115))
+* **deps:** restore green main — tooltip focus test and .net 10 line ([#499](https://github.com/centralcmd/odyssey/issues/499)) ([5ec7c37](https://github.com/centralcmd/odyssey/commit/5ec7c377ebb904676d84dc6ca67a93dfd9dcda26))
+
+
+### Performance
+
+* **core:** index the fetched-only lookup and tighten the tests ([d62a54f](https://github.com/centralcmd/odyssey/commit/d62a54f3c51e0b1d176127215eb5e60f10a4945e))
+
+
+### Refactoring
+
+* **core:** use the provider equality in the status rank too ([e7a7119](https://github.com/centralcmd/odyssey/commit/e7a711951aa7f77389a22b607e03e1c6ae730a5f))
+
+
+### Documentation
+
+* **config:** allow up to four review rounds in agent review loops ([f0a330d](https://github.com/centralcmd/odyssey/commit/f0a330dab539e0cea422c69a6ce4956fbaf6ce41))
+* merged news reader specs for implementation ([#483](https://github.com/centralcmd/odyssey/issues/483)) ([d73eeda](https://github.com/centralcmd/odyssey/commit/d73eeda5ebbd0ade34cbb1bfa0731fa5173ca08c))
+
+
+### CI/CD
+
+* bump the actions group with 3 updates ([ca609ee](https://github.com/centralcmd/odyssey/commit/ca609eefa49a7386588dbf9432b531b6326b595b))
+* bump the docker group across 4 directories with 2 updates ([b6945a5](https://github.com/centralcmd/odyssey/commit/b6945a5d1cb7b44cff77b08139b83f2751f5d046))
+
 ## [0.45.0](https://github.com/centralcmd/odyssey/compare/v0.44.0...v0.45.0) (2026-11-09)
 
 
