@@ -229,7 +229,7 @@ public class ImportCalendarDialogTests
 
         h.Cut.WaitForAssertion(() => Assert.Contains("That isn't a .ics file.", h.Cut.Markup, StringComparison.Ordinal));
         Assert.Empty(h.Transfer.Uploads);
-        h.Context.Calendar.Verify(c => c.ImportAsync(It.IsAny<Guid>(), It.IsAny<ApiUpload>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Context.Calendar.Verify(c => c.ImportAsync(It.IsAny<Guid>(), It.IsAny<ApiUpload>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Contains(h.Js("odsFocusFirstIn"), i => Equals(i.Arguments[0], ImportCalendarDialog.UploadId));
     }
 
@@ -247,8 +247,9 @@ public class ImportCalendarDialogTests
         h.Start();
         var box = h.Cut.Find("#" + ImportCalendarDialog.RemoveId);
         Assert.False(box.HasAttribute("checked"));
-        Assert.Contains("Allow this import to remove events or discard edits", h.Cut.Markup, StringComparison.Ordinal);
-        Assert.Contains("Removing events is never automatic: tick the option below to remove events this file marks as cancelled.",
+        // The final label and note (issue #520 v3 §H, v4 §5: "Allow removals" supersedes #517's wording).
+        Assert.Contains(">Allow removals<", h.Cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("Removing events is never automatic: tick Allow removals to remove events this file marks as cancelled.",
             h.Cut.Markup, StringComparison.Ordinal);
         Assert.Equal(ImportCalendarDialog.RemoveHelpId, box.GetAttribute("aria-describedby"));
     }
@@ -268,7 +269,7 @@ public class ImportCalendarDialogTests
         h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
 
         region = h.Cut.Find("#" + ImportCalendarDialog.RemoveWarningId);
-        Assert.Contains("This import can delete events.", region.TextContent, StringComparison.Ordinal);
+        Assert.Contains("This import can delete events and discard separately edited or deleted occurrences.", region.TextContent, StringComparison.Ordinal);
         Assert.Null(region.QuerySelector(".mud-alert")!.GetAttribute("role"));
 
         h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(false);
@@ -298,7 +299,8 @@ public class ImportCalendarDialogTests
 
         h.ClickImport();
         h.Cut.WaitForAssertion(() => Assert.Single(h.Transfer.Uploads));
-        Assert.Equal([new KeyValuePair<string, string>("allowRemovals", "true")], h.Transfer.Uploads[0].Fields);
+        Assert.Equal([new KeyValuePair<string, string>("allowRemovals", "true"), new KeyValuePair<string, string>("defaultTimeZoneId", "UTC")],
+            h.Transfer.Uploads[0].Fields);
         Assert.Equal($"http://api.test/api/calendars/{CalendarId}/ics", h.Transfer.Uploads[0].Url);
 
         h.Transfer.CompleteUpload();
@@ -312,7 +314,8 @@ public class ImportCalendarDialogTests
     {
         await using var h = await UploadingAsync();
 
-        Assert.Null(h.Transfer.Uploads[0].Fields);
+        // Only the browser zone travels (issue #520 §3); allowRemovals is absent.
+        Assert.Equal([new KeyValuePair<string, string>("defaultTimeZoneId", "UTC")], h.Transfer.Uploads[0].Fields);
     }
 
     [Fact] // AC 10: it resets on Import another file and on close/reopen
@@ -479,7 +482,7 @@ public class ImportCalendarDialogTests
         Assert.Contains("This browser could not stream the file, and files over 512 MB cannot be read into the page. "
             + "Choose the file again with Browse, then import.", h.Alert!.TextContent, StringComparison.Ordinal);
         Assert.Equal("alert", h.Alert.QuerySelector(".mud-alert")!.GetAttribute("role"));
-        h.Context.Calendar.Verify(c => c.ImportAsync(It.IsAny<Guid>(), It.IsAny<ApiUpload>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.Context.Calendar.Verify(c => c.ImportAsync(It.IsAny<Guid>(), It.IsAny<ApiUpload>(), It.IsAny<bool>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact] // AC 8
@@ -488,7 +491,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), true, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), true, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick(size: 10 * Megabyte);
         h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
@@ -499,7 +502,7 @@ public class ImportCalendarDialogTests
         Assert.False(h.HasFooter("Cancel upload"));
         Assert.True(h.HasFooter("Close"));
         Assert.Equal(CalendarImportCopy.ServerStatus, h.FooterStatus);
-        h.Context.Calendar.Verify(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), true, It.IsAny<CancellationToken>()), Times.Once);
+        h.Context.Calendar.Verify(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), true, "UTC", It.IsAny<CancellationToken>()), Times.Once);
 
         pending.SetResult(Ok(Imported()));
         h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Result, h.Phase));
@@ -660,7 +663,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
@@ -704,7 +707,7 @@ public class ImportCalendarDialogTests
     {
         await using var h = new Harness();
         h.Transfer.Holds = false;
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>()))
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>()))
             .Returns(new TaskCompletionSource<ApiResult<IcsImportResult>>().Task);
         h.Start();
         await h.Pick();
@@ -786,7 +789,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
@@ -888,7 +891,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
@@ -909,7 +912,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();

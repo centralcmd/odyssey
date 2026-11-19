@@ -41,10 +41,14 @@ internal sealed class CalendarIcsTestContext : IAsyncDisposable
         Calendar.Setup(c => c.ExportPatternUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://api.test/api/recurrence-patterns/{id}/ics");
         Calendar.Setup(c => c.ExportAggregateUrl(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>()))
             .Returns("http://api.test/api/calendar-events/ics");
+        Calendar.Setup(c => c.ExportAggregateUrl(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(), It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<string?>()))
+            .Returns("http://api.test/api/calendar-events/ics");
         Calendar.Setup(c => c.ImportUrl(It.IsAny<Guid>())).Returns((Guid id) => $"http://api.test/api/calendars/{id}/ics");
         Calendar.Setup(c => c.ListCalendarsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(ApiResult<List<ExistingCalendar>>.Success([Personal], HttpStatusCode.OK));
         Ctx.Services.AddSingleton(Calendar.Object);
+        // The viewer's zone is fixed, so a window or a conversion never depends on the machine running the tests.
+        Ctx.Services.AddSingleton(_ => new ViewerTimeZone(ViewerZone));
         Ctx.Services.AddSingleton<INativeTransfer>(Transfer);
         Limits.Setup(l => l.GetAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => CurrentLimits);
         Ctx.Services.AddSingleton(Limits.Object);
@@ -58,6 +62,9 @@ internal sealed class CalendarIcsTestContext : IAsyncDisposable
             .Returns((Snackbar?)null);
         Ctx.Services.AddSingleton(Snackbar.Object);
     }
+
+    /// <summary>The viewer's browser zone the harness registers (issue #520); a test may construct with another.</summary>
+    public string? ViewerZone { get; init; } = "UTC";
 
     public BunitContext Ctx { get; }
 

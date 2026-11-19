@@ -282,8 +282,8 @@ public class LocalTimeZoneDateHandlingTests
         }, "user-id", claims: LocationClaims.Trusted);
 
         Assert.NotNull(updated);
-        AssertUtc(Utc(2026, 10, 3, 0), updated!.StartDateTime);
-        AssertUtc(Utc(2026, 10, 4, 0), updated.EndDateTime);
-        AssertUtc(Utc(2026, 10, 3, 0), updated.RecurrenceEndDate);
+        AssertUtc(Utc(2026, 10, 3, 0), updated!.Pattern.StartDateTime);
+        AssertUtc(Utc(2026, 10, 4, 0), updated.Pattern.EndDateTime);
+        AssertUtc(Utc(2026, 10, 3, 0), updated.Pattern.RecurrenceEndDate);
     }
 }

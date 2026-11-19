@@ -357,7 +357,7 @@ public class CalendarEventsIcsApiTests
     }
 
     [Fact]
-    public async Task ExportAggregate_EntirePatternRelocated_CollapsesUnderNewCalendar()
+    public async Task ExportAggregate_EntirePatternRelocated_StaysFlat()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -389,9 +389,11 @@ public class CalendarEventsIcsApiTests
 
         var body = await (await client.GetAsync($"{CalendarEventsPath}/ics?calendarIds={calendarB.CalendarId}")).Content.ReadAsStringAsync();
 
-        Assert.Equal(1, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.Contains("RRULE:", body);
-        Assert.Contains("CATEGORIES:RelocateB", body);
+        // Each moved row is an override (issue #519 §3 component 4), and the aggregate stays flat for a series with any
+        // exception (§8.3): three standalone events, each attributed to B.
+        Assert.Equal(3, CountOccurrences(body, "BEGIN:VEVENT"));
+        Assert.DoesNotContain("RRULE:", body);
+        Assert.Equal(3, CountOccurrences(body, "CATEGORIES:RelocateB"));
     }
 
     [Fact]

@@ -314,9 +314,9 @@ public class ClientDateHandlingTests
         }, "user-id", claims: LocationClaims.Trusted);
 
         Assert.NotNull(updated);
-        AssertUtc(new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc), updated!.StartDateTime);
-        AssertUtc(new DateTime(2026, 10, 2, 10, 30, 0, DateTimeKind.Utc), updated.EndDateTime);
-        AssertUtc(new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc), updated.RecurrenceEndDate);
+        AssertUtc(new DateTime(2026, 10, 2, 10, 0, 0, DateTimeKind.Utc), updated!.Pattern.StartDateTime);
+        AssertUtc(new DateTime(2026, 10, 2, 10, 30, 0, DateTimeKind.Utc), updated.Pattern.EndDateTime);
+        AssertUtc(new DateTime(2026, 10, 12, 0, 0, 0, DateTimeKind.Utc), updated.Pattern.RecurrenceEndDate);
         var stored = (await context.RecurrencePatterns.FindAsync(created.RecurrencePatternId))!;
         Assert.Equal(DateTimeKind.Utc, stored.StartDateTime.Kind);
         Assert.Equal(DateTimeKind.Utc, stored.RecurrenceEndDate!.Value.Kind);

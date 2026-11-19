@@ -41,6 +41,13 @@ public interface IOdysseyApi
     Task<ApiResult<T>> SendAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default);
 
     /// <summary>
+    /// Sends a JSON write whose success may or may not carry a body: a <c>204</c> (or any empty body) is a success with
+    /// a <c>null</c> value, anything else is deserialized as <typeparamref name="T"/> (issue #519 v5 §3).
+    /// </summary>
+    Task<ApiResult<T?>> SendOptionalAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default)
+        where T : class;
+
+    /// <summary>
     /// GETs a file. <paramref name="defaultFileName"/> is used when the response carries no
     /// <c>Content-Disposition</c> filename.
     /// </summary>
@@ -163,6 +170,26 @@ public sealed class OdysseyApi(HttpClient http) : IOdysseyApi
         catch (Exception ex)
         {
             return ApiResult<T>.Failure(ex);
+        }
+    }
+
+    public async Task<ApiResult<T?>> SendOptionalAsync<T>(HttpMethod method, string url, object? body, CancellationToken ct = default)
+        where T : class
+    {
+        try
+        {
+            using var response = await SendCoreAsync(method, url, body, ct);
+            if (!response.IsSuccessStatusCode)
+                return ApiResult<T?>.Failure(response.StatusCode, await response.ReadProblemAsync()) with { RetryAfter = ApiRetryAfter.Of(response) };
+
+            var hasBody = response.StatusCode != HttpStatusCode.NoContent && response.Content.Headers.ContentLength is not 0;
+            var value = hasBody ? await response.Content.ReadFromJsonAsync<T>(ct) : null;
+            return ApiResult<T?>.Success(value, response.StatusCode, response.Headers.Location)
+                with { RetryAfter = ApiRetryAfter.Of(response) };
+        }
+        catch (Exception ex)
+        {
+            return ApiResult<T?>.Failure(ex);
         }
     }
 

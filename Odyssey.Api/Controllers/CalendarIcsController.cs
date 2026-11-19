@@ -2,7 +2,9 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.RateLimiting;
+using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos.Journal;
@@ -70,14 +72,18 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status403Forbidden, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [ProducesResponseType(StatusCodes.Status507InsufficientStorage, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Import an RFC 5545 .ics file into an existing calendar.")]
     public async Task<IActionResult> Import(
         [FromRoute(Name = "id")] Guid id,
         IFormFile file,
-        // Lets a component the file marks cancelled remove what it matches (issue #516 §8.4). It needs
-        // calendar.delete, evaluated once here from the request principal: without it the whole import is a 403
-        // before any byte is applied.
+        // Lets a component the file marks cancelled remove what it matches (issue #516 §8.4), and a series change remove
+        // stored rows or discard stored exceptions (issue #519 §3 step 3). It needs calendar.delete, evaluated once here
+        // from the request principal: without it the whole import is a 403 before any byte is applied.
         [FromForm(Name = "allowRemovals")] bool allowRemovals = false,
+        // The zone a floating time in the file is read in (issue #519 §5.7); absent, floating times stay floating.
+        [FromForm(Name = "defaultTimeZoneId")][StringLength(IanaTimeZones.MaxLength)][IanaTimeZone] string? defaultTimeZoneId = null,
         CancellationToken cancellationToken = default)
     {
         if (file is null || file.Length == 0)
@@ -105,7 +111,7 @@ public sealed class CalendarIcsController : ControllerBase
         // RequestAborted (the bound token) stops the import at the next batch boundary; committed batches stay.
         var result = await service.ImportAsync(
             id, stream, file.Length, file.ContentType, userId, cancellationToken, User.LocationClaims(),
-            allowRemovals, canDelete: User.HasPermission(PermissionClaims.CalendarDelete));
+            allowRemovals, canDelete: User.HasPermission(PermissionClaims.CalendarDelete), defaultTimeZoneId);
         return Ok(result);
     }
 }

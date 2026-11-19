@@ -8,6 +8,12 @@
     Submitting a create routes to POST /api/calendar-events ("Does not repeat") or
     POST /api/recurrence-patterns ("Repeats"). Uses OdsModal directly (not OdsFormDialog) because
     edit/series modes need a Delete/Delete-series button alongside Cancel/Submit.
+
+    Time zones and recurrence exceptions (issue #520): a Time zone combobox after End time (hidden for all-day; read-only
+    text on an occurrence of a floating series), the two-zone line and the DST hints under the time inputs, the
+    "Edited separately" chip, the deleted-occurrences line, and — in Series mode — Save = preview → (an inline confirm
+    step in place of the footer when edited or deleted occurrences would be discarded) → PUT bound to the version loaded
+    at open and the confirmed counts. A viewer who cannot submit sees a read-only summary instead of the form.
 *@
 
 @inject ICalendarApiClient CalendarApi
@@ -16,121 +22,264 @@
 @inject ISnackbar Snackbar
 @using Odyssey.Client.Pages.Weather
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent">
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent"
+          Dismissible="@(_confirm is null)" RequiredLegend="@(CanSubmit && _confirm is null)">
     <ChildContent>
         <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body">
-            @if (OccurrenceOfSeries)
+            @Alerts
+
+            @if (!CanSubmit)
             {
-                <div class="cal-series-hint">
-                    <span class="material-icons" aria-hidden="true">event_repeat</span>
-                    <div>
-                        This is one occurrence of "@_sourceEvent?.Title". Changes here affect this occurrence only.
-                        <button type="button" class="link-btn" @onclick="EditSeriesClicked">Edit series…</button>
-                    </div>
-                </div>
-            }
-
-            <OdsField Label="Title" Required="true" Value="@_draft.Title" MaxLength="200"
-                      ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
-
-            <OdsFormRow>
-                <OdsSelect Label="Calendar" Required="true" Value="@(_draft.CalendarId?.ToString())"
-                           ValueChanged="@(v => _draft.CalendarId = Guid.TryParse(v, out var id) ? id : null)"
-                           Options="_calendarOptions" />
-                <OdsFieldShell Label="All day">
-                    <OdsSwitch Checked="_draft.IsAllDay" CheckedChanged="@(v => _draft.IsAllDay = v)" Label="@(_draft.IsAllDay ? "Spans whole days" : "Has a start and end time")" />
-                </OdsFieldShell>
-            </OdsFormRow>
-
-            <OdsFieldShell Label="Starts" Required="true" Error="@_draft.StartDateError">
-                <div class="cal-when-row">
-                    <OdsDateField AriaLabel="Start date" Value="_draft.StartDate" ValueChanged="@(v => _draft.StartDate = v)" />
-                    @if (!_draft.IsAllDay)
-                    {
-                        <OdsTimeField AriaLabel="Start time" Value="_draft.StartTime" ValueChanged="@(v => _draft.StartTime = v)" />
-                    }
-                </div>
-            </OdsFieldShell>
-            <OdsFieldShell Label="Ends" Required="true" Error="@_draft.EndError" Help="@(_draft.IsAllDay ? "Inclusive — the last whole day." : null)">
-                <div class="cal-when-row">
-                    <OdsDateField AriaLabel="End date" Value="_draft.EndDate" ValueChanged="@(v => _draft.EndDate = v)" Min="_draft.StartDate" />
-                    @if (!_draft.IsAllDay)
-                    {
-                        <OdsTimeField AriaLabel="End time" Value="_draft.EndTime" ValueChanged="@(v => _draft.EndTime = v)" />
-                    }
-                </div>
-            </OdsFieldShell>
-
-            @* Place + Details (issue #383 §3.2). Without locations.read the picker is not rendered at all —
-               no placeholder, no disabled control — and the save keeps the stored link. *@
-            @if (CanReadLocations)
-            {
-                <OdsLocationSelect Label="Place" Value="@_draft.Place.Pick" ValueChanged="OnPlaceChanged"
-                                   AllowCreate="CanCreateLocations" OnStage="OnPlaceStaged" Error="@_draft.Place.Error" />
-            }
-            <OdsField Label="Details" Value="@_draft.Location" MaxLength="300"
-                      ValueChanged="@(v => _draft.Location = v)" Placeholder="Room 4B, a meeting link…"
-                      Help="Not a place? Put meeting links or room numbers here." />
-            <OdsNoteField Label="Description" MaxLength="2000" Rows="3"
-                          Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
-
-            @if (Mode == CalendarEventDialogMode.Series)
-            {
-                <div class="cal-rule">@RuleFields</div>
+                @ReadOnlyView
             }
             else
             {
-                <OdsRevealPanel AriaLabel="Repeat"
-                                Value="@(_draft.Repeats ? "repeats" : "once")"
-                                ValueChanged="@(v => _draft.Repeats = v == "repeats")"
-                                Options="_repeatOptions"
-                                Open="@(_draft.Repeats && RepeatEditable)"
-                                Locked="@(!RepeatEditable)">
-                    <LockedContent>
-                        <div class="cal-repeat-locked">
-                            <span class="material-icons" aria-hidden="true">@(_draft.Repeats ? "event_repeat" : "event_available")</span>
-                            <span>@(_draft.Repeats ? "Repeats — the schedule is fixed at creation." : "Does not repeat.")</span>
-                        </div>
-                    </LockedContent>
-                    <ChildContent>@RuleFields</ChildContent>
-                </OdsRevealPanel>
-            }
+                <div class="cal-ev-form" inert="@(_confirm is not null)">
+                    @SeriesHint
+                    @if (ExclusionLine is { } exclusions)
+                    {
+                        <p class="cal-ce-exclusions"><span class="material-icons" aria-hidden="true">event_busy</span>@exclusions</p>
+                    }
 
-            @* Weather (issue #363 §3.4): Edit mode only, for the event as LOADED — never the draft. Closing the dialog
-               unmounts it, which cancels its read. Renders nothing without weather.read. *@
-            @if (Open && Mode == CalendarEventDialogMode.Edit && _sourceEvent is { } loaded)
-            {
-                <CalendarEventWeatherSection @key="loaded.CalendarEventId" EventId="loaded.CalendarEventId" EventTitle="@loaded.Title"
-                                             Start="loaded.StartDateTime" End="loaded.EndDateTime" Dirty="WeatherDirty"
-                                             OnNavigate="CancelAsync" />
+                    <OdsField Label="Title" Required="true" Value="@_draft.Title" MaxLength="200"
+                              ValueChanged="@(v => { _draft.Title = v; _draft.TitleError = null; })" Error="@_draft.TitleError" />
+
+                    <OdsFormRow>
+                        <OdsSelect Label="Calendar" Required="true" Value="@(_draft.CalendarId?.ToString())"
+                                   ValueChanged="@(v => _draft.CalendarId = Guid.TryParse(v, out var id) ? id : null)"
+                                   Options="_calendarOptions" />
+                        <OdsFieldShell Label="All day">
+                            <OdsSwitch Checked="_draft.IsAllDay" CheckedChanged="@(v => _draft.IsAllDay = v)" Label="@(_draft.IsAllDay ? "Spans whole days" : "Has a start and end time")" />
+                        </OdsFieldShell>
+                    </OdsFormRow>
+
+                    <OdsFieldShell Label="Starts" Required="true" Error="@_draft.StartDateError">
+                        <div class="cal-when-row">
+                            <OdsDateField AriaLabel="Start date" Value="_draft.StartDate" ValueChanged="@(v => _draft.StartDate = v)"
+                                          DescribedBy="@TimeDescribedBy(StartHint, StartHintId)" />
+                            @if (!_draft.IsAllDay)
+                            {
+                                <OdsTimeField AriaLabel="Start time" Value="_draft.StartTime" ValueChanged="@(v => _draft.StartTime = v)"
+                                              DescribedBy="@TimeDescribedBy(StartHint, StartHintId)" />
+                            }
+                        </div>
+                        @if (StartHint is { } startHint)
+                        {
+                            <div class="cal-ce-hint" id="@StartHintId"><span class="material-icons" aria-hidden="true">schedule</span><span>@startHint</span></div>
+                        }
+                    </OdsFieldShell>
+                    <OdsFieldShell Label="Ends" Required="true" Error="@_draft.EndError" Help="@(_draft.IsAllDay ? "Inclusive — the last whole day." : null)">
+                        <div class="cal-when-row">
+                            <OdsDateField AriaLabel="End date" Value="_draft.EndDate" ValueChanged="@(v => _draft.EndDate = v)" Min="_draft.StartDate"
+                                          DescribedBy="@TimeDescribedBy(EndHint, EndHintId)" />
+                            @if (!_draft.IsAllDay)
+                            {
+                                <OdsTimeField AriaLabel="End time" Value="_draft.EndTime" ValueChanged="@(v => _draft.EndTime = v)"
+                                              DescribedBy="@TimeDescribedBy(EndHint, EndHintId)" />
+                            }
+                        </div>
+                        @if (EndHint is { } endHint)
+                        {
+                            <div class="cal-ce-hint" id="@EndHintId"><span class="material-icons" aria-hidden="true">schedule</span><span>@endHint</span></div>
+                        }
+                        @* One line, under the inputs and described by them; not a live region (§3 "Times in two zones"). *@
+                        @if (TwoZoneText is { } twoZone)
+                        {
+                            <div class="cal-ce-zoneline" id="@TwoZoneLineId"><span class="material-icons" aria-hidden="true">public</span><span>@twoZone</span></div>
+                        }
+                    </OdsFieldShell>
+
+                    @* Time zone (issue #520 §3): hidden for all-day (Non-Goal 4). *@
+                    @if (!_draft.IsAllDay)
+                    {
+                        @if (ZoneReadOnly)
+                        {
+                            <OdsFieldShell Label="Time zone">
+                                <div class="cal-ce-zone-ro"><span class="material-icons" aria-hidden="true">public_off</span><span>@CalendarEventCopy.FloatingOccurrence</span></div>
+                            </OdsFieldShell>
+                        }
+                        else
+                        {
+                            <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneInputId" Help="@ZoneHelp" Error="@_draft.TimeZoneError" ErrorIsAlert="false">
+                                <div class="cal-ev-tz">
+                                    <OdsCombobox @ref="_zoneCombo" InputId="@TimeZoneInputId" Value="@ZoneFieldValue" ValueChanged="OnZoneChanged"
+                                                 Options="ZoneOptions" Placeholder="Search by zone or city" Clearable="false"
+                                                 AllRows="true" HomeEndKeys="true" EmptyTextFor="ZoneEmptyText" ResultsText="ZoneCountText"
+                                                 OnUnmatchedText="OnZoneUnmatched"
+                                                 Error="@(_draft.TimeZoneError is not null)"
+                                                 AriaDescribedBy="@ZoneDescribedBy" />
+                                </div>
+                            </OdsFieldShell>
+                        }
+                    }
+
+                    @* Place + Details (issue #383 §3.2). Without locations.read the picker is not rendered at all —
+                       no placeholder, no disabled control — and the save keeps the stored link. *@
+                    @if (CanReadLocations)
+                    {
+                        <OdsLocationSelect Label="Place" Value="@_draft.Place.Pick" ValueChanged="OnPlaceChanged"
+                                           AllowCreate="CanCreateLocations" OnStage="OnPlaceStaged" Error="@_draft.Place.Error" />
+                    }
+                    <OdsField Label="Details" Value="@_draft.Location" MaxLength="300"
+                              ValueChanged="@(v => _draft.Location = v)" Placeholder="Room 4B, a meeting link…"
+                              Help="Not a place? Put meeting links or room numbers here." />
+                    <OdsNoteField Label="Description" MaxLength="2000" Rows="3"
+                                  Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
+
+                    @if (Mode == CalendarEventDialogMode.Series)
+                    {
+                        <div class="cal-rule">@RuleFields</div>
+                    }
+                    else
+                    {
+                        <OdsRevealPanel AriaLabel="Repeat"
+                                        Value="@(_draft.Repeats ? "repeats" : "once")"
+                                        ValueChanged="@(v => _draft.Repeats = v == "repeats")"
+                                        Options="_repeatOptions"
+                                        Open="@(_draft.Repeats && RepeatEditable)"
+                                        Locked="@(!RepeatEditable)">
+                            <LockedContent>
+                                <div class="cal-repeat-locked">
+                                    <span class="material-icons" aria-hidden="true">@(_draft.Repeats ? "event_repeat" : "event_available")</span>
+                                    <span>@(_draft.Repeats ? "Repeats — the schedule is fixed at creation." : "Does not repeat.")</span>
+                                </div>
+                            </LockedContent>
+                            <ChildContent>@RuleFields</ChildContent>
+                        </OdsRevealPanel>
+                    }
+
+                    @WeatherSection
+                </div>
             }
         </div>
     </ChildContent>
     <Footer>
-        @if (Mode == CalendarEventDialogMode.Edit && CanDelete)
+        @if (_confirm is { } step)
         {
-            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteEventAsync">Delete</OdsButton>
+            @* The confirm step replaces the footer (§3 step 3, v3 §D): a named region, its heading focused, the form inert,
+               and Escape inside it means Back to editing — the dialog is not dismissible while it shows. *@
+            <div class="cal-ce-confirm" role="region" aria-labelledby="@ConfirmHeadingId" @onkeydown="OnConfirmKeyDown">
+                <h3 class="cal-ce-confirm-h" id="@ConfirmHeadingId" tabindex="-1">@(step.Again ? CalendarEventCopy.ConfirmHeadingAgain : CalendarEventCopy.ConfirmHeading)</h3>
+                <p class="cal-ce-confirm-t">@CalendarEventCopy.ConfirmBody(step.Overrides, step.Exclusions)</p>
+                @if (step.Detached > 0)
+                {
+                    <p class="cal-ce-confirm-t">@CalendarEventCopy.DetachedWill(step.Detached)</p>
+                }
+                <div class="cal-ce-confirm-actions">
+                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="BackToEditing">Back to editing</OdsButton>
+                    <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete_sweep" Loading="_isSaving" AriaDisabled="_isSaving"
+                               OnClick="SaveAndDiscardAsync">Save and discard</OdsButton>
+                </div>
+            </div>
         }
-        else if (Mode == CalendarEventDialogMode.Series && CanDelete)
+        else
         {
-            <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteSeriesAsync">Delete series</OdsButton>
-        }
-        <div style="flex:1"></div>
-        @if (Mode is CalendarEventDialogMode.Edit or CalendarEventDialogMode.Series)
-        {
-            <OdsButton id="cal-export-btn" Variant="OdsButtonVariant.Text" Icon="download" Loading="ExportBusy" AriaDisabled="ExportBusy" OnClick="ExportAsync">Export</OdsButton>
-        }
-        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@(CanSubmit ? "Cancel" : "Close")</OdsButton>
-        @if (CanSubmit)
-        {
-            <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" Loading="_isSaving" OnClick="SubmitAsync">@SubmitLabel</OdsButton>
+            @if (Mode == CalendarEventDialogMode.Edit && CanDelete)
+            {
+                <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteEventAsync">Delete</OdsButton>
+            }
+            else if (Mode == CalendarEventDialogMode.Series && CanDelete)
+            {
+                <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" OnClick="DeleteSeriesAsync">Delete series</OdsButton>
+            }
+            <div style="flex:1"></div>
+            @if (Mode is CalendarEventDialogMode.Edit or CalendarEventDialogMode.Series)
+            {
+                <OdsButton id="cal-export-btn" Variant="OdsButtonVariant.Text" Icon="download" Loading="ExportBusy" AriaDisabled="ExportBusy" OnClick="ExportAsync">Export</OdsButton>
+            }
+            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@(CanSubmit ? "Cancel" : "Close")</OdsButton>
+            @if (CanSubmit)
+            {
+                <OdsButton id="@SaveButtonId" Variant="OdsButtonVariant.Filled" Icon="check" Loading="@(_isSaving || _previewing)"
+                           AriaDisabled="SaveUnavailable" OnClick="SubmitAsync">@SubmitLabel</OdsButton>
+            }
         }
     </Footer>
 </OdsModal>
 
 @code {
     private RenderFragment TitleContent => @<text>@DialogTitleText</text>;
+
+    // Above the form: the version conflict (focusable, with its two actions) or a preview / write failure (v3 §B, §C).
+    private RenderFragment Alerts => __builder =>
+    {
+        if (_conflictVersion is not null)
+        {
+            <div class="cal-ce-alert" id="@AlertId" role="alert" tabindex="-1">
+                <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">
+                    @CalendarEventCopy.Conflict
+                    @if (_conflictReadError is { } readError)
+                    {
+                        <span class="cal-ce-alert-sub"> @readError</span>
+                    }
+                    <div class="cal-ce-alert-actions">
+                        <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="ReloadSeriesAsync">Reload series</OdsButton>
+                        <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" OnClick="KeepEditing">Keep editing</OdsButton>
+                    </div>
+                </OdsAlert>
+            </div>
+        }
+        else if (_formAlert is { } alert)
+        {
+            <div class="cal-ce-alert" id="@AlertId" role="alert" tabindex="-1">
+                <OdsAlert Severity="alert.Severity" Live="OdsAlertLive.None">@alert.Text</OdsAlert>
+            </div>
+        }
+    };
+
+    // The series hint and its "Edited separately" chip for an occurrence (§3 "Cues"); the chip shows in every mode.
+    private RenderFragment SeriesHint => __builder =>
+    {
+        if (OccurrenceOfSeries)
+        {
+            <div class="cal-series-hint">
+                <span class="material-icons" aria-hidden="true">event_repeat</span>
+                <div>
+                    <span class="cal-ce-hint-head">
+                        <span>This is one occurrence of "@_sourceEvent?.Title".@(CanSubmit ? " Changes here affect this occurrence only." : null)</span>
+                        @if (ShowEditedChip)
+                        {
+                            <OdsChip Tone="OdsChipTone.Outline" Icon="edit_calendar" Class="cal-ce-edited">@CalendarEventCopy.EditedSeparately</OdsChip>
+                        }
+                    </span>
+                    @if (ShowEditedChip && CanSubmit)
+                    {
+                        <span class="cal-ce-hint-more">@CalendarEventCopy.OverrideHint</span>
+                    }
+                    <button type="button" class="link-btn" @onclick="EditSeriesClicked">Edit series…</button>
+                </div>
+            </div>
+        }
+    };
+
+    // Weather (issue #363 §3.4): Edit mode only, for the event as LOADED — never the draft. Closing the dialog
+    // unmounts it, which cancels its read. Renders nothing without weather.read.
+    private RenderFragment WeatherSection => __builder =>
+    {
+        if (Open && Mode == CalendarEventDialogMode.Edit && _sourceEvent is { } loaded)
+        {
+            <CalendarEventWeatherSection @key="loaded.CalendarEventId" EventId="loaded.CalendarEventId" EventTitle="@loaded.Title"
+                                         Start="loaded.StartDateTime" End="loaded.EndDateTime" Dirty="WeatherDirty"
+                                         OnNavigate="CancelAsync" />
+        }
+    };
+
+    // A viewer who cannot submit (calendar.read only): the event in words, its times in the viewer's zone, the zone, the
+    // chip and the deleted count — no picker, no confirm step (§3 "Who sees what", AC 18).
+    private RenderFragment ReadOnlyView => __builder =>
+    {
+        @SeriesHint
+        if (ExclusionLine is { } exclusions)
+        {
+            <p class="cal-ce-exclusions"><span class="material-icons" aria-hidden="true">event_busy</span>@exclusions</p>
+        }
+        <CalendarEventSummary Title="@_draft.Title" When="@ReadOnlyWhen" ZoneLine="@ReadOnlyZone"
+                              CalendarName="@(Calendars.FirstOrDefault(c => c.CalendarId == _draft.CalendarId)?.Name)"
+                              PlaceName="@(_draft.Place.StoredRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null)"
+                              Details="@_draft.Location" Description="@_draft.Description" />
+        @WeatherSection
+    };
 
     private RenderFragment RuleFields => __builder =>
     {

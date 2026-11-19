@@ -56,11 +56,17 @@
    synchronously: the typed text from the bubbled input event, and the commit from the bubbled
    focusout. MudAutocomplete updates its Text, and invokes its OnBlur, asynchronously, so relying on
    either let a fast Tab (or a slow machine) move on before the typed name was committed. *@
-<div class="@WrapClass" @oninput="OnTyped" @onfocusout="CommitTyped">
+<div class="@WrapClass" @oninput="OnTyped" @onfocusout="CommitTyped" @onkeydown="OnKeyDown">
     @if (IsAsync)
     {
         @* The one polite status line, outside MudBlazor's portaled popover (DS Combobox async mode). *@
         <span class="odc-sr-only" role="status" aria-live="polite">@AsyncStatusText</span>
+    }
+    else if (ResultsText is not null)
+    {
+        @* The same region in local mode (DS Combobox countText, issue #520 v3 §I): the match count after filtering.
+           The empty state is spoken by the popover's own status row, so this stays empty then. *@
+        <span class="odc-sr-only odc-combo-count" role="status" aria-live="polite">@_localStatus</span>
     }
     @* A real <label for> beats a splatted aria-label: MudAutocomplete renders unmatched attributes on
        its root wrapper, not the inner role="combobox" input, so an aria-label there never names the
@@ -106,7 +112,7 @@
                 }
                 else
                 {
-                    <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+                    <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : LocalEmptyText)</div>
                 }
             }
         </BeforeItemsTemplate>
@@ -175,7 +181,7 @@
             }
             else
             {
-                <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+                <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : LocalEmptyText)</div>
             }
         </NoItemsTemplate>
     </MudAutocomplete>

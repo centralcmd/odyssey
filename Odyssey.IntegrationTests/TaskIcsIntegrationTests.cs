@@ -36,7 +36,7 @@ public class TaskIcsIntegrationTests(MariaDbFixture fixture)
 
         var connectionString = fixture.RelationalConnectionString;
         var options = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
         await using (var migrating = new OdysseyContext(options))

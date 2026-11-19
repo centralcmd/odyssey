@@ -137,7 +137,8 @@ public sealed class CalendarEventsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(ExistingCalendarEvent))]
     [ProducesResponseType(StatusCodes.Status400BadRequest, Type = typeof(ProblemDetails))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Update this occurrence only. RecurrencePatternId is immutable — use PUT /api/recurrence-patterns/{id} to edit a series.")]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Update this occurrence only; on a series row it becomes an override that a series edit keeps. Times are wall-clock in timeZoneId. RecurrencePatternId is immutable — use PUT /api/recurrence-patterns/{id} to edit a series.")]
     public async Task<IActionResult> Put(
         [FromRoute(Name = "id")] Guid id,
         [FromBody] NewCalendarEvent request, CancellationToken cancellationToken = default)
@@ -153,12 +154,20 @@ public sealed class CalendarEventsController : ControllerBase
 
     [HttpDelete("{id}", Name = "DeleteCalendarEvent")]
     [Authorize(Policy = PermissionClaims.CalendarDelete)]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(CalendarEventDeleteResult))]
     [ProducesResponseType(StatusCodes.Status404NotFound, Type = typeof(ProblemDetails))]
-    [SwaggerOperation(Summary = "Hard-delete this occurrence only.")]
+    [ProducesResponseType(StatusCodes.Status409Conflict, Type = typeof(ProblemDetails))]
+    [SwaggerOperation(Summary = "Delete this occurrence only. On a series row it also records an exclusion for the occurrence's key, so a later series edit or re-import does not bring it back. Always 200 with what keying a legacy series detached (zero and false otherwise).")]
     public async Task<IActionResult> Delete(
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
-        return await service.Delete(id, cancellationToken) ? NoContent() : this.NotFoundProblem($"Calendar event ID {id} not found.");
+        var result = await service.Delete(id, cancellationToken, User.ActingUserId());
+        if (result is null)
+        {
+            return this.NotFoundProblem($"Calendar event ID {id} not found.");
+        }
+
+        // One shape on every success (PR #528 review A2): the detached report is zero and false on an ordinary delete.
+        return Ok(result);
     }
 }

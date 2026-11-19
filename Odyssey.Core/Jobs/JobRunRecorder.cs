@@ -381,6 +381,12 @@ public static class JobRunOutcomes
         NewsFeedJobRun news => news.FeedsQuarantined == 0
             ? (JobRunStatus.Succeeded, null)
             : (JobRunStatus.PartiallySucceeded, JobFailureCategory.UnsupportedInput),
+        // A series that failed to key is retried next tick; the others were keyed.
+        RecurrenceKeyBackfillJobRun keys => keys.SeriesKeyFailures == 0
+            ? (JobRunStatus.Succeeded, null)
+            : keys.SeriesKeyed == 0
+                ? (JobRunStatus.Failed, JobFailureCategory.Internal)
+                : (JobRunStatus.PartiallySucceeded, JobFailureCategory.Internal),
         FileStorageMaintenanceJobRun storage => storage.IntegrityFailures > 0
             ? (JobRunStatus.PartiallySucceeded, JobFailureCategory.Storage)
             : (JobRunStatus.Succeeded, null),

@@ -75,7 +75,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
-    public async Task The_per_calendar_planner_issues_at_most_four_queries_for_fifty_series()
+    public async Task The_per_calendar_planner_issues_a_fixed_number_of_queries_for_fifty_series()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         var commands = new CommandCounter();
@@ -89,7 +89,9 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             var summary = await Service(context).SummarizeExportAsync(CalendarIcsExportScope.ForCalendar(calendarId));
 
             Assert.Equal(50, summary!.SeriesCount);
-            Assert.InRange(commands.Selects, 1, 4);
+            // Issue #519 adds two planning queries to Spec A's four, both independent of the series count: the
+            // series' exclusions and the zones the head's VTIMEZONEs need.
+            Assert.InRange(commands.Selects, 1, 6);
         }
         finally
         {
@@ -113,13 +115,14 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 Assert.Equal(1200, first.ImportedCount);
             }
 
-            // A re-import of 500 that updates every row: one existence check, then two keyed resolution queries.
+            // A re-import of 500 that updates every row: one existence check, then the two keyed resolution queries run
+            // twice — once outside the batch transaction to learn what to lock, once under the locks (issue #519 v4 §2).
             await using (var context = new OdysseyContext(options))
             {
                 commands.Reset();
                 var second = await Import(context, calendarId, File(500, i => $"batch-{calendarId:N}-{i}@example.com"));
                 Assert.Equal(500, second.UpdatedCount);
-                Assert.InRange(commands.Selects, 1, 1 + 3);
+                Assert.InRange(commands.Selects, 1, 1 + 4);
             }
 
             await using var check = new OdysseyContext(options);
@@ -139,11 +142,13 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
         var calendarId = await SeedCalendarAsync(options, rows: 0, series: 0);
         try
         {
-            var file = File(1500, i => $"{Guid.NewGuid()}@odyssey.local");
+            // Groups commit in UID-hash order since issue #519, so the failure is one every group spends alike: 1,500
+            // single-occurrence series against an occurrence budget of 1,000 fail in batch three whatever the order.
+            var file = File(1500, i => $"{Guid.NewGuid()}@odyssey.local", rule: "RRULE:FREQ=DAILY;COUNT=1");
             await using (var context = new OdysseyContext(options))
             {
                 var capped = new CalendarIcsService(
-                    context, NullLogger<CalendarIcsService>.Instance, new Limits(importEvents: 1001), new StubJournalLimitsLookup());
+                    context, NullLogger<CalendarIcsService>.Instance, new Limits(aggregateOccurrences: 1000), new StubJournalLimitsLookup());
                 var error = await Assert.ThrowsAsync<CalendarIcsImportPartiallyAppliedException>(() =>
                     capped.ImportAsync(calendarId, Stream(file), file.Length, "text/calendar", User));
                 Assert.Equal((2, 1000, 400), (error.CommittedBatches, error.CommittedEvents, error.StatusCode));
@@ -151,9 +156,9 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 
             await using (var check = new OdysseyContext(options))
             {
-                var rows = await check.CalendarEvents.Where(e => e.CalendarId == calendarId).ToListAsync();
-                Assert.Equal(1000, rows.Count);
-                Assert.All(rows, r => Assert.NotNull(r.ImportSourceUid));
+                var series = await check.RecurrencePatterns.Where(p => p.CalendarId == calendarId).ToListAsync();
+                Assert.Equal(1000, series.Count);
+                Assert.All(series, p => Assert.NotNull(p.ImportSourceUid));
             }
 
             await using (var context = new OdysseyContext(options))
@@ -310,7 +315,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
     {
         var connectionString = fixture.RelationalConnectionString;
         var options = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .AddInterceptors(interceptors)
             .Options;
         await using var migrating = new OdysseyContext(options);
@@ -327,7 +332,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 
     private static MemoryStream Stream(string file) => new(Encoding.UTF8.GetBytes(file));
 
-    private static string File(int count, Func<int, string> uid)
+    private static string File(int count, Func<int, string> uid, string? rule = null)
     {
         var builder = new StringBuilder("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//test//EN\r\n");
         var start = new DateTime(2030, 1, 1, 9, 0, 0, DateTimeKind.Utc);
@@ -338,6 +343,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 .Append("\r\nSUMMARY:Imported ").Append(i)
                 .Append("\r\nDTSTART:").Append(at.ToString("yyyyMMdd'T'HHmmss'Z'"))
                 .Append("\r\nDTEND:").Append(at.AddMinutes(30).ToString("yyyyMMdd'T'HHmmss'Z'"))
+                .Append(rule is null ? string.Empty : "\r\n" + rule)
                 .Append("\r\nEND:VEVENT\r\n");
         }
 
@@ -360,7 +366,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             {
                 CalendarId = calendar.CalendarId, Title = $"Series {s}", StartDateTime = first, EndDateTime = first.AddHours(1),
                 Frequency = Odyssey.Context.RecurrenceFrequency.Daily, Interval = 1, OccurrenceCount = 3, CreatedByUserId = User,
-                CreatedAt = now, UpdatedAt = now,
+                CreatedAt = now, UpdatedAt = now, Version = Guid.NewGuid(), KeysBackfilledAt = now,
             };
             context.RecurrencePatterns.Add(pattern);
             for (var o = 0; o < 3; o++)
@@ -369,7 +375,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 {
                     CalendarId = calendar.CalendarId, Title = pattern.Title, StartDateTime = first.AddDays(o),
                     EndDateTime = first.AddDays(o).AddHours(1), RecurrencePattern = pattern, CreatedByUserId = User,
-                    CreatedAt = now, UpdatedAt = now,
+                    CreatedAt = now, UpdatedAt = now, OccurrenceKey = DateTime.SpecifyKind(first.AddDays(o), DateTimeKind.Unspecified),
                 });
             }
         }
@@ -405,7 +411,8 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
         await context.Calendars.Where(c => c.CalendarId == calendarId).ExecuteDeleteAsync();
     }
 
-    private sealed class Limits(int? importEvents = null) : IImportExportLimitsLookup
+    private sealed class Limits(int? importEvents = null, int aggregateOccurrences = SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences)
+        : IImportExportLimitsLookup
     {
         public Task<ImportExportLimits> GetAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ImportExportLimits(
@@ -414,7 +421,7 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
                 null, null, 64 * MiB, 64 * MiB,
                 null, null, 64 * MiB, 64 * MiB,
                 // The occurrence budget is the shipped default, so a stub can never mask a cap the real lookup applies.
-                200_000, SystemSettingsDefaults.CalendarIcsMaxAggregateOccurrences, 92, 200, 100, 64 * MiB,
+                200_000, aggregateOccurrences, 92, 200, 100, 64 * MiB,
                 IsDegraded: false));
     }
 

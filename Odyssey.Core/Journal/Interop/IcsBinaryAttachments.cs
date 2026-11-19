@@ -422,15 +422,15 @@ internal static class IcsAttachmentSpooler
         string? SpoolDirectory = null, bool? AllowPhotos = null);
 
     /// <summary>Temp files older than this are leftovers of a crashed process, swept on the next import.</summary>
-    internal static readonly TimeSpan StaleAfter = TimeSpan.FromDays(1);
+    internal static readonly TimeSpan StaleAfter = ImportSpool.StaleAfter;
 
     private const string FilePrefix = "odyssey-import-";
 
     public static async Task<IcsAttachmentSpool> SpoolAsync(
         TextReader reader, Options options, CancellationToken cancellationToken)
     {
-        var directory = options.SpoolDirectory ?? SpoolDirectory();
-        SweepStale(directory);
+        var directory = options.SpoolDirectory ?? ImportSpool.Directory();
+        ImportSpool.SweepStale(directory, FilePrefix + "*.bin");
         var maxTextChars = options.MaxTextChars;
         var spool = new IcsAttachmentSpool(Guid.NewGuid().ToString("N"));
         try
@@ -733,32 +733,8 @@ internal static class IcsAttachmentSpooler
         }
     }
 
-    // ASP.NET Core's own spool for large form bodies, so the two buffers of one import share a disk: the image points
-    // it at a volume, because /tmp can be a RAM-backed tmpfs.
-    private static string SpoolDirectory() =>
-        Environment.GetEnvironmentVariable("ASPNETCORE_TEMP") is { Length: > 0 } configured && Directory.Exists(configured)
-            ? configured
-            : System.IO.Path.GetTempPath();
-
-    // A process that died mid-import leaves its temp files behind, and the spool is a persistent volume, so each import
-    // removes leftovers older than a day. Best effort: a file another import still holds is simply skipped.
-    private static void SweepStale(string directory)
-    {
-        try
-        {
-            var cutoff = DateTime.UtcNow - StaleAfter;
-            foreach (var file in new DirectoryInfo(directory).EnumerateFiles(FilePrefix + "*.bin"))
-            {
-                if (file.LastWriteTimeUtc < cutoff)
-                {
-                    file.Delete();
-                }
-            }
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-        {
-        }
-    }
+    // The directory and the sweep of a crashed process's leftovers are ImportSpool's, shared with the calendar grouper,
+    // so every import's buffers share the volume ASP.NET Core spools the upload on (/tmp can be a RAM-backed tmpfs).
 
     // Copies the rest of a logical line through, folds included, then a CRLF.
     private static async Task CopyValueAsync(CharSource source, StringBuilder text, long maxTextChars, CancellationToken cancellationToken)

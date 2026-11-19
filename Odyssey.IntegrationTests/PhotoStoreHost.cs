@@ -43,7 +43,7 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
             {
                 if (retryOnFailure)
                 {
-                    mySql.EnableRetryOnFailure();
+                    OdysseyDatabaseRetry.Configure(mySql);
                 }
             }),
             new Dictionary<string, string> { ["photos"] = volume.FullName },

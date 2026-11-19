@@ -131,7 +131,7 @@ public class CalendarExportSurfaceTests
         await using var context = new CalendarIcsTestContext();
         var openChanges = new List<bool>();
         context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(),
-                It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(Fail<CalendarIcsExportSummary>(HttpStatusCode.BadRequest, "The export has too many events."));
         var cut = FilteredDialog(context, openChanges);
 
@@ -148,14 +148,14 @@ public class CalendarExportSurfaceTests
     {
         await using var context = new CalendarIcsTestContext();
         var openChanges = new List<bool>();
-        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(new DateTime(2026, 11, 1), new DateTime(2026, 12, 1), null, null, It.IsAny<CancellationToken>()))
+        context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(new DateTime(2026, 11, 1), new DateTime(2026, 12, 1), null, null, "UTC", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Counts(5)));
         var cut = FilteredDialog(context, openChanges);
 
         Button(cut, ".cal-exp-dialog", "Export").Click();
 
         cut.WaitForAssertion(() => Assert.Single(context.Transfer.Downloads));
-        context.Calendar.Verify(c => c.ExportAggregateUrl(new DateTime(2026, 11, 1), new DateTime(2026, 12, 1), null, null), Times.Once);
+        context.Calendar.Verify(c => c.ExportAggregateUrl(new DateTime(2026, 11, 1), new DateTime(2026, 12, 1), null, null, "UTC"), Times.Once);
         Assert.Equal([false], openChanges);
         Assert.StartsWith("Exporting 5 events.", Assert.Single(context.Toasts).Message, StringComparison.Ordinal);
     }
@@ -166,7 +166,7 @@ public class CalendarExportSurfaceTests
         await using var context = new CalendarIcsTestContext();
         var summary = new TaskCompletionSource<ApiResult<CalendarIcsExportSummary>>(TaskCreationOptions.RunContinuationsAsynchronously);
         context.Calendar.Setup(c => c.SummarizeAggregateExportAsync(It.IsAny<DateTime?>(), It.IsAny<DateTime?>(),
-                It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+                It.IsAny<IReadOnlyCollection<Guid>?>(), It.IsAny<string?>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Returns(summary.Task);
         var cut = FilteredDialog(context, []);
 

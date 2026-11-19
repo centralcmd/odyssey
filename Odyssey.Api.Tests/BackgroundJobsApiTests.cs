@@ -39,6 +39,7 @@ public class BackgroundJobsApiTests
         PermissionClaims.PhotosRead, PermissionClaims.PhotosUpdate,
         PermissionClaims.FileAnalysisRead, PermissionClaims.FileAnalysisCreate,
         PermissionClaims.NewsFeedsUpdate,
+        PermissionClaims.CalendarRead, PermissionClaims.CalendarUpdate,
     ];
 
     private static readonly string[] SettingsOnly = [PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate];
@@ -115,7 +116,7 @@ public class BackgroundJobsApiTests
         Assert.Equal(
             [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
                 JobType.FileAnalysis, JobType.FileBlobBackfill,
-                JobType.InstrumentPriceSync, JobType.NewsFeedFetch],
+                JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
             overview!.Jobs.Select(job => job.JobType));
         Assert.All(overview.Jobs, job =>
         {
