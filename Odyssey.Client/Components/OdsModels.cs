@@ -259,6 +259,12 @@ public sealed record OdsOption(string Value, string Label)
     public string? Note { get; init; }
 
     /// <summary>
+    /// Further text a local <c>OdsCombobox</c> search matches besides <see cref="Label"/> (issue #520 v3 §I) — a time
+    /// zone's city, so "new york" finds <c>America/New_York</c>. Never shown.
+    /// </summary>
+    public string? SearchKey { get; init; }
+
+    /// <summary>
     /// Renders the row as unselectable. Always pair it with <see cref="Note"/> saying why: a row that
     /// cannot be picked must say so in words. Honoured by <c>OdsCombobox</c>.
     /// </summary>

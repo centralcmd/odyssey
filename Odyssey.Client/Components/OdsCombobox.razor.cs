@@ -111,8 +111,24 @@ public partial class OdsCombobox : IDisposable
     /// <summary>Async announcement while a request is pending.</summary>
     [Parameter] public string SearchingText { get; set; } = "Searching…";
 
-    /// <summary>Async announcement for N rows, e.g. <c>n => $"{n} places found"</c>.</summary>
+    /// <summary>
+    /// The announcement for N rows, e.g. <c>n => $"{n} places found"</c>. In async mode it words the status line; in
+    /// local mode, setting it adds that same polite status line, saying how many rows the typed text matches (DS
+    /// Combobox <c>countText</c>, issue #520 v3 §I).
+    /// </summary>
     [Parameter] public Func<int, string>? ResultsText { get; set; }
+
+    /// <summary>
+    /// Home and End move the highlight to the first and last row while the list is open (issue #520 v3 §I, AC 14). Off
+    /// by default: in an editable combobox they otherwise move the caret, which the other pickers keep.
+    /// </summary>
+    [Parameter] public bool HomeEndKeys { get; set; }
+
+    /// <summary>
+    /// List every matching row rather than MudAutocomplete's first ten, so the arrow keys, Home and End reach the whole
+    /// list and the announced count is the count shown (the time-zone picker, issue #520 AX7).
+    /// </summary>
+    [Parameter] public bool AllRows { get; set; }
 
     /// <summary>Async announcement when a request fails.</summary>
     [Parameter] public string ErrorText { get; set; } = "Couldn’t load results";
@@ -367,7 +383,7 @@ public partial class OdsCombobox : IDisposable
 
     /// <summary>Whether the rows are capped at MudAutocomplete's default ten — never with groups or a footer, which
     /// would otherwise cut off the last group and the footer row itself.</summary>
-    private int? MaxItems => HasRowExtras ? null : 10;
+    private int? MaxItems => HasRowExtras || AllRows ? null : 10;
 
     internal static bool IsHeadingRow(OdsOption option) => option.Value.StartsWith(HeadingPrefix, StringComparison.Ordinal);
 
@@ -484,7 +500,9 @@ public partial class OdsCombobox : IDisposable
         _lastQuery = query.Trim();
         var matches = Arrange(Options
             .Where(o => o.IsNote || string.IsNullOrWhiteSpace(query)
-                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase)));
+                        || o.Label.Contains(query, StringComparison.OrdinalIgnoreCase)
+                        || (o.SearchKey?.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase) ?? false)));
+        UpdateLocalStatus(query);
 
         _createRows.Clear();
         _firstCreateValue = null;
@@ -513,7 +531,61 @@ public partial class OdsCombobox : IDisposable
         }
 
         AppendFooter(matches);
+        _rowCount = matches.Count;
         return matches;
+    }
+
+    // Local mode's status line (issue #520 v3 §I): the count once the user has typed; nothing for an empty list (the
+    // popover's empty row speaks that) or for the unfiltered list a bare open shows.
+    private string _localStatus = string.Empty;
+
+    // The rows the latest local search returned: the highlight's range for Home and End.
+    private int _rowCount;
+
+    private void UpdateLocalStatus(string query)
+    {
+        if (ResultsText is null)
+            return;
+
+        var typed = !string.IsNullOrWhiteSpace(query) && !string.Equals(query, Selected?.Label, StringComparison.Ordinal);
+        var next = typed && _resultCount > 0 ? ResultsText(_resultCount) : string.Empty;
+        if (string.Equals(next, _localStatus, StringComparison.Ordinal))
+            return;
+
+        _localStatus = next;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // MudAutocomplete 9 moves its highlight only through a non-public SelectItemAsync(index) — the method its own arrow
+    // keys use. It is reached by reflection, kept through trimming by the DynamicDependency below, and a MudBlazor that
+    // renames it leaves Home and End as plain caret keys rather than failing.
+    private static readonly System.Reflection.MethodInfo? SelectItem =
+        typeof(MudBlazor.MudAutocomplete<OdsOption>).GetMethod(
+            "SelectItemAsync", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public,
+            [typeof(int)]);
+
+    /// <summary>The row Home or End moves the highlight to, or null for any other key or a closed list.</summary>
+    internal static int? HomeEndTarget(string key, int rowCount, int? maxItems) =>
+        rowCount == 0 ? null : key switch
+        {
+            "Home" => 0,
+            "End" => Math.Min(rowCount, maxItems ?? int.MaxValue) - 1,
+            _ => null,
+        };
+
+    [System.Diagnostics.CodeAnalysis.DynamicDependency(
+        System.Diagnostics.CodeAnalysis.DynamicallyAccessedMemberTypes.NonPublicMethods, typeof(MudBlazor.MudAutocomplete<OdsOption>))]
+    private async Task OnKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (!HomeEndKeys || _auto is not { Open: true } auto || HomeEndTarget(e.Key, _rowCount, MaxItems) is not { } index)
+            return;
+
+        try
+        {
+            if (SelectItem?.Invoke(auto, [index]) is Task moved)
+                await moved;
+        }
+        catch (Exception) { /* best-effort: teardown, or no JS runtime under bUnit */ }
     }
 
     private async Task OnSelected(OdsOption? option)
