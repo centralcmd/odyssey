@@ -102,8 +102,8 @@ public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
             // date and interval (issue #349), then +1 for the file-storage deletion grace (issue #346), then +1
             // for the background-job run retention (issue #409), then +2 -1 for the two prompt-guidance
             // rows and the retired match-vocabulary cap (issue #433), then +3 for instrument prices (issue #446),
-            // then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508).
-            Assert.Equal(88, rows.Count);
+            // then +9 for the news reader (issue #470), then +2 for the OPML import caps (issue #508), then +1 for the calendar link cap (issue #521).
+            Assert.Equal(89, rows.Count);
             Assert.Equal(SystemSettingsKeys.AllKeys.OrderBy(key => key), rows.Keys.OrderBy(key => key));
 
             foreach (var (key, value) in ExpectedRows)
