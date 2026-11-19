@@ -115,6 +115,7 @@ public class RecurrencePatternService
 
         var page = await q.ToPagedResultAsync(offset, limit, CalendarEventService.ToDto, cancellationToken);
         await CalendarEventService.FillLocationRefsAsync(context, page.Items, claims, cancellationToken);
+        await CalendarLinkProjection.FillCountsAsync(context, page.Items, cancellationToken);
         return page;
     }
 
@@ -123,8 +124,10 @@ public class RecurrencePatternService
     /// in the series diff. Linking by id needs <c>locations.read</c> when the link changes; null claims are a
     /// trusted, non-HTTP caller. A series is keyed at creation (issue #519 §4).
     /// </summary>
+    /// <param name="linkClaims">Whether the caller may ADD a file or a photo (issue #521 §3); null is neither.</param>
     public async Task<ExistingRecurrencePattern> Create(
-        NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        CalendarLinkClaims? linkClaims = null)
     {
         var times = ResolveTimes(request, storedZoneId: null);
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
@@ -160,7 +163,10 @@ public class RecurrencePatternService
             context.CalendarEvents.Add(RecurrenceSeries.NewOccurrence(pattern, occurrence, userId, now));
         }
 
-        await resolver.SaveChangesAsync(cancellationToken);
+        await new CalendarLinkService(context).ApplyToSeriesAsync(
+            pattern.RecurrencePatternId, isNew: true, request.AttachmentFileIds, request.PhotoIds,
+            linkClaims ?? CalendarLinkClaims.None, effectiveLimits.CalendarEventMaxLinksPerKind, now, cancellationToken);
+        await SaveLinkedAsync(resolver, cancellationToken);
 
         var dto = await ToDtoAsync(pattern, claims, cancellationToken);
         dto.GeneratedEventCount = occurrences.Count;
@@ -174,7 +180,8 @@ public class RecurrencePatternService
     /// <c>409 calendar-series-drops-changed</c>, checked in that order and both under the lock.
     /// </summary>
     public async Task<RecurrencePatternUpdateResult?> Update(
-        Guid id, NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        Guid id, NewRecurrencePattern request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        CalendarLinkClaims? linkClaims = null)
     {
         if (!await context.RecurrencePatterns.AsNoTracking().AnyAsync(p => p.RecurrencePatternId == id, cancellationToken))
         {
@@ -185,7 +192,7 @@ public class RecurrencePatternService
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         CalendarTimeZones.ResolveRequest(request.TimeZoneId);
 
-        var outcome = await CalendarSeriesTransactions.ExecuteAsync(context, async () =>
+        var outcome = await CalendarLinkService.WithOneLinkRetryAsync(() => CalendarSeriesTransactions.ExecuteAsync(context, async () =>
         {
             await CalendarSeriesTransactions.LockSeriesAsync(context, [id], cancellationToken);
             var state = await RecurrenceSeriesState.LoadAsync(context, id, tracked: true, cancellationToken);
@@ -200,7 +207,9 @@ public class RecurrencePatternService
             }
 
             var now = timeProvider.GetUtcNow().UtcDateTime;
-            var detached = RecurrenceSeries.KeyInPlace(state, now, userId, x => context.RecurrenceExclusions.Add(x));
+            var detachedRows = new List<Context.CalendarEvent>();
+            var detached = RecurrenceSeries.KeyInPlace(state, now, userId, x => context.RecurrenceExclusions.Add(x), detachedRows);
+            await CalendarLinkService.StageCopyToDetachedAsync(context, id, detachedRows, cancellationToken);
             if (detached > 0)
             {
                 logger?.LogInformation(
@@ -228,9 +237,13 @@ public class RecurrencePatternService
             }
 
             RecurrenceSeries.Apply(context, state, plan, userId, now);
-            await resolver.SaveChangesAsync(cancellationToken);
+            // A template-only edit sends null arrays and never touches the links (issue #521 §5.2).
+            await new CalendarLinkService(context).ApplyToSeriesAsync(
+                id, isNew: false, request.AttachmentFileIds, request.PhotoIds, linkClaims ?? CalendarLinkClaims.None,
+                effectiveLimits.CalendarEventMaxLinksPerKind, now, cancellationToken);
+            await SaveLinkedAsync(resolver, cancellationToken);
             return (Counts: plan.Counts, Detached: detached);
-        }, cancellationToken, logger);
+        }, cancellationToken, logger));
 
         if (outcome is not { } done)
         {
@@ -319,10 +332,31 @@ public class RecurrencePatternService
                 return false;
             }
 
-            RemoveSeries(context, state, timeProvider.GetUtcNow().UtcDateTime);
+            // Loaded inside the delegate, so a retried attempt starts clean (issue #521 v4 §6). The past rows keep copies of
+            // the series' links; the series' own link rows go by tracked RemoveRange as well as the CASCADE.
+            var links = await CalendarLinkService.SeriesLinksAsync(context, id, cancellationToken);
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var detachedIds = state.Rows.Where(r => r.StartDateTime < now).Select(r => r.CalendarEventId).ToList();
+            RemoveSeries(context, state, now);
+            await CalendarLinkService.StageRemoveForSeriesAsync(context, id, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
+            context.ChangeTracker.Clear();
+            await CalendarLinkService.CopyToDetachedChunkedAsync(context, links, detachedIds, cancellationToken);
             return true;
         }, cancellationToken, logger);
+    }
+
+    // A save that may carry link rows: a concurrent identical add or a file deleted under it is mapped, never a 500.
+    private static async Task SaveLinkedAsync(LocationResolver resolver, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await resolver.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (CalendarLinkService.Translate(ex) is { } mapped)
+        {
+            throw mapped;
+        }
     }
 
     /// <summary>
@@ -455,6 +489,7 @@ public class RecurrencePatternService
     {
         var page = await ToDtoPageAsync(
             new PagedResult<RecurrencePattern> { Items = [pattern], Offset = 0, Limit = 1, TotalCount = 1 }, claims, cancellationToken);
+        await CalendarLinkProjection.FillDetailAsync(context, page.Items[0], cancellationToken);
         return page.Items[0];
     }
 
@@ -485,6 +520,8 @@ public class RecurrencePatternService
             dto.LocationRef = refs.For(dto.LocationId);
             items.Add(dto);
         }
+
+        await CalendarLinkProjection.FillCountsAsync(context, items, cancellationToken);
 
         return new PagedResult<ExistingRecurrencePattern>
         {

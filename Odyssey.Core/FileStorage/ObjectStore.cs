@@ -18,6 +18,15 @@ public sealed record StoredObjectContent(Stream Content, long Length, string Sha
 }
 
 /// <summary>
+/// A written reservation (issue #521 v5 §1): the bytes are on disk under <see cref="RelativePath"/> and the row is
+/// <see cref="StoredObjectState.Pending"/> in the database, committed by the store's own context. Immutable, so a caller
+/// whose transaction retries can attach a FRESH row per attempt with <see cref="IObjectStore.AttachReserved"/> and never
+/// re-attach an object a failed attempt mutated (implementation note 1).
+/// </summary>
+public sealed record StoredObjectReservation(
+    Guid Id, Guid VolumeId, string FeatureKey, string RelativePath, long SizeBytes, string Sha256Hash, DateTime CreatedAtUtc);
+
+/// <summary>
 /// The filesystem object store (issue #346 §3.5): put, open-read and release. It owns name sanitizing, path
 /// composition and uniqueness — no caller ever supplies a path.
 /// </summary>
@@ -32,6 +41,29 @@ public interface IObjectStore
     Task<StoredObject> PutAsync(
         string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
         Stream content, long maxBytes, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// <see cref="PutAsync"/> split at its attach (issue #521 v5 §1): writes the bytes and leaves the row
+    /// <see cref="StoredObjectState.Pending"/>, attached to no context. A caller that must do slow work outside a
+    /// retried transaction writes here first and attaches inside each attempt. Never attached, the reservation is
+    /// removed by <see cref="AbandonReservationAsync"/> or, failing that, by the abandoned-write sweep within an hour.
+    /// </summary>
+    Task<StoredObjectReservation> ReserveAndWriteAsync(
+        string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
+        Stream content, long maxBytes, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Attaches a NEW row for <paramref name="reservation"/> to <paramref name="context"/>, <c>Pending</c> as its
+    /// original value and <c>Committed</c> as its current one, unsaved: the caller's save emits
+    /// <c>UPDATE … WHERE State = Pending</c> with its referencing row, and fails if the sweep already removed it.
+    /// </summary>
+    StoredObject AttachReserved(OdysseyContext context, StoredObjectReservation reservation);
+
+    /// <summary>
+    /// Removes a reservation that will never be attached: its row (only while still <c>Pending</c>), then its file. Best
+    /// effort beyond that — whatever is left, the abandoned-write sweep removes.
+    /// </summary>
+    Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken);
 
     /// <summary>The bytes of a committed object of <paramref name="featureKey"/>; any other row is a 404.</summary>
     Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken);
@@ -80,6 +112,76 @@ public sealed partial class ObjectStore(
     private static partial Regex NumberedMarker();
 
     public async Task<StoredObject> PutAsync(
+        string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
+        Stream content, long maxBytes, CancellationToken cancellationToken)
+    {
+        var (row, size, hash) = await WriteAsync(
+            featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+        // Attach the reserved row to the CALLER's context, staged but not saved: the caller's save emits
+        // UPDATE … WHERE Id = @id AND State = Pending, together with its referencing row.
+        context.StoredObjects.Attach(row);
+        row.State = StoredObjectState.Committed;
+        row.SizeBytes = size;
+        row.Sha256Hash = hash;
+        return row;
+    }
+
+    public async Task<StoredObjectReservation> ReserveAndWriteAsync(
+        string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
+        Stream content, long maxBytes, CancellationToken cancellationToken)
+    {
+        var (row, size, hash) = await WriteAsync(
+            featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+        return new StoredObjectReservation(row.Id, row.VolumeId, row.FeatureKey, row.RelativePath, size, hash, row.CreatedAtUtc);
+    }
+
+    public StoredObject AttachReserved(OdysseyContext target, StoredObjectReservation reservation)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        ArgumentNullException.ThrowIfNull(reservation);
+        var row = new StoredObject
+        {
+            Id = reservation.Id,
+            VolumeId = reservation.VolumeId,
+            FeatureKey = reservation.FeatureKey,
+            RelativePath = reservation.RelativePath,
+            State = StoredObjectState.Pending,
+            CreatedAtUtc = reservation.CreatedAtUtc,
+        };
+        target.StoredObjects.Attach(row);
+        row.State = StoredObjectState.Committed;
+        row.SizeBytes = reservation.SizeBytes;
+        row.Sha256Hash = reservation.Sha256Hash;
+        return row;
+    }
+
+    public async Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(reservation);
+        await using (var cleanup = await contextFactory.CreateDbContextAsync(cancellationToken))
+        {
+            var row = await cleanup.StoredObjects.SingleOrDefaultAsync(o => o.Id == reservation.Id, cancellationToken);
+            if (row is null || row.State != StoredObjectState.Pending)
+            {
+                return; // already swept, or attached and committed by someone: either way not ours to delete
+            }
+
+            cleanup.StoredObjects.Remove(row);
+            await cleanup.SaveChangesAsync(cancellationToken);
+        }
+
+        // The row first, then the file, as the sweep does: a file without a row is what the reconcile finds.
+        if (catalogue.Find(reservation.FeatureKey) is { } feature
+            && StorageNames.IsConformingPath(reservation.RelativePath, feature.RootFolder))
+        {
+            var volume = volumes.ForExisting(reservation.VolumeId);
+            VolumeFileSystem.TryDelete(VolumeFileSystem.Contain(volume.RootPath, reservation.RelativePath, feature.RootFolder));
+        }
+    }
+
+    // The write half of a put: reserve, stream to a part file, move into place. The row returned is detached.
+    private async Task<(StoredObject Row, long Size, string Hash)> WriteAsync(
         string featureKey, object? layoutArgs, string? originalFileName, string? suffix, string contentType,
         Stream content, long maxBytes, CancellationToken cancellationToken)
     {
@@ -184,14 +286,7 @@ public sealed partial class ObjectStore(
             }
 
             volumes.MarkAvailable(volume);
-
-            // Attach the reserved row to the CALLER's context, staged but not saved: the caller's save emits
-            // UPDATE … WHERE Id = @id AND State = Pending, together with its referencing row.
-            context.StoredObjects.Attach(row);
-            row.State = StoredObjectState.Committed;
-            row.SizeBytes = size;
-            row.Sha256Hash = hash;
-            return row;
+            return (row, size, hash);
         }
     }
 

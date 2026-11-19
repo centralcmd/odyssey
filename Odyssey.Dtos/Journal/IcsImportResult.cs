@@ -51,6 +51,30 @@ public sealed record IcsImportResult
     /// <summary>Rows whose wall-clock fell in a daylight-saving gap of their zone and moved forward (v5 §4).</summary>
     public int AdjustedCount { get; set; }
 
+    /// <summary>Attached files stored new by this import (issue #521 §5.5).</summary>
+    public int StoredFileCount { get; set; }
+
+    /// <summary>Attached files matched to a stored file instead of being stored again.</summary>
+    public int ReusedFileCount { get; set; }
+
+    /// <summary>Photos stored new in the library by this import.</summary>
+    public int StoredPhotoCount { get; set; }
+
+    /// <summary>Photos matched to a library photo instead of being stored again.</summary>
+    public int ReusedPhotoCount { get; set; }
+
+    /// <summary>Attachments not linked, each also counted under its reason in <see cref="Skipped"/>.</summary>
+    public int SkippedAttachmentCount { get; set; }
+
+    /// <summary>Attachments on a modified occurrence, or on an event that is an occurrence of a series: ignored.</summary>
+    public int IgnoredOccurrenceAttachmentCount { get; set; }
+
+    /// <summary>Events and series whose files or photos this import replaced.</summary>
+    public int ReplacedLinkSetCount { get; set; }
+
+    /// <summary>Links those replacements removed.</summary>
+    public int RemovedLinkCount { get; set; }
+
     public IReadOnlyList<IcsImportSkipGroup> Skipped { get; set; } = [];
 }
 

@@ -512,6 +512,12 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
     public DbSet<RecurrenceExclusion> RecurrenceExclusions { get; set; }
 
+    // Calendar event attachments (issue #521). CalendarLinkService is their only writer.
+    public DbSet<CalendarEventAttachment> CalendarEventAttachments { get; set; }
+    public DbSet<CalendarEventPhoto> CalendarEventPhotos { get; set; }
+    public DbSet<RecurrencePatternAttachment> RecurrencePatternAttachments { get; set; }
+    public DbSet<RecurrencePatternPhoto> RecurrencePatternPhotos { get; set; }
+
     // Contact aggregate (issue #325).
     public DbSet<Contact> Contacts { get; set; }
     public DbSet<PersonDetails> PersonDetails { get; set; }

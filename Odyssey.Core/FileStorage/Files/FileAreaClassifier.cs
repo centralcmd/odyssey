@@ -28,6 +28,9 @@ public sealed class FileAreaClassifier(IFileReferenceCounter references)
         [typeof(PropertyFile)] = StoredFileArea.Finance,
         [typeof(JournalEntryAttachment)] = StoredFileArea.Journal,
         [typeof(JournalTaskAttachment)] = StoredFileArea.Journal,
+        // Calendar event and series attachments (issue #521 §3 component 6).
+        [typeof(CalendarEventAttachment)] = StoredFileArea.Journal,
+        [typeof(RecurrencePatternAttachment)] = StoredFileArea.Journal,
         [typeof(Contact)] = StoredFileArea.ContactAvatars,
     };
 

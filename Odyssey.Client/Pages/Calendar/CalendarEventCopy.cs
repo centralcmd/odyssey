@@ -54,6 +54,12 @@ internal static class CalendarEventCopy
 
     public const string MovedOverride = "Moved. This occurrence is now edited separately from its series.";
 
+    /// <summary>The "From the series" help line, before the Edit series… link (issue #522 §3.2).</summary>
+    public const string LinksBelongToSeries = "Attachments belong to the whole series.";
+
+    /// <summary>Said once the links arrive, only after a slow load (v3 §C).</summary>
+    public const string LinksLoaded = "Attachments loaded.";
+
     public static string Plural(int n, string one, string many) => $"{n} {(n == 1 ? one : many)}";
 
     public static string DefaultZoneHelp(string zone) =>

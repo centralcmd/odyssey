@@ -12,7 +12,8 @@ internal sealed class ImportSkipCollector(int maxSamplesPerReason)
     private readonly Dictionary<string, (int Count, List<string> Samples)> byReason = new(StringComparer.Ordinal);
     private readonly List<string> order = [];
 
-    public void Add(string reason, string sample)
+    /// <param name="sample">A sample title, or null to count the skip without one (issue #521 v3 §E).</param>
+    public void Add(string reason, string? sample)
     {
         if (!byReason.TryGetValue(reason, out var entry))
         {
@@ -21,7 +22,7 @@ internal sealed class ImportSkipCollector(int maxSamplesPerReason)
         }
 
         entry.Count++;
-        if (entry.Samples.Count < maxSamplesPerReason)
+        if (sample is not null && entry.Samples.Count < maxSamplesPerReason)
         {
             entry.Samples.Add(sample);
         }

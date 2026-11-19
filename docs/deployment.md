@@ -381,6 +381,27 @@ and re-running the export gives a consistent file. Cancelled events in an import
 and the removed ids. Rolling the migration back restores the old settings rows and drops `ImportSourceUid`, the key
 that makes a second import of another calendar's export update rather than duplicate.
 
+#### Calendar attachments (issue #521)
+
+Events and series link files (stored in the **Journal** area) and library photos, and the calendar, event and series
+`.ics` exports carry them inline — each distinct piece once, then by reference. Release-note items:
+
+- A new setting, **`CalendarEventMaxLinksPerKind`** (default 50, range 1–100), at `/settings` and on
+  `GET /api/import-limits`. Its maximum bounds the series-delete link copy at 200,000 rows.
+- **`attachments=omit`** on the three exports and their summaries writes no `ATTACH` and needs neither `files.read` nor
+  `photos.read`. An export that includes them carries **photo originals with their EXIF/GPS** and file and photo ids and
+  hashes — that is the opt-out.
+- The **aggregate** export (`/api/calendar-events/ics`) carries no attachments, and re-importing it keeps every link: a
+  kind's links are replaced only when the file carries at least one resolvable attachment of that kind.
+- An import decodes **one attachment at a time** to `ASPNETCORE_TEMP` (each under the admin upload cap, with 1.25× that
+  free or a `507`), and stages new content on the store as `Pending` reservations: a batch closes once it holds 256 MiB,
+  so it never holds more than 256 MiB plus one attachment. One event that alone carries the batch past 256 MiB has its
+  further new content skipped and counted, since an event is never split across batches. A batch that fails leaves only
+  its reservations, which the abandoned-write sweep removes within an hour.
+- An attachment reference must carry its id, `X-ODYSSEY-SHA256` and `SIZE` together; a bare `odyssey-file:<id>` is
+  skipped as malformed.
+- Rolling the `CalendarEventAttachments` migration back drops the links; the files and photos stay.
+
 #### Calendar recurrence keys and time zones (issue #519)
 
 **The import sorts the file by UID first, on temporary disk.** Since issue #519 a calendar import reads the buffered

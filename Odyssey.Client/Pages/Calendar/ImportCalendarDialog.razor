@@ -54,8 +54,23 @@
                     <OdsSelect Label="Import into" Required="true" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
                                Options="_calendarOptions" Placeholder="Choose a calendar…" Error="@_calendarError" />
 
+                    @* Attachments (issue #522 §3.5, v3 §D): a non-live Warning with a visible "Note:" prefix BEFORE the picker,
+                       which names it in aria-describedby, and the claim line for a caller who cannot add both kinds. *@
+                    <div class="cal-imp-attach">
+                        <div id="@AttachWarningId">
+                            <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None"><strong>Note:</strong> @CalendarImportCopy.AttachmentsNoteLead <strong>@CalendarImportCopy.AttachmentsNoteReplace</strong> @CalendarImportCopy.AttachmentsNoteTail</OdsAlert>
+                        </div>
+                        @if (!CanAddAttachments)
+                        {
+                            <div class="cal-imp-claim" id="@AttachClaimId">
+                                <span class="material-icons" aria-hidden="true">lock</span>
+                                <span>@CalendarImportCopy.AttachmentsClaimLine</span>
+                            </div>
+                        }
+                    </div>
+
                     <OdsFieldShell Label="Calendar file" Required="true" Error="@_fileError">
-                        <OdsFileUpload Id="@UploadId" Files="_files" FilesChanged="OnFilesChanged"
+                        <OdsFileUpload Id="@UploadId" Files="_files" FilesChanged="OnFilesChanged" DescribedBy="@PickerDescribedBy"
                                        Multiple="false" ShowKinds="false" Compact="true"
                                        Accept=".ics,text/calendar"
                                        Hint="@($"iCalendar (.ics) · one file · up to {ByteSize.Format(_maxImportBytes)}")" />
@@ -177,12 +192,32 @@
                     }
 
                     @* The new outcomes as a real list under the result heading (AX6): fixed text, non-zero counts only. *@
-                    @if (CalendarImportCopy.ResultItems(result, CanDelete) is { Count: > 0 } items)
+                    @* The attachment items follow Spec B's in the same list (issue #522 §3.5); a skip's reasons nest under it. *@
+                    @{
+                        var items = CalendarImportCopy.ResultItems(result, CanDelete);
+                        var attachmentItems = CalendarImportCopy.AttachmentItems(result);
+                    }
+                    @if (items.Count + attachmentItems.Count > 0)
                     {
                         <ul class="cal-imp-items">
                             @foreach (var item in items)
                             {
                                 <li class="cal-imp-item">@item</li>
+                            }
+                            @foreach (var item in attachmentItems)
+                            {
+                                <li class="cal-imp-item">
+                                    @item.Text
+                                    @if (item.Reasons.Count > 0)
+                                    {
+                                        <ul class="cal-imp-item-reasons">
+                                            @foreach (var (reason, count) in item.Reasons)
+                                            {
+                                                <li><span class="cal-imp-item-reason">@reason</span><span class="cal-imp-item-count"><span aria-hidden="true">@count</span><span class="sr-only">@CalendarImportCopy.ReasonCount(count)</span></span></li>
+                                            }
+                                        </ul>
+                                    }
+                                </li>
                             }
                         </ul>
                     }
@@ -201,7 +236,7 @@
                     {
                         <div class="cal-imp-skips">
                             <div class="cal-imp-skips-head">Skipped events, by reason</div>
-                            @foreach (var group in result.Skipped.Where(g => g.Count > 0))
+                            @foreach (var group in CalendarImportCopy.EventSkipGroups(result))
                             {
                                 @SkipGroup(group.Reason, group.Reason, group.Count, group.SampleTitles, "event_busy", null)
                             }

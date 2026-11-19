@@ -63,7 +63,11 @@
                         {
                             <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                         }
-                        @ev.Title
+                        <span class="odc-cal-chip-tt">@ev.Title</span>
+                        @if (ev.HasAttachments)
+                        {
+                            <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                        }
                     </button>
                 }
             </div>
@@ -107,7 +111,11 @@
                                 {
                                     <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                 }
-                                @ev.Title
+                                <span class="odc-cal-chip-tt">@ev.Title</span>
+                                @if (ev.HasAttachments)
+                                {
+                                    <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                                }
                             </span>
                             <span class="cal-tg-ev-time">@ev.Start.ToString("HH:mm")–@ev.End.ToString("HH:mm")</span>
                             @if (!string.IsNullOrEmpty(ev.CalendarName))

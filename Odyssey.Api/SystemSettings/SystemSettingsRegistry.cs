@@ -490,6 +490,20 @@ internal static class SystemSettingsRegistry
             Read = r => r.JournalEntryMaxLinksPerKind,
             Write = (dto, v) => dto.JournalEntryMaxLinksPerKind = v,
         },
+        // A cap: a degraded read resolves to min (issue #521 §4). Raising the max re-opens the series-delete copy bound
+        // (RecurrenceMaxGeneratedOccurrencesMax × 2 × max ≤ 200,000 rows) — see SystemSettingsBounds.
+        new IntSetting
+        {
+            Key = SystemSettingsKeys.CalendarEventMaxLinksPerKind,
+            Min = SystemSettingsBounds.CalendarEventMaxLinksPerKindMin,
+            Max = SystemSettingsBounds.CalendarEventMaxLinksPerKindMax,
+            FieldName = nameof(SystemSettingsUpdate.CalendarEventMaxLinksPerKind),
+            RequiredClaim = PermissionClaims.SystemSettingsUpdate,
+            DefaultValue = Int(SystemSettingsDefaults.CalendarEventMaxLinksPerKind),
+            CacheKeyToEvict = JournalLimitsLookup.CacheKey,
+            Read = r => r.CalendarEventMaxLinksPerKind,
+            Write = (dto, v) => dto.CalendarEventMaxLinksPerKind = v,
+        },
         new IntSetting
         {
             Key = SystemSettingsKeys.JournalTaskMaxLinksPerKind,

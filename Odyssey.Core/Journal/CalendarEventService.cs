@@ -110,6 +110,7 @@ public class CalendarEventService
 
         var page = await q.ToPagedResultAsync(query.Offset, query.Limit, ToDto, cancellationToken);
         await FillLocationRefsAsync(context, page.Items, claims, cancellationToken);
+        await CalendarLinkProjection.FillCountsAsync(context, page.Items, cancellationToken);
         return page;
     }
 
@@ -150,10 +151,12 @@ public class CalendarEventService
         }
     }
 
+    // A detail read: the links' lists and counts as well (issue #521 §5.3).
     private async Task<ExistingCalendarEvent> ToDtoAsync(Context.CalendarEvent calendarEvent, LocationClaims? claims, CancellationToken cancellationToken)
     {
         var dto = ToDto(calendarEvent);
         await FillLocationRefsAsync(context, [dto], claims, cancellationToken);
+        await CalendarLinkProjection.FillDetailAsync(context, dto, cancellationToken);
         return dto;
     }
 
@@ -161,8 +164,10 @@ public class CalendarEventService
     /// The caller's location claims: linking a place by id needs <c>locations.read</c> (issue #380 §5.2).
     /// Null is no capability at all; a trusted, non-HTTP caller passes <see cref="LocationClaims.Trusted"/> explicitly.
     /// </param>
+    /// <param name="linkClaims">Whether the caller may ADD a file or a photo (issue #521 §3); null is neither.</param>
     public async Task<ExistingCalendarEvent> Create(
-        NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        CalendarLinkClaims? linkClaims = null)
     {
         var (start, end, zoneId) = ResolveWriteTimes(
             request.StartDateTime, request.EndDateTime, request.IsAllDay, request.TimeZoneId, storedZoneId: null);
@@ -190,8 +195,12 @@ public class CalendarEventService
             UpdatedAt = now,
         };
 
+        calendarEvent.CalendarEventId = Guid.NewGuid();
         context.CalendarEvents.Add(calendarEvent);
-        await resolver.SaveChangesAsync(cancellationToken);
+        await new CalendarLinkService(context).ApplyToEventAsync(
+            calendarEvent.CalendarEventId, isNew: true, request.AttachmentFileIds, request.PhotoIds,
+            linkClaims ?? CalendarLinkClaims.None, effectiveLimits.CalendarEventMaxLinksPerKind, now, cancellationToken);
+        await SaveLinkedAsync(resolver, cancellationToken);
 
         return await ToDtoAsync(calendarEvent, claims, cancellationToken);
     }
@@ -201,7 +210,8 @@ public class CalendarEventService
     // PUT is a full replacement (issue #380 §5.2): an omitted locationId clears the link, an unchanged one
     // is kept (even to a place archived since) with no claim, and a changed one needs locations.read.
     public async Task<ExistingCalendarEvent?> Update(
-        Guid id, NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null)
+        Guid id, NewCalendarEvent request, string userId, CancellationToken cancellationToken = default, LocationClaims? claims = null,
+        CalendarLinkClaims? linkClaims = null)
     {
         await EnsureCalendarExists(request.CalendarId, cancellationToken);
         var effectiveLimits = await limits.GetAsync(cancellationToken);
@@ -216,9 +226,11 @@ public class CalendarEventService
             return null;
         }
 
-        var written = await CalendarSeriesTransactions.ExecuteAsync(context, async () =>
+        var carriesLinks = request.AttachmentFileIds is not null || request.PhotoIds is not null;
+        var written = await CalendarLinkService.WithOneLinkRetryAsync(() => CalendarSeriesTransactions.ExecuteAsync(context, async () =>
         {
-            var touched = await LockAndKeyAsync(id, patternId.RecurrencePatternId, userId, cancellationToken);
+            var touched = await LockAndKeyAsync(
+                id, patternId.RecurrencePatternId, userId, cancellationToken, lockStandalone: carriesLinks);
             if (touched.Row is not { } calendarEvent)
             {
                 return touched;
@@ -250,9 +262,24 @@ public class CalendarEventService
                 calendarEvent.IsOverride = true;
             }
 
-            await resolver.SaveChangesAsync(cancellationToken);
+            // A series member's links are its series' (issue #521 §3 step 5); a standalone row's are its own, and a row
+            // the keying above detached is standalone now, its copied links included.
+            if (calendarEvent.RecurrencePatternId is not null)
+            {
+                CalendarLinkService.EnsureNoOccurrenceLinks(request.AttachmentFileIds, request.PhotoIds);
+            }
+            else
+            {
+                await new CalendarLinkService(context).ApplyToEventAsync(
+                    calendarEvent.CalendarEventId, isNew: false, request.AttachmentFileIds, request.PhotoIds,
+                    linkClaims ?? CalendarLinkClaims.None, effectiveLimits.CalendarEventMaxLinksPerKind,
+                    calendarEvent.UpdatedAt, cancellationToken);
+            }
+
+            await SaveLinkedAsync(resolver, cancellationToken);
             return touched;
-        }, cancellationToken, logger);
+        }, cancellationToken, logger,
+            busy: patternId.RecurrencePatternId is null && carriesLinks ? CalendarAttachmentsException.LinksBusy : null));
 
         if (written.Row is not { } saved)
         {
@@ -303,6 +330,12 @@ public class CalendarEventService
                 });
             }
 
+            // Its links go with it: the CASCADE on MariaDB, this tracked removal on the InMemory tiers (issue #521 §4).
+            if (calendarEvent.RecurrencePatternId is null)
+            {
+                await CalendarLinkService.StageRemoveForEventAsync(context, calendarEvent.CalendarEventId, cancellationToken);
+            }
+
             context.CalendarEvents.Remove(calendarEvent);
             await context.SaveChangesAsync(cancellationToken);
             return new CalendarEventDeleteResult { Detached = touched.Detached, DetachedCount = touched.DetachedCount };
@@ -313,10 +346,16 @@ public class CalendarEventService
 
     // Inside the transaction: the series lock first, then the row, keying a legacy series inline (#519 v4 §4).
     private async Task<TouchedRow> LockAndKeyAsync(
-        Guid eventId, Guid? patternId, string? userId, CancellationToken cancellationToken)
+        Guid eventId, Guid? patternId, string? userId, CancellationToken cancellationToken, bool lockStandalone = false)
     {
         if (patternId is not { } seriesId)
         {
+            // A standalone event's link write locks its row before the diff (issue #521 v3 §C).
+            if (lockStandalone)
+            {
+                await CalendarSeriesTransactions.LockEventsAsync(context, [eventId], cancellationToken);
+            }
+
             var standalone = await context.CalendarEvents.FirstOrDefaultAsync(e => e.CalendarEventId == eventId, cancellationToken);
             if (standalone?.RecurrencePatternId is not null)
             {
@@ -340,13 +379,28 @@ public class CalendarEventService
         if (state.Pattern.KeysBackfilledAt is null)
         {
             var now = timeProvider.GetUtcNow().UtcDateTime;
-            detachedCount = RecurrenceSeries.KeyInPlace(state, now, userId, x => context.RecurrenceExclusions.Add(x));
+            var detachedRows = new List<Context.CalendarEvent>();
+            detachedCount = RecurrenceSeries.KeyInPlace(state, now, userId, x => context.RecurrenceExclusions.Add(x), detachedRows);
+            await CalendarLinkService.StageCopyToDetachedAsync(context, seriesId, detachedRows, cancellationToken);
             logger?.LogInformation(
                 "Calendar series {RecurrencePatternId} keyed inline by an occurrence write: {DetachedCount} row(s) detached, {ExclusionCount} exclusion(s).",
                 seriesId, detachedCount, state.Exclusions.Count);
         }
 
         return new TouchedRow(row, Detached: row.RecurrencePatternId is null, detachedCount);
+    }
+
+    // A save that may carry link rows: a concurrent identical add or a file deleted under it is mapped, never a 500.
+    private static async Task SaveLinkedAsync(LocationResolver resolver, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await resolver.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (CalendarLinkService.Translate(ex) is { } mapped)
+        {
+            throw mapped;
+        }
     }
 
     /// <summary>

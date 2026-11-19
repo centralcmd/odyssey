@@ -94,13 +94,14 @@ public class SystemSettingsBoundsTests
     /// exchange-rate sync interval, 45 once issue #346 added the file-storage deletion grace, 46 once
     /// issue #409 added the background-job run retention, and 45 once issue #433 retired the match
     /// vocabulary cap, 48 once issue #446 added the three instrument-price settings, 56 once issue
-    /// #470 added the eight news-reader int settings, and 58 once issue #508 added the two OPML import caps.
+    /// #470 added the eight news-reader int settings, 58 once issue #508 added the two OPML import caps, and 59 once
+    /// issue #521 added the calendar link cap.
     /// </summary>
     [Fact]
-    public void The_int_key_census_is_fifty_eight()
+    public void The_int_key_census_is_fifty_nine()
     {
-        Assert.Equal(58, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
-        Assert.Equal(58, IntProperties.Count);
+        Assert.Equal(59, SystemSettingsRegistry.All.OfType<IntSetting>().Count());
+        Assert.Equal(59, IntProperties.Count);
 
         // …and the whole registry equals the persisted key catalogue, which is the check that the
         // per-kind counts are right rather than merely consistent with each other. Issue #8 added four:
@@ -116,8 +117,8 @@ public class SystemSettingsBoundsTests
         // added two strings (the extraction and match prompt guidance). Issue #446 added three ints (the
         // instrument-price stale window, sync interval and history depth). Issue #470 added eight ints (the
         // news-reader defaults, caps and quotas) and one string (the private-host allow-list). Issue #508 added two
-        // ints (the OPML import's size and entry caps).
-        Assert.Equal(88, SystemSettingsRegistry.All.Count);
+        // ints (the OPML import's size and entry caps). Issue #521 added one int (the calendar link cap).
+        Assert.Equal(89, SystemSettingsRegistry.All.Count);
         Assert.Equal(5, SystemSettingsRegistry.All.OfType<BoolSetting>().Count());
         Assert.Equal(8, SystemSettingsRegistry.All.OfType<CapacitySetting>().Count());
         Assert.Equal(16, SystemSettingsRegistry.All.OfType<StringSetting>().Count());

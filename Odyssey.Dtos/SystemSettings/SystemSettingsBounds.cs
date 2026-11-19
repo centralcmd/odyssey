@@ -150,6 +150,15 @@ public static class SystemSettingsBounds
     public const int JournalTaskMaxLinksPerKindMin = 1;
     public const int JournalTaskMaxLinksPerKindMax = 100000;
 
+    public const int CalendarEventMaxLinksPerKindMin = 1;
+
+    /// <summary>
+    /// Deliberately far below the journal's 100,000 (issue #521 §4 invariant 2): deleting a series copies its links onto
+    /// every detached past row, so <c>RecurrenceMaxGeneratedOccurrencesMax × 2 × this ≤ 200,000</c> rows bounds that
+    /// copy. Raising it re-opens that bound; a guard test pins the product.
+    /// </summary>
+    public const int CalendarEventMaxLinksPerKindMax = 100;
+
     // ── The upload cap (issue #421 Wave 4) ───────────────────────────────────────────────────────
 
     public const int FileStorageMaxUploadMegabytesMin = 1;

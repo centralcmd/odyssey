@@ -47,6 +47,12 @@ public partial class CalendarPage
     // Managing calendars (create / rename / delete calendars) needs any one of the write claims.
     private bool _canReadLocations;
     private bool _canCreateLocations;
+
+    // The attachment fields and the import's claim line (issue #522): a kind is shown and editable only with its read
+    // claim, and a file carrying attachments imports only with both kinds' read and create claims.
+    private bool _canReadFiles;
+    private bool _canReadPhotos;
+    private bool _canAddAttachments;
     private bool _canManageCalendars => _canCreate || _canUpdate || _canDelete;
 
     // Import can create OR update rows depending on UID match, so it needs BOTH claims (mirrors the
@@ -216,6 +222,10 @@ public partial class CalendarPage
         _canDelete = user.HasPermission(PermissionClaims.CalendarDelete);
         _canReadLocations = user.HasPermission(PermissionClaims.LocationsRead);
         _canCreateLocations = _canReadLocations && user.HasPermission(PermissionClaims.LocationsCreate);
+        _canReadFiles = user.HasPermission(PermissionClaims.FilesRead);
+        _canReadPhotos = user.HasPermission(PermissionClaims.PhotosRead);
+        _canAddAttachments = _canReadFiles && _canReadPhotos
+            && user.HasPermission(PermissionClaims.FilesCreate) && user.HasPermission(PermissionClaims.PhotosCreate);
         AgendaWeather.Reset(user.HasPermission(PermissionClaims.WeatherRead));
     }
 
@@ -279,6 +289,9 @@ public partial class CalendarPage
     private bool _exporting;
     private OdsLiveAnnouncer? _announcer;
 
+    /// <summary>The event dialog's Export button, where focus returns after an export prompt closes.</summary>
+    private const string ExportButtonId = "cal-export-btn";
+
     private Task AnnounceAsync(string message) => _announcer?.Announce(message) ?? Task.CompletedTask;
 
     /// <summary>Summary first, then the native download; false when the summary was refused (and toasted).</summary>
@@ -296,6 +309,75 @@ public partial class CalendarPage
         return true;
     }
 
+    /// <summary>
+    /// One export that can carry attachments (issue #522 §3.4, v3 §A): what the commit step shows and how the chosen mode
+    /// becomes a URL and a toast. <paramref name="Toast"/> takes the attachment part (or empty) and returns the toast.
+    /// </summary>
+    internal sealed record AttachmentExport(
+        string Title, string What, string Noun, CalendarIcsExportSummary Summary, bool Forbidden, string? ReturnFocusToId,
+        Func<IcsAttachmentsMode, string> Url, Func<CalendarIcsExportSummary, string, string> Toast);
+
+    private AttachmentExport? _attachmentExport;
+    private bool _attachmentExportOpen;
+
+    /// <summary>
+    /// A calendar, event or series export (issue #522 §3.4): the include summary first. Nothing attached — the download
+    /// starts as before. Attachments — the commit step asks whether to include them. A <c>403</c> for attachments — the
+    /// omit summary, then the commit step in its refused form. Any other failure keeps Spec A's refusal toast and renders
+    /// no checkbox (v4). False when nothing was started or offered.
+    /// </summary>
+    private async Task<bool> DownloadWithAttachmentsAsync(
+        Func<IcsAttachmentsMode, Task<ApiResult<CalendarIcsExportSummary>>> summarize, string failureLead,
+        Func<IcsAttachmentsMode, string> url, Func<CalendarIcsExportSummary, string, string> toast,
+        string title, string noun, string? returnFocusToId)
+    {
+        var included = await summarize(IcsAttachmentsMode.Include);
+        var forbidden = included.Status == System.Net.HttpStatusCode.Forbidden
+            && string.Equals(included.Problem?.Code, CalendarIcsExport.AttachmentsForbiddenCode, StringComparison.Ordinal);
+        if (!forbidden)
+        {
+            if (included.OrToast(Snackbar, failureLead, requireInteraction: true) is not { } counts)
+                return false;
+
+            if (counts.AttachmentCount + counts.PhotoCount == 0)
+            {
+                await NativeTransfer.DownloadAsync(url(IcsAttachmentsMode.Include));
+                CalendarIcsExport.ToastStarted(Snackbar, toast(counts, string.Empty));
+                return true;
+            }
+
+            OpenAttachmentExport(new AttachmentExport(title, CalendarIcsExport.WhatFile(noun, counts), noun, counts, false, returnFocusToId, url, toast));
+            return true;
+        }
+
+        if ((await summarize(IcsAttachmentsMode.Omit)).OrToast(Snackbar, failureLead, requireInteraction: true) is not { } omitted)
+            return false;
+
+        OpenAttachmentExport(new AttachmentExport(title, CalendarIcsExport.WhatFile(noun, omitted), noun, omitted, true, returnFocusToId, url, toast));
+        return true;
+    }
+
+    // Include is the server's default: the plain summary and URL are the include ones (#521 §5.4), so only Omit names it.
+    private static bool Included(IcsAttachmentsMode mode) => mode == IcsAttachmentsMode.Include;
+
+    private void OpenAttachmentExport(AttachmentExport export)
+    {
+        _attachmentExport = export;
+        _attachmentExportOpen = true;
+        StateHasChanged();
+    }
+
+    /// <summary>The commit step's choice: the download in that mode and its toast, long ones persistent (AX7).</summary>
+    internal async Task AttachmentExportChosenAsync(IcsAttachmentsMode mode)
+    {
+        if (_attachmentExport is not { } export)
+            return;
+
+        await NativeTransfer.DownloadAsync(export.Url(mode));
+        CalendarIcsExport.ToastStartedScaled(Snackbar,
+            CalendarIcsExport.WithAttachments(part => export.Toast(export.Summary, part), export.Summary, mode));
+    }
+
     /// <summary>E3: the per-calendar export. Manage calendars shows its own busy state and announcements.</summary>
     internal async Task ExportCalendarAsync(ExistingCalendar calendar)
     {
@@ -307,9 +389,10 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            await DownloadAsync(
-                CalendarApi.SummarizeExportAsync(calendar.CalendarId), "Unable to export the calendar",
-                () => CalendarApi.ExportUrl(calendar.CalendarId), s => CalendarIcsExport.CalendarToast(calendar.Name, s));
+            await DownloadWithAttachmentsAsync(
+                mode => Included(mode) ? CalendarApi.SummarizeExportAsync(calendar.CalendarId) : CalendarApi.SummarizeExportAsync(calendar.CalendarId, mode), "Unable to export the calendar",
+                mode => Included(mode) ? CalendarApi.ExportUrl(calendar.CalendarId) : CalendarApi.ExportUrl(calendar.CalendarId, mode), (s, part) => CalendarIcsExport.CalendarToast(calendar.Name, s, part),
+                $"Export “{calendar.Name}”", "calendar", returnFocusToId: null);
         }
         finally
         {
@@ -367,11 +450,12 @@ public partial class CalendarPage
     internal async Task OnExportScopeOpenChangedAsync(bool open)
     {
         _exportScopeOpen = open;
-        if (!open)
+        // The attachments step opened from this choice and holds focus now (issue #522); it returns focus on close itself.
+        if (!open && !_attachmentExportOpen)
         {
             try
             {
-                await JS.InvokeVoidAsync("odsFocusById", "cal-export-btn");
+                await JS.InvokeVoidAsync("odsFocusById", ExportButtonId);
             }
             catch (Exception)
             {
@@ -390,9 +474,10 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            await DownloadAsync(
-                CalendarApi.SummarizeEventExportAsync(eventId), "Unable to export the event",
-                () => CalendarApi.ExportEventUrl(eventId), _ => CalendarIcsExport.EventToast(title));
+            await DownloadWithAttachmentsAsync(
+                mode => Included(mode) ? CalendarApi.SummarizeEventExportAsync(eventId) : CalendarApi.SummarizeEventExportAsync(eventId, mode), "Unable to export the event",
+                mode => Included(mode) ? CalendarApi.ExportEventUrl(eventId) : CalendarApi.ExportEventUrl(eventId, mode), (_, part) => CalendarIcsExport.EventToast(title, part),
+                $"Export “{(string.IsNullOrWhiteSpace(title) ? "Untitled event" : title)}”", "event", ExportButtonId);
         }
         finally
         {
@@ -410,9 +495,10 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            await DownloadAsync(
-                CalendarApi.SummarizePatternExportAsync(patternId), "Unable to export the series",
-                () => CalendarApi.ExportPatternUrl(patternId), s => CalendarIcsExport.SeriesToast(title, s));
+            await DownloadWithAttachmentsAsync(
+                mode => Included(mode) ? CalendarApi.SummarizePatternExportAsync(patternId) : CalendarApi.SummarizePatternExportAsync(patternId, mode), "Unable to export the series",
+                mode => Included(mode) ? CalendarApi.ExportPatternUrl(patternId) : CalendarApi.ExportPatternUrl(patternId, mode), (s, part) => CalendarIcsExport.SeriesToast(title, s, part),
+                $"Export the series “{(string.IsNullOrWhiteSpace(title) ? "Untitled event" : title)}”", "series", ExportButtonId);
         }
         finally
         {
@@ -519,7 +605,8 @@ public partial class CalendarPage
             e.CalendarEventId, e.CalendarId, calendar?.Name ?? "Unknown",
             e.Title, start, end, e.IsAllDay,
             bg, fg, e.RecurrencePatternId is not null,
-            e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null);
+            e.LocationRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null,
+            HasAttachments: e.AttachmentCount + e.PhotoCount > 0);
     }
 
     private void GoToday()
@@ -672,7 +759,7 @@ public partial class CalendarPage
     internal static NewCalendarEvent DropUpdate(ExistingCalendarEvent existing, DateOnly toDate, DateOnly fromDate)
     {
         var deltaDays = toDate.DayNumber - fromDate.DayNumber;
-        return CalendarWrites.Retimed(existing, existing.StartDateTime.AddDays(deltaDays), existing.EndDateTime.AddDays(deltaDays));
+        return CalendarWrites.Retimed(existing, existing.StartDateTime.AddDays(deltaDays), existing.EndDateTime.AddDays(deltaDays), AttachmentLinks.Keep);
     }
 
     /// <summary>
@@ -684,10 +771,10 @@ public partial class CalendarPage
     {
         if (CalendarZoneClock.IsZoned(existing) && Odyssey.Client.Pages.Journal.LocationVisuals.FindZone(existing.TimeZoneId) is { } zone)
         {
-            return CalendarWrites.Retimed(existing, CalendarZoneClock.Convert(newStart, viewer ?? TimeZoneInfo.Utc, zone), CalendarZoneClock.Convert(newEnd, viewer ?? TimeZoneInfo.Utc, zone));
+            return CalendarWrites.Retimed(existing, CalendarZoneClock.Convert(newStart, viewer ?? TimeZoneInfo.Utc, zone), CalendarZoneClock.Convert(newEnd, viewer ?? TimeZoneInfo.Utc, zone), AttachmentLinks.Keep);
         }
 
-        return CalendarWrites.Retimed(existing, newStart, newEnd);
+        return CalendarWrites.Retimed(existing, newStart, newEnd, AttachmentLinks.Keep);
     }
 
     // Time-grid drag/resize: set explicit start/end, hydrating the rest from the loaded event so

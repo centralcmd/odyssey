@@ -381,6 +381,24 @@ public class CalendarApiClientTests
     }
 
     [Fact]
+    public async Task The_attachments_mode_travels_on_the_three_exports_and_their_summaries_only_when_omitted()
+    {
+        var id = Guid.NewGuid();
+        var handler = SummaryHandler();
+        var client = CreateClient(handler);
+
+        await client.SummarizeExportAsync(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Omit);
+        Assert.Equal($"/api/calendars/{id}/ics/summary?attachments=omit", handler.LastRequest!.RequestUri!.PathAndQuery);
+        await client.SummarizeEventExportAsync(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Omit);
+        Assert.Equal($"/api/calendar-events/{id}/ics/summary?attachments=omit", handler.LastRequest!.RequestUri!.PathAndQuery);
+        await client.SummarizePatternExportAsync(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Include);
+        Assert.Equal($"/api/recurrence-patterns/{id}/ics/summary", handler.LastRequest!.RequestUri!.PathAndQuery);
+        Assert.Equal($"http://localhost/api/calendars/{id}/ics?attachments=omit", client.ExportUrl(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Omit));
+        Assert.Equal($"http://localhost/api/calendar-events/{id}/ics?attachments=omit", client.ExportEventUrl(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Omit));
+        Assert.Equal($"http://localhost/api/recurrence-patterns/{id}/ics", client.ExportPatternUrl(id, Odyssey.Dtos.Journal.IcsAttachmentsMode.Include));
+    }
+
+    [Fact]
     public void TransferUrls_WithoutABaseAddress_ThrowAClearInvalidOperationException()
     {
         var client = new CalendarApiClient(new OdysseyApi(new HttpClient(SummaryHandler())));

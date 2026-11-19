@@ -647,6 +647,59 @@ namespace Odyssey.Context.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Odyssey.Context.CalendarEventAttachment", b =>
+                {
+                    b.Property<Guid>("CalendarEventAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("CalendarEventId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("CalendarEventAttachmentId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("CalendarEventId", "FileId")
+                        .IsUnique();
+
+                    b.ToTable("CalendarEventAttachments");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.CalendarEventPhoto", b =>
+                {
+                    b.Property<Guid>("CalendarEventPhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("CalendarEventId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.HasKey("CalendarEventPhotoId");
+
+                    b.HasIndex("PhotoId");
+
+                    b.HasIndex("CalendarEventId", "PhotoId")
+                        .IsUnique();
+
+                    b.ToTable("CalendarEventPhotos");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Contact", b =>
                 {
                     b.Property<Guid>("ContactId")
@@ -5376,6 +5429,59 @@ namespace Odyssey.Context.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Odyssey.Context.RecurrencePatternAttachment", b =>
+                {
+                    b.Property<Guid>("RecurrencePatternAttachmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("FileId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<Guid>("RecurrencePatternId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("RecurrencePatternAttachmentId");
+
+                    b.HasIndex("FileId");
+
+                    b.HasIndex("RecurrencePatternId", "FileId")
+                        .IsUnique();
+
+                    b.ToTable("RecurrencePatternAttachments");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecurrencePatternPhoto", b =>
+                {
+                    b.Property<Guid>("RecurrencePatternPhotoId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<Guid>("PhotoId")
+                        .HasColumnType("char(36)");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("RecurrencePatternId")
+                        .HasColumnType("char(36)");
+
+                    b.HasKey("RecurrencePatternPhotoId");
+
+                    b.HasIndex("PhotoId");
+
+                    b.HasIndex("RecurrencePatternId", "PhotoId")
+                        .IsUnique();
+
+                    b.ToTable("RecurrencePatternPhotos");
+                });
+
             modelBuilder.Entity("Odyssey.Context.Secrets.SystemSettingSecret", b =>
                 {
                     b.Property<string>("Key")
@@ -5771,6 +5877,12 @@ namespace Odyssey.Context.Migrations
                         new
                         {
                             Key = "JournalTaskMaxLinksPerKind",
+                            UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Value = "50"
+                        },
+                        new
+                        {
+                            Key = "CalendarEventMaxLinksPerKind",
                             UpdatedAt = new DateTime(2000, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Value = "50"
                         },
@@ -7963,6 +8075,36 @@ namespace Odyssey.Context.Migrations
                     b.Navigation("RecurrencePattern");
                 });
 
+            modelBuilder.Entity("Odyssey.Context.CalendarEventAttachment", b =>
+                {
+                    b.HasOne("Odyssey.Context.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("CalendarEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.CalendarEventPhoto", b =>
+                {
+                    b.HasOne("Odyssey.Context.CalendarEvent", null)
+                        .WithMany()
+                        .HasForeignKey("CalendarEventId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Odyssey.Context.Contact", b =>
                 {
                     b.HasOne("Odyssey.Context.FileMetadata", null)
@@ -8845,6 +8987,36 @@ namespace Odyssey.Context.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Calendar");
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecurrencePatternAttachment", b =>
+                {
+                    b.HasOne("Odyssey.Context.FileMetadata", null)
+                        .WithMany()
+                        .HasForeignKey("FileId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.RecurrencePattern", null)
+                        .WithMany()
+                        .HasForeignKey("RecurrencePatternId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Odyssey.Context.RecurrencePatternPhoto", b =>
+                {
+                    b.HasOne("Odyssey.Context.Photo", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Odyssey.Context.RecurrencePattern", null)
+                        .WithMany()
+                        .HasForeignKey("RecurrencePatternId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Odyssey.Context.StoredObject", b =>

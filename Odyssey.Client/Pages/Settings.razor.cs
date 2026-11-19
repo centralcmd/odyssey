@@ -1183,6 +1183,14 @@ public partial class Settings : IDisposable
                 Write: (p, req) => req.RecurrenceMaxGeneratedOccurrences =
                     p.IntRequest("recurrenceMaxGeneratedOccurrences"),
                 MaxFrom: dto => dto.RecurrenceMaxGeneratedOccurrencesCeiling, LowerOnly: true),
+            new("calendarEventMaxLinksPerKind", "attach_file", "Max attachments per event",
+                "Upper limit on the files, and separately the photos, one calendar event or series may link.",
+                SettingClaim.Count, SettingControl.Number,
+                Min: SystemSettingsBounds.CalendarEventMaxLinksPerKindMin,
+                Max: SystemSettingsBounds.CalendarEventMaxLinksPerKindMax,
+                Field: nameof(SystemSettingsUpdate.CalendarEventMaxLinksPerKind),
+                Load: (p, dto) => p.SetIntLoaded("calendarEventMaxLinksPerKind", dto.CalendarEventMaxLinksPerKind),
+                Write: (p, req) => req.CalendarEventMaxLinksPerKind = p.IntRequest("calendarEventMaxLinksPerKind")),
         ]),
         // ── Import & export defaults (issue #434 key 13) ──────────────────────────────────────────
         // A one-row group on purpose: this bound applies to ALL FOUR importers at once, so filing it

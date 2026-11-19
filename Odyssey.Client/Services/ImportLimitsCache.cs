@@ -77,6 +77,8 @@ public sealed class ImportLimitsCache(IImportLimitsApiClient api) : IImportLimit
         JournalIcsMaxExportMegabytes = SystemSettingsBounds.JournalIcsMaxExportMegabytesMax,
         NewsOpmlMaxImportEntries = SystemSettingsDefaults.NewsOpmlMaxImportEntries,
         NewsOpmlMaxImportMegabytes = SystemSettingsDefaults.NewsOpmlMaxImportMegabytes,
+        // No invented cap (issue #521 v3 §E): the dialog pre-checks the calendar link cap only against a live value.
+        CalendarEventMaxLinksPerKind = null,
     };
 
     private Task<ImportLimitsDto?>? pending;

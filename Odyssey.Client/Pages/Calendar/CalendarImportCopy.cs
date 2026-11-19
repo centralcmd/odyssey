@@ -38,6 +38,30 @@ internal static class CalendarImportCopy
 
     public const string PendingNote = "An import is still running on the server; its result will appear as a notification.";
 
+    /// <summary>The <c>code</c> of an import refused for attachments the caller may not add (issue #521 §5.5).</summary>
+    public const string AttachmentsForbiddenCode = "calendar_ics_import_attachments_forbidden";
+
+    /// <summary>The error alert's text for that refusal (issue #522 §3.5): fixed, naming nothing from the file.</summary>
+    public const string AttachmentsForbidden =
+        "This file has attached documents or photos you don’t have permission to add. Nothing was imported.";
+
+    /// <summary>
+    /// The compose Warning's body, after its visible "Note:" prefix (issue #522 v3 §D), in two halves around the
+    /// emphasised "replace" the design system bolds.
+    /// </summary>
+    public const string AttachmentsNoteLead =
+        "attached documents and photos in the file are matched to ones already stored, so they are not stored twice. "
+        + "For an event that already exists, the documents or photos the file actually brings in";
+
+    public const string AttachmentsNoteReplace = "replace";
+
+    public const string AttachmentsNoteTail =
+        "the event’s own. Links to other services, such as Google Drive, are not imported and change nothing.";
+
+    /// <summary>The claim line, for a caller without every read and create claim for documents and photos (v3 §D).</summary>
+    public const string AttachmentsClaimLine =
+        "Files with attached documents or photos need permission to view and add them; such a file will be refused.";
+
     /// <summary>The sentence a partially applied import adds after the server's own text.</summary>
     public static string PartialSentence(int committedEvents) =>
         $"{committedEvents} {(committedEvents == 1 ? "event from this file was" : "events from this file were")} "
@@ -49,7 +73,74 @@ internal static class CalendarImportCopy
             ? problem!.TryGetExtensionValue<int>("committedEvents", out var committed) ? committed : 0
             : null;
 
-    public static int Skipped(IcsImportResult result) => result.Skipped.Sum(g => g.Count);
+    /// <summary>
+    /// The skipped EVENTS. <see cref="IcsImportResult.Skipped"/> also counts every skipped attachment under its reason
+    /// (issue #521 §5.5), and those are reported as their own result item instead, so they are taken out here.
+    /// </summary>
+    public static int Skipped(IcsImportResult result) =>
+        Math.Max(0, result.Skipped.Sum(g => g.Count) - result.SkippedAttachmentCount);
+
+    /// <summary>
+    /// The skip groups that are attachment reasons: they carry no sample title, while every event skip carries at least
+    /// one (the per-reason sample setting is at least 1). Only a result that skipped attachments has any.
+    /// </summary>
+    public static bool IsAttachmentGroup(IcsImportResult result, IcsImportSkipGroup group) =>
+        result.SkippedAttachmentCount > 0 && group.SampleTitles.Count == 0;
+
+    /// <summary>The event skip groups — what "Skipped events, by reason" lists.</summary>
+    public static IEnumerable<IcsImportSkipGroup> EventSkipGroups(IcsImportResult result) =>
+        result.Skipped.Where(g => g.Count > 0 && !IsAttachmentGroup(result, g));
+
+    /// <summary>
+    /// A skip reason's count as a screen reader hears it (issue #522 review): ", 2 attachments" rather than a bare number
+    /// run on after the reason. The visible count stays the bare number.
+    /// </summary>
+    public static string ReasonCount(int count) => $", {count} {Plural(count, "attachment", "attachments")}";
+
+    /// <summary>An attachment result item; <paramref name="Reasons"/> are the grouped skip reasons under the skipped one.</summary>
+    public sealed record AttachmentItem(string Text, IReadOnlyList<(string Reason, int Count)> Reasons);
+
+    /// <summary>
+    /// The attachment result items (issue #522 §3.5, v3 §D): fixed text and counts, only the non-zero ones, in real
+    /// plurals; the skip reasons are the server's fixed strings with their counts and never a sample title (SX7).
+    /// </summary>
+    public static IReadOnlyList<AttachmentItem> AttachmentItems(IcsImportResult r)
+    {
+        var items = new List<AttachmentItem>();
+        if (r.StoredFileCount > 0 || r.ReusedFileCount > 0)
+        {
+            var parts = new List<string>();
+            if (r.StoredFileCount > 0)
+                parts.Add($"{r.StoredFileCount} {Plural(r.StoredFileCount, "document", "documents")} stored");
+            if (r.ReusedFileCount > 0)
+                parts.Add($"{r.ReusedFileCount} matched to {Plural(r.ReusedFileCount, "a document", "documents")} already stored");
+            items.Add(new($"{string.Join("; ", parts)}.", []));
+        }
+
+        if (r.StoredPhotoCount > 0 || r.ReusedPhotoCount > 0)
+        {
+            var parts = new List<string>();
+            if (r.StoredPhotoCount > 0)
+                parts.Add($"{r.StoredPhotoCount} {Plural(r.StoredPhotoCount, "photo", "photos")} added to the photo library");
+            if (r.ReusedPhotoCount > 0)
+                parts.Add($"{r.ReusedPhotoCount} matched to {Plural(r.ReusedPhotoCount, "a photo", "photos")} already stored");
+            items.Add(new($"{string.Join("; ", parts)}.", []));
+        }
+
+        if (r.ReplacedLinkSetCount > 0)
+            items.Add(new($"{r.ReplacedLinkSetCount} {Plural(r.ReplacedLinkSetCount, "event or series had its", "events or series had their")} attachments replaced ({r.RemovedLinkCount} removed).", []));
+
+        if (r.SkippedAttachmentCount > 0)
+        {
+            var reasons = r.Skipped.Where(g => g.Count > 0 && IsAttachmentGroup(r, g)).Select(g => (g.Reason, g.Count)).ToList();
+            items.Add(new($"{r.SkippedAttachmentCount} {Plural(r.SkippedAttachmentCount, "attachment", "attachments")} skipped.", reasons));
+        }
+
+        if (r.IgnoredOccurrenceAttachmentCount > 0)
+            items.Add(new($"{r.IgnoredOccurrenceAttachmentCount} {Plural(r.IgnoredOccurrenceAttachmentCount, "attachment on a single occurrence was", "attachments on single occurrences were")} ignored. Attachments belong to the series.", []));
+
+        return items;
+    }
 
     /// <summary>The longest a skip-sample title is shown (issue #520 v3 §H): longer ones are cut, with an ellipsis.</summary>
     public const int SampleTitleMaxLength = 120;
@@ -118,9 +209,12 @@ internal static class CalendarImportCopy
         return items;
     }
 
-    /// <summary>The result announcement: the counts, then the non-zero items (AX6, AC 12) — never a title.</summary>
+    /// <summary>
+    /// The result announcement: the counts, then the non-zero items (AX6, AC 12), then the attachment items after Spec B's
+    /// (issue #522 §3.5) — never a title, and never a skip reason.
+    /// </summary>
     public static string Announcement(IcsImportResult result, bool canDelete) =>
-        string.Join(' ', new[] { $"{Summary(result)}." }.Concat(ResultItems(result, canDelete)));
+        string.Join(' ', new[] { $"{Summary(result)}." }.Concat(ResultItems(result, canDelete)).Concat(AttachmentItems(result).Select(i => i.Text)));
 
     /// <summary>"‹i› imported, ‹u› updated, ‹s› skipped[, ‹r› removed]" — counts only, never a title.</summary>
     public static string Summary(IcsImportResult result) =>
@@ -144,7 +238,9 @@ internal static class CalendarImportCopy
 
         var text = CommittedEvents(outcome.Problem) is { } committed
             ? $"{outcome.Error} {PartialSentence(committed)}"
-            : HandedOffFailure;
+            : string.Equals(outcome.Problem?.Code, AttachmentsForbiddenCode, StringComparison.Ordinal)
+                ? AttachmentsForbidden
+                : HandedOffFailure;
         snackbar.Add(text, Severity.Error, config => config.RequireInteraction = true, key);
     }
 }

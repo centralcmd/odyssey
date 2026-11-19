@@ -130,8 +130,11 @@ public sealed class RecurrenceKeyBackfillJob(
                 return null;
             }
 
+            var detachedRows = new List<CalendarEvent>();
             var detached = RecurrenceSeries.KeyInPlace(
-                state, time.GetUtcNow().UtcDateTime, userId: null, x => context.RecurrenceExclusions.Add(x));
+                state, time.GetUtcNow().UtcDateTime, userId: null, x => context.RecurrenceExclusions.Add(x), detachedRows);
+            // A detached row keeps the series' links, in the same save (issue #521 v4 §4).
+            await CalendarLinkService.StageCopyToDetachedAsync(context, patternId, detachedRows, cancellationToken);
             await context.SaveChangesAsync(cancellationToken);
             logger.LogInformation(
                 "Calendar series {RecurrencePatternId} keyed by the backfill: {DetachedCount} row(s) detached, {ExclusionCount} exclusion(s).",

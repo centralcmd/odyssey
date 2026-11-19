@@ -99,7 +99,21 @@
                                                         {
                                                             <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                                         }
-                                                        @vm.Title — @vm.CalendarName@(vm.LocationName is { } place ? $" · {place}" : null)
+                                                        @vm.Title
+                                                        @* The attachment glyph after the title and the recurrence glyph; the name suffix as text (#522 §3.3). *@
+                                                        @if (vm.HasAttachments)
+                                                        {
+                                                            <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                                                        }
+                                                        @(" — ")@vm.CalendarName@(vm.LocationName is { } place ? $" · {place}" : null)
+                                                        @if (vm.Recurring)
+                                                        {
+                                                            <span class="sr-only">@OdsCalendarNames.RecurringSuffix</span>
+                                                        }
+                                                        @if (vm.HasAttachments)
+                                                        {
+                                                            <span class="sr-only">@OdsCalendarNames.AttachmentsSuffix</span>
+                                                        }
                                                     </span>
                                                     @* Weather on the event's START row only: the summary describes the start (issue #363 §3.3). *@
                                                     @if (day == DateOnly.FromDateTime(vm.Start))
@@ -147,6 +161,8 @@
                       CanDelete="_canDelete"
                       CanReadLocations="_canReadLocations"
                       CanCreateLocations="_canCreateLocations"
+                      CanReadFiles="_canReadFiles"
+                      CanReadPhotos="_canReadPhotos"
                       OnSaved="OnEventSavedAsync"
                       OnEditSeries="OpenSeriesDialog"
                       ExportBusy="_exporting"
@@ -161,9 +177,17 @@
                        Calendars="_calendars"
                        DefaultCalendarId="_importDefaultCalendarId"
                        CanDelete="_canDelete"
+                       CanAddAttachments="_canAddAttachments"
                        ImportPending="_importPending"
                        OnBackgrounded="OnImportBackgroundedAsync"
                        OnChanged="ReloadEventsAsync" />
+
+@if (_attachmentExport is { } attachmentExport)
+{
+    <ExportAttachmentsDialog @bind-Open="_attachmentExportOpen" Title="@attachmentExport.Title" What="@attachmentExport.What"
+                             Noun="@attachmentExport.Noun" Summary="attachmentExport.Summary" Forbidden="attachmentExport.Forbidden"
+                             ReturnFocusToId="@attachmentExport.ReturnFocusToId" OnExport="AttachmentExportChosenAsync" />
+}
 
 <ExportEventScopeDialog Open="_exportScopeOpen" OpenChanged="OnExportScopeOpenChangedAsync"
                          EventTitle="@(_exportScopeEvent?.Title ?? string.Empty)"

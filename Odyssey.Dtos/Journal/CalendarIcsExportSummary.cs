@@ -15,4 +15,13 @@ public sealed record CalendarIcsExportSummary
 
     /// <summary>The calendar occurrences those blocks represent.</summary>
     public int OccurrenceCount { get; set; }
+
+    /// <summary>Distinct attached files the export carries, each counted once (issue #521 §5.4); 0 with <c>attachments=omit</c>.</summary>
+    public int AttachmentCount { get; set; }
+
+    /// <summary>Distinct linked photos the export carries, each counted once.</summary>
+    public int PhotoCount { get; set; }
+
+    /// <summary>The raw content bytes of those files and photos, each counted once (v3 §E).</summary>
+    public long AttachmentBytes { get; set; }
 }

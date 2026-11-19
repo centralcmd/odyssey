@@ -76,6 +76,9 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     /// <summary>Top-level <c>VEVENT</c>s found by pass 1.</summary>
     public int ComponentCount { get; private set; }
 
+    /// <summary>The <c>ATTACH</c> kinds the whole file carries (issue #521 §8.3): what the import's claim check reads.</summary>
+    public IcsAttachmentKinds AttachmentKinds { get; private set; } = new();
+
     /// <summary>Spill bytes on disk now: a merge round's inputs are subtracted as they are deleted.</summary>
     public long SpilledBytes => spilledBytes;
 
@@ -141,7 +144,7 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
             }
 
             current = record.Hash;
-            group.Add(new ComponentRef(record.Offset, record.Length, record.IsOverride));
+            group.Add(new ComponentRef(record.Offset, record.Length, record.IsOverride) { HasInline = record.HasInline });
         }
 
         if (group.Count > 0)
@@ -149,6 +152,19 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
             yield return group;
         }
     }
+
+    /// <summary>
+    /// One component's bytes, unread, for the attachment spooler to stream through (issue #521 v5 §1). The stream is the
+    /// upload itself, positioned and bounded; it is not disposed by the caller's reader.
+    /// </summary>
+    public Stream OpenComponent(ComponentRef component)
+    {
+        source.Seek(component.Offset, SeekOrigin.Begin);
+        return new BoundedReadStream(source, component.Length);
+    }
+
+    /// <summary>The envelope a component is parsed in.</summary>
+    public static string ComponentEnvelope => Envelope;
 
     /// <summary>Re-reads one component's text from the upload, wrapped in a minimal <c>VCALENDAR</c> for parsing.</summary>
     public async Task<string> ReadComponentAsync(ComponentRef component, CancellationToken cancellationToken)
@@ -191,6 +207,7 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
         var cap = ComponentCap(uploadBytes);
         source.Seek(0, SeekOrigin.Begin);
         var scanner = new IcsByteScanner(source);
+        AttachmentKinds = scanner.AttachmentKinds;
         await foreach (var scanned in scanner.ReadEventsAsync(cancellationToken))
         {
             ComponentCount++;
@@ -206,7 +223,7 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
 
             await AddAsync(new Record(
                 HashUid(scanned.Uid, scanned.Offset), scanned.HasRecurrenceId, RecurrenceSortKey(scanned.RecurrenceId),
-                scanned.Offset, scanned.Length), cancellationToken);
+                scanned.Offset, scanned.Length, scanned.HasInlineAttachment), cancellationToken);
         }
     }
 
@@ -443,7 +460,8 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     private static FileStorageFullException SpillFull() =>
         new("There is not enough free temporary disk space to sort this import. Try a smaller file or try again later.");
 
-    private readonly record struct Record(UInt128 Hash, bool IsOverride, long RecurrenceKey, long Offset, int Length)
+    // Byte 37 carries whether the component has an inline attachment (issue #521); 38–39 stay padding.
+    private readonly record struct Record(UInt128 Hash, bool IsOverride, long RecurrenceKey, long Offset, int Length, bool HasInline = false)
     {
         public void Write(Span<byte> target)
         {
@@ -452,7 +470,8 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
             BinaryPrimitives.WriteInt64BigEndian(target[17..], RecurrenceKey);
             BinaryPrimitives.WriteInt64BigEndian(target[25..], Offset);
             BinaryPrimitives.WriteInt32BigEndian(target[33..], Length);
-            target[37..RecordSize].Clear();
+            target[37] = HasInline ? (byte)1 : (byte)0;
+            target[38..RecordSize].Clear();
         }
 
         public static Record Read(ReadOnlySpan<byte> source) => new(
@@ -460,7 +479,8 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
             source[16] != 0,
             BinaryPrimitives.ReadInt64BigEndian(source[17..]),
             BinaryPrimitives.ReadInt64BigEndian(source[25..]),
-            BinaryPrimitives.ReadInt32BigEndian(source[33..]));
+            BinaryPrimitives.ReadInt32BigEndian(source[33..]),
+            source[37] != 0);
     }
 
     // (uidHash, isOverride, recurrenceKey, fileOffset): a master always sorts before its overrides (v3 §E).
@@ -489,7 +509,64 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
 }
 
 /// <summary>One <c>VEVENT</c>'s place in the upload, as pass 2 yields it.</summary>
-internal readonly record struct ComponentRef(long Offset, int Length, bool IsOverride);
+internal readonly record struct ComponentRef(long Offset, int Length, bool IsOverride)
+{
+    /// <summary>It carries an inline attachment, so pass 2 streams it through the spooler rather than reading it whole.</summary>
+    public bool HasInline { get; init; }
+}
+
+/// <summary>A read-only window of <paramref name="length"/> bytes over <paramref name="inner"/> from its position.</summary>
+internal sealed class BoundedReadStream(Stream inner, long window) : Stream
+{
+    private readonly long length = window;
+    private long remaining = window;
+
+    public override bool CanRead => true;
+
+    public override bool CanSeek => false;
+
+    public override bool CanWrite => false;
+
+    public override long Length => length;
+
+    public override long Position
+    {
+        get => length - remaining;
+        set => throw new NotSupportedException();
+    }
+
+    public override int Read(byte[] buffer, int offset, int count)
+    {
+        var read = inner.Read(buffer, offset, (int)Math.Min(count, remaining));
+        remaining -= read;
+        return read;
+    }
+
+    public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+    {
+        if (remaining <= 0)
+        {
+            return 0;
+        }
+
+        var read = await inner.ReadAsync(buffer[..(int)Math.Min(buffer.Length, remaining)], cancellationToken);
+        remaining -= read;
+        return read;
+    }
+
+    public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken) =>
+        ReadAsync(buffer.AsMemory(offset, count), cancellationToken).AsTask();
+
+    public override void Flush()
+    {
+    }
+
+    public override long Seek(long offset, SeekOrigin origin) => throw new NotSupportedException();
+
+    public override void SetLength(long value) => throw new NotSupportedException();
+
+    public override void Write(byte[] buffer, int offset, int count) => throw new NotSupportedException();
+}
 
 /// <summary>
 /// A process-wide reservation of temporary disk for the import spill (issue #519 implementation note 6): an import
