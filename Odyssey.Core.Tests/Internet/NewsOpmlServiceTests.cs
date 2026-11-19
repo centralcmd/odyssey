@@ -557,6 +557,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
         Assert.True(stream.BytesRead > 60_000_000, $"only {stream.BytesRead} bytes were generated");
         Assert.Equal((100_000, NewsSettings.Defaults.MaxFeeds), (result.Feeds, result.Created));
         Assert.True(result.ItemsTruncated);
+        Assert.True(probe.Samples >= 57, $"only {probe.Samples} heap samples were taken");
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 
@@ -565,13 +566,17 @@ public sealed class NewsOpmlServiceTests : IDisposable
     {
         var chunk = new string('a', 59_999) + ">";
         var lines = Enumerable.Range(0, 1_000).Select(_ => chunk);
+        // The import refuses this file after about 76 KB, long before a MiB clock would tick, so this stream samples
+        // every 16 KiB and the test asserts the probe actually saw the work.
         var probe = new HeapProbe();
-        await using var stream = new LineStream("<opml><body><outline xmlUrl=\"https://x.example/\" text=\"", lines, "\"/></body></opml>", probe);
+        await using var stream = new LineStream(
+            "<opml><body><outline xmlUrl=\"https://x.example/\" text=\"", lines, "\"/></body></opml>", probe, 16 * 1024);
 
         var (error, peak) = await MeasurePeakAsync(probe, () => Assert.ThrowsAsync<NewsException>(() =>
             Import().ImportAsync(stream, true, "user-1", CancellationToken.None)));
 
         Assert.Equal(NewsErrorCodes.OpmlUnreadable, error.Code);
+        Assert.True(probe.Samples >= 4, $"only {probe.Samples} heap samples were taken");
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 
@@ -580,9 +585,9 @@ public sealed class NewsOpmlServiceTests : IDisposable
     /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure.
     ///
     /// <para>
-    /// Samples are clocked two ways. <see cref="LineStream"/> takes one per MiB the import reads, so how often the
-    /// probe samples follows the import's progress, whatever a collection costs, and a background sampler covers work
-    /// that reads nothing (the save at the end). The background sampler waits at least four times as long as its last
+    /// Samples are clocked two ways. <see cref="LineStream"/> takes one per MiB the import reads (or the interval a
+    /// test passes), so how often the probe samples follows the import's progress, whatever a collection costs, and a
+    /// background sampler covers work that reads nothing (the save at the end). The background sampler waits at least four times as long as its last
     /// collection took. A full collection costs in proportion to the whole live heap, which in the full suite holds
     /// everything the earlier test classes left behind, and it suspends the work thread. Sampling
     /// <see cref="GC.GetTotalMemory(bool)"/> with <c>true</c> every 5 ms, which repeats collections until the figure
@@ -597,7 +602,14 @@ public sealed class NewsOpmlServiceTests : IDisposable
             while (!stop.IsCancellationRequested)
             {
                 var cost = probe.Sample();
-                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(5, cost.TotalMilliseconds * 4)));
+                try
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(5, cost.TotalMilliseconds * 4)), stop.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         });
 
@@ -615,6 +627,19 @@ public sealed class NewsOpmlServiceTests : IDisposable
         private readonly Lock gate = new();
         private readonly long baseline = GC.GetTotalMemory(forceFullCollection: true);
         private long peak;
+        private int samples;
+
+        /// <summary>How many samples were taken, so a test can fail on a probe that never saw its work.</summary>
+        public int Samples
+        {
+            get
+            {
+                lock (gate)
+                {
+                    return samples;
+                }
+            }
+        }
 
         public long Peak
         {
@@ -635,6 +660,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
             lock (gate)
             {
                 peak = Math.Max(peak, live);
+                samples++;
             }
 
             return Stopwatch.GetElapsedTime(started);
@@ -642,9 +668,10 @@ public sealed class NewsOpmlServiceTests : IDisposable
     }
 
     /// <summary>A stream generated line by line, so a large test file is never held in memory.</summary>
-    private sealed class LineStream(string head, IEnumerable<string> lines, string tail, HeapProbe? probe = null) : Stream
+    private sealed class LineStream(
+        string head, IEnumerable<string> lines, string tail, HeapProbe? probe = null, long sampleEveryBytes = 1024 * 1024)
+        : Stream
     {
-        private const long SampleEveryBytes = 1024 * 1024;
         private readonly IEnumerator<string> source = new[] { head }.Concat(lines).Append(tail).GetEnumerator();
         private byte[] current = [];
         private int offset;
@@ -679,7 +706,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
             offset += n;
             var before = BytesRead;
             BytesRead += n;
-            if (probe is not null && before / SampleEveryBytes != BytesRead / SampleEveryBytes)
+            if (probe is not null && before / sampleEveryBytes != BytesRead / sampleEveryBytes)
             {
                 probe.Sample();
             }
