@@ -503,6 +503,10 @@ internal static class SystemSettingsRegistry
             CacheKeyToEvict = JournalLimitsLookup.CacheKey,
             Read = r => r.CalendarEventMaxLinksPerKind,
             Write = (dto, v) => dto.CalendarEventMaxLinksPerKind = v,
+            Advise = SettingAdvisories.AboveDefault(
+                dto => dto.CalendarEventMaxLinksPerKind, SystemSettingsDefaults.CalendarEventMaxLinksPerKind,
+                "Deleting a recurring series copies its attachments onto every past occurrence it keeps, "
+                + "so the copy grows with this value."),
         },
         new IntSetting
         {
