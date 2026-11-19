@@ -183,6 +183,6 @@
 @* Edit dialog stays mounted and toggles via Open (@key resets its state when the target changes). *@
 <EditPhotoDialog @key="_editPhotoId" Open="_editPhotoId is not null" OpenChanged="v => { if (!v) _editPhotoId = null; }"
                  PhotoId="@(_editPhotoId ?? Guid.Empty)"
-                 TagOptions="_photoTagOptions" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
+                 TagOptions="_photoTagOptions" TagNameBlocked="_photoTagNameBlocked" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
                  CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
                  OnSaved="OnPhotoSaved" />

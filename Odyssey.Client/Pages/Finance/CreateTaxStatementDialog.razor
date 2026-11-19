@@ -107,12 +107,14 @@
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Help="Sum into derived advance tax paid (within the year)." />
             <OdsTagMultiSelect Id="tax-statement-income-tags" Label="Income tags"
                                Value="_incomeTags" ValueChanged="@(v => _incomeTags = v)" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Help="Sum into derived actual income." />
         </OdsFormRow>
         <OdsFormRow>
@@ -121,6 +123,7 @@
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                               CreateBlocked="_tagNameBlocked"
                                Error="@_settlementTagsError"
                                Help="@(_settlementTagsError ?? "Additional tax paid or refund received — summed within the settlement range.")" />
             <div></div>

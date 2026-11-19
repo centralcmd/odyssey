@@ -51,7 +51,8 @@
     <OdsTagMultiSelect Label="Tags" Value="Draft.TagIds"
                        ValueChanged="@(v => Draft.TagIds = v)" Options="TagOptions"
                        Placeholder="No tags" AddLabel="Add tag"
-                       OnCreate="OnCreateTag" CreateKinds="OdsTypeRegistries.TagCreateKinds.Journal" />
+                       OnCreate="OnCreateTag" CreateKinds="OdsTypeRegistries.TagCreateKinds.Journal"
+                       CreateBlocked="BlockedTagName" />
     <OdsTagMultiSelect Label="Contacts" Value="Draft.ContactIds"
                        ValueChanged="@(v => Draft.ContactIds = v)" Options="ContactOptions"
                        Placeholder="No linked contacts" AddLabel="Link contact" Noun="contact"
