@@ -25,6 +25,7 @@
                    AnchorOrigin="@(Align == OdsAlign.End ? Origin.BottomRight : Origin.BottomLeft)"
                    TransformOrigin="@(Align == OdsAlign.End ? Origin.TopRight : Origin.TopLeft)"
                    aria-label="@AriaLabel"
+                   aria-describedby="@DescribedBy"
                    id="@_id" />
 </OdsFieldShell>
 
@@ -61,6 +62,10 @@
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Id { get; set; }
+
+    /// <summary>Id(s) of text that describes the time, set as the picker's <c>aria-describedby</c> — the calendar's
+    /// two-zone line and DST hints (issue #520 §3, AX2).</summary>
+    [Parameter] public string? DescribedBy { get; set; }
 
     private string _id = default!;
 

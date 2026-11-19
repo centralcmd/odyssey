@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Journal;
@@ -24,6 +23,8 @@ public partial class ExportCalendarEventsDialog
     /// <summary>Prefill: the page's active search term.</summary>
     [Parameter] public string? InitialSearch { get; set; }
 
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
     private static readonly IReadOnlyList<OdsSegmentedOption> _scopeOptions =
     [
         new() { Value = "all", Label = "All events", Icon = "calendar_month" },
@@ -40,6 +41,7 @@ public partial class ExportCalendarEventsDialog
     private bool _wasOpen;
     private bool _focusErrorPending;
     private ElementReference _errorAlert;
+    private OdsLiveAnnouncer? _announcer;
 
     private IReadOnlyCollection<string> _calendarValues => [.. _calendarIds.Select(id => id.ToString())];
 
@@ -87,6 +89,8 @@ public partial class ExportCalendarEventsDialog
         DateTime? to = null;
         IReadOnlyCollection<Guid>? calendarIds = null;
         string? search = null;
+        var viewer = Odyssey.Client.Services.ViewerTimeZone.From(Services);
+        var viewZone = viewer.ViewZoneId;
 
         if (_scope == "filtered")
         {
@@ -111,25 +115,29 @@ public partial class ExportCalendarEventsDialog
                 }
             }
 
-            from = _from;
-            to = _to;
+            // The dates are the viewer's days: sent as the instants of their local midnights, with the viewer's zone, so a
+            // zoned event is in the export exactly when the grid shows it in the range (issue #520 v4 §1, AC 22).
+            from = _from is { } start ? CalendarZoneClock.ToUtc(start.Date, viewer.Zone) : null;
+            to = _to is { } end ? CalendarZoneClock.ToUtc(end.Date, viewer.Zone) : null;
             calendarIds = _calendarIds.Count > 0 ? _calendarIds : null;
             search = string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
         }
 
         _busy = true;
+        _ = _announcer?.Announce(CalendarIcsExport.Preparing);
         try
         {
-            var outcome = await CalendarApi.ExportAggregateAsync(from, to, calendarIds, search);
-            if (!outcome.IsSuccess || outcome.Value is not { } file)
+            // Summary first (issue #517 E2): its refusal is shown here, and no download starts.
+            var summary = await CalendarApi.SummarizeAggregateExportAsync(from, to, calendarIds, search, viewZone);
+            if (!summary.IsSuccess || summary.Value is not { } counts)
             {
-                SetError(outcome.Error ?? "The events could not be exported.");
+                SetError(summary.Error ?? "The events could not be exported.");
                 return;
             }
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
             await OpenChanged.InvokeAsync(false);
+            await NativeTransfer.DownloadAsync(CalendarApi.ExportAggregateUrl(from, to, calendarIds, search, viewZone));
+            CalendarIcsExport.ToastStarted(Snackbar, CalendarIcsExport.AllToast(counts));
         }
         finally
         {

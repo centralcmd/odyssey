@@ -3917,6 +3917,85 @@ tr:focus-within > .odc-rowactions.reveal,
 
 @media (max-width: 520px) { .cal-imp-stats { grid-template-columns: 1fr; } }
 
+/* ── Import calendar dialog: streaming phases, removals, removed tile (issue #517; Odyssey Design System ·
+   ui_kits/web/calendar.css "Import dialog — streaming phases") ── */
+/* Footer status line (role=status; focus target when the Stop-upload confirmation closes itself). */
+.cal-imp-foot-status { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); outline: none; border-radius: var(--radius-sm); }
+.cal-imp-foot-status:focus-visible { box-shadow: 0 0 0 2px var(--mud-palette-primary); }
+/* Error alert wrapper — takes focus after a failure. */
+.cal-imp-alert { outline: none; border-radius: var(--radius-md); }
+.cal-imp-alert:focus-visible { box-shadow: 0 0 0 2px var(--mud-palette-primary); }
+/* The opt-in removal checkbox, its help line and the warning while it is ticked. */
+.cal-imp-remove { display: flex; flex-direction: column; gap: 6px; }
+.cal-imp-remove-help { padding-left: 28px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+/* The removal warning's live region stays mounted (empty) so it is filled, not created, when the box is ticked;
+   an empty one takes back the flex gap it would otherwise add. */
+.cal-imp-remove-live:empty { margin-top: -6px; }
+.cal-imp-note-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* Uploading / importing-on-the-server body */
+.cal-imp-progress { display: flex; flex-direction: column; gap: 14px; }
+.cal-imp-progress-target { font: var(--fw-regular) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cal-imp-step { display: flex; align-items: center; gap: 10px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-step .material-icons { color: var(--mud-palette-text-disabled); flex: none; font-size: 18px; }
+.cal-imp-step .mud-progress-circular { flex: none; }
+.cal-imp-step.active { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.cal-imp-step.done .material-icons { color: var(--mud-palette-success); }
+/* Four tiles: at most 2 columns in the 560 px dialog; reflows at 200 % text and 320 px. */
+.cal-imp-stats.cal-imp-stats--four { grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); }
+/* Removed tile — error-tinted border and icon (icon >= 3:1 on the surface in both themes). */
+.cal-imp-stat.rm { border-color: color-mix(in oklab, var(--mud-palette-error) 40%, var(--mud-palette-divider)); }
+.cal-imp-stat.rm .material-icons { color: var(--mud-palette-error); }
+/* Removed events group — the skip-group markup with an error tone. */
+.cal-imp-skip.rm.open { border-color: color-mix(in oklab, var(--mud-palette-error) 40%, var(--mud-palette-divider)); }
+.cal-imp-skip.rm .cal-imp-skip-count { color: var(--mud-palette-error); background: color-mix(in oklab, var(--mud-palette-error) 14%, transparent); }
+/* Stop-upload confirmation */
+.cal-imp-stop-dialog { width: 420px; max-width: 96vw; }
+.cal-imp-stop-text { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+/* Result list (issue #520 §3 "Result notes"; DS ui_kits/web/calendar.css "Result list") */
+.cal-imp-items { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); }
+.cal-imp-item::marker { color: var(--mud-palette-text-secondary); }
+
+/* ── Event dialog: time zones, exceptions, confirm step (issue #520; DS ui_kits/web/calendar.css "Event dialog
+   additions"). Tokens only; no new tokens. ── */
+/* Secondary lines under the time inputs: the two-zone line and the DST hints. */
+.cal-ce-zoneline,
+.cal-ce-hint { display: flex; gap: 6px; align-items: flex-start; margin-top: 6px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.cal-ce-zoneline .material-icons,
+.cal-ce-hint .material-icons { flex: none; margin-top: 1px; font-size: 14px; color: var(--mud-palette-text-secondary); }
+.cal-ce-hint { color: var(--mud-palette-text-primary); }
+.cal-ce-hint .material-icons { color: var(--pending-text, var(--mud-palette-warning)); }
+/* Occurrence of a floating series: the zone as read-only text. */
+.cal-ce-zone-ro { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--mud-palette-background-gray); font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-ce-zone-ro .material-icons { font-size: 18px; }
+/* Series hint head row: the "Edited separately" chip beside the hint text. */
+.cal-ce-hint-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.cal-ce-hint-more { display: block; margin-top: 4px; color: var(--mud-palette-text-secondary); }
+.cal-ce-exclusions { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-ce-exclusions .material-icons { font-size: 18px; }
+/* Inline confirm step (series save) — replaces the footer. */
+.cal-ce-confirm { flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.cal-ce-confirm-h { margin: 0; font: var(--fw-medium) var(--fs-subtitle1, var(--fs-body1))/1.35 var(--font-sans); color: var(--mud-palette-text-primary); }
+.cal-ce-confirm-h:focus { outline: none; }
+.cal-ce-confirm-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
+.cal-ce-confirm-t { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
+.cal-ce-confirm-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+/* Focusable alert container (version conflict, preview failure). */
+.cal-ce-alert { margin-bottom: 16px; }
+.cal-ce-alert:focus { outline: none; }
+.cal-ce-alert:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
+.cal-ce-alert-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+/* Read-only view (a principal who cannot submit). */
+.cal-ce-ro { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cal-ce-ro-title { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: var(--fw-medium) var(--fs-h6, var(--fs-body1))/1.3 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.cal-ce-ro-row { display: flex; gap: 10px; align-items: flex-start; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; min-width: 0; }
+.cal-ce-ro-row .material-icons { flex: none; font-size: 18px; color: var(--mud-palette-text-secondary); margin-top: 1px; }
+.cal-ce-ro-sub { display: block; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+@media (max-width: 480px) {
+  .cal-ce-confirm-actions { justify-content: stretch; }
+  .cal-ce-confirm-actions > * { flex: 1 1 auto; }
+}
+
 /* ── Export events dialog (issue #340, Odyssey Design System · ExportCalendarEventsModal) ── */
 .cal-exp-dialog { width: 540px; max-width: 96vw; }
 .cal-exp-form { display: flex; flex-direction: column; gap: 16px; }
@@ -5256,3 +5335,17 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 
 /* ---------- RelativeTime (§4.1) ---------- */
 .odc-reltime { font-variant-numeric: tabular-nums; }
+
+/* ── OdsIconButton Busy (issue #517; Odyssey Design System · components/bundle.css, IconButton "busy"):
+   spinner in place of the glyph; aria-disabled, never :disabled, so focus stays. ── */
+.odc-iconbtn-busy { cursor: progress; }
+.odc-iconbtn-busy:hover { background: transparent; }
+.odc-iconbtn-spinner {
+  display: inline-block; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--mud-palette-action-default-hover); border-top-color: var(--mud-palette-primary);
+  animation: odc-spin 0.7s linear infinite;
+}
+.mud-icon-button-size-small .odc-iconbtn-spinner { width: 14px; height: 14px; }
+.mud-icon-button-size-large .odc-iconbtn-spinner { width: 22px; height: 22px; }
+@keyframes odc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .odc-iconbtn-spinner { animation-duration: 2.4s; } }

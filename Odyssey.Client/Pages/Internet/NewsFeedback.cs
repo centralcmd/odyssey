@@ -23,13 +23,13 @@ internal static class NewsFeedback
     public const string GoneText = "No longer available.";
 
     /// <summary>The snackbar container is a live region (see the summary above); pinned by <c>NewsSnackbarTests</c>.</summary>
-    public const bool SnackbarSpeaks = true;
+    public const bool SnackbarSpeaks = Odyssey.Client.Services.SnackbarAnnouncement.SnackbarSpeaks;
 
     /// <summary>
     /// What the page's announcer should say for a message a snackbar has just shown: nothing while the snackbar speaks
     /// for itself, so the change is never heard twice; the text otherwise.
     /// </summary>
-    public static string? Spoken(string text) => SnackbarSpeaks ? null : text;
+    public static string? Spoken(string text) => Odyssey.Client.Services.SnackbarAnnouncement.Spoken(text);
 
     /// <summary>A <c>503 news-busy</c>: a statement hit its time limit or a lock wait (§7.1).</summary>
     public static bool IsBusy(ApiProblem? problem) =>
