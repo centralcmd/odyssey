@@ -205,8 +205,6 @@
 </OdsModal>
 
 @code {
-    private RenderFragment TitleContent => @<text>@DialogTitleText</text>;
-
     // Above the form: the version conflict (focusable, with its two actions) or a preview / write failure (v3 §B, §C).
     private RenderFragment Alerts => __builder =>
     {
@@ -286,16 +284,6 @@
                               Details="@_draft.Location" Description="@_draft.Description" />
         @LinkFields
         @WeatherSection
-    };
-
-    // Photos and Attachments (issue #522 §3.1–§3.2).
-    private RenderFragment LinkFields => __builder =>
-    {
-        <CalendarEventLinks Draft="_draft" FromSeries="OccurrenceOfSeries" ReadOnly="!CanSubmit" Loading="_linksLoading"
-                            Noun="@(Mode == CalendarEventDialogMode.Series ? "series" : "event")" Cap="_linkCap"
-                            CanReadFiles="CanReadFiles" CanReadPhotos="CanReadPhotos"
-                            AttachmentCount="LoadedAttachmentCount" PhotoCount="LoadedPhotoCount"
-                            OnAnnounce="Announce" OnEditSeries="EditSeriesClicked" />
     };
 
     private RenderFragment RuleFields => __builder =>

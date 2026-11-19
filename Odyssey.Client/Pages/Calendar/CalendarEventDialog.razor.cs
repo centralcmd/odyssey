@@ -13,6 +13,28 @@ namespace Odyssey.Client.Pages.Calendar;
 
 public partial class CalendarEventDialog
 {
+
+    private RenderFragment TitleContent => builder => builder.AddContent(0, DialogTitleText);
+
+    // Photos and Attachments (issue #522 §3.1–§3.2), built here so the inline @code block stays under the
+    // source-convention limit.
+    private RenderFragment LinkFields => builder =>
+    {
+        builder.OpenComponent<CalendarEventLinks>(0);
+        builder.AddComponentParameter(1, nameof(CalendarEventLinks.Draft), _draft);
+        builder.AddComponentParameter(2, nameof(CalendarEventLinks.FromSeries), OccurrenceOfSeries);
+        builder.AddComponentParameter(3, nameof(CalendarEventLinks.ReadOnly), !CanSubmit);
+        builder.AddComponentParameter(4, nameof(CalendarEventLinks.Loading), _linksLoading);
+        builder.AddComponentParameter(5, nameof(CalendarEventLinks.Noun), Mode == CalendarEventDialogMode.Series ? "series" : "event");
+        builder.AddComponentParameter(6, nameof(CalendarEventLinks.Cap), _linkCap);
+        builder.AddComponentParameter(7, nameof(CalendarEventLinks.CanReadFiles), CanReadFiles);
+        builder.AddComponentParameter(8, nameof(CalendarEventLinks.CanReadPhotos), CanReadPhotos);
+        builder.AddComponentParameter(9, nameof(CalendarEventLinks.AttachmentCount), LoadedAttachmentCount);
+        builder.AddComponentParameter(10, nameof(CalendarEventLinks.PhotoCount), LoadedPhotoCount);
+        builder.AddComponentParameter(11, nameof(CalendarEventLinks.OnAnnounce), EventCallback.Factory.Create<string>(this, Announce));
+        builder.AddComponentParameter(12, nameof(CalendarEventLinks.OnEditSeries), EventCallback.Factory.Create(this, EditSeriesClicked));
+        builder.CloseComponent();
+    };
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public CalendarEventDialogMode Mode { get; set; } = CalendarEventDialogMode.Create;
