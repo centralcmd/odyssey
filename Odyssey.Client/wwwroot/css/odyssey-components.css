@@ -3917,6 +3917,39 @@ tr:focus-within > .odc-rowactions.reveal,
 
 @media (max-width: 520px) { .cal-imp-stats { grid-template-columns: 1fr; } }
 
+/* ── Import calendar dialog: streaming phases, removals, removed tile (issue #517; Odyssey Design System ·
+   ui_kits/web/calendar.css "Import dialog — streaming phases") ── */
+/* Footer status line (role=status; focus target when the Stop-upload confirmation closes itself). */
+.cal-imp-foot-status { flex: 1; min-width: 0; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); outline: none; border-radius: var(--radius-sm); }
+.cal-imp-foot-status:focus-visible { box-shadow: 0 0 0 2px var(--mud-palette-primary); }
+/* Error alert wrapper — takes focus after a failure. */
+.cal-imp-alert { outline: none; border-radius: var(--radius-md); }
+.cal-imp-alert:focus-visible { box-shadow: 0 0 0 2px var(--mud-palette-primary); }
+/* The opt-in removal checkbox, its help line and the warning while it is ticked. */
+.cal-imp-remove { display: flex; flex-direction: column; gap: 6px; }
+.cal-imp-remove-help { padding-left: 28px; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-note-lines { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+/* Uploading / importing-on-the-server body */
+.cal-imp-progress { display: flex; flex-direction: column; gap: 14px; }
+.cal-imp-progress-target { font: var(--fw-regular) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.cal-imp-step { display: flex; align-items: center; gap: 10px; font: var(--fw-regular) var(--fs-body2)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-step .material-icons { color: var(--mud-palette-text-disabled); flex: none; font-size: 18px; }
+.cal-imp-step .mud-progress-circular { flex: none; }
+.cal-imp-step.active { color: var(--mud-palette-text-primary); font-weight: var(--fw-medium); }
+.cal-imp-step.done .material-icons { color: var(--mud-palette-success); }
+/* Four tiles: at most 2 columns in the 560 px dialog; reflows at 200 % text and 320 px. */
+.cal-imp-stats.cal-imp-stats--four { grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr)); }
+/* Removed tile — error-tinted border and icon (icon >= 3:1 on the surface in both themes). */
+.cal-imp-stat.rm { border-color: color-mix(in oklab, var(--mud-palette-error) 40%, var(--mud-palette-divider)); }
+.cal-imp-stat.rm .material-icons { color: var(--mud-palette-error); }
+/* Removed events group — the skip-group markup with an error tone. */
+.cal-imp-skip.rm.open { border-color: color-mix(in oklab, var(--mud-palette-error) 40%, var(--mud-palette-divider)); }
+.cal-imp-skip.rm .cal-imp-skip-count { color: var(--mud-palette-error); background: color-mix(in oklab, var(--mud-palette-error) 14%, transparent); }
+/* Stop-upload confirmation */
+.cal-imp-stop-dialog { width: 420px; max-width: 96vw; }
+.cal-imp-stop-text { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); }
+
 /* ── Export events dialog (issue #340, Odyssey Design System · ExportCalendarEventsModal) ── */
 .cal-exp-dialog { width: 540px; max-width: 96vw; }
 .cal-exp-form { display: flex; flex-direction: column; gap: 16px; }
@@ -5256,3 +5289,17 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 
 /* ---------- RelativeTime (§4.1) ---------- */
 .odc-reltime { font-variant-numeric: tabular-nums; }
+
+/* ── OdsIconButton Busy (issue #517; Odyssey Design System · components/bundle.css, IconButton "busy"):
+   spinner in place of the glyph; aria-disabled, never :disabled, so focus stays. ── */
+.odc-iconbtn-busy { cursor: progress; }
+.odc-iconbtn-busy:hover { background: transparent; }
+.odc-iconbtn-spinner {
+  display: inline-block; box-sizing: border-box; width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid var(--mud-palette-action-default-hover); border-top-color: var(--mud-palette-primary);
+  animation: odc-spin 0.7s linear infinite;
+}
+.mud-icon-button-size-small .odc-iconbtn-spinner { width: 14px; height: 14px; }
+.mud-icon-button-size-large .odc-iconbtn-spinner { width: 22px; height: 22px; }
+@keyframes odc-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .odc-iconbtn-spinner { animation-duration: 2.4s; } }

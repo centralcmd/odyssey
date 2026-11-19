@@ -119,7 +119,7 @@
         <div style="flex:1"></div>
         @if (Mode is CalendarEventDialogMode.Edit or CalendarEventDialogMode.Series)
         {
-            <OdsButton id="cal-export-btn" Variant="OdsButtonVariant.Text" Icon="download" OnClick="@(() => OnExport.InvokeAsync())">Export</OdsButton>
+            <OdsButton id="cal-export-btn" Variant="OdsButtonVariant.Text" Icon="download" Loading="ExportBusy" AriaDisabled="ExportBusy" OnClick="ExportAsync">Export</OdsButton>
         }
         <OdsButton Variant="OdsButtonVariant.Text" OnClick="CancelAsync">@(CanSubmit ? "Cancel" : "Close")</OdsButton>
         @if (CanSubmit)
