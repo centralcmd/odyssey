@@ -18,14 +18,29 @@ namespace Odyssey.E2ETests;
 /// The confirm step needs a keyed series carrying a future override (PR #528 tester review): the test builds one through
 /// the page — a daily series created from the New event dialog, one future occurrence edited on its own — then opens
 /// "Edit series…" and shortens the series to one occurrence, which would discard the override, so Save shows the
-/// confirm step. Nothing in the confirm step is saved; the series is deleted at the end. One test, one sign-in.
+/// confirm step. Nothing in the confirm step is saved. One test, one sign-in.
+/// </para>
+/// <para>
+/// It runs against a shared database, so it touches only its own rows: every run's titles carry a unique suffix, its
+/// rows are found in the agenda (one row per occurrence, never hidden in a month cell's overflow), and the cleanup in
+/// <c>finally</c> deletes, by id, every event and the series this run created — whatever step failed. The cleanup goes
+/// through the API rather than "Delete series", which DETACHES a series' past and current rows into standalone events
+/// and so left today's occurrence behind on every run: the leak behind the stale rows earlier runs found.
 /// </para>
 /// </remarks>
 [Collection(StackCollection.Name)]
 public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLifetime
 {
-    private const string SeriesTitle = "Reflow 520 series";
-    private const string OverrideTitle = "Reflow 520 override";
+    // This run's own titles: a shared database can hold any number of other runs' rows.
+    private readonly string run = Guid.NewGuid().ToString("N")[..8];
+
+    private string SeriesTitle => $"Reflow 520 series {run}";
+
+    private string OverrideTitle => $"Reflow 520 override {run}";
+
+    // What this run created, recorded as it is created, so the cleanup can remove it whatever failed after.
+    private string? apiBase;
+    private string? seriesId;
 
     private IPlaywright? playwright;
     private IBrowser? browser;
@@ -120,8 +135,11 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
         await page.Locator("#cal-ev-twozone").WaitForAsync();
     }
 
-    /// <summary>A daily series from today, then its last visible occurrence (in the future) edited on its own.</summary>
-    private static async Task BuildSeriesWithOverrideAsync(IPage page)
+    /// <summary>
+    /// A daily series from today, then its last occurrence in the agenda's month (a future one) edited on its own. The
+    /// series' id and the API's address are taken from the create response, before anything else can fail.
+    /// </summary>
+    private async Task BuildSeriesWithOverrideAsync(IPage page)
     {
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "New event" }).First.ClickAsync();
         await page.Locator("#cal-ev-tz").WaitForAsync();
@@ -136,41 +154,53 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
             }
         }
 
-        await page.Locator("#cal-ev-save").ClickAsync();
+        var created = await page.RunAndWaitForResponseAsync(
+            () => page.Locator("#cal-ev-save").ClickAsync(),
+            r => r.Request.Method == "POST" && r.Url.Contains("/api/recurrence-patterns", StringComparison.Ordinal));
+        apiBase = created.Url[..created.Url.IndexOf("/api/", StringComparison.Ordinal)];
+        seriesId = (await created.JsonAsync())?.GetProperty("recurrencePatternId").GetString();
         await page.Locator(".mud-dialog").WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Detached });
 
-        var occurrence = await LastOccurrenceAsync(page, SeriesTitle);
-        await occurrence.ClickAsync();
+        await page.GetByRole(AriaRole.Radio, new PageGetByRoleOptions { Name = "Agenda" }).ClickAsync();
+        await (await LastAgendaRowAsync(page, SeriesTitle, minimum: 2)).ClickAsync();
         await TitleInput(page).WaitForAsync();
         await TitleInput(page).FillAsync(OverrideTitle);
         await page.Locator("#cal-ev-save").ClickAsync();
         await page.Locator(".mud-dialog").WaitForAsync(new LocatorWaitForOptions { State = WaitForSelectorState.Detached });
     }
 
-    /// <summary>The last chip of <paramref name="title"/> in the month on screen, stepping a month on when there is none.</summary>
-    private static async Task<ILocator> LastOccurrenceAsync(IPage page, string title)
+    /// <summary>
+    /// The last agenda row of exactly this run's <paramref name="title"/> in the month on screen, stepping a month on when
+    /// it holds fewer than <paramref name="minimum"/> — two guarantees the last is after today, so it is a future one.
+    /// </summary>
+    private static async Task<ILocator> LastAgendaRowAsync(IPage page, string title, int minimum = 1)
     {
         for (var step = 0; step < 2; step++)
         {
-            var chips = page.Locator($"[aria-label^=\"{title}\"]");
+            var rows = page.Locator(".cal-agenda-row", new PageLocatorOptions { HasText = title });
             try
             {
-                await chips.First.WaitForAsync(new LocatorWaitForOptions { Timeout = 10_000 });
-                return chips.Last;
+                await rows.First.WaitForAsync(new LocatorWaitForOptions { Timeout = 10_000 });
+                if (await rows.CountAsync() >= minimum)
+                {
+                    return rows.Last;
+                }
             }
             catch (TimeoutException)
             {
-                await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Next period" }).ClickAsync();
+                // None in this month yet.
             }
+
+            await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Next period" }).ClickAsync();
         }
 
-        throw new InvalidOperationException($"No occurrence of \"{title}\" on screen.");
+        throw new InvalidOperationException($"No agenda row of \"{title}\" on screen.");
     }
 
     /// <summary>Opens the override, then its series, and shortens it to one occurrence: Save shows the confirm step.</summary>
-    private static async Task OpenConfirmStepAsync(IPage page)
+    private async Task OpenConfirmStepAsync(IPage page)
     {
-        await (await LastOccurrenceAsync(page, OverrideTitle)).ClickAsync();
+        await (await LastAgendaRowAsync(page, OverrideTitle)).ClickAsync();
         await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Edit series…" }).ClickAsync();
         await page.Locator(".cal-rule").WaitForAsync();
         var count = page.Locator(".cal-ends-opt").Nth(1).Locator("input[type=number]");
@@ -180,12 +210,53 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
         await page.Locator(".cal-ce-confirm").WaitForAsync();
     }
 
-    private static async Task DeleteSeriesAsync(IPage page)
+    public sealed class Cleanup
     {
-        await (await LastOccurrenceAsync(page, OverrideTitle)).ClickAsync();
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Edit series…" }).ClickAsync();
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Delete series" }).ClickAsync();
-        await page.GetByRole(AriaRole.Button, new PageGetByRoleOptions { Name = "Delete", Exact = true }).Last.ClickAsync();
+        public int Deleted { get; set; }
+
+        public string[] Failures { get; set; } = [];
+    }
+
+    /// <summary>
+    /// Deletes, by id through the API, the series and then every event carrying this run's suffix in a window around today —
+    /// the override and any row the series' delete left standalone. Other runs' rows are never matched.
+    /// </summary>
+    private async Task<Cleanup> DeleteThisRunAsync(IPage page)
+    {
+        if (apiBase is null)
+        {
+            return new Cleanup();
+        }
+
+        var from = DateTime.UtcNow.Date.AddDays(-7).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        var to = DateTime.UtcNow.Date.AddDays(84).ToString("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        return await page.EvaluateAsync<Cleanup>(
+            """
+            async ({ apiBase, run, seriesId, from, to }) => {
+                const failures = [];
+                const token = (await (await fetch(apiBase + '/api/antiforgery/token', { credentials: 'include' })).json()).token;
+                const send = (method, path) => fetch(apiBase + path, { method, credentials: 'include', headers: { 'X-XSRF-TOKEN': token } });
+                let deleted = 0;
+                // The series first: its delete removes the future rows and detaches today's, which the sweep then takes.
+                if (seriesId) {
+                    const r = await send('DELETE', '/api/recurrence-patterns/' + seriesId);
+                    if (r.ok || r.status === 404) deleted++; else failures.push('series ' + r.status);
+                }
+                const list = await send('GET', `/api/calendar-events?from=${from}&to=${to}&viewTimeZoneId=UTC&search=${run}&limit=200`);
+                if (list.ok) {
+                    const body = await list.json();
+                    for (const e of (body.items || body)) {
+                        if (!(e.title || '').endsWith(' ' + run) && e.recurrencePatternId !== seriesId) continue;
+                        const r = await send('DELETE', '/api/calendar-events/' + e.calendarEventId);
+                        if (r.ok || r.status === 404) deleted++; else failures.push('event ' + r.status);
+                    }
+                } else {
+                    failures.push('list ' + list.status);
+                }
+                return { deleted, failures };
+            }
+            """,
+            new { apiBase, run, seriesId, from, to });
     }
 
     [SkippableFact] // AC 16
@@ -207,11 +278,10 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
         await page.GotoAsync("/calendar");
         var startedDark = await IsDarkAsync(page);
         var flipped = false;
-        var built = false;
+        var passed = false;
         try
         {
             await BuildSeriesWithOverrideAsync(page);
-            built = true;
 
             foreach (var pass in new[] { "first theme", "second theme" })
             {
@@ -235,9 +305,15 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
                         $"() => (document.documentElement.dataset.theme === 'dark') === {(!startedDark).ToString().ToLowerInvariant()}");
                 }
             }
+
+            passed = true;
         }
         finally
         {
+            // First, and through the API alone: a UI reset below can throw on a page a failed step left in any state, and
+            // must not be what decides whether this run's rows outlive it. By id, never by a title another run could share.
+            var cleanup = await DeleteThisRunAsync(page);
+
             await SetTextScaleAsync(page, "100%");
             await page.SetViewportSizeAsync(1366, 900);
             if (flipped)
@@ -246,9 +322,10 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
                 await ToggleThemeAsync(page, !startedDark);
             }
 
-            if (built)
+            // A failed step's own error is the one to report; a leak is reported when nothing else failed.
+            if (passed)
             {
-                await DeleteSeriesAsync(page);
+                Assert.True(cleanup.Failures.Length == 0, "Cleanup left rows behind: " + string.Join("; ", cleanup.Failures));
             }
         }
     }
