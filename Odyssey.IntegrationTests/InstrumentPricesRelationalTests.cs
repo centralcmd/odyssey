@@ -336,7 +336,7 @@ public class InstrumentPricesRelationalTests(MariaDbFixture fixture)
         await context.SaveChangesAsync();
 
         // The migration just before the hourly cap: reverting to it undoes only this one.
-        await MigrationSeam.MigrateToAsync(context, "_CalendarRecurrenceFidelityAndTimeZones");
+        await MigrationSeam.MigrateToAsync(context, "_CalendarEventAttachments");
         Assert.Equal(0L, await MigrationSeam.CountAsync(context,
             $"SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '{Database}' AND COLUMN_NAME IN ('RequestHourUtc', 'RequestHourCount', 'InstrumentsDeferred')"));
 
