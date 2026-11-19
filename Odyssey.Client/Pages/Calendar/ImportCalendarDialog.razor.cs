@@ -24,6 +24,10 @@ public partial class ImportCalendarDialog
     internal const string AlertId = "cal-imp-alert";
     internal const string RemoveId = "cal-imp-allow-removals";
     internal const string RemoveHelpId = "cal-imp-allow-removals-help";
+    internal const string RemoveWarningId = "cal-imp-allow-removals-warning";
+
+    /// <summary>The modal's class: the Escape watch is scoped to the dialog that carries it.</summary>
+    internal const string DialogClass = "cal-imp-dialog";
     private const string RemovedGroupKey = "\u0000removed";
 
     // The most the typed-client fallback reads into the WASM heap (its arrays top out near 2 GB, and the heap well
@@ -90,6 +94,12 @@ public partial class ImportCalendarDialog
     private bool _focusResultPending;
     private bool _focusAlertPending;
     private bool _focusPickerPending;
+    private bool _focusStatusPending;
+    private DotNetObjectReference<ImportCalendarDialog>? _selfRef;
+    private int? _escapeWatch;
+
+    // Set while a watch call is in flight: two overlapping renders must not register two listeners.
+    private bool _escapeWatchStarting;
     private ElementReference _resultHeading;
     private ElementReference _alertRef;
 
@@ -246,6 +256,8 @@ public partial class ImportCalendarDialog
         // The typed fallback has no upload-complete signal, so it counts as the server phase from the start: Close
         // and Escape hand it off, and Cancel upload is never offered (an HttpClient call cannot be stopped mid-body).
         _phase = native ? Phase.Uploading : Phase.Server;
+        // Import, which held focus, is gone: focus moves to the phase line rather than to <body> (WCAG 2.4.3).
+        _focusStatusPending = true;
         _pending = native
             ? UploadNativeAsync(generation, calendarId.Value, file!, allowRemovals)
             : UploadTypedAsync(calendarId.Value, file!, allowRemovals);
@@ -320,6 +332,11 @@ public partial class ImportCalendarDialog
             _confirmReturnId = FootStatusId;
             _confirmOpen = false;
             Announce(CalendarImportCopy.FinishedWhileDeciding);
+        }
+        else
+        {
+            // Cancel upload, which may hold focus, is gone: focus moves to the phase line.
+            _focusStatusPending = true;
         }
 
         StateHasChanged();
@@ -412,13 +429,22 @@ public partial class ImportCalendarDialog
         _confirmOpen = true;
     }
 
-    // Escape while uploading opens the confirmation; the dialog itself is not dismissible in that phase.
-    private void OnKeyDown(KeyboardEventArgs e)
+    /// <summary>
+    /// Escape anywhere in the dialog while uploading — the header, the body, the footer, the dialog container — opens
+    /// the confirmation (WCAG 2.1.1). The dialog is not dismissible in that phase, so MudDialog ignores the key; the
+    /// watch (<c>odsDialogEscape</c>, a capture listener scoped to this dialog) reports it here. In every other phase
+    /// the dialog's own Escape handling applies and this does nothing.
+    /// </summary>
+    [JSInvokable]
+    public void OnDialogEscape()
     {
-        if (e.Key == "Escape" && _phase == Phase.Uploading && !_confirmOpen)
+        if (_disposed || _phase != Phase.Uploading || _confirmOpen)
         {
-            OpenConfirm();
+            return;
         }
+
+        OpenConfirm();
+        StateHasChanged();
     }
 
     private void OnConfirmOpenChanged(bool open)
@@ -483,6 +509,13 @@ public partial class ImportCalendarDialog
 
     private async Task CloseAsync()
     {
+        // The inline modal closes itself while the page tears down; this dialog has already settled its import's
+        // owner in DisposeAsync, so a teardown close must not hand it to a page that is going too.
+        if (_disposed)
+        {
+            return;
+        }
+
         if (_phase == Phase.Uploading)
         {
             // Closing mid-upload is a confirmed stop, never a silent one.
@@ -525,6 +558,14 @@ public partial class ImportCalendarDialog
             await NativeTransfer.WatchAsync(UploadId);
         }
 
+        await WatchEscapeAsync();
+
+        if (_focusStatusPending && _phase is Phase.Uploading or Phase.Server)
+        {
+            _focusStatusPending = false;
+            await TryJsAsync("odsFocusById", FootStatusId);
+        }
+
         // The result heading and the alert render inside MudDialog's (deferred) dialog content, so their
         // ElementReferences can be unconfigured on the render that first shows them — guard on Id so FocusAsync
         // never throws, treating focus as best-effort.
@@ -555,6 +596,58 @@ public partial class ImportCalendarDialog
         }
     }
 
+    private async Task WatchEscapeAsync()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        if (Open && _escapeWatch is null && !_escapeWatchStarting)
+        {
+            _escapeWatchStarting = true;
+            _selfRef ??= DotNetObjectReference.Create(this);
+            try
+            {
+                var watch = await JS.InvokeAsync<int>("odsDialogEscape.watch", DialogClass, _selfRef);
+                if (_disposed || !Open)
+                {
+                    // Closed (or gone) while the watch was being set up: take it down again at once.
+                    await TryJsAsync("odsDialogEscape.unwatch", watch);
+                }
+                else
+                {
+                    _escapeWatch = watch;
+                }
+            }
+            catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or InvalidOperationException)
+            {
+                // Best-effort: the footer's Cancel upload still opens the confirmation.
+            }
+            finally
+            {
+                _escapeWatchStarting = false;
+            }
+        }
+        else if (!Open && _escapeWatch is { } watch)
+        {
+            _escapeWatch = null;
+            await TryJsAsync("odsDialogEscape.unwatch", watch);
+        }
+    }
+
+    private async Task TryJsAsync(string identifier, params object?[] args)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync(identifier, args);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or ObjectDisposedException)
+        {
+            // Best-effort.
+        }
+    }
+
     private static async Task TryFocusAsync(ElementReference element)
     {
         try
@@ -567,12 +660,88 @@ public partial class ImportCalendarDialog
         }
     }
 
+    /// <summary>
+    /// The dialog goes away with its page (a navigation) while an import is in flight. Mid-upload, the upload is
+    /// aborted: the server imports nothing from a body that never finished, so no import runs that nobody would
+    /// report. In the server phase (or if the body finished just before the abort) the import may already be
+    /// applying, so its outcome is still toasted — through the app-wide snackbar, which outlives the page. The page's
+    /// hand-off does not cover this case: it happens only when the dialog is CLOSED, and a navigation disposes the
+    /// open dialog without closing it.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
+        var phase = _phase;
+        var pending = _pending;
         _disposed = true;
+        _pending = null;
+        _phase = Phase.Compose;
+
+        if (phase is Phase.Uploading or Phase.Server && pending is not null)
+        {
+            if (phase == Phase.Uploading)
+            {
+                await TryAbortAsync();
+            }
+
+            _ = ToastWhenSettledAsync(pending);
+        }
+
+        if (_escapeWatch is { } watch)
+        {
+            _escapeWatch = null;
+            await TryJsAsync("odsDialogEscape.unwatch", watch);
+        }
+
+        _selfRef?.Dispose();
         // Releases the upload-complete callback; a request already on its way keeps running.
         await _lifetime.CancelAsync();
         _lifetime.Dispose();
         await ForgetAsync();
+    }
+
+    private async Task TryAbortAsync()
+    {
+        try
+        {
+            await NativeTransfer.AbortAsync(UploadId);
+        }
+        catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or ObjectDisposedException)
+        {
+            // The browser side is gone, and the request with it.
+        }
+    }
+
+    /// <summary>The orphaned import's one toast — none for an upload stopped before its body finished.</summary>
+    /// <remarks>
+    /// Runs unobserved, so it never throws. An attempt that faults — including one cancelled from outside, which can
+    /// only mean the request ended without an answer — is reported with the general failure wording: part of the file
+    /// may already have been applied, and that wording says so and that importing again is safe.
+    /// </remarks>
+    private async Task ToastWhenSettledAsync(Task<Attempt> pending)
+    {
+        ApiResult<IcsImportResult> outcome;
+        try
+        {
+            var attempt = await pending;
+            if (attempt.Aborted && !attempt.UploadComplete)
+            {
+                return;
+            }
+
+            outcome = attempt.Result;
+        }
+        catch (Exception ex)
+        {
+            outcome = ApiResult<IcsImportResult>.Failure(ex);
+        }
+
+        try
+        {
+            CalendarImportCopy.ToastHandedOff(Snackbar, outcome);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // The app itself is shutting down: there is nowhere left to show it.
+        }
     }
 }

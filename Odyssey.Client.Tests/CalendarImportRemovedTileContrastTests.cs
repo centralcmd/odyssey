@@ -41,15 +41,20 @@ public class CalendarImportRemovedTileContrastTests
         return css[start..css.IndexOf('}', start)];
     }
 
-    /// <summary>A MudBlazor palette entry out of <c>OdysseyTheme.cs</c>; the dark palette is declared first.</summary>
+    /// <summary>
+    /// A MudBlazor palette entry out of <c>OdysseyTheme.cs</c>, read from the named initializer block
+    /// (<c>PaletteDark = new PaletteDark { … }</c> or <c>PaletteLight = new PaletteLight { … }</c>), so the order the
+    /// two palettes are declared in does not matter.
+    /// </summary>
     private static (int R, int G, int B) Palette(string property, bool dark)
     {
         var theme = File.ReadAllText(Path.Combine(ClientSource.Root, "Theme", "OdysseyTheme.cs"));
-        var values = Regex.Matches(theme, @"\b" + Regex.Escape(property) + @"\s*=\s*""(?<hex>#[0-9A-Fa-f]{6})""")
-            .Select(m => m.Groups["hex"].Value)
-            .ToList();
-        Assert.True(values.Count >= 2, $"Expected a {property} in each palette.");
-        var hex = (dark ? values[0] : values[1]).TrimStart('#');
+        var name = dark ? "PaletteDark" : "PaletteLight";
+        var block = Regex.Match(theme, name + @"\s*=\s*new\s+" + name + @"\s*\{(?<body>[^}]*)\}");
+        Assert.True(block.Success, $"No {name} initializer in OdysseyTheme.cs.");
+        var value = Regex.Match(block.Groups["body"].Value, @"\b" + Regex.Escape(property) + @"\s*=\s*""(?<hex>#[0-9A-Fa-f]{6})""");
+        Assert.True(value.Success, $"{name} declares no {property}.");
+        var hex = value.Groups["hex"].Value.TrimStart('#');
         return (
             int.Parse(hex[..2], NumberStyles.HexNumber, CultureInfo.InvariantCulture),
             int.Parse(hex[2..4], NumberStyles.HexNumber, CultureInfo.InvariantCulture),
