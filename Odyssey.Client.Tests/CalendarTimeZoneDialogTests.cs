@@ -442,8 +442,8 @@ public class CalendarTimeZoneDialogTests
         h.PutReturns(Fail<RecurrencePatternUpdateResult>(HttpStatusCode.Conflict, "Changed.", CalendarSeriesCodes.VersionConflict), Updated());
         await h.SetTitle("Choir (moved)");
 
-        h.Calendar.Setup(c => c.GetPatternAsync(PatternId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Series(new DateTime(2026, 6, 1, 18, 0, 0), "Europe/Oslo", p => p.Version = OtherVersion));
+        h.Calendar.Setup(c => c.GetPatternResultAsync(PatternId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(Series(new DateTime(2026, 6, 1, 18, 0, 0), "Europe/Oslo", p => p.Version = OtherVersion)));
         h.Save();
         h.Cut.WaitForElement("#" + CalendarEventDialog.AlertId);
         Assert.True(h.Button("Save series").GetAttribute("aria-disabled") == "true");
@@ -735,7 +735,8 @@ public class CalendarTimeZoneDialogTests
         await using var h = OpenSeries();
         h.PreviewReturns(0, 0);
         h.PutReturns(Fail<RecurrencePatternUpdateResult>(HttpStatusCode.Conflict, "Changed.", CalendarSeriesCodes.VersionConflict));
-        h.Calendar.Setup(c => c.GetPatternAsync(PatternId, It.IsAny<CancellationToken>())).ReturnsAsync((ExistingRecurrencePattern?)null);
+        h.Calendar.Setup(c => c.GetPatternResultAsync(PatternId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Fail<ExistingRecurrencePattern>(HttpStatusCode.NotFound, "Recurrence pattern not found."));
 
         h.Save();
 
@@ -743,6 +744,39 @@ public class CalendarTimeZoneDialogTests
         var toast = Assert.Single(h.Context.Toasts);
         Assert.Equal((CalendarEventCopy.NotFound, true), (toast.Message, toast.RequireInteraction));
         Assert.Empty(h.Cut.FindAll("#" + CalendarEventDialog.AlertId));
+    }
+
+    [Theory] // PR #528 frontend round 4: only a 404 is "gone" — any other failed re-read keeps the draft and the conflict alert
+    [InlineData(HttpStatusCode.InternalServerError)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData((HttpStatusCode)0)]
+    public async Task A_version_conflict_whose_re_read_fails_keeps_the_draft_and_says_the_read_failed(HttpStatusCode status)
+    {
+        await using var h = OpenSeries();
+        h.PreviewReturns(0, 0);
+        h.PutReturns(Fail<RecurrencePatternUpdateResult>(HttpStatusCode.Conflict, "Changed.", CalendarSeriesCodes.VersionConflict), Updated());
+        h.Calendar.Setup(c => c.GetPatternResultAsync(PatternId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(status == 0
+                ? ApiResult<ExistingRecurrencePattern>.Failure(new HttpRequestException("Network down."))
+                : Fail<ExistingRecurrencePattern>(status, "Read failed."));
+        await h.SetTitle("Choir (moved)");
+
+        h.Save();
+
+        h.Cut.WaitForElement("#" + CalendarEventDialog.AlertId);
+        var alert = h.Cut.Find("#" + CalendarEventDialog.AlertId).TextContent;
+        Assert.Contains(CalendarEventCopy.Conflict, alert, StringComparison.Ordinal);
+        Assert.Contains("The latest version couldn't be loaded", alert, StringComparison.Ordinal);
+        Assert.Empty(h.OpenChanges);
+        Assert.Empty(h.Context.Toasts);
+        Assert.Equal("Choir (moved)", h.Title);
+
+        // Keep editing keeps the draft and saves against the version loaded at open.
+        h.Button("Keep editing").Click();
+        h.Cut.WaitForAssertion(() => Assert.Empty(h.Cut.FindAll("#" + CalendarEventDialog.AlertId)));
+        h.Save();
+        h.Cut.WaitForAssertion(() => Assert.Equal(2, h.SeriesWrites.Count));
+        Assert.Equal(LoadedVersion, h.SeriesWrites[1].ExpectedVersion);
     }
 
     [Fact] // PR #528 accessibility (WCAG 4.1.3): the unmatched-zone error is announced once as it appears on blur

@@ -36,6 +36,12 @@ public interface ICalendarApiClient
     /// <summary>Loads one recurrence pattern (the series template/rule). Null on failure.</summary>
     Task<ExistingRecurrencePattern?> GetPatternAsync(Guid id, CancellationToken ct = default);
 
+    /// <summary>
+    /// Loads one series and says how the read went: unlike <see cref="GetPatternAsync"/>, a <c>404</c> (gone) is told
+    /// apart from a <c>5xx</c>, a <c>403</c> or a lost connection (PR #528 frontend review).
+    /// </summary>
+    Task<ApiResult<ExistingRecurrencePattern>> GetPatternResultAsync(Guid id, CancellationToken ct = default);
+
     /// <summary>Fetches a calendar's events as an <c>.ics</c> file. A non-success status yields a
     /// failure result rather than a body that would download as a fake <c>.ics</c>. For a non-browser consumer: the
     /// browser summarizes with <see cref="SummarizeExportAsync"/> and downloads <see cref="ExportUrl"/> itself
@@ -210,6 +216,9 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public async Task<ExistingCalendarEvent?> GetEventAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingCalendarEvent>($"{EventsBase}/{id}", ct)).Value;
+
+    public Task<ApiResult<ExistingRecurrencePattern>> GetPatternResultAsync(Guid id, CancellationToken ct = default) =>
+        api.GetAsync<ExistingRecurrencePattern>($"{PatternsBase}/{id}", ct);
 
     public async Task<ExistingRecurrencePattern?> GetPatternAsync(Guid id, CancellationToken ct = default) =>
         (await api.GetAsync<ExistingRecurrencePattern>($"{PatternsBase}/{id}", ct)).Value;
