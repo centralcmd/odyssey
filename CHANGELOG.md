@@ -5,6 +5,13 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.48.0](https://github.com/centralcmd/odyssey/compare/v0.47.0...v0.48.0) (2026-11-19)
+
+
+### Features
+
+* **core:** store fetched exchange rates in the published direction only ([c5f9b19](https://github.com/centralcmd/odyssey/commit/c5f9b19ba7cce97914f73a02a960d19cf575abc8))
+
 ## [0.47.0](https://github.com/centralcmd/odyssey/compare/v0.46.0...v0.47.0) (2026-11-19)
 
 
