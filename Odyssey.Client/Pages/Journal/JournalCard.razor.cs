@@ -60,6 +60,7 @@ public partial class JournalCard
     private Dictionary<Guid, string?> _photoTagColors = [];
     private Dictionary<Guid, PhotoAlbumSummary> _photoAlbumById = [];
     private IReadOnlyList<OdsOption> _photoTagOptions = [];
+    private Func<string, string?>? _photoTagNameBlocked;
     private IReadOnlyList<OdsOption> _photoAlbumOptions = [];
     private IReadOnlyList<OdsOption> _photoPeopleOptions = [];
     private IJSObjectReference? _focusJs;
@@ -623,6 +624,7 @@ public partial class JournalCard
             _photoTagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _photoTagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);
             _photoTagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
+            _photoTagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Photo);
         }
 
         var albumsResult = await Albums.ListAllAsync();

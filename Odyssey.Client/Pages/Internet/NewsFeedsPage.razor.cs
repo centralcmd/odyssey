@@ -31,11 +31,7 @@ public partial class NewsFeedsPage
     /// <summary>The hard limit on consecutive list requests for the full set (§3.3, Loading).</summary>
     public const int MaxListRequests = 5;
 
-    /// <summary>A pending feed is re-read this often after it is created (§3.3, Create flow; §10).</summary>
-    public static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
-    /// <summary>…for at most this long.</summary>
-    public static readonly TimeSpan PollLimit = TimeSpan.FromMinutes(2);
 
     [Inject] private INewsApiClient News { get; set; } = default!;
 
@@ -52,6 +48,8 @@ public partial class NewsFeedsPage
     [Inject] private TimeProvider Time { get; set; } = default!;
 
     [Inject] private IClaimsRefresher ClaimsRefresher { get; set; } = default!;
+
+    [Inject] private NavigationManager Nav { get; set; } = default!;
 
     /// <summary><c>?state=All</c> opens the page with the Status filter cleared (§3.1).</summary>
     [SupplyParameterFromQuery(Name = "state")] public string? StateQuery { get; set; }
@@ -85,6 +83,11 @@ public partial class NewsFeedsPage
     private bool _canCreate;
     private bool _canUpdate;
     private bool _canDelete;
+    private bool _canReadSettings;
+    private bool _canReadFileStorage;
+
+    /// <summary>The storage status, for the Attention panel's quota rows (a <c>file-storage.read</c> holder only).</summary>
+    private NewsStatus? _status;
 
     // ── Layout, filters, sort ──────────────────────────────────────────────────────────────────────
     private bool _overviewOpen = true;
@@ -115,7 +118,7 @@ public partial class NewsFeedsPage
         var term = _search.Trim();
         var tagIds = _tagFilter.Select(v => Guid.TryParse(v, out var g) ? g : Guid.Empty).ToHashSet();
         var shown = feeds.Where(f =>
-            (_statuses.Count == 0 || _statuses.Contains(NewsVisuals.Key(NewsVisuals.StatusOf(f))))
+            NewsVisuals.MatchesStatus(f, _statuses)
             && (tagIds.Count == 0 || f.TagIds.Any(tagIds.Contains))
             && (term.Length == 0
                 || f.DisplayTitle.Contains(term, StringComparison.CurrentCultureIgnoreCase)
@@ -129,19 +132,119 @@ public partial class NewsFeedsPage
 
     private IReadOnlyList<OdsBreakdownRow> TagRows =>
     [
-        .. _tags.Where(t => !t.Archived).OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(t => new OdsBreakdownRow
+        .. _tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(t => new OdsBreakdownRow
         {
-            Key = t.Id,
+            Key = t.NewsTagId,
             Label = t.Name,
             Icon = OdsTagChip.GlyphFor(t.Icon),
             IconColor = UserColor.Glyph(t.Color) ?? NewsVisuals.TagRowColor,
-            Count = _feeds.Count(f => f.TagIds.Contains(t.Id)),
+            Count = _feeds.Count(f => f.TagIds.Contains(t.NewsTagId)),
         }),
         new OdsBreakdownRow { Key = "none", Label = "No tag", Icon = "label_off", IconColor = OdsBreakdown.Tone("outline"), Count = _feeds.Count(f => f.TagIds.Count == 0) },
     ];
 
+    /// <summary>
+    /// By status: the Status filter's own members, so a row's count is what ticking it alone shows. The rows overlap
+    /// (a feed is Active AND Healthy), so the tile's total is the feed count, not their sum.
+    /// </summary>
     private IReadOnlyList<OdsBreakdownRow> StatusRows =>
-        OdsBreakdown.StatusRows(_feeds, f => NewsVisuals.Key(NewsVisuals.StatusOf(f)), NewsVisuals.StatusDefs);
+        OdsBreakdown.CountedStatusRows(key => _feeds.Count(f => NewsVisuals.MatchesStatus(f, [key])), NewsVisuals.StatusDefs);
+
+    // ── Attention ──────────────────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// The "Attention" problems, as on News (design system NewsFeeds.jsx): one row per feed that needs attention —
+    /// Error for Gone and Quarantined, Warning for Failing and QuotaReached — whose Review stays on this page; then,
+    /// for a <c>file-storage.read</c> holder, a Warning row per full quota, its Settings action only with
+    /// <c>system-settings.read</c>.
+    /// </summary>
+    internal IReadOnlyCollection<PageHeaderProblem>? Problems
+    {
+        get
+        {
+            if (_loading || _failure is not null)
+            {
+                return null;
+            }
+
+            var rows = new List<PageHeaderProblem>();
+            foreach (var feed in _feeds.Where(f => OdsNewsFeedHealth.NeedsAttention(f.Health))
+                         .OrderBy(f => f.DisplayTitle, StringComparer.CurrentCultureIgnoreCase))
+            {
+                var id = feed.Id;
+                rows.Add(new PageHeaderProblem
+                {
+                    Severity = feed.Health is NewsFeedHealth.Gone or NewsFeedHealth.Quarantined ? PageHeaderSeverity.Error : PageHeaderSeverity.Warning,
+                    Lead = feed.DisplayTitle,
+                    Message = $"{OdsNewsFeedHealth.Meta(feed.Health).Label}.",
+                    ViewLabel = "Review",
+                    ActionAriaLabel = $"Review {feed.DisplayTitle}",
+                    OnView = EventCallback.Factory.Create(this, () => ReviewAsync(id)),
+                });
+            }
+
+            if (_canReadFileStorage && _status is { } status)
+            {
+                if (status.ImageQuotaReached)
+                {
+                    rows.Add(QuotaRow("Image storage quota reached.", "image"));
+                }
+
+                if (status.TextAndSourceQuotaReached)
+                {
+                    rows.Add(QuotaRow("Text storage quota reached.", "text"));
+                }
+            }
+
+            return rows.Count == 0 ? null : rows;
+        }
+    }
+
+    private PageHeaderProblem QuotaRow(string message, string what)
+    {
+        var row = new PageHeaderProblem { Severity = PageHeaderSeverity.Warning, Message = message };
+        if (_canReadSettings)
+        {
+            row.ViewLabel = "Settings";
+            row.ActionAriaLabel = $"Open Settings for the {what} quota";
+            row.OnView = EventCallback.Factory.Create(this, () => Nav.NavigateTo("settings"));
+        }
+
+        return row;
+    }
+
+    /// <summary>
+    /// Review stays on this page: it clears whichever filter hides the feed, expands it, reveals it in the list and
+    /// focuses its header.
+    /// </summary>
+    internal async Task ReviewAsync(Guid id)
+    {
+        if (_feeds.FirstOrDefault(f => f.Id == id) is not { } feed)
+        {
+            return;
+        }
+
+        if (_statuses.Count > 0 && !NewsVisuals.MatchesStatus(feed, _statuses))
+        {
+            _statuses = [];
+        }
+
+        if (_tagFilter.Count > 0 && !feed.TagIds.Any(t => _tagFilter.Contains(t.ToString())))
+        {
+            _tagFilter = [];
+        }
+
+        if (!Shows(feed))
+        {
+            _search = string.Empty;
+        }
+
+        Persist();
+        _openId = id;
+        _revealId = id;
+        StateHasChanged();
+        await FocusCardAsync(id);
+    }
 
     // ── Lifecycle ──────────────────────────────────────────────────────────────────────────────────
 
@@ -175,6 +278,8 @@ public partial class NewsFeedsPage
         _canCreate = user.HasPermission(PermissionClaims.NewsFeedsCreate);
         _canUpdate = user.HasPermission(PermissionClaims.NewsFeedsUpdate);
         _canDelete = user.HasPermission(PermissionClaims.NewsFeedsDelete);
+        _canReadSettings = user.HasPermission(PermissionClaims.SystemSettingsRead);
+        _canReadFileStorage = user.HasPermission(PermissionClaims.FileStorageRead);
     }
 
     private void OnAuthenticationStateChanged(Task<AuthenticationState> state) => _ = InvokeAsync(async () =>
@@ -272,9 +377,15 @@ public partial class NewsFeedsPage
     private async Task LoadAsync()
     {
         var tagsTask = Catalogue.GetTagsAsync();
+        var statusTask = _canReadFileStorage ? News.GetStatusAsync() : null;
         var loaded = await LoadAllFeedsAsync();
         var tags = await tagsTask;
         SetTags(tags.ItemsOrToast(Snackbar, "news tags"));
+        if (statusTask is not null)
+        {
+            var status = await statusTask;
+            _status = status.IsSuccess ? status.Value : null;
+        }
 
         _loading = false;
         if (loaded.Feeds is { } feeds)
@@ -296,7 +407,7 @@ public partial class NewsFeedsPage
     private void SetTags(List<ExistingNewsTag> tags)
     {
         _tags = tags;
-        _tagsById = tags.ToDictionary(t => t.Id);
+        _tagsById = tags.ToDictionary(t => t.NewsTagId);
         // A stored tag filter naming a tag that no longer exists is dropped before it filters anything (§3.1).
         _tagFilter = [.. _tagFilter.Where(v => Guid.TryParse(v, out var id) && _tagsById.ContainsKey(id))];
     }
@@ -380,15 +491,19 @@ public partial class NewsFeedsPage
     // ── The row menu ───────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// Only what the caller can do now (§3.3, AC 14, 32): an action the claim or the feed's state rules out is ABSENT,
-    /// never dimmed. Delete… only on an archived feed; Release only on a quarantined one; Resume replaces Pause while
-    /// paused and Unarchive replaces Archive while archived.
+    /// View articles first, then only what the caller can do now (§3.3, AC 14, 32): an action the claim or the feed's
+    /// state rules out is ABSENT, never dimmed. Delete… is offered on any feed — there is no archive-first step;
+    /// Release only on a quarantined feed; Resume replaces Pause while paused and Unarchive replaces Archive while
+    /// archived. The feed's tags are edited in its Edit dialog.
     /// </summary>
     internal IReadOnlyList<OdsMenuItem> MenuFor(ExistingNewsFeed feed)
     {
         var items = new List<OdsMenuItem>();
         var archived = feed.ArchivedAtUtc is not null;
         var name = feed.DisplayTitle;
+        var id = feed.Id;
+        items.Add(Item("feed", "View articles", name, () => Nav.NavigateTo($"news?feedId={id}")));
+        items.Add(new OdsMenuItem { Divider = true });
         if (_canUpdate)
         {
             if (!archived && feed.Management is not null)
@@ -396,7 +511,6 @@ public partial class NewsFeedsPage
                 items.Add(Item("edit", "Edit", name, () => OpenEdit(feed)));
             }
 
-            items.Add(Item("local_offer", "Tags…", name, () => OpenTags(feed)));
             if (!archived && feed.IsActive && feed.Health != NewsFeedHealth.Quarantined)
             {
                 items.Add(Item("refresh", "Refresh now", name, () => RefreshAsync(feed)));
@@ -420,7 +534,7 @@ public partial class NewsFeedsPage
                 : Item("archive", "Archive", name, () => SetArchivedAsync(feed, true)));
         }
 
-        if (_canDelete && archived)
+        if (_canDelete)
         {
             var delete = Item("delete", "Delete…", name, () => OpenDelete(feed));
             delete.Danger = true;
@@ -462,21 +576,21 @@ public partial class NewsFeedsPage
         var update = UpdateOf(feed);
         update.IsActive = active;
         return StateSwapAsync(feed, () => News.UpdateFeedAsync(feed.Id, update), active ? "resumed" : "paused",
-            active ? "Couldn't resume the feed" : "Couldn't pause the feed");
+            active ? "Couldn’t resume the feed" : "Couldn’t pause the feed");
     }
 
     private Task SetArchivedAsync(ExistingNewsFeed feed, bool archive) =>
         StateSwapAsync(feed, () => archive ? News.ArchiveFeedAsync(feed.Id) : News.UnarchiveFeedAsync(feed.Id),
-            archive ? "archived" : "unarchived", archive ? "Couldn't archive the feed" : "Couldn't unarchive the feed");
+            archive ? "archived" : "unarchived", archive ? "Couldn’t archive the feed" : "Couldn’t unarchive the feed");
 
     private Task ReleaseAsync(ExistingNewsFeed feed) =>
         StateSwapAsync(feed, () => News.ReleaseQuarantineAsync(feed.Id), "released from quarantine",
-            "Couldn't release the feed");
+            "Couldn’t release the feed");
 
     /// <summary>
-    /// One state change on a feed (§3.3, "State swaps are announced"): the card shows the server's copy, and the page
+    /// One state change on a feed (§3.3, "State swaps are announced"): the card shows the server’s copy, and the page
     /// announcer says "Example News paused" — or, when the change also takes the card out of the current filter,
-    /// "Example News paused and moved to Paused", with focus on the next card's header.
+    /// "Example News paused and moved to Paused", with focus on the next card’s header.
     /// </summary>
     private async Task StateSwapAsync(ExistingNewsFeed feed, Func<Task<ApiResult<ExistingNewsFeed>>> write, string verb, string failureLead)
     {
@@ -566,7 +680,7 @@ public partial class NewsFeedsPage
             return;
         }
 
-        await ActionFailedAsync(feed, result.Status, result.Problem, "Couldn't refresh the feed", next);
+        await ActionFailedAsync(feed, result.Status, result.Problem, "Couldn’t refresh the feed", next);
     }
 
     // ── New / Edit ─────────────────────────────────────────────────────────────────────────────────
@@ -629,7 +743,6 @@ public partial class NewsFeedsPage
             _openId = saved.Id;
             _revealId = saved.Id;
             Say(NewsFeedback.Success(Snackbar, "Feed added. Odyssey will fetch it shortly."));
-            StartPoll(saved.Id);
         }
         else
         {
@@ -663,110 +776,6 @@ public partial class NewsFeedsPage
         Catalogue.Invalidate();
     }
 
-    /// <summary>
-    /// Use new address (§3.3, URL suggestions): one <c>PUT</c> with <c>url</c> = <c>suggestedUrl</c> and the current
-    /// version. A suggestion is never applied without it. Focus stays on the card; a 409 opens the Reload flow.
-    /// </summary>
-    private async Task UseNewAddressAsync(ExistingNewsFeed feed)
-    {
-        if (!_canUpdate || feed.Management?.SuggestedUrl is not { } suggested || !_busyIds.Add(feed.Id))
-        {
-            return;
-        }
-
-        StateHasChanged();
-        var update = UpdateOf(feed);
-        update.Url = suggested;
-        var result = await News.UpdateFeedAsync(feed.Id, update);
-        _busyIds.Remove(feed.Id);
-
-        if (result.IsSuccess && result.Value is { } updated)
-        {
-            Replace(updated);
-            Catalogue.Invalidate();
-            Say(NewsFeedback.Success(Snackbar, "Feed address updated"));
-            return;
-        }
-
-        if (NewsFeedback.Is(result.Problem, NewsErrorCodes.FeedChanged))
-        {
-            OpenDialog(feed, conflict: true, url: suggested);
-            StateHasChanged();
-            return;
-        }
-
-        await ActionFailedAsync(feed, result.Status, result.Problem, "Couldn't update the address", Neighbour(feed.Id));
-    }
-
-    // ── Tags ───────────────────────────────────────────────────────────────────────────────────────
-
-    private ExistingNewsFeed? _tagsFeed;
-    private Guid _tagsKey;
-    private bool _tagsOpen;
-    private IReadOnlyCollection<string> _tagsDraft = [];
-    private string? _tagsError;
-
-    private void OpenTags(ExistingNewsFeed feed)
-    {
-        _tagsFeed = feed;
-        _tagsDraft = [.. feed.TagIds.Select(id => id.ToString())];
-        _tagsError = null;
-        _tagsKey = Guid.NewGuid();
-        _tagsOpen = true;
-    }
-
-    private void OnTagsOpenChanged(bool open)
-    {
-        _tagsOpen = open;
-        if (!open)
-        {
-            _tagsFeed = null;
-        }
-    }
-
-    private async Task<bool> SaveFeedTagsAsync()
-    {
-        if (_tagsFeed is not { } feed)
-        {
-            return false;
-        }
-
-        if (_tagsDraft.Count > NewsLimits.MaxTagIdsPerRequest)
-        {
-            _tagsError = $"Choose at most {NewsLimits.MaxTagIdsPerRequest} tags.";
-            return false;
-        }
-
-        var result = await News.SetFeedTagsAsync(feed.Id, [.. _tagsDraft.Select(Guid.Parse)]);
-        if (result.IsSuccess && result.Value is { } updated)
-        {
-            Replace(updated);
-            Catalogue.Invalidate();
-            Say($"Tags saved for {updated.DisplayTitle}");
-            _tagsFeed = null;
-            StateHasChanged();
-            await FocusCardAsync(updated.Id);
-            return true;
-        }
-
-        if (NewsFeedback.Is(result.Problem, NewsErrorCodes.TagNotUsable))
-        {
-            _tagsError = "One of these tags is archived.";
-            return false;
-        }
-
-        if (result.Status == HttpStatusCode.NotFound)
-        {
-            _tagsOpen = false;
-            _tagsFeed = null;
-            await ActionFailedAsync(feed, result.Status, result.Problem, "Couldn't save the tags", Neighbour(feed.Id));
-            return true;
-        }
-
-        Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn't save the tags"));
-        return false;
-    }
-
     // ── Delete ─────────────────────────────────────────────────────────────────────────────────────
 
     private ExistingNewsFeed? _deleting;
@@ -778,7 +787,7 @@ public partial class NewsFeedsPage
 
     private void OpenDelete(ExistingNewsFeed feed)
     {
-        if (!_canDelete || feed.ArchivedAtUtc is null)
+        if (!_canDelete)
         {
             return;
         }
@@ -884,7 +893,7 @@ public partial class NewsFeedsPage
 
             if (!EndsWithOpmlClose(export.File.Bytes))
             {
-                Say(NewsFeedback.Failure(Snackbar, "The export didn't complete. Try again."));
+                Say(NewsFeedback.Failure(Snackbar, "The export didn’t complete. Try again."));
                 return;
             }
 
@@ -894,7 +903,7 @@ public partial class NewsFeedsPage
             }
             catch (JSException)
             {
-                Say(NewsFeedback.Failure(Snackbar, "Couldn't export the feeds."));
+                Say(NewsFeedback.Failure(Snackbar, "Couldn’t export the feeds."));
                 return;
             }
 
@@ -915,8 +924,8 @@ public partial class NewsFeedsPage
         {
             HttpStatusCode.TooManyRequests => "An export is already running. Try again in a moment.",
             HttpStatusCode.ServiceUnavailable => NewsFeedback.BusyText,
-            HttpStatusCode.Forbidden => "You don't have permission to export feeds.",
-            _ => "Couldn't export the feeds.",
+            HttpStatusCode.Forbidden => "You don’t have permission to export feeds.",
+            _ => "Couldn’t export the feeds.",
         };
         Say(NewsFeedback.Failure(Snackbar, text));
         if (status == HttpStatusCode.Forbidden)
@@ -978,85 +987,30 @@ public partial class NewsFeedsPage
         }
     }
 
-    // ── Pending-feed polling (§3.3 Create flow, §10) ───────────────────────────────────────────────
+    // ── Pending feed ───────────────────────────────────────────────────────────────────────────────
 
-    private readonly Dictionary<Guid, Poll> _polls = [];
-    private readonly HashSet<Guid> _pollExpired = [];
-
-    private sealed record Poll(DateTimeOffset Until, ITimer Timer);
-
-    private void StartPoll(Guid id)
-    {
-        StopPoll(id);
-        _pollExpired.Remove(id);
-        var timer = Time.CreateTimer(_ => _ = InvokeAsync(() => PollOnceAsync(id)), null, PollInterval, PollInterval);
-        _polls[id] = new Poll(Time.GetUtcNow() + PollLimit, timer);
-    }
-
-    private void StopPoll(Guid id)
-    {
-        if (_polls.Remove(id, out var poll))
-        {
-            poll.Timer.Dispose();
-        }
-    }
-
-    private void StopChecking(ExistingNewsFeed feed)
-    {
-        StopPoll(feed.Id);
-        StateHasChanged();
-    }
-
+    /// <summary>Check again: one read of the pending feed; the card then shows what the server says now.</summary>
     private async Task CheckAgainAsync(ExistingNewsFeed feed)
     {
-        StartPoll(feed.Id);
-        StateHasChanged();
-        await PollOnceAsync(feed.Id);
-    }
-
-    private async Task PollOnceAsync(Guid id)
-    {
-        if (!_polls.TryGetValue(id, out var poll))
-        {
-            return;
-        }
-
-        var result = await News.GetFeedAsync(id);
-        if (!_polls.ContainsKey(id))
-        {
-            return;
-        }
-
+        var result = await News.GetFeedAsync(feed.Id);
         if (result.Status == HttpStatusCode.NotFound)
         {
-            StopPoll(id);
-            _feeds.RemoveAll(f => f.Id == id);
+            _feeds.RemoveAll(f => f.Id == feed.Id);
+            Say(NewsFeedback.Gone(Snackbar));
             StateHasChanged();
             return;
         }
 
-        if (result.Value is { } fresh)
+        if (result.Value is not { } fresh)
         {
-            Replace(fresh);
-            if (fresh.Health != NewsFeedHealth.Pending)
-            {
-                // The first change of state is announced once, then the poll stops.
-                StopPoll(id);
-                Say($"{fresh.DisplayTitle}: {(fresh.Health is NewsFeedHealth.Healthy or NewsFeedHealth.QuotaReached ? "fetched" : "failing")}");
-                StateHasChanged();
-                return;
-            }
+            Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn’t check the feed"));
+            return;
         }
 
-        if (Time.GetUtcNow() >= poll.Until)
-        {
-            StopPoll(id);
-            _pollExpired.Add(id);
-            var name = _feeds.FirstOrDefault(f => f.Id == id)?.DisplayTitle ?? "The feed";
-            Say($"{name} hasn't been fetched yet. Check again later.");
-        }
-
-        StateHasChanged();
+        Replace(fresh);
+        Say(fresh.Health == NewsFeedHealth.Pending
+            ? $"{fresh.DisplayTitle}: still waiting for the first fetch."
+            : $"{fresh.DisplayTitle}: {OdsNewsFeedHealth.Meta(fresh.Health).Label}.");
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────────────────────────────
@@ -1084,11 +1038,5 @@ public partial class NewsFeedsPage
     public void Dispose()
     {
         Auth.AuthenticationStateChanged -= OnAuthenticationStateChanged;
-        foreach (var poll in _polls.Values)
-        {
-            poll.Timer.Dispose();
-        }
-
-        _polls.Clear();
     }
 }

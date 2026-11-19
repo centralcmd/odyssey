@@ -74,10 +74,6 @@ public static class NewsErrors
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedLimit,
         $"The news reader holds at most {limit} feeds, archived feeds included.");
 
-    public static NewsException FeedNotArchived(Guid feedId) => new(
-        HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedNotArchived,
-        $"News feed {feedId} must be archived before it can be deleted.");
-
     public static NewsException FeedInactive(Guid feedId) => new(
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedInactive,
         $"News feed {feedId} is paused, archived or quarantined, so it cannot be refreshed.");
@@ -99,9 +95,9 @@ public static class NewsErrors
     public static NewsException TagLimit() => new(
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.TagLimit, $"The news reader holds at most {NewsLimits.MaxTags} tags.");
 
-    public static NewsException TagInUse(Guid tagId, int feedCount, int articleCount) => new(
+    public static NewsException TagInUse(int feedCount, int articleCount) => new(
         HttpStatusCode.Conflict, NewsErrorCodes.TagInUse,
-        $"News tag {tagId} is in use; archive it, or delete it with detachLinks=true.",
+        "Tag is in use by one or more feeds or articles; archive it instead of deleting.",
         extensions: new Dictionary<string, object?> { ["feedCount"] = feedCount, ["articleCount"] = articleCount });
 
     public static NewsException TagArchived(Guid tagId) => new(

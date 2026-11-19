@@ -6,12 +6,18 @@ namespace Odyssey.Client.Pages.Internet;
 
 public partial class NewsFeedCard
 {
+    /// <summary>The page's announcement after a successful copy of the feed URL.</summary>
+    public const string CopiedText = "Feed URL copied.";
+
+    /// <summary>The page's announcement after a failed copy.</summary>
+    public const string CopyFailedText = "Couldn’t copy. Select the text and copy it yourself.";
+
     [Parameter, EditorRequired] public ExistingNewsFeed Feed { get; set; } = default!;
 
     /// <summary>Every news tag, by id, to name the feed's tags.</summary>
     [Parameter] public IReadOnlyDictionary<Guid, ExistingNewsTag> TagsById { get; set; } = new Dictionary<Guid, ExistingNewsTag>();
 
-    /// <summary>The row menu — only what the caller can do now; an unavailable item is absent (§3.3).</summary>
+    /// <summary>The row menu — View articles first, then only what the caller can do now (§3.3).</summary>
     [Parameter] public IReadOnlyList<OdsMenuItem> Menu { get; set; } = [];
 
     [Parameter] public bool Open { get; set; }
@@ -23,26 +29,11 @@ public partial class NewsFeedCard
     /// <summary>A write on this feed is in flight.</summary>
     [Parameter] public bool Busy { get; set; }
 
-    [Parameter] public bool CanUpdate { get; set; }
-
-    [Parameter] public bool CanDelete { get; set; }
-
-    /// <summary>The page is polling this pending feed (§3.3, Create flow).</summary>
-    [Parameter] public bool Polling { get; set; }
-
-    /// <summary>The 2-minute poll ended without a first fetch.</summary>
-    [Parameter] public bool PollExpired { get; set; }
-
+    /// <summary>Check again on a pending feed: the page re-reads it once.</summary>
     [Parameter] public EventCallback<ExistingNewsFeed> OnCheckAgain { get; set; }
-
-    [Parameter] public EventCallback<ExistingNewsFeed> OnStopChecking { get; set; }
-
-    [Parameter] public EventCallback<ExistingNewsFeed> OnUseNewAddress { get; set; }
 
     /// <summary>Raised with the copy's result text, for the page's announcer.</summary>
     [Parameter] public EventCallback<string> OnCopied { get; set; }
-
-    private bool _showFullUrl;
 
     public static string CardId(Guid id) => $"nf-{id}";
 
@@ -52,6 +43,16 @@ public partial class NewsFeedCard
 
     private string? Lang => string.IsNullOrWhiteSpace(Feed.Language) ? null : Feed.Language;
 
+    /// <summary>
+    /// The feed glyph's colour (design system <c>nfHealthAccent</c>): the health registry's tone, except Paused, which
+    /// is amber (<c>pending</c>) as in the Status filter. It only supports the chip, whose text says the state.
+    /// </summary>
+    internal string Accent => OdsBreakdown.Tone(Feed.Health == NewsFeedHealth.Paused
+        ? "pending"
+        : OdsNewsFeedHealth.Meta(Feed.Health).Tone ?? "outline");
+
+    private string AccentSoft => $"color-mix(in srgb, {Accent} 14%, transparent)";
+
     /// <summary>The site's host from <c>siteUrl</c> only — never the fetch URL's — or null when there is none.</summary>
     internal string? SiteHost => SiteHostOf(Feed.SiteUrl);
 
@@ -59,6 +60,9 @@ public partial class NewsFeedCard
         Uri.TryCreate(siteUrl, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https" && uri.Host.Length > 0
             ? uri.IdnHost
             : null;
+
+    /// <summary>The feed URL as a link target, only when it is safe to open (<see cref="OdsExternalLink.Target"/>).</summary>
+    private static Uri? UrlTarget(string url) => OdsExternalLink.Target(url);
 
     private IEnumerable<ExistingNewsTag> FeedTags =>
         Feed.TagIds.Select(id => TagsById.GetValueOrDefault(id)).OfType<ExistingNewsTag>();
@@ -84,6 +88,18 @@ public partial class NewsFeedCard
         : management.LastErrorKind == NewsFeedErrorKind.None ? "Fetched without errors"
         : "The last fetch failed";
 
+    /// <summary>The Feed URL tile's own ⋯ menu: Copy URL.</summary>
+    private IReadOnlyList<OdsMenuItem> UrlMenu(string url) =>
+    [
+        new()
+        {
+            Icon = "content_copy",
+            Label = "Copy URL",
+            AriaLabel = $"Copy URL of {Feed.DisplayTitle}",
+            OnClick = EventCallback.Factory.Create(this, () => CopyUrlAsync(url)),
+        },
+    ];
+
     private RenderFragment CheckedMeta(DateTimeOffset at) => builder =>
     {
         builder.OpenElement(0, "span");
@@ -96,13 +112,9 @@ public partial class NewsFeedCard
 
     private Task CheckAgain() => OnCheckAgain.InvokeAsync(Feed);
 
-    private Task StopChecking() => OnStopChecking.InvokeAsync(Feed);
-
-    private Task UseNewAddress() => OnUseNewAddress.InvokeAsync(Feed);
-
     private async Task CopyUrlAsync(string url)
     {
         var copied = await Clipboard.CopyAsync(url, null);
-        await OnCopied.InvokeAsync(copied ? "Link copied" : "Couldn't copy. Select the text instead.");
+        await OnCopied.InvokeAsync(copied ? CopiedText : CopyFailedText);
     }
 }

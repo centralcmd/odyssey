@@ -1,7 +1,7 @@
 @using Odyssey.Dtos.Internet
 @*
     ImportNewsFeedsReport — the Result state of ImportNewsFeedsDialog (issue #509 §3.4): the three tiles, the outcome
-    groups in a fixed order whose counts are the server's counters, and the notes. One role="group" labelled by its
+    groups in a fixed order whose counts are the server’s counters, and the notes. One role="group" labelled by its
     heading. Every report value renders as text; URLs are masked (ImportNewsFeedsDialog.Mask). Its disclosure state is
     its own, so dropping the component (Import another file, close) drops the report with it.
 *@
@@ -44,7 +44,7 @@
     {
         <div class="cal-imp-note">
             <span class="material-icons" aria-hidden="true">info</span>
-            <span>This file doesn't list any feeds.</span>
+            <span>This file doesn’t list any feeds.</span>
         </div>
     }
     else if (allAdded)
@@ -159,7 +159,7 @@
 
     /// <summary>
     /// One collapsed group: a button with aria-expanded / aria-controls whose name is the reason, the exact server
-    /// count and its unit ("Address can't be used, 3 feeds"); rows render only while it is open, then "+n more" when
+    /// count and its unit ("Address can’t be used, 3 feeds"); rows render only while it is open, then "+n more" when
     /// the count exceeds the rows the (possibly truncated) report carries.
     /// </summary>
     private RenderFragment Disclosure(string id, string reason, int count, int rows, string unit, bool neutral, RenderFragment items)

@@ -1,5 +1,6 @@
 using System.Globalization;
 using Odyssey.Client.Components;
+using Odyssey.Client.Services;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
@@ -162,6 +163,9 @@ public sealed class FileAnalysisSession
     /// <summary>Options for the category tag picker.</summary>
     public IReadOnlyList<OdsOption> TagOptions { get; private set; } = [];
 
+    /// <summary>The category picker's <c>CreateBlocked</c>: refuses a name an existing tag already holds.</summary>
+    public Func<string, string?>? TagNameBlocked { get; private set; }
+
     /// <summary>Contacts created inline during this review, so their indicator reads "Created here".</summary>
     private readonly HashSet<Guid> createdContactIds = [];
 
@@ -198,8 +202,11 @@ public sealed class FileAnalysisSession
     public void SetTags(IEnumerable<ExistingTransactionTag> loaded)
     {
         tags.Clear();
-        tags.AddRange(loaded.Where(t => t.Archived is null).OrderBy(t => t.Name));
+        var all = loaded.ToList();
+        tags.AddRange(all.Where(t => t.Archived is null).OrderBy(t => t.Name));
         TagOptions = [.. tags.Select(OdsTransactionTagOptions.From)];
+        // Every tag, archived included: a transaction tag name is unique across both.
+        TagNameBlocked = TagNameRule.For(all.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Transaction);
     }
 
     public void SetCurrencies(IEnumerable<string> codes) => currencyCodes = [.. codes];

@@ -13,9 +13,10 @@
 
     PageHeader carries the sub-line, the Overview (Articles · Feeds) and the "Attention" problems (one row per feed
     that needs attention, plus the quota rows for a file-storage.read holder), the standard filter bar and the
-    actions (Hide read · Mark all read · Manage feeds). No visible divider sits under it; an sr-only h2 keeps the
-    outline and is never a focus target. Expanding an unread card marks it read, with Undo in the snackbar and Mark
-    unread in the ⋯ menu. Every publisher string is encoded text; one OdsLiveAnnouncer speaks every status change.
+    ⋯ "News actions" menu (Mark all read… · Manage feeds). There is no Hide read: the Status filter does that. No
+    visible divider sits under it; an sr-only h2 keeps the outline and is never a focus target. Expanding an unread
+    card marks it read, with Undo in the snackbar and Mark unread in the ⋯ menu; leaving a card that was updated
+    since it was read counts as reading the new version. Every publisher string is encoded text; one OdsLiveAnnouncer speaks every status change.
 *@
 
 <OdsLiveAnnouncer @ref="_announcer" />
@@ -25,13 +26,14 @@
     <PageHeader Title="News" Icon="@Icons.Material.Filled.Feed"
                 Problems="Problems" ProblemsLabel="Attention"
                 OverviewOpen="_overviewOpen" OverviewOpenChanged="OnOverviewToggled" OverviewOpenByDefault="true"
-                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true">
+                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
+                ActionMenu="NewsActions" ActionMenuLabel="News actions" ActionMenuId="@ActionMenuId">
         <SubLine>@SubLine</SubLine>
         <OverviewContent>
             @if (_catalogue.Count > 0)
             {
                 <div class="odc-summary-grid">
-                    <OdsBreakdownTile Label="Articles" Rows="ArticleRows" Empty="No articles." />
+                    <OdsBreakdownTile Label="Articles" Rows="ArticleRows" Empty="No articles." TotalValue="@ArticleTotalText" />
                     <OdsBreakdownTile Label="Feeds" Rows="FeedRows" Empty="No feeds." />
                 </div>
             }
@@ -62,17 +64,6 @@
                                    Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
             </div>
         </SearchContent>
-        <PrimaryAction>
-            @if (CanHideRead)
-            {
-                <OdsButton Variant="OdsButtonVariant.Outlined" Icon="visibility_off" OnClick="HideReadAsync">Hide read</OdsButton>
-            }
-            @if (_canUpdate && _catalogue.Count > 0 && !StatusIsReadOnly)
-            {
-                <OdsButton id="nw-mark-all" Variant="OdsButtonVariant.Outlined" Icon="done_all" OnClick="OpenMarkAll">Mark all read</OdsButton>
-            }
-            <OdsButton Variant="OdsButtonVariant.Text" Icon="rss_feed" Href="news-feeds">Manage feeds</OdsButton>
-        </PrimaryAction>
     </PageHeader>
 
     @if (_loading)
@@ -157,7 +148,7 @@
                              ResetKey="_resetKey">
                 <RenderItem Context="article">
                     <NewsArticleCard @key="article.Id" Article="article" TagsById="_tagsById"
-                                     FeedLanguage="@FeedLang(article.FeedId.ToString())" Menu="MenuFor(article)"
+                                     FeedLanguage="@FeedLang(article.FeedId.ToString())" Menu="MenuFor(article)" LinkMenu="LinkMenuFor(article)"
                                      Open="@(_openId == article.Id)" OnToggle="open => OnToggleAsync(article, open)"
                                      Detail="@_details.GetValueOrDefault(article.Id)" RetryWaitSeconds="Gate.RemainingSeconds"
                                      CanReadJobs="_canReadSettings" ImageUrl="News.ImageUrl"
@@ -191,11 +182,11 @@
                     @foreach (var tag in inherited)
                     {
                         <li class="nw-tagrow-item">
-                            <OdsChip Tone="OdsChipTone.Outline" Icon="rss_feed" Class="sm nw-inherited"><bdi>@tag.Name</bdi><span class="odc-sr-only"> (from feed)</span></OdsChip>
+                            <OdsTagChip Name="@tag.Name" Icon="@tag.Icon" Color="@tag.Color" Class="sm nw-inherited" SrSuffix=" (from feed)" />
                         </li>
                     }
                 </ul>
-                <p class="nw-dialog-line">From the feed. Change them on the Feeds page.</p>
+                <p class="nw-dialog-line">From the feed — change them on the Feeds page.</p>
             </div>
         }
     </OdsFormDialog>
@@ -204,7 +195,7 @@
 @if (_markAllKey != Guid.Empty)
 {
     <OdsModal @key="_markAllKey" Open="_markAllOpen" OpenChanged="OnMarkAllOpenChanged" OnClose="MarkAllClosed"
-              Icon="done_all" Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel"
+              Icon="done_all" InitialFocus="OdsModalInitialFocus.Cancel" ReturnFocusToId="@ActionMenuId"
               RequiredLegend="false" DescribedById="nw-markall-desc">
         <Title>Mark all as read?</Title>
         <ChildContent>
@@ -227,4 +218,15 @@
                        AriaDisabled="@(_marking || _markAllOutOfDate)" OnClick="MarkAllAsync">@(_marking ? "Marking…" : "Mark read")</OdsButton>
         </Footer>
     </OdsModal>
+}
+
+@code {
+    /// <summary>The header's ⋯ "News actions": Mark all read… (only while something unread can be in view) · Manage feeds.</summary>
+    private RenderFragment NewsActions => @<text>
+        @if (CanMarkAll)
+        {
+            <MudMenuItem Icon="@Icons.Material.Filled.DoneAll" OnClick="OpenMarkAll">Mark all read…</MudMenuItem>
+        }
+        <MudMenuItem Icon="@Icons.Material.Filled.RssFeed" Href="news-feeds">Manage feeds</MudMenuItem>
+    </text>;
 }

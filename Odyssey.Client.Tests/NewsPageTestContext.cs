@@ -41,6 +41,8 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
         Ctx.Services.AddSingleton<TimeProvider>(Time);
         Ctx.Services.AddScoped<RelativeTimeTicker>();
         Ctx.Services.AddSingleton(News.Object);
+        Ctx.Services.AddSingleton(NewsTags.Object);
+        Ctx.Services.AddSingleton(Mock.Of<IReferenceDataCache>());
         Ctx.Services.AddSingleton(State.Object);
         Ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedInWith(claims ?? AllNewsClaims));
         Ctx.Services.AddScoped<INewsCatalogueCache, NewsCatalogueCache>();
@@ -62,6 +64,9 @@ internal sealed class NewsPageTestContext : IAsyncDisposable
     public BunitContext Ctx { get; } = new();
 
     public Mock<INewsApiClient> News { get; } = new();
+
+    /// <summary>The news tags, on the contract every tag resource shares.</summary>
+    public Mock<ITagsApiClient<ExistingNewsTag>> NewsTags { get; } = new();
 
     public Mock<IPageStateService> State { get; } = new();
 

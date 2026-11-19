@@ -11,20 +11,20 @@
 @inject Odyssey.Client.Services.IPageStateService PageState
 
 @*
-    OdsTagAdmin — the one tag-management surface, shared by all four tag families (transaction,
-    journal, task and photo tags). The design system builds them from a single factory
+    OdsTagAdmin — the one tag-management surface, shared by all five tag families (transaction,
+    journal, task, photo and news tags). The design system builds them from a single factory
     (ui_kits/web/TransactionTags.jsx · createTagsPage) because they carry the same
     Name / Description / Archived shape and the same page: a PageHeader with a status breakdown and a
     search/status/sort toolbar, a flat OdsRecordTable with archive/delete row actions, and one
     AddTagModal reused for both create and row Edit. Rows don't expand: Name / Description / Status
     is the whole record, so a detail panel could only repeat the columns.
 
-    The four route pages (/transaction-tags, /journal-tags, /task-tags, /photo-tags) instantiate it
+    The five route pages (/transaction-tags, /journal-tags, /task-tags, /photo-tags, /news-tags) instantiate it
     with their claims, copy and DTO accessors. Writes post a { Name, Description, Archived, Icon }
     body, valid for every tag resource (ApiClient · TagWrite).
 
     IconOf switches on tag icons (the factory's cfg.icons) — transaction tags since issue #279, and
-    journal, task and photo tags since #345, so all four pages pass it today: the leading avatar
+    journal, task and photo tags since #345, so every page passes it today: the leading avatar
     becomes the icon column, the dialog gains the Icon picker, and every write carries the icon —
     PUT is full replacement, so an edit or an archive that dropped it would reset the tag to the
     default. IconHelp names the records the icon then represents.

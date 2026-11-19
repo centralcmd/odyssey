@@ -233,7 +233,7 @@ public class ImportNewsFeedsDialogTests
         h.ClickImport();
 
         h.Cut.WaitForAssertion(() => Assert.Equal("true", h.Dropzone.GetAttribute("aria-invalid")));
-        Assert.Contains("That isn't an OPML file. Use a .opml or .xml file.", h.Cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("That isn’t an OPML file. Use a .opml or .xml file.", h.Cut.Markup, StringComparison.Ordinal);
         Assert.True(h.FocusedPicker());
         h.Context.News.Verify(n => n.ImportOpmlAsync(It.IsAny<ApiUpload>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -409,13 +409,13 @@ public class ImportNewsFeedsDialogTests
 
     public static TheoryData<HttpStatusCode, string?, string> AlertCases => new()
     {
-        { HttpStatusCode.BadRequest, NewsErrorCodes.OpmlUnreadable, "This file isn't an OPML document, or part of it couldn't be read. Nothing was imported." },
+        { HttpStatusCode.BadRequest, NewsErrorCodes.OpmlUnreadable, "This file isn’t an OPML document, or part of it couldn’t be read. Nothing was imported." },
         { HttpStatusCode.Conflict, NewsErrorCodes.OpmlConflict, "The feed list changed while importing. No feeds were imported, but new tags may have been added. Try again." },
         { HttpStatusCode.ServiceUnavailable, NewsErrorCodes.Busy, "News is busy, and the import may or may not have finished. Close to check the Feeds list, or try again." },
         { HttpStatusCode.ServiceUnavailable, null, "News is busy, and the import may or may not have finished. Close to check the Feeds list, or try again." },
         { HttpStatusCode.TooManyRequests, null, "Another import is running. Try again in a moment." },
-        { HttpStatusCode.Forbidden, null, "You don't have permission to import feeds." },
-        { HttpStatusCode.InternalServerError, null, "Couldn't import the file. Server said 500" },
+        { HttpStatusCode.Forbidden, null, "You don’t have permission to import feeds." },
+        { HttpStatusCode.InternalServerError, null, "Couldn’t import the file. Server said 500" },
     };
 
     [Theory] // AC 16, AC 17
@@ -452,7 +452,7 @@ public class ImportNewsFeedsDialogTests
 
         h.ClickImport();
 
-        h.Cut.WaitForAssertion(() => Assert.Equal("Couldn't import the file.", h.Cut.Find(".ods-modal [role=alert]").TextContent.Trim()));
+        h.Cut.WaitForAssertion(() => Assert.Equal("Couldn’t import the file.", h.Cut.Find(".ods-modal [role=alert]").TextContent.Trim()));
     }
 
     [Fact] // AC 16
@@ -466,7 +466,7 @@ public class ImportNewsFeedsDialogTests
         h.ClickImport();
 
         h.Cut.WaitForAssertion(() => Assert.Equal(
-            "The upload didn't finish, and the import may or may not have run. Close to check the Feeds list, or try again.",
+            "The upload didn’t finish, and the import may or may not have run. Close to check the Feeds list, or try again.",
             h.Cut.Find(".ods-modal [role=alert]").TextContent.Trim()));
     }
 
@@ -492,7 +492,7 @@ public class ImportNewsFeedsDialogTests
     public static TheoryData<HttpStatusCode, string?, string> FieldCases => new()
     {
         { HttpStatusCode.BadRequest, NewsErrorCodes.OpmlFileRequired, "Choose an OPML file to import." },
-        { HttpStatusCode.UnsupportedMediaType, NewsErrorCodes.OpmlWrongType, "That isn't an OPML file. Use a .opml or .xml file." },
+        { HttpStatusCode.UnsupportedMediaType, NewsErrorCodes.OpmlWrongType, "That isn’t an OPML file. Use a .opml or .xml file." },
         { HttpStatusCode.RequestEntityTooLarge, null, "That file is too large for this server. The import limit is 64 MB." },
     };
 
@@ -615,7 +615,7 @@ public class ImportNewsFeedsDialogTests
 
         Assert.Equal(
         [
-            "Added feeds, 6 feeds", "Already subscribed, 2 feeds", "Address can't be used, 3 feeds", "Over the feed limit, 2 feeds",
+            "Added feeds, 6 feeds", "Already subscribed, 2 feeds", "Address can’t be used, 3 feeds", "Over the feed limit, 2 feeds",
             "Being deleted, 1 feeds", "Tags not added, 2 tags",
         ], buttons);
         foreach (var button in h.Cut.FindAll(".cal-imp-skips button.cal-imp-skip-head"))
@@ -628,7 +628,7 @@ public class ImportNewsFeedsDialogTests
         }
     }
 
-    [Fact] // AC 10: rows only when expanded; the count is the server's, and a short list ends "+n more"
+    [Fact] // AC 10: rows only when expanded; the count is the server’s, and a short list ends "+n more"
     public async Task An_expanded_truncated_group_lists_its_rows_then_the_rest_as_more()
     {
         var result = new NewsOpmlImportResult
@@ -639,7 +639,7 @@ public class ImportNewsFeedsDialogTests
         };
         var h = await ImportedAsync(result);
         await using var _ = h;
-        Assert.Equal("Address can't be used, 5,000 feeds", Name(GroupButton(h, "news-opml-g-invalid")));
+        Assert.Equal("Address can’t be used, 5,000 feeds", Name(GroupButton(h, "news-opml-g-invalid")));
 
         GroupButton(h, "news-opml-g-invalid").Click();
 
@@ -688,7 +688,7 @@ public class ImportNewsFeedsDialogTests
     }
 
     [Theory] // AC 11: the known tag reasons
-    [InlineData(NewsOpmlTagSkipReason.NoPermission, "You can't create tags")]
+    [InlineData(NewsOpmlTagSkipReason.NoPermission, "You can’t create tags")]
     [InlineData(NewsOpmlTagSkipReason.TagLimit, "The tag limit is reached")]
     [InlineData(NewsOpmlTagSkipReason.Archived, "The tag is archived")]
     [InlineData(NewsOpmlTagSkipReason.Unknown, "Not added")]
@@ -817,9 +817,9 @@ public class ImportNewsFeedsDialogTests
         var h = await ImportedAsync(new NewsOpmlImportResult());
         await using var _ = h;
 
-        Assert.Contains("This file doesn't list any feeds.", h.Cut.Find(".cal-imp-result").TextContent, StringComparison.Ordinal);
+        Assert.Contains("This file doesn’t list any feeds.", h.Cut.Find(".cal-imp-result").TextContent, StringComparison.Ordinal);
         Assert.Empty(h.Cut.FindAll(".cal-imp-skip"));
-        h.Cut.WaitForAssertion(() => Assert.Equal("This file doesn't list any feeds.", h.Polite.Trim()));
+        h.Cut.WaitForAssertion(() => Assert.Equal("This file doesn’t list any feeds.", h.Polite.Trim()));
     }
 
     [Fact] // AC 19

@@ -91,6 +91,13 @@ public enum NewsFeedState : byte
     Unknown = byte.MaxValue,
 }
 
+/// <summary>Sortable keys for the news tag list, as for every tag resource; ties break on the id.</summary>
+public enum NewsTagSortBy
+{
+    Name,
+    Status,
+}
+
 /// <summary>Sortable keys for the feed list; every sort ends with the id as a tie-break.</summary>
 public enum NewsFeedSortBy
 {
@@ -98,6 +105,19 @@ public enum NewsFeedSortBy
     UnreadCount,
     LastSuccessAt,
     CreatedAt,
+}
+
+/// <summary>
+/// The article list's Status filter members (OR within the list). <see cref="Updated"/> is a SUBSET of
+/// <see cref="Read"/>: a read article the publisher changed after it was read (<c>ContentChangedAtUtc &gt; ReadAtUtc</c>).
+/// </summary>
+[JsonConverter(typeof(TolerantEnumConverter<NewsArticleReadStatus>))]
+public enum NewsArticleReadStatus : byte
+{
+    Unread = 0,
+    Read = 1,
+    Updated = 2,
+    Unknown = byte.MaxValue,
 }
 
 /// <summary>Sort orders for the article list. <see cref="Relevance"/> is valid only with a search.</summary>

@@ -747,7 +747,7 @@ follow the existing naming: `INewsArticlesApiClient`, `INewsFeedsApiClient`, `IN
 
 | Endpoint | Where |
 |---|---|
-| `GET/POST/PUT /api/news-tags…`, `…/archive`, `…/unarchive`, `DELETE …[?detachLinks=true]` | `/news-tags` |
+| `GET/POST/PUT/DELETE /api/news-tags…` — the shared tag contract since November 2026 (backend §5.4); the page is the shared `OdsTagAdmin` | `/news-tags` |
 | `GET /api/news-status` | The News status panel and the job card's text-quota warning line |
 | Existing `/api/background-jobs/…` and `/api/system-settings` | The job card and the settings group |
 
@@ -984,7 +984,7 @@ failed-update, busy, network and Mark all read partial-failure snackbars.
 | `news-tag-in-use` (409) | §3.4 |
 | `NewsFeedUrlRejected` (422, `url`) | Inline. The server's message wins over any client result |
 | `news-feed-limit` / `news-tag-limit` (422) | An `OdsAlert` in the dialog: "The limit has been reached. An administrator can raise it in Settings." The tag limit is a constant, so its alert drops the Settings sentence |
-| `news-feed-not-archived` / `-inactive` / `-not-quarantined` (422) | A snackbar with the server's message. Only a race reaches this |
+| `news-feed-inactive` / `-not-quarantined` (422; `news-feed-not-archived` is retired) | A snackbar with the server's message. Only a race reaches this |
 | `NewsTagNotUsable` (422) | Inline on the tag picker: "One of these tags is archived." |
 | `NewsMarkReadScopeInvalid` / `asOfUtc` (422) | "The list is out of date. Refresh and try again." with **Refresh**. The scope error covers an unknown id only |
 | A pending-deletion feed id (422) | Never reached on load: stale ids are dropped first (§3.1) |

@@ -16,13 +16,12 @@ public static class NewsFeedForm
     public static readonly string IntervalMessage =
         $"Use {NewsLimits.MinFetchIntervalMinutes} to {NewsLimits.MaxFetchIntervalMinutes} minutes, or leave empty.";
 
-    public static readonly string UrlHelp =
-        "Required. An RSS, Atom or JSON Feed address starting with http:// or https://. Odyssey checks it on the first fetch.";
+    public const string UrlHelp = "RSS, Atom or JSON Feed address. Odyssey checks it on the first fetch.";
 
-    public const string TitleHelp = "Optional. Leave empty to use the feed’s own title.";
+    public const string TitleHelp = "Leave empty to use the feed’s own title.";
 
     public static readonly string IntervalHelp =
-        $"Optional. {NewsLimits.MinFetchIntervalMinutes}–{NewsLimits.MaxFetchIntervalMinutes} minutes; empty uses the default.";
+        $"{NewsLimits.MinFetchIntervalMinutes}–{NewsLimits.MaxFetchIntervalMinutes} minutes. Empty uses the default.";
 
     /// <summary>Required; ≤ <see cref="NewsLimits.MaxUrlLength"/>; an absolute http/https URI with a host and no user info.</summary>
     public static string? ValidateUrl(string? url)
@@ -48,20 +47,4 @@ public static class NewsFeedForm
         minutes is not { } m ? null
         : m != decimal.Truncate(m) || m < NewsLimits.MinFetchIntervalMinutes || m > NewsLimits.MaxFetchIntervalMinutes ? IntervalMessage
         : null;
-
-    /// <summary>
-    /// The address with its query masked: <c>https://example.com/feed.xml?…</c> (§3.3). A private feed's token often
-    /// rides in the query, so it is hidden until <b>Show full address</b>. Returns the value unchanged when there is
-    /// no query, and <see langword="null"/> mask when it is not an absolute URI.
-    /// </summary>
-    public static (string Shown, bool Masked) Mask(string url)
-    {
-        if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Query.Length > 1)
-        {
-            return ($"{uri.GetLeftPart(UriPartial.Path)}?…", true);
-        }
-
-        var cut = url.IndexOf('?', StringComparison.Ordinal);
-        return cut >= 0 && cut < url.Length - 1 ? (url[..cut] + "?…", true) : (url, false);
-    }
 }

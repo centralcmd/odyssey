@@ -310,7 +310,7 @@ public class ControlContrastTests
     [InlineData(".odc-input")]
     [InlineData(".odc-ms-trigger:not(.quiet)")]
     [InlineData(".odc-sortsel-trigger")]
-    [InlineData(".odc-sortsel-static")]
+    [InlineData(".odc-select-trigger")]
     [InlineData(".odc-sortsel-dir")]
     [InlineData(".odc-rpp-trigger")]
     [InlineData(".odc-dpr")]

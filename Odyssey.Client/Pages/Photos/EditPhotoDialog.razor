@@ -44,7 +44,8 @@
             <OdsTagMultiSelect Label="Tags" Value="_tags" ValueChanged="v => _tags = v" Options="_tagOpts"
                                Placeholder="No tags" AddLabel="Add tag"
                                OnCreate="@(CanCreateTags ? CreateTagOption : null)"
-                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Photo" />
+                               CreateKinds="OdsTypeRegistries.TagCreateKinds.Photo"
+                               CreateBlocked="TagNameBlocked" />
             @* People ARE Person contacts, so the create row makes one and tags it. One kind only —
                a photo's people can never be organizations. *@
             <OdsTagMultiSelect Label="People" Value="_people" ValueChanged="v => _people = v" Options="_peopleOpts"

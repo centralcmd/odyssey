@@ -1,208 +1,33 @@
 @page "/news-tags"
+@using Odyssey.Client.Authorization
+@using Odyssey.Dtos.Internet
 @attribute [Authorize(Policy = PermissionClaims.NewsRead)]
+@inject Odyssey.Client.Services.INewsCatalogueCache Catalogue
 
-<PageTitle>News tags</PageTitle>
+<PageTitle>News Tags</PageTitle>
 
 @*
-    News tags — the Internet module's own tag set (issue #473 §3.4; Odyssey Design System · ui_kits/web/NewsTags.jsx).
-    Deliberately NOT OdsTagAdmin, which is bound to ITagsApiClient rows, archive by PUT replay and a server-paged list
-    with no in-use delete. The page holds the whole (unpaged) set from GET /api/news-tags, filters and sorts it itself,
-    and hands OdsRecordTable the first N rows of that order with ServerSort="true" — so a header click re-sorts the
-    WHOLE set, not the loaded window. OdsInfiniteList in its footer-only mode follows the table and grows the window
-    (decision 4 at merge). Tag names and descriptions are publisher-free but user text: encoded, never markup.
+    News tags — the tag-admin sister of Transaction/Journal/Task/Photo tags (Odyssey Design System ·
+    TransactionTags · createTagsPage). Reuses the shared OdsTagAdmin over the api/news-tags contract: search +
+    archival filter + sort, create / rename / archive / delete (an in-use tag returns 409 → toast). Every write drops
+    the news tag cache, so the feed and article pickers see it. Names are user text, rendered auto-encoded.
 *@
 
-<OdsLiveAnnouncer @ref="_announcer" />
-
-<div class="nw-page" id="@RootId">
-<MudStack Spacing="4">
-    <PageHeader Title="News tags" Icon="@Icons.Material.Filled.LocalOffer"
-                SearchOpen="_searchOpen" SearchOpenChanged="OnSearchToggled" SearchOpenByDefault="true"
-                PrimaryActionText="New tag" OnPrimaryAction="AddClicked" ShowPrimaryAction="_canCreate">
-        <SubLine>@($"{_activeCount} active · {_tags.Count - _activeCount} archived")</SubLine>
-        <SearchContent>
-            <div class="ph-filter-bar">
-                <OdsSearchField Value="@_search" ValueChanged="OnSearchChanged" DebounceInterval="300"
-                                Placeholder="Search name or description…" Class="ph-search" />
-                <OdsMultiSelect Label="Status" Values="_statusFilter" ValuesChanged="OnStatusChanged"
-                                Options="StatusOptions" Class="ph-select" />
-                <OdsSortSelect TRow="ExistingNewsTag" Fields="SortFields" Sort="_sort" SortChanged="OnSortChanged" />
-                <OdsPageSizeSelect Prefix="Load" Suffix="at a time" Label="Tags per batch"
-                                   Value="_batch" ValueChanged="OnBatchChanged" Options="OdsPageSizes.Batch" />
-            </div>
-        </SearchContent>
-    </PageHeader>
-
-    @* A visible h2, to which the table's caption is tied; a valid focus target after a delete (§6.6). *@
-    <h2 class="nw-h2 nw-focus-host" id="@HeadingId" tabindex="-1">Tags</h2>
-
-    @if (_failure is { } failure && _tags.Count == 0)
-    {
-        <NewsLoadProblem Busy="failure.Busy" Noun="news tags" RetryAfter="failure.RetryAfter" Failure="_failureCount"
-                         IdPrefix="nt-load" OnRetry="RetryLoadAsync" />
-    }
-    else
-    {
-        <MudCard Outlined="true" Class="nw-tags-card">
-            <OdsRecordTable TRow="ExistingNewsTag"
-                            Caption="News tags" CaptionHidden="true"
-                            Rows="@Window"
-                            Loading="_loading"
-                            Refetching="_refetching"
-                            HasFilters="HasFilters"
-                            OnClearFilters="ClearFilters"
-                            Noun="news tags"
-                            EmptyIcon="local_offer"
-                            EmptyTitle="@(_tags.Count == 0 ? "No news tags yet" : null)"
-                            EmptyDescription="Create a tag to group feeds and articles — or to mark favourites."
-                            ServerSort="true"
-                            RowKey="@(t => (object)t.Id)"
-                            RowHeader="name"
-                            MenuTriggerIdFor="MenuTriggerId"
-                            RowBusy="@(t => _busyIds.Contains(t.Id))"
-                            Columns="Columns"
-                            DefaultSort="DefaultSort"
-                            Sort="_sort"
-                            SortChanged="OnSortChanged"
-                            Actions="BuildActions">
-                <Leading Context="t">
-                    <OdsAvatar Icon="@TagIcons.Glyph(t.Icon)" Bg="var(--tag-soft)" Fg="var(--tag-text)" UserColor="@t.Color" />
-                </Leading>
-                <CreateAction>
-                    @if (_canCreate && _tags.Count == 0)
-                    {
-                        <OdsButton Variant="OdsButtonVariant.Filled" Icon="add" OnClick="AddClicked">New tag</OdsButton>
-                    }
-                </CreateAction>
-            </OdsRecordTable>
-        </MudCard>
-        @if (Sorted.Count > 0)
-        {
-            <OdsInfiniteList TItem="ExistingNewsTag" FooterOnly="true" Items="Sorted"
-                             @bind-WindowSize="_window" BatchSize="_batch" Noun="tags" />
-        }
-    }
-</MudStack>
-</div>
-
-@if (_formKey != Guid.Empty)
-{
-    <OdsFormDialog @key="_formKey" @bind-Open="_formOpen"
-                   Icon="local_offer"
-                   Title="@(_editing is null ? "New tag" : "Edit tag")"
-                   Subtitle="@(_editing is null ? "News tags group feeds and articles. A feed’s tags apply to every article it brings." : "News tags group feeds and articles.")"
-                   SubmitLabel="@(_editing is null ? "Create tag" : "Save")"
-                   SubmitIcon="@(_editing is null ? "add" : "check")"
-                   OnSubmit="SaveAsync" OnSaved="OnFormSaved">
-        @if (_formAlert is { } alert)
-        {
-            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@alert</OdsAlert>
-        }
-        <OdsField id="nt-form-name" Label="Name" Required="true" Value="@_draftName" ValueChanged="OnDraftNameChanged"
-                  Placeholder="e.g. Favourites" MaxLength="@NewsLimits.MaxTagNameLength" AutoFocus="true"
-                  Help="@($"Required. Up to {NewsLimits.MaxTagNameLength} characters · must be unique")" Error="@_draftNameError" />
-        <OdsField id="nt-form-description" Label="Description" Value="@_draftDescription" ValueChanged="OnDraftDescriptionChanged"
-                  Placeholder="What this tag is for" MaxLength="@NewsLimits.MaxTagDescriptionLength" Multiline="true"
-                  Help="@($"Optional. Up to {NewsLimits.MaxTagDescriptionLength} characters")" Error="@_draftDescriptionError" />
-        <OdsFieldShell Label="Icon" HtmlFor="nt-icon" LabelId="nt-icon-label" Error="@_draftIconError"
-                       Help="Shown for this tag on feeds and articles. Default keeps the tag icon.">
-            <OdsTagIconPicker Id="nt-icon" Value="@_draftIcon" ValueChanged="OnDraftIconChanged"
-                              AriaLabelledBy="nt-icon-label" Invalid="@(_draftIconError is not null)"
-                              AriaDescribedBy="@(_draftIconError is null ? "nt-icon-help" : "nt-icon-help nt-icon-help-error")" />
-        </OdsFieldShell>
-        <OdsFieldShell Label="Color" HtmlFor="nt-color" LabelId="nt-color-label" Help="@ColorHelp">
-            <OdsTagColorPicker @ref="_colorPicker" Id="nt-color" Value="@_draftColor"
-                               ValueChanged="OnDraftColorChanged" ValidChanged="OnDraftColorValidChanged"
-                               AriaLabelledBy="nt-color-label" AriaDescribedBy="nt-color-help"
-                               Disabled="@_saving" ShowErrors="@_draftColorShowErrors"
-                               Invalid="@(_draftColorError is not null)" Error="@_draftColorError" />
-        </OdsFieldShell>
-    </OdsFormDialog>
-}
-
-@if (_deleting is { } deleting)
-{
-    var inUse = deleting.FeedCount + deleting.ArticleCount > 0;
-    <OdsModal @key="_deleteKey" Open="_deleteOpen" OpenChanged="OnDeleteOpenChanged"
-              Icon="delete" IconTone="OdsModalTone.Error" Role="OdsModalRole.AlertDialog"
-              InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false" DescribedById="nt-del-desc">
-        <Title>Delete “<bdi>@deleting.Name</bdi>”?</Title>
-        <ChildContent>
-            @if (_deleteError is { } error)
-            {
-                <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@error</OdsAlert>
-            }
-            @if (inUse)
-            {
-                <p class="nw-dialog-line" id="nt-del-desc">@UsedBySentence(deleting)</p>
-                @if (CanDetach(deleting))
-                {
-                    <p class="nw-dialog-line nw-muted">Deleting it removes the tag from all of them first. Archiving it instead keeps every link and retires the tag from the pickers.</p>
-                    <OdsCheckbox Id="nt-del-ack" Label="I understand the tag is removed from all of them"
-                                 Checked="_deleteAck" CheckedChanged="v => _deleteAck = v" />
-                }
-                else
-                {
-                    @foreach (var line in MissingDetachPermissions(deleting))
-                    {
-                        <p class="nw-dialog-line nw-muted">@line</p>
-                    }
-                }
-            }
-            else
-            {
-                <p class="nw-dialog-line" id="nt-del-desc">No feed or article uses this tag. This cannot be undone.</p>
-            }
-        </ChildContent>
-        <Footer>
-            <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseDelete" data-dialog-cancel="true">Cancel</OdsButton>
-            @if (!inUse)
-            {
-                <OdsButton Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleteBusy" OnClick="() => DeleteAsync(false)">Delete tag</OdsButton>
-            }
-            else if (CanDetach(deleting))
-            {
-                <OdsButton id="nt-del-detach" Variant="OdsButtonVariant.Danger" Icon="delete_sweep" Loading="_deleteBusy"
-                           AriaDisabled="@(!_deleteAck)" aria-describedby="@(_deleteAck ? null : "nt-del-ack-reason")"
-                           OnClick="() => DeleteAsync(true)">Remove from all and delete</OdsButton>
-                @if (!_deleteAck)
-                {
-                    <span class="odc-sr-only" id="nt-del-ack-reason">Tick the acknowledgement first.</span>
-                }
-            }
-        </Footer>
-    </OdsModal>
-}
-
-@code {
-    // The name cell: the name and its description line, and — for a caller who can edit — the row's edit trigger,
-    // which is where focus lands after a create (§3.4).
-    private RenderFragment NameCell(ExistingNewsTag tag) =>
-        @<span class="nt-name">
-            @if (_canUpdate)
-            {
-                <button type="button" class="nt-namebtn" id="@NameButtonId(tag.Id)" @onclick="() => EditClicked(tag)"><bdi>@tag.Name</bdi></button>
-            }
-            else
-            {
-                <span><bdi>@tag.Name</bdi></span>
-            }
-            @if (!string.IsNullOrWhiteSpace(tag.Description))
-            {
-                <span class="nt-desc"><bdi>@tag.Description</bdi></span>
-            }
-        </span>;
-
-    // Status as text, the dot decorative (§6.4).
-    private static RenderFragment StatusCell(ExistingNewsTag tag) =>
-        @<text>
-            @if (tag.Archived)
-            {
-                <OdsChip Tone="OdsChipTone.Outline" Dot="true">Archived</OdsChip>
-            }
-            else
-            {
-                <OdsChip Tone="OdsChipTone.Income" Dot="true">Active</OdsChip>
-            }
-        </text>;
-}
+<OdsTagAdmin TRow="ExistingNewsTag"
+             Title="News tags"
+             Noun="news tags"
+             PageStateKey="news-tags-page"
+             CreateClaim="@PermissionClaims.NewsTagsCreate"
+             UpdateClaim="@PermissionClaims.NewsTagsUpdate"
+             DeleteClaim="@PermissionClaims.NewsTagsDelete"
+             NamePlaceholder="e.g. Favourites"
+             ModalSubtitle="Tags group feeds and articles. A feed’s tags apply to every article it brings."
+             EmptyDesc="Create your first tag to group feeds and articles — or to mark favourites."
+             Id="@(t => t.NewsTagId)"
+             Name="@(t => t.Name)"
+             Description="@(t => t.Description)"
+             Archived="@(t => t.Archived)"
+             IconOf="@(t => t.Icon)"
+             ColorOf="@(t => t.Color)"
+             IconHelp="Shown for this tag and on every feed and article carrying it. Default keeps the tag icon."
+             OnTagsChanged="Catalogue.InvalidateTags" />

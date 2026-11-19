@@ -43,8 +43,12 @@
     {
         @if (Status.Sources.Count == 0)
         {
+            @* Nothing installed: the note is the whole panel (design system · InstrumentPriceSources), so a
+               stale binding never renders under it. *@
             <p class="ins-src-note">@NoSourcesInstalled</p>
         }
+        else
+        {
         @if (Instrument.Archived is not null)
         {
             <p class="ins-src-note"><span class="material-icons" aria-hidden="true">inventory_2</span>Archived instruments are not synced.</p>
@@ -54,10 +58,7 @@
 
         @if (_draft.Count == 0)
         {
-            @if (Status.Sources.Count > 0)
-            {
-                <OdsEmptyLine>No sources for this instrument.</OdsEmptyLine>
-            }
+            <p class="ins-src-note">@NoSourcesText(Editable)</p>
         }
         else
         {
@@ -108,7 +109,8 @@
                                 }
                                 else
                                 {
-                                    <div><dt>History</dt><dd>Fetched after you save</dd></div>
+                                    <div><dt>Last success</dt><dd>None yet</dd></div>
+                                    <div><dt>History</dt><dd>History not fetched yet</dd></div>
                                 }
                             </dl>
                         </div>
@@ -116,7 +118,7 @@
                         {
                             <div class="ins-src-ctl">
                                 <span id="@SwitchHostId(item)">
-                                    <OdsSwitch Label="@($"{name} enabled")" Checked="item.Enabled" ResetKey="item.ResetKey"
+                                    <OdsSwitch Label="@($"Fetch from {name}")" Checked="item.Enabled" ResetKey="item.ResetKey"
                                                CheckedChanged="@(on => OnEnabledChanged(item, on))" />
                                 </span>
                                 <div class="ins-src-order">
@@ -140,7 +142,7 @@
             </ol>
         }
 
-        @if (Editable && Status.Sources.Count > 0)
+        @if (Editable)
         {
             @if (_adding is { } adding)
             {
@@ -172,7 +174,7 @@
             }
             else if (Addable.Count == 0)
             {
-                <p class="ins-src-note">Every installed source that supports this type is already added.</p>
+                <p class="ins-src-note">@AllAddedText(Instrument.Type)</p>
             }
             else
             {
@@ -189,12 +191,10 @@
             </div>
         }
 
-        @if (Status.Sources.Count > 0)
-        {
-            @* Run now and the run history are the job's, on System › Background jobs. *@
-            <div class="ins-src-runs">
-                <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="history" Href="@BackgroundJobsHref">View price sync runs</OdsButton>
-            </div>
+        @* Run now and the run history are the job's, on System › Background jobs. *@
+        <div class="ins-src-runs">
+            <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="history" Href="@BackgroundJobsHref">View price sync runs</OdsButton>
+        </div>
         }
     }
 </div>

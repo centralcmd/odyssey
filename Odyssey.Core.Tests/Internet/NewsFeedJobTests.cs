@@ -742,6 +742,72 @@ public sealed class NewsFeedJobTests : IAsyncLifetime
         _ = feedId;
     }
 
+    [Fact]
+    public async Task AC10_a_live_feed_deleted_without_archiving_is_purged_with_its_articles_and_tag_links()
+    {
+        // The archive-first step is gone: a feed that is active, has articles and carries a tag is purged as fully
+        // as an archived one, and only its link to the tag goes — the tag itself is household data.
+        news.Server.Feed(FeedUrl, Rss(Story("l-1"), Story("l-2")));
+        var feedId = await news.AddFeedAsync(FeedUrl);
+        await TickAsync();
+        Assert.Equal(2, (await news.ArticlesAsync(feedId)).Count);
+        var tagId = Guid.NewGuid();
+        await news.WithContextAsync(async c =>
+        {
+            c.NewsTags.Add(new NewsTag { NewsTagId = tagId, Name = "Kept", NameKey = "KEPT" });
+            c.NewsFeedTags.Add(new NewsFeedTag { NewsFeedTagId = Guid.NewGuid(), NewsFeedId = feedId, NewsTagId = tagId });
+            var feed = await c.NewsFeeds.SingleAsync();
+            Assert.Null(feed.ArchivedAtUtc);
+            feed.DeletionRequestedAtUtc = news.Clock.GetUtcNow().UtcDateTime;
+            await c.SaveChangesAsync();
+        });
+
+        await TickAsync();
+
+        await news.WithContextAsync(async c =>
+        {
+            Assert.False(await c.NewsFeeds.AnyAsync());
+            Assert.False(await c.NewsArticles.AnyAsync());
+            Assert.False(await c.NewsFeedTags.AnyAsync());
+            Assert.True(await c.NewsTags.AnyAsync(t => t.NewsTagId == tagId));
+        });
+    }
+
+    [Fact]
+    public async Task A_fenced_write_aborts_once_the_feed_is_deleted_and_runs_nothing()
+    {
+        // What makes deleting a feed mid-fetch safe: every fenced write re-reads the deletion stamp first.
+        var feedId = await news.AddFeedAsync(FeedUrl);
+        var owner = Guid.NewGuid();
+        var fence = Guid.NewGuid();
+        await news.WithContextAsync(async c =>
+        {
+            var state = await c.NewsFeedFetchStates.SingleAsync(s => s.NewsFeedId == feedId);
+            state.LeaseOwner = owner;
+            state.FetchFence = fence;
+            await c.SaveChangesAsync();
+        });
+        using var session = new NewsFetchSession(new NewsClaim
+        {
+            FeedId = feedId, Url = FeedUrl, Owner = owner, Fence = fence,
+            ClaimTime = news.Clock.GetUtcNow().UtcDateTime, Interval = TimeSpan.FromMinutes(30),
+        });
+
+        var ran = 0;
+        Assert.Equal(NewsFenceOutcome.Ok, await news.WithContextAsync(c => session.WithFenceAsync(c, async _ => { ran++; await c.SaveChangesAsync(); }, CancellationToken.None)));
+        await news.WithContextAsync(async c =>
+        {
+            (await c.NewsFeeds.SingleAsync(f => f.NewsFeedId == feedId)).DeletionRequestedAtUtc = news.Clock.GetUtcNow().UtcDateTime;
+            await c.SaveChangesAsync();
+        });
+
+        var outcome = await news.WithContextAsync(c => session.WithFenceAsync(c, _ => { ran++; return Task.CompletedTask; }, CancellationToken.None));
+
+        Assert.Equal(NewsFenceOutcome.DeletionRequested, outcome);
+        Assert.Equal(NewsFenceOutcome.DeletionRequested, session.Aborted);
+        Assert.Equal(1, ran);
+    }
+
     // ── AC 41: buckets ───────────────────────────────────────────────────────────────────────────────
 
     [Fact]

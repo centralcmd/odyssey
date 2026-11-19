@@ -788,7 +788,7 @@ General rules:
 9. `POST /api/news-feeds/{id:guid}/archive` and `POST /api/news-feeds/{id:guid}/unarchive` —
    `news-feeds.update`.
 10. `DELETE /api/news-feeds/{id:guid}` — `news-feeds.delete`. Returns `202`. The feed must be archived
-    first, otherwise `422 news-feed-not-archived`. Sets `DeletionRequestedAtUtc`; the purge is batched
+    first, otherwise `422 news-feed-not-archived`. *(Superseded: since the design-system sync of 2026-11-19 any feed can be deleted, with no archive-first step, and the code is retired.)* Sets `DeletionRequestedAtUtc`; the purge is batched
     (§3.4 step 1).
 11. `POST /api/news-feeds/{id:guid}/release-quarantine` — `news-feeds.update`. Clears
     `QuarantinedAtUtc` and `CrashSuspectCount` with the conditional `UPDATE` in §3.3. It writes no
@@ -941,6 +941,13 @@ ids would read and sort every matching row instead. So:
 - Every command is tagged `news-query` and runs under the 5 s `max_statement_time` (§8.4).
 
 ### 5.4 Tags
+
+> **Superseded (November 2026).** News tags now take the contract every tag resource shares (journal, task,
+> photo and transaction tags): `GET` is paged with `search`, `status`, `sortBy` (`Name`/`Status`), `sortDir`,
+> `offset` and `limit` and returns `{ newsTagId, name, description, archived (DateTime?), icon, color }` — no
+> counts; `PUT` carries `archived` and is how a tag is archived or restored (the `…/archive` and `…/unarchive`
+> routes are gone); and `DELETE` refuses a tag in use with `409 news-tag-in-use` (its counts still in the body) —
+> there is no `detachLinks`. Items 21, 24 and 25 below describe the original design.
 
 21. `GET /api/news-tags` — `news.read`. **Unpaged**; returns every tag (≤ 500, the tag cap), each with
     every field of the `NewsTags` entity plus the counts:
@@ -1450,7 +1457,7 @@ into one.
 | `NewsTagLimitReached` | 422 | `news-tag-limit` |
 | `NewsFeedUrlRejected` | 422 | key `url` |
 | `NewsFeedLimitReached` | 422 | `news-feed-limit` |
-| `NewsFeedNotArchived` / `Inactive` / `NotQuarantined` | 422 | `news-feed-not-archived` / `news-feed-inactive` / as named |
+| ~~`NewsFeedNotArchived`~~ / `Inactive` / `NotQuarantined` | 422 | ~~`news-feed-not-archived`~~ *(retired by the design-system sync of 2026-11-19: any feed can be deleted)* / `news-feed-inactive` / as named |
 | `NewsTagNotUsable` | 422 | key `tagIds` |
 | `NewsMarkReadScopeInvalid` | 422 | unknown or pending-deletion id in `feedIds`/`tagIds` (keyed by the list), or `asOfUtc` in the future |
 | Unknown filter id on the list | 422 | key `feedIds` or `tagIds` |

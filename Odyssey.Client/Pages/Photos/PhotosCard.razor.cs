@@ -37,6 +37,7 @@ public partial class PhotosCard
 
     // Options + name maps.
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private Func<string, string?>? _tagNameBlocked;
     private IReadOnlyList<OdsOption> _albumOptions = [];
     private IReadOnlyList<OdsOption> _peopleOptions = [];
     private bool _canCreateContacts;
@@ -120,6 +121,7 @@ public partial class PhotosCard
         if (tagsResult.IsSuccess)
         {
             _tagOptions = [.. tags.Select(JournalOverviews.PhotoTagOption)];
+            _tagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Photo);
             _tagNames = tags.ToDictionary(t => t.PhotoTagId, t => t.Name);
             _tagIcons = tags.ToDictionary(t => t.PhotoTagId, t => t.Icon);
             _tagColors = tags.ToDictionary(t => t.PhotoTagId, t => t.Color);

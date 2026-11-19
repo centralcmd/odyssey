@@ -19,8 +19,8 @@ namespace Odyssey.Client.Services;
 /// </para>
 /// <para>
 /// A failure is never cached. Every feed write calls <see cref="Invalidate"/>; every tag write
-/// <see cref="InvalidateTags"/> (a tag rename changes no feed, but a feed write can change a tag's counts, so a feed
-/// write clears both).
+/// <see cref="InvalidateTags"/> (a tag write changes no feed, so it leaves the catalogue alone). The tag list is read
+/// through the shared tag contract (<see cref="ITagsApiClient{TTag}.ListAllAsync"/>), as every tag picker reads its tags.
 /// </para>
 /// </remarks>
 public interface INewsCatalogueCache
@@ -40,14 +40,16 @@ public interface INewsCatalogueCache
 public sealed class NewsCatalogueCache : INewsCatalogueCache, IDisposable
 {
     private readonly INewsApiClient news;
+    private readonly ITagsApiClient<ExistingNewsTag> newsTags;
     private readonly AuthenticationStateProvider auth;
     private string? owner;
     private Task<ApiResult<List<NewsFeedCatalogueEntry>>>? catalogue;
     private Task<ApiResult<List<ExistingNewsTag>>>? tags;
 
-    public NewsCatalogueCache(INewsApiClient news, AuthenticationStateProvider auth)
+    public NewsCatalogueCache(INewsApiClient news, ITagsApiClient<ExistingNewsTag> newsTags, AuthenticationStateProvider auth)
     {
         this.news = news;
+        this.newsTags = newsTags;
         this.auth = auth;
         auth.AuthenticationStateChanged += OnAuthenticationStateChanged;
     }
@@ -68,7 +70,7 @@ public sealed class NewsCatalogueCache : INewsCatalogueCache, IDisposable
     public async Task<ApiResult<List<ExistingNewsTag>>> GetTagsAsync(CancellationToken ct = default)
     {
         await EnsureOwnerAsync();
-        var task = tags ??= news.ListTagsAsync(CancellationToken.None);
+        var task = tags ??= newsTags.ListAllAsync(ct: CancellationToken.None);
         var result = await task.WaitAsync(ct);
         if (!result.IsSuccess && ReferenceEquals(tags, task))
         {

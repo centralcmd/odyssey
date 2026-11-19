@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos;
+using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Internet;
 using Xunit;
 using static Odyssey.Api.Tests.News.NewsApiTestSupport;
@@ -186,25 +187,26 @@ public sealed class NewsFeedsApiTests
     }
 
     [Fact]
-    public async Task AC46_AC10_Delete_needs_an_archived_feed_and_then_hides_it_everywhere()
+    public async Task AC46_AC10_Delete_takes_any_feed_and_then_hides_it_everywhere()
     {
         await using var factory = new OdysseyApiFactory(AllNewsClaims);
         var active = await factory.SeedFeedAsync(url: "https://a.example.org/rss");
         var archived = await factory.SeedFeedAsync(url: "https://b.example.org/rss", archived: true);
         using var client = factory.CreateClient();
 
-        var refused = await client.DeleteAsync($"{Feeds}/{active}");
-        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
-        Assert.Equal(NewsErrorCodes.FeedNotArchived, (await refused.ProblemAsync()).Code());
+        // No archive-first step: a live feed is deleted as directly as an archived one.
+        foreach (var id in new[] { active, archived })
+        {
+            Assert.Equal(HttpStatusCode.Accepted, (await client.DeleteAsync($"{Feeds}/{id}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Feeds}/{id}")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"{Feeds}/{id}")).StatusCode);
+        }
 
-        Assert.Equal(HttpStatusCode.Accepted, (await client.DeleteAsync($"{Feeds}/{archived}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"{Feeds}/{archived}")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.DeleteAsync($"{Feeds}/{archived}")).StatusCode);
         var all = await (await client.GetAsync($"{Feeds}?state=All")).ReadAsync<PagedResult<ExistingNewsFeed>>();
-        Assert.DoesNotContain(all.Items, f => f.Id == archived);
+        Assert.DoesNotContain(all.Items, f => f.Id == active || f.Id == archived);
         var catalogue = await (await client.GetAsync($"{Feeds}/catalogue")).ReadAsync<List<NewsFeedCatalogueEntry>>();
-        Assert.DoesNotContain(catalogue, f => f.Id == archived);
-        Assert.NotNull(await factory.WithContextAsync(c => c.NewsFeeds.Where(f => f.NewsFeedId == archived).Select(f => f.DeletionRequestedAtUtc).SingleAsync()));
+        Assert.DoesNotContain(catalogue, f => f.Id == active || f.Id == archived);
+        Assert.Equal(2, await factory.WithContextAsync(c => c.NewsFeeds.CountAsync(f => f.DeletionRequestedAtUtc != null)));
     }
 
     [Fact]
@@ -435,6 +437,99 @@ public sealed class NewsFeedsApiTests
         Assert.NotEqual(before.Version, after.Version);
         Assert.Equal(HttpStatusCode.BadRequest, (await client.PutAsJsonAsync($"{Feeds}/{id}/tags", new { })).StatusCode);
     }
+
+    [Fact]
+    public async Task Put_carries_the_tags_with_the_settings_null_keeps_and_an_archived_new_tag_is_refused()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var id = await factory.SeedFeedAsync();
+        var one = await factory.SeedTagAsync("One");
+        var two = await factory.SeedTagAsync("Two");
+        var gone = await factory.SeedTagAsync("Gone", archived: true);
+        await factory.TagFeedAsync(id, one);
+        using var client = factory.CreateClient();
+
+        async Task<ExistingNewsFeed> Current() => await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
+        UpdateNewsFeed Body(ExistingNewsFeed f, List<Guid>? tags) => new()
+        {
+            Version = f.Version, Url = f.Management!.Url, CustomTitle = "Renamed", FetchIntervalMinutes = null,
+            DownloadImages = f.DownloadImages, IsActive = f.IsActive, TagIds = tags,
+        };
+
+        var kept = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(await Current(), null))).ReadAsync<ExistingNewsFeed>();
+        Assert.Equal([one], kept.TagIds);
+        Assert.Equal("Renamed", kept.DisplayTitle);
+
+        var replaced = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(kept, [two]))).ReadAsync<ExistingNewsFeed>();
+        Assert.Equal([two], replaced.TagIds);
+
+        var refused = await client.PutAsJsonAsync($"{Feeds}/{id}", Body(replaced, [two, gone]));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        Assert.Equal([two], (await Current()).TagIds);
+
+        var cleared = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(await Current(), []))).ReadAsync<ExistingNewsFeed>();
+        Assert.Empty(cleared.TagIds);
+    }
+
+    [Fact]
+    public async Task A_refused_tag_on_put_rolls_the_settings_back_too()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var id = await factory.SeedFeedAsync();
+        var one = await factory.SeedTagAsync("One");
+        var gone = await factory.SeedTagAsync("Gone", archived: true);
+        await factory.TagFeedAsync(id, one);
+        using var client = factory.CreateClient();
+        var before = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
+
+        // The settings half CHANGES here, so an unchanged title afterwards proves it was rolled back with the tags.
+        var refused = await client.PutAsJsonAsync($"{Feeds}/{id}", Body(before, "A brand-new title", [one, gone]));
+
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, refused.StatusCode);
+        var after = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
+        Assert.Equal(before.DisplayTitle, after.DisplayTitle);
+        Assert.Equal(before.Version, after.Version);
+        Assert.Equal([one], after.TagIds);
+    }
+
+    [Fact]
+    public async Task Put_refuses_an_unknown_tag_and_collapses_duplicate_ids()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var id = await factory.SeedFeedAsync();
+        var one = await factory.SeedTagAsync("One");
+        using var client = factory.CreateClient();
+        var current = await (await client.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
+
+        var unknown = await client.PutAsJsonAsync($"{Feeds}/{id}", Body(current, "Renamed", [one, Guid.NewGuid()]));
+        Assert.Equal(HttpStatusCode.UnprocessableEntity, unknown.StatusCode);
+
+        var duplicated = await (await client.PutAsJsonAsync($"{Feeds}/{id}", Body(current, "Renamed", [one, one]))).ReadAsync<ExistingNewsFeed>();
+        Assert.Equal([one], duplicated.TagIds);
+    }
+
+    [Fact]
+    public async Task Put_with_tags_needs_news_feeds_update()
+    {
+        await using var owner = new OdysseyApiFactory(AllNewsClaims);
+        var id = await owner.SeedFeedAsync();
+        var one = await owner.SeedTagAsync("One");
+        using var ownerClient = owner.CreateClient();
+        var current = await (await ownerClient.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>();
+        await using var reader = new OdysseyApiFactory([.. AllNewsClaims.Where(c => c != PermissionClaims.NewsFeedsUpdate)], sharingStoreWith: owner);
+        using var client = reader.CreateClient();
+
+        var response = await client.PutAsJsonAsync($"{Feeds}/{id}", Body(current, "Renamed", [one]));
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Empty((await (await ownerClient.GetAsync($"{Feeds}/{id}")).ReadAsync<ExistingNewsFeed>()).TagIds);
+    }
+
+    private static UpdateNewsFeed Body(ExistingNewsFeed f, string title, List<Guid>? tags) => new()
+    {
+        Version = f.Version, Url = f.Management!.Url, CustomTitle = title, FetchIntervalMinutes = null,
+        DownloadImages = f.DownloadImages, IsActive = f.IsActive, TagIds = tags,
+    };
 
     [Fact]
     public async Task Archive_and_unarchive_are_idempotent_and_move_the_feed_between_states()
