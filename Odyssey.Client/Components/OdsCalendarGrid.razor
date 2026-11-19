@@ -79,6 +79,10 @@
                                                 <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                             }
                                             @item.Event.Title
+                                            @if (item.Event.HasAttachments)
+                                            {
+                                                <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                                            }
                                         </span>
                                     }
                                     else
@@ -96,6 +100,10 @@
                                             <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                         }
                                         @item.Event.Title
+                                        @if (item.Event.HasAttachments)
+                                        {
+                                            <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                                        }
                                     </span>
                                 }
                             </button>
@@ -135,6 +143,12 @@
                                                 <span class="material-icons odc-cal-chip-rec" aria-hidden="true">autorenew</span>
                                             }
                                             @item.Event.Title
+                                            @if (item.Event.HasAttachments)
+                                            {
+                                                <span class="material-icons odc-cal-chip-att" aria-hidden="true">attach_file</span>
+                                                @* The row's name is its text, so the suffix is text too (issue #522 §3.3). *@
+                                                <span class="sr-only">@OdsCalendarNames.AttachmentsSuffix</span>
+                                            }
                                         </span>
                                     </button>
                                 }

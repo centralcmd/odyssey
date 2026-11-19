@@ -25,6 +25,8 @@ public partial class ImportCalendarDialog
     internal const string RemoveId = "cal-imp-allow-removals";
     internal const string RemoveHelpId = "cal-imp-allow-removals-help";
     internal const string RemoveWarningId = "cal-imp-allow-removals-warning";
+    internal const string AttachWarningId = "cal-imp-attach-warn";
+    internal const string AttachClaimId = "cal-imp-attach-claim";
 
     /// <summary>The modal's class: the Escape watch is scoped to the dialog that carries it.</summary>
     internal const string DialogClass = "cal-imp-dialog";
@@ -51,6 +53,15 @@ public partial class ImportCalendarDialog
 
     /// <summary>The caller holds <c>calendar.delete</c>: the opt-in removal checkbox is offered. A UX gate only.</summary>
     [Parameter] public bool CanDelete { get; set; }
+
+    /// <summary>
+    /// <c>files.read</c>, <c>files.create</c>, <c>photos.read</c> and <c>photos.create</c> together: without all four the
+    /// compose step says a file carrying attachments will be refused (issue #522 §3.5, v3 §D).
+    /// </summary>
+    [Parameter] public bool CanAddAttachments { get; set; }
+
+    /// <summary>What the picker is described by: the attachment Warning, and the claim line when it shows (AX6).</summary>
+    private string PickerDescribedBy => CanAddAttachments ? AttachWarningId : $"{AttachWarningId} {AttachClaimId}";
 
     /// <summary>An earlier import this page handed off is still running: an Info note shows and Import is unavailable.</summary>
     [Parameter] public bool ImportPending { get; set; }
@@ -392,6 +403,10 @@ public partial class ImportCalendarDialog
         else if (attempt.ConnectionLost)
         {
             ShowAlert(CalendarImportCopy.ConnectionLost);
+        }
+        else if (string.Equals(outcome.Problem?.Code, CalendarImportCopy.AttachmentsForbiddenCode, StringComparison.Ordinal))
+        {
+            ShowAlert(CalendarImportCopy.AttachmentsForbidden);
         }
         else
         {

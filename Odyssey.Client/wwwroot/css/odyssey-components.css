@@ -3713,6 +3713,8 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 .odc-cal-chip-t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-flex; align-items: center; gap: 3px; }
 .odc-cal-chip-rec { font-size: 12px; opacity: 0.85; }
+/* The attachment glyph (issue #522 §3.3): 14 px, after the title and the recurrence glyph; decorative. */
+.odc-cal-chip-att { flex: none; font-size: var(--icon-xs); opacity: 0.85; }
 /* All-day: filled swatch strip. Flush square edges where it continues into an adjacent day. */
 .odc-cal-chip.allday { background: var(--chip); color: var(--chip-fg); }
 .odc-cal-chip.allday.cont-l { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -4px; padding-left: 11px; }
@@ -3955,6 +3957,14 @@ tr:focus-within > .odc-rowactions.reveal,
 /* Result list (issue #520 §3 "Result notes"; DS ui_kits/web/calendar.css "Result list") */
 .cal-imp-items { margin: 0; padding: 0 0 0 20px; display: flex; flex-direction: column; gap: 6px; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cal-imp-item::marker { color: var(--mud-palette-text-secondary); }
+/* Attachments (issue #522, DS ImportCalendarModal): the compose Warning + claim line, and a skip item's reasons. */
+.cal-imp-attach { display: flex; flex-direction: column; gap: 8px; }
+.cal-imp-claim { display: flex; gap: 8px; align-items: flex-start; font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-claim .material-icons { flex: none; margin-top: 1px; font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); }
+.cal-imp-item-reasons { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.cal-imp-item-reasons li { display: flex; align-items: baseline; gap: 8px; font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-imp-item-reason { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.cal-imp-item-count { flex: none; font: var(--fw-medium) var(--fs-caption)/1 var(--font-mono); font-variant-numeric: tabular-nums; }
 
 /* ── Event dialog: time zones, exceptions, confirm step (issue #520; DS ui_kits/web/calendar.css "Event dialog
    additions"). Tokens only; no new tokens. ── */
@@ -3991,6 +4001,12 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-ce-ro-row { display: flex; gap: 10px; align-items: flex-start; font: var(--fw-regular) var(--fs-body2)/1.5 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; min-width: 0; }
 .cal-ce-ro-row .material-icons { flex: none; font-size: 18px; color: var(--mud-palette-text-secondary); margin-top: 1px; }
 .cal-ce-ro-sub { display: block; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
+/* Attachments (issue #522, DS AddCalendarEventModal): the fields, and "From the series" on an occurrence. */
+.cal-ce-links { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.cal-ce-fromseries { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); min-width: 0; }
+.cal-ce-fromseries-h { margin: 0; font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
+.cal-ce-fromseries-help { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
+.cal-ce-fromseries-help .link-btn { margin-left: 6px; }
 @media (max-width: 480px) {
   .cal-ce-confirm-actions { justify-content: stretch; }
   .cal-ce-confirm-actions > * { flex: 1 1 auto; }

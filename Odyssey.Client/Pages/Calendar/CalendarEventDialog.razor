@@ -14,6 +14,10 @@
     "Edited separately" chip, the deleted-occurrences line, and — in Series mode — Save = preview → (an inline confirm
     step in place of the footer when edited or deleted occurrences would be discarded) → PUT bound to the version loaded
     at open and the confirmed counts. A viewer who cannot submit sees a read-only summary instead of the form.
+
+    Attachments (issue #522): AttachmentLinkFields — the journal's Photos and Attachments fields — after Description in
+    create, standalone-edit and series modes; an occurrence of a series shows the series' links read-only under an h3
+    "From the series" (the title is an h2). A save sends only the kinds the user changed (AttachmentLinks.Keep / Set).
 *@
 
 @inject ICalendarApiClient CalendarApi
@@ -22,7 +26,7 @@
 @inject ISnackbar Snackbar
 @using Odyssey.Client.Pages.Weather
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent"
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent" TitleLevel="2"
           Dismissible="@(_confirm is null)" RequiredLegend="@(CanSubmit && _confirm is null)">
     <ChildContent>
         <OdsLiveAnnouncer @ref="_announcer" />
@@ -126,6 +130,8 @@
                               Help="Not a place? Put meeting links or room numbers here." />
                     <OdsNoteField Label="Description" MaxLength="2000" Rows="3"
                                   Value="@_draft.Description" ValueChanged="@(v => _draft.Description = v)" Placeholder="Notes, agenda, links…" />
+
+                    @LinkFields
 
                     @if (Mode == CalendarEventDialogMode.Series)
                     {
@@ -274,7 +280,18 @@
                               CalendarName="@(Calendars.FirstOrDefault(c => c.CalendarId == _draft.CalendarId)?.Name)"
                               PlaceName="@(_draft.Place.StoredRef is { } place ? Odyssey.Client.Pages.Journal.LocationVisuals.PlaceName(place) : null)"
                               Details="@_draft.Location" Description="@_draft.Description" />
+        @LinkFields
         @WeatherSection
+    };
+
+    // Photos and Attachments (issue #522 §3.1–§3.2).
+    private RenderFragment LinkFields => __builder =>
+    {
+        <CalendarEventLinks Draft="_draft" FromSeries="OccurrenceOfSeries" ReadOnly="!CanSubmit" Loading="_linksLoading"
+                            Noun="@(Mode == CalendarEventDialogMode.Series ? "series" : "event")" Cap="_linkCap"
+                            CanReadFiles="CanReadFiles" CanReadPhotos="CanReadPhotos"
+                            AttachmentCount="LoadedAttachmentCount" PhotoCount="LoadedPhotoCount"
+                            OnAnnounce="Announce" OnEditSeries="EditSeriesClicked" />
     };
 
     private RenderFragment RuleFields => __builder =>
