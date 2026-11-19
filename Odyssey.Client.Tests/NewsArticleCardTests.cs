@@ -87,7 +87,7 @@ public class NewsArticleCardTests
     }
 
     [Fact]
-    public async Task A_reader_without_news_update_marks_nothing_and_sees_only_show_articles_from()
+    public async Task A_reader_without_news_update_marks_nothing_and_sees_only_show_articles_from_and_the_link_items()
     {
         var article = Article("Story");
         await using var context = Context([article], ReaderOnly);
@@ -97,8 +97,8 @@ public class NewsArticleCardTests
 
         cut.WaitForAssertion(() => Assert.Contains("Second paragraph.", cut.Markup, StringComparison.Ordinal));
         context.News.Verify(n => n.SetReadAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        Assert.Equal(["Show articles from Example News"], MenuLabels(cut, article));
-        Assert.Empty(cut.FindAll("#nw-mark-all"));
+        Assert.Equal(["Show articles from Example News", "Open original", "Copy link"], MenuLabels(cut, article));
+        Assert.Equal(["Manage feeds"], NewsActions(cut));
     }
 
     [Fact]
@@ -107,14 +107,34 @@ public class NewsArticleCardTests
         var article = Article("Story", a => { a.IsRead = true; a.ReadAtUtc = Now.UtcDateTime; });
         await using var context = Context([article]);
         var cut = Rendered(context);
-        Assert.Equal(["Mark unread", "Tags…", "Show articles from Example News"], MenuLabels(cut, article));
+        Assert.Equal(["Mark unread", "Tags…", "Show articles from Example News", "Open original", "Copy link"], MenuLabels(cut, article));
 
         ClickMenu(cut, article, "Mark unread");
 
         cut.WaitForAssertion(() => context.News.Verify(n => n.SetReadAsync(article.Id, false, It.IsAny<CancellationToken>()), Times.Once));
         Assert.Contains("Unread", cut.Find($"#nwa-{article.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal);
         cut.WaitForAssertion(() => Assert.Contains("Marked as unread", Polite(cut), StringComparison.Ordinal));
-        Assert.Equal(["Mark read", "Tags…", "Show articles from Example News"], MenuLabels(cut, article));
+        Assert.Equal(["Mark read", "Tags…", "Show articles from Example News", "Open original", "Copy link"], MenuLabels(cut, article));
+    }
+
+    [Fact]
+    public async Task The_menu_offers_earlier_versions_when_revised_and_open_original_only_for_a_safe_url()
+    {
+        var revised = Article("Revised", a => { a.IsRead = true; a.RevisionCount = 2; });
+        var unsafeLink = Article("Unsafe", a => { a.IsRead = true; a.Link = "javascript:alert(1)"; });
+        var noLink = Article("Bare", a => { a.IsRead = true; a.Link = null; });
+        await using var context = Context([revised, unsafeLink, noLink]);
+        var cut = Rendered(context, 3);
+
+        Assert.Equal(["Mark unread", "Tags…", "Show earlier versions", "Show articles from Example News", "Open original", "Copy link"], MenuLabels(cut, revised));
+        Assert.Equal(["Mark unread", "Tags…", "Show articles from Example News", "Copy link"], MenuLabels(cut, unsafeLink));
+        Assert.Equal(["Mark unread", "Tags…", "Show articles from Example News"], MenuLabels(cut, noLink));
+
+        ClickMenu(cut, revised, "Open original");
+        cut.WaitForAssertion(() => Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsNewsOpenOriginal" && (string?)i.Arguments[0] == "https://example.org/a"));
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-popover-open .mud-menu-item")));
+        ClickMenu(cut, revised, "Copy link");
+        cut.WaitForAssertion(() => context.Clipboard.Verify(c => c.CopyAsync("https://example.org/a", NewsPage.LinkCopiedText), Times.Once));
     }
 
     [Fact]
@@ -188,49 +208,45 @@ public class NewsArticleCardTests
         Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsNewsFocusCard" && (string?)i.Arguments[0] == NewsArticleCard.CardId(next.Id));
     }
 
-    // ── Hide read (AC 4, 30, 55) ───────────────────────────────────────────────────────────────────
+    // ── Updated since read ─────────────────────────────────────────────────────────────────────────
 
     [Fact]
-    public async Task Hide_read_appears_after_a_read_under_unread_and_is_a_fresh_first_page_with_one_announcement()
+    public async Task An_updated_since_read_card_is_amber_says_so_and_is_reread_on_leaving_it()
     {
-        var a = Article("A");
-        var b = Article("B");
-        var pages = 0;
-        await using var context = Context([a, b]);
-        context.News.Setup(n => n.ListArticlesAsync(It.IsAny<Odyssey.ApiClient.Resources.NewsArticleListFilter>(), It.IsAny<int>(), null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(() => ++pages == 1 ? Ok(Page([a, b])) : Ok(Page([b], total: 1231)));
+        var read = Now.UtcDateTime.AddDays(-2);
+        var updated = Article("Changed", a => { a.IsRead = true; a.ReadAtUtc = read; a.ContentChangedAtUtc = read.AddHours(5); a.RevisionCount = 1; });
+        var other = Article("Other", a => { a.IsRead = true; a.ReadAtUtc = read; });
+        await using var context = Context([updated, other]);
         var cut = Rendered(context, 2);
-        Assert.DoesNotContain(cut.FindAll(".ph-actions button"), x => x.TextContent.Contains("Hide read", StringComparison.Ordinal));
 
-        Expand(cut, a);
-        cut.WaitForAssertion(() => Assert.Contains("Undo", Snackbars(cut), StringComparison.Ordinal));
-        // The read card stays where it is under Status = Unread.
-        Assert.Equal(["A", "B"], CardNames(cut));
+        var card = cut.Find($"#nwa-{updated.Id}");
+        Assert.Contains("Updated since read", card.QuerySelector(".odc-record-namerow")!.TextContent, StringComparison.Ordinal);
+        Assert.Contains("--rec:var(--mud-palette-warning)", card.GetAttribute("style"), StringComparison.Ordinal);
+        Assert.Contains("--rec:var(--mud-palette-text-secondary)", cut.Find($"#nwa-{other.Id}").GetAttribute("style"), StringComparison.Ordinal);
 
-        cut.FindAll(".ph-actions button").Single(x => x.TextContent.Contains("Hide read", StringComparison.Ordinal)).Click();
+        Expand(cut, updated);
+        cut.WaitForAssertion(() => Assert.Contains("after you read it", cut.Find($"#nwa-{updated.Id} .mud-alert").TextContent, StringComparison.Ordinal));
+        // Not on open: the chip and the alert stay while it is being read.
+        context.News.Verify(n => n.SetReadAsync(It.IsAny<Guid>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
 
-        cut.WaitForAssertion(() => Assert.Equal(["B"], CardNames(cut)));
-        cut.WaitForAssertion(() => Assert.Contains("1 read article hidden. 1,231 articles", Polite(cut), StringComparison.Ordinal));
-        Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsNewsFocusListStart");
-        // The open Undo is withdrawn: its card has left the screen (AC 30).
-        cut.WaitForAssertion(() => Assert.Contains(NewsPage.UndoWithdrawnText, Snackbars(cut), StringComparison.Ordinal));
-        Assert.DoesNotContain(cut.FindAll(".mud-snackbar button"), x => x.TextContent.Contains("Undo", StringComparison.Ordinal));
-        Assert.DoesNotContain(cut.FindAll(".ph-actions button"), x => x.TextContent.Contains("Hide read", StringComparison.Ordinal));
+        Expand(cut, other);
+
+        cut.WaitForAssertion(() => context.News.Verify(n => n.SetReadAsync(updated.Id, true, It.IsAny<CancellationToken>()), Times.Once));
+        context.News.Verify(n => n.SetReadAsync(other.Id, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        cut.WaitForAssertion(() => Assert.DoesNotContain("Updated since read", cut.Find($"#nwa-{updated.Id} .odc-record-namerow").TextContent, StringComparison.Ordinal));
+        Assert.DoesNotContain("Marked as read", Polite(cut), StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task Hide_read_is_not_offered_unless_status_is_exactly_unread()
+    public async Task The_status_filter_offers_updated_and_the_overview_counts_it_inside_read()
     {
-        var a = Article("A");
-        await using var context = Context([a]);
+        await using var context = Context([Article("A")], catalogue: [CatalogueFeed("Example News", f => { f.ArticleCount = 10; f.UnreadCount = 4; f.UpdatedCount = 2; }, FeedId)]);
         var cut = Rendered(context);
-        await cut.InvokeAsync(() => cut.FindComponents<OdsMultiSelect>().Single(m => m.Instance.Label == "Status").Instance.ValuesChanged.InvokeAsync([]));
-        cut.WaitForAssertion(() => Assert.Equal("Status: All", cut.FindComponents<OdsMultiSelect>().Last().Instance.Label));
 
-        Expand(cut, a);
-
-        cut.WaitForAssertion(() => context.News.Verify(n => n.SetReadAsync(a.Id, true, It.IsAny<CancellationToken>()), Times.Once));
-        Assert.DoesNotContain(cut.FindAll(".ph-actions button"), x => x.TextContent.Contains("Hide read", StringComparison.Ordinal));
+        Assert.Equal([NewsPage.UnreadKey, NewsPage.ReadKey, NewsPage.UpdatedKey], NewsPage.StatusOptions.Select(o => o.Value));
+        var tile = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "Articles");
+        Assert.Equal([4, 6, 2], tile.Instance.Rows.Select(r => Convert.ToInt32(r.Count, System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.Equal("10", tile.Instance.TotalValue);
     }
 
     // ── The expanded card (AC 51, 58) ──────────────────────────────────────────────────────────────
@@ -255,14 +271,17 @@ public class NewsArticleCardTests
         Assert.Contains("Updated by the publisher on", card.QuerySelector(".mud-alert")!.TextContent, StringComparison.Ordinal);
         Assert.NotNull(card.QuerySelector(".mud-alert time[datetime]"));
         Assert.Contains(buttons, t => t.Contains("Show earlier versions", StringComparison.Ordinal));
-        Assert.NotNull(card.QuerySelector("a[href='https://example.org/a'][rel='noopener noreferrer']"));
+        // The Original link tile: the URL itself is the link, its actions in the tile's own ⋯ menu.
+        Assert.NotNull(card.QuerySelector(".nw-tile.wide a.odc-extlink-urllink[href='https://example.org/a'][rel='noopener noreferrer'][target='_blank']"));
+        Assert.Empty(card.QuerySelectorAll(".nw-tile .odc-extlink-actions"));
+        Assert.NotNull(card.QuerySelector(".nw-tile-menu button[aria-label='Actions for the original link of Story']"));
         // Updated is a text chip in the header; nothing interactive renders inside the expand button.
         Assert.Contains("Updated", card.QuerySelector(".odc-record-namerow")!.TextContent, StringComparison.Ordinal);
         Assert.Empty(card.QuerySelectorAll(".odc-record-trigger button, .odc-record-trigger a, .odc-record-trigger input"));
     }
 
     private static List<string> TileLabels(IRenderedComponent<Bunit.Rendering.ContainerFragment> cut) =>
-        [.. cut.FindComponents<OdsInfoTile>().Select(t => t.Instance.Label ?? string.Empty)];
+        [.. cut.FindAll(".odc-infotile-k").Select(k => (k.QuerySelector("span") ?? k).TextContent.Trim())];
 
     [Fact]
     public async Task Own_and_inherited_tags_are_the_header_chips_and_inherited_ones_say_from_feed()
@@ -278,7 +297,9 @@ public class NewsArticleCardTests
         var from = chips.QuerySelector(".nw-inherited")!;
         Assert.Contains("Energy", from.TextContent, StringComparison.Ordinal);
         Assert.Contains("(from feed)", from.QuerySelector(".odc-sr-only")!.TextContent, StringComparison.Ordinal);
-        Assert.Contains("rss_feed", from.TextContent, StringComparison.Ordinal);
+        // The tag's own chip — its icon and colour — told apart only by the dashed edge and the sr-only text.
+        Assert.DoesNotContain("rss_feed", from.TextContent, StringComparison.Ordinal);
+        Assert.Contains("odc-chip", from.ClassName, StringComparison.Ordinal);
         Assert.Empty(chips.QuerySelectorAll("button"));
 
         Expand(cut, article);
