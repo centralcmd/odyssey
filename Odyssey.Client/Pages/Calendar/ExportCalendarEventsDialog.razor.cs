@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.JSInterop;
 using MudBlazor;
 using Odyssey.Client.Components;
 using Odyssey.Dtos.Journal;
@@ -40,6 +39,7 @@ public partial class ExportCalendarEventsDialog
     private bool _wasOpen;
     private bool _focusErrorPending;
     private ElementReference _errorAlert;
+    private OdsLiveAnnouncer? _announcer;
 
     private IReadOnlyCollection<string> _calendarValues => [.. _calendarIds.Select(id => id.ToString())];
 
@@ -118,18 +118,20 @@ public partial class ExportCalendarEventsDialog
         }
 
         _busy = true;
+        _ = _announcer?.Announce(CalendarIcsExport.Preparing);
         try
         {
-            var outcome = await CalendarApi.ExportAggregateAsync(from, to, calendarIds, search);
-            if (!outcome.IsSuccess || outcome.Value is not { } file)
+            // Summary first (issue #517 E2): its refusal is shown here, and no download starts.
+            var summary = await CalendarApi.SummarizeAggregateExportAsync(from, to, calendarIds, search);
+            if (!summary.IsSuccess || summary.Value is not { } counts)
             {
-                SetError(outcome.Error ?? "The events could not be exported.");
+                SetError(summary.Error ?? "The events could not be exported.");
                 return;
             }
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
-            Snackbar.Add($"Exported {file.FileName}.", Severity.Success);
             await OpenChanged.InvokeAsync(false);
+            await NativeTransfer.DownloadAsync(CalendarApi.ExportAggregateUrl(from, to, calendarIds, search));
+            CalendarIcsExport.ToastStarted(Snackbar, CalendarIcsExport.AllToast(counts));
         }
         finally
         {

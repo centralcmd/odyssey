@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
 using MudBlazor;
+using Odyssey.ApiClient;
 using Odyssey.Client.Authorization;
 using Odyssey.Client.Components;
 using Odyssey.Client.Services;
@@ -250,12 +251,32 @@ public partial class CalendarPage
         StateHasChanged();
     }
 
-    // Export: fetch the .ics bytes (the client toasts on 403/404) and save via the shared download
-    // interop — the same mechanism every file-download site uses. Guarded against a re-entrant
-    // double-click firing concurrent downloads.
+    // ── Export (issue #517) ──────────────────────────────────────────────────
+    // Every export asks the server for a summary first: a refusal (400/403/404/429) is a persistent toast and no
+    // download starts. Otherwise the browser downloads the file itself — a calendar export can be gigabytes, far
+    // more than the WASM heap holds — and a 10 s toast says what it carries. One export at a time per page.
     private bool _exporting;
+    private OdsLiveAnnouncer? _announcer;
 
-    private async Task ExportCalendarAsync(ExistingCalendar calendar)
+    private Task AnnounceAsync(string message) => _announcer?.Announce(message) ?? Task.CompletedTask;
+
+    /// <summary>Summary first, then the native download; false when the summary was refused (and toasted).</summary>
+    private async Task<bool> DownloadAsync(
+        Task<ApiResult<CalendarIcsExportSummary>> summary, string failureLead, Func<string> url,
+        Func<CalendarIcsExportSummary, string> toast)
+    {
+        if ((await summary).OrToast(Snackbar, failureLead, requireInteraction: true) is not { } counts)
+        {
+            return false;
+        }
+
+        await NativeTransfer.DownloadAsync(url());
+        CalendarIcsExport.ToastStarted(Snackbar, toast(counts));
+        return true;
+    }
+
+    /// <summary>E3: the per-calendar export. Manage calendars shows its own busy state and announcements.</summary>
+    internal async Task ExportCalendarAsync(ExistingCalendar calendar)
     {
         if (_exporting)
         {
@@ -265,13 +286,9 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            var result = await CalendarApi.ExportAsync(calendar.CalendarId);
-            if (result.OrToast(Snackbar, "Unable to export the calendar") is not { } file)
-            {
-                return;
-            }
-
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
+            await DownloadAsync(
+                CalendarApi.SummarizeExportAsync(calendar.CalendarId), "Unable to export the calendar",
+                () => CalendarApi.ExportUrl(calendar.CalendarId), s => CalendarIcsExport.CalendarToast(calendar.Name, s));
         }
         finally
         {
@@ -288,11 +305,12 @@ public partial class CalendarPage
     // Single-event / series export from CalendarEventDialog (issue #340). The page — not the dialog —
     // decides the scope: it already has the loaded event list, so it can tell a standalone event from a
     // recurring occurrence without an extra fetch. Series mode never needs the occurrence/series prompt.
-    private async Task ExportEventDialogAsync()
+    // The title is the series' own in Series mode and the event's in Edit mode (issue #517 §3.1).
+    internal async Task ExportEventDialogAsync(string? title)
     {
         if (_eventDialogMode == CalendarEventDialogMode.Series && _eventDialogPatternId is { } patternId)
         {
-            await ExportPatternDownloadAsync(patternId);
+            await ExportPatternDownloadAsync(patternId, title);
             return;
         }
 
@@ -309,14 +327,15 @@ public partial class CalendarPage
             return;
         }
 
-        await ExportEventDownloadAsync(eventId);
+        await ExportEventDownloadAsync(eventId, title ?? existing?.Title);
     }
 
-    private Task ExportScopeChosenAsync(CalendarEventExportScope scope) => scope switch
+    // E4: the scope dialog stays open (busy) until this settles, then closes either way.
+    internal Task ExportScopeChosenAsync(CalendarEventExportScope scope) => scope switch
     {
         CalendarEventExportScope.Series when _exportScopeEvent?.RecurrencePatternId is { } patternId =>
-            ExportPatternDownloadAsync(patternId),
-        _ when _exportScopeEvent is { } evt => ExportEventDownloadAsync(evt.CalendarEventId),
+            ExportPatternDownloadAsync(patternId, _exportScopeEvent.Title),
+        _ when _exportScopeEvent is { } evt => ExportEventDownloadAsync(evt.CalendarEventId, evt.Title),
         _ => Task.CompletedTask,
     };
 
@@ -324,7 +343,7 @@ public partial class CalendarPage
     // close-then-open sequencing), so closing it — via Cancel, Esc, backdrop click, or choosing a
     // scope — would otherwise drop focus to <body> (WCAG 2.4.3). Restore it to the Export button that
     // opened this prompt; every dismissal path funnels through OpenChanged(false).
-    private async Task OnExportScopeOpenChangedAsync(bool open)
+    internal async Task OnExportScopeOpenChangedAsync(bool open)
     {
         _exportScopeOpen = open;
         if (!open)
@@ -340,7 +359,7 @@ public partial class CalendarPage
         }
     }
 
-    private async Task ExportEventDownloadAsync(Guid eventId)
+    private async Task ExportEventDownloadAsync(Guid eventId, string? title)
     {
         if (_exporting)
         {
@@ -350,13 +369,9 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            var result = await CalendarApi.ExportEventAsync(eventId);
-            if (result.OrToast(Snackbar, "Unable to export the event") is not { } file)
-            {
-                return;
-            }
-
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
+            await DownloadAsync(
+                CalendarApi.SummarizeEventExportAsync(eventId), "Unable to export the event",
+                () => CalendarApi.ExportEventUrl(eventId), _ => CalendarIcsExport.EventToast(title));
         }
         finally
         {
@@ -364,7 +379,7 @@ public partial class CalendarPage
         }
     }
 
-    private async Task ExportPatternDownloadAsync(Guid patternId)
+    private async Task ExportPatternDownloadAsync(Guid patternId, string? title)
     {
         if (_exporting)
         {
@@ -374,13 +389,9 @@ public partial class CalendarPage
         _exporting = true;
         try
         {
-            var result = await CalendarApi.ExportPatternAsync(patternId);
-            if (result.OrToast(Snackbar, "Unable to export the series") is not { } file)
-            {
-                return;
-            }
-
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
+            await DownloadAsync(
+                CalendarApi.SummarizePatternExportAsync(patternId), "Unable to export the series",
+                () => CalendarApi.ExportPatternUrl(patternId), s => CalendarIcsExport.SeriesToast(title, s));
         }
         finally
         {
@@ -388,33 +399,62 @@ public partial class CalendarPage
         }
     }
 
-    // "Export all as iCalendar" — a direct, no-dialog aggregate export of every event across every
+    // E1: "Export all as iCalendar" — a direct, no-dialog aggregate export of every event across every
     // calendar (bounded by the server's caps). "Export filtered…" opens ExportCalendarEventsDialog
-    // instead, since that scope needs a form (date range / calendars / search).
-    private async Task ExportAllEventsAsync()
+    // instead, since that scope needs a form (date range / calendars / search). A second activation
+    // while one is being prepared only says so (AC 5).
+    internal async Task ExportAllEventsAsync()
     {
         if (_exporting)
         {
+            await AnnounceAsync(CalendarIcsExport.AlreadyPreparing);
             return;
         }
 
         _exporting = true;
         try
         {
-            var result = await CalendarApi.ExportAggregateAsync(null, null, null, null);
-            // The client returns a result rather than presenting anything; this action has no dialog
-            // to show an inline error in, so surface it as a toast here.
-            if (result.OrToast(Snackbar, "Unable to export events") is not { } file)
-            {
-                return;
-            }
-
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/calendar");
+            _ = AnnounceAsync(CalendarIcsExport.Preparing);
+            await DownloadAsync(
+                CalendarApi.SummarizeAggregateExportAsync(null, null, null, null), "Unable to export events",
+                () => CalendarApi.ExportAggregateUrl(null, null, null, null), CalendarIcsExport.AllToast);
         }
         finally
         {
             _exporting = false;
         }
+    }
+
+    // ── Import hand-off (issue #517 §3 step 6) ───────────────────────────────
+    // Closing the import dialog while the server imports hands the pending request to the page, which then owns
+    // the outcome: one toast (always — the snackbar is app-wide, so a user who navigated away still learns of a
+    // partial failure or of removed events) and one refresh (skipped once the page is gone).
+    private bool _importPending;
+    private bool _disposed;
+
+    internal async Task OnImportBackgroundedAsync(Task<ApiResult<IcsImportResult>> pending)
+    {
+        _importPending = true;
+        StateHasChanged();
+
+        ApiResult<IcsImportResult> outcome;
+        try
+        {
+            outcome = await pending;
+        }
+        catch (Exception ex)
+        {
+            outcome = ApiResult<IcsImportResult>.Failure(ex);
+        }
+
+        CalendarImportCopy.ToastHandedOff(Snackbar, outcome);
+        _importPending = false;
+        if (_disposed)
+        {
+            return;
+        }
+
+        await ReloadEventsAsync();
     }
 
     // Prefills the bulk-export dialog's date range from the period currently on screen (mirrors the
@@ -530,7 +570,7 @@ public partial class CalendarPage
 
     private void OnSlotClicked((DateOnly Day, TimeSpan Time) slot) => OpenCreateDialog(slot.Day, slot.Time);
 
-    private void OpenEventDialog(Guid eventId)
+    internal void OpenEventDialog(Guid eventId)
     {
         _eventDialogMode = CalendarEventDialogMode.Edit;
         _eventDialogEventId = eventId;
@@ -538,7 +578,7 @@ public partial class CalendarPage
         _eventDialogOpen = true;
     }
 
-    private void OpenSeriesDialog(Guid patternId)
+    internal void OpenSeriesDialog(Guid patternId)
     {
         _eventDialogMode = CalendarEventDialogMode.Series;
         _eventDialogEventId = null;
@@ -634,6 +674,7 @@ public partial class CalendarPage
 
     public void Dispose()
     {
+        _disposed = true;
         AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;
         _agendaWeatherLoader?.Dispose();
         _listLoader.Dispose();

@@ -35,8 +35,13 @@ public partial class CalendarEventDialog
     /// <summary>Export clicked (Edit or Series mode; issue #340). The dialog stays open — the page owns
     /// deciding whether the current event is a standalone occurrence (download immediately), a
     /// recurring occurrence (prompt for occurrence-vs-series), or a series (export directly), since it
-    /// already has the loaded event list to check <c>RecurrencePatternId</c> without a re-fetch.</summary>
-    [Parameter] public EventCallback OnExport { get; set; }
+    /// already has the loaded event list to check <c>RecurrencePatternId</c> without a re-fetch. It carries the title
+    /// the export toast names: the series' own in Series mode, the event's in Edit mode (issue #517 §3.1).</summary>
+    [Parameter] public EventCallback<string?> OnExport { get; set; }
+
+    /// <summary>An export is being prepared (issue #517 E5): Export is aria-disabled, shows a spinner, keeps focus
+    /// and ignores clicks.</summary>
+    [Parameter] public bool ExportBusy { get; set; }
 
     // A create is only ever opened for a user who holds calendar.create (the page gates it); edit/series
     // saves need calendar.update. When the user can't submit, the dialog is view-only (Close, no Save).
@@ -130,6 +135,7 @@ public partial class CalendarEventDialog
     private async Task LoadAsync()
     {
         _sourceEvent = null;
+        _seriesTitle = null;
         _loadedWeatherInputs = null;
 
         switch (Mode)
@@ -141,6 +147,7 @@ public partial class CalendarEventDialog
                 break;
             case CalendarEventDialogMode.Series when PatternId is { } patternId:
                 var pattern = await CalendarApi.GetPatternAsync(patternId);
+                _seriesTitle = pattern?.Title;
                 _draft = pattern is not null ? CalendarEventDraft.FromPattern(pattern) : new CalendarEventDraft();
                 break;
             default:
@@ -166,6 +173,29 @@ public partial class CalendarEventDialog
     }
 
     private Task CancelAsync() => OpenChanged.InvokeAsync(false);
+
+    // The series' title as loaded, not as edited: the export writes what is stored.
+    private string? _seriesTitle;
+
+    /// <summary>
+    /// Export (issue #517 E5). A standalone event or a series starts its summary at once, so this dialog says it is
+    /// preparing; a recurring occurrence first asks occurrence-or-series, and that prompt says it instead.
+    /// </summary>
+    private async Task ExportAsync()
+    {
+        if (ExportBusy)
+        {
+            return;
+        }
+
+        var direct = Mode == CalendarEventDialogMode.Series || _sourceEvent?.RecurrencePatternId is null;
+        if (direct)
+        {
+            Announce(CalendarIcsExport.Preparing);
+        }
+
+        await OnExport.InvokeAsync(Mode == CalendarEventDialogMode.Series ? _seriesTitle : _sourceEvent?.Title);
+    }
 
     private void OnPlaceChanged(LocationPick? pick)
     {

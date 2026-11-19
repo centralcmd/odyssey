@@ -11,6 +11,7 @@
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="calendar_month" Title="@TitleContent">
     <ChildContent>
+        <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body cal-mgr-body">
             <div class="cal-mgr-list">
                 @foreach (var calendar in Calendars)
@@ -38,9 +39,12 @@
                                 @* The tooltip adds the format the export produces — supplementary to the
                                    accessible name, and shown on keyboard focus as the native title was not. *@
                                 <OdsTooltip Label="@($"Export {calendar.Name} as an .ics file")">
-                                    <MudIconButton Icon="@Icons.Material.Filled.Download"
-                                                   aria-label="@($"Export {calendar.Name}")"
-                                                   OnClick="@(() => OnExport.InvokeAsync(calendar))" />
+                                    @* Busy while the export's summary loads (issue #517 E3): a spinner, aria-disabled,
+                                       name and focus kept, clicks ignored. *@
+                                    <OdsIconButton Icon="@Icons.Material.Filled.Download"
+                                                   AriaLabel="@($"Export {calendar.Name}")"
+                                                   Busy="@(_exportBusyId == calendar.CalendarId)"
+                                                   OnClick="@(() => ExportAsync(calendar))" />
                                 </OdsTooltip>
                                 <MudIconButton Icon="@Icons.Material.Filled.Edit" aria-label="@($"Edit {calendar.Name}")"
                                                OnClick="@(() => { if (editing) { CancelEdit(); } else { StartEdit(calendar); } })" />
