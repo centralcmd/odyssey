@@ -10,8 +10,11 @@ public sealed record NewsArticleListFilter
 
     public IReadOnlyCollection<Guid>? TagIds { get; init; }
 
-    /// <summary>Sent only when exactly one of Unread and Read is selected.</summary>
+    /// <summary>The older single read-state filter; leave it null when sending <see cref="Statuses"/>.</summary>
     public bool? IsRead { get; init; }
+
+    /// <summary>Status members (Unread, Read, Updated), OR'ed; null or empty means every article.</summary>
+    public IReadOnlyCollection<NewsArticleReadStatus>? Statuses { get; init; }
 
     public string? Search { get; init; }
 
@@ -194,6 +197,7 @@ public sealed class NewsApiClient(IOdysseyApi api) : INewsApiClient
             .AddMany("feedIds", filter.FeedIds?.Select(id => id.ToString()))
             .AddMany("tagIds", filter.TagIds?.Select(id => id.ToString()))
             .AddBool("isRead", filter.IsRead)
+            .AddMany("statuses", filter.Statuses?.Select(s => s.ToString()))
             .Add("search", filter.Search)
             .Add("from", filter.From?.ToString("o"))
             .Add("to", filter.To?.ToString("o"))

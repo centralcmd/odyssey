@@ -386,7 +386,7 @@ public sealed class NewsArticleService(
             }
 
             var filter = new NewsArticleFilter(
-                Sorted(request.FeedIds), Sorted(request.TagIds), false, ListQuery.NormalizeSearch(request.Search),
+                Sorted(request.FeedIds), Sorted(request.TagIds), [NewsArticleReadStatus.Unread], ListQuery.NormalizeSearch(request.Search),
                 request.From?.UtcDateTime, request.To?.UtcDateTime, request.IncludeArchivedFeeds, NewsArticleSortBy.Newest);
             var terms = Terms(filter.Search);
             var scope = await ResolveScopeAsync(filter, (field, message) => NewsErrors.MarkReadScope(field, message), cancellationToken);
@@ -556,10 +556,7 @@ public sealed class NewsArticleService(
             articles = articles.Where(a => !excluded.Contains(a.NewsFeedId));
         }
 
-        if (filter.IsRead is { } isRead)
-        {
-            articles = articles.Where(a => a.IsRead == isRead);
-        }
+        articles = NewsReadStatusFilter.Apply(articles, filter.Statuses);
 
         if (filter.FromUtc is { } from)
         {
@@ -629,11 +626,16 @@ public sealed class NewsArticleService(
     private Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken) =>
         NewsQueryGuard.RunAsync(() => VisibleArticles().News().AnyAsync(a => a.NewsArticleId == id, cancellationToken));
 
-    /// <summary>Flips the read state of tracked articles and moves their feeds' unread counts, in one transaction.</summary>
+    /// <summary>
+    /// Flips the read state of tracked articles and moves their feeds' unread counts, in one transaction. Marking read
+    /// an article that is already read but updated since it was read is a RE-READ: <c>ReadAtUtc</c> moves to now, so it
+    /// leaves the Updated set, while the state, the unread counts and the returned count stay as they were.
+    /// </summary>
     private async Task<int> ApplyReadAsync(IReadOnlyList<NewsArticle> articles, bool isRead, CancellationToken cancellationToken)
     {
         var changed = articles.Where(a => a.IsRead != isRead).ToList();
-        if (changed.Count == 0)
+        var reread = isRead ? articles.Where(NewsReadStatusFilter.UpdatedSinceRead).ToList() : [];
+        if (changed.Count == 0 && reread.Count == 0)
         {
             return 0;
         }
@@ -643,6 +645,11 @@ public sealed class NewsArticleService(
         {
             article.IsRead = isRead;
             article.ReadAtUtc = isRead ? now : null;
+        }
+
+        foreach (var article in reread)
+        {
+            article.ReadAtUtc = now;
         }
 
         await NewsTransactions.RunAsync(context, async () =>
@@ -810,7 +817,7 @@ public sealed class NewsArticleService(
         new() { NewsArticleTagId = Guid.NewGuid(), NewsArticleId = articleId, NewsTagId = tagId, SortAtUtc = sortAtUtc };
 
     private static NewsArticleFilter Normalize(NewsArticlesQueryParams query) => new(
-        Sorted(query.FeedIds), Sorted(query.TagIds), query.IsRead, ListQuery.NormalizeSearch(query.Search),
+        Sorted(query.FeedIds), Sorted(query.TagIds), NewsReadStatusFilter.Normalize(query.IsRead, query.Statuses), ListQuery.NormalizeSearch(query.Search),
         query.From?.UtcDateTime, query.To?.UtcDateTime, query.IncludeArchivedFeeds, query.SortBy ?? NewsArticleSortBy.Newest);
 
     private static List<Guid> Sorted(IEnumerable<Guid>? ids) => [.. NewsFilterIds.Normalize(ids).Order()];

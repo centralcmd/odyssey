@@ -16,7 +16,7 @@ namespace Odyssey.Core.Internet.News.Reading;
 public sealed record NewsArticleFilter(
     IReadOnlyList<Guid> FeedIds,
     IReadOnlyList<Guid> TagIds,
-    bool? IsRead,
+    IReadOnlyList<NewsArticleReadStatus> Statuses,
     string? Search,
     DateTime? FromUtc,
     DateTime? ToUtc,
@@ -29,7 +29,7 @@ public sealed record NewsArticleFilter(
         var canonical = new StringBuilder()
             .Append("f:").AppendJoin(',', FeedIds.Order().Select(id => id.ToString("N")))
             .Append("|t:").AppendJoin(',', TagIds.Order().Select(id => id.ToString("N")))
-            .Append("|r:").Append(IsRead switch { true => "1", false => "0", null => "-" })
+            .Append("|r:").Append(NewsReadStatusFilter.HashToken(Statuses))
             .Append("|s:").Append(Search ?? string.Empty)
             .Append("|from:").Append(FromUtc?.Ticks.ToString(CultureInfo.InvariantCulture) ?? "-")
             .Append("|to:").Append(ToUtc?.Ticks.ToString(CultureInfo.InvariantCulture) ?? "-")

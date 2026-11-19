@@ -171,6 +171,9 @@ public sealed record NewsFeedCatalogueEntry
     /// <summary>The same maintained counter <see cref="ExistingNewsFeed.ArticleCount"/> exposes.</summary>
     public int ArticleCount { get; set; }
 
+    /// <summary>Read articles the publisher changed after they were read: a subset of the read ones.</summary>
+    public int UpdatedCount { get; set; }
+
     /// <summary><see cref="NewsFeedState.Active"/>, <see cref="NewsFeedState.Paused"/> or <see cref="NewsFeedState.Archived"/>.</summary>
     public NewsFeedState State { get; set; }
 }
