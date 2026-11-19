@@ -118,6 +118,7 @@ public partial class CalendarEventDialog
         && (CanReadLocations ? loaded != CurrentWeatherInputs : loaded with { Place = null } != CurrentWeatherInputs with { Place = null });
     private bool _isSaving;
     private bool _previousOpen;
+    private (CalendarEventDialogMode Mode, Guid? EventId, Guid? PatternId) _previousTarget;
 
     private IReadOnlyList<OdsOption> _calendarOptions => [.. Calendars.Select(CalendarVisuals.Option)];
 
@@ -399,12 +400,17 @@ public partial class CalendarEventDialog
 
     protected override async Task OnParametersSetAsync()
     {
-        if (Open && !_previousOpen)
+        // "Edit series…" closes and reopens the dialog in one page render, so Open never reads false here: a changed
+        // mode or record reloads too, or the series form would show the occurrence's draft and save it with no loaded
+        // version (found while building issue #520).
+        var target = (Mode, EventId, PatternId);
+        if (Open && (!_previousOpen || target != _previousTarget))
         {
             await LoadAsync();
         }
 
         _previousOpen = Open;
+        _previousTarget = target;
     }
 
     private async Task LoadAsync()

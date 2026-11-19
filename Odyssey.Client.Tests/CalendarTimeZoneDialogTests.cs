@@ -727,6 +727,45 @@ public class CalendarTimeZoneDialogTests
         Assert.Equal(Severity.Info, h.Context.Toasts[0].Severity);
     }
 
+    // ── Edit series… while open ──────────────────────────────────────────────
+
+    [Fact] // §3 / v5 B1: "Edit series…" switches the open dialog to the series, loading it and its version
+    public async Task Switching_an_open_dialog_to_its_series_loads_the_series_and_its_version()
+    {
+        await using var context = new CalendarIcsTestContext { ViewerZone = "Europe/Oslo" };
+        context.Calendar.Setup(c => c.GetEventAsync(EventId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Zoned(new DateTime(2026, 6, 8, 18, 0, 0), "Europe/Oslo", e => { e.Title = "Choir — concert"; e.RecurrencePatternId = PatternId; }));
+        context.Calendar.Setup(c => c.GetPatternAsync(PatternId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Series(new DateTime(2026, 6, 1, 18, 0, 0), "Europe/Oslo"));
+        context.Calendar.Setup(c => c.PreviewPatternAsync(PatternId, It.IsAny<NewRecurrencePattern>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new RecurrencePatternPreview { Version = LoadedVersion, DroppedOverrideCount = 1 }));
+        var mode = CalendarEventDialogMode.Edit;
+        var cut = context.Ctx.Render<RefreshHost>(p => p.AddChildContent(b =>
+        {
+            b.OpenComponent<MudDialogProvider>(0);
+            b.CloseComponent();
+            b.OpenComponent<MudPopoverProvider>(1);
+            b.CloseComponent();
+            b.OpenComponent<CalendarEventDialog>(2);
+            b.AddComponentParameter(3, nameof(CalendarEventDialog.Open), true);
+            b.AddComponentParameter(4, nameof(CalendarEventDialog.Mode), mode);
+            b.AddComponentParameter(5, nameof(CalendarEventDialog.EventId), mode == CalendarEventDialogMode.Edit ? EventId : null);
+            b.AddComponentParameter(6, nameof(CalendarEventDialog.PatternId), mode == CalendarEventDialogMode.Series ? PatternId : null);
+            b.AddComponentParameter(7, nameof(CalendarEventDialog.Calendars), (IReadOnlyList<ExistingCalendar>)[Personal]);
+            b.AddComponentParameter(8, nameof(CalendarEventDialog.CanUpdate), true);
+            b.CloseComponent();
+        }));
+        cut.WaitForAssertion(() => Assert.Contains("Choir — concert", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Title").Instance.Value));
+
+        mode = CalendarEventDialogMode.Series;
+        await cut.InvokeAsync(cut.Instance.RefreshAsync);
+
+        cut.WaitForAssertion(() => Assert.Equal("Choir", cut.FindComponents<OdsField>().Single(f => f.Instance.Label == "Title").Instance.Value));
+        cut.Find("#" + CalendarEventDialog.SaveButtonId).Click();
+        // The preview carries the loaded version, so no conflict: the confirm step shows.
+        cut.WaitForElement(".cal-ce-confirm");
+    }
+
     // ── v4 §4: an occurrence's zone ──────────────────────────────────────────
 
     [Fact] // v4 §4: an occurrence of a floating series shows the zone as read-only text
