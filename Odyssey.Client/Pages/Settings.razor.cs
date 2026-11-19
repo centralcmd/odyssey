@@ -1042,15 +1042,15 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportEvents),
                 Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxImportEvents", dto.CalendarIcsMaxImportEvents), Write: (p, req) => req.CalendarIcsMaxImportEvents = p.CapacityRequest("calendarIcsMaxImportEvents")),
             new("calendarIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. An export that grows past this while it "
-                + "streams is aborted, so the download fails instead of saving a file that stops early.",
+                "Largest iCalendar (.ics) file an export may produce. An export over this is refused before the "
+                + "download starts, or stopped mid-download — never truncated.",
                 SettingClaim.Security, SettingControl.Size,
                 Min: SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxExportMegabytes", dto.CalendarIcsMaxExportMegabytes), Write: (p, req) => req.CalendarIcsMaxExportMegabytes = p.IntRequest("calendarIcsMaxExportMegabytes")),
             new("calendarIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
                 "Largest iCalendar (.ics) upload accepted. It cannot usefully exceed the reverse proxy's body-size "
-                + "limit, which ships at 10 GB.",
+                + "limit; see the deployment guide.",
                 SettingClaim.Security, SettingControl.Size,
                 Min: SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes),
