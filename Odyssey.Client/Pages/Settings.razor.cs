@@ -1042,14 +1042,17 @@ public partial class Settings : IDisposable
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportEvents),
                 Load: (p, dto) => p.SetCapacityLoaded("calendarIcsMaxImportEvents", dto.CalendarIcsMaxImportEvents), Write: (p, req) => req.CalendarIcsMaxImportEvents = p.CapacityRequest("calendarIcsMaxImportEvents")),
             new("calendarIcsMaxExportMegabytes", "sd_storage", "Maximum export file size",
-                "Largest iCalendar (.ics) file an export may produce. A too-large export is truncated "
-                + "rather than exceeding this, so the download fails cleanly instead of silently.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) file an export may produce. An export over this is refused before the "
+                + "download starts, or stopped mid-download — never truncated.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, Max: SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxExportMegabytes", dto.CalendarIcsMaxExportMegabytes), Write: (p, req) => req.CalendarIcsMaxExportMegabytes = p.IntRequest("calendarIcsMaxExportMegabytes")),
             new("calendarIcsMaxImportMegabytes", "sd_storage", "Maximum import file size",
-                "Largest iCalendar (.ics) upload accepted. Above ~64 MB, also raise the reverse proxy's body-size limit.",
-                SettingClaim.Security, SettingControl.Size, Min: 1, Max: 1024,
+                "Largest iCalendar (.ics) upload accepted. It cannot usefully exceed the reverse proxy's body-size "
+                + "limit; see the deployment guide.",
+                SettingClaim.Security, SettingControl.Size,
+                Min: SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, Max: SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax,
                 Field: nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes),
                 Load: (p, dto) => p.SetIntLoaded("calendarIcsMaxImportMegabytes", dto.CalendarIcsMaxImportMegabytes), Write: (p, req) => req.CalendarIcsMaxImportMegabytes = p.IntRequest("calendarIcsMaxImportMegabytes")),
             // ── issue #434 keys 8-10. These three bound the ALL-CALENDARS export/import path, not a

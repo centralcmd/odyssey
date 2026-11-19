@@ -18,7 +18,7 @@ namespace Odyssey.IntegrationTests;
 /// sort key (<c>StartDateTime</c>+<c>CalendarEventId</c>, vs. Contacts' single <c>ContactId</c>) and a
 /// calendar-name lookup per chunk that Contacts doesn't have, so structural similarity to Contacts'
 /// proven fix isn't itself proof this surface's fix actually runs against a real retrying engine.
-/// <see cref="CalendarIcsService.ExportAggregateFilteredStreamingAsync"/> originally held one explicit
+/// The filtered aggregate export originally held one explicit
 /// <c>RepeatableRead</c> transaction across the whole chunked fetch, which throws
 /// <c>InvalidOperationException</c> against any <c>OdysseyContext</c> configured with
 /// <c>EnableRetryOnFailure()</c> — exactly how production is configured
@@ -35,7 +35,7 @@ public class CalendarIcsIntegrationTests(MariaDbFixture fixture)
 
         var connectionString = fixture.RelationalConnectionString;
         var options = new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
         await using (var migrating = new OdysseyContext(options))
@@ -80,11 +80,11 @@ public class CalendarIcsIntegrationTests(MariaDbFixture fixture)
         var query = new CalendarEventsIcsExportQueryParams { Search = suffix }; // Search alone triggers the chunked, filtered path
         string? fileName = null;
         var reportedCount = 0;
-        await service.ExportAggregateStreamingAsync(query, "tester", output, (name, count) =>
+        await service.ExportStreamingAsync(CalendarIcsExportScope.ForAggregate(query), output, (name, count) =>
         {
             fileName = name;
             reportedCount = count;
-        });
+        }, userId: "tester");
 
         Assert.Equal(rowCount, reportedCount);
         Assert.NotNull(fileName);

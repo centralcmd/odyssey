@@ -429,7 +429,7 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
 
         await using (var context = NewContext())
         {
-            Assert.True(await new CalendarEventService(context, new StubJournalLimitsLookup()).Delete(eventId));
+            Assert.NotNull(await new CalendarEventService(context, new StubJournalLimitsLookup()).Delete(eventId));
             Assert.True(await new RecurrencePatternService(context, new StubJournalLimitsLookup()).Delete(seriesId));
             Assert.True(await Entries(context).Delete(entryId));
             await Contacts(context).Delete(contact, detachBlockingLinks: false, null);
@@ -543,6 +543,6 @@ public class LocationUnificationRelationalTests(MariaDbFixture fixture)
             .UseMySql(
                 fixture.ConnectionStringFor(Database),
                 ServerVersion.AutoDetect(fixture.OdysseyConnectionString),
-                mysql => mysql.EnableRetryOnFailure())
+                OdysseyDatabaseRetry.Configure)
             .Options);
 }

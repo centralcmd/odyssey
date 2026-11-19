@@ -364,6 +364,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
         DeclareUserAttribution<Photo>(modelBuilder, nameof(Photo.CreatedByUserId), nameof(Photo.UpdatedByUserId));
         DeclareUserAttribution<PhotoAlbum>(modelBuilder, nameof(PhotoAlbum.CreatedByUserId), nameof(PhotoAlbum.UpdatedByUserId));
         DeclareUserAttribution<RecurrencePattern>(modelBuilder, nameof(RecurrencePattern.CreatedByUserId), nameof(RecurrencePattern.UpdatedByUserId));
+        DeclareUserAttribution<RecurrenceExclusion>(modelBuilder, nameof(RecurrenceExclusion.CreatedByUserId));
 
         DeclareUserAttribution<AccountFile>(modelBuilder, nameof(AccountFile.AttachedByUserId));
         DeclareUserAttribution<ContractFile>(modelBuilder, nameof(ContractFile.AttachedByUserId));
@@ -509,6 +510,7 @@ public class OdysseyContext : IdentityDbContext<ApplicationUser>
     public DbSet<WeatherObservationCoverage> WeatherObservationCoverages { get; set; }
     public DbSet<CalendarEvent> CalendarEvents { get; set; }
     public DbSet<RecurrencePattern> RecurrencePatterns { get; set; }
+    public DbSet<RecurrenceExclusion> RecurrenceExclusions { get; set; }
 
     // Contact aggregate (issue #325).
     public DbSet<Contact> Contacts { get; set; }

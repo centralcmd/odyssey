@@ -889,7 +889,64 @@ get backwards:
   without an import/upload cap to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and `[UploadTransportLimit]` (the
   photo upload) to the admin upload cap at the transport only. A new file endpoint takes one of the three
   attributes; `DefaultRequestBodyLimitTests` fails otherwise. The proxies give the 10 GB size and the hour-long
-  timeouts to the task-ICS, photo and file routes alone.
+  timeouts to the task, journal and calendar `.ics`, photo and file routes alone, and nginx streams the `.ics`
+  responses unbuffered (`proxy_buffering off`) so the export progress guard below sees the real client.
+
+**A calendar `.ics` export and import stream, and both are planned or applied in batches** (issue #516). Rules that
+are easy to get backwards:
+
+- **No export opens a transaction.** The planner (`CalendarIcsService.PlanAsync`) projects keys and the collapse
+  columns once, the writer fetches id batches through `ExportChunking.ReorderToSnapshot`; a retry under
+  `EnableRetryOnFailure` would re-emit streamed chunks. The planner is also the summary — one definition of what an
+  export contains. Past the byte cap the writer throws `IcsExportSizeExceededException` and the controller aborts;
+  it never truncates.
+- **An occurrence moved to another calendar is written in its new calendar's file** — since #519 as an `EXDATE` of its
+  series in the series' own calendar (below). The aggregate keeps `HasUniformCalendarId` and synthetic UIDs.
+- **A synthetic UID (`{guid}@odyssey.local`) is never persisted as `ExternalUid`** (#345 F1). It matches a row by key
+  only within the target calendar; a row created from one keeps it as `ImportSourceUid`, which is never exported and
+  never read as a key. An import never clears a stored `ExternalUid`.
+- **The import holds no whole-file state but the sort**: since #519 the byte scanner (`IcsByteScanner`, the splitter's
+  rules: 1 Mi-character lines, 4 Mi components) feeds the UID grouper, groups of one UID apply together, batches of 500
+  groups resolve by keyed queries and save in one transaction each, and within a group the last component wins. A
+  failure after a commit is `calendar_ics_import_partially_applied` with counts; a cancellation is never wrapped.
+- **A cancelled component removes only with `allowRemovals`**, which needs `calendar.delete` (checked once, at the
+  controller); a cancelled `RECURRENCE-ID` is an exclusion under the same gate. A removed series follows
+  `RecurrencePatternService.Delete`; each batch that removed anything logs ids, keys and counts only.
+- **The export progress guard is `ExportConcurrencyFilter`**, for every guarded export: no first byte in 10 minutes,
+  under 1 MiB in a 5-minute window with a write waiting on the client, or 24 hours. It replaced a fixed 10-minute
+  deadline; don't put one back.
+
+**A recurring series remembers its exceptions by occurrence KEY, and times are wall-clock plus zone** (issue #519).
+Every generated row carries `OccurrenceKey` — its local wall-clock start under the rule, `Kind = Unspecified`, unique
+per series — and an edited one `IsOverride`; a deleted one is a `RecurrenceExclusions` row. Rules that are easy to get
+backwards:
+
+- **Survival is key-set membership alone.** `RecurrenceSeries.Plan` regenerates the future keys and updates every
+  non-override row in place; an override or exclusion survives exactly while its key does. There is no list of
+  "timing fields", and never delete-then-insert of a key (the unique index would `1062`). Past keys are never touched.
+- **`StartDateTime` has two stored meanings**: the UTC instant when `TimeZoneId` is set, the wall-clock when it is null
+  (floating — every pre-#519 row and every all-day row, which `CK_*_AllDayHasNoZone` keeps zone-less). Writes send
+  wall-clock plus zone and only the server derives the instant (`CalendarTimeZones`: a gap moves forward, an ambiguous
+  time takes the earlier instant). A floating read still returns its value labelled UTC, so older clients keep working.
+  Windowed reads take instants plus `viewTimeZoneId`, and the two-branch predicate and the offset-segment sort key
+  (`CalendarWindow`) are SQL — never filter or sort a mixed set in memory.
+- **Every series writer takes the series lock first** (`CalendarSeriesTransactions`: `FOR UPDATE`, ascending ids,
+  `SET STATEMENT innodb_lock_wait_timeout = 5`), and keys a legacy series inline with the backfill's routine
+  (`RecurrenceSeries.KeyInPlace`) before anything else. A `1205`/`1213` past the retries, or a `1062` on a key index, is
+  `409 calendar-series-busy`, never a `500`.
+- **`Version` rotates on series-level writes only** (a series `PUT`, keying, an import that rewrites the master), never
+  on an occurrence write. The `PUT` checks `expectedVersion` first, then `confirmedDrops` — both under the lock; consent
+  is bound by the drop counts, not by the version.
+- **An import change that removes a stored row or discards a stored exception needs `allowRemovals` plus
+  `calendar.delete`**; without it the series is left unchanged and counted in `gatedSeriesCount`. A series `PUT` may
+  discard exceptions under `calendar.update` alone because the user previewed and confirmed them.
+- **The import groups by UID before applying** (`IcsImportGrouper`: keyed-hash external sort, component cap
+  `max(1, bytes/64)`, 1.5× disk reservation, 1.25× spill bound). A master, its `EXDATE`s and its overrides apply as one
+  group in any file order; groups commit in hash order.
+- **A series collapses on export only when `CanExportWithExceptions` holds** (the RFC-literal key set equals rows plus
+  exclusions, every row keyed): one master with `EXDATE`s, one `RECURRENCE-ID` per row that differs, one `VTIMEZONE`
+  per planned zone. A moved override is an `EXDATE` in its series' calendar and a standalone event in its own; the
+  aggregate stays flat for any series with an exception.
 
 **The location map draws with vendored MapLibre GL JS, behind one interop seam** (issues #370, #371).
 `Odyssey.Client/wwwroot/lib/maplibre-gl/` holds the upstream files byte-for-byte (its `README.md` records the

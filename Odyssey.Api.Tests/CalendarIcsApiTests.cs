@@ -20,9 +20,8 @@ public class CalendarIcsApiTests
     private const string ActorUserId = "calendar-ics-actor-id";
     private const string CalendarsPath = "/api/calendars";
 
-    // The shipped default for CalendarIcsMaxImportEvents (issue #343 §6) — behavior-preserving with
-    // the old hard-coded CalendarIcsService.MaxVEvents this replaces.
-    private const int DefaultMaxImportEvents = 2000;
+    // The import event cap Import_TooManyVEvents sets: the setting ships unlimited since issue #516.
+    private const int TestMaxImportEvents = 5;
 
     private static readonly string[] ReadWrite =
     [
@@ -170,9 +169,10 @@ public class CalendarIcsApiTests
         Assert.Equal(4, CountOccurrences(body, "BEGIN:VEVENT"));
         Assert.DoesNotContain("RRULE:", body);
 
-        // The flattened rows carry the generator's clamped dates, not just the right count (issue #243).
+        // The flattened rows carry the generator's clamped dates, not just the right count (issue #243). A series
+        // written without a zone is floating, so its times are local date-times with no Z (issue #519 AC 3).
         var starts = Regex.Matches(body, @"DTSTART[^:\r\n]*:(\d{8}T\d{6}Z?)").Select(m => m.Groups[1].Value).Order();
-        Assert.Equal(["20300131T090000Z", "20300228T090000Z", "20300331T090000Z", "20300430T090000Z"], starts);
+        Assert.Equal(["20300131T090000", "20300228T090000", "20300331T090000", "20300430T090000"], starts);
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class CalendarIcsApiTests
     }
 
     [Fact]
-    public async Task Export_EditedOccurrence_FlattensToStandaloneVEvents()
+    public async Task Export_EditedOccurrence_IsARecurrenceIdComponentOfTheRule()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -243,8 +243,11 @@ public class CalendarIcsApiTests
 
         var body = await (await client.GetAsync($"{CalendarsPath}/{calendar.CalendarId}/ics")).Content.ReadAsStringAsync();
 
-        Assert.Equal(3, CountOccurrences(body, "BEGIN:VEVENT"));
-        Assert.DoesNotContain("RRULE:", body);
+        // Issue #519 §8.3: the edit no longer flattens the series — it is one RECURRENCE-ID component beside the master.
+        Assert.Equal(2, CountOccurrences(body, "BEGIN:VEVENT"));
+        Assert.Equal(1, CountOccurrences(body, "RRULE:"));
+        Assert.Contains("RECURRENCE-ID:20300107T090000", body);
+        Assert.Contains("SUMMARY:Standup (special)", body);
     }
 
     // ------------------------------------------------------------------ import
@@ -382,7 +385,7 @@ public class CalendarIcsApiTests
     }
 
     [Fact]
-    public async Task Import_ExdateOnSeries_IsRejectedWithReason()
+    public async Task Import_ExdateOnSeries_ImportsTheSeriesWithItsExclusion()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -394,14 +397,20 @@ public class CalendarIcsApiTests
 
         var result = await ImportAsync(client, calendar.CalendarId, ics);
 
-        Assert.Equal(0, result.ImportedCount);
-        var group = Assert.Single(result.Skipped);
-        Assert.Contains("EXDATE", group.Reason);
+        // Issue #519 §8.4 supersedes the Spec A skip: the EXDATE is an exclusion of the new series.
+        Assert.Equal(1, result.ImportedCount);
+        Assert.Equal(1, result.ExclusionsApplied);
+        Assert.Empty(result.Skipped);
+        using var scope = factory.Services.CreateScope();
+        var ctx = scope.ServiceProvider.GetRequiredService<CalendarContext>();
+        Assert.Equal(4, await ctx.CalendarEvents.CountAsync(e => e.CalendarId == calendar.CalendarId));
+        Assert.Equal(new DateTime(2030, 1, 3, 9, 0, 0), (await ctx.RecurrenceExclusions.SingleAsync()).OccurrenceKey);
     }
 
     [Fact]
-    public async Task Import_DuplicateUidInFile_ImportsFirstSkipsSecond()
+    public async Task Import_DuplicateUidInFile_LastComponentWins()
     {
+        // Issue #516 R2: no whole-file UID set; a UID seen again updates what the earlier component wrote.
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Dupe");
@@ -413,9 +422,12 @@ public class CalendarIcsApiTests
         var result = await ImportAsync(client, calendar.CalendarId, ics);
 
         Assert.Equal(1, result.ImportedCount);
-        var group = Assert.Single(result.Skipped);
-        Assert.Equal(1, group.Count);
-        Assert.Contains("Duplicate UID", group.Reason);
+        Assert.Equal(1, result.UpdatedCount);
+        Assert.Empty(result.Skipped);
+        using var scope = factory.Services.CreateScope();
+        var row = await scope.ServiceProvider.GetRequiredService<CalendarContext>().CalendarEvents
+            .SingleAsync(e => e.CalendarId == calendar.CalendarId);
+        Assert.Equal("Second", row.Title);
     }
 
     [Fact]
@@ -522,7 +534,7 @@ public class CalendarIcsApiTests
     }
 
     [Fact]
-    public async Task Import_ReImportSeries_WithEditedFutureOccurrence_DiscardsEditAndFlagsWarning()
+    public async Task Import_ReImportSeries_WithEditedFutureOccurrence_KeepsTheEdit()
     {
         await using var factory = new ApiFactory(ReadWrite);
         using var client = factory.CreateClient();
@@ -560,28 +572,34 @@ public class CalendarIcsApiTests
 
         Assert.Equal(0, second.ImportedCount);
         Assert.Equal(1, second.UpdatedCount);
-        Assert.True(second.AnySeriesRegenerated);
+        Assert.False(second.AnySeriesRegenerated);
 
-        // The individual edit was discarded by the regenerate-future behaviour: no row keeps the edited
-        // title, every occurrence is back to the series title, and the count is unchanged (still 4).
+        // Issue #519 AC 10: the edited occurrence is an override whose key still exists, so the re-import keeps it.
         using (var scope = factory.Services.CreateScope())
         {
             var ctx = scope.ServiceProvider.GetRequiredService<CalendarContext>();
             var rows = ctx.CalendarEvents.Where(e => e.CalendarId == calendar.CalendarId).ToList();
             Assert.Equal(4, rows.Count);
-            Assert.DoesNotContain(rows, r => r.Title == "EDITED-OCCURRENCE");
-            Assert.All(rows, r => Assert.Equal("Series", r.Title));
+            var edited = Assert.Single(rows, r => r.Title == "EDITED-OCCURRENCE");
+            Assert.True(edited.IsOverride);
+            Assert.Equal(3, rows.Count(r => r.Title == "Series"));
         }
     }
 
     [Fact]
     public async Task Import_TooManyVEvents_ReturnsBadRequest()
     {
-        await using var factory = new ApiFactory(ReadWrite);
+        await using var factory = new ApiFactory([.. ReadWrite, PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         using var client = factory.CreateClient();
+        (await client.PutAsJsonAsync("/api/system-settings", new Odyssey.Dtos.Application.SystemSettingsUpdate
+        {
+            // The export cap may not exceed the import cap (the round-trip pair rule), so both move.
+            CalendarIcsMaxExportEvents = new Odyssey.Dtos.Application.CapacityLimit { Value = TestMaxImportEvents },
+            CalendarIcsMaxImportEvents = new Odyssey.Dtos.Application.CapacityLimit { Value = TestMaxImportEvents },
+        })).EnsureSuccessStatusCode();
         var calendar = await CreateCalendarAsync(client, "Flood");
 
-        var events = Enumerable.Range(0, DefaultMaxImportEvents + 1)
+        var events = Enumerable.Range(0, TestMaxImportEvents + 1)
             .Select(i => Vevent($"u{i}", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:E{i}"));
         var ics = Vcalendar(events.ToArray());
 

@@ -37,6 +37,24 @@ public static class ApiInteropExtensions
     }
 
     /// <summary>
+    /// <see cref="OrToast{T}(ApiResult{T}, ISnackbar, string)"/> with the toast's persistence chosen: with
+    /// <paramref name="requireInteraction"/> the error stays until dismissed (WCAG 2.2.1, 3.3.3), and it is keyed
+    /// uniquely, so a refusal identical to one still on screen is shown again rather than swallowed as a duplicate
+    /// (issue #517).
+    /// </summary>
+    public static T? OrToast<T>(this ApiResult<T> result, ISnackbar snackbar, string failureLead, bool requireInteraction)
+        where T : class
+    {
+        if (result.IsSuccess)
+            return result.Value;
+
+        snackbar.Add($"{failureLead}: {result.Error}", Severity.Error,
+            config => config.RequireInteraction = requireInteraction,
+            requireInteraction ? Guid.NewGuid().ToString("N") : null);
+        return null;
+    }
+
+    /// <summary>
     /// Returns the value on success; on failure toasts "Unable to load {what}: {detail}" and returns
     /// <paramref name="fallback"/>. The "Unable to load …" wording is the app-wide convention for a
     /// failed read, so every surface reads the same way to the user.

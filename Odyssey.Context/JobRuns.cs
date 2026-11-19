@@ -378,6 +378,25 @@ public class NewsFeedJobRun : JobRun
 }
 
 /// <summary>
+/// A burst or manual run of the recurrence key backfill (issue #519 §11). Each series is keyed in its own locked
+/// transaction; a failing one is counted in <see cref="SeriesKeyFailures"/> and retried on the next tick.
+/// </summary>
+public class RecurrenceKeyBackfillJobRun : JobRun
+{
+    public RecurrenceKeyBackfillJobRun() : base(Dtos.Application.JobType.RecurrenceKeyBackfill)
+    {
+    }
+
+    public int SeriesKeyed { get; set; }
+
+    public int SeriesKeyFailures { get; set; }
+
+    public int KeyRowsDetached { get; set; }
+
+    protected override (int Processed, int Failed) HeadlineCounts() => (SeriesKeyed, SeriesKeyFailures);
+}
+
+/// <summary>
 /// A process's last tick of one job (§4.3), written at most once a minute, before any early return, so a process
 /// that is idle, unconfigured or held is still seen to be alive. Keyed by the per-process id its run rows carry: a
 /// restarted container draws a new one, so its predecessor's open rows lose their heartbeat and the sweep closes

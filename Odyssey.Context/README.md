@@ -11,7 +11,8 @@
 - **Photos** — the photo library, its tags, people and albums, and its thumbnails: the rendition rows, the
   job queue, the bucket counter, the breaker incidents and the worker heartbeats (issue #362). All five are
   derived data.
-- **Calendars** — calendars, events and recurrence patterns.
+- **Calendars** — calendars, events, recurrence patterns and their exclusions (issue #519: an event's occurrence key,
+  override flag and zone; a series' zone, version and keying date).
 - **Contacts** — the Contact aggregate (people and organisations) with its person/organisation
   details and address/email/phone children.
 - **Identity and auth** — the ASP.NET Identity schema plus `UserProfile`, `UserPreference`,
@@ -121,7 +122,8 @@ a row — `CreatedByUserId`/`UpdatedByUserId` on `Calendar`, `CalendarEvent`, `J
 tables (`AccountFiles`, `ContractFiles`, `PropertyFiles`, `TransactionFiles`, `TaxStatementFiles`); `FileMetadata.UploadedByUserId`; `FileAnalysisJob.RequestedByUserId`; and
 `FileAnalysisCandidateTransaction.ReviewedByUserId`; and, for the exchange-rate sync (issue #349),
 `ExchangeRateSyncCurrency.UpdatedByUserId`; and `JobRun.RequestedByUserId` on the shared background-job run
-log (issue #409), which absorbed the sync's `ExchangeRateSyncRun.RequestedByUserId`.
+log (issue #409), which absorbed the sync's `ExchangeRateSyncRun.RequestedByUserId`; and
+`RecurrenceExclusion.CreatedByUserId`, who deleted an occurrence of a series (issue #519).
 
 They were bare strings while identity lived in its own context, so deleting a user left every one of
 them naming an account that no longer existed, and no transaction could span the two contexts to fix

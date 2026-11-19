@@ -567,6 +567,13 @@ public sealed class BackgroundJobsService(
                 FeedsMarked = news.FeedsMarked,
             },
             NewsFeedJobRun => new NewsFeedJobRunDetail(),
+            RecurrenceKeyBackfillJobRun keys when canRead => new RecurrenceKeyBackfillJobRunDetail
+            {
+                SeriesKeyed = keys.SeriesKeyed,
+                SeriesKeyFailures = keys.SeriesKeyFailures,
+                KeyRowsDetached = keys.KeyRowsDetached,
+            },
+            RecurrenceKeyBackfillJobRun => new RecurrenceKeyBackfillJobRunDetail(),
             _ => new JobRunDetail(),
         };
 
@@ -754,6 +761,8 @@ public sealed class BackgroundJobsService(
                 return await FileBlobBackfillJob.Movable(context).AnyAsync(cancellationToken);
             case JobType.NewsFeedFetch:
                 return await Odyssey.Core.Internet.News.Jobs.NewsFeedJob.HasWorkAsync(context, Now, cancellationToken);
+            case JobType.RecurrenceKeyBackfill:
+                return await context.RecurrencePatterns.AnyAsync(p => p.KeysBackfilledAt == null, cancellationToken);
             default:
                 return true;
         }
@@ -770,6 +779,7 @@ public sealed class BackgroundJobsService(
             JobType.FileBlobBackfill => new FileBlobBackfillJobRun(),
             JobType.InstrumentPriceSync => new InstrumentPriceSyncJobRun(),
             JobType.NewsFeedFetch => new NewsFeedJobRun(),
+            JobType.RecurrenceKeyBackfill => new RecurrenceKeyBackfillJobRun(),
             _ => throw new ArgumentOutOfRangeException(nameof(jobType)),
         };
         run.JobRunId = Guid.NewGuid();

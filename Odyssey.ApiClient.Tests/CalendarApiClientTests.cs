@@ -222,7 +222,7 @@ public class CalendarApiClientTests
     {
         var handler = new RecordingHandler
         {
-            Response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) },
+            Response = OneVEvent(),
         };
         var client = CreateClient(handler);
 
@@ -237,7 +237,7 @@ public class CalendarApiClientTests
     {
         var handler = new RecordingHandler
         {
-            Response = new HttpResponseMessage(HttpStatusCode.OK) { Content = new ByteArrayContent([1, 2, 3]) },
+            Response = OneVEvent(),
         };
         var client = CreateClient(handler);
 
@@ -307,5 +307,113 @@ public class CalendarApiClientTests
 
         Assert.Equal(HttpMethod.Post, handler.LastRequest!.Method);
         Assert.Equal("text/calendar", Assert.Single(handler.LastPartMediaTypes));
+    }
+
+    // Every calendar export streams and declares its row count since issue #516.
+    private static HttpResponseMessage OneVEvent()
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new ByteArrayContent(System.Text.Encoding.UTF8.GetBytes("BEGIN:VEVENT\r\nEND:VEVENT\r\n")),
+        };
+        response.Headers.Add("X-Odyssey-Export-Rows", "1");
+        return response;
+    }
+
+    [Fact]
+    public async Task ExportAsync_ShortCompletenessCount_IsTreatedAsFailedDownload()
+    {
+        var response = OneVEvent();
+        response.Headers.Remove("X-Odyssey-Export-Rows");
+        response.Headers.Add("X-Odyssey-Export-Rows", "2");
+        var client = CreateClient(new RecordingHandler { Response = response });
+
+        Assert.False((await client.ExportAsync(Guid.NewGuid())).IsSuccess);
+    }
+
+    private static RecordingHandler SummaryHandler() => new()
+    {
+        Response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"eventCount":3,"seriesCount":1,"occurrenceCount":7}""", System.Text.Encoding.UTF8, "application/json"),
+        },
+    };
+
+    [Fact]
+    public async Task Summaries_ReadTheCounts_FromEachExportsOwnSummaryRoute()
+    {
+        var id = Guid.NewGuid();
+        var cases = new (Func<CalendarApiClient, Task<ApiResult<Odyssey.Dtos.Journal.CalendarIcsExportSummary>>> Call, string Path)[]
+        {
+            (c => c.SummarizeExportAsync(id), $"/api/calendars/{id}/ics/summary"),
+            (c => c.SummarizeEventExportAsync(id), $"/api/calendar-events/{id}/ics/summary"),
+            (c => c.SummarizePatternExportAsync(id), $"/api/recurrence-patterns/{id}/ics/summary"),
+            (c => c.SummarizeAggregateExportAsync(null, null, null, null), "/api/calendar-events/ics/summary"),
+        };
+
+        foreach (var (call, path) in cases)
+        {
+            var handler = SummaryHandler();
+            var result = await call(CreateClient(handler));
+
+            Assert.Equal(path, handler.LastRequest!.RequestUri!.AbsolutePath);
+            Assert.Equal((3, 1, 7), (result.Value!.EventCount, result.Value.SeriesCount, result.Value.OccurrenceCount));
+        }
+    }
+
+    [Fact]
+    public async Task ExportUrls_AreAbsolute_AndTheAggregateCarriesTheSameQueryAsItsSummary()
+    {
+        var id = Guid.NewGuid();
+        var handler = SummaryHandler();
+        var client = CreateClient(handler);
+        var from = new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        await client.SummarizeAggregateExportAsync(from, from.AddDays(3), [id], "dentist");
+
+        var aggregate = new Uri(client.ExportAggregateUrl(from, from.AddDays(3), [id], "dentist"));
+
+        Assert.Equal("http://localhost/api/calendar-events/ics", aggregate.GetLeftPart(UriPartial.Path));
+        Assert.Equal(handler.LastRequest!.RequestUri!.Query, aggregate.Query);
+        Assert.Equal($"http://localhost/api/calendars/{id}/ics", client.ExportUrl(id));
+        Assert.Equal($"http://localhost/api/calendar-events/{id}/ics", client.ExportEventUrl(id));
+        Assert.Equal($"http://localhost/api/recurrence-patterns/{id}/ics", client.ExportPatternUrl(id));
+        Assert.Equal($"http://localhost/api/calendars/{id}/ics", client.ImportUrl(id));
+    }
+
+    [Fact]
+    public void TransferUrls_WithoutABaseAddress_ThrowAClearInvalidOperationException()
+    {
+        var client = new CalendarApiClient(new OdysseyApi(new HttpClient(SummaryHandler())));
+
+        var error = Assert.Throws<InvalidOperationException>(() => client.ExportUrl(Guid.NewGuid()));
+
+        Assert.Contains("BaseAddress", error.Message);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ImportAsync_SendsAllowRemovals_OnlyWhenAsked(bool allowRemovals)
+    {
+        string? body = null;
+        var handler = new CapturingBodyHandler(text => body = text);
+        var client = new CalendarApiClient(new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") }));
+        var upload = new ApiUpload("mine.ics", "text/calendar", 3, () => new MemoryStream([1, 2, 3]));
+
+        await client.ImportAsync(Guid.NewGuid(), upload, allowRemovals);
+
+        Assert.Equal(allowRemovals, body!.Contains("name=allowRemovals", StringComparison.Ordinal));
+    }
+
+    private sealed class CapturingBodyHandler(Action<string> capture) : HttpMessageHandler
+    {
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            capture(await request.Content!.ReadAsStringAsync(cancellationToken));
+            return new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"importedCount":1}""", System.Text.Encoding.UTF8, "application/json"),
+            };
+        }
     }
 }

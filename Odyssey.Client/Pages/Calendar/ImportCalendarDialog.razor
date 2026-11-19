@@ -1,152 +1,266 @@
 @*
-    ImportCalendarDialog — the .ics import dialog (issue #330, Odyssey Design System · ImportCalendarModal).
-    Opened from Manage Calendars, which closes itself first (mirrors CalendarEventDialog's
-    "Edit series…" close-then-open sequencing).
+    ImportCalendarDialog — the .ics import dialog (issues #330, #517; Odyssey Design System · ImportCalendarModal).
+    Opened from the Calendar page's overflow menu.
 
-    One shell, two phases:
-      • compose — a required target-calendar OdsSelect + a single-file .ics picker (OdsFileUpload with
-                  Multiple=false / ShowKinds=false).
-      • result  — the IcsImportResult summary. Imported / updated show as plain counts; the SKIPPED list
-                  is grouped by reason, each group expandable to its event titles (server caps samples at
-                  100). A regenerate-future warning shows when AnySeriesRegenerated is true. An
-                  OdsLiveAnnouncer announces the summary; focus moves to the result heading.
+    Four phases (issue #517 §3 Import flow):
+      • compose   — the target calendar, the single-file .ics picker with the formatted effective limit, and — for a
+                    calendar.delete holder only — the opt-in "Allow this import to remove events or discard edits"
+                    checkbox, with a Status-live warning while it is ticked. It resets to off on open, on a file
+                    change, after every attempt, on Import another file and on close.
+      • uploading — the browser posts the picked file itself (native path only). The footer's role=status line says
+                    so; Cancel upload, and Escape, open the Stop-upload confirmation. That confirmation closes ITSELF
+                    if the upload finishes while it is open, and a Stop upload arriving after that does nothing.
+      • importing on the server — after the upload has finished, or at once on the typed fallback. No Cancel
+                    upload: Close and Escape hand the pending import to the page (OnBackgrounded), which then owns
+                    its toast and its refresh.
+      • result    — tiles (imported / updated / skipped, + removed when > 0), the regenerated-series warning, the
+                    Removed events group and the skipped groups. Focus moves to the result heading and the counts
+                    are announced; sample titles are never announced.
+
+    Failures land in the error alert (role=alert), which takes focus. The outcome wording follows the response's
+    aborted / uploadComplete flags: "Nothing was imported" only for an upload stopped before it finished.
 *@
 
 @inject ICalendarApiClient CalendarApi
 @inject Odyssey.Client.Services.IImportLimitsCache ImportLimits
+@inject Odyssey.Client.Services.INativeTransfer NativeTransfer
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@implements IAsyncDisposable
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="upload_file"
-          Title="@TitleContent" Subtitle="@(_result is null ? SubtitleContent : null)" Class="cal-imp-dialog">
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Dismissible="@(_phase != Phase.Uploading)"
+          Icon="upload_file" Title="@TitleContent" Subtitle="@(_phase == Phase.Result ? null : SubtitleContent)"
+          Class="cal-imp-dialog">
     <ChildContent>
-        <OdsLiveAnnouncer Message="@_announce" />
+        @* The dialog's announcer, mounted from its first render; it never carries a file-derived string. *@
+        <OdsLiveAnnouncer @ref="_announcer" />
 
-        @if (_result is null)
-        {
-            <div class="cal-imp-form">
-                <OdsSelect Label="Import into" Required="true" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
-                           Options="_calendarOptions" Placeholder="Choose a calendar…" Error="@_calendarError" />
+        <div class="cal-imp-body">
+            @if (_phase == Phase.Compose)
+            {
+                <div class="cal-imp-form">
+                    @if (ImportPending)
+                    {
+                        <OdsAlert Severity="Severity.Info">@CalendarImportCopy.PendingNote</OdsAlert>
+                    }
 
-                <OdsFieldShell Label="Calendar file" Required="true" Error="@_fileError">
-                    <OdsFileUpload Files="_files" FilesChanged="OnFilesChanged"
-                                   Multiple="false" ShowKinds="false" Compact="true"
-                                   Accept=".ics,text/calendar"
-                                   Hint="@($"iCalendar (.ics) · one file · up to {_maxImportMb} MB")" />
-                </OdsFieldShell>
-
-                <div class="cal-imp-note">
-                    <span class="material-icons" aria-hidden="true">info</span>
-                    <span>Re-importing a file already imported here updates matching events in place instead of duplicating them, matched by their calendar UID.</span>
-                </div>
-            </div>
-        }
-        else
-        {
-            <div class="cal-imp-result">
-                <h3 class="cal-imp-result-h" tabindex="-1" @ref="_resultHeading">
-                    Imported into
-                    <span class="cal-imp-result-cal">
-                        @if (_target is { } target)
-                        {
-                            <OdsTagChip Name="@target.Name" Icon="@target.Icon" Color="@target.Color" DefaultIcon="@Odyssey.Dtos.CalendarIcons.Default" />
-                        }
-                        else
-                        {
-                            <span>calendar</span>
-                        }
-                    </span>
-                </h3>
-
-                <div class="cal-imp-stats">
-                    <div class="cal-imp-stat ok">
-                        <span class="material-icons" aria-hidden="true">event_available</span>
-                        <div class="cal-imp-stat-body">
-                            <span class="cal-imp-stat-n">@_result.ImportedCount</span>
-                            <span class="cal-imp-stat-l">imported</span>
+                    @if (_error is not null)
+                    {
+                        <div id="@AlertId" class="cal-imp-alert" tabindex="-1" @ref="_alertRef">
+                            <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_error@(_errorExtra is null ? null : " " + _errorExtra)</OdsAlert>
                         </div>
-                    </div>
-                    <div class="cal-imp-stat upd">
-                        <span class="material-icons" aria-hidden="true">sync</span>
-                        <div class="cal-imp-stat-body">
-                            <span class="cal-imp-stat-n">@_result.UpdatedCount</span>
-                            <span class="cal-imp-stat-l">updated</span>
-                        </div>
-                    </div>
-                    <div class="@($"cal-imp-stat{(SkippedTotal > 0 ? " skip" : "")}")">
-                        <span class="material-icons" aria-hidden="true">@(SkippedTotal > 0 ? "event_busy" : "check_circle")</span>
-                        <div class="cal-imp-stat-body">
-                            <span class="cal-imp-stat-n">@SkippedTotal</span>
-                            <span class="cal-imp-stat-l">skipped</span>
-                        </div>
-                    </div>
-                </div>
+                    }
 
-                <Odyssey.Client.Pages.Journal.LocationImportLines
-                    Lines="@([Odyssey.Client.Pages.Journal.LocationVisuals.PlacesImportLine(_result.PlacesLinked, _result.PlacesCreated)])" />
+                    <OdsSelect Label="Import into" Required="true" Value="@_calendarValue" ValueChanged="OnCalendarSelected"
+                               Options="_calendarOptions" Placeholder="Choose a calendar…" Error="@_calendarError" />
 
-                @if (_result.AnySeriesRegenerated)
-                {
-                    <OdsAlert Severity="Severity.Warning">
-                        Updating a recurring series replaced its future occurrences; any individual edits to those were discarded. This matches editing a series through the calendar page.
-                    </OdsAlert>
-                }
+                    <OdsFieldShell Label="Calendar file" Required="true" Error="@_fileError">
+                        <OdsFileUpload Id="@UploadId" Files="_files" FilesChanged="OnFilesChanged"
+                                       Multiple="false" ShowKinds="false" Compact="true"
+                                       Accept=".ics,text/calendar"
+                                       Hint="@($"iCalendar (.ics) · one file · up to {ByteSize.Format(_maxImportBytes)}")" />
+                    </OdsFieldShell>
 
-                @if (SkippedTotal > 0)
-                {
-                    <div class="cal-imp-skips">
-                        <div class="cal-imp-skips-head">Skipped events, by reason</div>
-                        @foreach (var group in _result.Skipped)
-                        {
-                            var open = _openReasons.Contains(group.Reason);
-                            <div class="@($"cal-imp-skip{(open ? " open" : "")}")">
-                                <button type="button" class="cal-imp-skip-head" aria-expanded="@(open ? "true" : "false")" @onclick="@(() => ToggleReason(group.Reason))">
-                                    <span class="material-icons cal-imp-skip-chev" aria-hidden="true">chevron_right</span>
-                                    <span class="cal-imp-skip-reason">@group.Reason</span>
-                                    <span class="cal-imp-skip-count">@group.Count</span>
-                                </button>
-                                @if (open)
+                    @* Allow removals (issue #520 v3 §H, v4 §5): the final name of #517's option, for calendar.delete only. *@
+                    @if (CanDelete)
+                    {
+                        <div class="cal-imp-remove">
+                            <OdsCheckbox Id="@RemoveId" Checked="_allowRemovals" CheckedChanged="OnAllowRemovalsChanged"
+                                         Label="@CalendarImportCopy.AllowRemovalsLabel"
+                                         aria-describedby="@RemoveHelpId" />
+                            <div class="cal-imp-remove-help" id="@RemoveHelpId">@CalendarImportCopy.AllowRemovalsHelp</div>
+                            @* A persistent live region that is FILLED when the box is ticked: a role=status region
+                               rendered together with its text is announced unreliably (WCAG 4.1.3). *@
+                            <div id="@RemoveWarningId" class="cal-imp-remove-live" role="status" aria-live="polite">
+                                @if (_allowRemovals)
                                 {
-                                    <ul class="cal-imp-skip-list">
-                                        @foreach (var title in group.SampleTitles)
-                                        {
-                                            <li class="cal-imp-skip-item">
-                                                <span class="material-icons" aria-hidden="true">event_busy</span>
-                                                <span>@(string.IsNullOrWhiteSpace(title) ? "Untitled event" : title)</span>
-                                            </li>
-                                        }
-                                        @if (group.Count > group.SampleTitles.Count)
-                                        {
-                                            <li class="cal-imp-skip-more">+@(group.Count - group.SampleTitles.Count) more</li>
-                                        }
-                                    </ul>
+                                    <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">@CalendarImportCopy.AllowRemovalsWarning</OdsAlert>
                                 }
+                            </div>
+                        </div>
+                    }
+                    <div class="cal-imp-note">
+                        <span class="material-icons" aria-hidden="true">info</span>
+                        <div class="cal-imp-note-lines">
+                            <span>Re-importing a file already imported here updates matching events in place instead of duplicating them, matched by their calendar UID.</span>
+                            @if (CanDelete)
+                            {
+                                <span>@CalendarImportCopy.RemovalsNote</span>
+                            }
+                            <span class="cal-imp-zone-note">@CalendarImportCopy.ZoneNote(DefaultZone)</span>
+                        </div>
+                    </div>
+
+                </div>
+            }
+            else if (_phase is Phase.Uploading or Phase.Server)
+            {
+                <div class="cal-imp-progress">
+                    <div class="cal-imp-progress-target">
+                        Importing into
+                        <span class="cal-imp-result-cal">@TargetChipContent</span>
+                    </div>
+                    <ol class="cal-imp-steps">
+                        <li class="@($"cal-imp-step {(_phase == Phase.Uploading ? "active" : "done")}")">
+                            @if (_phase == Phase.Uploading)
+                            {
+                                <OdsSpinner Size="OdsSize.Sm" Decorative="true" />
+                            }
+                            else
+                            {
+                                <span class="material-icons" aria-hidden="true">check_circle</span>
+                            }
+                            <span>@(_native ? "Upload the file" : "Send the file")@(_phase == Phase.Uploading ? null : " — done")</span>
+                        </li>
+                        <li class="@($"cal-imp-step{(_phase == Phase.Server ? " active" : null)}")">
+                            @if (_phase == Phase.Server)
+                            {
+                                <OdsSpinner Size="OdsSize.Sm" Decorative="true" />
+                            }
+                            else
+                            {
+                                <span class="material-icons" aria-hidden="true">radio_button_unchecked</span>
+                            }
+                            <span>Import on the server</span>
+                        </li>
+                    </ol>
+                </div>
+            }
+            else if (_result is { } result)
+            {
+                <div class="cal-imp-result">
+                    <h3 class="cal-imp-result-h" tabindex="-1" @ref="_resultHeading">
+                        Imported into
+                        <span class="cal-imp-result-cal">@TargetChipContent</span>
+                    </h3>
+
+                    <div class="@($"cal-imp-stats{(result.RemovedCount > 0 ? " cal-imp-stats--four" : null)}")">
+                        <div class="cal-imp-stat ok">
+                            <span class="material-icons" aria-hidden="true">event_available</span>
+                            <div class="cal-imp-stat-body">
+                                <span class="cal-imp-stat-n">@result.ImportedCount</span>
+                                <span class="cal-imp-stat-l">imported</span>
+                            </div>
+                        </div>
+                        <div class="cal-imp-stat upd">
+                            <span class="material-icons" aria-hidden="true">sync</span>
+                            <div class="cal-imp-stat-body">
+                                <span class="cal-imp-stat-n">@result.UpdatedCount</span>
+                                <span class="cal-imp-stat-l">updated</span>
+                            </div>
+                        </div>
+                        <div class="@($"cal-imp-stat{(SkippedTotal > 0 ? " skip" : "")}")">
+                            <span class="material-icons" aria-hidden="true">@(SkippedTotal > 0 ? "event_busy" : "check_circle")</span>
+                            <div class="cal-imp-stat-body">
+                                <span class="cal-imp-stat-n">@SkippedTotal</span>
+                                <span class="cal-imp-stat-l">skipped</span>
+                            </div>
+                        </div>
+                        @if (result.RemovedCount > 0)
+                        {
+                            <div class="cal-imp-stat rm">
+                                <span class="material-icons" aria-hidden="true">delete_sweep</span>
+                                <div class="cal-imp-stat-body">
+                                    <span class="cal-imp-stat-n">@result.RemovedCount</span>
+                                    <span class="cal-imp-stat-l">removed</span>
+                                </div>
                             </div>
                         }
                     </div>
-                }
-                else
-                {
-                    <div class="cal-imp-clean">
-                        <span class="material-icons" aria-hidden="true">task_alt</span>Every event in the file imported cleanly.
-                    </div>
-                }
-            </div>
-        }
+
+                    <Odyssey.Client.Pages.Journal.LocationImportLines
+                        Lines="@([Odyssey.Client.Pages.Journal.LocationVisuals.PlacesImportLine(_result.PlacesLinked, _result.PlacesCreated)])" />
+
+                    @if (result.AnySeriesRegenerated)
+                    {
+                        <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">@CalendarImportCopy.SeriesRegenerated</OdsAlert>
+                    }
+
+                    @* The new outcomes as a real list under the result heading (AX6): fixed text, non-zero counts only. *@
+                    @if (CalendarImportCopy.ResultItems(result, CanDelete) is { Count: > 0 } items)
+                    {
+                        <ul class="cal-imp-items">
+                            @foreach (var item in items)
+                            {
+                                <li class="cal-imp-item">@item</li>
+                            }
+                        </ul>
+                    }
+
+                    @if (result.RemovedCount > 0)
+                    {
+                        <div class="cal-imp-skips">
+                            <div class="cal-imp-skips-head">Removed events</div>
+                            @SkipGroup(RemovedGroupKey,
+                                $"{(result.RemovedCount == 1 ? "Event" : "Events")} removed from {_target?.Name ?? "this calendar"}",
+                                result.RemovedCount, result.RemovedSampleTitles, "delete_sweep", "rm")
+                        </div>
+                    }
+
+                    @if (SkippedTotal > 0)
+                    {
+                        <div class="cal-imp-skips">
+                            <div class="cal-imp-skips-head">Skipped events, by reason</div>
+                            @foreach (var group in result.Skipped.Where(g => g.Count > 0))
+                            {
+                                @SkipGroup(group.Reason, group.Reason, group.Count, group.SampleTitles, "event_busy", null)
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="cal-imp-clean">
+                            <span class="material-icons" aria-hidden="true">task_alt</span>Every event in the file imported cleanly.
+                        </div>
+                    }
+                </div>
+            }
+        </div>
     </ChildContent>
     <Footer>
         <div class="cal-imp-footer">
-            @if (_result is null)
-            {
-                <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
-                <span class="cal-imp-footer-spacer"></span>
-                <OdsButton Variant="OdsButtonVariant.Filled" Icon="upload_file" Loading="_isImporting" OnClick="SubmitAsync">Import</OdsButton>
-            }
-            else
+            @if (_phase == Phase.Result)
             {
                 <OdsButton Variant="OdsButtonVariant.Text" Icon="restart_alt" OnClick="Reset">Import another file</OdsButton>
                 <span class="cal-imp-footer-spacer"></span>
                 <OdsButton Variant="OdsButtonVariant.Filled" Icon="check" OnClick="CloseAsync">Done</OdsButton>
             }
+            else
+            {
+                @* The phase line: a role=status region, and the focus target when the Stop-upload confirmation closes
+                   itself (tabindex=-1, so focus lands on the line rather than on <body>). *@
+                <div id="@FootStatusId" class="cal-imp-foot-status" role="status" tabindex="-1">@FooterStatus</div>
+                @if (_phase == Phase.Uploading)
+                {
+                    <OdsButton id="@CancelUploadId" Variant="OdsButtonVariant.Text" Icon="cancel" OnClick="OpenConfirm">Cancel upload</OdsButton>
+                }
+                else if (_phase == Phase.Server)
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Close</OdsButton>
+                }
+                else
+                {
+                    <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+                    <OdsButton id="@ImportButtonId" Variant="OdsButtonVariant.Filled" Icon="upload_file"
+                               AriaDisabled="ImportPending" OnClick="SubmitAsync">Import</OdsButton>
+                }
+            }
         </div>
+    </Footer>
+</OdsModal>
+
+@* The Stop-upload confirmation (the OdsSecretClearDialog pattern: an alertdialog opened on its safe choice). Escape
+   means Keep uploading. It closes itself when the upload finishes while it is open. *@
+<OdsModal Open="_confirmOpen" OpenChanged="OnConfirmOpenChanged" OnClose="KeepUploading"
+          Role="OdsModalRole.AlertDialog" InitialFocus="OdsModalInitialFocus.Cancel" RequiredLegend="false"
+          Icon="cancel" IconTone="OdsModalTone.Warning" Title="@ConfirmTitle" ReturnFocusToId="@_confirmReturnId"
+          Class="cal-imp-stop-dialog">
+    <ChildContent>
+        <p class="cal-imp-stop-text">Nothing is imported from this file until the upload has finished.</p>
+    </ChildContent>
+    <Footer>
+        <OdsButton Variant="OdsButtonVariant.Text" data-dialog-cancel="true" OnClick="KeepUploading">Keep uploading</OdsButton>
+        <OdsButton id="@StopUploadId" Variant="OdsButtonVariant.Danger" Icon="stop_circle" OnClick="StopUploadAsync">Stop upload</OdsButton>
     </Footer>
 </OdsModal>
 
@@ -154,4 +268,47 @@
     private RenderFragment TitleContent => @<text>Import calendar</text>;
 
     private RenderFragment SubtitleContent => @<text>Add events from an .ics (iCalendar) file into one of your calendars. Recurring series import as a repeating event where the rule maps cleanly; anything else is skipped with a reason.</text>;
+
+    private RenderFragment ConfirmTitle => @<text>Stop the upload?</text>;
+
+    private RenderFragment TargetChipContent => __builder =>
+    {
+        if (_target is { } target)
+        {
+            <OdsTagChip Name="@target.Name" Icon="@target.Icon" Color="@target.Color" DefaultIcon="@Odyssey.Dtos.CalendarIcons.Default" />
+        }
+        else
+        {
+            <span>calendar</span>
+        }
+    };
+
+    // One group in a grouped list — the skip-group markup, expandable to its sample titles (plain text).
+    private RenderFragment SkipGroup(string key, string label, int count, IReadOnlyList<string> titles, string icon, string? tone) => __builder =>
+    {
+        var open = _openReasons.Contains(key);
+        <div class="@($"cal-imp-skip{(open ? " open" : "")}{(tone is null ? "" : " " + tone)}")">
+            <button type="button" class="cal-imp-skip-head" aria-expanded="@(open ? "true" : "false")" @onclick="@(() => ToggleReason(key))">
+                <span class="material-icons cal-imp-skip-chev" aria-hidden="true">chevron_right</span>
+                <span class="cal-imp-skip-reason">@label</span>
+                <span class="cal-imp-skip-count">@count</span>
+            </button>
+            @if (open)
+            {
+                <ul class="cal-imp-skip-list">
+                    @foreach (var title in titles)
+                    {
+                        <li class="cal-imp-skip-item">
+                            <span class="material-icons" aria-hidden="true">@icon</span>
+                            <span>@CalendarImportCopy.SampleTitle(title)</span>
+                        </li>
+                    }
+                    @if (count > titles.Count)
+                    {
+                        <li class="cal-imp-skip-more">+@(count - titles.Count) more</li>
+                    }
+                </ul>
+            }
+        </div>
+    };
 }

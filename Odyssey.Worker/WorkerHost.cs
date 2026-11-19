@@ -29,7 +29,7 @@ public static class WorkerHost
         // works on, and an in-memory database would be a private, empty copy the API never sees.
         var connectionString = builder.Configuration.GetRequiredConnectionString("OdysseyConnection");
         services.AddDbContext<OdysseyContext>(options => options.UseMySql(
-            connectionString, new MariaDbServerVersion(new Version(11, 4)), mySql => mySql.EnableRetryOnFailure()));
+            connectionString, new MariaDbServerVersion(new Version(11, 4)), OdysseyDatabaseRetry.Configure));
 
         services.AddMemoryCache();
         services.AddSingleton(TimeProvider.System);
@@ -67,6 +67,8 @@ public static class WorkerHost
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsReader(services);
         Odyssey.Core.Internet.News.NewsServiceCollectionExtensions.AddNewsFeedFetching(services);
         services.AddPeriodicJob<Odyssey.Core.Internet.News.Jobs.NewsFeedJob>();
+        // Recurrence keys (issue #519 §11): keys every pre-#519 series in the background, one locked series at a time.
+        services.AddPeriodicJob<Odyssey.Core.Journal.RecurrenceKeyBackfillJob>();
         services.AddSingleton<IPhotoThumbnailRenderer, MagickThumbnailRenderer>();
         services.AddSingleton<IThumbnailDecoderSelfTest, MagickDecoderSelfTest>();
         services.AddPeriodicJob<PhotoThumbnailJob>();

@@ -3,18 +3,24 @@
     CalendarEventDialog (issue #340, Odyssey Design System · ExportEventScopeModal). A standalone event
     never opens this; the page downloads it immediately. Renders on top of the still-open event dialog
     (no close-then-open sequencing) — CalendarPage owns which event this is for.
+
+    Issue #517 E4: the dialog stays open through the export's summary — Export shows Loading, the other choice and
+    Cancel are aria-disabled (focusable, clicks ignored), and the dialog cannot be dismissed — then closes on success
+    or refusal alike, and the page returns focus to the event dialog's Export.
 *@
 
-<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Icon="event_repeat"
+<OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CloseAsync" Dismissible="@(!_busy)" Icon="event_repeat"
           Title="@TitleContent" Subtitle="@SubtitleContent" Class="cal-exp-scope">
     <ChildContent>
-        <div class="ods-modal-body cal-exp-scope-body" role="radiogroup" aria-label="What to export">
+        <OdsLiveAnnouncer @ref="_announcer" />
+        <div class="ods-modal-body cal-exp-scope-body" role="radiogroup" aria-label="What to export" aria-busy="@(_busy ? "true" : null)">
             @for (var i = 0; i < _choices.Length; i++)
             {
                 var index = i;
                 var choice = _choices[index];
                 <button type="button" role="radio" aria-checked="@(_scope == choice.Scope ? "true" : "false")"
                         tabindex="@(_scope == choice.Scope ? 0 : -1)"
+                        aria-disabled="@(_busy && _scope != choice.Scope ? "true" : null)"
                         @ref="_choiceRefs[index]"
                         class="@("cal-exp-choice" + (_scope == choice.Scope ? " sel" : ""))"
                         @onclick="@(() => Pick(choice.Scope))"
@@ -26,9 +32,9 @@
         </div>
     </ChildContent>
     <Footer>
-        <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseAsync">Cancel</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Text" AriaDisabled="_busy" OnClick="CloseAsync">Cancel</OdsButton>
         <div style="flex:1"></div>
-        <OdsButton Variant="OdsButtonVariant.Filled" Icon="download" OnClick="ChooseAsync">Export</OdsButton>
+        <OdsButton Variant="OdsButtonVariant.Filled" Icon="download" Loading="_busy" AriaDisabled="_busy" OnClick="ChooseAsync">@(_busy ? "Preparing…" : "Export")</OdsButton>
     </Footer>
 </OdsModal>
 
@@ -53,6 +59,8 @@
 
     private CalendarEventExportScope _scope = CalendarEventExportScope.Occurrence;
     private bool _wasOpen;
+    private bool _busy;
+    private OdsLiveAnnouncer? _announcer;
 
     private RenderFragment TitleContent => @<text>Export event</text>;
 
@@ -66,12 +74,19 @@
         if (Open && !_wasOpen)
         {
             _scope = CalendarEventExportScope.Occurrence;
+            _busy = false;
         }
 
         _wasOpen = Open;
     }
 
-    private void Pick(CalendarEventExportScope scope) => _scope = scope;
+    private void Pick(CalendarEventExportScope scope)
+    {
+        if (!_busy)
+        {
+            _scope = scope;
+        }
+    }
 
     // Radiogroup keyboard model (WCAG 2.1.1 / 4.1.2, APG radio pattern): arrows + Home/End move the
     // selection and the focus together across the two choices. Only the selected radio is in the tab
@@ -87,7 +102,7 @@
             "End" => _choices.Length - 1,
             _ => null,
         };
-        if (next is not { } ni)
+        if (next is not { } ni || _busy)
         {
             return;
         }
@@ -96,11 +111,26 @@
         await _choiceRefs[ni].FocusAsync();
     }
 
-    private Task CloseAsync() => OpenChanged.InvokeAsync(false);
+    private Task CloseAsync() => _busy ? Task.CompletedTask : OpenChanged.InvokeAsync(false);
 
     private async Task ChooseAsync()
     {
-        await OnChoose.InvokeAsync(_scope);
+        if (_busy)
+        {
+            return;
+        }
+
+        _busy = true;
+        _ = _announcer?.Announce(CalendarIcsExport.Preparing);
+        try
+        {
+            await OnChoose.InvokeAsync(_scope);
+        }
+        finally
+        {
+            _busy = false;
+        }
+
         await CloseAsync();
     }
 }

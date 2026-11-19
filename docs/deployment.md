@@ -326,14 +326,105 @@ the transport ceiling with a `400` naming it, rather than accepting a number the
 silently refuse.
 
 The large-file routes — `/api/api/tasks/ics…`, the journal `…/vjournal` routes (`/api/api/journal-entries/vjournal…`
-and `/api/api/journal-entries/{id}/vjournal…`), `/api/api/photos…` and `/api/api/files…` as the browser
+and `/api/api/journal-entries/{id}/vjournal…`), the calendar `…/ics` routes and their `/summary` routes
+(`/api/api/calendars/{id}/ics…`, `/api/api/calendar-events/ics…`, `/api/api/calendar-events/{id}/ics…` and
+`/api/api/recurrence-patterns/{id}/ics…`), `/api/api/photos…` and `/api/api/files…` as the browser
 sends them — sit at `10241` MiB in both proxies (nginx `10241m` in its own location block, Caddy `10241MiB`
 behind a path matcher; Caddy reads `MB` as 10^6 bytes) for a `10737418240`-byte (10 GB) ceiling plus 1 MiB of
 envelope headroom. Those routes also stream request bodies through and allow an hour for a transfer, since a
 multi-gigabyte upload or download outlives the 60 s defaults. **Every other route stays at 65 MiB with the
 default timeouts**, sign-in included. The ceiling was raised from 64 MB so a task or journal export can carry
-its attached files (and a journal's photos) inline and come back in through the matching import; the admin upload cap still seeds at 64 MB, and it also
+its attached files (and a journal's photos) inline and come back in through the matching import, and a calendar
+export or import can stream a large calendar (issue #516); the admin upload cap still seeds at 64 MB, and it also
 bounds a file a task import stores new. Lowering a cap needs no deploy-time change at all.
+
+The `.ics` routes (task, journal and calendar) sit in their own nginx location with **`proxy_buffering off`**. The
+API's export progress guard measures the bytes it finishes writing; with nginx buffering the response, a slow client
+would look fast to the API and park up to `proxy_max_temp_file_size` (1 GB by default) per export on nginx's temp
+disk instead. Caddy streams responses without buffering them, so it needs nothing equivalent. The photo and Files
+routes keep nginx's default response buffering.
+
+#### Export progress guard
+
+Every bulk export (task, journal and calendar `.ics`, the vCard export and their summaries) holds one of 4 global
+export permits, at most 2 per user, for as long as it streams. Since issue #516 a permit is no longer released by a
+fixed 10-minute deadline but by a **progress guard**: the connection is aborted when no first byte is written within
+10 minutes (planning), when a 5-minute window ends with a write waiting on the client and under 1 MiB written in it
+(a floor of about 3.4 KiB/s; a response that finishes inside its window is never judged), or after 24 hours in
+total. Each abort logs one warning naming the rule. Two accounts reading at the floor can still hold all four permits
+for up to a day; that is an accepted residual for a mostly single-user instance.
+
+#### Calendar `.ics` import and export
+
+The calendar surface ships with **no event-count limit and 10240 MB** for both sizes (issue #516; the migration
+moves only rows no administrator has saved). Both size rows warn above 1024 MB, and so on the shipped default: the
+import row because a calendar import buffers its **whole upload once** to `ASPNETCORE_TEMP` (the `import_spool` volume) before it streams it — budget that cap ×
+the import concurrency limit (2) of free space there; the export row because an export that large streams for hours
+while it holds an export permit. Memory does not grow with the file: the import reads one
+`VEVENT` at a time (an unfolded line is at most 1 Mi characters, a `VEVENT` at most 4 Mi, the file's `VTIMEZONE`
+blocks at most 1 MB in total; anything over is a `400`), reduces each to its bounded fields as it arrives, and commits
+every **500 events, or fewer once their text reaches 16 Mi characters, in their own transaction**. The
+`VTIMEZONE` blocks are kept once and never re-parsed per event. Only generated series occurrences count against
+`CalendarIcsMaxAggregateOccurrences`, across the whole import; standalone events never do.
+An import that fails part-way therefore leaves its earlier batches applied and answers with code
+`calendar_ics_import_partially_applied` and the committed counts; importing the same file again is idempotent and
+completes it. The API sends nothing until an import completes, so one import must finish inside the proxies'
+hour-long read timeout — at the reference rate of about 3,000 events/s, roughly 10 million events; split larger
+calendars. A client that disconnects stops the import at the next batch boundary.
+
+An export over its byte cap is **aborted mid-stream** (the download fails) instead of being truncated, on every
+calendar export. `X-Odyssey-Export-Rows` is the **planned** event count (#516 Non-Goal 7): a row deleted while a
+long export streams is skipped, so the body then holds fewer `VEVENT`s than the header and the client treats the
+download as incomplete. That is deliberate — the client cannot tell a concurrent delete from a cut-off transfer —
+and re-running the export gives a consistent file. Cancelled events in an imported file are removed only when the importer asks for it
+(`allowRemovals`, which needs `calendar.delete`); each batch that removes anything logs the acting user, the calendar
+and the removed ids. Rolling the migration back restores the old settings rows and drops `ImportSourceUid`, the key
+that makes a second import of another calendar's export update rather than duplicate.
+
+#### Calendar recurrence keys and time zones (issue #519)
+
+**The import sorts the file by UID first, on temporary disk.** Since issue #519 a calendar import reads the buffered
+upload twice: pass 1 checks the whole file and writes a 40-byte sort record per `VEVENT` to `ASPNETCORE_TEMP` (the
+same `import_spool` volume), pass 2 merges the sorted runs and applies one UID at a time. The disk this needs is
+bounded, not estimated:
+
+- A file with more than `max(1, upload bytes / 64)` top-level `VEVENT`s is refused with
+  `400 calendar_ics_import_too_many_components` before anything is applied — no real calendar averages under 64 bytes
+  an event — so the records are at most **0.625×** the upload.
+- Runs are deleted after each merge round, so the spill peaks at **1.25×** the upload (on top of the buffered upload
+  itself). Before pass 1 the import reserves **1.5×** the upload against the free space, in a process-wide budget that
+  concurrent imports share; crossing 1.25× while sorting, or `ENOSPC`, is a `507` with nothing applied. Budget
+  `cap × 2.5 × import concurrency (2)` of free space on the volume for a worst case: the 1× buffer plus the 1.5×
+  reservation. The spill is deleted when the request ends, whatever happened; a process that crashed mid-import leaves
+  `odyssey-ics-*` files behind, and the next import sweeps any older than a day. A volume whose free space cannot be
+  read is refused with the `507` rather than assumed to have room. The spill, the upload copy and the attachment spool
+  of the task and journal imports all resolve `ASPNETCORE_TEMP` the same way, falling back to the OS temp directory
+  only when it is unset or missing — which in the production image is a RAM-backed tmpfs, so keep it set.
+
+Because pass 1 reads the whole file before any batch, a structural fault anywhere in a file (an unclosed or oversized
+component, too many events) is now a plain `400` with nothing applied. Batches still commit separately, but in UID-hash
+order, so a failure part-way leaves an arbitrary subset applied; re-running the same file is still idempotent.
+
+**Series writes lock the series row.** Every write that touches a series' rows — a series edit, an occurrence edit or
+delete, an import of that series, a series delete, the backfill — runs in one transaction whose first statement is
+`SET STATEMENT innodb_lock_wait_timeout = 5 FOR SELECT … FOR UPDATE` on the series, in ascending id order. Interactive
+writes retry twice (about 15 s worst case) and then answer `409 calendar-series-busy`. Every host now retries MariaDB
+errors `1205` (lock wait) and `1213` (deadlock) through one shared configuration (`OdysseyDatabaseRetry`), which also
+makes any plain save on the API, the worker and the migration job retry a deadlock.
+
+**The key backfill runs in the worker.** `RecurrenceKeyBackfillJob` (`/background-jobs`, "Recurrence keys") keys every
+series written before #519, one locked series at a time: a row whose start equals an occurrence is keyed (a future one
+that differs from the series becomes an override), a duplicate or rescheduled row is **detached** into a standalone
+event with its date and fields unchanged — it is no longer deleted with its series — and a future occurrence with no
+row is recorded as deleted. What calendars show does not change; series membership does. A series that fails is logged
+by id and retried on the next tick; until it is keyed, its first write keys it inline.
+
+**Release notes for #519** should say: existing events stay floating and display exactly as before until they are
+edited with a zone; floating times now export without `Z`; the backfill and what it detaches; the grouper's disk formula
+above; the `removeCancelled` → `allowRemovals` rename and that it now also gates discarding a series' edits; that every
+host retries deadlocks; that a past deletion in a backfilled legacy series is not remembered, so such a series exports
+flat; that a tzdata change moves no stored instant (a series' future rows follow it on its next write); and that
+`Down()` loses every exclusion, override flag, key and zone, and leaves detached rows detached — only a backup undoes it.
 
 Raising the ceiling does **not** widen the API's other endpoints either: the API holds each request that does not
 accept files (JSON writes, sign-in) to `FileStorage:DefaultMaxRequestBodyBytes` (65 MB), and the photo upload to

@@ -83,17 +83,23 @@ internal static class SystemSettingsRegistry
             r => r.ContactVCardMaxExportMegabytes, (dto, v) => dto.ContactVCardMaxExportMegabytes = v),
 
         ..Capacity(SystemSettingsKeys.CalendarIcsMaxExportEvents, nameof(SystemSettingsUpdate.CalendarIcsMaxExportEvents),
-            Int(SystemSettingsDefaults.CalendarIcsMaxExportEvents),
+            SystemSettingsDefaults.CalendarIcsMaxExportEvents,
             r => r.CalendarIcsMaxExportEvents, (dto, v) => dto.CalendarIcsMaxExportEvents = v),
         ..Capacity(SystemSettingsKeys.CalendarIcsMaxImportEvents, nameof(SystemSettingsUpdate.CalendarIcsMaxImportEvents),
-            Int(SystemSettingsDefaults.CalendarIcsMaxImportEvents),
+            SystemSettingsDefaults.CalendarIcsMaxImportEvents,
             r => r.CalendarIcsMaxImportEvents, (dto, v) => dto.CalendarIcsMaxImportEvents = v),
+        // The calendar import buffers its whole upload on the API's temp disk before it streams it (issue #516
+        // §8.5), so a size above the old 1 GB ceiling says what that costs.
         ..Megabytes(SystemSettingsKeys.CalendarIcsMaxImportMegabytes, nameof(SystemSettingsUpdate.CalendarIcsMaxImportMegabytes),
             SystemSettingsDefaults.CalendarIcsMaxImportMegabytes,
-            r => r.CalendarIcsMaxImportMegabytes, (dto, v) => dto.CalendarIcsMaxImportMegabytes = v),
+            r => r.CalendarIcsMaxImportMegabytes, (dto, v) => dto.CalendarIcsMaxImportMegabytes = v,
+            SystemSettingsBounds.CalendarIcsMaxImportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxImportMegabytesMax,
+            SettingAdvisories.CalendarIcsImportTempDisk(dto => dto.CalendarIcsMaxImportMegabytes)),
         ..Megabytes(SystemSettingsKeys.CalendarIcsMaxExportMegabytes, nameof(SystemSettingsUpdate.CalendarIcsMaxExportMegabytes),
             SystemSettingsDefaults.CalendarIcsMaxExportMegabytes,
-            r => r.CalendarIcsMaxExportMegabytes, (dto, v) => dto.CalendarIcsMaxExportMegabytes = v),
+            r => r.CalendarIcsMaxExportMegabytes, (dto, v) => dto.CalendarIcsMaxExportMegabytes = v,
+            SystemSettingsBounds.CalendarIcsMaxExportMegabytesMin, SystemSettingsBounds.CalendarIcsMaxExportMegabytesMax,
+            SettingAdvisories.CalendarIcsExportDuration(dto => dto.CalendarIcsMaxExportMegabytes)),
 
         ..Capacity(SystemSettingsKeys.TaskIcsMaxExportTasks, nameof(SystemSettingsUpdate.TaskIcsMaxExportTasks),
             SystemSettingsDefaults.TaskIcsMaxExportTasks,
@@ -1201,7 +1207,8 @@ internal static class SystemSettingsRegistry
     private static SystemSettingDescriptor[] Megabytes(
         string key, string fieldName, int defaultValue,
         Func<SystemSettingsUpdate, int?> read, Action<SystemSettingsDto, int> write,
-        int min = MegabytesMin, int max = MegabytesMax) =>
+        int min = MegabytesMin, int max = MegabytesMax,
+        Func<SystemSettingsDto, AdvisoryContext, string?>? advise = null) =>
     [
         new IntSetting
         {
@@ -1214,13 +1221,14 @@ internal static class SystemSettingsRegistry
             Max = max,
             Read = read,
             Write = write,
+            Advise = advise,
         },
     ];
 
     /// <summary>
-    /// The shared megabyte bound pair for six of the eight size keys. Named off one of the per-key constants
-    /// rather than a literal; the two task keys pass their own, wider pair, because a task file carries its
-    /// attached files inline. <c>SystemSettingsBoundsTests</c> asserts each descriptor against its own pair.
+    /// The shared megabyte bound pair for the vCard size keys. Named off one of the per-key constants
+    /// rather than a literal; the task, journal and calendar keys pass their own, wider pair, because their
+    /// files carry attached files inline or stream. <c>SystemSettingsBoundsTests</c> asserts each descriptor against its own pair.
     /// </summary>
     private const int MegabytesMin = SystemSettingsBounds.ContactVCardMaxImportMegabytesMin;
 

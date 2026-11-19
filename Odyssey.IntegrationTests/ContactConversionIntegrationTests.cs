@@ -577,7 +577,7 @@ public class ContactConversionIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private static DbContextOptions<OdysseyContext> OptionsFor(string connectionString) =>
         new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), o => o.EnableRetryOnFailure())
+            .UseMySql(connectionString, ServerVersion.AutoDetect(connectionString), OdysseyDatabaseRetry.Configure)
             .Options;
 
     private sealed class UnlimitedLimits : IImportExportLimitsLookup

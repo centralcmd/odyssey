@@ -1,0 +1,47 @@
+@*
+    CalendarEventSummary — the event dialog's read-only view for a viewer who cannot submit it (issue #520 §3 "Who sees
+    what"; Odyssey Design System · AddCalendarEventModal, "Read-only view"): the event in words, its time in the viewer's
+    zone with the zone line beneath, its calendar, place, details and description. Plain text throughout.
+*@
+
+<div class="cal-ce-ro">
+    <h3 class="cal-ce-ro-title">@(string.IsNullOrWhiteSpace(Title) ? "Untitled" : Title)</h3>
+    <div class="cal-ce-ro-row">
+        <span class="material-icons" aria-hidden="true">schedule</span>
+        <span>
+            @When
+            @if (!string.IsNullOrEmpty(ZoneLine))
+            {
+                <span class="cal-ce-ro-sub">@ZoneLine</span>
+            }
+        </span>
+    </div>
+    <div class="cal-ce-ro-row"><span class="material-icons" aria-hidden="true">circle</span><span>@(CalendarName ?? "—")</span></div>
+    @if (!string.IsNullOrWhiteSpace(PlaceName))
+    {
+        <div class="cal-ce-ro-row"><span class="material-icons" aria-hidden="true">place</span><span>@PlaceName</span></div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Details))
+    {
+        <div class="cal-ce-ro-row"><span class="material-icons" aria-hidden="true">notes</span><span>@Details</span></div>
+    }
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <div class="cal-ce-ro-row"><span class="material-icons" aria-hidden="true">subject</span><span>@Description</span></div>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>"Tue 4 Jun, 03:00–04:00 your time", or the floating / all-day form.</summary>
+    [Parameter] public string? When { get; set; }
+
+    /// <summary>The zone, the two-zone line, or "No time zone (floating)"; null for all-day.</summary>
+    [Parameter] public string? ZoneLine { get; set; }
+
+    [Parameter] public string? CalendarName { get; set; }
+    [Parameter] public string? PlaceName { get; set; }
+    [Parameter] public string? Details { get; set; }
+    [Parameter] public string? Description { get; set; }
+}

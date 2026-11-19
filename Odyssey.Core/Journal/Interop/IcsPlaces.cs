@@ -30,6 +30,13 @@ internal sealed class IcsPlaces
     /// <summary>The separator between a place's name and the detail on export.</summary>
     public const string DetailSeparator = " — ";
 
+    /// <summary>
+    /// The calendar's own detail property (issue #516 §8.3): the event's detail text, written beside the composed
+    /// <c>LOCATION</c> so an import can tell the place from the detail instead of storing the whole composed text as
+    /// the detail and growing it on every round trip.
+    /// </summary>
+    public const string DetailProperty = "X-ODYSSEY-LOCATION-DETAIL";
+
     private readonly LocationResolver? resolver;
     private readonly LocationIndex? index;
     private readonly string? userId;
@@ -46,6 +53,12 @@ internal sealed class IcsPlaces
 
     /// <summary>Places this import created.</summary>
     public int Created { get; private set; }
+
+    /// <summary>The counters, to put back after a retried batch reloads the index (issue #519 v5 §2).</summary>
+    public (int Linked, int Created) Snapshot() => (Linked, Created);
+
+    /// <summary>Puts back the counters <see cref="Snapshot"/> took.</summary>
+    public void Restore((int Linked, int Created) snapshot) => (Linked, Created) = snapshot;
 
     /// <summary>Whether this import links places at all.</summary>
     public bool Enabled => index is not null;
@@ -140,6 +153,56 @@ internal sealed class IcsPlaces
         return string.IsNullOrEmpty(detail) ? name : name + DetailSeparator + detail;
     }
 
+    /// <summary>
+    /// Writes an event's place (issue #516 §8.3): <c>LOCATION</c> as <see cref="ExportText"/> composes it for the
+    /// caller, and <see cref="DetailProperty"/> when the detail is non-empty. The one signature every calendar
+    /// builder — standalone, recurring and aggregate — calls.
+    /// </summary>
+    public static void WriteEventPlace(
+        Ical.Net.CalendarComponents.CalendarEvent ev, Guid? locationId, string? detail, IReadOnlyDictionary<Guid, string> names)
+    {
+        ev.Location = ExportText(locationId, detail, names);
+        if (!string.IsNullOrEmpty(detail))
+        {
+            ev.Properties.Add(new Ical.Net.CalendarProperty(DetailProperty, detail));
+        }
+    }
+
+    /// <summary>
+    /// Reads an event's place back (issue #516 §8.3). Without <see cref="DetailProperty"/> (a file from another app)
+    /// the result is <see cref="ImportedPlace.Foreign"/>: <c>LOCATION</c> is resolved by the existing rules. With it,
+    /// the detail is taken from the property and the place text is <c>LOCATION</c> with a trailing
+    /// <c> — detail</c> removed; an empty place text, or one equal to the detail, names no place at all.
+    /// </summary>
+    public static ImportedPlace ReadEventPlace(Ical.Net.CalendarComponents.CalendarEvent ev)
+    {
+        var location = ev.Location;
+        if (!ev.Properties.ContainsKey(DetailProperty))
+        {
+            return new ImportedPlace(location, location, HasDetailProperty: false);
+        }
+
+        var detail = ev.Properties.Get<string>(DetailProperty);
+        if (string.IsNullOrEmpty(detail))
+        {
+            detail = null;
+        }
+
+        var placeText = location?.Trim();
+        if (detail is not null && placeText is not null
+            && placeText.EndsWith(DetailSeparator + detail, StringComparison.Ordinal))
+        {
+            placeText = placeText[..^(DetailSeparator.Length + detail.Length)].Trim();
+        }
+
+        if (string.IsNullOrEmpty(placeText) || string.Equals(placeText, detail, StringComparison.Ordinal))
+        {
+            placeText = null;
+        }
+
+        return new ImportedPlace(placeText, detail, HasDetailProperty: true);
+    }
+
     private static (string Name, string Detail)? SplitDetail(string value)
     {
         var at = value.IndexOf(DetailSeparator, StringComparison.Ordinal);
@@ -152,3 +215,10 @@ internal sealed class IcsPlaces
         return detail.Length == 0 ? null : (value[..at].Trim(), detail);
     }
 }
+
+/// <summary>
+/// A calendar event's place as read from a file (issue #516 §8.3). <see cref="PlaceText"/> is what a place is resolved
+/// from — null when the file names no place — and <see cref="Detail"/> is the detail to store.
+/// <see cref="HasDetailProperty"/> is false for a file from another app, whose <c>LOCATION</c> is both.
+/// </summary>
+internal sealed record ImportedPlace(string? PlaceText, string? Detail, bool HasDetailProperty);
