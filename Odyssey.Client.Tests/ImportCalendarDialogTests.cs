@@ -707,7 +707,7 @@ public class ImportCalendarDialogTests
     {
         await using var h = new Harness();
         h.Transfer.Holds = false;
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>()))
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>()))
             .Returns(new TaskCompletionSource<ApiResult<IcsImportResult>>().Task);
         h.Start();
         await h.Pick();
@@ -789,7 +789,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
@@ -891,7 +891,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
@@ -912,7 +912,7 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Transfer.Holds = false;
         var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
-        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, "UTC", It.IsAny<CancellationToken>())).Returns(pending.Task);
         h.Start();
         await h.Pick();
         h.ClickImport();
