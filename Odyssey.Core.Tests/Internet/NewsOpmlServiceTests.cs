@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Text;
 using System.Xml.Linq;
@@ -574,26 +575,47 @@ public sealed class NewsOpmlServiceTests : IDisposable
 
     /// <summary>
     /// The test-time allocation probe: the live heap sampled under forced collections while the work runs. The class
-    /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure, and the
-    /// probe samples every 5 ms so a short-lived spike is not stepped over.
+    /// sits in a non-parallel collection so no other test's allocations reach the process-wide heap figure.
+    ///
+    /// <para>
+    /// Each sample is ONE blocking full collection, and the probe then waits at least four times as long as that
+    /// collection took (and never less than 5 ms). A full collection costs in proportion to the whole live heap, not
+    /// to what the work allocates, so in the full suite it walks everything the earlier test classes left behind,
+    /// and every collection suspends the work thread. <see cref="GC.GetTotalMemory(bool)"/> with <c>true</c> is
+    /// worse still: it repeats collections until the figure settles. Sampled that way every 5 ms, the 100,000-feed
+    /// import took 18 s alone and over 14 minutes in the suite, which is past CI's hang timeout on a slower runner.
+    /// Bounding the probe at a fifth of the wall time keeps the work running; a final sample after the work ends
+    /// still counts anything it holds at completion.
+    /// </para>
     /// </summary>
     private static async Task<(T Result, long Peak)> MeasurePeakAsync<T>(Func<Task<T>> work)
     {
         var baseline = GC.GetTotalMemory(forceFullCollection: true);
         var peak = 0L;
+
+        long Sample()
+        {
+            GC.Collect();
+            return GC.GetTotalMemory(forceFullCollection: false) - baseline;
+        }
+
         using var stop = new CancellationTokenSource();
         var sampler = Task.Run(async () =>
         {
             while (!stop.IsCancellationRequested)
             {
-                peak = Math.Max(peak, GC.GetTotalMemory(forceFullCollection: true) - baseline);
-                await Task.Delay(5);
+                var started = Stopwatch.GetTimestamp();
+                peak = Math.Max(peak, Sample());
+                var cost = Stopwatch.GetElapsedTime(started);
+                await Task.Delay(TimeSpan.FromMilliseconds(Math.Max(5, cost.TotalMilliseconds * 4)));
             }
         });
 
         var result = await Task.Run(work);
         await stop.CancelAsync();
         await sampler;
+        peak = Math.Max(peak, Sample());
+        GC.KeepAlive(result);
         return (result, peak);
     }
 
