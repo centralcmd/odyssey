@@ -53,6 +53,7 @@ public partial class CreateTaxStatementDialog
     private bool _settlementRangeError;
     private string? _settlementTagsError;
     private IReadOnlyList<OdsOption> _tagOptions = [];
+    private Func<string, string?>? _tagNameBlocked;
     private bool _canCreateTag;
 
     // Tags created inline from either derivation field, ahead of the reference-cache refresh, so both
@@ -149,6 +150,8 @@ public partial class CreateTaxStatementDialog
     private async Task LoadTags()
     {
         var tags = await ReferenceData.TransactionTagsAsync();
+        // Every tag, archived included: a transaction tag name is unique across both.
+        _tagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Transaction);
         _tagOptions = [.. tags.Where(t => t.Archived is null)
             .OrderBy(t => t.Name, StringComparer.CurrentCulture)
             .Select(OdsTransactionTagOptions.From)];

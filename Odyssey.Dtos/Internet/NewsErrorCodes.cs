@@ -23,8 +23,6 @@ public static class NewsErrorCodes
 
     public const string FeedLimit = "news-feed-limit";
 
-    public const string FeedNotArchived = "news-feed-not-archived";
-
     public const string FeedInactive = "news-feed-inactive";
 
     public const string FeedNotQuarantined = "news-feed-not-quarantined";

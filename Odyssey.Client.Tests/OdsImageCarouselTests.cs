@@ -216,6 +216,9 @@ public class OdsImageCarouselTests
     [InlineData(600, 900, "4 / 3")]
     [InlineData(1500, 1000, "1500 / 1000")]
     [InlineData(0, 0, "4 / 3")]
+    [InlineData(6000, 3000, "16 / 9")]
+    [InlineData(5000, 4000, "4 / 3")]
+    [InlineData(20001, 9000, "4 / 3")]
     public void One_frame_ratio_comes_from_the_first_image_clamped(int width, int height, string expected) =>
         Assert.Equal(expected, OdsImageCarousel.FrameRatio(new OdsCarouselImage("1", "/x", null, width, height)));
 

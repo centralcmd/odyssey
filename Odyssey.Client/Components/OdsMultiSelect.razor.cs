@@ -106,7 +106,7 @@ public partial class OdsMultiSelect
     /// </summary>
     [Parameter] public int? MaxSelected { get; set; }
 
-    /// <summary>The cap's explanation, supplied by the page ("Up to 50 feeds").</summary>
+    /// <summary>The cap's explanation, supplied by the page ("Up to 50 feeds"). Defaults to "Up to {cap}".</summary>
     [Parameter] public string? MaxSelectedText { get; set; }
 
     [Parameter(CaptureUnmatchedValues = true)]
@@ -155,6 +155,9 @@ public partial class OdsMultiSelect
                 : Options.Where(o => (o.Label ?? string.Empty).Contains(q, StringComparison.CurrentCultureIgnoreCase));
         }
     }
+
+    private string RootClass => string.Join(' ', new[] { "odc-ms", OpenEnded ? "open-ended" : null, Fits ? "fit" : null, Class }
+        .Where(c => !string.IsNullOrWhiteSpace(c)));
 
     private bool Fits => !Quiet && Options.Count > 0 && (Fit ?? Options.Count <= FitLimit);
 

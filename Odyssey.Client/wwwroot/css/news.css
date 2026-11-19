@@ -38,11 +38,10 @@
 
 .nw-alert-line { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); }
 /* Long action labels wrap at 320px instead of overflowing their container (1.4.10). */
-.nw-alert-line .odc-btn, .nw-actions .odc-btn, .nw-link-actions .odc-btn { white-space: normal; text-align: start; height: auto; min-height: var(--space-8); }
+.nw-alert-line .odc-btn, .nw-link-actions .odc-btn { white-space: normal; text-align: start; height: auto; min-height: var(--space-8); }
 
 /* ---------- Article body ---------- */
 .nw-content { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-.nw-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 /* The text and the carousel sit together in one outlined card (the README's
    outlined-card spec: surface, 1px divider border, --radius-md, no shadow), so the
    article reads as one block apart from the tiles above it. Carousel beside the
@@ -68,11 +67,26 @@
 .nw-tagrow { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-2); }
 .nw-tagrow-item { display: inline-flex; align-items: center; gap: var(--space-1); }
 .nw-tagrow-item .odc-iconbtn { min-width: var(--space-6); min-height: var(--space-6); }
-.odc-chip.nw-inherited { border-style: dashed; }
+/* A tag from the feed: the tag's own chip with a thin dashed edge in its own colour (the chip has no border of its
+   own, so the width is set here — a bare border-style would draw the 3px default). The 1px comes off the padding
+   so both chips are the same size. */
+.odc-chip.nw-inherited { border: var(--border-thin) dashed color-mix(in srgb, currentColor 60%, transparent); padding: 2px 9px; }
+.odc-chip.sm.nw-inherited { padding: 0 7px; }
+
+/* A detail tile with its own ⋯ menu, top-right (the Original link tile). */
+.nw-tile { position: relative; display: flex; min-width: 0; }
+.nw-tile.wide { grid-column: 1 / -1; }
+.nw-tile > .odc-infotile { flex: 1; min-width: 0; }
+.nw-tile .odc-infotile-k { flex: 1; min-width: 0; padding-right: var(--space-6); }
+.nw-tile-menu { position: absolute; top: var(--space-1); right: var(--space-1); z-index: 1; }
 
 /* A publisher link: the URL (ltr, wraps anywhere), the host as its own token, then the actions. */
 .nw-link { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .nw-link-url { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+/* The Feed URL as a link: OdsExternalLink's URL-link look. */
+a.nw-link-url { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; border-radius: var(--radius-sm); }
+a.nw-link-url:hover { text-decoration-thickness: 2px; }
+a.nw-link-url:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .nw-link-host { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
 .nw-link-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
 
@@ -86,10 +100,6 @@
 
 /* ---------- Feeds ---------- */
 .nw-row-busy { display: inline-flex; align-items: center; justify-content: center; width: var(--iconbtn-size); height: var(--iconbtn-size); }
-.nw-facts { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr)); gap: var(--space-2) var(--space-4); }
-.nw-facts > div { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.nw-facts dt { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
-.nw-facts dd { margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
 .nw-line { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
 .nw-line .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); margin-top: var(--space-1); }
 
@@ -141,11 +151,11 @@ div.nw-focus-host { display: block; }
 .nw-empty-h:focus { outline: none; }
 .nw-empty-h:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
 /* The feed URL in the management block: the masked address, then its actions. */
-.nw-feedurl { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.nw-feedurl-text { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
-.nw-pending-actions { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
 /* The /news search field's helper line (§7.4): sr-only while there is no message, visible text under the field
    while there is one. Only the 400 is an error; the others are status text. */
 .nw-search { display: flex; flex-direction: column; gap: var(--space-1); }
 .nw-search-help { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 .nw-search-help.is-error { color: var(--mud-palette-error); }
+
+/* The delete confirm and the reason it is unavailable, side by side; the reason wraps under it when narrow. */
+.nw-del-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

@@ -159,7 +159,36 @@ public partial class InstrumentPriceSourcesPanel
             item.Saved?.SourceRegistered ?? true, Time.GetUtcNow().UtcDateTime);
 
     private static string FailureText(JobFailureCategory failure, DateTime? at) =>
-        at is { } when ? $"{BackgroundJobPresentation.FailureOf(failure)} · {RunTime.Full(when)}" : BackgroundJobPresentation.FailureOf(failure);
+        at is { } when ? $"{FailureWord(failure)} · {RunTime.Full(when)}" : FailureWord(failure);
+
+    /// <summary>
+    /// A price source's last failure in the panel's own words (design system · instruments-data.js
+    /// <c>failures</c>): the four a source reports, else the run log's general word for the category.
+    /// </summary>
+    internal static string FailureWord(JobFailureCategory failure) => failure switch
+    {
+        JobFailureCategory.ProviderRateLimited => "Rate limited",
+        JobFailureCategory.UnsupportedInput => "Not recognised by the source",
+        JobFailureCategory.Configuration => "Credential problem",
+        JobFailureCategory.ProviderUnavailable => "Couldn’t reach the source",
+        _ => BackgroundJobPresentation.FailureOf(failure),
+    };
+
+    /// <summary>The empty list: prices are hand-entered, and an editor is told how that changes.</summary>
+    internal static string NoSourcesText(bool editable) =>
+        $"No price sources yet. Prices are entered by hand{(editable ? " until you add one" : "")}.";
+
+    /// <summary>Every installed source for this instrument's type is already bound.</summary>
+    internal static string AllAddedText(InstrumentType type) =>
+        $"Every installed source that supports {TypePlural(type)} is already added.";
+
+    private static string TypePlural(InstrumentType type) => type switch
+    {
+        InstrumentType.Stock => "stocks",
+        InstrumentType.Etf => "ETFs",
+        InstrumentType.Fund => "funds",
+        _ => "this type",
+    };
 
     internal static string HistoryText(ExistingInstrumentPriceBinding saved) =>
         saved.BackfillComplete ? "Complete"

@@ -74,10 +74,6 @@ public static class NewsErrors
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedLimit,
         $"The news reader holds at most {limit} feeds, archived feeds included.");
 
-    public static NewsException FeedNotArchived(Guid feedId) => new(
-        HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedNotArchived,
-        $"News feed {feedId} must be archived before it can be deleted.");
-
     public static NewsException FeedInactive(Guid feedId) => new(
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.FeedInactive,
         $"News feed {feedId} is paused, archived or quarantined, so it cannot be refreshed.");

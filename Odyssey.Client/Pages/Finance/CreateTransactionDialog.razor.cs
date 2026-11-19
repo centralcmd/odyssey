@@ -151,10 +151,14 @@ public partial class CreateTransactionDialog
             .ToList();
     }
 
+    private Func<string, string?>? _tagNameBlocked;
+
     private async Task LoadTransactionTags()
     {
         var tags = await ReferenceData.TransactionTagsAsync();
         _tags = tags.Where(t => t.Archived is null).OrderBy(t => t.Name).ToList();
+        // Every tag, archived included: a transaction tag name is unique across both.
+        _tagNameBlocked = TagNameRule.For(tags.Select(t => new TagNameEntry(t.Name, t.Archived is not null)), TagNameRule.Pages.Transaction);
 
         // Edit mode: a tag the transaction already carries still needs to render its name even if it
         // has since been archived, so it doesn't collapse to a bare id in the multi-select.

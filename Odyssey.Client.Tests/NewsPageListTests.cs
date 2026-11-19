@@ -172,29 +172,34 @@ public class NewsPageListTests
     }
 
     [Fact]
-    public async Task Status_unread_alone_sends_is_read_false_and_both_or_neither_send_none()
+    public async Task Status_sends_the_ticked_members_and_none_sends_no_filter()
     {
         var (context, calls) = Recorded(_ => Ok(Page([Article("A")])));
         await using var _ = context;
         var cut = context.Render<NewsPage>();
         cut.WaitForAssertion(() => Assert.Single(calls));
-        Assert.Equal(false, calls[0].Filter.IsRead);
+        Assert.Equal([NewsArticleReadStatus.Unread], calls[0].Filter.Statuses);
         Assert.Equal("Status", Select(cut, "Status").Instance.Label);
 
         await cut.InvokeAsync(() => Select(cut, "Status").Instance.ValuesChanged.InvokeAsync([NewsPage.UnreadKey, NewsPage.ReadKey]));
         cut.WaitForAssertion(() => Assert.Equal(2, calls.Count));
-        Assert.Null(calls[1].Filter.IsRead);
+        Assert.Equal([NewsArticleReadStatus.Unread, NewsArticleReadStatus.Read], calls[1].Filter.Statuses);
         Assert.Equal("Status: All", Select(cut, "Status").Instance.Label);
 
         await cut.InvokeAsync(() => Select(cut, "Status").Instance.ValuesChanged.InvokeAsync([]));
         cut.WaitForAssertion(() => Assert.Equal(3, calls.Count));
-        Assert.Null(calls[2].Filter.IsRead);
+        Assert.Null(calls[2].Filter.Statuses);
 
         await cut.InvokeAsync(() => Select(cut, "Status").Instance.ValuesChanged.InvokeAsync([NewsPage.ReadKey]));
         cut.WaitForAssertion(() => Assert.Equal(4, calls.Count));
-        Assert.Equal(true, calls[3].Filter.IsRead);
-        // Nothing unread to mark while Status is Read only (§3.2.1).
-        Assert.Empty(cut.FindAll("#nw-mark-all"));
+        Assert.Equal([NewsArticleReadStatus.Read], calls[3].Filter.Statuses);
+        // Nothing unread to mark while Status excludes Unread (§3.2.1).
+        Assert.DoesNotContain("Mark all read…", NewsActions(cut));
+
+        await cut.InvokeAsync(() => Select(cut, "Status").Instance.ValuesChanged.InvokeAsync([NewsPage.UpdatedKey]));
+        cut.WaitForAssertion(() => Assert.Equal(5, calls.Count));
+        Assert.Equal([NewsArticleReadStatus.Updated], calls[4].Filter.Statuses);
+        Assert.DoesNotContain("Mark all read…", NewsActions(cut));
     }
 
     [Fact]
@@ -312,7 +317,7 @@ public class NewsPageListTests
         cut.WaitForAssertion(() => Assert.Single(calls));
         Assert.Equal([other.Id], calls[0].Filter.FeedIds);
         Assert.Null(calls[0].Filter.Search);
-        Assert.Equal(true, calls[0].Filter.IsRead);
+        Assert.Equal([NewsArticleReadStatus.Read], calls[0].Filter.Statuses);
     }
 
     [Fact]

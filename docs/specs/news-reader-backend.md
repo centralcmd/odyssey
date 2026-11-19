@@ -788,7 +788,7 @@ General rules:
 9. `POST /api/news-feeds/{id:guid}/archive` and `POST /api/news-feeds/{id:guid}/unarchive` —
    `news-feeds.update`.
 10. `DELETE /api/news-feeds/{id:guid}` — `news-feeds.delete`. Returns `202`. The feed must be archived
-    first, otherwise `422 news-feed-not-archived`. Sets `DeletionRequestedAtUtc`; the purge is batched
+    first, otherwise `422 news-feed-not-archived`. *(Superseded: since the design-system sync of 2026-11-19 any feed can be deleted, with no archive-first step, and the code is retired.)* Sets `DeletionRequestedAtUtc`; the purge is batched
     (§3.4 step 1).
 11. `POST /api/news-feeds/{id:guid}/release-quarantine` — `news-feeds.update`. Clears
     `QuarantinedAtUtc` and `CrashSuspectCount` with the conditional `UPDATE` in §3.3. It writes no
@@ -1457,7 +1457,7 @@ into one.
 | `NewsTagLimitReached` | 422 | `news-tag-limit` |
 | `NewsFeedUrlRejected` | 422 | key `url` |
 | `NewsFeedLimitReached` | 422 | `news-feed-limit` |
-| `NewsFeedNotArchived` / `Inactive` / `NotQuarantined` | 422 | `news-feed-not-archived` / `news-feed-inactive` / as named |
+| ~~`NewsFeedNotArchived`~~ / `Inactive` / `NotQuarantined` | 422 | ~~`news-feed-not-archived`~~ *(retired by the design-system sync of 2026-11-19: any feed can be deleted)* / `news-feed-inactive` / as named |
 | `NewsTagNotUsable` | 422 | key `tagIds` |
 | `NewsMarkReadScopeInvalid` | 422 | unknown or pending-deletion id in `feedIds`/`tagIds` (keyed by the list), or `asOfUtc` in the future |
 | Unknown filter id on the list | 422 | key `feedIds` or `tagIds` |

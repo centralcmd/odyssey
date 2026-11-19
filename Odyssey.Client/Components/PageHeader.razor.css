@@ -101,12 +101,29 @@
     display: flex;
     gap: 8px;
     align-items: center;
+    justify-content: flex-end;
     flex-shrink: 0;
     flex-wrap: wrap;
+    min-width: 0;
     /* flex-wrap alone never fires: a non-shrinking flex item sizes to its max-content, so the cluster
        stayed one line and pushed the page sideways on a phone (Tax statements: 563 px at 420). Capping
        it at the row's width is what lets the buttons wrap onto a second line instead. */
     max-width: 100%;
+}
+
+/* On a phone the cluster takes the full width under the title, start-aligned, and a long button
+   label wraps inside its button (design system · bundle.css PageHeader action cluster). DOM and
+   focus order are unchanged. */
+@media (max-width: 480px) {
+    .ph-actions {
+        flex: 1 1 100%;
+        justify-content: flex-start;
+    }
+
+    .ph-actions ::deep .mud-button-root {
+        white-space: normal;
+        text-align: start;
+    }
 }
 
 /* Overflow (⋯) trigger. The Journal VJOURNAL menu (#339) is its first real consumer, so give the
@@ -208,8 +225,8 @@
 .ph-root ::deep .ph-search-region .odc-input,
 .ph-root ::deep .ph-search-region .odc-ms-trigger:not(.quiet),
 .ph-root ::deep .ph-search-region .odc-sortsel-trigger,
-.ph-root ::deep .ph-search-region .odc-sortsel-static,
 .ph-root ::deep .ph-search-region .odc-sortsel-dir,
+.ph-root ::deep .ph-search-region .odc-select-trigger,
 .ph-root ::deep .ph-search-region .odc-rpp-trigger,
 .ph-root ::deep .ph-search-region .odc-dpr {
     background-color: var(--mud-palette-background);

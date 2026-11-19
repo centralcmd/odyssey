@@ -60,8 +60,12 @@ public sealed class NewsArticlesQueryParams : QueryParams<NewsArticleSortBy>, IV
 
     public Guid[]? TagIds { get; set; }
 
-    /// <summary>Sent only when exactly one of Unread and Read is selected.</summary>
+    /// <summary>The older single read-state filter. Prefer <see cref="Statuses"/>; sending both is a <c>400</c>.</summary>
     public bool? IsRead { get; set; }
+
+    /// <summary>Status members, OR'ed; absent or empty means every article.</summary>
+    [EnumFilter(typeof(NewsArticleReadStatus), 3)]
+    public NewsArticleReadStatus[]? Statuses { get; set; }
 
     public DateTimeOffset? From { get; set; }
 
@@ -82,6 +86,11 @@ public sealed class NewsArticlesQueryParams : QueryParams<NewsArticleSortBy>, IV
         if (Cursor is not null && Offset != 0)
         {
             yield return new ValidationResult("Send either a cursor or an offset, not both.", [nameof(Cursor)]);
+        }
+
+        if (IsRead is not null && Statuses is { Length: > 0 })
+        {
+            yield return new ValidationResult("Send either isRead or statuses, not both.", [nameof(Statuses)]);
         }
 
         if (SortBy == NewsArticleSortBy.Relevance && string.IsNullOrWhiteSpace(Search))

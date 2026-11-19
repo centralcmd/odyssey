@@ -15,6 +15,8 @@
       • Copy is an icon button named "Copy link"; its result is written to this component's own polite
         status line, which is also visible ("Link copied" / "Couldn't copy. Select the text instead."),
         and clears after 5 s. OnCopy reports the result; do not announce it a second time.
+      • Actions="false" drops the actions row: the URL (itself the link when safe) and the host only, for a tile
+        whose ⋯ menu carries Open original and Copy link.
       • Every value is rendered as text, never as markup.
 *@
 
@@ -26,7 +28,14 @@ else
 {
     var target = Target(Url);
     <span class="@ClassName("odc-extlink")">
-        <bdi dir="ltr" class="odc-extlink-url" @ref="_urlRef">@Url</bdi>
+        @if (!Actions && target is not null)
+        {
+            <a class="odc-extlink-url odc-extlink-urllink" href="@target.AbsoluteUri" target="_blank" rel="noopener noreferrer" referrerpolicy="no-referrer"><bdi dir="ltr">@Url</bdi><span class="odc-sr-only"> (opens in a new tab)</span></a>
+        }
+        else
+        {
+            <bdi dir="ltr" class="odc-extlink-url" @ref="_urlRef">@Url</bdi>
+        }
         @if (target is not null)
         {
             <span class="odc-extlink-host"><span class="odc-sr-only">Host: </span><bdi dir="ltr">@target.IdnHost</bdi></span>
@@ -35,6 +44,8 @@ else
         {
             <span class="odc-extlink-host">Not a web link</span>
         }
+        @if (Actions)
+        {
         <span class="odc-extlink-actions">
             @if (target is not null)
             {
@@ -50,6 +61,7 @@ else
             }
             <span class="@(_status == false ? "odc-extlink-status fail" : "odc-extlink-status")" role="status" aria-live="polite" aria-atomic="true">@StatusText</span>
         </span>
+        }
     </span>
 }
 
@@ -71,6 +83,13 @@ else
 
     /// <summary>Show the "Copy link" icon button.</summary>
     [Parameter] public bool Copyable { get; set; } = true;
+
+    /// <summary>
+    /// Render the actions row (Open original, Copy link, the copy status). <c>false</c> shows the URL and host only,
+    /// for a tile whose ⋯ menu carries Open original and Copy link; a safe URL is then itself the link (new tab, no
+    /// opener, no referrer) and an unsafe one stays text.
+    /// </summary>
+    [Parameter] public bool Actions { get; set; } = true;
 
     /// <summary>Raised after a copy attempt with its result. The component has already announced it.</summary>
     [Parameter] public EventCallback<bool> OnCopy { get; set; }

@@ -48,6 +48,14 @@ public partial class OdsTagMultiSelect
     /// </summary>
     [Parameter] public IReadOnlyList<OdsCreateKind>? CreateKinds { get; set; }
 
+    /// <summary>
+    /// Called with the typed text when a create row would show. Returns a sentence that refuses that name —
+    /// it replaces the create rows as a status row — or <c>null</c> to allow it. Tag fields pass
+    /// <see cref="Odyssey.Client.Services.TagNameRule.Blocked"/>: a tag name is unique case-insensitively,
+    /// archived tags included, and an archived tag is not in <see cref="Options"/>.
+    /// </summary>
+    [Parameter] public Func<string, string?>? CreateBlocked { get; set; }
+
     /// <summary>Helper text below the control (replaced by <see cref="Error"/> when set).</summary>
     [Parameter] public string? Help { get; set; }
 
@@ -279,10 +287,32 @@ public partial class OdsTagMultiSelect
         ? Options
         : Options.Where(o => o.Label.Contains(_query.Trim(), StringComparison.OrdinalIgnoreCase));
 
-    private bool ShowCreate => OnCreate is not null
+    private bool CreateWouldShow => OnCreate is not null
         && !Loading
         && !string.IsNullOrWhiteSpace(_query)
         && !Options.Any(o => string.Equals(o.Label, _query.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    // A name the host refuses (one held by an archived tag, which is not in Options) shows why in place
+    // of the create rows.
+    private string? Blocked => CreateWouldShow && CreateBlocked is not null ? CreateBlocked(_query.Trim()) : null;
+
+    private bool ShowCreate => CreateWouldShow && string.IsNullOrEmpty(Blocked);
+
+    // The refusal is inserted with its text already in it, which a screen reader does not announce, so
+    // each new reason goes through the component's own live region (WCAG 4.1.3). Only a change is said:
+    // typing further letters of the same refused name does not repeat it.
+    private string? _lastBlocked;
+
+    private void OnQueryInput(string? value)
+    {
+        _query = value ?? string.Empty;
+        var blocked = Blocked;
+        if (!string.IsNullOrEmpty(blocked) && blocked != _lastBlocked)
+        {
+            Say(blocked);
+        }
+        _lastBlocked = blocked;
+    }
 
     // Setting an identical live-region string twice does not re-fire it, so every message carries an
     // invisible zero-width counter token.
@@ -361,6 +391,7 @@ public partial class OdsTagMultiSelect
 
         var created = OnCreate(_query.Trim(), kind?.Key);
         _query = string.Empty;
+        _lastBlocked = null;
         if (created is null)
             return Task.CompletedTask;
 

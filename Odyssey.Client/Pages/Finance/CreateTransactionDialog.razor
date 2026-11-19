@@ -166,6 +166,7 @@
                                        Placeholder="No tags"
                                        OnCreate="@(_canCreateTag ? CreateTagOption : null)"
                                        CreateKinds="OdsTypeRegistries.TagCreateKinds.Transaction"
+                                       CreateBlocked="_tagNameBlocked"
                                        Help="Add as many as fit — e.g. a category plus Reimbursable."
                                        HelpContent="@RowIconPreview" />
                 </div>

@@ -464,6 +464,20 @@ html:not([data-theme='dark']) { --user-text-l: min(l, 0.48); }
   margin-top: 1px;
 }
 
+/* Compact variant (design system · account-signals.css): the PageHeader problem rows and any
+   inline mini-alert. Same severity tints, a tighter box. */
+.alert.compact {
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 0.8125rem;
+  align-items: center;
+}
+
+.alert.compact .alert-icon {
+  font-size: 18px;
+  margin-top: 0;
+}
+
 .alert .alert-body {
   flex: 1 1 auto;
   min-width: 0;

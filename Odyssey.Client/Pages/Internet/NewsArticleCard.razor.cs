@@ -35,6 +35,9 @@ public partial class NewsArticleCard
     /// <summary>The row menu — only what the caller can do; an unavailable item is absent.</summary>
     [Parameter] public IReadOnlyList<OdsMenuItem> Menu { get; set; } = [];
 
+    /// <summary>The Original link tile's own ⋯ menu: Open original (a safe URL only) and Copy link.</summary>
+    [Parameter] public IReadOnlyList<OdsMenuItem> LinkMenu { get; set; } = [];
+
     [Parameter] public bool Open { get; set; }
 
     [Parameter] public EventCallback<bool> OnToggle { get; set; }
@@ -68,6 +71,24 @@ public partial class NewsArticleCard
 
     /// <summary>A language tag to set, or <c>null</c>: absent or blank sets none (§6.8; the API validates the tag).</summary>
     public static string? LangOf(string? language) => string.IsNullOrWhiteSpace(language) ? null : language.Trim();
+
+    /// <summary>
+    /// Read, then changed by the publisher (<c>ContentChangedAtUtc &gt; ReadAtUtc</c>) — the server's Updated status. It
+    /// stays read; opening it and leaving it again moves <c>ReadAtUtc</c> on, which clears it.
+    /// </summary>
+    public static bool UpdatedSinceRead(NewsArticleSummary article) =>
+        article.IsRead && article.ContentChangedAtUtc is { } changed && article.ReadAtUtc is { } read && changed > read;
+
+    private bool IsUpdatedSinceRead => UpdatedSinceRead(Article);
+
+    /// <summary>The article glyph takes the Status filter's colour: amber updated since read, grey read, blue unread.</summary>
+    private string AccentColor => IsUpdatedSinceRead ? OdsBreakdown.Tone("warning")
+        : Article.IsRead ? OdsBreakdown.Tone("outline")
+        : OdsBreakdown.Tone("info");
+
+    private string AccentSoftColor => !IsUpdatedSinceRead && Article.IsRead
+        ? "var(--mud-palette-action-default-hover)"
+        : $"color-mix(in srgb, {AccentColor} 14%, transparent)";
 
     private string Title => TitleOf(Article);
 

@@ -44,7 +44,7 @@ public class NewsPageHeaderAndDialogsTests
 
         Assert.Equal("42 unread · 3 feeds", cut.Find(".ph-sub").TextContent.Trim());
         var articles = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "Articles").Instance.Rows;
-        Assert.Equal([("Unread", 5), ("Read", 10)], articles.Select(r => (r.Label, (int)r.Count)));
+        Assert.Equal([("Unread", 5), ("Read", 10), ("Updated", 0)], articles.Select(r => (r.Label, (int)r.Count)));
         var feeds = cut.FindComponents<OdsBreakdownTile>().Single(t => t.Instance.Label == "Feeds").Instance.Rows;
         Assert.Equal([("Healthy or pending", 1), ("Need attention", 1), ("Paused", 1), ("Archived", 1)], feeds.Select(r => (r.Label, (int)r.Count)));
     }
@@ -114,13 +114,15 @@ public class NewsPageHeaderAndDialogsTests
     }
 
     [Fact]
-    public async Task Manage_feeds_links_to_feeds_and_mark_all_read_needs_news_update()
+    public async Task The_news_actions_menu_holds_mark_all_read_and_manage_feeds()
     {
         await using var context = Context([Article("A")]);
         var cut = Rendered(context);
 
-        Assert.NotNull(cut.Find(".ph-actions a[href='news-feeds']"));
-        Assert.NotEmpty(cut.FindAll("#nw-mark-all"));
+        Assert.Equal("News actions", cut.Find($"#{NewsPage.ActionMenuId} button").GetAttribute("aria-label"));
+        Assert.Equal(["Mark all read…", "Manage feeds"], NewsActions(cut));
+        // There is no Hide read: the Status filter does that.
+        Assert.DoesNotContain(cut.FindAll("button"), b => b.TextContent.Contains("Hide read", StringComparison.Ordinal));
     }
 
     // ── Tags dialog (AC 12) ────────────────────────────────────────────────────────────────────────
@@ -142,7 +144,7 @@ public class NewsPageHeaderAndDialogsTests
         ClickMenu(cut, article, "Tags…");
 
         cut.WaitForAssertion(() => Assert.Contains("Tags for “Story”", cut.Markup, StringComparison.Ordinal));
-        Assert.Contains("From the feed. Change them on the Feeds page.", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("From the feed — change them on the Feeds page.", cut.Markup, StringComparison.Ordinal);
         var readOnly = cut.Find("ul[aria-label='Tags from the feed']");
         Assert.Contains("(from feed)", readOnly.TextContent, StringComparison.Ordinal);
         Assert.Empty(readOnly.QuerySelectorAll("button"));
