@@ -88,6 +88,9 @@ public partial class ImportCalendarDialog
     private bool _focusStatusPending;
     private DotNetObjectReference<ImportCalendarDialog>? _selfRef;
     private int? _escapeWatch;
+
+    // Set while a watch call is in flight: two overlapping renders must not register two listeners.
+    private bool _escapeWatchStarting;
     private ElementReference _resultHeading;
     private ElementReference _alertRef;
 
@@ -580,16 +583,30 @@ public partial class ImportCalendarDialog
             return;
         }
 
-        if (Open && _escapeWatch is null)
+        if (Open && _escapeWatch is null && !_escapeWatchStarting)
         {
+            _escapeWatchStarting = true;
             _selfRef ??= DotNetObjectReference.Create(this);
             try
             {
-                _escapeWatch = await JS.InvokeAsync<int>("odsDialogEscape.watch", DialogClass, _selfRef);
+                var watch = await JS.InvokeAsync<int>("odsDialogEscape.watch", DialogClass, _selfRef);
+                if (_disposed || !Open)
+                {
+                    // Closed (or gone) while the watch was being set up: take it down again at once.
+                    await TryJsAsync("odsDialogEscape.unwatch", watch);
+                }
+                else
+                {
+                    _escapeWatch = watch;
+                }
             }
             catch (Exception ex) when (ex is JSException or JSDisconnectedException or TaskCanceledException or InvalidOperationException)
             {
                 // Best-effort: the footer's Cancel upload still opens the confirmation.
+            }
+            finally
+            {
+                _escapeWatchStarting = false;
             }
         }
         else if (!Open && _escapeWatch is { } watch)
@@ -675,14 +692,36 @@ public partial class ImportCalendarDialog
     }
 
     /// <summary>The orphaned import's one toast — none for an upload stopped before its body finished.</summary>
+    /// <remarks>
+    /// Runs unobserved, so it never throws. An attempt that faults — including one cancelled from outside, which can
+    /// only mean the request ended without an answer — is reported with the general failure wording: part of the file
+    /// may already have been applied, and that wording says so and that importing again is safe.
+    /// </remarks>
     private async Task ToastWhenSettledAsync(Task<Attempt> pending)
     {
-        var attempt = await pending;
-        if (attempt.Aborted && !attempt.UploadComplete)
+        ApiResult<IcsImportResult> outcome;
+        try
         {
-            return;
+            var attempt = await pending;
+            if (attempt.Aborted && !attempt.UploadComplete)
+            {
+                return;
+            }
+
+            outcome = attempt.Result;
+        }
+        catch (Exception ex)
+        {
+            outcome = ApiResult<IcsImportResult>.Failure(ex);
         }
 
-        CalendarImportCopy.ToastHandedOff(Snackbar, attempt.Result);
+        try
+        {
+            CalendarImportCopy.ToastHandedOff(Snackbar, outcome);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException)
+        {
+            // The app itself is shutting down: there is nowhere left to show it.
+        }
     }
 }
