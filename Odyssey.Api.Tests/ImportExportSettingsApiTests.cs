@@ -123,6 +123,32 @@ public class ImportExportSettingsApiTests
     }
 
     [Theory]
+    [InlineData(50, false)] // the shipped default
+    [InlineData(51, true)]
+    public async Task Put_CalendarEventLinkCap_WarnsAboveTheShippedDefault(int cap, bool warns)
+    {
+        // The design system's row advisory for the per-event attachment cap: a series delete copies its links onto
+        // every past occurrence it keeps, so raising the cap raises that copy. An advisory, never a refusal.
+        await using var factory = new ApiFactory(FullAccess);
+        using var client = factory.CreateClient();
+
+        var response = await client.PutAsJsonAsync(SettingsPath, new SystemSettingsUpdate { CalendarEventMaxLinksPerKind = cap });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var dto = (await response.Content.ReadFromJsonAsync<SystemSettingsDto>())!;
+        const string field = nameof(SystemSettingsUpdate.CalendarEventMaxLinksPerKind);
+        if (warns)
+        {
+            Assert.Contains("above the shipped default of 50", dto.Warnings[field]);
+            Assert.Contains("every past occurrence it keeps", dto.Warnings[field]);
+        }
+        else
+        {
+            Assert.DoesNotContain(field, dto.Warnings.Keys);
+        }
+    }
+
+    [Theory]
     [InlineData(1024, false)]
     [InlineData(1025, true)]
     [InlineData(10240, true)] // the shipped default itself warns: the old 1 GB ceiling is the threshold
