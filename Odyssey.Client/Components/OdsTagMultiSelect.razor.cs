@@ -298,6 +298,22 @@ public partial class OdsTagMultiSelect
 
     private bool ShowCreate => CreateWouldShow && string.IsNullOrEmpty(Blocked);
 
+    // The refusal is inserted with its text already in it, which a screen reader does not announce, so
+    // each new reason goes through the component's own live region (WCAG 4.1.3). Only a change is said:
+    // typing further letters of the same refused name does not repeat it.
+    private string? _lastBlocked;
+
+    private void OnQueryInput(string? value)
+    {
+        _query = value ?? string.Empty;
+        var blocked = Blocked;
+        if (!string.IsNullOrEmpty(blocked) && blocked != _lastBlocked)
+        {
+            Say(blocked);
+        }
+        _lastBlocked = blocked;
+    }
+
     // Setting an identical live-region string twice does not re-fire it, so every message carries an
     // invisible zero-width counter token.
     private void Say(string text)
@@ -375,6 +391,7 @@ public partial class OdsTagMultiSelect
 
         var created = OnCreate(_query.Trim(), kind?.Key);
         _query = string.Empty;
+        _lastBlocked = null;
         if (created is null)
             return Task.CompletedTask;
 

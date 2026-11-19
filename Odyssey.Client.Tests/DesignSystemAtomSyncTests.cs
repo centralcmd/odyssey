@@ -32,7 +32,10 @@ public class DesignSystemAtomSyncTests
         using var ctx = NestedInteractiveControlTests.NewContext();
         var cut = ctx.Render<PageHeader>(p => p.Add(h => h.Title, "News").Add(h => h.Problems, OneProblem));
 
-        Assert.Contains("compact", cut.Find(".ph-problems .alert, .alert").ClassList);
+        // The row the header draws itself: an alert carrying its severity and the problem text.
+        var rows = cut.FindAll("div.alert").Where(a => a.TextContent.Contains("Failing.", StringComparison.Ordinal)).ToList();
+        Assert.Single(rows);
+        Assert.Contains("compact", rows[0].ClassList);
     }
 
     [Fact]
@@ -66,6 +69,26 @@ public class DesignSystemAtomSyncTests
             .Add(c => c.Values, (IReadOnlyCollection<string>)[]));
 
         Assert.Contains("fit", cut.Find(".odc-ms").ClassList);
+    }
+
+    [Theory]
+    [InlineData(OdsMultiSelect.FitLimit, null, false, true)]       // at the limit: fits
+    [InlineData(OdsMultiSelect.FitLimit + 1, null, false, false)]  // past it: does not
+    [InlineData(2, false, false, false)]                           // Fit="false" opts out
+    [InlineData(OdsMultiSelect.FitLimit + 5, true, false, true)]   // Fit="true" forces it
+    [InlineData(2, null, true, false)]                             // a Quiet control never fits
+    public async Task The_fit_class_follows_the_row_count_and_the_overrides(int rows, bool? fit, bool quiet, bool expected)
+    {
+        await using var ctx = NestedInteractiveControlTests.NewContext();
+        ctx.Render<MudPopoverProvider>();
+        var cut = ctx.Render<OdsMultiSelect>(p => p
+            .Add(c => c.Label, "Status")
+            .Add(c => c.Options, (IReadOnlyList<OdsOption>)[.. Enumerable.Range(0, rows).Select(i => new OdsOption($"o{i}", $"Option {i}"))])
+            .Add(c => c.Values, (IReadOnlyCollection<string>)[])
+            .Add(c => c.Fit, fit)
+            .Add(c => c.Quiet, quiet));
+
+        Assert.Equal(expected, cut.Find(".odc-ms").ClassList.Contains("fit"));
     }
 
     [Fact]

@@ -157,3 +157,5 @@ div.nw-focus-host { display: block; }
 .nw-search-help { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 .nw-search-help.is-error { color: var(--mud-palette-error); }
 
+/* The delete confirm and the reason it is unavailable, side by side; the reason wraps under it when narrow. */
+.nw-del-actions { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }

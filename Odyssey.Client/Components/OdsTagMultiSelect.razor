@@ -135,7 +135,7 @@
                     <div class="odc-tagms-search">
                         <span class="material-icons" aria-hidden="true">search</span>
                         <input value="@_query"
-                               @oninput="@(e => _query = e.Value?.ToString() ?? string.Empty)"
+                               @oninput="@(e => OnQueryInput(e.Value?.ToString()))"
                                @onkeydown="OnSearchKeyDown"
                                placeholder="@EffectiveSearchPlaceholder"
                                aria-label="@SearchLabel" />
@@ -201,7 +201,7 @@
                             }
                             @if (Blocked is { Length: > 0 } blocked)
                             {
-                                <div class="odc-tagms-empty odc-tagms-blocked" role="status">@blocked</div>
+                                <div class="odc-tagms-empty odc-tagms-blocked">@blocked</div>
                             }
                             @if (!Filtered.Any() && !ShowCreate && string.IsNullOrEmpty(Blocked))
                             {

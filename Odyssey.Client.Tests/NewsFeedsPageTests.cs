@@ -487,10 +487,15 @@ public class NewsFeedsPageTests
         Assert.Contains("Delete “Example News”?", cut.Markup, StringComparison.Ordinal);
         Assert.Contains("I understand this cannot be undone", cut.Markup, StringComparison.Ordinal);
         Assert.Equal("true", cut.Find("#nf-del-confirm").GetAttribute("aria-disabled"));
+        // aria-disabled alone gives no reason: the visible hint is the button's description.
+        Assert.Equal("nf-del-reason", cut.Find("#nf-del-confirm").GetAttribute("aria-describedby"));
+        Assert.Equal("Tick the box above to delete.", cut.Find("#nf-del-reason").TextContent.Trim());
         cut.Find("#nf-del-confirm").Click();
         context.News.Verify(n => n.DeleteFeedAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
 
         cut.Find("#nf-del-ack").Change(true);
+        Assert.Null(cut.Find("#nf-del-confirm").GetAttribute("aria-describedby"));
+        Assert.Empty(cut.FindAll("#nf-del-reason"));
         cut.Find("#nf-del-confirm").Click();
 
         cut.WaitForAssertion(() => Assert.Empty(CardNames(cut)));

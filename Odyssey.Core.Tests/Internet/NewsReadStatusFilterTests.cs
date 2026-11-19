@@ -40,6 +40,7 @@ public sealed class NewsReadStatusFilterTests
     [Theory]
     [InlineData(true, 60, 0, true)]     // changed an hour after it was read
     [InlineData(true, -60, 0, false)]   // changed before it was read
+    [InlineData(true, 0, 0, false)]     // changed at the very moment it was read: not after, so not Updated
     [InlineData(false, 60, 0, false)]   // unread
     [InlineData(true, null, 0, false)]  // never changed
     public void Updated_since_read_needs_read_and_a_later_change(bool isRead, int? changedOffsetMinutes, int readOffsetMinutes, bool expected)
@@ -55,5 +56,21 @@ public sealed class NewsReadStatusFilterTests
         Assert.Equal(expected, NewsReadStatusFilter.UpdatedSinceRead(article));
         Assert.Equal(expected, NewsReadStatusFilter.IsUpdatedSinceRead.Compile()(article));
         Assert.Equal(expected ? 1 : 0, NewsReadStatusFilter.Apply(new[] { article }.AsQueryable(), [S.Updated]).Count());
+    }
+
+    [Fact]
+    public void Unread_or_updated_returns_unread_and_updated_but_not_plain_read()
+    {
+        var read = new DateTime(2026, 11, 1, 12, 0, 0, DateTimeKind.Utc);
+        var unread = new NewsArticle { Title = "unread", IsRead = false };
+        var updated = new NewsArticle { Title = "updated", IsRead = true, ReadAtUtc = read, ContentChangedAtUtc = read.AddMinutes(5) };
+        var plainRead = new NewsArticle { Title = "read", IsRead = true, ReadAtUtc = read, ContentChangedAtUtc = read.AddMinutes(-5) };
+        var sameInstant = new NewsArticle { Title = "same", IsRead = true, ReadAtUtc = read, ContentChangedAtUtc = read };
+
+        var statuses = NewsReadStatusFilter.Normalize(null, [S.Unread, S.Updated]);
+        var titles = NewsReadStatusFilter.Apply(new[] { unread, updated, plainRead, sameInstant }.AsQueryable(), statuses)
+            .Select(a => a.Title).ToList();
+
+        Assert.Equal(["unread", "updated"], titles);
     }
 }

@@ -48,12 +48,35 @@ public sealed class OdsTagMultiSelectCreateBlockedTests : IAsyncLifetime
         var cut = Open("old album", TagNameRule.For(Tags, TagNameRule.Pages.Photo));
 
         Assert.Empty(cut.FindAll("button.odc-tagms-create"));
+        const string reason = "“Old album” is an archived tag. Restore it on the Photo tags page to use it.";
         var row = cut.Find(".odc-tagms-blocked");
-        Assert.Equal("status", row.GetAttribute("role"));
-        Assert.Equal("“Old album” is an archived tag. Restore it on the Photo tags page to use it.", row.TextContent.Trim());
+        Assert.Equal(reason, row.TextContent.Trim());
+        // The row is inserted already holding its text, which is not announced, so the reason goes
+        // through the component's persistent polite live region instead (WCAG 4.1.3).
+        Assert.Null(row.GetAttribute("role"));
+        Assert.StartsWith(reason, LiveRegion(cut));
         // The status row is the only line: the "no match" text does not also render.
         Assert.DoesNotContain(cut.FindAll(".odc-tagms-empty"), e => !e.ClassList.Contains("odc-tagms-blocked"));
     }
+
+    [Fact]
+    public void The_reason_is_announced_once_per_change()
+    {
+        // "Holiday" is an active tag the picker does not list (another field's options), so it is refused too.
+        var cut = Open("old album", TagNameRule.For([.. Tags, new("Holiday", Archived: false)], TagNameRule.Pages.Photo));
+        var first = LiveRegion(cut);
+
+        // The same refused name typed again (different case) is the same reason: not said twice.
+        cut.Find(".odc-tagms-search input").Input("OLD ALBUM");
+        Assert.Equal(first, LiveRegion(cut));
+
+        // A different refused name is a new reason.
+        cut.Find(".odc-tagms-search input").Input("holiday");
+        Assert.StartsWith("A tag called “Holiday” already exists.", LiveRegion(cut));
+    }
+
+    private static string LiveRegion(IRenderedComponent<PickerHost> cut) =>
+        cut.Find("div.sr-only[role=status][aria-live=polite]").TextContent.Trim('\u200B', ' ');
 
     [Fact]
     public void A_free_name_still_offers_the_create_row()
@@ -86,6 +109,13 @@ public sealed class OdsTagMultiSelectCreateBlockedTests : IAsyncLifetime
         search.KeyDown("Enter");
 
         Assert.Equal(0, created);
+
+        // Positive control: the same gesture on a free name does create, so the zero above is the rule.
+        search = cut.Find(".odc-tagms-search input");
+        search.Input("Brand new");
+        search.KeyDown("Enter");
+
+        Assert.Equal(1, created);
     }
 
     [Theory]
@@ -95,6 +125,18 @@ public sealed class OdsTagMultiSelectCreateBlockedTests : IAsyncLifetime
     [InlineData("   ", null)]
     public void TagNameRule_words_the_refusal_once(string typed, string? expected) =>
         Assert.Equal(expected, TagNameRule.Blocked(Tags, typed, TagNameRule.Pages.Transaction));
+
+    [Theory]
+    [InlineData(TagNameRule.Pages.Journal)]
+    [InlineData(TagNameRule.Pages.Task)]
+    public void Active_only_vocabularies_leave_an_archived_name_creatable(string page)
+    {
+        // Journal and task tag names are unique among ACTIVE tags only, so their fields pass active tags.
+        var activeOnly = Tags.Where(t => !t.Archived);
+
+        Assert.Null(TagNameRule.Blocked(activeOnly, "Old album", page));
+        Assert.Equal("A tag called “Groceries” already exists.", TagNameRule.Blocked(activeOnly, "groceries", page));
+    }
 
     [Fact]
     public void TagNameRule_keeps_inner_whitespace_as_the_server_does() =>

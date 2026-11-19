@@ -153,8 +153,16 @@
         </ChildContent>
         <Footer>
             <OdsButton Variant="OdsButtonVariant.Text" OnClick="CloseDelete" data-dialog-cancel="true">Cancel</OdsButton>
-            <OdsButton id="nf-del-confirm" Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleteBusy"
-                       AriaDisabled="@(!_deleteAck)" OnClick="DeleteAsync">Delete feed</OdsButton>
+            @* aria-disabled says nothing about why, so the reason is visible beside it and is its description. *@
+            <span class="nw-del-actions">
+                <OdsButton id="nf-del-confirm" Variant="OdsButtonVariant.Danger" Icon="delete" Loading="_deleteBusy"
+                           AriaDisabled="@(!_deleteAck)" aria-describedby="@(_deleteAck ? null : "nf-del-reason")"
+                           OnClick="DeleteAsync">Delete feed</OdsButton>
+                @if (!_deleteAck)
+                {
+                    <span class="nw-muted" id="nf-del-reason">Tick the box above to delete.</span>
+                }
+            </span>
         </Footer>
     </OdsModal>
 }

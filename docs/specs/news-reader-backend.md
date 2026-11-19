@@ -1457,7 +1457,7 @@ into one.
 | `NewsTagLimitReached` | 422 | `news-tag-limit` |
 | `NewsFeedUrlRejected` | 422 | key `url` |
 | `NewsFeedLimitReached` | 422 | `news-feed-limit` |
-| `NewsFeedNotArchived` / `Inactive` / `NotQuarantined` | 422 | `news-feed-not-archived` / `news-feed-inactive` / as named |
+| ~~`NewsFeedNotArchived`~~ / `Inactive` / `NotQuarantined` | 422 | ~~`news-feed-not-archived`~~ *(retired by the design-system sync of 2026-11-19: any feed can be deleted)* / `news-feed-inactive` / as named |
 | `NewsTagNotUsable` | 422 | key `tagIds` |
 | `NewsMarkReadScopeInvalid` | 422 | unknown or pending-deletion id in `feedIds`/`tagIds` (keyed by the list), or `asOfUtc` in the future |
 | Unknown filter id on the list | 422 | key `feedIds` or `tagIds` |

@@ -464,8 +464,13 @@ public sealed class NewsArticlesApiTests
         var catalogue = await (await client.GetAsync("/api/news-feeds/catalogue")).ReadAsync<List<NewsFeedCatalogueEntry>>();
         Assert.Equal(1, Assert.Single(catalogue, f => f.Id == feed).UpdatedCount);
         var plainReadAt = await factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == read).Select(a => a.ReadAtUtc).SingleAsync());
+        var updatedReadAt = await ReadAtAsync(factory, updated);
 
         Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"{Articles}/{updated}/read-state", new NewsArticleReadState { IsRead = true })).StatusCode);
+        // The re-read moved the read time past the publisher's change; that is what clears the flag.
+        var rereadAt = await ReadAtAsync(factory, updated);
+        Assert.True(rereadAt > updatedReadAt);
+        Assert.True(rereadAt >= await factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == updated).Select(a => a.ContentChangedAtUtc).SingleAsync()));
         var bulk = await (await client.PostAsJsonAsync($"{Articles}/read-state", new NewsArticlesReadStateBulk { ArticleIds = [read], IsRead = true })).ReadAsync<MarkNewsReadResult>();
 
         Assert.Equal(0, bulk.MarkedCount);
@@ -476,6 +481,43 @@ public sealed class NewsArticlesApiTests
         catalogue = await (await client.GetAsync("/api/news-feeds/catalogue")).ReadAsync<List<NewsFeedCatalogueEntry>>();
         Assert.Equal(0, Assert.Single(catalogue, f => f.Id == feed).UpdatedCount);
     }
+
+    [Fact]
+    public async Task A_bulk_read_rereads_an_updated_article_without_counting_it()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var (feed, _, read, updated, _) = await SeedReadStatesAsync(factory);
+        using var client = factory.CreateClient();
+        var before = await ReadAtAsync(factory, updated);
+        var plainReadAt = await ReadAtAsync(factory, read);
+
+        var bulk = await (await client.PostAsJsonAsync($"{Articles}/read-state", new NewsArticlesReadStateBulk { ArticleIds = [updated, read], IsRead = true })).ReadAsync<MarkNewsReadResult>();
+
+        // Neither changed read state, so neither is counted; the updated one is re-read all the same.
+        Assert.Equal(0, bulk.MarkedCount);
+        Assert.True(await ReadAtAsync(factory, updated) > before);
+        Assert.Equal(plainReadAt, await ReadAtAsync(factory, read));
+        Assert.Empty((await PageAsync(client, "statuses=Updated")).Items);
+        Assert.Equal(1, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+    }
+
+    [Fact]
+    public async Task Marking_an_updated_article_unread_makes_it_unread_and_leaves_the_updated_set()
+    {
+        await using var factory = new OdysseyApiFactory(AllNewsClaims);
+        var (feed, unread, _, updated, _) = await SeedReadStatesAsync(factory);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync($"{Articles}/{updated}/read-state", new NewsArticleReadState { IsRead = false })).StatusCode);
+
+        Assert.Null(await ReadAtAsync(factory, updated));
+        Assert.Empty((await PageAsync(client, "statuses=Updated")).Items);
+        Assert.Equal(new[] { unread, updated }.ToHashSet(), (await PageAsync(client, "statuses=Unread")).Items.Select(i => i.Id).ToHashSet());
+        Assert.Equal(2, await factory.WithContextAsync(c => c.NewsFeedCounters.Where(x => x.NewsFeedId == feed).Select(x => x.UnreadCount).SingleAsync()));
+    }
+
+    private static Task<DateTime?> ReadAtAsync(OdysseyApiFactory factory, Guid id) =>
+        factory.WithContextAsync(c => c.NewsArticles.Where(a => a.NewsArticleId == id).Select(a => a.ReadAtUtc).SingleAsync());
 
     [Fact]
     public async Task A_cursor_continues_across_the_isRead_and_single_member_statuses_spellings()
