@@ -104,7 +104,7 @@ public class NewsSourceLintTests
             f.SiteUrl = HostileLink;
             f.Language = Hostile;
             f.Management!.LastErrorMessage = Hostile;
-            f.Management.SuggestedUrl = HostileLink;
+            f.Management.Url = HostileLink;
         });
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), It.IsAny<int>(), null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))

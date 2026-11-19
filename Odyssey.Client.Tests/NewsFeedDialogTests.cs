@@ -61,7 +61,7 @@ public class NewsFeedDialogTests
         await using var context = new NewsPageTestContext();
         var (cut, _) = Render(context);
 
-        Assert.Contains("Required. An RSS, Atom or JSON Feed address", cut.Markup, StringComparison.Ordinal);
+        Assert.Contains("RSS, Atom or JSON Feed address. Odyssey checks it on the first fetch.", cut.Markup, StringComparison.Ordinal);
         foreach (var bad in new[] { "", "ftp://example.com/feed", "javascript:alert(1)", "https://user:pw@example.com/feed", "/relative" })
         {
             Input(cut, NewsFeedDialog.UrlId).Input(bad);
@@ -180,6 +180,27 @@ public class NewsFeedDialogTests
     }
 
     [Fact]
+    public async Task Edit_has_no_active_switch_keeps_is_active_and_carries_the_tags_in_the_same_put()
+    {
+        var tag = Guid.NewGuid();
+        var feed = NewsFeedsPageTests.Feed("Example", f => { f.IsActive = false; f.Health = NewsFeedHealth.Paused; f.TagIds = [tag]; });
+        await using var context = new NewsPageTestContext();
+        UpdateNewsFeed? sent = null;
+        context.News.Setup(n => n.UpdateFeedAsync(feed.Id, It.IsAny<UpdateNewsFeed>(), It.IsAny<CancellationToken>()))
+            .Callback((Guid _, UpdateNewsFeed u, CancellationToken _) => sent = u)
+            .ReturnsAsync(Ok(feed));
+        var (cut, _) = Render(context, feed);
+
+        Assert.DoesNotContain(cut.FindAll("label"), l => l.TextContent.Trim() == "Active");
+        Assert.Single(cut.FindComponents<OdsTagMultiSelect>());
+        Assert.True(await Submit(cut));
+
+        Assert.False(sent!.IsActive);
+        Assert.Equal([tag], sent.TagIds);
+        context.News.Verify(n => n.SetFeedTagsAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task A_409_puts_the_conflict_alert_up_and_moves_focus_to_it()
     {
         var feed = Editable();
@@ -279,12 +300,5 @@ public class NewsFeedDialogTests
         Assert.Equal("Close", form.Instance.CancelLabel);
         Assert.Contains(context.Ctx.JSInterop.Invocations, i => i.Identifier == "odsFocusDialogCancel");
         Assert.Equal([feed.Id], probe.Deleted);
-    }
-
-    [Fact]
-    public void The_mask_hides_the_query_only()
-    {
-        Assert.Equal(("https://example.com/feed.xml?…", true), NewsFeedForm.Mask("https://example.com/feed.xml?token=abc"));
-        Assert.Equal(("https://example.com/feed.xml", false), NewsFeedForm.Mask("https://example.com/feed.xml"));
     }
 }

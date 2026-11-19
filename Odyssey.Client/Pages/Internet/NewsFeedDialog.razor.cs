@@ -31,13 +31,13 @@ public partial class NewsFeedDialog
     /// <summary>The feed to edit, or <see langword="null"/> for New feed. Its <c>management</c> must be present.</summary>
     [Parameter] public ExistingNewsFeed? Feed { get; set; }
 
-    /// <summary>The news tags, for the create-only Tags picker.</summary>
+    /// <summary>The news tags, for the Tags picker.</summary>
     [Parameter] public IReadOnlyList<ExistingNewsTag> Tags { get; set; } = [];
 
     /// <summary>Raised with the server's feed after a create or a save — the row shows the server's <c>url</c>.</summary>
     [Parameter] public EventCallback<ExistingNewsFeed> Saved { get; set; }
 
-    /// <summary>"Go to feed" on a duplicate: the existing feed's id.</summary>
+    /// <summary>"Go to feed" on a duplicate: the existing feed’s id.</summary>
     [Parameter] public EventCallback<Guid> GoToFeed { get; set; }
 
     /// <summary>Raised when a Reload or a save finds the feed deleted.</summary>
@@ -49,7 +49,7 @@ public partial class NewsFeedDialog
     /// </summary>
     [Parameter] public bool InitialConflict { get; set; }
 
-    /// <summary>The URL draft to open with instead of the feed's own; <see langword="null"/> uses the feed's.</summary>
+    /// <summary>The URL draft to open with instead of the feed’s own; <see langword="null"/> uses the feed’s.</summary>
     [Parameter] public string? InitialUrl { get; set; }
 
     /// <summary>Raised when a Reload brings a newer copy of the feed, so the page's row matches.</summary>
@@ -131,7 +131,7 @@ public partial class NewsFeedDialog
         _interval = feed?.FetchIntervalMinutes;
         _downloadImages = feed?.DownloadImages ?? true;
         _active = feed?.IsActive ?? true;
-        _tagIds = [];
+        _tagIds = feed is null ? [] : [.. feed.TagIds.Select(id => id.ToString())];
     }
 
     private void OnUrlChanged(string? value) { _url = value; _urlError = null; _duplicateOf = null; }
@@ -178,6 +178,7 @@ public partial class NewsFeedDialog
                 FetchIntervalMinutes = interval,
                 DownloadImages = _downloadImages,
                 IsActive = _active,
+                TagIds = [.. _tagIds.Select(Guid.Parse)],
             });
         }
         else
@@ -261,7 +262,7 @@ public partial class NewsFeedDialog
         }
         else
         {
-            NewsFeedback.Failure(Snackbar, problem, IsEdit ? "Couldn't save the feed" : "Couldn't create the feed");
+            NewsFeedback.Failure(Snackbar, problem, IsEdit ? "Couldn’t save the feed" : "Couldn’t create the feed");
             return;
         }
 
@@ -342,10 +343,14 @@ public partial class NewsFeedDialog
             updated.Add("Download images");
         }
 
-        if (before.IsActive != server.IsActive)
+        // Not a field here: the dialog only carries the server's value back unchanged.
+        _active = server.IsActive;
+
+        if (!before.TagIds.Order().SequenceEqual(server.TagIds.Order()))
         {
-            _active = server.IsActive;
-            updated.Add("Active");
+            _tagIds = [.. server.TagIds.Select(id => id.ToString())];
+            _tagsError = null;
+            updated.Add("Tags");
         }
 
         return updated;
