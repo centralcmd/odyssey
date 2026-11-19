@@ -170,7 +170,8 @@ public partial class OdsCalTimeGrid
     private static string AllDayName(CalendarEventVm ev)
     {
         var name = string.IsNullOrEmpty(ev.CalendarName) ? ev.Title : $"{ev.Title}, {ev.CalendarName} calendar";
-        return ev.Recurring ? $"{name}, all day, recurring" : $"{name}, all day";
+        name = ev.Recurring ? $"{name}, all day, recurring" : $"{name}, all day";
+        return ev.HasAttachments ? $"{name}{OdsCalendarNames.AttachmentsSuffix}" : name;
     }
 
     private static string TimedName(CalendarEventVm ev)
@@ -184,6 +185,11 @@ public partial class OdsCalTimeGrid
         if (ev.Recurring)
         {
             parts.Add("recurring");
+        }
+
+        if (ev.HasAttachments)
+        {
+            parts.Add("has attachments");
         }
 
         return string.Join(", ", parts);

@@ -5,8 +5,10 @@
     display: grid; grid-template-columns: repeat(auto-fill, minmax(min(360px, 100%), 1fr));
     gap: 6px; margin-top: 2px;
 }
+/* The row wraps rather than squeezing the name to nothing at a narrow width (issue #522 AC 12 reflow): the name
+   keeps at least 8rem, and the kind, size, date and menu move to a second line when they do not fit beside it. */
 .jec-file {
-    display: flex; align-items: center; gap: 9px; min-width: 0;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; min-width: 0;
     padding: 7px 10px; border: 1px solid var(--mud-palette-divider);
     border-radius: var(--radius-sm); background: var(--mud-palette-background-gray);
 }
@@ -19,7 +21,7 @@
 }
 .jec-file-ic .material-icons { font-size: 16px; }
 .jec-file-name {
-    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    flex: 1 1 8rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     font-size: var(--fs-body2);
 }
 .jec-file .odc-chip { order: 1; flex: none; }

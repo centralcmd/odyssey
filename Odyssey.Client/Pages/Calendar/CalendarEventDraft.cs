@@ -1,4 +1,6 @@
 using Odyssey.Client.Components;
+using Odyssey.Client.Pages.Journal;
+using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.Client.Pages.Calendar;
@@ -21,6 +23,29 @@ public sealed class CalendarEventDraft
     public PlaceDraft Place { get; set; } = new();
 
     public bool IsAllDay { get; set; }
+
+    /// <summary>
+    /// The linked library photos as the dialog shows them (issue #522 §3.1): the loaded links, then the user's adds and
+    /// removes. Sent only when <see cref="PhotosChanged"/>; otherwise the save keeps whatever is stored.
+    /// </summary>
+    public List<JournalDraftPhoto> Photos { get; set; } = [];
+
+    /// <summary>The linked files as the dialog shows them, mapped from the hydrated read (§E). Sent only when <see cref="FilesChanged"/>.</summary>
+    public List<FileMetadataResponse> Attachments { get; set; } = [];
+
+    /// <summary>The user added or removed a photo in this session.</summary>
+    public bool PhotosChanged { get; set; }
+
+    /// <summary>The user added or removed a file in this session.</summary>
+    public bool FilesChanged { get; set; }
+
+    /// <summary>
+    /// What the save does with the links (issue #522 goal 5): a kind the user changed is sent whole, any other is kept —
+    /// so a user who cannot see a kind, or changed nothing in it, never overwrites it.
+    /// </summary>
+    public AttachmentLinks Links => AttachmentLinks.Set(
+        FilesChanged ? Attachments.Select(a => a.Id) : null,
+        PhotosChanged ? Photos.Select(p => p.PhotoId) : null);
 
     /// <summary>
     /// The IANA zone the times are wall-clock in (issue #520 §3 "Time-zone field"); null is floating. Kept while All day
@@ -95,6 +120,8 @@ public sealed class CalendarEventDraft
             Location = source.Location ?? string.Empty,
             Place = PlaceDraft.For(source.LocationId, source.LocationRef),
             IsAllDay = source.IsAllDay,
+            Photos = CalendarLinkRows.Photos(source.Photos),
+            Attachments = CalendarLinkRows.Files(source.Attachments),
             TimeZoneId = source.IsAllDay ? fallbackZone : source.TimeZoneId,
             StartDate = start.Date,
             StartTime = start.TimeOfDay,
@@ -119,6 +146,8 @@ public sealed class CalendarEventDraft
             Location = source.Location ?? string.Empty,
             Place = PlaceDraft.For(source.LocationId, source.LocationRef),
             IsAllDay = source.IsAllDay,
+            Photos = CalendarLinkRows.Photos(source.Photos),
+            Attachments = CalendarLinkRows.Files(source.Attachments),
             TimeZoneId = source.IsAllDay ? fallbackZone : source.TimeZoneId,
             StartDate = start.Date,
             StartTime = start.TimeOfDay,
@@ -254,7 +283,10 @@ public sealed class CalendarEventDraft
         return (timedStart, timedEnd);
     }
 
-    /// <summary>The event write. <paramref name="link"/> is required: a full replacement without it would unlink.</summary>
+    /// <summary>
+    /// The event write. <paramref name="link"/> is required: a full replacement without it would unlink. The links travel
+    /// as <see cref="Links"/>, which keeps every kind the user did not change (issue #522 goal 5).
+    /// </summary>
     public NewCalendarEvent ToNewCalendarEvent(LocationLink link)
     {
         var (start, end) = BuildTimes();
@@ -263,7 +295,7 @@ public sealed class CalendarEventDraft
             Title.Trim(),
             string.IsNullOrWhiteSpace(Description) ? null : Description.Trim(),
             string.IsNullOrWhiteSpace(Location) ? null : Location.Trim(),
-            start, end, IsAllDay, WriteZone, link);
+            start, end, IsAllDay, WriteZone, Links, link);
     }
 
     /// <summary>The series write. <paramref name="link"/> is required: a full replacement without it would unlink.</summary>
@@ -287,6 +319,6 @@ public sealed class CalendarEventDraft
             isYearly ? MonthOfYear : null,
             EndMode == "date" ? RecurrenceEndDate : null,
             EndMode == "count" ? OccurrenceCount : null,
-            link);
+            Links, link);
     }
 }

@@ -35,7 +35,7 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
     /// in production — for a test whose outcome depends on how a transient error (a deadlock, a lock wait) is handled.</param>
     public static async Task<PhotoStoreHost> CreateAsync(
         string connectionString, IPhotoMetadataExtractor? extractor = null, Action<IServiceCollection>? configureServices = null,
-        bool retryOnFailure = false)
+        bool retryOnFailure = false, params Microsoft.EntityFrameworkCore.Diagnostics.IInterceptor[] interceptors)
     {
         var volume = Directory.CreateTempSubdirectory("odyssey-it-photos-");
         var host = FileStorageTestHost.Create(
@@ -45,7 +45,7 @@ internal sealed class PhotoStoreHost : IAsyncDisposable
                 {
                     OdysseyDatabaseRetry.Configure(mySql);
                 }
-            }),
+            }).AddInterceptors(interceptors),
             new Dictionary<string, string> { ["photos"] = volume.FullName },
             new Dictionary<string, string>
             {

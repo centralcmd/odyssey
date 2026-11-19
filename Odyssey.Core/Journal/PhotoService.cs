@@ -291,6 +291,76 @@ public class PhotoService
     }
 
     /// <summary>
+    /// The first half of an import's photo upload (issue #521 v5 §1, implementation note 3): the library upload's checks,
+    /// hash and metadata extraction, and the original's write as a reservation — outside any transaction, once. No tag is
+    /// created, no album item is staged and no duplicate is refused here: the importer has already matched existing
+    /// content, and re-checks it under its lock before <see cref="AttachPrepared"/>.
+    /// </summary>
+    internal async Task<PreparedPhoto> PrepareUploadAsync(
+        FileUpload upload, string? title, string? caption, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(upload);
+        var contentType = await ValidateUploadAsync(upload, cancellationToken);
+        await using var content = upload.OpenReadStream();
+        var hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(content, cancellationToken)).ToLowerInvariant();
+        content.Position = 0;
+        var extracted = await metadataService.ExtractFromStreamAsync(content, cancellationToken);
+
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        var fileName = SanitizeUploadName(upload.FileName);
+        content.Position = 0;
+        var maxBytes = (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes;
+        var reservation = await originals.ReserveAsync(content, fileName, contentType, now, maxBytes, cancellationToken);
+        if (!string.Equals(reservation.Sha256Hash, hash, StringComparison.Ordinal))
+        {
+            await store.AbandonReservationAsync(reservation, cancellationToken);
+            throw new DomainValidationException("The photo changed while it was being stored.");
+        }
+
+        return new PreparedPhoto(
+            Guid.NewGuid(), reservation, fileName, contentType,
+            Clamp(title ?? extracted.Title, PhotoLimits.MaxTitleLength),
+            Clamp(caption ?? extracted.Caption, PhotoLimits.MaxCaptionLength),
+            NormalizeTakenAt(extracted.TakenAt, fromCaller: false),
+            extracted.Latitude, extracted.Longitude, extracted.PixelWidth, extracted.PixelHeight, now);
+    }
+
+    /// <summary>
+    /// The second half: a NEW <see cref="Photo"/> for <paramref name="prepared"/>, its original attached and its thumbnail
+    /// job enqueued, staged on this context unsaved. Called once per attempt of the importer's retried transaction.
+    /// </summary>
+    internal async Task<Photo> AttachPreparedAsync(PreparedPhoto prepared, string userId, CancellationToken cancellationToken = default)
+    {
+        var stored = store.AttachReserved(context, prepared.Reservation);
+        var photo = new Photo
+        {
+            PhotoId = prepared.PhotoId,
+            StoredObjectId = stored.Id,
+            FileName = prepared.FileName,
+            ContentType = prepared.ContentType,
+            SizeBytes = stored.SizeBytes,
+            Sha256Hash = stored.Sha256Hash,
+            Title = prepared.Title,
+            Caption = prepared.Caption,
+            TakenAt = prepared.TakenAt,
+            CapturedLatitude = prepared.Latitude,
+            CapturedLongitude = prepared.Longitude,
+            PixelWidth = prepared.PixelWidth,
+            PixelHeight = prepared.PixelHeight,
+            CreatedByUserId = userId,
+            CreatedAt = prepared.CreatedAtUtc,
+            UpdatedAt = prepared.CreatedAtUtc,
+        };
+        context.Photos.Add(photo);
+        await thumbnails.StageEnqueueAsync(photo, cancellationToken);
+        return photo;
+    }
+
+    /// <summary>Releases a prepared photo that will never be attached (issue #521 implementation note 2).</summary>
+    internal Task AbandonPreparedAsync(PreparedPhoto prepared, CancellationToken cancellationToken) =>
+        store.AbandonReservationAsync(prepared.Reservation, cancellationToken);
+
+    /// <summary>
     /// The upload's checks (§6, §8): the effective cap (413), then an allowed image type whose leading bytes agree
     /// with it (415). Returns the normalised content type.
     /// </summary>
@@ -878,4 +948,18 @@ public class PhotoService
     }
 
     private sealed record ValidatedLinks(List<Guid> TagIds, List<Guid> PersonIds, List<Guid> AlbumIds);
+}
+
+/// <summary>
+/// A photo validated, hashed, described and written by <see cref="PhotoService.PrepareUploadAsync"/>, not yet a row.
+/// Immutable, so every attempt of a retried transaction builds its own <see cref="Photo"/> from it.
+/// </summary>
+internal sealed record PreparedPhoto(
+    Guid PhotoId, Odyssey.Core.FileStorage.StoredObjectReservation Reservation, string FileName, string ContentType,
+    string? Title, string? Caption, DateTime? TakenAt, double? Latitude, double? Longitude, int? PixelWidth, int? PixelHeight,
+    DateTime CreatedAtUtc)
+{
+    public long SizeBytes => Reservation.SizeBytes;
+
+    public string Sha256Hash => Reservation.Sha256Hash;
 }

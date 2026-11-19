@@ -47,6 +47,7 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
             var discovered = FileReferenceCounter.Discover(context)
                 .Select(r => ColumnOf(context.Model, r.EntityType, r.PropertyName))
                 .Append(ColumnOf(context.Model, typeof(Photo), nameof(Photo.FileId)))
+                .Except(AddedLater, StringComparer.Ordinal)
                 .Order(StringComparer.Ordinal)
                 .ToList();
             Assert.Equal(discovered, after);
@@ -62,6 +63,13 @@ public class MoveFilesToObjectStoreMigrationTests(MariaDbFixture fixture)
     }
 
     /// <summary>Every foreign-key column in the live database whose referenced table is <c>FileMetadata</c>, as <c>Table.Column</c>.</summary>
+    // Referencing columns a later migration added: the current model has them, the database at this migration does not.
+    private static readonly string[] AddedLater =
+    [
+        "CalendarEventAttachments.FileId", // issue #521
+        "RecurrencePatternAttachments.FileId", // issue #521
+    ];
+
     private static async Task<List<string>> ReferencingColumnsAsync(OdysseyContext context)
     {
         var columns = await context.Database.SqlQuery<string>($"""

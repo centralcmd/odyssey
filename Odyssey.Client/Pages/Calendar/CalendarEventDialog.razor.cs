@@ -13,6 +13,28 @@ namespace Odyssey.Client.Pages.Calendar;
 
 public partial class CalendarEventDialog
 {
+
+    private RenderFragment TitleContent => builder => builder.AddContent(0, DialogTitleText);
+
+    // Photos and Attachments (issue #522 §3.1–§3.2), built here so the inline @code block stays under the
+    // source-convention limit.
+    private RenderFragment LinkFields => builder =>
+    {
+        builder.OpenComponent<CalendarEventLinks>(0);
+        builder.AddComponentParameter(1, nameof(CalendarEventLinks.Draft), _draft);
+        builder.AddComponentParameter(2, nameof(CalendarEventLinks.FromSeries), OccurrenceOfSeries);
+        builder.AddComponentParameter(3, nameof(CalendarEventLinks.ReadOnly), !CanSubmit);
+        builder.AddComponentParameter(4, nameof(CalendarEventLinks.Loading), _linksLoading);
+        builder.AddComponentParameter(5, nameof(CalendarEventLinks.Noun), Mode == CalendarEventDialogMode.Series ? "series" : "event");
+        builder.AddComponentParameter(6, nameof(CalendarEventLinks.Cap), _linkCap);
+        builder.AddComponentParameter(7, nameof(CalendarEventLinks.CanReadFiles), CanReadFiles);
+        builder.AddComponentParameter(8, nameof(CalendarEventLinks.CanReadPhotos), CanReadPhotos);
+        builder.AddComponentParameter(9, nameof(CalendarEventLinks.AttachmentCount), LoadedAttachmentCount);
+        builder.AddComponentParameter(10, nameof(CalendarEventLinks.PhotoCount), LoadedPhotoCount);
+        builder.AddComponentParameter(11, nameof(CalendarEventLinks.OnAnnounce), EventCallback.Factory.Create<string>(this, Announce));
+        builder.AddComponentParameter(12, nameof(CalendarEventLinks.OnEditSeries), EventCallback.Factory.Create(this, EditSeriesClicked));
+        builder.CloseComponent();
+    };
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
     [Parameter] public CalendarEventDialogMode Mode { get; set; } = CalendarEventDialogMode.Create;
@@ -34,6 +56,12 @@ public partial class CalendarEventDialog
     /// <summary><c>locations.create</c> — the picker's staged <c>Create place "…"</c> row.</summary>
     [Parameter] public bool CanCreateLocations { get; set; }
 
+    /// <summary><c>files.read</c> — the Attachments field; without it, its count line only and the stored files kept (#522).</summary>
+    [Parameter] public bool CanReadFiles { get; set; }
+
+    /// <summary><c>photos.read</c> — the Photos field; without it, its count line only and the stored photos kept (#522).</summary>
+    [Parameter] public bool CanReadPhotos { get; set; }
+
     [Parameter] public EventCallback OnSaved { get; set; }
     [Parameter] public EventCallback<Guid> OnEditSeries { get; set; }
 
@@ -51,6 +79,12 @@ public partial class CalendarEventDialog
     [Inject] private IServiceProvider Services { get; set; } = default!;
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
+    /// <summary>The live link cap (issue #522 §3.1): awaited beside the detail, never a client constant.</summary>
+    [Inject] private IImportLimitsCache ImportLimits { get; set; } = default!;
+
+    /// <summary>The clock the slow-load announcement measures against (v3 §C); a test holds it still or moves it.</summary>
+    [Inject] private TimeProvider Time { get; set; } = default!;
+
     internal const string TimeZoneInputId = "cal-ev-tz";
     internal const string TimeZoneHelpId = "cal-ev-tz-help";
     internal const string TwoZoneLineId = "cal-ev-twozone";
@@ -59,6 +93,27 @@ public partial class CalendarEventDialog
     internal const string SaveButtonId = "cal-ev-save";
     internal const string AlertId = "cal-ev-alert";
     internal const string ConfirmHeadingId = "cal-ev-confirm-h";
+
+    /// <summary>
+    /// How long the links may take to load before their arrival is announced (v3 §C): a quick load is not worth a word,
+    /// and the field shells say <c>aria-busy</c> meanwhile.
+    /// </summary>
+    internal static readonly TimeSpan SlowLinksThreshold = TimeSpan.FromSeconds(1);
+
+    // ── Attachments (issue #522) ─────────────────────────────────────────────
+
+    // The event detail (and the cap) are still loading: the fields show their skeleton and Add is aria-disabled.
+    private bool _linksLoading;
+
+    // The live per-kind cap, or null — a failed limits load leaves no pre-check and no number (§3.1, v3 §C).
+    private int? _linkCap;
+
+    private int LoadedAttachmentCount =>
+        Mode == CalendarEventDialogMode.Series ? _sourcePattern?.AttachmentCount ?? 0 : _sourceEvent?.AttachmentCount ?? 0;
+
+    private int LoadedPhotoCount =>
+        Mode == CalendarEventDialogMode.Series ? _sourcePattern?.PhotoCount ?? 0 : _sourceEvent?.PhotoCount ?? 0;
+
 
     // A create is only ever opened for a user who holds calendar.create (the page gates it); edit/series
     // saves need calendar.update. When the user can't submit, the dialog is view-only (Close, no Save).
@@ -429,7 +484,10 @@ public partial class CalendarEventDialog
         _forbidden = false;
         _lastHintKey = string.Empty;
         _announcerWaits = 0;
-
+        _linksLoading = Mode != CalendarEventDialogMode.Create;
+        // The cap loads beside the detail (v3 §C); the cache never throws and resolves to null on a failed load.
+        var limits = ImportLimits.GetAsync();
+        var started = Time.GetTimestamp();
         switch (Mode)
         {
             case CalendarEventDialogMode.Edit when EventId is { } id:
@@ -446,6 +504,10 @@ public partial class CalendarEventDialog
                 break;
         }
 
+        _linkCap = (await limits).CalendarEventMaxLinksPerKind;
+        if (_linksLoading && Time.GetElapsedTime(started) > SlowLinksThreshold)
+            Announce(CalendarEventCopy.LinksLoaded);
+        _linksLoading = false;
         StateHasChanged();
     }
 
@@ -671,6 +733,20 @@ public partial class CalendarEventDialog
         if (string.Equals(problem?.Code, CalendarSeriesCodes.Busy, StringComparison.Ordinal))
         {
             ShowAlert(Severity.Warning, CalendarEventCopy.Busy);
+            return false;
+        }
+
+        // A refused link (issue #522 §7): the 422 keyed on a link field, or a 403 the UI cannot normally reach, shows in
+        // the dialog's error alert with the server's text, and the fields stay as edited.
+        if ((problem?.ErrorFor(CalendarLinkFields.Files) ?? problem?.ErrorFor(CalendarLinkFields.Photos)) is { } linkError)
+        {
+            ShowAlert(Severity.Error, linkError);
+            return false;
+        }
+
+        if (status == HttpStatusCode.Forbidden)
+        {
+            ShowAlert(Severity.Error, problem?.Detail ?? error ?? CalendarEventCopy.Forbidden);
             return false;
         }
 
@@ -1026,6 +1102,13 @@ public partial class CalendarEventDialog
             await OpenChanged.InvokeAsync(false);
         }
     }
+}
+
+/// <summary>The request fields a refused link is keyed on (issue #521 §5.1).</summary>
+internal static class CalendarLinkFields
+{
+    public const string Files = "attachmentFileIds";
+    public const string Photos = "photoIds";
 }
 
 /// <summary>The <c>code</c> of a series write's <c>409</c> (issue #519 §9; #520 v3 §A table).</summary>

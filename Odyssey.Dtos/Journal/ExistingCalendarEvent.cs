@@ -57,6 +57,24 @@ public sealed record ExistingCalendarEvent
     /// <summary>Write responses only: rows inline keying of the series detached to standalone events.</summary>
     public int DetachedCount { get; set; }
 
+    /// <summary>
+    /// The linked files (issue #521 §5.3): filled on a detail read, <see langword="null"/> on a list. A generated
+    /// occurrence carries its series' links. Names, types and sizes are null without <c>files.read</c>.
+    /// </summary>
+    public List<CalendarLinkFileDto>? Attachments { get; set; }
+
+    /// <summary>The linked photos in gallery order, as <see cref="Attachments"/>; titles and names need <c>photos.read</c>.</summary>
+    public List<CalendarLinkPhotoDto>? Photos { get; set; }
+
+    /// <summary>How many files are linked, on every read. That a document is attached is calendar data.</summary>
+    public int AttachmentCount { get; set; }
+
+    /// <summary>How many photos are linked, on every read.</summary>
+    public int PhotoCount { get; set; }
+
+    /// <summary>The links shown are the series' (the row is a generated occurrence): edit the series to change them.</summary>
+    public bool LinksFromSeries { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

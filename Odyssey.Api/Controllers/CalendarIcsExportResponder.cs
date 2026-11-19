@@ -16,9 +16,13 @@ internal static class CalendarIcsExportResponder
 {
     public const string ExportRowsHeader = "X-Odyssey-Export-Rows";
 
+    // The caller's attachment access for one export (issue #521 §5.4): the mode, and the two read claims.
+    private static CalendarIcsAttachmentAccess Access(ControllerBase controller, IcsAttachmentsMode mode) =>
+        new(mode, controller.User.HasPermission(PermissionClaims.FilesRead), controller.User.HasPermission(PermissionClaims.PhotosRead));
+
     public static async Task<IActionResult> StreamAsync(
         ControllerBase controller, CalendarIcsService service, CalendarIcsExportScope scope, string notFound,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IcsAttachmentsMode attachments = IcsAttachmentsMode.Include)
     {
         var response = controller.Response;
         try
@@ -33,7 +37,7 @@ internal static class CalendarIcsExportResponder
                 response.Headers[HeaderNames.ContentDisposition] = contentDisposition.ToString();
                 response.Headers[ExportRowsHeader] = rowCount.ToString(CultureInfo.InvariantCulture);
             }, cancellationToken, includePlaceNames: controller.User.HasPermission(PermissionClaims.LocationsRead),
-                userId: controller.User.ActingUserId());
+                userId: controller.User.ActingUserId(), access: Access(controller, attachments));
             if (!found)
             {
                 return controller.NotFoundProblem(notFound);
@@ -50,8 +54,8 @@ internal static class CalendarIcsExportResponder
 
     public static async Task<ActionResult<CalendarIcsExportSummary>> SummarizeAsync(
         ControllerBase controller, CalendarIcsService service, CalendarIcsExportScope scope, string notFound,
-        CancellationToken cancellationToken) =>
-        await service.SummarizeExportAsync(scope, cancellationToken) is { } summary
+        CancellationToken cancellationToken, IcsAttachmentsMode attachments = IcsAttachmentsMode.Include) =>
+        await service.SummarizeExportAsync(scope, cancellationToken, Access(controller, attachments)) is { } summary
             ? summary
             : controller.NotFoundProblem(notFound);
 }

@@ -83,6 +83,13 @@ public partial class OdsFileUpload
 
     [Parameter] public string? Id { get; set; }
 
+    /// <summary>Ids of text outside the picker that describes it (a note before it), joined before the error's own.</summary>
+    [Parameter] public string? DescribedBy { get; set; }
+
+    private string? DropDescribedBy =>
+        string.Join(' ', new[] { DescribedBy, string.IsNullOrEmpty(Error) ? null : ErrorId }.Where(id => !string.IsNullOrEmpty(id)))
+            is { Length: > 0 } ids ? ids : null;
+
     /// <summary>The error's own id, so the dropzone can name it in <c>aria-describedby</c>.</summary>
     private string ErrorId => $"{Id ?? _fallbackId}-err";
 

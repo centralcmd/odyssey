@@ -40,9 +40,12 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a calendar's events as an RFC 5545 .ics file.")]
     public Task<IActionResult> Export(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        // Whether linked files and photos travel inline (issue #521 §5.4); omit needs neither read claim.
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.StreamAsync(
-            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken);
+            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken, attachments);
 
     // What the calendar export would contain, under the same checks and the same permits (issue #516 §5, S4), so a
     // refusal or a 429 arrives before the browser starts a download. The permit is released when it returns.
@@ -56,9 +59,11 @@ public sealed class CalendarIcsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Summarize what a calendar's .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeExport(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.SummarizeAsync(
-            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken);
+            this, service, CalendarIcsExportScope.ForCalendar(id), $"Calendar ID {id} not found.", cancellationToken, attachments);
 
     [HttpPost("{id}/ics", Name = "ImportCalendarIcs")]
     // Import can create or update depending on each VEVENT's UID match, so it requires BOTH claims;
@@ -111,7 +116,11 @@ public sealed class CalendarIcsController : ControllerBase
         // RequestAborted (the bound token) stops the import at the next batch boundary; committed batches stay.
         var result = await service.ImportAsync(
             id, stream, file.Length, file.ContentType, userId, cancellationToken, User.LocationClaims(),
-            allowRemovals, canDelete: User.HasPermission(PermissionClaims.CalendarDelete), defaultTimeZoneId);
+            allowRemovals, canDelete: User.HasPermission(PermissionClaims.CalendarDelete), defaultTimeZoneId,
+            // Attachments make the import stricter, never optional (issue #521 goal 6): checked by kind after pass 1.
+            new CalendarIcsImportClaims(
+                User.HasPermission(PermissionClaims.FilesRead), User.HasPermission(PermissionClaims.FilesCreate),
+                User.HasPermission(PermissionClaims.PhotosRead), User.HasPermission(PermissionClaims.PhotosCreate)));
         return Ok(result);
     }
 }

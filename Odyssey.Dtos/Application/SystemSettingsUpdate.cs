@@ -237,6 +237,13 @@ public sealed record SystemSettingsUpdate
     public int? JournalTaskMaxLinksPerKind { get; set; }
 
     /// <summary>
+    /// Files, and separately photos, one calendar event or series may link (issue #521 §4). Two-direction: neither end is
+    /// the shipped default, so the range names the bounds pair. Its max bounds the series-delete link copy.
+    /// </summary>
+    [Range(SystemSettingsBounds.CalendarEventMaxLinksPerKindMin, SystemSettingsBounds.CalendarEventMaxLinksPerKindMax)]
+    public int? CalendarEventMaxLinksPerKind { get; set; }
+
+    /// <summary>
     /// The upload cap, in megabytes (issue #421 Wave 4). The advertised range is not the effective
     /// range — the value must also be at or below the startup transport ceiling, which the server
     /// validates and publishes as <c>UploadMegabytesCeiling</c> on the read DTO.

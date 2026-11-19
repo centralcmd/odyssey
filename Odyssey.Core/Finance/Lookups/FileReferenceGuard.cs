@@ -55,6 +55,17 @@ public sealed class FileReferenceGuard(OdysseyContext context, IObjectStore? sto
             references.Add("a task attachment");
         }
 
+        // Issue #521 §3 component 7 (A4): otherwise deleting a photo could delete a file a calendar event also links.
+        if (await context.CalendarEventAttachments.AnyAsync(a => a.FileId == fileId, cancellationToken))
+        {
+            references.Add("a calendar event attachment");
+        }
+
+        if (await context.RecurrencePatternAttachments.AnyAsync(a => a.FileId == fileId, cancellationToken))
+        {
+            references.Add("a recurring series attachment");
+        }
+
         return references;
     }
 

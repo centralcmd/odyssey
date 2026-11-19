@@ -90,8 +90,9 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
 
             Assert.Equal(50, summary!.SeriesCount);
             // Issue #519 adds two planning queries to Spec A's four, both independent of the series count: the
-            // series' exclusions and the zones the head's VTIMEZONEs need.
-            Assert.InRange(commands.Selects, 1, 6);
+            // series' exclusions and the zones the head's VTIMEZONEs need. Issue #521 adds five more, each one per 500 ids
+            // whatever the series count: the standalone rows' series, their file and photo links, and the series' links.
+            Assert.InRange(commands.Selects, 1, 11);
         }
         finally
         {

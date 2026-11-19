@@ -39,7 +39,9 @@ public sealed class RecurrencePatternsController : ControllerBase
     public async Task<IActionResult> Get(
         [FromQuery] RecurrencePatternsQueryParams query, CancellationToken cancellationToken = default)
     {
-        return Ok(await service.ListAsync(query, cancellationToken, User.LocationClaims()));
+        var page = await service.ListAsync(query, cancellationToken, User.LocationClaims());
+        User.ApplyLinkVisibility(page.Items);
+        return Ok(page);
     }
 
     [HttpGet("{id}", Name = "GetRecurrencePattern")]
@@ -51,6 +53,7 @@ public sealed class RecurrencePatternsController : ControllerBase
         [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default)
     {
         var pattern = await service.Get(id, cancellationToken, User.LocationClaims());
+        User.ApplyLinkVisibility(pattern);
         return pattern is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(pattern);
     }
 
@@ -66,6 +69,11 @@ public sealed class RecurrencePatternsController : ControllerBase
         CancellationToken cancellationToken = default)
     {
         var result = await service.ListEventsAsync(id, offset, limit, cancellationToken, User.LocationClaims());
+        if (result is not null)
+        {
+            User.ApplyLinkVisibility(result.Items);
+        }
+
         return result is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(result);
     }
 
@@ -81,9 +89,11 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Export a recurring series as one RRULE VEVENT (or its per-occurrence fallback).")]
     public Task<IActionResult> ExportIcs(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.StreamAsync(
-            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken);
+            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken, attachments);
 
     [HttpGet("{id}/ics/summary", Name = "SummarizeRecurrencePatternIcsExport")]
     [Authorize(Policy = PermissionClaims.CalendarRead)]
@@ -95,9 +105,11 @@ public sealed class RecurrencePatternsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status429TooManyRequests, Type = typeof(ProblemDetails))]
     [SwaggerOperation(Summary = "Summarize what a recurring series' .ics export would contain.")]
     public Task<ActionResult<CalendarIcsExportSummary>> SummarizeIcsExport(
-        [FromRoute(Name = "id")] Guid id, CancellationToken cancellationToken = default) =>
+        [FromRoute(Name = "id")] Guid id,
+        [FromQuery(Name = "attachments")][EnumDataType(typeof(IcsAttachmentsMode))] IcsAttachmentsMode attachments = IcsAttachmentsMode.Include,
+        CancellationToken cancellationToken = default) =>
         CalendarIcsExportResponder.SummarizeAsync(
-            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken);
+            this, icsService, CalendarIcsExportScope.ForPattern(id), $"Recurrence pattern ID {id} not found.", cancellationToken, attachments);
 
     [HttpPost(Name = "PostRecurrencePattern")]
     [Authorize(Policy = PermissionClaims.CalendarCreate)]
@@ -113,7 +125,8 @@ public sealed class RecurrencePatternsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims());
+        var created = await service.Create(request, userId, cancellationToken, User.LocationClaims(), User.LinkClaims());
+        User.ApplyLinkVisibility(created);
         return CreatedAtRoute("GetRecurrencePattern", new { id = created.RecurrencePatternId }, created);
     }
 
@@ -133,7 +146,8 @@ public sealed class RecurrencePatternsController : ControllerBase
             return this.MissingUserProblem();
         }
 
-        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims());
+        var updated = await service.Update(id, request, userId, cancellationToken, User.LocationClaims(), User.LinkClaims());
+        User.ApplyLinkVisibility(updated?.Pattern);
         return updated is null ? this.NotFoundProblem($"Recurrence pattern ID {id} not found.") : Ok(updated);
     }
 

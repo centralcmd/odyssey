@@ -59,7 +59,15 @@ public sealed record JournalLimits(
     int CalendarMaxWindowDays,
     int CalendarMaxEventDurationDays,
     int RecurrenceMaxGeneratedOccurrences,
-    bool IsDegraded);
+    bool IsDegraded)
+{
+    /// <summary>
+    /// Files, and separately photos, one calendar event or series may link (issue #521 §4). A cap, so a degraded read
+    /// resolves to <c>min</c>. A property with the shipped default rather than a positional parameter, so the many
+    /// fakes that build this record need no change.
+    /// </summary>
+    public int CalendarEventMaxLinksPerKind { get; init; } = Dtos.SystemSettingsDefaults.CalendarEventMaxLinksPerKind;
+}
 
 /// <summary>
 /// Narrow cross-domain lookup for the journal-side request caps (issue #421 Wave 3).

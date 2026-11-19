@@ -213,6 +213,7 @@ public class UnifiedLocationsPlaceSearchTests
             .Callback((NewLocation body, CancellationToken _) => { calls.Add("place"); posts.Add(body); })
             .ReturnsAsync(() => replies.Dequeue());
         ctx.Services.AddSingleton(calendar.Object);
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(locations.Object);
 
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CalendarEventDialog>(d => d
@@ -427,6 +428,7 @@ public class UnifiedLocationsPlaceSearchTests
 
         await using var ctx = Context();
         ctx.Services.AddSingleton(Mock.Of<ICalendarApiClient>());
+        CalendarAttachmentServices.Add(ctx.Services);
         ctx.Services.AddSingleton(Locations(PlainHytta()).Object);
         var cut = ctx.Render<ProvidersHost>(p => p.AddChildContent<CalendarEventDialog>(d => d
             .Add(x => x.Open, true)

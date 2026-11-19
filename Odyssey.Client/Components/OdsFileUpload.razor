@@ -31,7 +31,7 @@
             <div class="odc-upload-drop @(Compact ? "compact" : null) @(_dragging ? "drag" : null) @(string.IsNullOrEmpty(Error) ? null : "has-error")"
                  role="button" tabindex="0"
                  aria-invalid="@(string.IsNullOrEmpty(Error) ? null : "true")"
-                 aria-describedby="@(string.IsNullOrEmpty(Error) ? null : ErrorId)"
+                 aria-describedby="@DropDescribedBy"
                  @onclick="@upload.OpenFilePickerAsync"
                  @onkeydown="@(e => OnDropzoneKey(e, upload))">
                 <span class="odc-upload-drop-ic">

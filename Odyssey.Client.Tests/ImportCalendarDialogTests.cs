@@ -40,6 +40,9 @@ public class ImportCalendarDialogTests
 
         public bool ImportPending { get; set; }
 
+        /// <summary>Holds every read and create claim for documents and photos (issue #522): no claim line.</summary>
+        public bool CanAddAttachments { get; set; } = true;
+
         public bool Open { get; set; } = true;
 
         /// <summary>False removes the dialog from the tree, as a navigation away from the page does.</summary>
@@ -60,6 +63,7 @@ public class ImportCalendarDialogTests
             [nameof(ImportCalendarDialog.DefaultCalendarId)] = CalendarId,
             [nameof(ImportCalendarDialog.CanDelete)] = CanDelete,
             [nameof(ImportCalendarDialog.ImportPending)] = ImportPending,
+            [nameof(ImportCalendarDialog.CanAddAttachments)] = CanAddAttachments,
             [nameof(ImportCalendarDialog.OnChanged)] = EventCallback.Factory.Create(this, () => Changed++),
             [nameof(ImportCalendarDialog.OnBackgrounded)] =
                 EventCallback.Factory.Create<Task<ApiResult<IcsImportResult>>>(this, t => HandedOff.Add(t)),

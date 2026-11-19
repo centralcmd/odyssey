@@ -127,6 +127,11 @@ public partial class OdsCalendarGrid
             parts.Add("recurring");
         }
 
+        if (calendarEvent.HasAttachments)
+        {
+            parts.Add("has attachments");
+        }
+
         return string.Join(", ", parts);
     }
 

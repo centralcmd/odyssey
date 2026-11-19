@@ -18,7 +18,7 @@ public class PhotoThumbnailSurfaceTests
         "Pages/Photos/AddToAlbumDialog.razor",
         "Pages/Attachments/AttachPhotosDialog.razor", "Pages/Attachments/AttachPhotosDialog.razor.cs",
         "Pages/Journal/JournalCard.razor.cs",
-        "Pages/Journal/JournalEntryFields.razor",
+        "Pages/Attachments/AttachmentLinkFields.razor",
         "Components/OdsPhotoTile.razor",
         "Components/JournalPhotoGallery.razor",
     ];

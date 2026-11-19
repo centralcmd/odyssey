@@ -810,6 +810,16 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
         public Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken) =>
             factory.Store.OpenReadAsync(featureKey, storedObjectId, cancellationToken);
 
+        public Task<StoredObjectReservation> ReserveAndWriteAsync(string featureKey, object? layoutArgs, string? originalFileName,
+            string? suffix, string contentType, Stream content, long maxBytes, CancellationToken cancellationToken) =>
+            factory.Store.ReserveAndWriteAsync(featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+        public StoredObject AttachReserved(Odyssey.Context.OdysseyContext context, StoredObjectReservation reservation) =>
+            factory.Store.AttachReserved(context, reservation);
+
+        public Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken) =>
+            factory.Store.AbandonReservationAsync(reservation, cancellationToken);
+
         public void StageRelease(StoredObject storedObject, bool immediate = false) => factory.Store.StageRelease(storedObject, immediate);
 
         public Task StageReleaseAsync(Guid storedObjectId, bool immediate, CancellationToken cancellationToken) =>
@@ -827,6 +837,16 @@ public abstract partial class PhotoThumbnailJobScenarios : PhotoThumbnailTestBas
 
         public Task<StoredObjectContent> OpenReadAsync(string featureKey, Guid storedObjectId, CancellationToken cancellationToken) =>
             factory.Store.OpenReadAsync(featureKey, storedObjectId, cancellationToken);
+
+        public Task<StoredObjectReservation> ReserveAndWriteAsync(string featureKey, object? layoutArgs, string? originalFileName,
+            string? suffix, string contentType, Stream content, long maxBytes, CancellationToken cancellationToken) =>
+            factory.Store.ReserveAndWriteAsync(featureKey, layoutArgs, originalFileName, suffix, contentType, content, maxBytes, cancellationToken);
+
+        public StoredObject AttachReserved(Odyssey.Context.OdysseyContext context, StoredObjectReservation reservation) =>
+            factory.Store.AttachReserved(context, reservation);
+
+        public Task AbandonReservationAsync(StoredObjectReservation reservation, CancellationToken cancellationToken) =>
+            factory.Store.AbandonReservationAsync(reservation, cancellationToken);
 
         public void StageRelease(StoredObject storedObject, bool immediate = false) => factory.Store.StageRelease(storedObject, immediate);
 

@@ -7,6 +7,10 @@ using Odyssey.Core.Pagination;
 using Odyssey.Context;
 using Odyssey.Core.Journal.Interop;
 using Odyssey.Core.Locations;
+using Odyssey.Core.FileStorage;
+using Odyssey.Core.FileStorage.Files;
+using Odyssey.Core.Journal.Originals;
+using Microsoft.Extensions.Options;
 using IcalCalendar = Ical.Net.Calendar;
 using IcalEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using IcalRecurrencePattern = Ical.Net.DataTypes.RecurrencePattern;
@@ -52,6 +56,24 @@ public sealed record CalendarIcsExportScope
     public static CalendarIcsExportScope ForPattern(Guid patternId) => new() { PatternId = patternId };
 
     public static CalendarIcsExportScope ForAggregate(CalendarEventsIcsExportQueryParams query) => new() { Aggregate = query };
+}
+
+/// <summary>
+/// Whether an export carries its attachments, and what the caller may read (issue #521 §5.4). <c>Omit</c> writes no
+/// <c>ATTACH</c> and needs neither claim; <c>Include</c> refuses with <c>403 calendar_ics_export_attachments_forbidden</c>
+/// when the plan links a kind the caller cannot read.
+/// </summary>
+public sealed record CalendarIcsAttachmentAccess(Odyssey.Dtos.Journal.IcsAttachmentsMode Mode, bool CanReadFiles, bool CanReadPhotos)
+{
+    public static CalendarIcsAttachmentAccess Default { get; } = new(Odyssey.Dtos.Journal.IcsAttachmentsMode.Include, false, false);
+}
+
+/// <summary>The claims an import carrying attachments needs (issue #521 goal 6), evaluated once from the principal.</summary>
+public sealed record CalendarIcsImportClaims(bool FilesRead, bool FilesCreate, bool PhotosRead, bool PhotosCreate)
+{
+    public static CalendarIcsImportClaims None { get; } = new(false, false, false, false);
+
+    public static CalendarIcsImportClaims Trusted { get; } = new(true, true, true, true);
 }
 
 /// <summary>
@@ -160,6 +182,13 @@ public class CalendarIcsService
     private readonly IImportExportLimitsLookup limits;
     private readonly IJournalLimitsLookup journalLimits;
     private readonly TimeProvider timeProvider;
+    private readonly StoredFileContentSource? fileContent;
+    private readonly PhotoOriginalSource? photoContent;
+    private readonly StoredFileWriter? fileWriter;
+    private readonly FileValidationService fileValidation;
+    private readonly IUploadLimitsLookup? uploadLimits;
+    private readonly PhotoService? photoService;
+    private readonly long transportFileCeiling;
 
     // journalLimits is a SECOND lookup, newly injected in issue #434. The occurrence cap (key 11) and
     // the event-duration bound (key 7) live on JournalLimits because their other consumers are
@@ -169,8 +198,21 @@ public class CalendarIcsService
     // mirrored value would go stale on one of its two readers for up to 30s.
     public CalendarIcsService(
         OdysseyContext context, ILogger<CalendarIcsService> logger, IImportExportLimitsLookup limits,
-        IJournalLimitsLookup journalLimits, TimeProvider? timeProvider = null)
+        IJournalLimitsLookup journalLimits, TimeProvider? timeProvider = null,
+        StoredFileContentSource? fileContent = null, PhotoOriginalSource? photoContent = null,
+        StoredFileWriter? fileWriter = null, FileValidationService? fileValidation = null,
+        IUploadLimitsLookup? uploadLimits = null, PhotoService? photoService = null,
+        IOptions<FileStorageOptions>? fileStorageOptions = null)
     {
+        // The file and photo collaborators are optional so a test without a store still builds one (the journal's
+        // shape): without them linked content exports as bare references and inline content cannot be imported.
+        this.fileContent = fileContent;
+        this.photoContent = photoContent;
+        this.fileWriter = fileWriter;
+        this.fileValidation = fileValidation ?? new FileValidationService();
+        this.uploadLimits = uploadLimits;
+        this.photoService = photoService;
+        transportFileCeiling = (fileStorageOptions?.Value ?? new FileStorageOptions()).MaxFileSizeBytes;
         this.context = context;
         this.logger = logger;
         this.limits = limits;
@@ -215,6 +257,9 @@ public class CalendarIcsService
         long MaxBytes, Dictionary<string, (int From, int To)> Zones)
     {
         public int EventCount => Series.Count + Series.Sum(s => s.OverrideIds.Count) + StandaloneIds.Count;
+
+        /// <summary>The planned attachments (issue #521 §8.2): none for the aggregate or with <c>attachments=omit</c>.</summary>
+        public CalendarExportAttachments Attachments { get; set; } = CalendarExportAttachments.None;
     }
 
     /// <summary>
@@ -224,9 +269,9 @@ public class CalendarIcsService
     /// only known as it is written.
     /// </summary>
     public async Task<CalendarIcsExportSummary?> SummarizeExportAsync(
-        CalendarIcsExportScope scope, CancellationToken cancellationToken = default)
+        CalendarIcsExportScope scope, CancellationToken cancellationToken = default, CalendarIcsAttachmentAccess? access = null)
     {
-        var plan = await PlanAsync(scope, cancellationToken);
+        var plan = await PlanAsync(scope, access ?? CalendarIcsAttachmentAccess.Default, cancellationToken);
         return plan is null
             ? null
             : new CalendarIcsExportSummary
@@ -234,6 +279,9 @@ public class CalendarIcsService
                 EventCount = plan.EventCount,
                 SeriesCount = plan.Series.Count,
                 OccurrenceCount = plan.OccurrenceCount,
+                AttachmentCount = plan.Attachments.FileCount,
+                PhotoCount = plan.Attachments.PhotoCount,
+                AttachmentBytes = plan.Attachments.ContentBytes,
             };
     }
 
@@ -247,9 +295,10 @@ public class CalendarIcsService
     /// <param name="userId">The caller, for the aggregate export's log line.</param>
     public async Task<bool> ExportStreamingAsync(
         CalendarIcsExportScope scope, Stream output, Action<string, int> onReady,
-        CancellationToken cancellationToken = default, bool includePlaceNames = false, string? userId = null)
+        CancellationToken cancellationToken = default, bool includePlaceNames = false, string? userId = null,
+        CalendarIcsAttachmentAccess? access = null)
     {
-        var plan = await PlanAsync(scope, cancellationToken);
+        var plan = await PlanAsync(scope, access ?? CalendarIcsAttachmentAccess.Default, cancellationToken);
         if (plan is null)
         {
             return false;
@@ -268,7 +317,8 @@ public class CalendarIcsService
         return true;
     }
 
-    private async Task<ExportPlan?> PlanAsync(CalendarIcsExportScope scope, CancellationToken cancellationToken)
+    private async Task<ExportPlan?> PlanAsync(
+        CalendarIcsExportScope scope, CalendarIcsAttachmentAccess access, CancellationToken cancellationToken)
     {
         var effectiveLimits = await limits.GetAsync(cancellationToken);
         var occurrenceCap = (await journalLimits.GetAsync(cancellationToken)).RecurrenceMaxGeneratedOccurrences;
@@ -304,6 +354,22 @@ public class CalendarIcsService
         if (plan is not null && maxEvents is { } max && plan.EventCount > max)
         {
             throw new ExportLimitExceededException(max, ExportLimitExceededException.CalendarEventsCode, "events");
+        }
+
+        // The aggregate carries no attachments (Non-Goal 2); omit needs no claim (SF8). A master carries its series'
+        // links, an override none, and a standalone row its own — or its series' when it is a generated row.
+        if (plan is { Aggregate: false } && access.Mode == Odyssey.Dtos.Journal.IcsAttachmentsMode.Include)
+        {
+            plan.Attachments = await CalendarExportAttachments.PlanAsync(
+                context, plan.StandaloneIds, plan.Series.Select(s => s.PatternId).ToList(), access.CanReadFiles,
+                access.CanReadPhotos, canWriteFiles: fileContent is not null, canWritePhotos: photoContent is not null,
+                cancellationToken);
+            if (plan.Attachments.EncodedBytes > maxBytes)
+            {
+                throw new DomainValidationException(
+                    $"The export would be at least {plan.Attachments.EncodedBytes / (1024 * 1024)} MB with its attached files "
+                    + $"and photos, over the {maxBytes / (1024 * 1024)} MB export limit — export without attachments instead.");
+            }
         }
 
         return plan;
@@ -708,12 +774,12 @@ public class CalendarIcsService
         var written = 0;
         var times = new IcsTimes(writable);
 
-        async Task EmitAsync(IcalEvent ev)
+        async Task EmitAsync(IcalEvent ev, CalendarExportAttachments.Owner? owner = null)
         {
             var calendar = new IcalCalendar();
             calendar.Events.Add(ev);
             var text = IcsChunkSerializer.SerializeComponents(calendar);
-            var bytes = Encoding.UTF8.GetByteCount(text);
+            var bytes = (long)Encoding.UTF8.GetByteCount(text) + (owner is null ? 0 : plan.Attachments.BytesFor(owner));
             if (writtenBytes + bytes > plan.MaxBytes)
             {
                 logger.LogWarning(
@@ -723,7 +789,19 @@ public class CalendarIcsService
                     $"The export grew past the {plan.MaxBytes / (1024 * 1024)} MB export limit while it was being written.");
             }
 
-            await IcsChunkSerializer.WriteAsync(output, text, cancellationToken);
+            if (owner is { IsEmpty: false })
+            {
+                // The attachments are spliced in before END:VEVENT; Ical.Net never holds a binary value (#515).
+                var split = text.LastIndexOf("END:VEVENT", StringComparison.Ordinal);
+                await IcsChunkSerializer.WriteAsync(output, text[..split], cancellationToken);
+                await plan.Attachments.WriteAsync(output, owner, fileContent, photoContent, context, cancellationToken);
+                await IcsChunkSerializer.WriteAsync(output, text[split..], cancellationToken);
+            }
+            else
+            {
+                await IcsChunkSerializer.WriteAsync(output, text, cancellationToken);
+            }
+
             writtenBytes += bytes;
             written++;
         }
@@ -780,7 +858,7 @@ public class CalendarIcsService
                     ev.ExceptionDates.Add(times.Key(key, pattern.IsAllDay, zoneId));
                 }
 
-                await EmitAsync(ev);
+                await EmitAsync(ev, plan.Attachments.ForSeries(pattern.RecurrencePatternId));
 
                 foreach (var chunk in series.OverrideIds.Chunk(ExportChunking.ChunkSize))
                 {
@@ -830,7 +908,8 @@ public class CalendarIcsService
                     uid, row.Title, row.Description, row.LocationId, row.Location,
                     times.Of(row.StartDateTime, row.IsAllDay, row.TimeZoneId),
                     times.Of(row.EndDateTime, row.IsAllDay, row.TimeZoneId),
-                    row.CreatedAt, row.UpdatedAt, stamp, names, calendars?.GetValueOrDefault(row.CalendarId)));
+                    row.CreatedAt, row.UpdatedAt, stamp, names, calendars?.GetValueOrDefault(row.CalendarId)),
+                    plan.Attachments.ForEvent(row.CalendarEventId));
             }
         }
 
@@ -1042,6 +1121,9 @@ public class CalendarIcsService
         public List<DateTime> ExDates { get; init; } = [];
 
         public FileDate? RecurrenceId { get; init; }
+
+        /// <summary>Its kinded <c>ATTACH</c> lines, in file order (issue #521 §8.3); kindless ones are already counted.</summary>
+        public List<CalendarAttachSlot> Attachments { get; set; } = [];
     }
 
     // What spans the whole import: the caps read once, the counters, the place cache and the occurrence budget. Nothing
@@ -1071,6 +1153,22 @@ public class CalendarIcsService
         public required int MaxGeneratedOccurrences { get; init; }
 
         public required int MaxSamples { get; init; }
+
+        public required CalendarAttachmentImporter Importer { get; init; }
+
+        public required int MaxLinksPerKind { get; init; }
+
+        /// <summary>Attachment skips decided while reading (phase A and classification), outside any attempt.</summary>
+        public int SkippedAttachments { get; set; }
+
+        /// <summary>Attachments on <c>RECURRENCE-ID</c> components, ignored while reading.</summary>
+        public int IgnoredOccurrenceAttachments { get; set; }
+
+        public void SkipAttachment(string reason)
+        {
+            Skipped.Add(reason, null);
+            SkippedAttachments++;
+        }
 
         public ImportTally Totals { get; } = new();
 
@@ -1106,7 +1204,18 @@ public class CalendarIcsService
 
         public int Adjusted { get; set; }
 
-        public List<(string Reason, string Sample)> Skips { get; } = [];
+        public List<(string Reason, string? Sample)> Skips { get; } = [];
+
+        public int SkippedAttachments { get; set; }
+
+        public int IgnoredOccurrenceAttachments { get; set; }
+
+        public int ReplacedLinkSets { get; set; }
+
+        public int RemovedLinks { get; set; }
+
+        /// <summary>The attempt's attached and matched reservations, handed to the importer once the batch commits.</summary>
+        public CalendarAttachmentImporter.Attempt Links { get; } = new();
 
         public List<Guid> RemovedEventIds { get; } = [];
 
@@ -1138,6 +1247,10 @@ public class CalendarIcsService
             totals.DroppedExclusions += DroppedExclusions;
             totals.Gated += Gated;
             totals.Adjusted += Adjusted;
+            totals.SkippedAttachments += SkippedAttachments;
+            totals.IgnoredOccurrenceAttachments += IgnoredOccurrenceAttachments;
+            totals.ReplacedLinkSets += ReplacedLinkSets;
+            totals.RemovedLinks += RemovedLinks;
             foreach (var (reason, sample) in Skips)
             {
                 run.Skipped.Add(reason, sample);
@@ -1151,7 +1264,8 @@ public class CalendarIcsService
         public bool IsSeries => Items.Any(i => i.Kind is ItemKind.Master or ItemKind.Override or ItemKind.CancelledOverride
             || (i.Kind == ItemKind.Cancelled && i.HasRule));
 
-        public int EstimatedRows => Items.Count + Items.Sum(i => i.Occurrences.Count);
+        // Link rows and staged store reservations count toward the entity budget (issue #521 v4 §5).
+        public int EstimatedRows => Items.Count + Items.Sum(i => i.Occurrences.Count + (2 * i.Attachments.Count));
     }
 
     /// <summary>
@@ -1176,7 +1290,8 @@ public class CalendarIcsService
     public async Task<IcsImportResult> ImportAsync(
         Guid targetCalendarId, Stream icsFile, long contentLength, string? contentType, string userId,
         CancellationToken cancellationToken = default, LocationClaims? claims = null,
-        bool allowRemovals = false, bool canDelete = false, string? defaultTimeZoneId = null)
+        bool allowRemovals = false, bool canDelete = false, string? defaultTimeZoneId = null,
+        CalendarIcsImportClaims? attachmentClaims = null)
     {
         if (!IsAcceptedContentType(contentType))
         {
@@ -1220,6 +1335,16 @@ public class CalendarIcsService
             MaxEventDurationDays = journalCap.CalendarMaxEventDurationDays,
             MaxGeneratedOccurrences = journalCap.RecurrenceMaxGeneratedOccurrences,
             MaxSamples = cap.ImportMaxSamplesPerSkipReason,
+            MaxLinksPerKind = journalCap.CalendarEventMaxLinksPerKind,
+            Importer = new CalendarAttachmentImporter(
+                context, fileValidation, fileWriter, photoService, userId,
+                Math.Min(Math.Min(transportFileCeiling, maxImportBytes),
+                    uploadLimits is null ? long.MaxValue : (await uploadLimits.GetAsync(cancellationToken)).MaxUploadBytes),
+                SpillDirectory, TempFreeSpace, logger)
+            {
+                Claims = attachmentClaims ?? CalendarIcsImportClaims.None,
+                ReservedBytesCeiling = BatchReservedBytesCeiling,
+            },
         };
 
         // A crashed process's runs and upload copies are never reached by their own finally; the next import sweeps them.
@@ -1228,6 +1353,10 @@ public class CalendarIcsService
         using var reservation = IcsSpillReservation.Reserve(SpillDirectory, upload.Stream.Length);
         await using var grouper = await IcsImportGrouper.BuildAsync(
             upload.Stream, SpillDirectory, maxImportEvents, cancellationToken, GroupingRecordsPerRun, GroupingKey);
+
+        // Decided by KIND, not encoding, on pass 1's file-level flags, before any batch is applied (issue #521 goal 6,
+        // SF1, A2). An ATTACH on a component that will turn out to be ignored still counts: pass 1 cannot know the target.
+        EnsureAttachmentClaims(grouper.AttachmentKinds, attachmentClaims ?? CalendarIcsImportClaims.None);
 
         var batch = new List<ImportGroup>(ImportBatchSize);
         var batchComponents = 0;
@@ -1246,7 +1375,8 @@ public class CalendarIcsService
                     batchRows += group.EstimatedRows;
                 }
 
-                if (batch.Count >= ImportBatchSize || batchRows >= ImportBatchEntityBudget || batchChars >= ImportBatchCharBudget)
+                if (batch.Count >= ImportBatchSize || batchRows >= ImportBatchEntityBudget || batchChars >= ImportBatchCharBudget
+                    || run.Importer.BatchReservedBytes >= BatchReservedBytesCeiling)
                 {
                     await ApplyBatchAndClearAsync(batch, batchComponents, run, cancellationToken);
                     batch.Clear();
@@ -1295,6 +1425,14 @@ public class CalendarIcsService
             DroppedExclusionCount = totals.DroppedExclusions,
             GatedSeriesCount = totals.Gated,
             AdjustedCount = totals.Adjusted,
+            StoredFileCount = run.Importer.StoredFiles,
+            ReusedFileCount = run.Importer.ReusedFiles,
+            StoredPhotoCount = run.Importer.StoredPhotos,
+            ReusedPhotoCount = run.Importer.ReusedPhotos,
+            SkippedAttachmentCount = run.SkippedAttachments + totals.SkippedAttachments,
+            IgnoredOccurrenceAttachmentCount = run.IgnoredOccurrenceAttachments + totals.IgnoredOccurrenceAttachments,
+            ReplacedLinkSetCount = totals.ReplacedLinkSets,
+            RemovedLinkCount = totals.RemovedLinks,
             Skipped = run.Skipped.ToGroups((reason, count, samples) => new IcsImportSkipGroup
             {
                 Reason = reason,
@@ -1302,6 +1440,66 @@ public class CalendarIcsService
                 SampleTitles = samples,
             }),
         };
+    }
+
+    // A plain component's bytes: 4 Mi characters of at most 4 UTF-8 bytes each, plus its line breaks.
+    private const long MaxPlainComponentBytes = (4L * IcsComponentSplitter.MaxComponentChars) + (1024 * 1024);
+
+    /// <summary>Inline attachments this service has decoded, for a test proving a retried batch decodes nothing again.</summary>
+    internal int AttachmentsDecoded { get; private set; }
+
+    /// <summary>The staged-reservation ceiling a batch closes at; a test lowers it to split batches at a small scale.</summary>
+    internal long BatchReservedBytesCeiling { get; set; } = CalendarAttachmentImporter.BatchReservedBytesCeiling;
+
+    /// <summary>Runs after a batch's phase A and before its first attempt: a test's seam into that window.</summary>
+    internal Func<Task>? BeforeBatchApply { get; set; }
+
+    /// <summary>Batches the last import committed, for a test of where they split.</summary>
+    internal int LastImportCommittedBatches { get; private set; }
+
+    /// <summary>Free bytes under a directory, for the per-attachment disk check; a test points it elsewhere.</summary>
+    internal Func<string, long> TempFreeSpace { get; set; } = DirectoryFreeSpace;
+
+    private static long DirectoryFreeSpace(string directory)
+    {
+        try
+        {
+            return new DriveInfo(Path.GetFullPath(directory)).AvailableFreeSpace;
+        }
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
+        {
+            return long.MaxValue;
+        }
+    }
+
+    // The goal 6 table: any link needs the kind's read claim, inline content also its create claim.
+    private static void EnsureAttachmentClaims(IcsAttachmentKinds kinds, CalendarIcsImportClaims claims)
+    {
+        var missing = new List<string>();
+        if ((kinds.HasFileRef || kinds.HasFileInline) && !claims.FilesRead)
+        {
+            missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.FilesRead);
+        }
+
+        if (kinds.HasFileInline && !claims.FilesCreate)
+        {
+            missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.FilesCreate);
+        }
+
+        if ((kinds.HasPhotoRef || kinds.HasPhotoInline) && !claims.PhotosRead)
+        {
+            missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.PhotosRead);
+        }
+
+        if (kinds.HasPhotoInline && !claims.PhotosCreate)
+        {
+            missing.Add(Odyssey.Dtos.Authorization.PermissionClaims.PhotosCreate);
+        }
+
+        if (missing.Count > 0)
+        {
+            throw CalendarAttachmentsException.ImportForbidden(missing);
+        }
     }
 
     // A database outage reads as 503, anything else as 500.
@@ -1323,12 +1521,18 @@ public class CalendarIcsService
                 continue;
             }
 
-            var text = await grouper.ReadComponentAsync(component, cancellationToken);
+            var text = component.HasInline
+                ? await ReadInlineComponentAsync(grouper, component, run, cancellationToken)
+                : await ReadPlainComponentAsync(grouper, component, run, cancellationToken);
             chars += text.Length;
-            if (Classify(ParseComponent(text), run, component.Offset) is { } item)
+            var ev = ParseComponent(text);
+            if (Classify(ev, run, component.Offset) is { } item)
             {
+                item.Attachments = ReadAttachments(ev!, item, run);
                 items.Add(item);
             }
+
+            run.Importer.ComponentSlots.Clear();
         }
 
         var groups = items
@@ -1338,6 +1542,187 @@ public class CalendarIcsService
                 : [new ImportGroup(g.First().Uid, g.OrderBy(i => i.Offset).ToList(), g.Count())])
             .ToList();
         return (groups, chars);
+    }
+
+    // A component with no inline attachment of its own: read whole, as before, but with more ATTACH lines than an event
+    // may link dropped before parsing (§7.4: at most 2 × the cap are parsed). Pass 1 held such a component to the 4 Mi
+    // character cap — it skims only a VEVENT's own inline ATTACH — and its length is checked again before the read
+    // allocates; an inline value nested in a sub-component is never decoded here (PR #529 review S2).
+    private async Task<string> ReadPlainComponentAsync(
+        IcsImportGrouper grouper, ComponentRef component, ImportRun run, CancellationToken cancellationToken)
+    {
+        if (component.Length > MaxPlainComponentBytes)
+        {
+            throw new DomainValidationException(IcsComponentSplitter.TooLargeMessage);
+        }
+
+        var text = await grouper.ReadComponentAsync(component, cancellationToken);
+        if (text.Length < 32 || !text.Contains("ATTACH", StringComparison.OrdinalIgnoreCase))
+        {
+            return text;
+        }
+
+        using var reader = new StringReader(text);
+        using var spool = await IcsAttachmentSpooler.SpoolAsync(reader, new IcsAttachmentSpooler.Options(
+            run.Importer.MaxDecodeBytes, IcsComponentSplitter.MaxComponentChars + (64 * 1024),
+            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory, SkipDecode: _ => true), cancellationToken);
+        for (var i = 0; i < spool.DroppedAttachLines; i++)
+        {
+            run.SkipAttachment(CalendarAttachmentImporter.TooManyLinesReason);
+        }
+
+        return spool.CalendarText;
+    }
+
+    // Phase A for one component (issue #521 v5 §1): its inline attachments are lifted out one at a time — decoded,
+    // resolved, reserved when new, the temp file deleted — and replaced by placeholders in the text that is parsed.
+    private async Task<string> ReadInlineComponentAsync(
+        IcsImportGrouper grouper, ComponentRef component, ImportRun run, CancellationToken cancellationToken)
+    {
+        var importer = run.Importer;
+        Task<bool>? occurrence = null;
+        Func<string>? textSoFar = null;
+        void Skip(string reason) => run.SkipAttachment(reason);
+
+        using var reader = new StreamReader(grouper.OpenComponent(component), Encoding.UTF8, false, 1 << 16, leaveOpen: true);
+        var options = new IcsAttachmentSpooler.Options(
+            importer.MaxDecodeBytes, IcsComponentSplitter.MaxComponentChars + (64 * 1024),
+            MaxAttachLines: 2 * run.MaxLinksPerKind, SpoolDirectory: SpillDirectory, TopLevelOnly: true,
+            // A RECURRENCE-ID component's attachments are stored nowhere, so they are never decoded (note 4).
+            SkipDecode: a => component.IsOverride || importer.CanSkip(a),
+            BeforeDecode: importer.EnsureTempSpace,
+            OnSpooled: async (attachment, text, token) =>
+            {
+                AttachmentsDecoded++;
+                textSoFar = text;
+                importer.ComponentSlots[attachment.Reference] = await importer.ResolveInlineAsync(
+                    attachment, () => occurrence ??= IsOccurrenceTargetAsync(textSoFar!(), run.CalendarId, token), Skip, token);
+            });
+        using var spool = await IcsAttachmentSpooler.SpoolAsync(reader, options, cancellationToken);
+        foreach (var attachment in spool.Attachments.Where(a => a.Skimmed && !component.IsOverride))
+        {
+            importer.ComponentSlots[attachment.Reference] = importer.Skimmed(attachment, Skip);
+        }
+
+        for (var i = 0; i < spool.DroppedAttachLines; i++)
+        {
+            run.SkipAttachment(CalendarAttachmentImporter.TooManyLinesReason);
+        }
+
+        return IcsImportGrouper.ComponentEnvelope + spool.CalendarText + "END:VCALENDAR\r\n";
+    }
+
+    // Whether the component read so far names a generated occurrence in the target calendar (implementation note 4):
+    // read-only, from the UID the text carries before its attachments. A component whose UID comes later is not known
+    // here; a reservation made for it is abandoned after the batch commits, or swept.
+    private async Task<bool> IsOccurrenceTargetAsync(string text, Guid calendarId, CancellationToken cancellationToken)
+    {
+        var unfolded = text.Replace("\r\n ", string.Empty, StringComparison.Ordinal).Replace("\r\n\t", string.Empty, StringComparison.Ordinal);
+        string? uid = null;
+        foreach (var line in unfolded.Split("\r\n"))
+        {
+            if (line.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            if (uid is null && (line.StartsWith("UID:", StringComparison.OrdinalIgnoreCase) || line.StartsWith("UID;", StringComparison.OrdinalIgnoreCase)))
+            {
+                uid = line[(line.IndexOf(':') + 1)..].Trim();
+            }
+        }
+
+        if (string.IsNullOrEmpty(uid) || uid.Length > MaxUidLength)
+        {
+            return false;
+        }
+
+        var resolver = await ResolveAsync(calendarId, [uid], tracked: false, cancellationToken);
+        return MatchUntracked(uid, resolver.Events)?.RecurrencePatternId is not null;
+    }
+
+    // Match's rules for rows this context does not track.
+    private static ContextCalendarEvent? MatchUntracked(string uid, List<ContextCalendarEvent> candidates)
+    {
+        if (IsSyntheticUid(uid) && Guid.TryParse(uid[..^SyntheticUidSuffix.Length], out var key)
+            && candidates.FirstOrDefault(c => c.CalendarEventId == key) is { } byKey)
+        {
+            return byKey;
+        }
+
+        return candidates.FirstOrDefault(c => string.Equals(c.ExternalUid, uid, StringComparison.Ordinal))
+            ?? candidates.FirstOrDefault(c => c.ExternalUid is { } stored && UidComparer.Equals(stored, uid))
+            ?? (IsSyntheticUid(uid) ? candidates.FirstOrDefault(c => c.ImportSourceUid is { } s && UidComparer.Equals(s, uid)) : null);
+    }
+
+    private const string SpoolScheme = IcsAttachmentSpool.Scheme + ":";
+
+    // A component's ATTACH lines as slots (§8.3, v3 §A.1): a placeholder is phase A's slot, an odyssey-file: or
+    // odyssey-photo: URI a reference, any other URI kindless (counted, no claim, no replace). On a modified occurrence
+    // every kinded one is ignored and counted.
+    private static List<CalendarAttachSlot> ReadAttachments(IcalEvent ev, ImportItem item, ImportRun run)
+    {
+        var slots = new List<CalendarAttachSlot>();
+        if (item.Kind is ItemKind.Cancelled or ItemKind.CancelledOverride || ev.Attachments.Count == 0)
+        {
+            return slots;
+        }
+
+        void Skip(string reason) => run.SkipAttachment(reason);
+        foreach (var attachment in ev.Attachments)
+        {
+            if (attachment.Uri is not { } uri)
+            {
+                continue;
+            }
+
+            var raw = uri.OriginalString.Trim();
+            CalendarAttachSlot? slot = null;
+            if (raw.StartsWith(SpoolScheme, StringComparison.OrdinalIgnoreCase))
+            {
+                slot = run.Importer.ComponentSlots.GetValueOrDefault(raw[SpoolScheme.Length..]);
+                if (slot is null && item.Kind == ItemKind.Override)
+                {
+                    run.IgnoredOccurrenceAttachments++;
+                    continue;
+                }
+            }
+            else if (raw.StartsWith(CalendarExportAttachments.PhotoUriScheme + ":", StringComparison.OrdinalIgnoreCase)
+                || raw.StartsWith(ImportLimits.FileUriScheme + ":", StringComparison.OrdinalIgnoreCase))
+            {
+                var photo = raw.StartsWith(CalendarExportAttachments.PhotoUriScheme + ":", StringComparison.OrdinalIgnoreCase);
+                if (item.Kind == ItemKind.Override)
+                {
+                    run.IgnoredOccurrenceAttachments++;
+                    continue;
+                }
+
+                slot = CalendarAttachmentImporter.Reference(
+                    photo ? CalendarLinkKind.Photo : CalendarLinkKind.File, raw[(raw.IndexOf(':') + 1)..],
+                    attachment.Parameters.Get("X-ODYSSEY-SHA256"), attachment.Parameters.Get("SIZE"), Skip);
+            }
+            else
+            {
+                run.SkipAttachment(CalendarAttachmentImporter.UriReason);
+                continue;
+            }
+
+            // A skipped slot is already counted, and a skip never replaces anything (v3 §A.2).
+            if (slot is null || slot.State == CalendarAttachSlotState.Skipped)
+            {
+                continue;
+            }
+
+            if (item.Kind == ItemKind.Override)
+            {
+                run.IgnoredOccurrenceAttachments++;
+                continue;
+            }
+
+            slots.Add(slot);
+        }
+
+        return slots;
     }
 
     // A component Ical.Net cannot read is that event's problem, not the file's: it is skipped (null here).
@@ -1390,6 +1775,15 @@ public class CalendarIcsService
 
         // Resolve outside the transaction, only to learn what to lock (#519 v4 §2 step 1).
         var locks = LocksOf(await ResolveAsync(run.CalendarId, uids, tracked: false, cancellationToken));
+
+        // The batch's references, read-only and outside the locks: one IN query per kind (issue #521 §7.4).
+        await run.Importer.ResolveReferencesAsync(
+            groups.SelectMany(g => g.Items).SelectMany(i => i.Attachments).ToList(), run.SkipAttachment, cancellationToken);
+        if (BeforeBatchApply is { } seam)
+        {
+            await seam();
+        }
+
         // Every run of the batch's work - a re-resolve below, or the execution strategy retrying a deadlock or a lock wait
         // (PR #528 review A1) - starts from the state the batch began with: a rolled-back attempt may have created places
         // the index still names and counted them, so the index is reloaded and the counts put back. The tally is per run.
@@ -1410,7 +1804,9 @@ public class CalendarIcsService
             {
                 var tally = await RunBatchAttemptAsync(groups, uids, locks, run, BeforeRunAsync, cancellationToken);
                 tally.MergeInto(run);
+                await run.Importer.CommitBatchAsync(tally.Links, cancellationToken);
                 run.CommittedBatches++;
+                LastImportCommittedBatches = run.CommittedBatches;
                 run.CommittedEvents += components;
                 logger.LogInformation(
                     "Calendar .ics import into {CalendarId}: batch committed ({Batch}), {Groups} group(s), {Components} component(s).",
@@ -1455,7 +1851,17 @@ public class CalendarIcsService
                 await ApplyGroupAsync(group, run, attempt, cancellationToken);
             }
 
-            await run.Places.SaveChangesAsync(context, cancellationToken);
+            try
+            {
+                await run.Places.SaveChangesAsync(context, cancellationToken);
+            }
+            catch (DbUpdateException ex) when (ReservationExpired(ex))
+            {
+                // The abandoned-write sweep removed a reservation older than an hour (implementation note 5): the
+                // partial-failure path, never the busy 409.
+                throw new FileStorageUnavailableException(CalendarAttachmentImporter.ExpiredReservationMessage);
+            }
+
             return tally;
         }
 
@@ -1474,6 +1880,14 @@ public class CalendarIcsService
             throw CalendarSeriesConflictException.SeriesBusy();
         }
     }
+
+    // A reservation the sweep already removed surfaces two ways, whichever statement reaches it first: the referencing
+    // row's RESTRICT key to StoredObjects (1452), or the attach's State-token UPDATE matching no row.
+    private static bool ReservationExpired(DbUpdateException exception) =>
+        exception is DbUpdateConcurrencyException concurrency
+            ? concurrency.Entries.Any(e => e.Entity is StoredObject)
+            : exception.InnerException is MySqlConnector.MySqlException { Number: 1452 } mysql
+                && mysql.Message.Contains("REFERENCES `StoredObjects`", StringComparison.Ordinal);
 
     private static BatchLocks LocksOf(BatchResolver resolver) => new(
         resolver.Patterns.Select(p => p.RecurrencePatternId)
@@ -1942,7 +2356,13 @@ public class CalendarIcsService
 
         public Dictionary<Guid, RecurrenceSeriesState> Series { get; } = [];
 
-        public void Skip(string reason, string sample) => Tally.Skips.Add((reason, sample));
+        public void Skip(string reason, string? sample) => Tally.Skips.Add((reason, sample));
+
+        public void SkipAttachment(string reason)
+        {
+            Tally.Skips.Add((reason, null));
+            Tally.SkippedAttachments++;
+        }
     }
 
     private async Task ApplyGroupAsync(ImportGroup group, ImportRun run, BatchAttempt attempt, CancellationToken cancellationToken)
@@ -1995,7 +2415,9 @@ public class CalendarIcsService
 
         if (state.Pattern.KeysBackfilledAt is null)
         {
-            var detached = RecurrenceSeries.KeyInPlace(state, run.Now, run.UserId, x => context.RecurrenceExclusions.Add(x));
+            var detachedRows = new List<ContextCalendarEvent>();
+            var detached = RecurrenceSeries.KeyInPlace(state, run.Now, run.UserId, x => context.RecurrenceExclusions.Add(x), detachedRows);
+            await CalendarLinkService.StageCopyToDetachedAsync(context, patternId, detachedRows, cancellationToken);
             logger.LogInformation(
                 "Calendar series {RecurrencePatternId} keyed inline by an import: {DetachedCount} row(s) detached.",
                 patternId, detached);
@@ -2018,6 +2440,17 @@ public class CalendarIcsService
             if (existing.RecurrencePatternId is { } seriesId)
             {
                 await SeriesAsync(seriesId, run, attempt, cancellationToken);
+            }
+
+            // An occurrence's links are its series' (SF5): a standalone VEVENT resolving to one has its attachments ignored.
+            if (existing.RecurrencePatternId is not null)
+            {
+                attempt.Tally.IgnoredOccurrenceAttachments += item.Attachments.Count;
+            }
+            else
+            {
+                await ApplyEventLinksAsync(existing.CalendarEventId, isNew: context.Entry(existing).State == EntityState.Added,
+                    item, run, attempt, cancellationToken);
             }
 
             existing.Title = item.Title;
@@ -2049,6 +2482,7 @@ public class CalendarIcsService
 
         var created = new ContextCalendarEvent
         {
+            CalendarEventId = Guid.NewGuid(),
             CalendarId = run.CalendarId,
             Title = item.Title,
             Description = item.Description,
@@ -2067,7 +2501,93 @@ public class CalendarIcsService
         context.CalendarEvents.Add(created);
         attempt.Tally.Imported++;
         CountAdjusted(attempt, item);
+        await ApplyEventLinksAsync(created.CalendarEventId, isNew: true, item, run, attempt, cancellationToken);
         return created;
+    }
+
+    // ----- Links (issue #521 §8.3, phase B)
+
+    // A kind's resolved ids, distinct and capped (links beyond the cap are skipped and counted); null when none of that
+    // kind resolved or was stored, which leaves the stored set untouched (v3 §A.2).
+    private async Task<CalendarLinkService.ImportReplace?> DesiredLinksAsync(
+        ImportItem item, ImportRun run, BatchAttempt attempt, CancellationToken cancellationToken)
+    {
+        if (item.Attachments.Count == 0)
+        {
+            return null;
+        }
+
+        async Task<List<Guid>?> Kind(CalendarLinkKind kind)
+        {
+            List<Guid>? ids = null;
+            foreach (var slot in item.Attachments.Where(s => s.Kind == kind))
+            {
+                if (await run.Importer.MaterializeAsync(slot, attempt.Tally.Links, cancellationToken) is not { } id)
+                {
+                    continue;
+                }
+
+                ids ??= [];
+                if (ids.Contains(id))
+                {
+                    continue;
+                }
+
+                if (ids.Count >= run.MaxLinksPerKind)
+                {
+                    attempt.SkipAttachment(CalendarAttachmentImporter.CappedReason(run.MaxLinksPerKind));
+                    continue;
+                }
+
+                ids.Add(id);
+            }
+
+            return ids;
+        }
+
+        var files = await Kind(CalendarLinkKind.File);
+        var photos = await Kind(CalendarLinkKind.Photo);
+        return files is null && photos is null ? null : new CalendarLinkService.ImportReplace(files, photos);
+    }
+
+    private async Task ApplyEventLinksAsync(
+        Guid eventId, bool isNew, ImportItem item, ImportRun run, BatchAttempt attempt, CancellationToken cancellationToken)
+    {
+        if (await DesiredLinksAsync(item, run, attempt, cancellationToken) is not { } replace)
+        {
+            return;
+        }
+
+        var files = isNew ? [] : await context.CalendarEventAttachments.Where(a => a.CalendarEventId == eventId).ToListAsync(cancellationToken);
+        var photos = isNew ? [] : await context.CalendarEventPhotos.Where(p => p.CalendarEventId == eventId).ToListAsync(cancellationToken);
+        files.AddRange(context.CalendarEventAttachments.Local.Where(a => a.CalendarEventId == eventId && !files.Contains(a)));
+        photos.AddRange(context.CalendarEventPhotos.Local.Where(p => p.CalendarEventId == eventId && !photos.Contains(p)));
+        Count(attempt, CalendarLinkService.ReplaceEventLinks(context, eventId, files, photos, replace, run.Now));
+    }
+
+    private async Task ApplySeriesLinksAsync(
+        Guid patternId, bool isNew, ImportItem item, ImportRun run, BatchAttempt attempt, CancellationToken cancellationToken)
+    {
+        if (await DesiredLinksAsync(item, run, attempt, cancellationToken) is not { } replace)
+        {
+            return;
+        }
+
+        var files = isNew ? [] : await context.RecurrencePatternAttachments.Where(a => a.RecurrencePatternId == patternId).ToListAsync(cancellationToken);
+        var photos = isNew ? [] : await context.RecurrencePatternPhotos.Where(p => p.RecurrencePatternId == patternId).ToListAsync(cancellationToken);
+        files.AddRange(context.RecurrencePatternAttachments.Local.Where(a => a.RecurrencePatternId == patternId && !files.Contains(a)));
+        photos.AddRange(context.RecurrencePatternPhotos.Local.Where(p => p.RecurrencePatternId == patternId && !photos.Contains(p)));
+        Count(attempt, CalendarLinkService.ReplaceSeriesLinks(context, patternId, files, photos, replace, run.Now));
+    }
+
+    private static void Count(BatchAttempt attempt, CalendarLinkService.ReplaceOutcome outcome)
+    {
+        if (outcome.Changed)
+        {
+            attempt.Tally.ReplacedLinkSets++;
+        }
+
+        attempt.Tally.RemovedLinks += outcome.Removed;
     }
 
     private static void CountAdjusted(BatchAttempt attempt, ImportItem item)
@@ -2120,6 +2640,11 @@ public class CalendarIcsService
             }
         }
 
+        if (matched.RecurrencePatternId is null)
+        {
+            await CalendarLinkService.StageRemoveForEventAsync(context, matched.CalendarEventId, cancellationToken);
+        }
+
         context.CalendarEvents.Remove(matched);
         CountRemoval(attempt, run, matched.Title, created);
         return true;
@@ -2145,6 +2670,12 @@ public class CalendarIcsService
 
         var created = context.Entry(state.Pattern).State == EntityState.Added;
         attempt.Tally.RemovedEventIds.AddRange(RecurrencePatternService.RemoveSeries(context, state, run.Now));
+        // Every detach copies the series' links, and the series' own rows go with it (issue #521 §4).
+        await CalendarLinkService.StageCopyToDetachedAsync(
+            context, state.Pattern.RecurrencePatternId,
+            state.Rows.Where(r => r.RecurrencePatternId is null && context.Entry(r).State != EntityState.Deleted).ToList(),
+            cancellationToken);
+        await CalendarLinkService.StageRemoveForSeriesAsync(context, state.Pattern.RecurrencePatternId, cancellationToken);
         if (!created)
         {
             attempt.Tally.RemovedSeriesIds.Add(state.Pattern.RecurrencePatternId);
@@ -2223,6 +2754,7 @@ public class CalendarIcsService
         if (stored is null)
         {
             CreateSeries(master!, overrides, run, attempt);
+            await ApplySeriesLinksAsync(master!.Pattern!.RecurrencePatternId, isNew: true, master, run, attempt, cancellationToken);
             return;
         }
 
@@ -2237,7 +2769,12 @@ public class CalendarIcsService
             return;
         }
 
-        UpdateSeries(state, master, overrides, run, attempt);
+        if (UpdateSeries(state, master, overrides, run, attempt) && master is not null)
+        {
+            await ApplySeriesLinksAsync(
+                state.Pattern.RecurrencePatternId, isNew: context.Entry(state.Pattern).State == EntityState.Added, master, run, attempt,
+                cancellationToken);
+        }
     }
 
     // A series the calendar does not have yet: exclusions on it remove nothing, so they need no opt-in.
@@ -2325,7 +2862,8 @@ public class CalendarIcsService
     // A stored series: the master (when the file has one) reconciles it like a series edit; the file's EXDATEs and
     // overrides apply on top. Anything that would remove a stored row or discard a stored exception is gated on
     // allowRemovals, and a gated group changes nothing (§3 step 3). Past keys never remove rows (SR5).
-    private void UpdateSeries(
+    // False when the group was skipped or gated: its links are then left as they are too.
+    private bool UpdateSeries(
         RecurrenceSeriesState state, ImportItem? master, List<ImportItem> overrides, ImportRun run, BatchAttempt attempt)
     {
         RecurrenceSeriesPlan? plan = null;
@@ -2345,7 +2883,7 @@ public class CalendarIcsService
             catch (DomainValidationException ex)
             {
                 attempt.Skip(ex.Message, master.SampleTitle);
-                return;
+                return false;
             }
         }
 
@@ -2432,7 +2970,7 @@ public class CalendarIcsService
         {
             attempt.Skip(GatedReason, sample);
             attempt.Tally.Gated++;
-            return;
+            return false;
         }
 
         if (plan is not null)
@@ -2487,6 +3025,7 @@ public class CalendarIcsService
 
         attempt.Tally.ExclusionsApplied += newExclusions.Count;
         attempt.Tally.OverridesApplied += applied.Count;
+        return true;
     }
 
     private void ApplyOverrideFields(ContextCalendarEvent row, ImportItem item, ImportRun run)
