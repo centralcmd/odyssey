@@ -132,6 +132,9 @@ internal sealed class FakeNativeTransfer : INativeTransfer
 
     public int ForgetCalls { get; private set; }
 
+    /// <summary>The token the last upload was given; cancelling it is what releases the callback.</summary>
+    public CancellationToken UploadToken { get; private set; }
+
     public bool UploadInFlight => pending is { Task.IsCompleted: false };
 
     public ValueTask WatchAsync(string containerId) => ValueTask.CompletedTask;
@@ -151,6 +154,7 @@ internal sealed class FakeNativeTransfer : INativeTransfer
         }
 
         Uploads.Add((url, fields));
+        UploadToken = ct;
         this.onUploadComplete = onUploadComplete;
         bodySent = false;
         pending = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);

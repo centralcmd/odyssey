@@ -42,6 +42,9 @@ public class ImportCalendarDialogTests
 
         public bool Open { get; set; } = true;
 
+        /// <summary>False removes the dialog from the tree, as a navigation away from the page does.</summary>
+        public bool Mounted { get; set; } = true;
+
         public Harness Start()
         {
             Cut = Context.Ctx.Render<RefreshHost>(p => p.AddChildContent(Rebuild));
@@ -81,6 +84,11 @@ public class ImportCalendarDialogTests
             b.CloseComponent();
             b.OpenComponent<MudBlazor.MudPopoverProvider>(10);
             b.CloseComponent();
+            if (!Mounted)
+            {
+                return;
+            }
+
             b.OpenComponent<ImportCalendarDialog>(20);
             foreach (var (name, value) in Parameters())
             {
@@ -119,8 +127,32 @@ public class ImportCalendarDialogTests
 
         public bool ConfirmOpen => Cut.FindAll(".cal-imp-stop-dialog").Count > 0;
 
-        public void Escape(string selector = ".cal-imp-footer") =>
-            Cut.Find(selector).KeyDown(new KeyboardEventArgs { Key = "Escape" });
+        /// <summary>Escape inside the import dialog, as the <c>odsDialogEscape</c> watch reports it.</summary>
+        public Task Escape() => Cut.InvokeAsync(Cut.FindComponent<ImportCalendarDialog>().Instance.OnDialogEscape);
+
+        /// <summary>
+        /// MudDialog's own Escape (and scrim) path for the dialog carrying <paramref name="cssClass"/>: it raises its
+        /// <c>VisibleChanged(false)</c>, exactly as its key interceptor does on Escape.
+        /// </summary>
+        public Task MudEscape(string cssClass) =>
+            Cut.InvokeAsync(() => Cut.FindComponents<MudBlazor.MudDialog>()
+                .First(d => d.Instance.VisibleChanged.HasDelegate
+                    && (d.Instance.Class ?? string.Empty).Contains(cssClass, StringComparison.Ordinal))
+                .Instance.VisibleChanged.InvokeAsync(false));
+
+        /// <summary>Polls a condition that changes without a render (a toast from a disposed dialog).</summary>
+        public static async Task Eventually(Func<bool> condition)
+        {
+            for (var i = 0; i < 200 && !condition(); i++)
+            {
+                await Task.Delay(25);
+            }
+
+            Assert.True(condition());
+        }
+
+        public bool FocusedById(string id) =>
+            Context.Ctx.JSInterop.Invocations["odsFocusById"].Any(i => Equals(i.Arguments[0], id));
 
         public IReadOnlyList<JSRuntimeInvocation> Js(string identifier) => [.. Context.Ctx.JSInterop.Invocations[identifier]];
 
@@ -227,10 +259,21 @@ public class ImportCalendarDialogTests
         await using var h = new Harness();
         h.Start();
 
+        // The live region is there, empty, before the box is ticked — it is filled, not created (WCAG 4.1.3).
+        var region = h.Cut.Find("#" + ImportCalendarDialog.RemoveWarningId);
+        Assert.Equal("status", region.GetAttribute("role"));
+        Assert.Equal("polite", region.GetAttribute("aria-live"));
+        Assert.Equal(string.Empty, region.TextContent.Trim());
+
         h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
 
-        var warning = h.Cut.FindAll(".mud-alert").Single(a => a.TextContent.Contains("This import can delete events.", StringComparison.Ordinal));
-        Assert.Equal("status", warning.GetAttribute("role"));
+        region = h.Cut.Find("#" + ImportCalendarDialog.RemoveWarningId);
+        Assert.Contains("This import can delete events.", region.TextContent, StringComparison.Ordinal);
+        Assert.Null(region.QuerySelector(".mud-alert")!.GetAttribute("role"));
+
+        h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(false);
+        Assert.Single(h.Cut.FindAll("#" + ImportCalendarDialog.RemoveWarningId));
+        Assert.Equal(string.Empty, h.Cut.Find("#" + ImportCalendarDialog.RemoveWarningId).TextContent.Trim());
     }
 
     [Fact] // AC 10: it resets on a file change
@@ -479,7 +522,7 @@ public class ImportCalendarDialogTests
         h.Cut.FindAll(".cal-imp-stop-dialog button").Single(b => Harness.Label(b) == "Keep uploading").Click();
         h.Cut.WaitForAssertion(() => Assert.False(h.ConfirmOpen));
 
-        h.Escape();
+        await h.Escape();
         h.Cut.WaitForAssertion(() => Assert.True(h.ConfirmOpen));
         Assert.Equal(0, h.Transfer.AbortCalls);
     }
@@ -623,7 +666,7 @@ public class ImportCalendarDialogTests
         h.ClickImport();
         h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase));
 
-        // The header close button is the modal's own dismissal path — the one Escape and the scrim take.
+        // The header close button.
         h.Cut.Find(".cal-imp-dialog .ods-modal-x").Click();
 
         h.Cut.WaitForAssertion(() => Assert.Single(h.HandedOff));
@@ -643,5 +686,199 @@ public class ImportCalendarDialogTests
         h.Cut.WaitForAssertion(() => Assert.Equal(1, h.Transfer.ForgetCalls));
         Assert.Contains(false, h.OpenChanges);
         Assert.Empty(h.HandedOff);
+    }
+
+    // ── Review round: focus, Escape anywhere, the remove warning, disposal ─────
+
+    [Fact] // WCAG 2.4.3 (PR #524 review): Import goes away, so focus moves to the phase line
+    public async Task Starting_the_import_moves_focus_to_the_footer_status()
+    {
+        await using var h = await UploadingAsync();
+
+        h.Cut.WaitForAssertion(() => Assert.True(h.FocusedById(ImportCalendarDialog.FootStatusId)));
+        Assert.Equal("-1", h.Cut.Find("#" + ImportCalendarDialog.FootStatusId).GetAttribute("tabindex"));
+    }
+
+    [Fact] // WCAG 2.4.3: the typed fallback enters the server phase directly, and focus follows
+    public async Task Starting_a_typed_import_moves_focus_to_the_footer_status()
+    {
+        await using var h = new Harness();
+        h.Transfer.Holds = false;
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>()))
+            .Returns(new TaskCompletionSource<ApiResult<IcsImportResult>>().Task);
+        h.Start();
+        await h.Pick();
+
+        h.ClickImport();
+
+        h.Cut.WaitForAssertion(() => Assert.True(h.FocusedById(ImportCalendarDialog.FootStatusId)));
+    }
+
+    [Fact] // WCAG 2.4.3: Cancel upload goes away when the body has been sent, and focus follows to the phase line
+    public async Task The_upload_finishing_moves_focus_to_the_footer_status()
+    {
+        await using var h = await UploadingAsync();
+        h.Cut.WaitForAssertion(() => Assert.True(h.FocusedById(ImportCalendarDialog.FootStatusId)));
+        var before = h.Js("odsFocusById").Count;
+
+        await h.Cut.InvokeAsync(h.Transfer.CompleteUpload);
+
+        h.Cut.WaitForAssertion(() => Assert.Contains(h.Js("odsFocusById").Skip(before), i => Equals(i.Arguments[0], ImportCalendarDialog.FootStatusId)));
+        Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase);
+    }
+
+    [Fact] // WCAG 2.1.1 (PR #524 review): Escape is watched on the whole dialog, not only on its body and footer
+    public async Task Escape_is_watched_on_the_whole_dialog()
+    {
+        await using var h = new Harness();
+        h.Start();
+
+        h.Cut.WaitForAssertion(() => Assert.NotEmpty(h.Js("odsDialogEscape.watch")));
+        var watch = h.Js("odsDialogEscape.watch").First();
+        Assert.Equal(ImportCalendarDialog.DialogClass, watch.Arguments[0]);
+        Assert.IsType<Microsoft.JSInterop.DotNetObjectReference<ImportCalendarDialog>>(watch.Arguments[1]);
+        Assert.Contains(ImportCalendarDialog.DialogClass, h.Cut.Find(".mud-dialog." + ImportCalendarDialog.DialogClass).ClassName, StringComparison.Ordinal);
+    }
+
+    [Fact] // WCAG 2.1.1: Escape means "confirm the stop" only while uploading
+    public async Task Escape_opens_the_confirmation_only_while_uploading()
+    {
+        await using var h = new Harness();
+        h.Start();
+        await h.Escape();
+        Assert.False(h.ConfirmOpen);
+
+        await h.Pick();
+        h.ClickImport();
+        h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Uploading, h.Phase));
+        await h.Escape();
+        h.Cut.WaitForAssertion(() => Assert.True(h.ConfirmOpen));
+        h.Cut.FindAll(".cal-imp-stop-dialog button").Single(b => Harness.Label(b) == "Keep uploading").Click();
+        h.Cut.WaitForAssertion(() => Assert.False(h.ConfirmOpen));
+
+        await h.Cut.InvokeAsync(h.Transfer.CompleteUpload);
+        await h.Escape();
+        Assert.False(h.ConfirmOpen);
+        Assert.Empty(h.HandedOff); // the server phase's Escape is the dialog's own close, not this watch
+    }
+
+    [Fact] // AC 14a (test review): Escape inside the confirmation means Keep uploading and refocuses Cancel upload
+    public async Task Escape_inside_the_confirmation_keeps_uploading_and_refocuses_cancel_upload()
+    {
+        await using var h = await UploadingAsync();
+        h.Footer("Cancel upload").Click();
+        h.Cut.WaitForAssertion(() => Assert.True(h.ConfirmOpen));
+        var restoresBefore = h.Js("odsRestoreFocusOwner").Count;
+
+        await h.MudEscape("cal-imp-stop-dialog");
+
+        h.Cut.WaitForAssertion(() => Assert.False(h.ConfirmOpen));
+        h.Cut.WaitForAssertion(() => Assert.Contains(h.Js("odsRestoreFocusOwner").Skip(restoresBefore),
+            i => Equals(i.Arguments.FirstOrDefault(), ImportCalendarDialog.CancelUploadId)));
+        Assert.Equal(ImportCalendarDialog.Phase.Uploading, h.Phase);
+        Assert.Equal(0, h.Transfer.AbortCalls);
+        Assert.Empty(h.OpenChanges);
+    }
+
+    [Fact] // AC 15e (test review): the typed fallback hands off on Escape too
+    public async Task The_typed_fallback_hands_off_on_escape()
+    {
+        await using var h = new Harness();
+        h.Transfer.Holds = false;
+        var pending = new TaskCompletionSource<ApiResult<IcsImportResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        h.Context.Calendar.Setup(c => c.ImportAsync(CalendarId, It.IsAny<ApiUpload>(), false, It.IsAny<CancellationToken>())).Returns(pending.Task);
+        h.Start();
+        await h.Pick();
+        h.ClickImport();
+        h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase));
+
+        await h.MudEscape(ImportCalendarDialog.DialogClass);
+
+        h.Cut.WaitForAssertion(() => Assert.Single(h.HandedOff));
+        Assert.Contains(false, h.OpenChanges);
+        pending.SetResult(Ok(Imported()));
+        Assert.True((await h.HandedOff[0]).IsSuccess);
+        Assert.Equal(0, h.Changed);
+    }
+
+    [Fact] // AC 10 (test review): closing the dialog and opening it again leaves the option off
+    public async Task The_remove_option_resets_when_the_dialog_closes_and_reopens()
+    {
+        await using var h = new Harness();
+        h.Start();
+        h.Cut.Find("#" + ImportCalendarDialog.RemoveId).Change(true);
+        Assert.True(h.Cut.Find("#" + ImportCalendarDialog.RemoveId).HasAttribute("checked"));
+
+        h.Footer("Cancel").Click();
+        h.Cut.WaitForAssertion(() => Assert.Contains(false, h.OpenChanges));
+        h.Reopen();
+
+        Assert.False(h.Cut.Find("#" + ImportCalendarDialog.RemoveId).HasAttribute("checked"));
+        Assert.Equal(string.Empty, h.Cut.Find("#" + ImportCalendarDialog.RemoveWarningId).TextContent.Trim());
+    }
+
+    [Fact] // AC 7 + PR #524 review: a navigation mid-upload aborts the upload and releases the callback
+    public async Task Disposing_mid_upload_aborts_the_upload_and_releases_the_callback()
+    {
+        await using var h = await UploadingAsync();
+        var lifetime = h.Transfer.UploadToken;
+        Assert.False(lifetime.IsCancellationRequested);
+
+        h.Mounted = false;
+        h.Rerender();
+
+        h.Cut.WaitForAssertion(() => Assert.Equal(1, h.Transfer.AbortCalls));
+        // The token NativeTransfer releases the DotNetObjectReference on (NativeTransferTests pins that half).
+        Assert.True(lifetime.IsCancellationRequested);
+        Assert.True(h.Transfer.ForgetCalls >= 1);
+        Assert.Empty(h.Context.Toasts); // stopped before the body finished: nothing ran, so nothing is reported
+    }
+
+    [Fact] // PR #524 review: a navigation in the server phase still reports the outcome, through the app-wide snackbar
+    public async Task Disposing_in_the_server_phase_still_toasts_the_outcome()
+    {
+        await using var h = await UploadingAsync();
+        await h.Cut.InvokeAsync(h.Transfer.CompleteUpload);
+        h.Cut.WaitForAssertion(() => Assert.Equal(ImportCalendarDialog.Phase.Server, h.Phase));
+
+        h.Mounted = false;
+        h.Rerender();
+        Assert.Equal(0, h.Transfer.AbortCalls);
+        Assert.Empty(h.Context.Toasts);
+
+        h.Transfer.Respond(Ok(Imported(imported: 4, updated: 0, removed: 1)));
+
+        await Harness.Eventually(() => h.Context.Toasts.Count == 1);
+        Assert.Equal("Calendar import finished: 4 imported, 0 updated, 1 skipped, 1 removed.", h.Context.Toasts[0].Message);
+        Assert.Empty(h.HandedOff);
+    }
+
+    [Fact] // PR #524 review: the server phase's failure after a navigation is a persistent toast
+    public async Task Disposing_in_the_server_phase_toasts_a_failure_persistently()
+    {
+        await using var h = await UploadingAsync();
+        await h.Cut.InvokeAsync(h.Transfer.CompleteUpload);
+
+        h.Mounted = false;
+        h.Rerender();
+        h.Transfer.Respond(Fail<IcsImportResult>(System.Net.HttpStatusCode.InternalServerError, "Broke."));
+
+        await Harness.Eventually(() => h.Context.Toasts.Count == 1);
+        Assert.Equal(CalendarImportCopy.HandedOffFailure, h.Context.Toasts[0].Message);
+        Assert.True(h.Context.Toasts[0].RequireInteraction);
+    }
+
+    [Fact] // WCAG 2.1.1: the watch is a capture listener on the document, scoped to the dialog, and removable
+    public void The_escape_watch_script_listens_on_the_whole_dialog()
+    {
+        var html = File.ReadAllText(Path.Combine(ClientSource.Root, "wwwroot", "index.html"));
+        var start = html.IndexOf("window.odsDialogEscape = {", StringComparison.Ordinal);
+        Assert.True(start >= 0, "window.odsDialogEscape is missing from index.html.");
+        var script = html[start..html.IndexOf("window.revokeBlobUrl", start, StringComparison.Ordinal)];
+
+        Assert.Contains("document.addEventListener('keydown', handler, true)", script, StringComparison.Ordinal);
+        Assert.Contains("document.removeEventListener('keydown', handler, true)", script, StringComparison.Ordinal);
+        Assert.Contains("closest('.mud-dialog-container')", script, StringComparison.Ordinal);
+        Assert.Contains("invokeMethodAsync('OnDialogEscape')", script, StringComparison.Ordinal);
     }
 }
