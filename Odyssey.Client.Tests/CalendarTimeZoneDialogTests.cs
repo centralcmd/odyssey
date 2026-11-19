@@ -535,8 +535,8 @@ public class CalendarTimeZoneDialogTests
         h.Open(CalendarEventDialogMode.Create, new DateOnly(2026, 6, 4));
         await h.SetTitle("Standup");
 
-        h.Cut.Find(".cal-ev-tz").Input("Atlantis");
-        h.Cut.Find(".cal-ev-tz").TriggerEvent("onfocusout", new FocusEventArgs());
+        h.Cut.Find(".cal-ev-tz .odc-combo-wrap").Input("Atlantis");
+        h.Cut.Find(".cal-ev-tz .odc-combo-wrap").TriggerEvent("onfocusout", new FocusEventArgs());
 
         h.Cut.WaitForAssertion(() => Assert.Contains(CalendarEventCopy.ZoneError, h.Cut.Markup, StringComparison.Ordinal));
         h.Save();

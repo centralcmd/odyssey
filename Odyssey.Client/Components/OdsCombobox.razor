@@ -112,7 +112,7 @@
                 }
                 else
                 {
-                    <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+                    <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : LocalEmptyText)</div>
                 }
             }
         </BeforeItemsTemplate>
@@ -181,7 +181,7 @@
             }
             else
             {
-                <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : EmptyText)</div>
+                <div class="odc-combo-empty" role="status" aria-live="polite">@(Loading ? "Loading…" : LocalEmptyText)</div>
             }
         </NoItemsTemplate>
     </MudAutocomplete>

@@ -23,7 +23,7 @@
 @using Odyssey.Client.Pages.Weather
 
 <OdsModal Open="Open" OpenChanged="OpenChanged" OnClose="CancelAsync" Icon="@DialogIcon" Title="@TitleContent"
-          Dismissible="@(_confirm is null)" RequiredLegend="@CanSubmit">
+          Dismissible="@(_confirm is null)" RequiredLegend="@(CanSubmit && _confirm is null)">
     <ChildContent>
         <OdsLiveAnnouncer @ref="_announcer" />
         <div class="ods-modal-body">
@@ -102,12 +102,11 @@
                         else
                         {
                             <OdsFieldShell Label="Time zone" HtmlFor="@TimeZoneInputId" Help="@ZoneHelp" Error="@_draft.TimeZoneError" ErrorIsAlert="false">
-                                <div class="cal-ev-tz" @oninput="OnZoneTyped" @onfocusout="OnZoneFocusOut">
-                                    <OdsCombobox InputId="@TimeZoneInputId" Value="@ZoneFieldValue" ValueChanged="OnZoneChanged"
+                                <div class="cal-ev-tz">
+                                    <OdsCombobox @ref="_zoneCombo" InputId="@TimeZoneInputId" Value="@ZoneFieldValue" ValueChanged="OnZoneChanged"
                                                  Options="ZoneOptions" Placeholder="Search by zone or city" Clearable="false"
-                                                 AllRows="true" HomeEndKeys="true"
-                                                 EmptyText="@($"No time zone matches “{_zoneTyped?.Trim()}”.")"
-                                                 ResultsText="@(n => $"{n} {(n == 1 ? "time zone matches" : "time zones match")}")"
+                                                 AllRows="true" HomeEndKeys="true" EmptyTextFor="ZoneEmptyText" ResultsText="ZoneCountText"
+                                                 OnUnmatchedText="OnZoneUnmatched"
                                                  Error="@(_draft.TimeZoneError is not null)"
                                                  AriaDescribedBy="@ZoneDescribedBy" />
                                 </div>

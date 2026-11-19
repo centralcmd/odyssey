@@ -152,8 +152,12 @@ public partial class CalendarEventDialog
     // The zone was changed in this session — the help line then says where the clock time now lands (FR13).
     private bool _zoneChanged;
 
-    // What was last typed into the zone field, until a zone is picked: free text never becomes a value (§3, v3 §E).
-    private string? _zoneTyped;
+    // The zone picker, asked on Save for text typed into it that names no zone: free text never becomes a value (§3, v3 §E).
+    private OdsCombobox? _zoneCombo;
+
+    private static readonly Func<string, string> ZoneEmptyText = query => $"No time zone matches “{query}”.";
+
+    private static readonly Func<int, string> ZoneCountText = n => $"{n} {(n == 1 ? "time zone matches" : "time zones match")}";
 
     private bool OriginallyFloating =>
         Mode != CalendarEventDialogMode.Create && _storedZone is null
@@ -301,33 +305,17 @@ public partial class CalendarEventDialog
     /// <summary>A new event's zone: the browser's, else <c>UTC</c> (AC 1).</summary>
     private string DefaultZone => _viewer.ViewZoneId;
 
-    private string ZoneLabel(string? value) =>
-        ZoneOptions.FirstOrDefault(o => o.Value == (value ?? CalendarZoneClock.FloatingValue))?.Label ?? value ?? CalendarZoneClock.FloatingLabel;
-
-    private void OnZoneTyped(ChangeEventArgs e) => _zoneTyped = e.Value?.ToString();
-
-    /// <summary>Free text that matches no zone leaves the field invalid, on blur and on Save (v3 §E).</summary>
+    /// <summary>Free text that matches no zone leaves the field invalid, on blur (the picker reports it) and on Save (v3 §E).</summary>
     private void CheckZoneText()
     {
-        var typed = _zoneTyped?.Trim();
-        if (string.IsNullOrEmpty(typed) || string.Equals(typed, ZoneLabel(ZoneFieldValue), StringComparison.OrdinalIgnoreCase))
-            return;
-
-        if (ZoneOptions.FirstOrDefault(o => string.Equals(o.Label, typed, StringComparison.OrdinalIgnoreCase)) is { } exact)
-        {
-            _zoneTyped = null;
-            OnZoneChanged(exact.Value);
-            return;
-        }
-
-        _draft.TimeZoneError = CalendarEventCopy.ZoneError;
+        if (_zoneCombo?.UnmatchedText is not null)
+            _draft.TimeZoneError = CalendarEventCopy.ZoneError;
     }
 
-    private void OnZoneFocusOut(FocusEventArgs _) => CheckZoneText();
+    private void OnZoneUnmatched(string _) => _draft.TimeZoneError = CalendarEventCopy.ZoneError;
 
     private void OnZoneChanged(string? value)
     {
-        _zoneTyped = null;
         if (value is null)
             return; // the field is not clearable; a clear would otherwise read as "floating" (v2 N5)
 
@@ -422,7 +410,6 @@ public partial class CalendarEventDialog
         _loadedWeatherInputs = null;
         _storedZone = null;
         _zoneChanged = false;
-        _zoneTyped = null;
         _zoneOptions = null;
         _confirm = null;
         _conflictVersion = null;
@@ -896,20 +883,40 @@ public partial class CalendarEventDialog
 
         var target = _focusConfirm ? ConfirmHeadingId : _focusAlert ? AlertId : _focusZone ? TimeZoneInputId : _focusSave ? SaveButtonId : null;
         _focusConfirm = _focusAlert = _focusZone = _focusSave = false;
-        if (target is null)
+        if (target is not null)
+        {
+            _focusTarget = target;
+            _focusTries = 0;
+        }
+
+        if (_focusTarget is not { } pending)
         {
             return;
         }
 
         try
         {
-            await JS.InvokeVoidAsync("odsFocusById", target);
+            await JS.InvokeVoidAsync("odsFocusById", pending);
         }
         catch (Exception)
         {
             // Best-effort focus.
         }
+
+        // The alert and the confirm step render in the dialog's portaled body, which can land a render after this
+        // component's: focus again on the next render, once, so the move is not lost to that ordering.
+        if (_focusTries++ < 1)
+        {
+            _ = InvokeAsync(StateHasChanged);
+        }
+        else
+        {
+            _focusTarget = null;
+        }
     }
+
+    private string? _focusTarget;
+    private int _focusTries;
 
     /// <summary>The delete confirmation's body (issue #383 §3.9): the record goes, its place stays.</summary>
     internal static string DeleteMessage(string noun, string title) =>

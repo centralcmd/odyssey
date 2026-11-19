@@ -100,7 +100,7 @@ public class CalendarZoneClockTests
             .Add(c => c.Clearable, false)
             .Add(c => c.AllRows, true)
             .Add(c => c.HomeEndKeys, true)
-            .Add(c => c.EmptyText, "No time zone matches “xyzzy”.")
+            .Add(c => c.EmptyTextFor, q => $"No time zone matches “{q}”.")
             .Add(c => c.ResultsText, n => $"{n} {(n == 1 ? "time zone matches" : "time zones match")}"));
         return (ctx, cut);
     }
@@ -131,7 +131,7 @@ public class CalendarZoneClockTests
 
         Assert.Empty(await Search(cut, "xyzzy"));
         cut.WaitForAssertion(() => Assert.Equal(string.Empty, cut.Find(".odc-combo-count").TextContent));
-        Assert.Equal("No time zone matches “xyzzy”.", cut.Instance.EmptyText);
+        Assert.Equal("No time zone matches “xyzzy”.", cut.Instance.EmptyTextFor!("xyzzy"));
     }
 
     [Fact] // AC 14: Home and End reach the first and last row of the whole, uncapped list
@@ -149,6 +149,54 @@ public class CalendarZoneClockTests
         // The highlight is moved through MudAutocomplete's own method; a MudBlazor that renames it fails here.
         Assert.NotNull(typeof(MudAutocomplete<OdsOption>).GetMethod("SelectItemAsync",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public, [typeof(int)]));
+    }
+
+    [Fact] // AC 14: a non-clearable field never passes up the null MudAutocomplete coerces typed text into
+    public async Task Typing_into_a_non_clearable_picker_never_empties_its_value()
+    {
+        var changes = new List<string?>();
+        await using var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddMudServices();
+        var cut = ctx.Render<OdsCombobox>(p => p
+            .Add(c => c.Options, [new OdsOption("Europe/Oslo", "Europe/Oslo")])
+            .Add(c => c.Value, "Europe/Oslo")
+            .Add(c => c.Clearable, false)
+            .Add(c => c.ValueChanged, v => changes.Add(v)));
+
+        await cut.InvokeAsync(() => (Task)typeof(OdsCombobox)
+            .GetMethod("OnSelected", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+            .Invoke(cut.Instance, [null])!);
+
+        Assert.Empty(changes);
+        Assert.Equal("Europe/Oslo", cut.Instance.Value);
+    }
+
+    [Fact] // AC 14 (v3 §E): text naming no option is reported on blur and kept for Save; an exact label picks the option
+    public async Task Typed_text_naming_no_option_is_reported_on_blur_and_an_exact_label_is_picked()
+    {
+        var unmatched = new List<string>();
+        var picked = new List<string?>();
+        await using var ctx = new BunitContext();
+        ctx.JSInterop.Mode = JSRuntimeMode.Loose;
+        ctx.Services.AddMudServices();
+        var cut = ctx.Render<OdsCombobox>(p => p
+            .Add(c => c.Options, [new OdsOption("Europe/Oslo", "Europe/Oslo"), new OdsOption("UTC", "UTC")])
+            .Add(c => c.Value, "Europe/Oslo")
+            .Add(c => c.Clearable, false)
+            .Add(c => c.ValueChanged, v => picked.Add(v))
+            .Add(c => c.OnUnmatchedText, t => unmatched.Add(t)));
+        var wrap = cut.Find(".odc-combo-wrap");
+
+        wrap.Input("Atlantis");
+        Assert.Equal("Atlantis", cut.Instance.UnmatchedText);
+        await wrap.TriggerEventAsync("onfocusout", new Microsoft.AspNetCore.Components.Web.FocusEventArgs());
+        Assert.Equal(["Atlantis"], unmatched);
+
+        wrap.Input("utc");
+        await wrap.TriggerEventAsync("onfocusout", new Microsoft.AspNetCore.Components.Web.FocusEventArgs());
+        Assert.Equal(["UTC"], picked);
+        Assert.Null(cut.Instance.UnmatchedText);
     }
 
     // ── AC 23: one announcement per toast ────────────────────────────────────
