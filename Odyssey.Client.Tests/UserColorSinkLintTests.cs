@@ -46,7 +46,7 @@ public class UserColorSinkLintTests
 
     private static readonly string[] TagPages =
     [
-        "TransactionTagsPage.razor", "JournalTagsPage.razor", "TaskTagsPage.razor", "PhotoTagsPage.razor",
+        "TransactionTagsPage.razor", "JournalTagsPage.razor", "TaskTagsPage.razor", "PhotoTagsPage.razor", "NewsTagsPage.razor",
     ];
 
     /// <summary>The files whose every <c>style</c> expression must come from <c>UserColor</c>.</summary>

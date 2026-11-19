@@ -332,7 +332,7 @@ public class TagColorSurfaceTests : IAsyncLifetime
 
         Assert.Matches(@"\[Parameter, EditorRequired\] public Func<TRow, string\?> ColorOf", code);
         Assert.Contains("color: ColorOf(tag)", code, StringComparison.Ordinal);
-        foreach (var page in new[] { "Finance/TransactionTagsPage.razor", "Journal/JournalTagsPage.razor", "Journal/TaskTagsPage.razor", "Photos/PhotoTagsPage.razor" })
+        foreach (var page in new[] { "Finance/TransactionTagsPage.razor", "Journal/JournalTagsPage.razor", "Journal/TaskTagsPage.razor", "Photos/PhotoTagsPage.razor", "Internet/NewsTagsPage.razor" })
             Assert.Contains("ColorOf=\"@(t => t.Color)\"", File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", page)), StringComparison.Ordinal);
     }
 

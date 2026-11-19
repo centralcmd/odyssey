@@ -547,7 +547,7 @@ public partial class NewsPage : IDisposable
     private void SetTags(List<ExistingNewsTag> tags)
     {
         _tags = tags;
-        _tagsById = tags.GroupBy(t => t.Id).ToDictionary(g => g.Key, g => g.First());
+        _tagsById = tags.GroupBy(t => t.NewsTagId).ToDictionary(g => g.Key, g => g.First());
     }
 
     private void SetCounts(ApiResult<NewsUnreadCounts> result)

@@ -942,6 +942,13 @@ ids would read and sort every matching row instead. So:
 
 ### 5.4 Tags
 
+> **Superseded (November 2026).** News tags now take the contract every tag resource shares (journal, task,
+> photo and transaction tags): `GET` is paged with `search`, `status`, `sortBy` (`Name`/`Status`), `sortDir`,
+> `offset` and `limit` and returns `{ newsTagId, name, description, archived (DateTime?), icon, color }` — no
+> counts; `PUT` carries `archived` and is how a tag is archived or restored (the `…/archive` and `…/unarchive`
+> routes are gone); and `DELETE` refuses a tag in use with `409 news-tag-in-use` (its counts still in the body) —
+> there is no `detachLinks`. Items 21, 24 and 25 below describe the original design.
+
 21. `GET /api/news-tags` — `news.read`. **Unpaged**; returns every tag (≤ 500, the tag cap), each with
     every field of the `NewsTags` entity plus the counts:
     `{ id, name, description, icon, color, archived, createdAtUtc, updatedAtUtc, feedCount, articleCount }`.

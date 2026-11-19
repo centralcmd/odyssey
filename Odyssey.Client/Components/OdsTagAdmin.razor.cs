@@ -48,6 +48,12 @@ public partial class OdsTagAdmin<TRow>
     /// </summary>
     [Parameter, EditorRequired] public Func<TRow, string?> ColorOf { get; set; } = default!;
 
+    /// <summary>
+    /// Called after every successful write (create, edit, archive, restore, delete), for a family whose tags are cached
+    /// elsewhere — the news tag list behind the feed and article pickers.
+    /// </summary>
+    [Parameter] public Action? OnTagsChanged { get; set; }
+
     /// <summary>The Color field's help line — the same on all four tag pages (issue #394 [PO-1]).</summary>
     public const string ColorHelp = "Shown on this tag's chips and avatar.";
 
@@ -456,12 +462,14 @@ public partial class OdsTagAdmin<TRow>
     }
 
     // Transaction tags are cached for the whole session so the pickers don't re-fetch them per dialog
-    // open (issue #372); a write here has to drop that cache. The other three tag resources this
-    // component serves aren't cached, hence the type test rather than an unconditional invalidate.
+    // open (issue #372); a write here has to drop that cache. A host whose tags are cached elsewhere
+    // passes OnTagsChanged instead.
     private bool Invalidated(bool saved)
     {
         if (saved && typeof(TRow) == typeof(ExistingTransactionTag))
             ReferenceData.InvalidateTransactionTags();
+        if (saved)
+            OnTagsChanged?.Invoke();
         return saved;
     }
 

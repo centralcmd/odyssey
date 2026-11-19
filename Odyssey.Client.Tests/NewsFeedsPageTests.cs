@@ -48,7 +48,7 @@ public class NewsFeedsPageTests
         var context = new NewsPageTestContext(claims);
         context.News.Setup(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(Page(feeds)));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
         return context;
     }
 
@@ -91,7 +91,7 @@ public class NewsFeedsPageTests
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((int page, int _, string? _, Guid? _, NewsFeedState? _, IReadOnlyCollection<NewsFeedHealth>? _, NewsFeedSortBy? _, bool? _, CancellationToken _) =>
                 Ok(Page(page == 1 ? first : second)));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -105,7 +105,7 @@ public class NewsFeedsPageTests
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(() => Ok(Page(Enumerable.Range(0, NewsLimits.MaxPageSize).Select(i => Feed($"F{i}")))));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -121,7 +121,7 @@ public class NewsFeedsPageTests
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync((int page, int _, string? _, Guid? _, NewsFeedState? _, IReadOnlyCollection<NewsFeedHealth>? _, NewsFeedSortBy? _, bool? _, CancellationToken _) =>
                 page == 1 ? Ok(Page(Enumerable.Range(0, NewsLimits.MaxPageSize).Select(i => Feed($"F{i}")))) : Fail<PagedResult<ExistingNewsFeed>>(HttpStatusCode.InternalServerError));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -136,7 +136,7 @@ public class NewsFeedsPageTests
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), It.IsAny<int>(), null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Busy<PagedResult<ExistingNewsFeed>>());
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
 
         var cut = context.Render<NewsFeedsPage>();
 
@@ -207,8 +207,8 @@ public class NewsFeedsPageTests
     [Fact]
     public async Task By_tags_counts_feeds_per_tag_plus_no_tag()
     {
-        var tech = new ExistingNewsTag { Id = Guid.NewGuid(), Name = "Tech" };
-        await using var context = Context([Feed("A", f => f.TagIds = [tech.Id]), Feed("B")], tags: [tech]);
+        var tech = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Tech" };
+        await using var context = Context([Feed("A", f => f.TagIds = [tech.NewsTagId]), Feed("B")], tags: [tech]);
         var cut = context.Render<NewsFeedsPage>();
 
         cut.WaitForAssertion(() => Assert.Equal(2, CardNames(cut).Count));

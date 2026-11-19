@@ -91,6 +91,13 @@ public enum NewsFeedState : byte
     Unknown = byte.MaxValue,
 }
 
+/// <summary>Sortable keys for the news tag list, as for every tag resource; ties break on the id.</summary>
+public enum NewsTagSortBy
+{
+    Name,
+    Status,
+}
+
 /// <summary>Sortable keys for the feed list; every sort ends with the id as a tie-break.</summary>
 public enum NewsFeedSortBy
 {

@@ -26,7 +26,7 @@ public class NewsMarkAllReadTests
 
     private static NewsPageTestContext Ctx(List<NewsFeedCatalogueEntry>? catalogue = null, NewsUnreadCounts? counts = null,
         NewsArticlePage? page = null) =>
-        Context([Article("A")], catalogue: catalogue, tags: [new() { Id = TagId, Name = "Climate" }, new() { Id = Guid.NewGuid(), Name = "Energy" }],
+        Context([Article("A")], catalogue: catalogue, tags: [new() { NewsTagId = TagId, Name = "Climate" }, new() { NewsTagId = Guid.NewGuid(), Name = "Energy" }],
             counts: counts ?? new NewsUnreadCounts
             {
                 Total = 42,

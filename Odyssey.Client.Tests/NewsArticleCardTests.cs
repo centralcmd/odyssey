@@ -267,9 +267,9 @@ public class NewsArticleCardTests
     [Fact]
     public async Task Own_and_inherited_tags_are_the_header_chips_and_inherited_ones_say_from_feed()
     {
-        var own = new ExistingNewsTag { Id = Guid.NewGuid(), Name = "Climate" };
-        var inherited = new ExistingNewsTag { Id = Guid.NewGuid(), Name = "Energy" };
-        var article = Article("Story", a => { a.TagIds = [own.Id]; a.FeedTagIds = [inherited.Id]; });
+        var own = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Climate" };
+        var inherited = new ExistingNewsTag { NewsTagId = Guid.NewGuid(), Name = "Energy" };
+        var article = Article("Story", a => { a.TagIds = [own.NewsTagId]; a.FeedTagIds = [inherited.NewsTagId]; });
         await using var context = Context([article], tags: [own, inherited]);
         var cut = Rendered(context);
 
@@ -475,7 +475,7 @@ public class NewsArticleCardTests
             a.Link = "javascript:alert(1)";
             a.IsRead = true;
         });
-        await using var context = Context([article], tags: [new() { Id = Guid.NewGuid(), Name = Hostile }]);
+        await using var context = Context([article], tags: [new() { NewsTagId = Guid.NewGuid(), Name = Hostile }]);
         context.News.Setup(n => n.GetArticleAsync(article.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(DetailOf(article, d => { d.Body = $"{Hostile}\n\n{Hostile}"; d.Images = [new() { Id = Guid.NewGuid(), AltText = Hostile }]; })));
         var cut = Rendered(context);

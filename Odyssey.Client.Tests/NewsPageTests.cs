@@ -79,7 +79,7 @@ public class NewsPageTests
         var context = new NewsPageTestContext(claims);
         context.News.Setup(n => n.GetCatalogueAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(catalogue ?? [CatalogueFeed("Example News", id: FeedId)]));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(tags ?? []));
         context.News.Setup(n => n.GetUnreadCountsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(counts ?? new NewsUnreadCounts { Total = articles.Count(a => !a.IsRead) }));
         context.News.Setup(n => n.GetStatusAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new NewsStatus()));

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.ApiClient.Auth;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Dtos.Internet;
 using Odyssey.Dtos.Journal;
 
 namespace Odyssey.ApiClient;
@@ -31,7 +32,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUsersApiClient, UsersApiClient>();
         services.AddScoped<IUserPreferencesApiClient, UserPreferencesApiClient>();
 
-        // The four tag resources share one contract; each closed client is bound to its own route.
+        // The five tag resources share one contract; each closed client is bound to its own route.
         services.AddScoped<ITagsApiClient<ExistingTransactionTag>>(sp =>
             new TagsApiClient<ExistingTransactionTag>(sp.GetRequiredService<IOdysseyApi>(), "api/transaction-tags"));
         services.AddScoped<ITagsApiClient<ExistingJournalTag>>(sp =>
@@ -40,6 +41,8 @@ public static class ServiceCollectionExtensions
             new TagsApiClient<ExistingJournalTaskTag>(sp.GetRequiredService<IOdysseyApi>(), "api/task-tags"));
         services.AddScoped<ITagsApiClient<ExistingPhotoTag>>(sp =>
             new TagsApiClient<ExistingPhotoTag>(sp.GetRequiredService<IOdysseyApi>(), "api/photo-tags"));
+        services.AddScoped<ITagsApiClient<ExistingNewsTag>>(sp =>
+            new TagsApiClient<ExistingNewsTag>(sp.GetRequiredService<IOdysseyApi>(), "api/news-tags"));
         services.AddScoped<IFileAnalysisApiClient, FileAnalysisApiClient>();
         services.AddScoped<ICurrenciesApiClient, CurrenciesApiClient>();
         services.AddScoped<IExchangeRatesApiClient, ExchangeRatesApiClient>();

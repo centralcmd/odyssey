@@ -109,9 +109,9 @@ public class NewsSourceLintTests
         await using var context = new NewsPageTestContext();
         context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), It.IsAny<int>(), null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Ok(new PagedResult<ExistingNewsFeed> { Items = [feed], TotalCount = 1 }));
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>
         {
-            new() { Id = Guid.NewGuid(), Name = Hostile, Description = Hostile },
+            new() { NewsTagId = Guid.NewGuid(), Name = Hostile, Description = Hostile },
         }));
         var cut = context.Render<NewsFeedsPage>();
         cut.WaitForAssertion(() => Assert.Single(cut.FindAll(".odc-record-name")));
@@ -127,13 +127,17 @@ public class NewsSourceLintTests
     public async Task A_hostile_tag_renders_as_text_and_creates_no_element()
     {
         await using var context = new NewsPageTestContext();
-        context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>
+        context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>
         {
-            new() { Id = Guid.NewGuid(), Name = Hostile, Description = Hostile, Icon = Hostile, Color = Hostile },
+            new() { NewsTagId = Guid.NewGuid(), Name = Hostile, Description = Hostile, Icon = Hostile, Color = Hostile },
         }));
-        var cut = context.Render<NewsTagsPage>();
+        // The tags page is the shared OdsTagAdmin, which loads only in a browser; the hostile name is pinned where the
+        // news reader renders tags itself — the feeds page and its tag breakdown.
+        context.News.Setup(n => n.ListFeedsAsync(It.IsAny<int>(), It.IsAny<int>(), null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Ok(new PagedResult<ExistingNewsFeed> { Items = [], TotalCount = 0 }));
+        var cut = context.Render<NewsFeedsPage>();
 
-        cut.WaitForAssertion(() => Assert.Contains(Hostile, cut.Find("tbody").TextContent, StringComparison.Ordinal));
-        Assert.Empty(cut.FindAll("tbody img"));
+        cut.WaitForAssertion(() => Assert.Contains(Hostile, string.Concat(cut.Nodes.Select(n => n.TextContent)), StringComparison.Ordinal));
+        Assert.Empty(cut.FindAll("img"));
     }
 }
