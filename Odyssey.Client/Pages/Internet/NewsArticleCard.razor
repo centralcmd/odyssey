@@ -2,20 +2,24 @@
 @*
     NewsArticleCard — one article on /news (issue #473 §3.2.5–§3.2.7; Odyssey Design System · ui_kits/web/News.jsx,
     NewsArticleCard). An h3 record card: the title (or "(untitled)") in the article's language, the read state as the
-    single text chip — a visible "Unread", or an sr-only "Read" (no Dimmed style, a neutral glyph) — "Updated" when
-    the publisher edited it, its own and its feed's tags, and the meta line: feed title · author · relative time ·
-    image count. Chips and meta sit inside the expand button, so nothing interactive renders there.
+    single text chip — a visible "Unread", or an sr-only "Read" (no Dimmed style) — a warning "Updated since read"
+    for a read article the publisher changed afterwards (else "Updated" when it was ever edited), its own and its
+    feed's tags (a feed's tag is the same chip with a dashed edge), and the meta line: feed title · author · relative
+    time · image count. The article glyph takes the Status filter's colour — blue unread, amber updated since read,
+    grey read — and only supports the text. Chips and meta sit inside the expand button, so nothing interactive
+    renders there.
 
-    Expanded, it follows OdsRecordCard's fixed order: the "Updated by the publisher" alert with the only Show earlier
-    versions button → the detail tiles (no Feed tile; the header already names the feed) → the reading panel, which
+    Expanded, it follows OdsRecordCard's fixed order: the "Updated by the publisher" alert with its Show earlier
+    versions button → the detail tiles (no Feed tile; the header already names the feed; the Original link tile shows
+    the URL and host, its Open original and Copy link in the tile's own ⋯ menu) → the reading panel, which
     holds the body (or its Loading / Error / Unavailable / Omitted state) and the image carousel. There is no action
     row and no tag row: Mark read / unread and Tags… live in the ⋯ menu, the tags are the header's chips.
 *@
 
 <OdsRecordCard Id="@CardId(Article.Id)"
                Icon="article"
-               Accent="var(--mud-palette-text-secondary)"
-               AccentSoft="var(--mud-palette-action-default-hover)"
+               Accent="@AccentColor"
+               AccentSoft="@AccentSoftColor"
                HeadingLevel="3"
                Name="@Title"
                NameLang="@Lang"
@@ -31,9 +35,13 @@
         {
             <OdsChip Tone="OdsChipTone.Info" Dot="true" Class="sm">Unread</OdsChip>
         }
-        @if (Article.ContentChangedAtUtc is not null)
+        @if (IsUpdatedSinceRead)
         {
-            <OdsChip Tone="OdsChipTone.Outline" Icon="update" Class="sm">Updated</OdsChip>
+            <OdsChip Tone="OdsChipTone.Warning" Icon="update" Class="sm">Updated since read</OdsChip>
+        }
+        else if (Article.ContentChangedAtUtc is not null)
+        {
+            <OdsChip Tone="OdsChipTone.Warning" Icon="update" Class="sm">Updated</OdsChip>
         }
         @foreach (var tag in OwnTags)
         {
@@ -41,7 +49,7 @@
         }
         @foreach (var tag in InheritedTags)
         {
-            <OdsChip Tone="OdsChipTone.Outline" Icon="rss_feed" Class="sm nw-inherited"><bdi>@tag.Name</bdi><span class="odc-sr-only"> (from feed)</span></OdsChip>
+            <OdsTagChip Name="@tag.Name" Icon="@tag.Icon" Color="@tag.Color" Class="sm nw-inherited" SrSuffix=" (from feed)" />
         }
     </Chips>
     <Actions>
@@ -59,7 +67,7 @@
         {
             <OdsAlert Severity="Severity.Info" Live="OdsAlertLive.None">
                 <span class="nw-alert-line">
-                    <span>Updated by the publisher on <time datetime="@Iso(changed)">@Day(changed)</time>.</span>
+                    <span>Updated by the publisher on <time datetime="@Iso(changed)">@Day(changed)</time>@(IsUpdatedSinceRead ? ", after you read it" : string.Empty).</span>
                     <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" Icon="history" OnClick="ShowVersions">Show earlier versions</OdsButton>
                 </span>
             </OdsAlert>
@@ -76,18 +84,30 @@
             <OdsInfoTile Icon="done_all" Label="Read" ValueVariant="OdsInfoTileVariant.Text">
                 <Value>@(Article.IsRead ? AbsoluteTime(Article.ReadAtUtc, "Read") : AbsoluteTime(null, "Not read"))</Value>
             </OdsInfoTile>
-            <OdsInfoTile Icon="link" Label="Original link" ValueVariant="OdsInfoTileVariant.Text" Wide="true" WrapValue="true">
-                <Value>
-                    @if (string.IsNullOrWhiteSpace(Article.Link))
-                    {
-                        <span>No link</span>
-                    }
-                    else
-                    {
-                        <OdsExternalLink Url="@Article.Link" Text="Open original" Copyable="true" />
-                    }
-                </Value>
-            </OdsInfoTile>
+            @* The URL and its host token only; Open original and Copy link are in the tile's own ⋯ menu and the card's. *@
+            <div class="nw-tile wide">
+                <OdsInfoTile Icon="link" ValueVariant="OdsInfoTileVariant.Text" Wide="true" WrapValue="true">
+                    <LabelContent>
+                        <span>Original link</span>
+                        @if (LinkMenu.Count > 0)
+                        {
+                            <span class="nw-tile-menu">
+                                <OdsMenu Items="LinkMenu" AriaLabel="@($"Actions for the original link of {Title}")" />
+                            </span>
+                        }
+                    </LabelContent>
+                    <Value>
+                        @if (string.IsNullOrWhiteSpace(Article.Link))
+                        {
+                            <span>No link</span>
+                        }
+                        else
+                        {
+                            <OdsExternalLink Url="@Article.Link" Actions="false" />
+                        }
+                    </Value>
+                </OdsInfoTile>
+            </div>
         </OdsInfoTileGrid>
     </Details>
     <Content>

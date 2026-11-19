@@ -494,6 +494,11 @@
                 window.odsNewsFocusListStart(rootId);
             });
         };
+        window.odsNewsOpenOriginal = function (href) {
+            // Open original from a ⋯ menu (Odyssey Design System · ExternalLink): exactly the href the client
+            // already vetted as an absolute http/https URL, in a new tab with no opener and no referrer.
+            window.open(href, '_blank', 'noopener,noreferrer');
+        };
         window.odsNewsScrollListTop = function (rootId) {
             // A fresh first page on /news scrolls the list back to its top (issue #473 §3.2.4) — only when the reader
             // had scrolled past it, so a filter change at the top of the page never jumps.

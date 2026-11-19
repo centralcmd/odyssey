@@ -14,7 +14,13 @@
     how a tag reads is made once. The glyph is decorative (aria-hidden): the name is always beside it.
 *@
 
-<OdsChip Tone="@Tone" Icon="@GlyphFor(Icon, DefaultIcon)" UserColor="@Color" Class="@Class" Title="@Title">@Name</OdsChip>
+<OdsChip Tone="@Tone" Icon="@GlyphFor(Icon, DefaultIcon)" UserColor="@Color" Class="@Class" Title="@Title">
+    @Name
+    @if (!string.IsNullOrEmpty(SrSuffix))
+    {
+        <span class="odc-sr-only">@SrSuffix</span>
+    }
+</OdsChip>
 
 @code {
     /// <summary>
@@ -43,6 +49,9 @@
     [Parameter] public string? Class { get; set; }
 
     [Parameter] public string? Title { get; set; }
+
+    /// <summary>Screen-reader-only text after the name, e.g. " (from feed)" on a tag a news article inherits.</summary>
+    [Parameter] public string? SrSuffix { get; set; }
 
     /// <summary>The tag's own icon when it is a known key, else <see cref="FallbackGlyph"/>.</summary>
     public static string GlyphFor(string? icon) => GlyphFor(icon, FallbackGlyph);

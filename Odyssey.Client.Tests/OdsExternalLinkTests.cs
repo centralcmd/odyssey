@@ -132,4 +132,32 @@ public class OdsExternalLinkTests
 
         cut.WaitForAssertion(() => Assert.Equal(OdsExternalLink.CopyFailedText, cut.Find(".odc-extlink-status").TextContent));
     }
+
+    [Fact]
+    public void Without_actions_a_safe_url_is_itself_the_link_and_the_host_stays()
+    {
+        using var ctx = NestedInteractiveControlTests.NewContext();
+        var cut = ctx.Render<OdsExternalLink>(p => p.Add(c => c.Url, "https://example.com/a").Add(c => c.Actions, false));
+
+        var link = cut.Find("a.odc-extlink-urllink");
+        Assert.Equal("https://example.com/a", link.GetAttribute("href"));
+        Assert.Equal("_blank", link.GetAttribute("target"));
+        Assert.Equal("noopener noreferrer", link.GetAttribute("rel"));
+        Assert.Equal("no-referrer", link.GetAttribute("referrerpolicy"));
+        Assert.Equal("ltr", link.QuerySelector("bdi")!.GetAttribute("dir"));
+        Assert.Equal("https://example.com/a (opens in a new tab)", OdsInfiniteListRemoteTests.SpokenText(link));
+        Assert.Equal("example.com", cut.Find(".odc-extlink-host bdi").TextContent);
+        Assert.Empty(cut.FindAll(".odc-extlink-actions, a.odc-extlink-open, button.odc-extlink-copy, [role=status]"));
+    }
+
+    [Fact]
+    public void Without_actions_an_unsafe_url_stays_text_with_no_href()
+    {
+        using var ctx = NestedInteractiveControlTests.NewContext();
+        var cut = ctx.Render<OdsExternalLink>(p => p.Add(c => c.Url, "javascript:alert(1)").Add(c => c.Actions, false));
+
+        Assert.Empty(cut.FindAll("a, [href]"));
+        Assert.Equal("javascript:alert(1)", cut.Find("bdi.odc-extlink-url").TextContent);
+        Assert.Equal("Not a web link", cut.Find(".odc-extlink-host").TextContent);
+    }
 }

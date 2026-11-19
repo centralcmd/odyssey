@@ -80,7 +80,13 @@ public sealed class NewsFeedService(
         NewsQueryGuard.RunAsync(async () =>
         {
             var rows = await LoadRowsAsync(context.NewsFeeds.AsNoTracking().News().Where(f => f.DeletionRequestedAtUtc == null), cancellationToken);
-            return rows.Select(NewsFeedProjection.ToCatalogueEntry)
+            // Read articles changed since they were read: no maintained counter, so one grouped count per request.
+            var updated = await context.NewsArticles.AsNoTracking()
+                .Where(NewsReadStatusFilter.IsUpdatedSinceRead)
+                .GroupBy(a => a.NewsFeedId)
+                .Select(g => new { FeedId = g.Key, Count = g.Count() })
+                .News().ToDictionaryAsync(g => g.FeedId, g => g.Count, cancellationToken);
+            return rows.Select(r => NewsFeedProjection.ToCatalogueEntry(r) with { UpdatedCount = updated.GetValueOrDefault(r.Feed.NewsFeedId) })
                 .OrderBy(e => e.DisplayTitle, StringComparer.CurrentCultureIgnoreCase)
                 .ThenBy(e => e.Id)
                 .ToList();

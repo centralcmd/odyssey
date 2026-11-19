@@ -33,11 +33,20 @@ public partial class NewsPage : IDisposable
 
     public const string ReadKey = "read";
 
+    /// <summary>Read articles the publisher changed after they were read: a subset of Read.</summary>
+    public const string UpdatedKey = "updated";
+
+    /// <summary>The header's ⋯ "News actions" menu; the Mark all read dialog returns focus here.</summary>
+    public const string ActionMenuId = "nw-actions";
+
+    public const string LinkCopiedText = "Link copied";
+
+
     public const string PublishedKey = "published";
 
     public const string RelevanceKey = "relevance";
 
-    public const string ChangedBackText = "Couldn't update. Changed back.";
+    public const string ChangedBackText = "Couldn’t update. Changed back.";
 
     public const string OfferedUndoText = "Marked as read";
 
@@ -63,6 +72,8 @@ public partial class NewsPage : IDisposable
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
+    [Inject] private IClipboardService Clipboard { get; set; } = default!;
+
     [Inject] private TimeProvider Time { get; set; } = default!;
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
@@ -81,11 +92,12 @@ public partial class NewsPage : IDisposable
     private static readonly OdsSortField<NewsArticleSummary> RelevanceField =
         new() { Key = RelevanceKey, Label = "Relevance", Type = OdsSortType.Number, DefaultDir = OdsSortDirection.Desc };
 
-    /// <summary>Unread and Read, each with an icon (§3.2.3 row 4).</summary>
+    /// <summary>Unread, Read and Updated (read, then changed by the publisher), each with an icon (§3.2.3 row 4).</summary>
     internal static readonly IReadOnlyList<OdsOption> StatusOptions =
     [
         new(UnreadKey, "Unread") { Icon = "mark_email_unread", IconColor = OdsBreakdown.Tone("info") },
         new(ReadKey, "Read") { Icon = "drafts", IconColor = OdsBreakdown.Tone("outline") },
+        new(UpdatedKey, "Updated") { Icon = "update", IconColor = OdsBreakdown.Tone("warning") },
     ];
 
     private OdsLiveAnnouncer? _announcer;
@@ -127,6 +139,7 @@ public partial class NewsPage : IDisposable
     private readonly HashSet<Guid> _justRead = [];
     private readonly Dictionary<Guid, NewsArticleDetailState> _details = [];
     private Guid? _openId;
+    private Guid? _rereadId;
 
     private sealed record LoadFailure(bool Busy, TimeSpan? RetryAfter);
 
@@ -156,7 +169,8 @@ public partial class NewsPage : IDisposable
 
     private bool StatusIsUnreadOnly => _statuses.Count == 1 && _statuses.Contains(UnreadKey);
 
-    private bool StatusIsReadOnly => _statuses.Count == 1 && _statuses.Contains(ReadKey);
+    /// <summary>Nothing in view can be unread, so Mark all read is not offered.</summary>
+    private bool StatusExcludesUnread => _statuses.Count > 0 && !_statuses.Contains(UnreadKey);
 
     private bool HasListFilters =>
         !string.IsNullOrWhiteSpace(_appliedSearch) || (_listFilter?.FeedIds?.Count ?? 0) > 0 || (_listFilter?.TagIds?.Count ?? 0) > 0;
@@ -165,9 +179,6 @@ public partial class NewsPage : IDisposable
         string.IsNullOrWhiteSpace(_search) ? [PublishedField] : [PublishedField, RelevanceField];
 
     private IReadOnlyList<OdsOption> TagFilterOptions => NewsVisuals.TagFilterOptions(_tags);
-
-    /// <summary>Hide read: only under Status = Unread exactly, with a card in view read in this view (§3.2.8).</summary>
-    private bool CanHideRead => StatusIsUnreadOnly && _rows.Any(r => r.IsRead && _justRead.Contains(r.Id));
 
     internal NewsEmptyKind EmptyKind =>
         _catalogue.Count > 0 && _catalogue.Sum(f => f.ArticleCount) == 0 && _catalogue.Any(f => f.Health == NewsFeedHealth.Pending)
@@ -189,8 +200,17 @@ public partial class NewsPage : IDisposable
     private IReadOnlyList<OdsBreakdownRow> ArticleRows =>
     [
         new() { Key = UnreadKey, Label = "Unread", Icon = "mark_email_unread", IconColor = OdsBreakdown.Tone("info"), Count = LiveFeeds.Sum(f => f.UnreadCount) },
-        new() { Key = ReadKey, Label = "Read", Icon = "drafts", IconColor = OdsBreakdown.Tone("outline"), Count = LiveFeeds.Sum(f => Math.Max(0, f.ArticleCount - f.UnreadCount)) },
+        new() { Key = ReadKey, Label = "Read", Icon = "drafts", IconColor = OdsBreakdown.Tone("outline"), Count = ReadTotal },
+        // A subset of Read, so the tile's total is Unread + Read (ArticleTotalText), not the rows' sum.
+        new() { Key = UpdatedKey, Label = "Updated", Icon = "update", IconColor = OdsBreakdown.Tone("warning"), Count = LiveFeeds.Sum(f => f.UpdatedCount) },
     ];
+
+    private int ReadTotal => LiveFeeds.Sum(f => Math.Max(0, f.ArticleCount - f.UnreadCount));
+
+    private string ArticleTotalText => (LiveFeeds.Sum(f => f.UnreadCount) + ReadTotal).ToString("N0", CultureInfo.CurrentCulture);
+
+    /// <summary>The header's ⋯ menu offers Mark all read… to a news.update holder with feeds, while something unread is in view.</summary>
+    private bool CanMarkAll => _canUpdate && _catalogue.Count > 0 && !StatusExcludesUnread;
 
     private IReadOnlyList<OdsBreakdownRow> FeedRows =>
     [
@@ -480,12 +500,25 @@ public partial class NewsPage : IDisposable
         {
             FeedIds = feeds.Count == 0 ? null : [.. feeds.Take(NewsLimits.MaxFilterIds)],
             TagIds = tags.Count == 0 ? null : [.. tags.Take(NewsLimits.MaxFilterIds)],
-            IsRead = StatusIsUnreadOnly ? false : StatusIsReadOnly ? true : null,
+            Statuses = StatusFilter(_statuses),
             Search = search,
             SortBy = _sort.Key == RelevanceKey && search is not null ? NewsArticleSortBy.Relevance
                 : _sort.Dir == OdsSortDirection.Asc ? NewsArticleSortBy.Oldest
                 : NewsArticleSortBy.Newest,
         };
+    }
+
+    /// <summary>The Status members as the API's enum; null when none is ticked (every article).</summary>
+    internal static IReadOnlyCollection<NewsArticleReadStatus>? StatusFilter(IReadOnlyCollection<string> statuses)
+    {
+        var members = statuses.Select(s => s switch
+        {
+            UnreadKey => NewsArticleReadStatus.Unread,
+            ReadKey => NewsArticleReadStatus.Read,
+            UpdatedKey => NewsArticleReadStatus.Updated,
+            _ => NewsArticleReadStatus.Unknown,
+        }).Where(s => s != NewsArticleReadStatus.Unknown).Distinct().Order().ToList();
+        return members.Count == 0 ? null : members;
     }
 
     // ── Loading ────────────────────────────────────────────────────────────────────────────────────
@@ -559,7 +592,7 @@ public partial class NewsPage : IDisposable
         else if (!NewsFeedback.IsBusy(result.Problem))
         {
             // A busy count read keeps the catalogue's figures and is not worth a snackbar; anything else is said.
-            result.OrToast(Snackbar, "Couldn't load the unread counts");
+            result.OrToast(Snackbar, "Couldn’t load the unread counts");
         }
     }
 
@@ -856,12 +889,29 @@ public partial class NewsPage : IDisposable
     private async Task OnToggleAsync(NewsArticleSummary article, bool open)
     {
         _openId = open ? article.Id : (_openId == article.Id ? null : _openId);
+        var tasks = new List<Task>();
+        // Leaving an Updated-since-read card (closing it, or opening another) counts as reading the new version:
+        // ReadAtUtc moves to now and the flag clears. Not on open, so the chip and the alert stay while it is read.
+        if (_rereadId is { } rereadId && rereadId != _openId)
+        {
+            _rereadId = null;
+            if (_rows.FirstOrDefault(r => r.Id == rereadId) is { } left && NewsArticleCard.UpdatedSinceRead(left))
+            {
+                tasks.Add(WriteReadAsync(left, true, ReadSource.Reread));
+            }
+        }
+
         if (!open)
         {
+            await Task.WhenAll(tasks);
             return;
         }
 
-        var tasks = new List<Task>();
+        if (article.IsRead && _canUpdate && NewsArticleCard.UpdatedSinceRead(article))
+        {
+            _rereadId = article.Id;
+        }
+
         var state = _details.GetValueOrDefault(article.Id);
         if (state is null || (state.Phase is NewsBodyPhase.Error or NewsBodyPhase.StorageUnavailable && !state.Retrying))
         {
@@ -978,7 +1028,10 @@ public partial class NewsPage : IDisposable
 
     // ── The ⋯ menu (§3.2.10) ───────────────────────────────────────────────────────────────────────
 
-    /// <summary>Mark read / Mark unread · Tags… (both <c>news.update</c>) · Show articles from ‹feed›.</summary>
+    /// <summary>
+    /// Mark read / Mark unread · Tags… (both <c>news.update</c>) · Show earlier versions (when the publisher changed
+    /// it) · Show articles from ‹feed› · then the link items, which the Original link tile's own ⋯ menu repeats.
+    /// </summary>
     internal IReadOnlyList<OdsMenuItem> MenuFor(NewsArticleSummary article)
     {
         var title = NewsArticleCard.TitleOf(article);
@@ -991,6 +1044,11 @@ public partial class NewsPage : IDisposable
             items.Add(Item("local_offer", "Tags…", title, () => OpenTags(article)));
         }
 
+        if (article.RevisionCount > 0)
+        {
+            items.Add(Item("history", "Show earlier versions", title, () => OpenVersions(article)));
+        }
+
         var feedLabel = $"Show articles from {article.FeedTitle}";
         items.Add(new OdsMenuItem
         {
@@ -999,8 +1057,45 @@ public partial class NewsPage : IDisposable
             AriaLabel = feedLabel,
             OnClick = EventCallback.Factory.Create(this, () => ShowFeedAsync(article.FeedId)),
         });
+        items.AddRange(LinkMenuFor(article));
         return items;
     }
+
+    /// <summary>
+    /// Open original — only for a safe URL (OdsExternalLink.Target: absolute http/https, no user info), opening exactly
+    /// that href in a new tab with no opener and no referrer — and Copy link, whenever there is a link.
+    /// </summary>
+    internal IReadOnlyList<OdsMenuItem> LinkMenuFor(NewsArticleSummary article)
+    {
+        var items = new List<OdsMenuItem>();
+        if (OdsExternalLink.Target(article.Link) is { } target)
+        {
+            items.Add(new OdsMenuItem
+            {
+                Icon = "open_in_new",
+                Label = "Open original",
+                AriaLabel = "Open original (opens in a new tab)",
+                OnClick = EventCallback.Factory.Create(this, () => InvokeJsAsync("odsNewsOpenOriginal", target.AbsoluteUri)),
+            });
+        }
+
+        if (!string.IsNullOrWhiteSpace(article.Link))
+        {
+            var link = article.Link;
+            items.Add(new OdsMenuItem
+            {
+                Icon = "link",
+                Label = "Copy link",
+                TrailingIcon = "content_copy",
+                OnClick = EventCallback.Factory.Create(this, () => CopyLinkAsync(link)),
+            });
+        }
+
+        return items;
+    }
+
+    /// <summary>The shared clipboard service reports the result in a snackbar, success and failure alike.</summary>
+    private Task CopyLinkAsync(string link) => Clipboard.CopyAsync(link, LinkCopiedText);
 
     private OdsMenuItem Item(string icon, string label, string title, Func<Task> action) => new()
     {
@@ -1037,7 +1132,8 @@ public partial class NewsPage : IDisposable
 
     // ── Read state (§3.2.8, §10) ───────────────────────────────────────────────────────────────────
 
-    internal enum ReadSource { Expand, Menu, Undo }
+    /// <summary>What asked for the write. <see cref="Reread"/> is leaving an updated-since-read card: silent.</summary>
+    internal enum ReadSource { Expand, Menu, Undo, Reread }
 
     private readonly Dictionary<Guid, bool> _wanted = [];
     private readonly HashSet<Guid> _writing = [];
@@ -1071,6 +1167,8 @@ public partial class NewsPage : IDisposable
                 OfferUndo(article);
                 Say(NewsFeedback.Spoken(OfferedUndoText));
                 break;
+            case ReadSource.Reread:
+                break; // the state does not change, so there is nothing to say
             default:
                 Say(isRead ? "Marked as read" : "Marked as unread");
                 break;
@@ -1214,13 +1312,6 @@ public partial class NewsPage : IDisposable
         }
     }
 
-    /// <summary>Hide read: a fresh first page with ONE combined announcement, then the visible target (§3.2.8).</summary>
-    private Task HideReadAsync()
-    {
-        var hidden = _rows.Count(r => r.IsRead && _justRead.Contains(r.Id));
-        return ResetAsync($"{NewsFeedback.Count(hidden, "read article", "read articles")} hidden.", focusListStart: true);
-    }
-
     // ── Earlier versions ───────────────────────────────────────────────────────────────────────────
 
     private NewsArticleSummary? _versionsArticle;
@@ -1317,7 +1408,7 @@ public partial class NewsPage : IDisposable
             return true;
         }
 
-        Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn't save the tags"));
+        Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn’t save the tags"));
         return false;
     }
 
@@ -1352,7 +1443,7 @@ public partial class NewsPage : IDisposable
     /// </summary>
     internal int? MarkAllCount()
     {
-        if (_listFilter is not { } filter || filter.IsRead != false || filter.Search is not null || _totalCapped || _counts is not { } counts)
+        if (_listFilter is not { } filter || filter.Statuses is not { Count: 1 } statuses || !statuses.Contains(NewsArticleReadStatus.Unread) || filter.Search is not null || _totalCapped || _counts is not { } counts)
         {
             return null;
         }
@@ -1470,7 +1561,7 @@ public partial class NewsPage : IDisposable
         switch (result.End)
         {
             case NewsMarkAllEnd.Failed:
-                Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn't mark the articles as read"));
+                Say(NewsFeedback.Failure(Snackbar, result.Problem, "Couldn’t mark the articles as read"));
                 StateHasChanged();
                 await InvokeJsAsync("odsNewsFocusListStart", RootId);
                 return;

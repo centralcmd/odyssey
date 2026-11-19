@@ -5343,6 +5343,9 @@ fieldset.odc-addrblock { margin: 0; padding: 0; border: 0; }
 .odc-extlink { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .odc-extlink.empty { color: var(--mud-palette-text-secondary); }
 .odc-extlink-url { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
+.odc-extlink-urllink { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; border-radius: var(--radius-sm); }
+.odc-extlink-urllink:hover { text-decoration-thickness: 2px; }
+.odc-extlink-urllink:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); }
 .odc-extlink-host { font: var(--fw-medium) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); overflow-wrap: anywhere; }
 .odc-extlink-actions { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); min-width: 0; }
 .odc-extlink-open {
