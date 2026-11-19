@@ -3715,6 +3715,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .odc-cal-chip-rec { font-size: 12px; opacity: 0.85; }
 /* The attachment glyph (issue #522 §3.3): 14 px, after the title and the recurrence glyph; decorative. */
 .odc-cal-chip-att { flex: none; font-size: var(--icon-xs); opacity: 0.85; }
+/* The title in its own box, so it ellipsizes and the glyphs beside it stay visible in a narrow cell. */
+.odc-cal-chip-tt { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* All-day: filled swatch strip. Flush square edges where it continues into an adjacent day. */
 .odc-cal-chip.allday { background: var(--chip); color: var(--chip-fg); }
 .odc-cal-chip.allday.cont-l { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -4px; padding-left: 11px; }
@@ -4002,8 +4004,8 @@ tr:focus-within > .odc-rowactions.reveal,
 .cal-ce-ro-row .material-icons { flex: none; font-size: 18px; color: var(--mud-palette-text-secondary); margin-top: 1px; }
 .cal-ce-ro-sub { display: block; color: var(--mud-palette-text-secondary); font-size: var(--fs-caption); }
 /* Attachments (issue #522, DS AddCalendarEventModal): the fields, and "From the series" on an occurrence. */
-.cal-ce-links { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
-.cal-ce-fromseries { display: flex; flex-direction: column; gap: 10px; padding: 14px; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); min-width: 0; }
+.cal-ce-links { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; margin: var(--space-4) 0; }
+.cal-ce-fromseries { display: flex; flex-direction: column; gap: 10px; padding: 14px; margin: var(--space-4) 0; border: 1px solid var(--mud-palette-divider); border-radius: var(--radius-md); min-width: 0; }
 .cal-ce-fromseries-h { margin: 0; font: var(--fw-medium) var(--fs-body1)/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
 .cal-ce-fromseries-help { margin: 0; font: var(--fw-regular) var(--fs-body2)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .cal-ce-fromseries-help .link-btn { margin-left: 6px; }
