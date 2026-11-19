@@ -54,7 +54,7 @@ public sealed class CalendarImportLayoutTests(StackFixture fixture) : IAsyncLife
 
     private static async Task ImportAsync(IPage page, bool cancelled)
     {
-        await page.Locator("#cal-import-upload input[type=file]").SetInputFilesAsync(new FilePayload
+        await page.Locator("#cal-import-upload input[type=file]").First.SetInputFilesAsync(new FilePayload
         {
             Name = cancelled ? "cancelled.ics" : "layout.ics",
             MimeType = "text/calendar",
