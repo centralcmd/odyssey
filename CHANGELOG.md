@@ -5,6 +5,18 @@ automatically by [release-please](https://github.com/googleapis/release-please) 
 [Conventional Commits](https://www.conventionalcommits.org/), and the project follows
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.47.0](https://github.com/centralcmd/odyssey/compare/v0.46.0...v0.47.0) (2026-11-19)
+
+
+### Features
+
+* sync the client with the design system at 1795121522-cc6f ([91812da](https://github.com/centralcmd/odyssey/commit/91812da809fe079b7cf3fe1fe714294799642664))
+
+
+### Refactoring
+
+* put news tags on the shared tag contract and page ([88dbf6e](https://github.com/centralcmd/odyssey/commit/88dbf6e6f485dc2d94d1c7e25841f7f820f6244d))
+
 ## [0.46.0](https://github.com/centralcmd/odyssey/compare/v0.45.0...v0.46.0) (2026-11-19)
 
 
