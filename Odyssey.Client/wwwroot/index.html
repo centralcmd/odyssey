@@ -177,6 +177,37 @@
                 delete window.odysseyNativeTransfer.files[containerId];
             }
         };
+        // Escape anywhere inside one dialog (issue #517 review): a capture listener on the document, so it fires
+        // whether focus sits on the header, the body, the footer or the dialog container itself — and, when focus
+        // has fallen to <body>, while that dialog is the topmost one. A key pressed inside another dialog stacked
+        // above it (the Stop-upload confirmation) is not this dialog's. The .NET side decides what Escape means.
+        window.odsDialogEscape = {
+            next: 1,
+            handlers: {},
+            watch: function (dialogClass, ref) {
+                const id = window.odsDialogEscape.next++;
+                const handler = function (e) {
+                    if (e.key !== 'Escape') return;
+                    const dialog = document.querySelector('.' + dialogClass);
+                    if (!dialog) return;
+                    const box = dialog.closest('.mud-dialog-container') || dialog;
+                    const containers = document.querySelectorAll('.mud-dialog-container');
+                    const topmost = containers.length === 0 || containers[containers.length - 1] === box;
+                    const inside = box.contains(e.target) || (e.target === document.body && topmost);
+                    if (!inside) return;
+                    ref.invokeMethodAsync('OnDialogEscape').catch(function () { /* the dialog went away */ });
+                };
+                document.addEventListener('keydown', handler, true);
+                window.odsDialogEscape.handlers[id] = handler;
+                return id;
+            },
+            unwatch: function (id) {
+                const handler = window.odsDialogEscape.handlers[id];
+                if (!handler) return;
+                document.removeEventListener('keydown', handler, true);
+                delete window.odsDialogEscape.handlers[id];
+            }
+        };
         window.revokeBlobUrl = function (url) {
             URL.revokeObjectURL(url);
         };
