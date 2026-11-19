@@ -437,7 +437,7 @@
   box-shadow: var(--mud-elevation-1);
   padding: 20px;
 }
-.odc-lc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+.odc-lc-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; margin-bottom: 18px; }
 .odc-lc-head > div:first-child { min-width: 0; }
 .odc-lc-ttl { font: var(--fw-medium) var(--fs-body1)/1.2 var(--font-sans); color: var(--mud-palette-text-primary); }
 .odc-lc-sub { font: var(--fw-regular) var(--fs-caption)/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 5px; max-width: 62ch; text-wrap: pretty; }
@@ -1003,6 +1003,10 @@
 }
 /* An open-ended list (user data: tags, accounts, people) keeps a 240px trigger wherever it sits. */
 /* min(): the floor sets the wide-screen rhythm and never pushes a 320px page sideways (WCAG 1.4.10, issue #389). */
+/* A fitted trigger never narrows below the popover it opens (design system · bundle.css). */
+.odc-ms.fit { min-width: min(224px, calc(100vw - 2 * var(--space-4))); }
+.odc-ms.fit > .odc-ms-trigger { flex: 1; }
+.odc-ms.fit > .odc-ms-trigger .odc-ms-fit { width: 100%; }
 .odc-ms.open-ended { min-width: min(240px, 100%); }
 .odc-ms.open-ended > .odc-ms-trigger { flex: 1; }
 /* Custom checkbox (.odc-check) — scoped to the generic class, not .odc-ms-opt, so it
@@ -1619,7 +1623,7 @@
    menu, so a 320px page never scrolls sideways (WCAG 1.4.10, issue #389). */
 .odc-sortsel-field { position: relative; min-width: 0; max-width: 100%; }
 .odc-sortsel-field > *, .odc-sortsel-trigger { max-width: 100%; }
-.odc-sortsel-trigger, .odc-sortsel-dir, .odc-sortsel-static {
+.odc-sortsel-trigger, .odc-sortsel-dir {
   display: inline-flex; align-items: center; gap: 8px;
   box-sizing: border-box; height: var(--control-h); padding: 0 10px 0 12px;
   cursor: pointer; white-space: nowrap; text-align: left;
@@ -1648,10 +1652,6 @@
 .odc-sortsel-stable > * { grid-area: 1 / 1; white-space: nowrap; }
 .odc-sortsel-cur { justify-self: start; }
 .odc-sortsel-ghost { visibility: hidden; }
-/* Single-field pages: the static "Sort by <field>" label keeps the trigger's box (border, height,
-   fill) so it lines up with the bar's other controls, but drops the pointer and the hover edge —
-   there is nothing to open. */
-.odc-sortsel-static { cursor: default; padding: 0 12px; }
 
 .odc-tagms { position: relative; }
 /* The chips box IS the popup box (OdsPopupMenu) here — .odc-tagms-control below

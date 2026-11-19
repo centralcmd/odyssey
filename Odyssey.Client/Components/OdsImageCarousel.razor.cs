@@ -55,15 +55,14 @@ public partial class OdsImageCarousel
     private string Ratio => FrameRatio(Images.Count > 0 ? Images[0] : null);
 
     /// <summary>
-    /// The carousel's one frame ratio, as a CSS <c>aspect-ratio</c>: the first image's width/height, each
-    /// clamped to 1…4096, with the ratio clamped to 4:3 … 16:9. No usable dimensions give 4:3.
+    /// The carousel's one frame ratio, as a CSS <c>aspect-ratio</c>: the first image's width/height, with
+    /// the ratio clamped to 4:3 … 16:9. Dimensions outside 1…20 000 are not usable (the design system's
+    /// <c>carouselDims</c>) and, like none at all, give 4:3 — they are ignored, never clamped.
     /// </summary>
     public static string FrameRatio(OdsCarouselImage? first)
     {
-        if (first is not { Width: > 0, Height: > 0 })
+        if (Dimension(first?.Width) is not { } width || Dimension(first?.Height) is not { } height)
             return "4 / 3";
-        var width = Math.Clamp(first.Width.Value, 1, 4096);
-        var height = Math.Clamp(first.Height.Value, 1, 4096);
         var ratio = (double)width / height;
         if (ratio >= 16.0 / 9)
             return "16 / 9";
@@ -130,5 +129,8 @@ public partial class OdsImageCarousel
             StateHasChanged();
     }
 
-    private static int? Dimension(int? value) => value is > 0 and <= 4096 ? value : null;
+    /// <summary>The most either side may be before it is treated as missing (the design system's 20 000).</summary>
+    public const int MaxDimension = 20000;
+
+    private static int? Dimension(int? value) => value is > 0 and <= MaxDimension ? value : null;
 }
