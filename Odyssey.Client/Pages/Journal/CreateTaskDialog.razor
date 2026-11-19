@@ -41,7 +41,8 @@
                        ValueChanged="@(v => _draft.TagIds = v)" Options="_tagOpts"
                        Placeholder="No tags" AddLabel="Add tag"
                        OnCreate="@(_canCreateTag ? CreateTagOption : null)"
-                       CreateKinds="OdsTypeRegistries.TagCreateKinds.Task" />
+                       CreateKinds="OdsTypeRegistries.TagCreateKinds.Task"
+                       CreateBlocked="BlockedTagName" />
 
     <OdsNoteField Label="Content" MaxLength="4096" Rows="4"
                   Value="@_draft.Content" ValueChanged="@(v => _draft.Content = v)" Placeholder="Details, links, next steps…" />
@@ -49,6 +50,11 @@
 </OdsFormDialog>
 
 @code {
+    // Task tag names are unique among ACTIVE tags only (JournalTaskTagService.EnsureNameAvailable), so only
+    // the listed tags block a name; an archived tag's name stays creatable.
+    private string? BlockedTagName(string text) =>
+        TagNameRule.Blocked(_tagOpts.Select(o => new TagNameEntry(o.Label, Archived: false)), text, TagNameRule.Pages.Task);
+
     [Parameter] public bool Open { get; set; }
     [Parameter] public EventCallback<bool> OpenChanged { get; set; }
 
