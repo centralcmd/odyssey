@@ -312,7 +312,16 @@ public sealed class CalendarTimeZoneReflowTests(StackFixture fixture) : IAsyncLi
         {
             // First, and through the API alone: a UI reset below can throw on a page a failed step left in any state, and
             // must not be what decides whether this run's rows outlive it. By id, never by a title another run could share.
-            var cleanup = await DeleteThisRunAsync(page);
+            // Caught, so a throwing cleanup neither replaces the step's own error nor skips the resets below.
+            Cleanup cleanup;
+            try
+            {
+                cleanup = await DeleteThisRunAsync(page);
+            }
+            catch (Exception ex)
+            {
+                cleanup = new Cleanup { Failures = [$"cleanup threw {ex.GetType().Name}: {ex.Message}"] };
+            }
 
             await SetTextScaleAsync(page, "100%");
             await page.SetViewportSizeAsync(1366, 900);
