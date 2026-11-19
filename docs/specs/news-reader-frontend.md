@@ -747,7 +747,7 @@ follow the existing naming: `INewsArticlesApiClient`, `INewsFeedsApiClient`, `IN
 
 | Endpoint | Where |
 |---|---|
-| `GET/POST/PUT /api/news-tags…`, `…/archive`, `…/unarchive`, `DELETE …[?detachLinks=true]` | `/news-tags` |
+| `GET/POST/PUT/DELETE /api/news-tags…` — the shared tag contract since November 2026 (backend §5.4); the page is the shared `OdsTagAdmin` | `/news-tags` |
 | `GET /api/news-status` | The News status panel and the job card's text-quota warning line |
 | Existing `/api/background-jobs/…` and `/api/system-settings` | The job card and the settings group |
 

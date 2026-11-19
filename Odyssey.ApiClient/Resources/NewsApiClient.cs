@@ -102,19 +102,7 @@ public interface INewsApiClient
 
     Task<ApiResult> RemoveArticleTagAsync(Guid id, Guid tagId, CancellationToken ct = default);
 
-    // Tags
-    Task<ApiResult<List<ExistingNewsTag>>> ListTagsAsync(CancellationToken ct = default);
-
-    Task<ApiResult<ExistingNewsTag>> CreateTagAsync(NewNewsTag tag, CancellationToken ct = default);
-
-    Task<ApiResult<ExistingNewsTag>> UpdateTagAsync(Guid id, UpdateNewsTag tag, CancellationToken ct = default);
-
-    Task<ApiResult<ExistingNewsTag>> ArchiveTagAsync(Guid id, CancellationToken ct = default);
-
-    Task<ApiResult<ExistingNewsTag>> UnarchiveTagAsync(Guid id, CancellationToken ct = default);
-
-    /// <summary>A tag in use is <c>409 news-tag-in-use</c> with <c>feedCount</c>/<c>articleCount</c> unless <paramref name="detachLinks"/>.</summary>
-    Task<ApiResult> DeleteTagAsync(Guid id, bool detachLinks = false, CancellationToken ct = default);
+    // Tags: ITagsApiClient<ExistingNewsTag>, the contract every tag resource shares.
 
     // Status
     Task<ApiResult<NewsStatus>> GetStatusAsync(CancellationToken ct = default);
@@ -125,7 +113,6 @@ public sealed class NewsApiClient(IOdysseyApi api) : INewsApiClient
 {
     private const string Feeds = "api/news-feeds";
     private const string Articles = "api/news-articles";
-    private const string Tags = "api/news-tags";
 
     /// <summary>Used when the export response carries no <c>Content-Disposition</c> file name.</summary>
     private const string OpmlFileName = "odyssey-news-feeds.opml";
@@ -258,24 +245,6 @@ public sealed class NewsApiClient(IOdysseyApi api) : INewsApiClient
 
     public Task<ApiResult> RemoveArticleTagAsync(Guid id, Guid tagId, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{Articles}/{id}/tags/{tagId}", null, ct);
-
-    public Task<ApiResult<List<ExistingNewsTag>>> ListTagsAsync(CancellationToken ct = default) =>
-        api.GetAsync<List<ExistingNewsTag>>(Tags, ct);
-
-    public Task<ApiResult<ExistingNewsTag>> CreateTagAsync(NewNewsTag tag, CancellationToken ct = default) =>
-        api.SendAsync<ExistingNewsTag>(HttpMethod.Post, Tags, tag, ct);
-
-    public Task<ApiResult<ExistingNewsTag>> UpdateTagAsync(Guid id, UpdateNewsTag tag, CancellationToken ct = default) =>
-        api.SendAsync<ExistingNewsTag>(HttpMethod.Put, $"{Tags}/{id}", tag, ct);
-
-    public Task<ApiResult<ExistingNewsTag>> ArchiveTagAsync(Guid id, CancellationToken ct = default) =>
-        api.SendAsync<ExistingNewsTag>(HttpMethod.Post, $"{Tags}/{id}/archive", null, ct);
-
-    public Task<ApiResult<ExistingNewsTag>> UnarchiveTagAsync(Guid id, CancellationToken ct = default) =>
-        api.SendAsync<ExistingNewsTag>(HttpMethod.Post, $"{Tags}/{id}/unarchive", null, ct);
-
-    public Task<ApiResult> DeleteTagAsync(Guid id, bool detachLinks = false, CancellationToken ct = default) =>
-        api.SendAsync(HttpMethod.Delete, detachLinks ? $"{Tags}/{id}?detachLinks=true" : $"{Tags}/{id}", null, ct);
 
     public Task<ApiResult<NewsStatus>> GetStatusAsync(CancellationToken ct = default) =>
         api.GetAsync<NewsStatus>("api/news-status", ct);

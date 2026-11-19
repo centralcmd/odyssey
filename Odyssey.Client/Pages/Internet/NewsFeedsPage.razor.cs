@@ -129,13 +129,13 @@ public partial class NewsFeedsPage
 
     private IReadOnlyList<OdsBreakdownRow> TagRows =>
     [
-        .. _tags.Where(t => !t.Archived).OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(t => new OdsBreakdownRow
+        .. _tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(t => new OdsBreakdownRow
         {
-            Key = t.Id,
+            Key = t.NewsTagId,
             Label = t.Name,
             Icon = OdsTagChip.GlyphFor(t.Icon),
             IconColor = UserColor.Glyph(t.Color) ?? NewsVisuals.TagRowColor,
-            Count = _feeds.Count(f => f.TagIds.Contains(t.Id)),
+            Count = _feeds.Count(f => f.TagIds.Contains(t.NewsTagId)),
         }),
         new OdsBreakdownRow { Key = "none", Label = "No tag", Icon = "label_off", IconColor = OdsBreakdown.Tone("outline"), Count = _feeds.Count(f => f.TagIds.Count == 0) },
     ];
@@ -296,7 +296,7 @@ public partial class NewsFeedsPage
     private void SetTags(List<ExistingNewsTag> tags)
     {
         _tags = tags;
-        _tagsById = tags.ToDictionary(t => t.Id);
+        _tagsById = tags.ToDictionary(t => t.NewsTagId);
         // A stored tag filter naming a tag that no longer exists is dropped before it filters anything (§3.1).
         _tagFilter = [.. _tagFilter.Where(v => Guid.TryParse(v, out var id) && _tagsById.ContainsKey(id))];
     }

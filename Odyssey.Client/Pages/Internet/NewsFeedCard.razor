@@ -34,7 +34,7 @@
         }
         @foreach (var tag in FeedTags)
         {
-            <OdsTagChip Name="@(tag.Archived ? $"{tag.Name} (archived)" : tag.Name)" Icon="@tag.Icon" Color="@tag.Color" Class="sm" />
+            <OdsTagChip Name="@(tag.Archived is not null ? $"{tag.Name} (archived)" : tag.Name)" Icon="@tag.Icon" Color="@tag.Color" Class="sm" />
         }
     </Chips>
     <Actions>

@@ -99,9 +99,9 @@ public static class NewsErrors
     public static NewsException TagLimit() => new(
         HttpStatusCode.UnprocessableEntity, NewsErrorCodes.TagLimit, $"The news reader holds at most {NewsLimits.MaxTags} tags.");
 
-    public static NewsException TagInUse(Guid tagId, int feedCount, int articleCount) => new(
+    public static NewsException TagInUse(int feedCount, int articleCount) => new(
         HttpStatusCode.Conflict, NewsErrorCodes.TagInUse,
-        $"News tag {tagId} is in use; archive it, or delete it with detachLinks=true.",
+        "Tag is in use by one or more feeds or articles; archive it instead of deleting.",
         extensions: new Dictionary<string, object?> { ["feedCount"] = feedCount, ["articleCount"] = articleCount });
 
     public static NewsException TagArchived(Guid tagId) => new(

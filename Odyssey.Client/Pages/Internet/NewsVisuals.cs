@@ -52,15 +52,15 @@ public static class NewsVisuals
 
     /// <summary>A tag as a filter or picker option; an archived tag says so in its name and wears the archive glyph (§6.4).</summary>
     public static OdsOption TagOption(ExistingNewsTag tag) =>
-        new(tag.Id.ToString(), tag.Archived ? $"{tag.Name} (archived)" : tag.Name)
+        new(tag.NewsTagId.ToString(), tag.Archived is not null ? $"{tag.Name} (archived)" : tag.Name)
         {
-            Icon = tag.Archived ? "archive" : OdsTagChip.GlyphFor(tag.Icon),
-            IconColor = tag.Archived ? OdsBreakdown.Tone("outline") : UserColor.Glyph(tag.Color) ?? TagRowColor,
+            Icon = tag.Archived is not null ? "archive" : OdsTagChip.GlyphFor(tag.Icon),
+            IconColor = tag.Archived is not null ? OdsBreakdown.Tone("outline") : UserColor.Glyph(tag.Color) ?? TagRowColor,
         };
 
     /// <summary>The Tag filter: active tags by name, then the archived ones (§3.3).</summary>
     public static IReadOnlyList<OdsOption> TagFilterOptions(IEnumerable<ExistingNewsTag> tags) =>
-        [.. tags.OrderBy(t => t.Archived).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
+        [.. tags.OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
 
     /// <summary>
     /// A tag picker's options: the active tags, plus any archived one already chosen — so an existing link stays
@@ -69,7 +69,7 @@ public static class NewsVisuals
     public static IReadOnlyList<OdsOption> TagPickerOptions(IEnumerable<ExistingNewsTag> tags, IEnumerable<Guid> chosen)
     {
         var keep = chosen.ToHashSet();
-        return [.. tags.Where(t => !t.Archived || keep.Contains(t.Id))
-            .OrderBy(t => t.Archived).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
+        return [.. tags.Where(t => t.Archived is null || keep.Contains(t.NewsTagId))
+            .OrderBy(t => t.Archived is not null).ThenBy(t => t.Name, StringComparer.CurrentCultureIgnoreCase).Select(TagOption)];
     }
 }

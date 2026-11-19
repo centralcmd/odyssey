@@ -137,8 +137,6 @@ public class NewsApiClientTests
     {
         var (client, handler) = Create(HttpStatusCode.NoContent, null);
 
-        await client.DeleteTagAsync(TagId, detachLinks: true);
-        Assert.Equal((HttpMethod.Delete, $"/api/news-tags/{TagId}?detachLinks=true"), (handler.LastRequest!.Method, handler.LastRequest.RequestUri!.PathAndQuery));
         await client.AddArticleTagAsync(ArticleId, TagId);
         Assert.Equal((HttpMethod.Put, $"/api/news-articles/{ArticleId}/tags/{TagId}"), (handler.LastRequest!.Method, handler.LastRequest.RequestUri!.PathAndQuery));
         await client.SetReadAsync(ArticleId, true);

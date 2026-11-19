@@ -99,7 +99,7 @@ public sealed class NewsOpmlRelationalTests(MariaDbFixture fixture)
         Assert.Equal(["CAFÉ"], result.Items[0].Tags);
         await using var check = await ContextAsync();
         Assert.Equal(1, await check.NewsTags.CountAsync());
-        Assert.Equal(existing.Id, (await check.NewsFeedTags.AsNoTracking().SingleAsync()).NewsTagId);
+        Assert.Equal(existing.NewsTagId, (await check.NewsFeedTags.AsNoTracking().SingleAsync()).NewsTagId);
     }
 
     [SkippableFact]

@@ -4,7 +4,14 @@ namespace Odyssey.Dtos.Internet;
 
 // The two news list queries (issue #470 §5.1, §5.2). The page size is bounded by NewsLimits.MaxPageSize rather than
 // the shared ListDefaults.MaxLimit; it is checked in Validate, the JobRunsQueryParams precedent, because hiding the base
-// Limit with a second property of the same name would give model binding two members to bind.
+// Limit with a second property of the same name would give model binding two members to bind. The tag list is not one of
+// them: it takes the shared tag-list contract and its ListDefaults bounds unchanged.
+
+/// <summary>News-tags list query: filter by archival status, as the journal and photo tag lists do.</summary>
+public sealed class NewsTagsQueryParams : QueryParams<NewsTagSortBy>
+{
+    public ArchivalStatus? Status { get; set; }
+}
 
 /// <summary><c>GET /api/news-feeds</c>.</summary>
 public sealed class NewsFeedsQueryParams : QueryParams<NewsFeedSortBy>, IValidatableObject

@@ -93,10 +93,6 @@
 .nw-line { display: flex; align-items: flex-start; gap: var(--space-2); margin: 0; font: var(--fw-regular) var(--fs-body2)/var(--lh-normal) var(--font-sans); color: var(--mud-palette-text-primary); }
 .nw-line .material-icons { font-size: var(--icon-sm); color: var(--mud-palette-text-secondary); margin-top: var(--space-1); }
 
-/* ---------- News tags ---------- */
-.nt-name { display: inline-flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.nt-desc { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-secondary); }
-
 /* ---------- Frontend v5–v9 amendments (centralcmd/odyssey#473) ---------- */
 /* The body-unavailable alert's Background jobs link (K10): text-coloured, underlined. */
 .nw-inline-link { color: var(--brand-text); text-decoration: underline; text-underline-offset: 0.2em; }
@@ -148,11 +144,6 @@ div.nw-focus-host { display: block; }
 .nw-feedurl { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .nw-feedurl-text { font: var(--fw-regular) var(--fs-caption)/var(--lh-snug) var(--font-mono); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; }
 .nw-pending-actions { display: inline-flex; flex-wrap: wrap; gap: var(--space-2); }
-.nw-tags-card { overflow: hidden; }
-/* A news tag's name is its row's edit trigger: a real button that reads as the name (§3.4). */
-.nt-namebtn { all: unset; box-sizing: border-box; cursor: pointer; min-height: var(--space-6); display: inline-flex; align-items: center; font: var(--fw-medium) var(--fs-body2)/var(--lh-snug) var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-align: start; }
-.nt-namebtn:hover { text-decoration: underline; text-underline-offset: 0.2em; }
-.nt-namebtn:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring); outline-offset: var(--focus-ring-offset); border-radius: var(--radius-sm); }
 /* The /news search field's helper line (§7.4): sr-only while there is no message, visible text under the field
    while there is one. Only the 400 is an error; the others are status text. */
 .nw-search { display: flex; flex-direction: column; gap: var(--space-1); }

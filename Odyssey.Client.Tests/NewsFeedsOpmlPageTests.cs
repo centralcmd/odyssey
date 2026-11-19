@@ -58,7 +58,7 @@ public class NewsFeedsOpmlPageTests
             Context.Ctx.Services.AddSingleton<AuthenticationStateProvider>(Claims);
             Context.News.Setup(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => Ok(new PagedResult<ExistingNewsFeed> { Items = [.. Current], TotalCount = Current.Count }));
-            Context.News.Setup(n => n.ListTagsAsync(It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
+            Context.NewsTags.Setup(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>())).ReturnsAsync(Ok(new List<ExistingNewsTag>()));
             Current = [.. feeds];
         }
 
@@ -447,7 +447,7 @@ public class NewsFeedsOpmlPageTests
 
         page.Cut.WaitForAssertion(() => Assert.Contains("Imported", page.Cut.Markup, StringComparison.Ordinal));
         page.Context.News.Verify(n => n.ListFeedsAsync(1, NewsLimits.MaxPageSize, null, null, NewsFeedState.All, null, null, null, It.IsAny<CancellationToken>()), Times.Exactly(2));
-        page.Context.News.Verify(n => n.ListTagsAsync(It.IsAny<CancellationToken>()), Times.Exactly(2));
+        page.Context.NewsTags.Verify(n => n.ListAllAsync(It.IsAny<string?>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
         page.Cut.WaitForAssertion(() => Assert.Contains("Feed list updated.", page.Polite, StringComparison.Ordinal));
         Assert.Equal(NewsFeedsPage.ActionMenuId, dialog.FindComponent<OdsModal>().Instance.ReturnFocusToId);
     }
