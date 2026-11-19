@@ -275,10 +275,15 @@ public partial class ImportCalendarDialog
 
     private async Task<Attempt> UploadNativeAsync(int generation, Guid calendarId, IBrowserFile file, bool allowRemovals)
     {
+        // The zone sent is the session's: once anything (normally the page's first load, which runs before an import can
+        // start) has found the server refuses the browser's zone, the first upload already sends UTC.
+        var sentUtc = Viewer.FellBackToUtc;
         var attempt = await UploadNativeOnceAsync(generation, calendarId, file, allowRemovals);
-        // The server refused the browser's zone before applying anything (model validation runs first): send the file
-        // once more with UTC, which the session then keeps (PR #528).
-        if (attempt is { Aborted: false } && !Viewer.FellBackToUtc
+        // A refused zone costs a second upload of the WHOLE file: the server binds defaultTimeZoneId from the multipart
+        // form, which it buffers in full (the IFormFile) before model validation answers the 400. Nothing is applied by
+        // then, so resending is safe, only slow for a large file — which is why the session state above is checked first
+        // and this retry stays rare (PR #528 frontend review). The server is deliberately left as it is.
+        if (attempt is { Aborted: false } && !sentUtc
             && ViewerTimeZone.RefusedZone(attempt.Result.Status, attempt.Result.Problem, DefaultZoneField))
         {
             Viewer.UseUtc();

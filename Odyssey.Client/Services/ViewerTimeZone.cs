@@ -70,13 +70,16 @@ public sealed class ViewerTimeZone
                                          || k.EndsWith("." + field, StringComparison.OrdinalIgnoreCase)) == true;
 
     /// <summary>
-    /// Runs a zoned call; when the server refuses this viewer's zone (<paramref name="field"/>), switches to UTC and runs it
+    /// Runs a zoned call; when the server refuses the zone it sent (<paramref name="field"/>), switches to UTC and runs it
     /// once more. The call reads <see cref="ViewZoneId"/> or <see cref="ImportZoneId"/> itself, so the retry sends UTC.
+    /// The retry depends on what THIS call sent, not on who switched: an overlapping call that switched to UTC while this
+    /// one was in flight must not leave this one failing with a zone error (PR #528 frontend review).
     /// </summary>
     public async Task<ApiResult<T>> WithFallbackAsync<T>(string field, Func<Task<ApiResult<T>>> call)
     {
+        var sentUtc = FellBackToUtc;
         var result = await call();
-        if (FellBackToUtc || result.IsSuccess || !RefusedZone(result.Status, result.Problem, field))
+        if (sentUtc || result.IsSuccess || !RefusedZone(result.Status, result.Problem, field))
             return result;
 
         UseUtc();
