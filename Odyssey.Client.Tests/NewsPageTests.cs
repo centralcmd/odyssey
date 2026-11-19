@@ -112,6 +112,8 @@ public class NewsPageTests
         cut.WaitForElement(".mud-menu-item");
         var labels = cut.FindAll(".mud-menu-item .odc-menu-item-body > span:first-child").Select(e => e.TextContent.Trim()).Where(t => t.Length > 0).ToList();
         cut.Find(trigger).Click();
+        // MudMenu closes asynchronously: wait for it, or a late close lands after the next open and removes its items.
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-menu-item")));
         return labels;
     }
 
@@ -128,6 +130,8 @@ public class NewsPageTests
         cut.WaitForElement(".mud-menu-item");
         var labels = cut.FindAll(".mud-menu-item").Select(i => i.TextContent.Trim()).Where(t => t.Length > 0).ToList();
         cut.Find(trigger).Click();
+        // MudMenu closes asynchronously: wait for it, or a late close lands after the next open and removes its items.
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll(".mud-menu-item")));
         return labels;
     }
 
