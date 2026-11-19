@@ -147,4 +147,75 @@ public class CalendarRecurrenceApiClientTests
 
         Assert.Contains("viewTimeZoneId=America%2FNew_York", url);
     }
+
+    [Fact]
+    public async Task The_windowed_list_sends_its_instants_as_utc_with_a_z_and_no_plus_offset()
+    {
+        // #520 v5 N3: an instant never reaches the query string with a '+' offset, whatever Kind the caller held.
+        var (client, handler) = Create(HttpStatusCode.OK, """{"items":[],"totalCount":0,"offset":0,"limit":200}""");
+
+        await client.ListEventsAsync(
+            new DateTime(2026, 2, 28, 23, 0, 0, DateTimeKind.Utc), new DateTime(2026, 3, 31, 22, 0, 0), "Europe/Oslo");
+
+        var query = Uri.UnescapeDataString(handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("from=2026-02-28T23:00:00.0000000Z", query);
+        Assert.Contains("to=2026-03-31T22:00:00.0000000Z", query);
+        Assert.DoesNotContain("+", query);
+    }
+
+    [Fact]
+    public async Task The_aggregate_summary_sends_its_window_as_utc_with_the_view_zone()
+    {
+        var (client, handler) = Create(HttpStatusCode.OK, """{"eventCount":0,"seriesCount":0,"occurrenceCount":0}""");
+
+        await client.SummarizeAggregateExportAsync(
+            new DateTime(2026, 3, 1, 5, 0, 0), new DateTime(2026, 4, 1, 4, 0, 0, DateTimeKind.Utc), null, null, "America/New_York");
+
+        var query = Uri.UnescapeDataString(handler.LastRequest!.RequestUri!.Query);
+        Assert.Contains("viewTimeZoneId=America/New_York", query);
+        Assert.Contains("from=2026-03-01T05:00:00.0000000Z", query);
+        Assert.Contains("to=2026-04-01T04:00:00.0000000Z", query);
+    }
+
+    [Fact]
+    public async Task UpdateEventWithResultAsync_sends_the_wall_clock_and_zone_and_reads_the_stored_event()
+    {
+        var (client, handler) = Create(HttpStatusCode.OK, $$"""
+            {"calendarEventId":"{{Id}}","calendarId":"{{Id}}","title":"Standup","startDateTime":"2026-03-29T03:30:00",
+             "endDateTime":"2026-03-29T04:30:00","timeZoneId":"Europe/Oslo","isOverride":true,"detached":false,"detachedCount":2}
+            """);
+        var body = new NewCalendarEvent
+        {
+            CalendarId = Id, Title = "Standup", StartDateTime = new DateTime(2026, 3, 29, 2, 30, 0),
+            EndDateTime = new DateTime(2026, 3, 29, 3, 30, 0), TimeZoneId = "Europe/Oslo",
+        };
+
+        var result = await client.UpdateEventWithResultAsync(Id, body);
+
+        Assert.Equal(HttpMethod.Put, handler.LastRequest!.Method);
+        Assert.Equal($"/api/calendar-events/{Id}", handler.LastRequest.RequestUri!.AbsolutePath);
+        using var sent = JsonDocument.Parse(handler.LastBody!);
+        Assert.Equal("2026-03-29T02:30:00", sent.RootElement.GetProperty("startDateTime").GetString());
+        Assert.Equal("Europe/Oslo", sent.RootElement.GetProperty("timeZoneId").GetString());
+        Assert.Equal(new DateTime(2026, 3, 29, 3, 30, 0), result.Value!.StartDateTime);
+        Assert.True(result.Value.IsOverride);
+        Assert.Equal(2, result.Value.DetachedCount);
+    }
+
+    [Fact]
+    public async Task CreateEventWithResultAsync_and_CreatePatternWithResultAsync_post_and_read_the_body()
+    {
+        var (events, eventHandler) = Create(HttpStatusCode.Created, $$"""{"calendarEventId":"{{Id}}","calendarId":"{{Id}}","title":"A","startDateTime":"2026-06-04T09:00:00"}""");
+        var created = await events.CreateEventWithResultAsync(new NewCalendarEvent
+        {
+            CalendarId = Id, Title = "A", StartDateTime = new DateTime(2026, 6, 4, 9, 0, 0), EndDateTime = new DateTime(2026, 6, 4, 10, 0, 0),
+        });
+        Assert.Equal(HttpMethod.Post, eventHandler.LastRequest!.Method);
+        Assert.Equal(Id, created.Value!.CalendarEventId);
+
+        var (patterns, patternHandler) = Create(HttpStatusCode.Created, $$"""{"recurrencePatternId":"{{Id}}","calendarId":"{{Id}}","title":"S","startDateTime":"2026-06-04T09:00:00"}""");
+        var series = await patterns.CreatePatternWithResultAsync(Pattern());
+        Assert.Equal("/api/recurrence-patterns", patternHandler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal(new DateTime(2026, 6, 4, 9, 0, 0), series.Value!.StartDateTime);
+    }
 }

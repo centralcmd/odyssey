@@ -129,6 +129,19 @@ public interface ICalendarApiClient
     Task<ApiResult> DeleteEventAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>
+    /// Creates an event and reads it back (issue #520 §3 "DST adjustments"): the returned wall-clock is the one the server
+    /// stored, moved forward when the entered time fell in a daylight-saving gap of the event's zone.
+    /// </summary>
+    Task<ApiResult<ExistingCalendarEvent>> CreateEventWithResultAsync(NewCalendarEvent calendarEvent, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates one event or occurrence and reads it back (issue #519 v5 §3, #520 v6 F2): the stored wall-clock, and
+    /// <see cref="ExistingCalendarEvent.Detached"/> / <see cref="ExistingCalendarEvent.DetachedCount"/> when the write
+    /// first keyed a legacy series.
+    /// </summary>
+    Task<ApiResult<ExistingCalendarEvent>> UpdateEventWithResultAsync(Guid id, NewCalendarEvent calendarEvent, CancellationToken ct = default);
+
+    /// <summary>
     /// Deletes one occurrence and reads what keying its legacy series detached (issue #519 v5 §3). The server answers
     /// <c>200</c> with a <see cref="CalendarEventDeleteResult"/>; a <c>null</c> value means an older server's <c>204</c>.
     /// </summary>
@@ -139,6 +152,9 @@ public interface ICalendarApiClient
     // the calendar page reloads its window after any pattern write.
 
     Task<ApiResult> CreatePatternAsync(NewRecurrencePattern pattern, CancellationToken ct = default);
+
+    /// <summary>Creates a series and reads it back: the first occurrence's stored wall-clock (issue #520 §3).</summary>
+    Task<ApiResult<ExistingRecurrencePattern>> CreatePatternWithResultAsync(NewRecurrencePattern pattern, CancellationToken ct = default);
 
     Task<ApiResult> UpdatePatternAsync(Guid id, NewRecurrencePattern pattern, CancellationToken ct = default);
 
@@ -181,7 +197,9 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public Task<ApiResult<List<ExistingCalendarEvent>>> ListEventsAsync(
         DateTime from, DateTime to, string? viewTimeZoneId, CancellationToken ct = default)
     {
-        var query = PagedQuery.For(EventsBase).Add("from", from).Add("to", to);
+        // The window is a pair of instants (issue #520 v5 N3): always sent as UTC with a Z, so no '+' offset ever reaches
+        // the query string and an unlabelled value cannot be read in the server's own zone.
+        var query = PagedQuery.For(EventsBase).Add("from", AsUtc(from)).Add("to", AsUtc(to));
         if (!string.IsNullOrWhiteSpace(viewTimeZoneId))
         {
             query = query.Add("viewTimeZoneId", viewTimeZoneId);
@@ -272,11 +290,23 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public Task<ApiResult<CalendarIcsExportSummary>> SummarizeAggregateExportAsync(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId,
         CancellationToken ct = default) =>
-        api.GetAsync<CalendarIcsExportSummary>(AggregateQuery("ics/summary", from, to, calendarIds, search, viewTimeZoneId), ct);
+        api.GetAsync<CalendarIcsExportSummary>(
+            AggregateQuery("ics/summary", AsUtc(from), AsUtc(to), calendarIds, search, viewTimeZoneId), ct);
 
     public string ExportAggregateUrl(
         DateTime? from, DateTime? to, IReadOnlyCollection<Guid>? calendarIds, string? search, string? viewTimeZoneId) =>
-        Absolute(AggregateQuery("ics", from, to, calendarIds, search, viewTimeZoneId));
+        Absolute(AggregateQuery("ics", AsUtc(from), AsUtc(to), calendarIds, search, viewTimeZoneId));
+
+    // A window bound read with a view zone is an instant (issue #519 v3 §A): a Local value is converted, and an
+    // unlabelled one is taken as UTC, so it always serializes with a Z.
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc),
+    };
+
+    private static DateTime? AsUtc(DateTime? value) => value is { } v ? AsUtc(v) : null;
 
     // Built by hand rather than with PagedQuery: these endpoints take no offset/limit, which PagedQuery would always
     // append.
@@ -341,6 +371,13 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
     public Task<ApiResult> DeleteEventAsync(Guid id, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Delete, $"{EventsBase}/{id}", null, ct);
 
+    public Task<ApiResult<ExistingCalendarEvent>> CreateEventWithResultAsync(NewCalendarEvent calendarEvent, CancellationToken ct = default) =>
+        api.SendAsync<ExistingCalendarEvent>(HttpMethod.Post, EventsBase, calendarEvent, ct);
+
+    public Task<ApiResult<ExistingCalendarEvent>> UpdateEventWithResultAsync(
+        Guid id, NewCalendarEvent calendarEvent, CancellationToken ct = default) =>
+        api.SendAsync<ExistingCalendarEvent>(HttpMethod.Put, $"{EventsBase}/{id}", calendarEvent, ct);
+
     public Task<ApiResult<CalendarEventDeleteResult?>> DeleteEventWithResultAsync(Guid id, CancellationToken ct = default) =>
         api.SendOptionalAsync<CalendarEventDeleteResult>(HttpMethod.Delete, $"{EventsBase}/{id}", null, ct);
 
@@ -348,6 +385,10 @@ public sealed class CalendarApiClient(IOdysseyApi api) : ICalendarApiClient
 
     public Task<ApiResult> CreatePatternAsync(NewRecurrencePattern pattern, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Post, PatternsBase, pattern, ct);
+
+    public Task<ApiResult<ExistingRecurrencePattern>> CreatePatternWithResultAsync(
+        NewRecurrencePattern pattern, CancellationToken ct = default) =>
+        api.SendAsync<ExistingRecurrencePattern>(HttpMethod.Post, PatternsBase, pattern, ct);
 
     public Task<ApiResult> UpdatePatternAsync(Guid id, NewRecurrencePattern pattern, CancellationToken ct = default) =>
         api.SendAsync(HttpMethod.Put, $"{PatternsBase}/{id}", pattern, ct);
