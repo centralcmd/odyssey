@@ -342,7 +342,18 @@ public partial class CalendarEventDialog
             _draft.TimeZoneError = CalendarEventCopy.ZoneError;
     }
 
-    private void OnZoneUnmatched(string _) => _draft.TimeZoneError = CalendarEventCopy.ZoneError;
+    /// <summary>
+    /// Blur with unmatched text (v3 §E): the field error, announced once as it appears — a visible error alone is not a
+    /// status message (WCAG 4.1.3, PR #528 accessibility review). A repeat while it is still shown says nothing new.
+    /// </summary>
+    private void OnZoneUnmatched(string _)
+    {
+        if (_draft.TimeZoneError is not null)
+            return;
+
+        _draft.TimeZoneError = CalendarEventCopy.ZoneError;
+        Announce(CalendarEventCopy.ZoneError);
+    }
 
     private void OnZoneChanged(string? value)
     {
@@ -443,6 +454,7 @@ public partial class CalendarEventDialog
         _zoneOptions = null;
         _confirm = null;
         _conflictVersion = null;
+        _conflictReadError = null;
         _formAlert = null;
         _forbidden = false;
         _lastHintKey = string.Empty;
@@ -821,7 +833,24 @@ public partial class CalendarEventDialog
                 // Nothing was written: preview again and re-confirm with the new counts (v3 §A, v4 §6).
                 return await PreviewSeriesAsync(patternId, body, link, again: true);
             case CalendarSeriesCodes.VersionConflict:
-                ShowConflict((await CalendarApi.GetPatternAsync(patternId))?.Version ?? _loadedVersion);
+                // Only a 404 means the series has gone (PR #528 frontend review). Any other failed read — a 5xx, a 403, a lost
+                // connection — keeps the draft: the conflict alert stays, on the loaded version, and says the read failed.
+                var latest = await CalendarApi.GetPatternResultAsync(patternId);
+                if (latest.Status == HttpStatusCode.NotFound)
+                {
+                    await CloseGoneAsync();
+                    return false;
+                }
+
+                if (latest.IsSuccess && latest.Value is { } current)
+                {
+                    ShowConflict(current.Version);
+                }
+                else
+                {
+                    ShowConflict(_loadedVersion, CalendarEventCopy.ConflictReadFailed(latest.Error));
+                }
+
                 return false;
         }
 
@@ -851,13 +880,17 @@ public partial class CalendarEventDialog
             drops ? Severity.Warning : Severity.Info, persistent: drops || adjusted is not null);
     }
 
-    private void ShowConflict(Guid currentVersion)
+    private void ShowConflict(Guid currentVersion, string? readError = null)
     {
         _confirm = null;
         _formAlert = null;
         _conflictVersion = currentVersion;
+        _conflictReadError = readError;
         _focusAlert = true;
     }
+
+    /// <summary>The conflict's re-read failed: said under the conflict text, so the user knows the version shown is old.</summary>
+    private string? _conflictReadError;
 
     private async Task SaveAndDiscardAsync()
     {
@@ -903,6 +936,7 @@ public partial class CalendarEventDialog
 
         await LoadPatternAsync(patternId);
         _conflictVersion = null;
+        _conflictReadError = null;
         _focusSave = true;
     }
 
@@ -915,6 +949,7 @@ public partial class CalendarEventDialog
         }
 
         _conflictVersion = null;
+        _conflictReadError = null;
         _focusSave = true;
     }
 

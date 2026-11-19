@@ -239,12 +239,17 @@ public partial class CalendarPage
         _isLoading = true;
         StateHasChanged();
 
-        var (from, to) = Window(CurrentDays, Viewer);
+        var days = CurrentDays;
 
         // Track failure explicitly: ItemsOrToast falls back to [], which is indistinguishable from a
         // period that genuinely has no events.
         // The range changes on every prev/next/view switch, so a slow earlier range must not land last.
-        var response = await _listLoader.RunAsync(ct => CalendarApi.ListEventsAsync(from, to, Viewer.ViewZoneId, ct));
+        // A zone the server's tzdata does not know is retried once in UTC, which the session then keeps (PR #528).
+        var response = await _listLoader.RunAsync(ct => Viewer.WithFallbackAsync(ViewZoneField, () =>
+        {
+            var (from, to) = Window(days, Viewer);
+            return CalendarApi.ListEventsAsync(from, to, Viewer.ViewZoneId, ct);
+        }));
         if (response.IsSuperseded)
             return;
 
@@ -258,6 +263,9 @@ public partial class CalendarPage
     }
 
     private Task ReloadEventsAsync() => LoadEventsAsync();
+
+    /// <summary>The field a windowed read's zone is validated as: a 400 keyed on it is the server refusing the zone.</summary>
+    internal const string ViewZoneField = "viewTimeZoneId";
 
     /// <summary>
     /// The window of <paramref name="days"/> as instants (issue #520 v4 §1): the first day's and the day after the last
@@ -515,7 +523,8 @@ public partial class CalendarPage
         {
             _ = AnnounceAsync(CalendarIcsExport.Preparing);
             await DownloadAsync(
-                CalendarApi.SummarizeAggregateExportAsync(null, null, null, null, Viewer.ViewZoneId), "Unable to export events",
+                Viewer.WithFallbackAsync(ViewZoneField, () => CalendarApi.SummarizeAggregateExportAsync(null, null, null, null, Viewer.ViewZoneId)),
+                "Unable to export events",
                 () => CalendarApi.ExportAggregateUrl(null, null, null, null, Viewer.ViewZoneId), CalendarIcsExport.AllToast);
         }
         finally

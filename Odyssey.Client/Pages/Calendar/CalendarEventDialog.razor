@@ -215,6 +215,10 @@
             <div class="cal-ce-alert" id="@AlertId" role="alert" tabindex="-1">
                 <OdsAlert Severity="Severity.Warning" Live="OdsAlertLive.None">
                     @CalendarEventCopy.Conflict
+                    @if (_conflictReadError is { } readError)
+                    {
+                        <span class="cal-ce-alert-sub"> @readError</span>
+                    }
                     <div class="cal-ce-alert-actions">
                         <OdsButton Variant="OdsButtonVariant.Outlined" Size="OdsButtonSize.Sm" Icon="refresh" OnClick="ReloadSeriesAsync">Reload series</OdsButton>
                         <OdsButton Variant="OdsButtonVariant.Text" Size="OdsButtonSize.Sm" OnClick="KeepEditing">Keep editing</OdsButton>

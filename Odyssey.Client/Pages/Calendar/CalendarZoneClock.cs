@@ -25,8 +25,10 @@ public enum ZoneAdjustment
 /// <remarks>
 /// The gap and overlap rules are the server's (<c>CalendarTimeZones</c>): a gap is read at the offset in force just
 /// before it, so it lands past the gap by exactly its length, and an ambiguous time takes the earlier instant. The client
-/// uses them only to word the hints and to place a dragged event; the server's returned value is what is shown after a
-/// save (#520 SX1).
+/// uses them for more than wording: the DST hints, the two-zone line, and — in <c>CalendarPage.ResizeUpdate</c> — the
+/// wall-clock a time-grid drag or resize SENDS, converted from the drop position in the viewer's zone into the event's own.
+/// So the two must agree; <c>CalendarZoneGoldenCases</c> (TestShared) is the one table both are tested against. The
+/// server's returned value is still what is shown after a save (#520 SX1).
 /// </remarks>
 public static class CalendarZoneClock
 {

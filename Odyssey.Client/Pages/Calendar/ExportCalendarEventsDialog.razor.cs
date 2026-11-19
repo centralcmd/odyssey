@@ -90,7 +90,6 @@ public partial class ExportCalendarEventsDialog
         IReadOnlyCollection<Guid>? calendarIds = null;
         string? search = null;
         var viewer = Odyssey.Client.Services.ViewerTimeZone.From(Services);
-        var viewZone = viewer.ViewZoneId;
 
         if (_scope == "filtered")
         {
@@ -115,10 +114,8 @@ public partial class ExportCalendarEventsDialog
                 }
             }
 
-            // The dates are the viewer's days: sent as the instants of their local midnights, with the viewer's zone, so a
-            // zoned event is in the export exactly when the grid shows it in the range (issue #520 v4 §1, AC 22).
-            from = _from is { } start ? CalendarZoneClock.ToUtc(start.Date, viewer.Zone) : null;
-            to = _to is { } end ? CalendarZoneClock.ToUtc(end.Date, viewer.Zone) : null;
+            from = _from;
+            to = _to;
             calendarIds = _calendarIds.Count > 0 ? _calendarIds : null;
             search = string.IsNullOrWhiteSpace(_search) ? null : _search.Trim();
         }
@@ -128,7 +125,12 @@ public partial class ExportCalendarEventsDialog
         try
         {
             // Summary first (issue #517 E2): its refusal is shown here, and no download starts.
-            var summary = await CalendarApi.SummarizeAggregateExportAsync(from, to, calendarIds, search, viewZone);
+            // The dates are the viewer's days: sent as the instants of their local midnights, with the viewer's zone, so a
+            // zoned event is in the export exactly when the grid shows it in the range (issue #520 v4 §1, AC 22). A zone the
+            // server does not know is retried once in UTC, which the session keeps (PR #528); the download uses the same.
+            DateTime? Instant(DateTime? day) => day is { } d ? CalendarZoneClock.ToUtc(d.Date, viewer.Zone) : null;
+            var summary = await viewer.WithFallbackAsync(CalendarPage.ViewZoneField,
+                () => CalendarApi.SummarizeAggregateExportAsync(Instant(from), Instant(to), calendarIds, search, viewer.ViewZoneId));
             if (!summary.IsSuccess || summary.Value is not { } counts)
             {
                 SetError(summary.Error ?? "The events could not be exported.");
@@ -136,7 +138,7 @@ public partial class ExportCalendarEventsDialog
             }
 
             await OpenChanged.InvokeAsync(false);
-            await NativeTransfer.DownloadAsync(CalendarApi.ExportAggregateUrl(from, to, calendarIds, search, viewZone));
+            await NativeTransfer.DownloadAsync(CalendarApi.ExportAggregateUrl(Instant(from), Instant(to), calendarIds, search, viewer.ViewZoneId));
             CalendarIcsExport.ToastStarted(Snackbar, CalendarIcsExport.AllToast(counts));
         }
         finally

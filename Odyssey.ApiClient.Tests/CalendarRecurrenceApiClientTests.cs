@@ -218,4 +218,16 @@ public class CalendarRecurrenceApiClientTests
         Assert.Equal("/api/recurrence-patterns", patternHandler.LastRequest!.RequestUri!.AbsolutePath);
         Assert.Equal(new DateTime(2026, 6, 4, 9, 0, 0), series.Value!.StartDateTime);
     }
+
+    [Fact]
+    public async Task GetPatternResultAsync_tells_a_404_from_other_failures()
+    {
+        var (gone, handler) = Create(HttpStatusCode.NotFound, """{"status":404,"title":"Not Found","detail":"Recurrence pattern not found."}""");
+        var missing = await gone.GetPatternResultAsync(Id);
+        Assert.Equal($"/api/recurrence-patterns/{Id}", handler.LastRequest!.RequestUri!.AbsolutePath);
+        Assert.Equal((false, HttpStatusCode.NotFound), (missing.IsSuccess, missing.Status));
+
+        var (broken, _) = Create(HttpStatusCode.InternalServerError, """{"status":500,"title":"Error"}""");
+        Assert.Equal(HttpStatusCode.InternalServerError, (await broken.GetPatternResultAsync(Id)).Status);
+    }
 }

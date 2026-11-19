@@ -42,6 +42,12 @@ internal static class CalendarEventCopy
 
     public const string NotFound = "This event no longer exists.";
 
+    /// <summary>The conflict's re-read of the series failed (not a 404): the alert stays, and says so.</summary>
+    public static string ConflictReadFailed(string? error) =>
+        string.IsNullOrWhiteSpace(error)
+            ? "The latest version couldn't be loaded."
+            : $"The latest version couldn't be loaded: {error}";
+
     public const string DetachedEdit = "This occurrence had become a separate event; your change was saved to that event.";
 
     public const string DetachedDelete = "This occurrence had become a separate event; it was deleted on its own.";
