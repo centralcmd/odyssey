@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -145,9 +146,9 @@ public class EstimateEffectiveDatingTests
     /// the same rule rather than by an exemption.
     /// </summary>
     private static IReadOnlyList<string> ScannedFiles() =>
-        Directory.EnumerateFiles(Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance"), "*.cs", SearchOption.AllDirectories)
+        SourceTree.Files(Path.Combine("Odyssey.Core", "Finance"))
             .Where(path => Path.GetFileName(path) != HelperFile)
-            .Where(path => TouchesAnEstimateTable.IsMatch(StripComments(File.ReadAllText(path))))
+            .Where(path => TouchesAnEstimateTable.IsMatch(SourceLint.StripComments(File.ReadAllText(path))))
             .ToList();
 
     [Fact]
@@ -166,14 +167,12 @@ public class EstimateEffectiveDatingTests
         Assert.DoesNotContain(InMemoryHelperFile, names);
 
         // And the patterns are live: the one sanctioned home matches both.
-        var helper = StripComments(File.ReadAllText(
-            Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", HelperFile)));
+        var helper = SourceLint.StripComments(SourceTree.ReadAllText("Odyssey.Core", "Finance", HelperFile));
         Assert.Matches(SupersessionOrdering, helper);
         Assert.Matches(DuplicateDateCheck, helper);
 
         // The ascending pattern is proven live against ITS sanctioned home, not left to pass forever.
-        var inMemoryHelper = StripComments(File.ReadAllText(
-            Path.Combine(SolutionRoot(), "Odyssey.Core", "Finance", InMemoryHelperFile)));
+        var inMemoryHelper = SourceLint.StripComments(SourceTree.ReadAllText("Odyssey.Core", "Finance", InMemoryHelperFile));
         Assert.Matches(AscendingSupersessionOrdering, inMemoryHelper);
     }
 
@@ -181,7 +180,7 @@ public class EstimateEffectiveDatingTests
     public void No_estimate_file_restates_either_query_rule_outside_the_helper()
     {
         var offenders = ScannedFiles()
-            .Select(path => (Path: path, Code: StripComments(File.ReadAllText(path))))
+            .Select(path => (Path: path, Code: SourceLint.StripComments(File.ReadAllText(path))))
             .Where(file => SupersessionOrdering.IsMatch(file.Code)
                            || AscendingSupersessionOrdering.IsMatch(file.Code)
                            || DuplicateDateCheck.IsMatch(file.Code))
@@ -191,21 +190,5 @@ public class EstimateEffectiveDatingTests
         Assert.True(offenders.Count == 0,
             "These files restate an estimate query rule instead of calling EstimateEffectiveDating: "
             + string.Join(", ", offenders));
-    }
-
-    private static string StripComments(string code) =>
-        Regex.Replace(Regex.Replace(code, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline),
-            @"//.*?$", string.Empty, RegexOptions.Multiline);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
     }
 }

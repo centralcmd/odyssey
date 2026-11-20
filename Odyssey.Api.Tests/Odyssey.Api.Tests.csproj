@@ -40,6 +40,8 @@
 
   <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
     <Compile Include="..\TestShared\Lookups\*.cs" Link="TestShared\Lookups\%(Filename)%(Extension)" />

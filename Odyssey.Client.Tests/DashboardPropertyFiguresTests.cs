@@ -7,6 +7,7 @@ using MudBlazor.Services;
 using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -488,7 +489,7 @@ public class DashboardPropertyFiguresTests
         {
             var match = Regex.Match(source, $@"\b{member}\b");
             Assert.False(match.Success,
-                $"{file}:{ClientSource.LineAt(source, match.Index)} reads {member} directly. Every property "
+                $"{file}:{SourceLint.LineAt(source, match.Index)} reads {member} directly. Every property "
                 + "read goes through a DashboardFigures gate keyed on the response's PropertiesIncluded "
                 + "(issue #215 §3.3), so a flag-false response can never render property data.");
         }

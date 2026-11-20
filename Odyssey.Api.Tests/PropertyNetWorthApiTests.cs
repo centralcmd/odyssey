@@ -6,6 +6,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
 
@@ -113,7 +114,7 @@ public class PropertyNetWorthApiTests
     [Fact]
     public void BothNetWorthActions_ReadTheOneHelper_AndNeitherInlinesTheClaim()
     {
-        var source = RepositoryRoot.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountsController.cs"));
+        var source = SourceTree.ReadAllText(System.IO.Path.Combine("Odyssey.Api", "Controllers", "AccountsController.cs"));
 
         foreach (var action in new[] { "GetTotals", "GetNetWorthHistory" })
         {

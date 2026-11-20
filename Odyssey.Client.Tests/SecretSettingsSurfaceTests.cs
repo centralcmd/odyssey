@@ -12,6 +12,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages;
 using Odyssey.Client.Services;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -27,21 +28,6 @@ public class SecretSettingsSurfaceTests
 
     private static string PageCode() =>
         File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Settings.razor.cs"));
-
-    /// <summary>
-    /// Strips <c>//</c>, <c>/* … */</c> and Razor's <c>@* … *@</c> comments before a lint reads the
-    /// text. Without it these lints are unusable in this codebase: the comment explaining WHY a
-    /// construct is forbidden necessarily names the construct, so the lint would fail on its own
-    /// rationale and the only way to keep it green would be to stop writing the rationale down.
-    /// </summary>
-    private static string WithoutComments(string source)
-    {
-        source = System.Text.RegularExpressions.Regex.Replace(
-            source, @"@\*.*?\*@", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
-        source = System.Text.RegularExpressions.Regex.Replace(
-            source, @"/\*.*?\*/", string.Empty, System.Text.RegularExpressions.RegexOptions.Singleline);
-        return System.Text.RegularExpressions.Regex.Replace(source, @"//[^\n]*", string.Empty);
-    }
 
     // ── AC 16 — the persisted payload ───────────────────────────────────────────────────────────
 
@@ -89,7 +75,7 @@ public class SecretSettingsSurfaceTests
     [Fact]
     public void TheSearchString_IsNotPersisted()
     {
-        var code = WithoutComments(PageCode());
+        var code = SourceLint.StripComments(PageCode());
 
         Assert.DoesNotContain("Search = _search", code, StringComparison.Ordinal);
         Assert.DoesNotContain("state.Search;", code, StringComparison.Ordinal);
@@ -538,7 +524,7 @@ public class SecretSettingsSurfaceTests
     [Fact]
     public void TheSecretField_AdvisesOnlyWhileUnset_AndNeverFromItsFaultState()
     {
-        var source = WithoutComments(File.ReadAllText(
+        var source = SourceLint.StripComments(File.ReadAllText(
             Path.Combine(ClientSource.Root, "Components", "OdsSecretSettingField.razor.cs")));
 
         Assert.Contains(
@@ -561,7 +547,7 @@ public class SecretSettingsSurfaceTests
     {
         foreach (var file in new[] { "OdsSecretSettingField.razor", "OdsSecretSettingField.razor.cs" })
         {
-            var text = WithoutComments(
+            var text = SourceLint.StripComments(
                 File.ReadAllText(Path.Combine(ClientSource.Root, "Components", file)));
             Assert.DoesNotContain("OdsLiveAnnouncer", text, StringComparison.Ordinal);
             Assert.DoesNotContain("aria-live", text, StringComparison.Ordinal);
@@ -599,7 +585,7 @@ public class SecretSettingsSurfaceTests
     {
         foreach (var source in new[] { PageMarkup(), PageCode() })
         {
-            var text = WithoutComments(source);
+            var text = SourceLint.StripComments(source);
             Assert.DoesNotContain("HostEnvironment", text, StringComparison.Ordinal);
             Assert.DoesNotContain("IsProduction", text, StringComparison.Ordinal);
             Assert.DoesNotContain("blazor-environment", text, StringComparison.Ordinal);

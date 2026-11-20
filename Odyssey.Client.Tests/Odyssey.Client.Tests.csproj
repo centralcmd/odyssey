@@ -14,6 +14,8 @@
 
   <ItemGroup>
     <!-- Shared skip-or-fail rule for the self-skipping tiers (issue #257); linked, not referenced. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
     <Compile Include="..\TestShared\HexColorNegativeCorpus.cs" Link="TestShared\HexColorNegativeCorpus.cs" />
     <Compile Include="..\TestShared\CalendarZoneGoldenCases.cs" Link="TestShared\CalendarZoneGoldenCases.cs" />

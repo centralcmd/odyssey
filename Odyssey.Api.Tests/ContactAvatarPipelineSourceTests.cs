@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -32,22 +33,22 @@ public class ContactAvatarPipelineSourceTests
     /// the identical parser.
     /// </summary>
     private static string ImagingDirectory =>
-        Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Imaging");
+        Path.Combine(SourceTree.Root, "Odyssey.Core", "Imaging");
 
     /// <summary>
     /// The surfaces that bind the pipeline to a store. They apply the same lints, because a raster
     /// dependency or a bulk statement is no more acceptable a step away from the walk.
     /// </summary>
     private static string AvatarDirectory =>
-        Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Journal", "Avatar");
+        Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "Avatar");
 
     private static string ProfileImageDirectory =>
-        Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Profiles");
+        Path.Combine(SourceTree.Root, "Odyssey.Core", "Profiles");
 
     private static IEnumerable<(string File, string Text)> AvatarSources() =>
         new[] { ImagingDirectory, AvatarDirectory, ProfileImageDirectory }
-            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.cs", SearchOption.AllDirectories))
-            .Select(file => (File: Path.GetFileName(file), Text: WithoutComments(File.ReadAllText(file))));
+            .SelectMany(dir => SourceTree.Files(dir))
+            .Select(file => (File: Path.GetFileName(file), Text: SourceLint.StripComments(File.ReadAllText(file))));
 
     /// <summary>
     /// AC 28. A path-scoped lint that scans nothing passes vacuously, which is exactly how the
@@ -79,13 +80,11 @@ public class ContactAvatarPipelineSourceTests
     [Fact]
     public void Exactly_one_container_walk_exists_and_it_is_under_Odyssey_Core_Imaging()
     {
-        var declarations = Directory
-            .EnumerateFiles(RepositoryRoot.Path, "*.cs", SearchOption.AllDirectories)
-            .Where(file => !IsBuildOutput(file))
-            .Select(file => (File: file, Text: WithoutComments(File.ReadAllText(file))))
+        var declarations = SourceTree.Files(SourceTree.Root)
+            .Select(file => (File: file, Text: SourceLint.StripComments(File.ReadAllText(file))))
             .Where(pair => Regex.IsMatch(pair.Text, @"\b(class|record|struct)\s+\w*ImageContainerWalk\w*\b")
                         || Regex.IsMatch(pair.Text, @"\b(class|record|struct)\s+\w*(MetadataStrip|ImageStripper)\w*\b"))
-            .Select(pair => Path.GetRelativePath(RepositoryRoot.Path, pair.File))
+            .Select(pair => Path.GetRelativePath(SourceTree.Root, pair.File))
             .Order(StringComparer.Ordinal)
             .ToList();
 
@@ -94,26 +93,6 @@ public class ContactAvatarPipelineSourceTests
             && declarations[0].Replace('\\', '/') == "Odyssey.Core/Imaging/ImageContainerWalk.cs",
             "The container walk must be declared exactly once, under Odyssey.Core/Imaging. Found: "
             + string.Join(", ", declarations));
-    }
-
-    private static bool IsBuildOutput(string file)
-    {
-        var relative = Path.GetRelativePath(RepositoryRoot.Path, file);
-        return relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-            || relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-            || relative.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-            || relative.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// Comments discuss the very identifiers these lints ban — the point of several of them is to say
-    /// WHY <c>MetadataExtractor</c> is absent. A lint a doc comment can fail is a lint that gets the
-    /// doc deleted.
-    /// </summary>
-    private static string WithoutComments(string source)
-    {
-        source = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
-        return Regex.Replace(source, @"^\s*///?.*$", string.Empty, RegexOptions.Multiline);
     }
 
     // ── AC 8: dimensions come from the walk, not from a metadata parser ───────────────────────────
@@ -187,14 +166,14 @@ public class ContactAvatarPipelineSourceTests
         // is not.
         var callers = new[]
         {
-            Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Journal", "Avatar", "ContactAvatarService.cs"),
-            Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Journal", "ContactService.cs"),
-            Path.Combine(RepositoryRoot.Path, "Odyssey.Core", "Journal", "ContactVCardService.cs"),
+            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "Avatar", "ContactAvatarService.cs"),
+            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "ContactService.cs"),
+            Path.Combine(SourceTree.Root, "Odyssey.Core", "Journal", "ContactVCardService.cs"),
         };
 
         foreach (var caller in callers)
         {
-            var text = WithoutComments(File.ReadAllText(caller));
+            var text = SourceLint.StripComments(File.ReadAllText(caller));
             if (!text.Contains("AvatarFileId", StringComparison.Ordinal))
             {
                 continue;
@@ -214,7 +193,7 @@ public class ContactAvatarPipelineSourceTests
     [Fact]
     public void The_release_rule_checks_the_outgoing_files_content_type()
     {
-        var rule = WithoutComments(File.ReadAllText(
+        var rule = SourceLint.StripComments(File.ReadAllText(
             Path.Combine(AvatarDirectory, "ContactAvatarRelease.cs")));
 
         // Detach-never-delete for a file that is not avatar-legal, chosen over refuse-and-404 because it
@@ -232,8 +211,8 @@ public class ContactAvatarPipelineSourceTests
     [InlineData("Odyssey.Core", "Profiles", "UserProfileImageService.cs")]
     public void No_image_log_line_carries_the_client_declared_content_type_or_a_filename(params string[] path)
     {
-        var service = WithoutComments(File.ReadAllText(
-            Path.Combine([RepositoryRoot.Path, .. path])));
+        var service = SourceLint.StripComments(File.ReadAllText(
+            Path.Combine([SourceTree.Root, .. path])));
 
         foreach (Match log in Regex.Matches(service, @"Log(Information|Warning|Error)\((?<body>[^;]*);", RegexOptions.Singleline))
         {
@@ -252,8 +231,8 @@ public class ContactAvatarPipelineSourceTests
     [Fact]
     public void The_avatar_foreign_key_declares_SetNull_explicitly()
     {
-        var context = WithoutComments(File.ReadAllText(
-            Path.Combine(RepositoryRoot.Path, "Odyssey.Context", "OdysseyContext.cs")));
+        var context = SourceLint.StripComments(File.ReadAllText(
+            Path.Combine(SourceTree.Root, "Odyssey.Context", "OdysseyContext.cs")));
 
         var declaration = context[context.IndexOf("contact.AvatarFileId", StringComparison.Ordinal)..];
         declaration = declaration[..declaration.IndexOf(';', StringComparison.Ordinal)];
@@ -267,8 +246,8 @@ public class ContactAvatarPipelineSourceTests
     [Fact]
     public void The_avatar_column_is_uniquely_indexed()
     {
-        var entity = WithoutComments(File.ReadAllText(
-            Path.Combine(RepositoryRoot.Path, "Odyssey.Context", "Contact.cs")));
+        var entity = SourceLint.StripComments(File.ReadAllText(
+            Path.Combine(SourceTree.Root, "Odyssey.Context", "Contact.cs")));
 
         // A file is the avatar of at most one contact, which is what makes "deleting the contact deletes
         // its avatar file" safe. Nullable, so MariaDB permits many NULLs.

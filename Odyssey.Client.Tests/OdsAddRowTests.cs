@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -15,7 +16,7 @@ public class OdsAddRowTests
     [Fact]
     public void The_icon_tile_sits_on_the_action_default_hover_well()
     {
-        var css = ClientSource.WithoutComments(
+        var css = SourceLint.StripComments(
             File.ReadAllText(Path.Combine(ClientSource.Root, "Components", "OdsAddRow.razor.css")));
 
         var rule = Regex.Match(css, @"(?:^|\})\s*\.odc-add-row-ic\s*\{(?<body>[^{}]*)\}");

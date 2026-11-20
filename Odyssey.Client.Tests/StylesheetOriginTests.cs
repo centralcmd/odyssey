@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -25,7 +26,7 @@ public class StylesheetOriginTests
             {
                 var css = Regex.Replace(File.ReadAllText(file), @"/\*.*?\*/", m => new string('\n', m.Value.Count(c => c == '\n')), RegexOptions.Singleline);
                 return ExternalReference.Matches(css)
-                    .Select(m => $"{ClientSource.Relative(file)}:{ClientSource.LineAt(css, m.Index)}");
+                    .Select(m => $"{ClientSource.Relative(file)}:{SourceLint.LineAt(css, m.Index)}");
             })
             .ToList();
 

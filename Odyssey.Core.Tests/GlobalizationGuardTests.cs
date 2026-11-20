@@ -1,5 +1,6 @@
 using System.Globalization;
 using Odyssey.Core.Configuration;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests;
@@ -64,7 +65,7 @@ public class GlobalizationGuardTests
     [Fact]
     public void The_api_image_installs_ICU_and_pins_the_switch_off()
     {
-        var dockerfile = File.ReadAllText(SolutionFile("Odyssey.Api/Dockerfile"));
+        var dockerfile = SourceTree.ReadAllText("Odyssey.Api", "Dockerfile");
 
         Assert.Contains("apk add --no-cache icu-libs", dockerfile, StringComparison.Ordinal);
         Assert.Contains("ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false", dockerfile, StringComparison.Ordinal);
@@ -75,31 +76,11 @@ public class GlobalizationGuardTests
     [Fact]
     public void No_project_opts_into_invariant_globalization()
     {
-        var root = SolutionRoot();
-        var offenders = Directory
-            .EnumerateFiles(root, "*.csproj", SearchOption.AllDirectories)
-            .Concat(Directory.EnumerateFiles(root, "Directory.Build.props", SearchOption.AllDirectories))
-            .Where(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+        var offenders = SourceTree.Files(SourceTree.Root, "*.csproj", "Directory.Build.props")
             .Where(file => File.ReadAllText(file)
                 .Contains("<InvariantGlobalization>true</InvariantGlobalization>", StringComparison.OrdinalIgnoreCase))
             .ToList();
 
         Assert.Empty(offenders);
-    }
-
-    private static string SolutionFile(string relativePath) =>
-        Path.Combine(SolutionRoot(), relativePath);
-
-    private static string SolutionRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName
-            ?? throw new InvalidOperationException("Could not locate the solution root from the test binary.");
     }
 }

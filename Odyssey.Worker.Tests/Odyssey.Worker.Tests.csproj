@@ -29,6 +29,8 @@
 
   <ItemGroup>
     <!-- The file store's test host, for the demo-file seeder over a temp volume. -->
+    <Compile Include="..\TestShared\SourceTree.cs" Link="TestShared\SourceTree.cs" />
+    <Compile Include="..\TestShared\SourceLint.cs" Link="TestShared\SourceLint.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
   </ItemGroup>
 

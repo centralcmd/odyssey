@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -11,7 +12,7 @@ namespace Odyssey.Client.Tests;
 public class CalendarAttachmentSourceLintTests
 {
     private static string Code(string relative) =>
-        ClientSource.WithoutComments(File.ReadAllText(Path.Combine(ClientSource.Root, relative)));
+        SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, relative)));
 
     private static string Raw(string relative) => File.ReadAllText(Path.Combine(ClientSource.Root, relative));
 
@@ -20,7 +21,7 @@ public class CalendarAttachmentSourceLintTests
     {
         var literal = new Regex(@"CalendarEventMaxLinksPerKind\s*(=|\?\?|:)\s*\d");
         var offenders = ClientSource.SourceFiles()
-            .Where(f => literal.IsMatch(ClientSource.WithoutComments(File.ReadAllText(f))))
+            .Where(f => literal.IsMatch(SourceLint.StripComments(File.ReadAllText(f))))
             .Select(ClientSource.Relative)
             .ToList();
 
@@ -43,7 +44,7 @@ public class CalendarAttachmentSourceLintTests
     {
         var assignment = new Regex(@"\b(AttachmentFileIds|PhotoIds)\s*=(?!=)");
         var offenders = ClientSource.SourceFiles()
-            .Select(f => (File: ClientSource.Relative(f).Replace(Path.DirectorySeparatorChar, '/'), Text: ClientSource.WithoutComments(File.ReadAllText(f))))
+            .Select(f => (File: ClientSource.Relative(f).Replace(Path.DirectorySeparatorChar, '/'), Text: SourceLint.StripComments(File.ReadAllText(f))))
             .Where(f => f.File.StartsWith("Pages/Calendar/", StringComparison.Ordinal) && f.File != "Pages/Calendar/CalendarWrites.cs")
             .Where(f => assignment.IsMatch(f.Text))
             .Select(f => f.File)

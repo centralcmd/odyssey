@@ -3,6 +3,7 @@ using System.Reflection;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -168,7 +169,7 @@ public class SystemSettingsBoundsTests
     public void The_ends_that_alias_a_shared_constant_name_it_in_source(string constant, string expression)
     {
         var source = File.ReadAllText(
-            SolutionFile("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
+            SourceTree.File("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
 
         var declaration = System.Text.RegularExpressions.Regex.Match(
             source, @$"public const int {constant}\s*=\s*(?<value>[^;]+);");
@@ -230,7 +231,7 @@ public class SystemSettingsBoundsTests
     public void The_smart_tag_ceiling_names_the_filter_array_constant()
     {
         var source = File.ReadAllText(
-            SolutionFile("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
+            SourceTree.File("Odyssey.Dtos", "SystemSettings", "SystemSettingsBounds.cs"));
 
         var declaration = System.Text.RegularExpressions.Regex.Match(
             source, @"public const int AccountMaxSmartTagsPerAccountMax\s*=\s*(?<value>[^;]+);");
@@ -256,17 +257,5 @@ public class SystemSettingsBoundsTests
 
             Assert.InRange(value, setting.Min, setting.Max);
         }
-    }
-
-    private static string SolutionFile(params string[] parts)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = System.IO.Path.GetDirectoryName(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return System.IO.Path.Combine([dir!, .. parts]);
     }
 }

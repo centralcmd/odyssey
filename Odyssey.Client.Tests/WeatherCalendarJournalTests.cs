@@ -17,6 +17,7 @@ using Odyssey.Client.Pages.Journal;
 using Odyssey.Client.Pages.Weather;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -610,12 +611,9 @@ public class WeatherCalendarJournalTests : IDisposable
         }.Select(f => Path.Combine(weatherDir, f)).ToList();
         Assert.All(files, f => Assert.True(File.Exists(f), f));
 
-        var hits = files.Where(f => Regex.IsMatch(StripComments(File.ReadAllText(f)), "°")).Select(Path.GetFileName).ToList();
+        var hits = files.Where(f => Regex.IsMatch(SourceLint.StripComments(File.ReadAllText(f)), "°")).Select(Path.GetFileName).ToList();
         Assert.True(hits.Count == 0, string.Join(", ", hits));
     }
-
-    private static string StripComments(string source) =>
-        Regex.Replace(Regex.Replace(source, @"@\*.*?\*@", "", RegexOptions.Singleline), @"^\s*//.*$", "", RegexOptions.Multiline);
 
     /// <summary>The text a screen reader takes as the button's name: everything but the aria-hidden glyphs.</summary>
     private static string VisibleName(AngleSharp.Dom.IElement element)

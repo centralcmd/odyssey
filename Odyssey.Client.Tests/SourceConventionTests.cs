@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -61,7 +62,7 @@ public class SourceConventionTests
                 if (value is null || !value.StartsWith('@') || ProducesAString(value))
                     continue;
 
-                violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, attr.Index)} — " +
+                violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, attr.Index)} — " +
                                $"{attr.Groups[1].Value}=\"{value}\" renders \"True\"/\"False\"; " +
                                $"use @(… ? \"true\" : \"false\")");
             }
@@ -145,7 +146,7 @@ public class SourceConventionTests
             var text = File.ReadAllText(file);
             foreach (Match use in Regex.Matches(text, @"<MudProgressCircular\b"))
             {
-                violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, use.Index)} — " +
+                violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, use.Index)} — " +
                                "raw <MudProgressCircular> has no accessible name or DS sizing; use <OdsSpinner>");
             }
         }
@@ -355,7 +356,7 @@ public class SourceConventionTests
                 if (match.Value.Contains("aria-expanded", StringComparison.Ordinal))
                     continue;
 
-                violations.Add($"{ClientSource.Relative(file)}:{ClientSource.LineAt(text, match.Index)} — " +
+                violations.Add($"{ClientSource.Relative(file)}:{SourceLint.LineAt(text, match.Index)} — " +
                                "the validity disclosure button needs aria-expanded; the changing label is not enough.");
             }
         }

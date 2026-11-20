@@ -7,6 +7,7 @@ using Odyssey.Context;
 using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
 
@@ -228,7 +229,7 @@ public class OwnedFileSurfaceRulesApiTests(OwnedFileSurfaceRulesApiTests.Host ho
     [Fact]
     public void TaxStatementsController_UsesTheSharedDocumentHelpers()
     {
-        var source = RepositoryRoot.ReadAllText(
+        var source = SourceTree.ReadAllText(
             Path.Combine("Odyssey.Api", "Controllers", "TaxStatementsController.cs"));
 
         Assert.Contains("ValidateAttachableDocumentAsync(", source, StringComparison.Ordinal);

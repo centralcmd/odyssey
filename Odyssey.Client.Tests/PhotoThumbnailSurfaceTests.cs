@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -27,7 +28,7 @@ public class PhotoThumbnailSurfaceTests
     private static readonly string[] OriginalAllowed = ["Pages/Photos/EditPhotoDialog.razor", "Pages/Photos/PhotoDetailDialog.razor"];
 
     private static string Code(string relative) =>
-        ClientSource.WithoutComments(File.ReadAllText(Path.Combine(ClientSource.Root, relative)));
+        SourceLint.StripComments(File.ReadAllText(Path.Combine(ClientSource.Root, relative)));
 
     [Fact]
     public void The_scan_set_exists()

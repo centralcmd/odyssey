@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -89,9 +90,7 @@ public class ActingUserTests
     public void NothingServerSide_ChecksAPermissionWithARawHasClaim()
     {
         var offenders = new[] { "Odyssey.Api", "Odyssey.Core" }
-            .SelectMany(project => Directory.EnumerateFiles(
-                Path.Combine(RepositoryRoot.Path, project), "*.cs", SearchOption.AllDirectories))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .SelectMany(project => SourceTree.Files(project))
             .Where(path => RawPermissionCheck.IsMatch(File.ReadAllText(path)))
             .Select(Path.GetFileName)
             .ToList();
@@ -106,7 +105,7 @@ public class ActingUserTests
     private static IEnumerable<(string Name, string Text)> ControllerSources()
     {
         var sources = Directory
-            .EnumerateFiles(Path.Combine(RepositoryRoot.Path, "Odyssey.Api", "Controllers"), "*.cs")
+            .EnumerateFiles(Path.Combine(SourceTree.Root, "Odyssey.Api", "Controllers"), "*.cs")
             .Select(path => (Path.GetFileName(path), File.ReadAllText(path)))
             .ToList();
         Assert.NotEmpty(sources);

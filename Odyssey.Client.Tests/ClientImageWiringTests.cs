@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -44,7 +45,7 @@ public class ClientImageWiringTests
     [Fact]
     public void Shell_scripts_are_pinned_to_lf_line_endings()
     {
-        var attributes = File.ReadAllLines(ClientSource.Sibling(".gitattributes"));
+        var attributes = File.ReadAllLines(SourceTree.File(".gitattributes"));
 
         Assert.Contains(attributes, line => Regex.IsMatch(line, @"^\*\.sh\s+text\s+eol=lf\s*$"));
     }

@@ -7,6 +7,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
+using Odyssey.Testing;
 using Xunit;
 using Odyssey.Core.Email;
 using Odyssey.Core.Finance;
@@ -385,7 +386,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public void TheApiKeyHandler_IsRegisteredOutsideTheResiliencePipeline()
     {
-        var program = RepositoryRoot.ReadAllText(
+        var program = SourceTree.ReadAllText(
             System.IO.Path.Combine("Odyssey.Core", "Finance", "FileAnalysisServiceCollectionExtensions.cs"));
 
         var handler = program.IndexOf(

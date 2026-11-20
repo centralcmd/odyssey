@@ -330,9 +330,9 @@ public class ContactConvertDialogTests : IAsyncLifetime
     [Fact]
     public void TheEditDialogPointsAtTheMenu_AndTheMenuOffersTheConversion()
     {
-        var dialog = File.ReadAllText(Path.Combine(ClientRoot(), "Pages", "Finance", "ContactDialog.razor"));
-        var tiles = File.ReadAllText(Path.Combine(ClientRoot(), "Pages", "Finance", "ContactInfoTiles.razor"));
-        var card = File.ReadAllText(Path.Combine(ClientRoot(), "Pages", "Finance", "ContactsCard.razor.cs"));
+        var dialog = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContactDialog.razor"));
+        var tiles = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContactInfoTiles.razor"));
+        var card = File.ReadAllText(Path.Combine(ClientSource.Root, "Pages", "Finance", "ContactsCard.razor.cs"));
 
         Assert.DoesNotContain("can't be changed after creation", dialog, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("fixed after creation", tiles, StringComparison.OrdinalIgnoreCase);
@@ -415,15 +415,4 @@ public class ContactConvertDialogTests : IAsyncLifetime
         Type = ContactType.Organization,
         OrganizationDetails = new OrganizationDetailsDto { LegalName = "Equinor" },
     };
-
-    private static string ClientRoot()
-    {
-        var dir = new DirectoryInfo(AppContext.BaseDirectory);
-        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "Odyssey.Client")))
-        {
-            dir = dir.Parent;
-        }
-
-        return Path.Combine(dir!.FullName, "Odyssey.Client");
-    }
 }

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Odyssey.Api.SystemSettings;
 using Odyssey.Context;
 using Odyssey.Dtos;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -343,7 +344,7 @@ public class SystemSettingsLookupTests
         // lookup must not keep a private parse that could drift again. Expiry itself is asserted
         // behaviourally by SettingsLookupReadPathContractTests and IntSettingResolverTests.
         var lookup = await File.ReadAllTextAsync(
-            SolutionFile("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
+            SourceTree.File("Odyssey.Api", "SystemSettings", "SystemSettingsLookup.cs"));
 
         Assert.DoesNotContain("int.TryParse", lookup, StringComparison.Ordinal);
     }
@@ -378,18 +379,6 @@ public class SystemSettingsLookupTests
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────────────────────
-
-    private static string SolutionFile(params string[] parts)
-    {
-        var dir = AppContext.BaseDirectory;
-        while (dir is not null && !File.Exists(System.IO.Path.Combine(dir, "Odyssey.sln")))
-        {
-            dir = System.IO.Path.GetDirectoryName(dir.TrimEnd(System.IO.Path.DirectorySeparatorChar));
-        }
-
-        Assert.NotNull(dir);
-        return System.IO.Path.Combine([dir!, .. parts]);
-    }
 
     /// <summary>Captures level and rendered message, so the level assertions are about the real call.</summary>
     private sealed class RecordingLogger : ILogger<SystemSettingsLookup>

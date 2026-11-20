@@ -3,6 +3,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -134,10 +135,7 @@ public class SmtpEmailSenderLogRedactionTests
     public void NoLogTemplate_CarriesARawRecipientOrAnUngatedLink()
     {
         var sources = new[] { "Odyssey.Api", "Odyssey.Core" }
-            .Select(project => Path.Combine(RepositoryRoot.Path, project))
-            .SelectMany(root => Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories))
-            .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                && !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
+            .SelectMany(project => SourceTree.Files(project))
             .ToList();
         Assert.Contains(sources, path => path.EndsWith("UserAdministrationService.cs", StringComparison.Ordinal));
 

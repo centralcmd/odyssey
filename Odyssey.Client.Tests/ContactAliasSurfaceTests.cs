@@ -2,6 +2,7 @@ using Odyssey.Client.Components;
 using Odyssey.Client.Pages.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Client.Tests;
@@ -257,13 +258,9 @@ public class ContactAliasSurfaceTests
     /// forbidden fails it.
     /// </summary>
     private static IEnumerable<string> CodeLines(string source) =>
-        source.Split('\n')
+        SourceLint.StripComments(source).Split('\n')
             .Select(line => line.Trim())
-            .Where(line => !line.StartsWith("//", StringComparison.Ordinal)
-                && !line.StartsWith("///", StringComparison.Ordinal)
-                && !line.StartsWith("@*", StringComparison.Ordinal)
-                && !line.StartsWith('*')
-                && line.Length > 0);
+            .Where(line => line.Length > 0);
 
     /// <summary>Reads a checked-in client source file by its project-relative path.</summary>
     private static string ReadClient(string relativePath) =>
