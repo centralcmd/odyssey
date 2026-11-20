@@ -466,11 +466,21 @@ a whole tier while CI stayed green having run none of it. The rule now, shared t
 | Prerequisite **present but broken** — image pull, container start, provisioning SQL; a stack that answers but never turns healthy; an API `/healthz` answering HTML; a Release client calling a same-origin `/api/` that returns HTML | **fail** | **fail** |
 | Healthy | run | run |
 
-`ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api`, `design-system` or `all`; an unknown
-name fails the run, so a typo cannot silently un-require a tier. A CI job that is *meant* to exercise a
+`ODYSSEY_REQUIRE_TIER` is a comma-separated list of `integration`, `e2e`, `e2e-api`, `design-system`, `perf` or `all`;
+an unknown name fails the run, so a typo cannot silently un-require a tier. A CI job that is *meant* to exercise a
 tier sets it — the main CI job for `integration`, the E2E workflow for `e2e,e2e-api`. Requiring an E2E
 tier also stretches the readiness wait from 10 s to 120 s (`E2E_READY_TIMEOUT_SECONDS` overrides), so a
 stack whose port is live while migrations still run is waited for rather than failed.
+
+**The `perf` tier is opt-in rather than prerequisite-gated.** Its tests — volume, memory and time-budget
+checks such as the 100,000-row calendar export, the 50,000-event import, the 100,000-transaction net-worth
+budget, the weather batch P95 targets and the 100,000-feed OPML import — carry
+`[Trait("Category", "Perf")]` and skip whenever `perf` is *not* named, with a reason saying so, so the per-PR
+run stays fast. Each keeps a small per-PR sibling for its functional half (no export opens a transaction; a
+5,000-feed OPML import stays under the memory target). Once `perf` is named they run, and a prerequisite they
+also need — MariaDB, for the ones in `Odyssey.IntegrationTests` — being absent is a failure, never a skip
+(`TestShared/PerfTier.cs`). The `perf.yml` workflow runs them on the release-please Release PR with
+`ODYSSEY_REQUIRE_TIER=integration,perf --filter Category=Perf` and fails if none ran. `all` includes `perf`.
 
 Three classification details:
 

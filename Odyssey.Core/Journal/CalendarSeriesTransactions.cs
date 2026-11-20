@@ -35,6 +35,35 @@ internal static class CalendarSeriesTransactions
     /// <summary>The per-statement lock wait, in seconds.</summary>
     public const int LockWaitSeconds = 5;
 
+    /// <summary>
+    /// A test's lower lock wait and retry count, for the calls on its own async flow only — so a parallel test never
+    /// sees it. Unset everywhere but there, which leaves <see cref="LockWaitSeconds"/> and
+    /// <see cref="OdysseyDatabaseRetry.InteractiveMaxRetryCount"/> in force.
+    /// </summary>
+    private static readonly AsyncLocal<(int LockWaitSeconds, int MaxRetryCount)?> TestPolicy = new();
+
+    private static int EffectiveLockWaitSeconds => TestPolicy.Value?.LockWaitSeconds ?? LockWaitSeconds;
+
+    private static int EffectiveMaxRetryCount => TestPolicy.Value?.MaxRetryCount ?? OdysseyDatabaseRetry.InteractiveMaxRetryCount;
+
+    /// <summary>
+    /// Lowers the lock wait and retry count for series writes started on the calling async flow until disposed, so a
+    /// test can reach the give-up path on a real <c>1205</c> in a couple of seconds instead of fifteen.
+    /// </summary>
+    internal static IDisposable UseTestPolicy(int lockWaitSeconds, int maxRetryCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(lockWaitSeconds, 1);
+        ArgumentOutOfRangeException.ThrowIfNegative(maxRetryCount);
+        var previous = TestPolicy.Value;
+        TestPolicy.Value = (lockWaitSeconds, maxRetryCount);
+        return new PolicyScope(previous);
+    }
+
+    private sealed class PolicyScope((int, int)? previous) : IDisposable
+    {
+        public void Dispose() => TestPolicy.Value = previous;
+    }
+
     /// <summary>The unique indexes a race on keys can hit; a <c>1062</c> on either is a busy series.</summary>
     public static readonly string[] KeyIndexes =
     [
@@ -54,7 +83,7 @@ internal static class CalendarSeriesTransactions
             return await work();
         }
 
-        var strategy = OdysseyDatabaseRetry.InteractiveStrategy(context);
+        var strategy = OdysseyDatabaseRetry.InteractiveStrategy(context, EffectiveMaxRetryCount);
         var started = DateTime.UtcNow;
         try
         {
@@ -77,7 +106,8 @@ internal static class CalendarSeriesTransactions
         try
         {
             await context.Database.ExecuteSqlRawAsync(
-                $"SET SESSION innodb_lock_wait_timeout = {LockWaitSeconds}", cancellationToken);
+                "SET SESSION innodb_lock_wait_timeout = " + EffectiveLockWaitSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                cancellationToken);
             var result = await work();
             // Restored before the commit, on the transaction's own connection (PR #528 review): after it EF may release
             // the connection, and a restore would then run on whichever pooled connection came next.
@@ -109,7 +139,7 @@ internal static class CalendarSeriesTransactions
         foreach (var id in Ascending(patternIds))
         {
             await context.Database.ExecuteSqlInterpolatedAsync(
-                $"SET STATEMENT innodb_lock_wait_timeout = 5 FOR SELECT `RecurrencePatternId` FROM `RecurrencePatterns` WHERE `RecurrencePatternId` = {id} FOR UPDATE",
+                $"SET STATEMENT innodb_lock_wait_timeout = {EffectiveLockWaitSeconds} FOR SELECT `RecurrencePatternId` FROM `RecurrencePatterns` WHERE `RecurrencePatternId` = {id} FOR UPDATE",
                 cancellationToken);
         }
     }
@@ -126,7 +156,7 @@ internal static class CalendarSeriesTransactions
         foreach (var id in Ascending(eventIds))
         {
             await context.Database.ExecuteSqlInterpolatedAsync(
-                $"SET STATEMENT innodb_lock_wait_timeout = 5 FOR SELECT `CalendarEventId` FROM `CalendarEvents` WHERE `CalendarEventId` = {id} FOR UPDATE",
+                $"SET STATEMENT innodb_lock_wait_timeout = {EffectiveLockWaitSeconds} FOR SELECT `CalendarEventId` FROM `CalendarEvents` WHERE `CalendarEventId` = {id} FOR UPDATE",
                 cancellationToken);
         }
     }

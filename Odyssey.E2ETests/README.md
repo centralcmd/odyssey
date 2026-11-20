@@ -32,7 +32,7 @@ E2E_BASE_URL=http://localhost:5199 dotnet test Odyssey.E2ETests
 |---|---|---|
 | `E2E_BASE_URL` | `http://localhost:5199` | Base URL of the client to drive |
 | `E2E_MANAGE_STACK` | unset | When `true`, the fixture runs `docker compose up -d --build` and `down` |
-| `ODYSSEY_REQUIRE_TIER` | unset | Comma-separated tiers that must run: `e2e` here (also `integration`, `e2e-api`, `all`). A required tier **fails** instead of skipping when its stack is absent |
+| `ODYSSEY_REQUIRE_TIER` | unset | Comma-separated tiers that must run: `e2e` here (also `integration`, `e2e-api`, `design-system`, `perf`, `all`). A required tier **fails** instead of skipping when its stack is absent |
 | `E2E_READY_TIMEOUT_SECONDS` | 10 s, 120 s when required, 180 s when managed | How long to wait for the stack to answer |
 
 ### Skip versus fail (issue #257)

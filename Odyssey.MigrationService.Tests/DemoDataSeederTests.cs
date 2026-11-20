@@ -18,14 +18,41 @@ using Xunit;
 
 namespace Odyssey.MigrationService.Tests;
 
-public class DemoDataSeederTests
+/// <summary>
+/// The demo seeder. A full seed is the expensive step, so the tests that only READ a seeded database share one of two
+/// class fixtures — <see cref="SeededOnce"/>, a fresh database after one run, and <see cref="SeededTwice"/>, one after two
+/// runs for the assertions that a re-run moves nothing — while every test that mutates the database, or asserts what a
+/// single fresh run on its own does to a prepared state, still builds its own.
+/// </summary>
+public class DemoDataSeederTests(DemoDataSeederTests.SeededOnce seededOnce, DemoDataSeederTests.SeededTwice seededTwice)
+    : IClassFixture<DemoDataSeederTests.SeededOnce>, IClassFixture<DemoDataSeederTests.SeededTwice>
 {
+    /// <summary>A fresh database after one seeder run, shared read-only by the tests that only look at its rows.</summary>
+    public sealed class SeededOnce() : SeededDatabase(runs: 1);
+
+    /// <summary>A fresh database after two seeder runs, for the read-only tests that also pin idempotency.</summary>
+    public sealed class SeededTwice() : SeededDatabase(runs: 2);
+
+    public abstract class SeededDatabase(int runs) : IAsyncLifetime
+    {
+        public ServiceProvider Provider { get; private set; } = null!;
+
+        public async Task InitializeAsync()
+        {
+            Provider = BuildProvider(out var seeder);
+            for (var run = 0; run < runs; run++)
+            {
+                await seeder.ExecuteAsync(CancellationToken.None);
+            }
+        }
+
+        public async Task DisposeAsync() => await Provider.DisposeAsync();
+    }
+
     [Fact]
     public async Task Seeds_users_with_roles_and_full_finance_dataset()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
@@ -147,10 +174,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_instruments_with_valid_identities_and_manual_closes_only()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -182,9 +206,7 @@ public class DemoDataSeederTests
         // Before the term label these were four fee kinds that resolved to TWO in-force values, with
         // the rest silently superseded. Named, each is its own series — which is the whole point. The
         // card's purchase APR is a seventh labelled term, and is left out here.
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -227,11 +249,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_a_paused_contract_carrying_an_in_force_periodic_fee()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate the row or move its stamp.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate the row or move its stamp.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -277,11 +296,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_a_spread_across_the_signature_lifecycle()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate a row or move a stamp.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate a row or move a stamp.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -336,9 +352,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_contracts_both_with_and_without_a_reference_number()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -368,9 +382,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_each_contract_with_the_smart_tag_scope_copied_from_its_term()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -402,10 +414,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_property_event_logs_across_both_types_and_both_sources()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -439,11 +448,8 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_contract_event_logs_covering_the_states_the_surface_draws()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        // Idempotent: a second run must not duplicate a single entry.
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
+        // Idempotent: the fixture's second run must not duplicate a single entry.
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -498,9 +504,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_an_income_bearing_contract_the_rollup_reports()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -555,9 +559,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_journal_module_dataset()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var journal = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -597,9 +599,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_no_photo_library()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var photos = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -611,9 +611,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_complete_profile_for_each_demo_user()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var app = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -649,8 +647,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_house_and_the_car_as_properties_not_as_accounts()
     {
-        await using var provider = BuildProvider(out var seeder);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -682,10 +679,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_demo_properties_once_and_deterministically()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -725,10 +719,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_the_demo_locations_once_one_per_source_and_one_archived()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededTwice.Provider;
 
         using var scope = provider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
@@ -838,9 +829,7 @@ public class DemoDataSeederTests
     [Fact]
     public async Task Seeds_legal_acceptances_that_satisfy_the_compliance_rule_for_every_demo_user()
     {
-        await using var provider = BuildProvider(out var seeder);
-
-        await seeder.ExecuteAsync(CancellationToken.None);
+        var provider = seededOnce.Provider;
 
         using var scope = provider.CreateScope();
         var app = scope.ServiceProvider.GetRequiredService<OdysseyContext>();

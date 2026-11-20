@@ -16,6 +16,8 @@
       <InternalsVisibleTo Include="Odyssey.Core.Tests" />
       <!-- The thumbnail job scenarios rerun on MariaDB (issue #362 AC 24) and drive the same internal seams. -->
       <InternalsVisibleTo Include="Odyssey.IntegrationTests" />
+      <!-- The calendar import's batch size is lowered by one API-level partial-failure test (CalendarIcsStreamingApiTests). -->
+      <InternalsVisibleTo Include="Odyssey.Api.Tests" />
     </ItemGroup>
 
     <ItemGroup>
