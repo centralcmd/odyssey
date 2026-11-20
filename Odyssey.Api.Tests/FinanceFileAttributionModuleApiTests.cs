@@ -155,8 +155,7 @@ public class FinanceFileAttributionModuleApiTests(FinanceFileAttributionModuleAp
 
     private static FileMetadata AddFile(OdysseyContext db, string fileName, string hash)
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -165,7 +164,7 @@ public class FinanceFileAttributionModuleApiTests(FinanceFileAttributionModuleAp
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = hash,
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(metadata);

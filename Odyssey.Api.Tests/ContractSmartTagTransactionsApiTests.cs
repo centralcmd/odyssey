@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
@@ -415,7 +416,7 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
             Txn("Grid fee", -850m, 1, landlord.ContactId, TransactionStatus.New, day: 10));
         await db.SaveChangesAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -424,10 +425,9 @@ public partial class ContractSmartTagTransactionsApiTests(ContractSmartTagTransa
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-invoice",
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = new DateTime(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         db.TransactionFiles.Add(new TransactionFile

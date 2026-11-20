@@ -1,4 +1,5 @@
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -1288,9 +1289,8 @@ public class TaskIcsApiTests(TaskIcsApiTests.Host host) : SharedApiHostTests<Tas
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content };
+        var blobContent = content;
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
@@ -1300,8 +1300,7 @@ public class TaskIcsApiTests(TaskIcsApiTests.Host host) : SharedApiHostTests<Tas
             SizeBytes = content.Length,
             Sha256Hash = Sha256(content),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;

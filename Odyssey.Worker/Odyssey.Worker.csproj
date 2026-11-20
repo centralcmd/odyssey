@@ -28,5 +28,7 @@
     <!-- The jobs themselves live in Odyssey.Core (Odyssey.Core.Jobs.IPeriodicJob); this project only hosts them. -->
     <ProjectReference Include="..\Odyssey.Core\Odyssey.Core.csproj" />
     <ProjectReference Include="..\Odyssey.Dtos\Odyssey.Dtos.csproj" />
+    <!-- The demo dataset, for the demo-file seeder (Development/Testing only, DemoDataGate). -->
+    <ProjectReference Include="..\Odyssey.TestData\Odyssey.TestData.csproj" />
   </ItemGroup>
 </Project>

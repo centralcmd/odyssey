@@ -367,7 +367,7 @@ public class ContactConversionTests
         context.Photos.Add(new Photo
         {
             PhotoId = photoId,
-            FileId = Guid.NewGuid(),
+            StoredObjectId = Guid.NewGuid(),
             Archived = DateTime.UtcNow,
             People = [new PhotoPerson { PhotoId = photoId, ContactId = created.ContactId }],
         });

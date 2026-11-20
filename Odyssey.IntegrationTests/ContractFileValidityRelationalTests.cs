@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
+using Odyssey.Testing.FileStorage;
 using Xunit;
 using ContextContractType = Odyssey.Context.ContractType;
 
@@ -199,17 +200,21 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
 
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)
     {
-        // A database-held file (FileBlob + FileMetadata), by raw SQL.
-        var id = Guid.NewGuid();
-        var blobId = Guid.NewGuid();
-        await context.Database.ExecuteSqlInterpolatedAsync(
-            $"INSERT INTO `FileBlob` (`Id`, `Content`) VALUES ({blobId}, {new byte[] { 1, 2, 3 }})");
-        await context.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO `FileMetadata`
-                (`Id`, `UploadedByUserId`, `FileName`, `ContentType`, `SizeBytes`, `Sha256Hash`, `FileBlobId`, `UploadedAtUtc`)
-            VALUES ({id}, {uploaderId}, {"agreement.pdf"}, {"application/pdf"}, {3L}, {Guid.NewGuid().ToString("N")}, {blobId}, {Anchor})
-            """);
-        return id;
+        // A disk-backed Finance-area file: the FileMetadata row and the committed stored-object row it names.
+        var metadata = new FileMetadata
+        {
+            Id = Guid.NewGuid(),
+            UploadedByUserId = uploaderId,
+            FileName = "agreement.pdf",
+            ContentType = "application/pdf",
+            SizeBytes = 3,
+            Sha256Hash = Guid.NewGuid().ToString("N"),
+            FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context),
+            UploadedAtUtc = Anchor,
+        };
+        context.FileMetadata.Add(metadata);
+        await context.SaveChangesAsync();
+        return metadata.Id;
     }
 
     private static async Task<Guid> SeedContractFileAsync(

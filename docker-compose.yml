@@ -224,6 +224,9 @@ services:
       # environment filter decides which stored secrets exist at all.
       DOTNET_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
       ConnectionStrings__OdysseyConnection: server=mariadb;port=3306;database=${ODYSSEY_DATABASE:-odyssey};user=${MARIADB_USER:-odyssey};password=${MARIADB_PASSWORD:-odyssey_password};
+      # The demo files and photos (Development/Testing only, whatever this says): the half of the demo seed with
+      # bytes, which only a host with the file volumes can write. The same flag as the migrations job's.
+      Seed__DemoData: ${SEED_DEMO_DATA:-true}
       # The API's key ring, READ-ONLY (`:ro` below), so a job can read the encrypted secret store — the
       # Frost client id today. This makes the worker the second container that can decrypt every stored
       # credential, a deliberate trade-off (docs/deployment.md). It never writes a key: automatic key

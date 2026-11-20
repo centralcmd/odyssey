@@ -314,13 +314,11 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         for (var i = 0; i < files; i++)
         {
             var bytes = Encoding.UTF8.GetBytes($"file {i} {Guid.NewGuid()}");
-            var blob = new FileBlob { Id = Guid.NewGuid(), Content = bytes };
             var file = new FileMetadata
             {
                 Id = Guid.NewGuid(), UploadedByUserId = User, FileName = $"f{i}.txt", ContentType = "text/plain",
-                SizeBytes = bytes.Length, Sha256Hash = PhotoTestData.Sha256(bytes), FileBlobId = blob.Id, UploadedAtUtc = Now,
+                SizeBytes = bytes.Length, Sha256Hash = PhotoTestData.Sha256(bytes), FinanceStoredObjectId = StoredFileFixtures.AddStoredObjectRow(context), UploadedAtUtc = Now,
             };
-            context.FileBlob.Add(blob);
             context.FileMetadata.Add(file);
             fileIds.Add(file.Id);
         }
@@ -328,7 +326,16 @@ public class CalendarAttachmentsIntegrationTests(MariaDbFixture fixture, ITestOu
         var photoIds = new List<Guid>();
         for (var i = 0; i < photos; i++)
         {
-            photoIds.Add(PhotoTestData.StageLegacyPhoto(context, userId: User).Photo.PhotoId);
+            var hash = StoredFileFixtures.Sha256(PhotoTestData.Jpeg(PhotoTestData.NextSeed()));
+            var photo = new Photo
+            {
+                PhotoId = Guid.NewGuid(),
+                StoredObjectId = StoredFileFixtures.AddStoredObjectRow(context, featureKey: Odyssey.Core.Journal.Originals.PhotoOriginalStorage.FeatureKey),
+                FileName = $"p{i}.jpg", ContentType = "image/jpeg", SizeBytes = 3, Sha256Hash = hash,
+                CreatedByUserId = User, CreatedAt = Now, UpdatedAt = Now,
+            };
+            context.Photos.Add(photo);
+            photoIds.Add(photo.PhotoId);
         }
 
         await context.SaveChangesAsync();

@@ -7,6 +7,8 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using Odyssey.Core.FileExport;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
+using Odyssey.Core.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
@@ -314,23 +316,9 @@ public class AdminFileExportApiTests(AdminFileExportApiTests.Host host) : Shared
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var bytes = Encoding.UTF8.GetBytes(content);
-        var blobId = Guid.NewGuid();
-        var fileId = Guid.NewGuid();
-        context.FileBlob.Add(new FileBlob { Id = blobId, Content = bytes });
-        context.FileMetadata.Add(new FileMetadata
-        {
-            Id = fileId,
-            UploadedByUserId = "uploader",
-            FileName = fileName,
-            ContentType = contentType,
-            SizeBytes = bytes.Length,
-            Sha256Hash = "hash",
-            FileBlobId = blobId,
-            UploadedAtUtc = DateTime.UtcNow,
-        });
-        await context.SaveChangesAsync();
-        return fileId;
+        var file = await StoredFileFixtures.SeedFileAsync(
+            scope.ServiceProvider, Encoding.UTF8.GetBytes(content), fileName, contentType, uploadedByUserId: "uploader");
+        return file.Id;
     }
 
     private static async Task SeedOrphanMetadataAsync(
@@ -340,7 +328,7 @@ public class AdminFileExportApiTests(AdminFileExportApiTests.Host host) : Shared
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        // Metadata whose FileBlobId points at a blob that does not exist.
+        // Metadata whose stored object does not exist.
         context.FileMetadata.Add(new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -349,7 +337,7 @@ public class AdminFileExportApiTests(AdminFileExportApiTests.Host host) : Shared
             ContentType = contentType,
             SizeBytes = 10,
             Sha256Hash = "hash",
-            FileBlobId = Guid.NewGuid(),
+            FinanceStoredObjectId = Guid.NewGuid(),
             UploadedAtUtc = DateTime.UtcNow,
         });
         await context.SaveChangesAsync();

@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
@@ -580,7 +581,7 @@ public class ContractFileValidityApiTests(ContractFileValidityApiTests.Host host
         var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await db.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -590,10 +591,8 @@ public class ContractFileValidityApiTests(ContractFileValidityApiTests.Host host
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         };
-        db.FileBlob.Add(blob);
         db.FileMetadata.Add(metadata);
         await db.SaveChangesAsync();
         return metadata.Id;

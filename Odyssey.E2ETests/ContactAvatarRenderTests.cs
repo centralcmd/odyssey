@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using Microsoft.Playwright;
 using Odyssey.TestData;
 using Odyssey.TestData.Catalog;
@@ -82,13 +83,37 @@ public sealed class ContactAvatarRenderTests(StackFixture fixture) : IAsyncLifet
     /// </summary>
     public Task DisposeAsync() => Task.CompletedTask;
 
+    /// <summary>
+    /// The worker writes the demo images after the stack comes up (DemoFileSeeder): reloads the contacts until both seeded
+    /// cards carry one, bounded by <see cref="DemoFileWait.Timeout"/>.
+    /// </summary>
+    private static Task WaitForSeededImagesAsync(IPage page) =>
+        DemoFileWait.UntilAsync(async () =>
+        {
+            await page.GotoAsync("/contacts", new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle });
+            foreach (var (contactKey, _) in Contacts.WithAvatars)
+            {
+                var card = page.Locator(".odc-record", new PageLocatorOptions { HasText = DisplayNameFor(contactKey) }).First;
+                try
+                {
+                    await card.Locator(".odc-record-mark.img img").WaitForAsync(new LocatorWaitForOptions { Timeout = 10_000 });
+                }
+                catch (TimeoutException)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
     [SkippableFact]
     public async Task The_seeded_person_and_organization_both_render_their_image()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
 
         var page = signedInPage!;
-        await page.GotoAsync("/contacts");
+        await WaitForSeededImagesAsync(page);
 
         foreach (var (contactKey, isLogo) in Contacts.WithAvatars)
         {
@@ -151,6 +176,7 @@ public sealed class ContactAvatarRenderTests(StackFixture fixture) : IAsyncLifet
             }
         };
 
+        await WaitForSeededImagesAsync(page);
         await page.GotoAsync("/contacts");
         await page.Locator(".odc-record-mark.img img").First
             .WaitForAsync(new LocatorWaitForOptions { Timeout = 20_000 });

@@ -12,7 +12,9 @@ namespace Odyssey.MigrationService;
 /// <summary>
 /// Seeds the deterministic demo dataset (docs/test-environment-and-e2e-spec.md, step 2).
 /// Gated to Development/Testing and idempotent: it builds the dataset from
-/// <see cref="DemoDataSet"/> and writes it once, skipping if it is already present.
+/// <see cref="DemoDataSet"/> and writes it once, skipping if it is already present. Everything with bytes —
+/// the files, the photos and every row that names one — is the worker's <c>DemoFileSeeder</c>'s instead:
+/// this job has no file volumes, and only a host with them can put a file on the object store.
 /// Reference data (currencies, roles, permission claims) is NOT seeded here — it already
 /// exists via migrations; this only references it.
 /// </summary>
@@ -50,12 +52,9 @@ public sealed class DemoDataSeeder(
         // JournalEntryContact. Each step below is its own SaveChanges, so the order between them is the
         // ordering EF's FK graph cannot work out on our behalf.
         await SeedContactsAsync(context, data, cancellationToken);
-        // Finance next: it owns the Files store, which the photo and attachment rows below reference.
         await SeedFinanceAsync(context, data, cancellationToken);
         // After finance: a property smart tag names a TransactionTag, a RESTRICT principal it seeds.
         await SeedPropertiesAsync(context, data, cancellationToken);
-        // Photos before journal: a journal photo links a library Photo by PhotoId, a real FK.
-        await SeedPhotosAsync(context, data, cancellationToken);
         await SeedJournalAsync(context, data, cancellationToken);
         await SeedCalendarAsync(context, data, cancellationToken);
         // Last, and not part of the demo DATASET: the one settings row a dev stack cannot function
@@ -144,49 +143,8 @@ public sealed class DemoDataSeeder(
     /// </summary>
     private const string DevelopmentClientBaseUrl = "http://localhost:5199";
 
-    /// <summary>
-    /// Demo data is seeded only in Development and Testing. Every other environment name —
-    /// Production, Staging, or anything an operator invents — refuses, and
-    /// <c>Seed:DemoData=true</c> cannot override that. Inside the two allowed environments the
-    /// flag still wins, so a developer can turn seeding off.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// An allow-list, not a Production deny-list (issue #457, item B4). The previous shape refused
-    /// Production and then let an explicit flag win <em>anywhere else</em>, so
-    /// <c>ASPNETCORE_ENVIRONMENT=Staging</c> plus <c>Seed:DemoData=true</c> — both things a
-    /// self-hoster types — seeded four accounts, one of them Admin with lockout disabled, whose
-    /// shared password is published in this repository's README. A deny-list has to enumerate
-    /// every environment that must not seed; an allow-list enumerates the two that may, so a name
-    /// nobody anticipated fails closed.
-    /// </para>
-    /// <para>
-    /// The refusal is not redundant with <c>docker-compose.prod.yml</c> pinning
-    /// <c>Seed__DemoData: "false"</c>. The base compose file defaults the flag to <c>true</c>, so
-    /// anyone who runs without the prod overlay — or deploys the image from their own manifest —
-    /// would otherwise seed.
-    /// </para>
-    /// </remarks>
-    private bool IsEnabled()
-    {
-        if (!environment.IsDevelopment() && !environment.IsEnvironment("Testing"))
-        {
-            // Warn rather than skip silently: an operator who set the flag deliberately is owed the
-            // reason it did nothing, and the line doubles as evidence that the gate held.
-            if (configuration.GetValue<bool?>("Seed:DemoData") == true)
-            {
-                logger.LogWarning(
-                    "Seed:DemoData=true was ignored: demo data seeds only in Development or Testing, "
-                    + "and this host is running as {Environment}. The demo accounts share a password "
-                    + "published in the README, so they are never seeded outside those environments.",
-                    environment.EnvironmentName);
-            }
-
-            return false;
-        }
-
-        return configuration.GetValue<bool?>("Seed:DemoData") ?? true;
-    }
+    /// <summary>The shared allow-list gate (<see cref="DemoDataGate"/>), which the worker's demo-file seeder reads too.</summary>
+    private bool IsEnabled() => DemoDataGate.IsEnabled(environment, configuration, logger);
 
     private async Task SeedUsersAsync(
         UserManager<ApplicationUser> userManager,
@@ -418,9 +376,6 @@ public sealed class DemoDataSeeder(
         await context.ContractEvents.AddRangeAsync(data.ContractEvents, cancellationToken);
         await context.TaxStatements.AddRangeAsync(data.TaxStatements, cancellationToken);
         await context.TaxStatementTags.AddRangeAsync(data.TaxStatementTags, cancellationToken);
-        await context.FileBlob.AddRangeAsync(data.FileBlobs, cancellationToken);
-        await context.FileMetadata.AddRangeAsync(data.FileMetadata, cancellationToken);
-        await context.TaxStatementFiles.AddRangeAsync(data.TaxStatementFiles, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
 
@@ -500,112 +455,8 @@ public sealed class DemoDataSeeder(
             return;
         }
 
-        // The seeded contact images go in FIRST: Contact.AvatarFileId is a real foreign key, and the
-        // rest of the Files store is not written until the finance step below (issue #86 §13).
-        if (data.ContactAvatarFiles.Count > 0)
-        {
-            await context.FileBlob.AddRangeAsync(data.ContactAvatarBlobs, cancellationToken);
-            await context.FileMetadata.AddRangeAsync(data.ContactAvatarFiles, cancellationToken);
-            await context.SaveChangesAsync(cancellationToken);
-        }
-
         await context.Contacts.AddRangeAsync(data.Contacts, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
-    }
-
-    private async Task SeedPhotosAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
-    {
-        if (data.Photos.Count == 0)
-        {
-            return;
-        }
-
-        // Record-level idempotent insert (NOT an all-or-nothing sentinel). On an existing deployment the
-        // journal photo unification backfill (§15 Phase B) has already created library Photos for the
-        // legacy journal files, so a blanket "skip if any photo exists" would starve the DB of the
-        // standalone demo photos, tags and albums (the bug this replaces). Insert only what's missing,
-        // keyed on the natural keys, so a fresh DB, an already-backfilled DB and a re-run all converge to
-        // the same demo set without ever colliding on the unique indexes (FileId, Name, the link pairs).
-        var existingPhotoIds = (await context.Photos.Select(p => p.PhotoId).ToListAsync(cancellationToken)).ToHashSet();
-        // A demo photo the worker's backfill has since moved to the photo store (issue #428) keeps its old file id
-        // as LegacyFileId, so a re-run still recognises it.
-        var existingFileIds = (await context.Photos
-                .Select(p => new { p.FileId, p.LegacyFileId })
-                .ToListAsync(cancellationToken))
-            .SelectMany(p => new[] { p.FileId, p.LegacyFileId })
-            .Where(id => id is not null)
-            .ToHashSet();
-        var existingTagNames = (await context.PhotoTags.Select(t => t.Name).ToListAsync(cancellationToken))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var existingTagIds = (await context.PhotoTags.Select(t => t.PhotoTagId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingAlbumIds = (await context.PhotoAlbums.Select(a => a.PhotoAlbumId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingLinks = (await context.PhotoTagLinks.Select(l => new { l.PhotoId, l.PhotoTagId }).ToListAsync(cancellationToken))
-            .Select(x => (x.PhotoId, x.PhotoTagId)).ToHashSet();
-        var existingPeople = (await context.PhotoPeople.Select(pp => new { pp.PhotoId, pp.ContactId }).ToListAsync(cancellationToken))
-            .Select(x => (x.PhotoId, x.ContactId)).ToHashSet();
-        var existingItems = (await context.PhotoAlbumItems.Select(i => new { i.PhotoAlbumId, i.PhotoId }).ToListAsync(cancellationToken))
-            .Select(x => (x.PhotoAlbumId, x.PhotoId)).ToHashSet();
-
-        // The natural-key sets above are not enough on their own. Every link row also carries a
-        // deterministic surrogate primary key, and that — not the pair — is what the database enforces.
-        // On a database seeded by an OLDER generator the two can disagree: the generator's Landlord
-        // contact id changed, so such a database holds a PhotoPerson with today's PhotoPersonId but
-        // yesterday's ContactId. Keyed only on the pair, that row reads as "new" and the insert dies on
-        // a duplicate primary key, failing the whole migrations job. Skip anything whose surrogate key
-        // is already taken, whatever it now points at.
-        var existingLinkIds = (await context.PhotoTagLinks.Select(l => l.PhotoTagLinkId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingPersonIds = (await context.PhotoPeople.Select(pp => pp.PhotoPersonId).ToListAsync(cancellationToken)).ToHashSet();
-        var existingItemIds = (await context.PhotoAlbumItems.Select(i => i.PhotoAlbumItemId).ToListAsync(cancellationToken)).ToHashSet();
-
-        // A demo photo already backfilled under a DIFFERENT (random) id: match on its file, not its id.
-        var newTags = data.PhotoTags.Where(t => !existingTagNames.Contains(t.Name)).ToList();
-        var newPhotos = data.Photos.Where(p => !existingFileIds.Contains(p.FileId)).ToList();
-        var newAlbums = data.PhotoAlbums.Where(a => !existingAlbumIds.Contains(a.PhotoAlbumId)).ToList();
-
-        var photoIdsPresent = existingPhotoIds.Concat(newPhotos.Select(p => p.PhotoId)).ToHashSet();
-        var tagIdsPresent = existingTagIds.Concat(newTags.Select(t => t.PhotoTagId)).ToHashSet();
-        var albumIdsPresent = existingAlbumIds.Concat(newAlbums.Select(a => a.PhotoAlbumId)).ToHashSet();
-
-        // A new album's cover must reference a photo that will exist; null it otherwise (defensive).
-        foreach (var album in newAlbums.Where(a => a.CoverPhotoId is { } cover && !photoIdsPresent.Contains(cover)))
-        {
-            album.CoverPhotoId = null;
-        }
-
-        var newLinks = data.PhotoTagLinks
-            .Where(l => photoIdsPresent.Contains(l.PhotoId) && tagIdsPresent.Contains(l.PhotoTagId)
-                        && !existingLinks.Contains((l.PhotoId, l.PhotoTagId))
-                        && !existingLinkIds.Contains(l.PhotoTagLinkId)).ToList();
-        var newPeople = data.PhotoPeople
-            .Where(pp => photoIdsPresent.Contains(pp.PhotoId)
-                         && !existingPeople.Contains((pp.PhotoId, pp.ContactId))
-                         && !existingPersonIds.Contains(pp.PhotoPersonId)).ToList();
-        var newItems = data.PhotoAlbumItems
-            .Where(i => albumIdsPresent.Contains(i.PhotoAlbumId) && photoIdsPresent.Contains(i.PhotoId)
-                        && !existingItems.Contains((i.PhotoAlbumId, i.PhotoId))
-                        && !existingItemIds.Contains(i.PhotoAlbumItemId)).ToList();
-
-        if (newTags.Count == 0 && newPhotos.Count == 0 && newAlbums.Count == 0
-            && newLinks.Count == 0 && newPeople.Count == 0 && newItems.Count == 0)
-        {
-            logger.LogInformation("Demo photo data already present; skipping photo seed.");
-            return;
-        }
-
-        // Tags + photos first (principals for links / album items / the album cover FK), then the join
-        // rows — one SaveChanges, EF orders inserts by the in-context FK graph.
-        await context.PhotoTags.AddRangeAsync(newTags, cancellationToken);
-        await context.Photos.AddRangeAsync(newPhotos, cancellationToken);
-        await context.PhotoAlbums.AddRangeAsync(newAlbums, cancellationToken);
-        await context.PhotoTagLinks.AddRangeAsync(newLinks, cancellationToken);
-        await context.PhotoPeople.AddRangeAsync(newPeople, cancellationToken);
-        await context.PhotoAlbumItems.AddRangeAsync(newItems, cancellationToken);
-
-        await context.SaveChangesAsync(cancellationToken);
-
-        logger.LogInformation(
-            "Seeded {Photos} library photos, {Tags} photo tags, {Albums} albums.",
-            newPhotos.Count, newTags.Count, newAlbums.Count);
     }
 
     private async Task SeedJournalAsync(OdysseyContext context, DemoDataSet data, CancellationToken cancellationToken)
@@ -623,18 +474,16 @@ public sealed class DemoDataSeeder(
         }
 
         // Tags first (principals for the join rows), then the aggregate roots and their owned/link
-        // children — all in one SaveChanges so EF orders the inserts by the FK graph. The contact, photo
-        // and file references are real FKs whose principals the earlier seed steps committed.
+        // children — all in one SaveChanges so EF orders the inserts by the FK graph. The contact
+        // references are real FKs whose principals the earlier seed steps committed. The photo and
+        // attachment links are the worker's: they name files only it can write.
         await context.JournalTags.AddRangeAsync(data.JournalTags, cancellationToken);
         await context.JournalTaskTags.AddRangeAsync(data.JournalTaskTags, cancellationToken);
         await context.JournalEntries.AddRangeAsync(data.JournalEntries, cancellationToken);
         await context.JournalEntryTags.AddRangeAsync(data.JournalEntryTags, cancellationToken);
         await context.JournalEntryContacts.AddRangeAsync(data.JournalEntryContacts, cancellationToken);
-        await context.JournalEntryPhotos.AddRangeAsync(data.JournalEntryPhotos, cancellationToken);
-        await context.JournalEntryAttachments.AddRangeAsync(data.JournalEntryAttachments, cancellationToken);
         await context.JournalTasks.AddRangeAsync(data.JournalTasks, cancellationToken);
         await context.JournalTaskTagLinks.AddRangeAsync(data.JournalTaskTagLinks, cancellationToken);
-        await context.JournalTaskAttachments.AddRangeAsync(data.JournalTaskAttachments, cancellationToken);
 
         await context.SaveChangesAsync(cancellationToken);
 

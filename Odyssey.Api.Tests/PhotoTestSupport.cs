@@ -75,14 +75,36 @@ public static class PhotoTestSupport
         foreach (var id in f.AlbumIds) yield return ("albumIds", id.ToString());
     }
 
-    /// <summary>A legacy photo (issue #428: created before photos owned their bytes), inserted directly.</summary>
-    public static async Task<(Guid PhotoId, Guid FileId)> SeedLegacyPhotoAsync(
+    /// <summary>A photo owning its original on the store, inserted directly (no extraction, no thumbnail job).</summary>
+    public static async Task<Guid> SeedPhotoAsync(
         WebApplicationFactory<Program> factory, string? uploaderId, string fileName = "photo.jpg", byte[]? bytes = null)
     {
         using var scope = factory.Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
-        var (photo, file) = PhotoTestData.StageLegacyPhoto(context, bytes, fileName, uploaderId);
+        var photo = await StoredFileFixtures.StagePhotoAsync(
+            scope.ServiceProvider, bytes ?? PhotoTestData.Jpeg(PhotoTestData.NextSeed()), fileName, userId: uploaderId);
+        await context.SaveChangesAsync();
+        return photo.PhotoId;
+    }
+
+    /// <summary>
+    /// A photo moved onto the store (issue #428) whose former file is still in the Files store, named only by the
+    /// photo's <c>LegacyFileId</c> — the file a pre-move export references. Such a file is a photo original, hidden from
+    /// every <c>files.*</c> surface (<c>FileReferenceCounter.VisibleInFilesStore</c>).
+    /// </summary>
+    public static async Task<(Guid PhotoId, Guid FormerFileId)> SeedPhotoWithFormerFileAsync(
+        WebApplicationFactory<Program> factory, string? uploaderId, string fileName = "photo.jpg", byte[]? bytes = null)
+    {
+        bytes ??= PhotoTestData.Jpeg(PhotoTestData.NextSeed());
+        using var scope = factory.Services.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
+        await context.Database.EnsureCreatedAsync();
+        var file = await StoredFileFixtures.StageFileAsync(
+            scope.ServiceProvider, bytes, fileName, "image/jpeg", Core.FileStorage.Files.StoredFileArea.Journal,
+            uploadedByUserId: uploaderId);
+        var photo = await StoredFileFixtures.StagePhotoAsync(scope.ServiceProvider, bytes, fileName, userId: uploaderId);
+        photo.LegacyFileId = file.Id;
         await context.SaveChangesAsync();
         return (photo.PhotoId, file.Id);
     }
@@ -95,20 +117,18 @@ public static class PhotoTestSupport
         var context = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
         await context.Database.EnsureCreatedAsync();
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = content ?? [1, 2, 3] };
+        var blobContent = content ?? [1, 2, 3];
         var metadataId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = metadataId,
             UploadedByUserId = uploaderId,
             FileName = fileName,
             ContentType = contentType,
-            SizeBytes = blob.Content.Length,
+            SizeBytes = blobContent.Length,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
         });
         await context.SaveChangesAsync();
         return metadataId;

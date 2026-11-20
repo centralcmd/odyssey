@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using System.Text.Json;
 using Microsoft.Playwright;
 using Odyssey.TestData;
@@ -156,8 +157,15 @@ public sealed class CalendarAttachmentReflowTests(StackFixture fixture) : IAsync
         await E2ESignIn.SignInAsync(page, owner.Email, owner.Password);
 
         var api = await ApiAsync(context);
-        var fileId = FirstId(await SendAsync(api, "GET", "/api/files?limit=1"), "id");
-        var photoId = FirstId(await SendAsync(api, "GET", "/api/photos?limit=1"), "photoId");
+        var fileId = Guid.Empty;
+        var photoId = Guid.Empty;
+        // The worker writes the demo files and photos after the stack comes up (DemoFileSeeder), so wait for them.
+        await DemoFileWait.UntilAsync(async () =>
+        {
+            fileId = FirstId(await SendAsync(api, "GET", "/api/files?limit=1"), "id");
+            photoId = FirstId(await SendAsync(api, "GET", "/api/photos?limit=1"), "photoId");
+            return fileId != Guid.Empty && photoId != Guid.Empty;
+        });
         Skip.If(fileId == Guid.Empty || photoId == Guid.Empty, "The seeded stack has no visible file or photo to link.");
 
         var calendarId = (await SendAsync(api, "POST", "/api/calendars", new { name = $"Reflow 522 {Guid.NewGuid():N}", color = "#0369A1" }))

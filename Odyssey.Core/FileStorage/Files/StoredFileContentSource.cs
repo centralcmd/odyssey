@@ -10,14 +10,13 @@ public sealed record StoredFileContent(Stream Content, long Length, string Conte
 }
 
 /// <summary>
-/// The one read path to a Files-store file's bytes (issue #448 §3.4), whichever backend holds them: the object store for
-/// a file on disk, the legacy <c>FileBlob</c> for one the move has not reached yet. Downloads, the contact image, the
-/// vCard export, file analysis, the admin file export and the legacy-photo reader all read through it, by file id. It
-/// is the only reader of <c>FileBlob</c> outside the two moves; a source-lint keeps it so.
+/// The one read path to a Files-store file's bytes (issue #448 §3.4): the object store, under the feature of the file's
+/// area. Downloads, the contact image, the vCard export, file analysis and the admin file export all read through it, by
+/// file id; a source-lint keeps it so.
 /// </summary>
 public sealed class StoredFileContentSource(OdysseyContext context, IObjectStore? store)
 {
-    /// <summary>The file, or null when no such file exists (or a legacy file's blob is gone). Applies no visibility rule.</summary>
+    /// <summary>The file, or null when no such file exists. Applies no visibility rule.</summary>
     public Task<StoredFileContent?> OpenAsync(Guid fileId, CancellationToken cancellationToken) =>
         OpenAsync(context.FileMetadata.AsNoTracking().Where(f => f.Id == fileId), cancellationToken);
 
@@ -30,16 +29,8 @@ public sealed class StoredFileContentSource(OdysseyContext context, IObjectStore
             return null;
         }
 
-        if (StoredFileAreas.AreaOf(file) is { } area)
-        {
-            var stored = await Store().OpenReadAsync(StoredFileAreas.FeatureKey(area), StoredFileAreas.StoredObjectIdOf(file)!.Value, cancellationToken);
-            return new StoredFileContent(stored.Content, stored.Length, file.ContentType, file.FileName, file.Sha256Hash);
-        }
-
-        var bytes = await LegacyBytesAsync(file, cancellationToken);
-        return bytes is null
-            ? null
-            : new StoredFileContent(new MemoryStream(bytes, writable: false), bytes.LongLength, file.ContentType, file.FileName, file.Sha256Hash);
+        var stored = await OpenStoredAsync(file, cancellationToken);
+        return new StoredFileContent(stored.Content, stored.Length, file.ContentType, file.FileName, file.Sha256Hash);
     }
 
     /// <summary>
@@ -59,25 +50,14 @@ public sealed class StoredFileContentSource(OdysseyContext context, IObjectStore
             return (null, true);
         }
 
-        if (StoredFileAreas.AreaOf(file) is { } area)
+        var stored = await OpenStoredAsync(file, cancellationToken);
+        await using var stream = stored.Content;
+        if (stored.Length > maxBytes)
         {
-            var stored = await Store().OpenReadAsync(StoredFileAreas.FeatureKey(area), StoredFileAreas.StoredObjectIdOf(file)!.Value, cancellationToken);
-            await using var stream = stored.Content;
-            if (stored.Length > maxBytes)
-            {
-                return (null, true);
-            }
-
-            return (await ReadUpToAsync(stream, (int)stored.Length, cancellationToken), false);
+            return (null, true);
         }
 
-        var bytes = await LegacyBytesAsync(file, cancellationToken);
-        if (bytes is null)
-        {
-            return null;
-        }
-
-        return bytes.LongLength > maxBytes ? (null, true) : (bytes, false);
+        return (await ReadUpToAsync(stream, (int)stored.Length, cancellationToken), false);
     }
 
     /// <summary>At most <paramref name="maxBytes"/> leading bytes, never the whole file. Null when the file does not exist.</summary>
@@ -94,47 +74,20 @@ public sealed class StoredFileContentSource(OdysseyContext context, IObjectStore
             return null;
         }
 
-        if (StoredFileAreas.AreaOf(file) is { } area)
-        {
-            var stored = await Store().OpenReadAsync(StoredFileAreas.FeatureKey(area), StoredFileAreas.StoredObjectIdOf(file)!.Value, cancellationToken);
-            await using var stream = stored.Content;
-            return await ReadUpToAsync(stream, maxBytes, cancellationToken);
-        }
-
-        if (file.FileBlobId is not { } blobId)
-        {
-            return null;
-        }
-
-        if (context.Database.IsRelational())
-        {
-            // A bounded prefix projected in SQL, so a large legacy blob is never materialised to read its header.
-            // EF/LINQ cannot express a byte-range read of a varbinary column; SqlQuery needs the column aliased "Value".
-            var prefixes = await context.Database
-                .SqlQuery<byte[]>($"SELECT SUBSTRING(`Content`, 1, {maxBytes}) AS `Value` FROM `FileBlob` WHERE `Id` = {blobId}")
-                .ToListAsync(cancellationToken);
-            return prefixes.Count == 0 ? null : prefixes[0];
-        }
-
-        var bytes = await LegacyBytesAsync(file, cancellationToken);
-        return bytes is null ? null : bytes.Length <= maxBytes ? bytes : bytes[..maxBytes];
+        var stored = await OpenStoredAsync(file, cancellationToken);
+        await using var stream = stored.Content;
+        return await ReadUpToAsync(stream, maxBytes, cancellationToken);
     }
 
-    /// <summary>Whether the file's bytes are present: a committed stored object, or a legacy blob. For the admin export's count.</summary>
-    public async Task<bool> IsPresentAsync(FileMetadata file, CancellationToken cancellationToken)
+    /// <summary>Whether the file's committed stored object is present. For the admin export's count.</summary>
+    public Task<bool> IsPresentAsync(FileMetadata file, CancellationToken cancellationToken)
     {
-        if (StoredFileAreas.StoredObjectIdOf(file) is { } objectId)
-        {
-            return await context.StoredObjects.AnyAsync(o => o.Id == objectId && o.State == StoredObjectState.Committed, cancellationToken);
-        }
-
-        return file.FileBlobId is { } blobId && await context.FileBlob.AnyAsync(b => b.Id == blobId, cancellationToken);
+        var objectId = StoredFileAreas.StoredObjectIdOf(file);
+        return context.StoredObjects.AnyAsync(o => o.Id == objectId && o.State == StoredObjectState.Committed, cancellationToken);
     }
 
-    private async Task<byte[]?> LegacyBytesAsync(FileMetadata file, CancellationToken cancellationToken) =>
-        file.FileBlobId is { } blobId
-            ? await context.FileBlob.AsNoTracking().Where(b => b.Id == blobId).Select(b => b.Content).FirstOrDefaultAsync(cancellationToken)
-            : null;
+    private Task<StoredObjectContent> OpenStoredAsync(FileMetadata file, CancellationToken cancellationToken) =>
+        Store().OpenReadAsync(StoredFileAreas.FeatureKey(StoredFileAreas.AreaOf(file)), StoredFileAreas.StoredObjectIdOf(file), cancellationToken);
 
     private IObjectStore Store() =>
         store ?? throw new FileStorageUnavailableException("File storage is not set up on this server.");

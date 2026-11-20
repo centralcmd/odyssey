@@ -19,7 +19,7 @@ internal sealed class UserProfileImageConfiguration : IEntityTypeConfiguration<U
         //     per write, so a stale-version UPDATE affects zero rows and raises
         //     DbUpdateConcurrencyException at no extra cost. It is also what makes a DELETE racing a
         //     POST a 409 rather than a 500.
-        //  2. The blob is the DEPENDENT, inverting FileMetadata/FileBlob. That is what makes
+        //  2. The blob is the DEPENDENT (the former FileMetadata/FileBlob pair had it the other way). That is what makes
         //     AspNetUsers → UserProfileImage → UserProfileImageBlob an unbroken cascade chain, so a
         //     deleted account takes its facial image bytes with it rather than orphaning them
         //     permanently. Its PK is its FK, so it needs no separate index.

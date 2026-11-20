@@ -6,7 +6,7 @@ namespace Odyssey.Core.FileStorage.Files;
 
 /// <summary>
 /// The three areas a Files-store file can live in on disk (issue #448 §3). Placement only: no read, link or claim
-/// depends on it. <see cref="ContactAvatars"/> is reachable only through the avatar path and the move, never through
+/// depends on it. <see cref="ContactAvatars"/> is reachable only through the avatar path, never through
 /// <see cref="FileUploadArea"/>.
 /// </summary>
 public enum StoredFileArea
@@ -68,16 +68,19 @@ public static class StoredFileAreas
         _ => throw new ArgumentOutOfRangeException(nameof(area)),
     };
 
-    /// <summary>The area a file already sits in, from whichever stored-object column is set; null for a legacy file.</summary>
-    public static StoredFileArea? AreaOf(FileMetadata file) =>
+    /// <summary>The area a file sits in, from whichever stored-object column is set (exactly one always is).</summary>
+    public static StoredFileArea AreaOf(FileMetadata file) =>
         file.FinanceStoredObjectId is not null ? StoredFileArea.Finance
         : file.JournalStoredObjectId is not null ? StoredFileArea.Journal
         : file.ContactAvatarStoredObjectId is not null ? StoredFileArea.ContactAvatars
-        : null;
+        : throw NoSource(file);
 
-    /// <summary>The stored object a file names, whichever column holds it; null for a legacy file.</summary>
-    public static Guid? StoredObjectIdOf(FileMetadata file) =>
-        file.FinanceStoredObjectId ?? file.JournalStoredObjectId ?? file.ContactAvatarStoredObjectId;
+    /// <summary>The stored object a file names, whichever column holds it.</summary>
+    public static Guid StoredObjectIdOf(FileMetadata file) =>
+        file.FinanceStoredObjectId ?? file.JournalStoredObjectId ?? file.ContactAvatarStoredObjectId ?? throw NoSource(file);
+
+    private static InvalidOperationException NoSource(FileMetadata file) =>
+        new($"File {file.Id} names no stored object; CK_FileMetadata_ExactlyOneSource requires one.");
 
     /// <summary>Points the file at <paramref name="storedObjectId"/> in <paramref name="area"/>'s column.</summary>
     public static void Assign(FileMetadata file, StoredFileArea area, Guid storedObjectId)

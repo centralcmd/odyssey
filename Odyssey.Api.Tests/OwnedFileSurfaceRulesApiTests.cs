@@ -4,6 +4,7 @@ using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Context.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -335,8 +336,7 @@ public class OwnedFileSurfaceRulesApiTests(OwnedFileSurfaceRulesApiTests.Host ho
         };
         db.Properties.Add(property);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -344,7 +344,7 @@ public class OwnedFileSurfaceRulesApiTests(OwnedFileSurfaceRulesApiTests.Host ho
             ContentType = contentType,
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(metadata);

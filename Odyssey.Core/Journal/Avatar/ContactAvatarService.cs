@@ -11,7 +11,7 @@ namespace Odyssey.Core.Journal.Avatar;
 
 /// <summary>
 /// What the read path needs to answer a conditional request, resolved from <see cref="FileMetadata"/>
-/// <b>alone</b> — no <c>Include(fm =&gt; fm.FileBlob)</c>.
+/// <b>alone</b> — never the stored bytes.
 /// </summary>
 /// <remarks>
 /// <c>Cache-Control: private, no-cache</c> makes revalidation the hot path, so loading the
@@ -117,8 +117,7 @@ public class ContactAvatarService
     }
 
     /// <summary>
-    /// The image, opened only once a conditional request has failed to match — from the store for an image on disk,
-    /// from its blob for a legacy one (issue #448 §3.4). The caller disposes the stream.
+    /// The image, opened only once a conditional request has failed to match — from the store (issue #448 §3.4). The caller disposes the stream.
     /// </summary>
     public Task<StoredFileContent?> GetContentAsync(Guid fileId, CancellationToken cancellationToken = default) =>
         source.OpenAsync(fileId, cancellationToken);

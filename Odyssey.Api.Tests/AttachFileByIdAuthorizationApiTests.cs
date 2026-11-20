@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -96,8 +97,7 @@ public sealed class AttachFileByIdAuthorizationApiTests(AttachFileByIdAuthorizat
         };
         db.TaxStatements.Add(taxStatement);
 
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(blob);
+        byte[] blobContent = [1, 2, 3];
         var metadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -105,7 +105,7 @@ public sealed class AttachFileByIdAuthorizationApiTests(AttachFileByIdAuthorizat
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
-            FileBlobId = blob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(metadata);

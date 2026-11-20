@@ -20,13 +20,13 @@ public enum JobType : byte
     FileStorageMaintenance = 3,
     PhotoThumbnails = 4,
 
-    /// <summary>The one-off move of legacy photo originals onto the photo store (issue #428).</summary>
-    PhotoOriginalBackfill = 5,
+    // 5 (PhotoOriginalBackfill, issue #428) is retired — a permanent hole, never reused. The move of legacy photo
+    // originals onto the store finished everywhere, and RemoveLegacyFileBlobStorage deleted its run rows.
 
     /// <summary>The AI file-analysis extraction queue (issue #444): work-driven, never run by hand.</summary>
     FileAnalysis = 6,
-    /// <summary>The one-off move of every remaining <c>FileBlob</c> onto the file store (issue #448).</summary>
-    FileBlobBackfill = 7,
+
+    // 7 (FileBlobBackfill, issue #448) is retired — a permanent hole, never reused, for the same reason as 5.
 
     /// <summary>The instrument-price sync and its purges (issue #446).</summary>
     InstrumentPriceSync = 8,
@@ -109,8 +109,7 @@ public enum JobHeldReason : byte
     /// <summary>The photo volume (thumbnails, originals) is unavailable or below its reserve in this process.</summary>
     StorageUnavailable = 5,
 
-    /// <summary>The photo-original move waits out its back-off after a storage or database error.</summary>
-    BackingOff = 6,
+    // 6 (BackingOff) is retired with the two file moves that alone held on it — a permanent hole, never reused.
 
     Unknown = byte.MaxValue,
 }
@@ -254,18 +253,12 @@ public sealed record RunningJobRun
     public DateTime StartedAtUtc { get; set; }
 }
 
-/// <summary>The worker-side signals of four jobs; each part is <c>null</c> without its job's detail-read claim.</summary>
+/// <summary>The worker-side signals of two jobs; each part is <c>null</c> without its job's detail-read claim.</summary>
 public sealed record BackgroundJobsWorkerHealth
 {
     public FileStorageWorkerHealth? FileStorage { get; set; }
 
     public ThumbnailWorkerHealth? Thumbnails { get; set; }
-
-    /// <summary>How far the photo-original move has got (issue #428); counts and failure codes only.</summary>
-    public PhotoBackfillStatus? PhotoOriginalBackfill { get; set; }
-
-    /// <summary>How far the file move has got (issue #448); counts and failure codes only.</summary>
-    public FileBackfillStatus? FileBlobBackfill { get; set; }
 }
 
 /// <summary>How many worker processes report failing file-storage checks, and which checks (names, never paths).</summary>
@@ -372,9 +365,7 @@ public sealed class JobRunDetailJsonConverter : JsonConverter<JobRunDetail>
         [nameof(Application.JobType.Weather)] = typeof(WeatherJobRunDetail),
         [nameof(Application.JobType.FileStorageMaintenance)] = typeof(FileStorageMaintenanceJobRunDetail),
         [nameof(Application.JobType.PhotoThumbnails)] = typeof(PhotoThumbnailJobRunDetail),
-        [nameof(Application.JobType.PhotoOriginalBackfill)] = typeof(PhotoOriginalBackfillJobRunDetail),
         [nameof(Application.JobType.FileAnalysis)] = typeof(FileAnalysisJobRunDetail),
-        [nameof(Application.JobType.FileBlobBackfill)] = typeof(FileBlobBackfillJobRunDetail),
         [nameof(Application.JobType.InstrumentPriceSync)] = typeof(InstrumentPriceSyncJobRunDetail),
         [nameof(Application.JobType.NewsFeedFetch)] = typeof(NewsFeedJobRunDetail),
         [nameof(Application.JobType.RecurrenceKeyBackfill)] = typeof(RecurrenceKeyBackfillJobRunDetail),
@@ -549,21 +540,6 @@ public sealed record PhotoThumbnailJobRunDetail : JobRunDetail
     public int? Hangs { get; set; }
 }
 
-public sealed record PhotoOriginalBackfillJobRunDetail : JobRunDetail
-{
-    /// <summary>Moved, with their database file removed because nothing else used it.</summary>
-    public int? PhotosMoved { get; set; }
-
-    /// <summary>Moved, with their database file kept because an attachment still uses it.</summary>
-    public int? PhotosCopiedShared { get; set; }
-
-    /// <summary>Parked for a reason of their own; not retried until an operator clears them.</summary>
-    public int? PhotosParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error, after which the move backs off.</summary>
-    public int? Interruptions { get; set; }
-}
-
 /// <summary>
 /// A file-analysis burst (issue #444): how many queued analyses it finished, failed, or refused before
 /// sending. Counts only — never a file, account or user.
@@ -578,28 +554,6 @@ public sealed record FileAnalysisJobRunDetail : JobRunDetail
 
     /// <summary>Analyses refused before anything was sent (settings changed, analysis switched off, requester gone).</summary>
     public int? AnalysesRefused { get; set; }
-}
-
-/// <summary>
-/// A file-move burst (issue #448): how many files it moved into each area, how many it parked, and how many ticks an
-/// outage cut short. Counts only — never a file, name or path.
-/// </summary>
-public sealed record FileBlobBackfillJobRunDetail : JobRunDetail
-{
-    /// <summary>Moved to the finance area.</summary>
-    public int? FinanceFilesMoved { get; set; }
-
-    /// <summary>Moved to the journal area.</summary>
-    public int? JournalFilesMoved { get; set; }
-
-    /// <summary>Moved to the contact-avatar area.</summary>
-    public int? ContactAvatarsMoved { get; set; }
-
-    /// <summary>Parked for a reason of their own; not retried until an operator clears them.</summary>
-    public int? FilesParked { get; set; }
-
-    /// <summary>Ticks cut short by a storage or database error, after which the move backs off.</summary>
-    public int? Interruptions { get; set; }
 }
 
 /// <summary><c>202</c> of <c>POST /api/background-jobs/{jobType}/runs</c>.</summary>

@@ -2,6 +2,8 @@ using Odyssey.Core.Locations;
 using Mapster;
 using Microsoft.EntityFrameworkCore;
 using Odyssey.Context;
+using Odyssey.Core.FileStorage;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
@@ -38,21 +40,9 @@ public class PropertyFileServiceTests
 
     private static async Task<Guid> SeedFile(OdysseyContext context, string fileName = "deed.pdf")
     {
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        var metadata = new FileMetadata
-        {
-            Id = Guid.NewGuid(),
-            UploadedByUserId = TestUserId,
-            FileName = fileName,
-            ContentType = "application/pdf",
-            SizeBytes = 3,
-            Sha256Hash = Guid.NewGuid().ToString("N"),
-            UploadedAtUtc = Start.UtcDateTime,
-            FileBlobId = blob.Id,
-            FileBlob = blob,
-        };
-        context.FileBlob.Add(blob);
-        context.FileMetadata.Add(metadata);
+        var metadata = await StoredFileFixtures.StageFileAsync(
+            context, TestFileStores.For(context).Writer, [1, 2, 3], fileName, uploadedByUserId: TestUserId,
+            uploadedAtUtc: Start.UtcDateTime);
         await context.SaveChangesAsync();
         return metadata.Id;
     }
@@ -432,7 +422,7 @@ public class PropertyFileServiceTests
 
         Assert.False(await context.PropertyFiles.AnyAsync());
         Assert.True(await context.FileMetadata.AnyAsync(f => f.Id == fileId));
-        Assert.Single(context.FileBlob);
+        Assert.Equal(StoredObjectState.Committed, Assert.Single(context.StoredObjects).State);
     }
 
     [Fact]
@@ -471,27 +461,7 @@ public class PropertyFileServiceTests
         var remaining = Assert.Single(context.PropertyFiles);
         Assert.Equal(otherId, remaining.PropertyId);
         Assert.Equal(2, await context.FileMetadata.CountAsync());
-        Assert.Equal(2, await context.FileBlob.CountAsync());
-    }
-
-    // ── AC 18: the file-reference guard names a property document ─────────────
-
-    [Fact]
-    public async Task FileReferenceGuard_NamesAPropertyDocument_OnlyWhileAttached()
-    {
-        await using var context = TestContextFactory.Create();
-        var service = Service(context);
-        var guard = new FileReferenceGuard(context);
-        var propertyId = await SeedProperty(context);
-        var fileId = await SeedFile(context);
-
-        Assert.Empty(await guard.DescribeNonPhotoReferencesAsync(fileId));
-
-        await service.AttachFile(propertyId, new AttachPropertyFileRequest { FileMetadataId = fileId }, TestUserId);
-        Assert.Equal(["a property document"], await guard.DescribeNonPhotoReferencesAsync(fileId));
-
-        await service.DetachFile(propertyId, fileId);
-        Assert.Empty(await guard.DescribeNonPhotoReferencesAsync(fileId));
+        Assert.Equal(2, await context.StoredObjects.CountAsync(o => o.State == StoredObjectState.Committed));
     }
 
     // ── The two enums and their Mapster registration ──────────────────────────

@@ -4,34 +4,18 @@ using Xunit;
 namespace Odyssey.Core.Tests.FileStorage;
 
 /// <summary>
-/// Source-lints for the file move (issue #448 §8.7). Bytes still in the database are read in a closed set of places, a
-/// <c>FileMetadata</c> row is removed only by the helper that also releases its stored object, only the avatar path
-/// writes the <c>ContactAvatars</c> feature, and Finance code takes no new dependency on Journal.
+/// Source-lints for the Files store on the object store (issue #448 §8.7). Nothing names the removed database copy of
+/// the bytes, a <c>FileMetadata</c> row is removed only by the helper that also releases its stored object, only the
+/// avatar path writes the <c>ContactAvatars</c> feature, and Finance code takes no new dependency on Journal.
 /// Comments are stripped before matching, so a doc comment naming <c>FileBlob</c> is not a read.
 /// </summary>
 public partial class StoredFilesSourceLintTests
 {
     private static readonly string[] ProductionProjects = ["Odyssey.Core", "Odyssey.Api", "Odyssey.Worker"];
 
-    /// <summary>
-    /// The places that may still read <c>FileBlob</c> or <c>FileMetadata.FileBlobId</c>. The three photo files leave the
-    /// list with the photo move's own follow-up; the file move's last release drops the table and the list together.
-    /// </summary>
-    private static readonly HashSet<string> LegacyReadAllowList =
-    [
-        "Odyssey.Core/FileStorage/Files/StoredFileContentSource.cs",
-        "Odyssey.Core/FileStorage/Files/StoredFileRemoval.cs",
-        "Odyssey.Core/FileStorage/Files/FileBlobBackfillJob.cs",
-        "Odyssey.Core/FileStorage/Files/FileBackfillStatusService.cs",
-        "Odyssey.Core/FileExport/AdminFileExportService.cs",
-        "Odyssey.Core/Journal/Originals/PhotoOriginalBackfillJob.cs",
-        "Odyssey.Core/Journal/Originals/PhotoOriginalSource.cs",
-    ];
-
     private static readonly HashSet<string> MetadataRemovalAllowList =
     [
         "Odyssey.Core/FileStorage/Files/StoredFileRemoval.cs",
-        "Odyssey.Core/Journal/Originals/PhotoOriginalBackfillJob.cs",
     ];
 
     /// <summary>Finance files that already imported Journal before issue #448; the list may only shrink.</summary>
@@ -42,14 +26,17 @@ public partial class StoredFilesSourceLintTests
         "Odyssey.Core/Finance/ExchangeRateSync/ExchangeRateSyncService.cs",
     ];
 
+    /// <summary>
+    /// The database copy of the bytes (<c>FileBlob</c>, <c>FileMetadata.FileBlobId</c>) was dropped by
+    /// <c>RemoveLegacyFileBlobStorage</c>; its allow-list went with it, and no production file may name it again.
+    /// </summary>
     [Fact]
-    public void Bytes_in_the_database_are_read_only_by_the_allow_listed_files()
+    public void Nothing_names_the_removed_database_copy_of_the_bytes()
     {
+        Assert.NotEmpty(ProductionFiles());
         var readers = ProductionFiles().Where(f => LegacyRead().IsMatch(f.Code)).Select(f => f.Path).ToList();
 
-        Assert.NotEmpty(readers);
-        Assert.All(readers, path => Assert.True(LegacyReadAllowList.Contains(path), $"{path} reads FileBlob outside the content source."));
-        Assert.All(LegacyReadAllowList, path => Assert.Contains(path, readers));
+        Assert.Empty(readers);
     }
 
     [Fact]

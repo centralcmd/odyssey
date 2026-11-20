@@ -56,7 +56,7 @@ public class JournalPhotoUnificationApiTests
     public async Task JournalUser_WithoutPhotosRead_CannotLinkAPhoto()
     {
         await using var factory = new ApiFactory(JournalUserNoPhotos);
-        var (photoId, _) = await PhotoTestSupport.SeedLegacyPhotoAsync(factory, ActorUserId);
+        var photoId = await PhotoTestSupport.SeedPhotoAsync(factory, ActorUserId);
         using var client = factory.CreateClient();
 
         var post = await client.PostAsJsonAsync(JournalPath, NewEntry([photoId]));

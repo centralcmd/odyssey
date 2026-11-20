@@ -6,6 +6,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
@@ -174,17 +175,16 @@ public class FileAnalysisQueueApiTests(FileAnalysisQueueApiTests.Host host) : Sh
             CurrencyCode = "USD",
         };
         context.Accounts.Add(account);
-        var blob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
+        byte[] blobContent = [1, 2, 3];
         var fileId = Guid.NewGuid();
-        context.FileBlob.Add(blob);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
             FileName = "statement.pdf",
             ContentType = "application/pdf",
             SizeBytes = sizeBytes,
-            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blob.Content)),
-            FileBlobId = blob.Id,
+            Sha256Hash = Convert.ToHexStringLower(SHA256.HashData(blobContent)),
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, blobContent),
             UploadedAtUtc = DateTime.UtcNow,
         });
         var accountFile = new AccountFile

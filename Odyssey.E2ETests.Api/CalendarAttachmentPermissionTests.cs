@@ -1,3 +1,4 @@
+using Odyssey.Testing;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -37,8 +38,15 @@ public class CalendarAttachmentPermissionTests(ApiStackFixture fixture)
 
         var actor = UserFor(role);
         var client = await fixture.CreateAuthenticatedClientAsync(actor.Email, actor.Password);
-        var file = (await client.GetFromJsonAsync<PagedResult<FileListItem>>("/api/files?limit=1"))!.Items.FirstOrDefault();
-        var photo = (await client.GetFromJsonAsync<PagedResult<PhotoSummary>>("/api/photos?limit=1"))!.Items.FirstOrDefault();
+        FileListItem? file = null;
+        PhotoSummary? photo = null;
+        // The worker writes the demo files and photos after the stack comes up (DemoFileSeeder), so wait for them.
+        await DemoFileWait.UntilAsync(async () =>
+        {
+            file = (await client.GetFromJsonAsync<PagedResult<FileListItem>>("/api/files?limit=1"))!.Items.FirstOrDefault();
+            photo = (await client.GetFromJsonAsync<PagedResult<PhotoSummary>>("/api/photos?limit=1"))!.Items.FirstOrDefault();
+            return file is not null && photo is not null;
+        });
         Skip.If(file is null || photo is null, "The seeded stack has no visible file or photo to link.");
 
         var calendar = (await (await fixture.PostWithAntiforgeryAsync(client, "/api/calendars",

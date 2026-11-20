@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Xunit;
@@ -173,8 +174,7 @@ public class FinanceFileAttributionApiTests(FinanceFileAttributionApiTests.Host 
 
         var attributedTo = attributeToUser ? UploaderUserId : null;
 
-        var accountBlob = new FileBlob { Id = Guid.NewGuid(), Content = [1, 2, 3] };
-        db.FileBlob.Add(accountBlob);
+        byte[] accountBlobContent = [1, 2, 3];
         var accountFileMetadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -183,13 +183,12 @@ public class FinanceFileAttributionApiTests(FinanceFileAttributionApiTests.Host 
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-account",
-            FileBlobId = accountBlob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, accountBlobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(accountFileMetadata);
 
-        var transactionBlob = new FileBlob { Id = Guid.NewGuid(), Content = [4, 5, 6] };
-        db.FileBlob.Add(transactionBlob);
+        byte[] transactionBlobContent = [4, 5, 6];
         var transactionFileMetadata = new FileMetadata
         {
             Id = Guid.NewGuid(),
@@ -198,7 +197,7 @@ public class FinanceFileAttributionApiTests(FinanceFileAttributionApiTests.Host 
             ContentType = "application/pdf",
             SizeBytes = 3,
             Sha256Hash = "hash-transaction",
-            FileBlobId = transactionBlob.Id,
+            FinanceStoredObjectId = await StoredFileFixtures.PutAsync(scope.ServiceProvider, transactionBlobContent),
             UploadedAtUtc = DateTime.UtcNow,
         };
         db.FileMetadata.Add(transactionFileMetadata);

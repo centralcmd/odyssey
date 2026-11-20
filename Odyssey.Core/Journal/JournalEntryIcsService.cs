@@ -230,11 +230,11 @@ public class JournalEntryIcsService
                 .Where(p => distinct.Contains(p.PhotoId))
                 .Select(p => new { p.PhotoId, p.Title, p.Caption })
                 .ToDictionaryAsync(p => p.PhotoId, cancellationToken);
-            foreach (var row in described.Where(d => d.SizeBytes is not null && d.Sha256Hash is not null && d.ContentType is not null))
+            foreach (var row in described)
             {
                 var label = labels.GetValueOrDefault(row.PhotoId);
                 photoFiles[row.PhotoId] = Planned(new IcsBinaryAttachmentHeader(
-                    row.PhotoId, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes!.Value,
+                    row.PhotoId, row.FileName, row.ContentType, row.Sha256Hash, row.SizeBytes,
                     IsPhoto: true, Title: label?.Title, Caption: label?.Caption));
             }
         }
@@ -715,8 +715,8 @@ public class JournalEntryIcsService
         var existingAttachmentIds = canLinkFiles && references.AttachmentFileIds.Count > 0
             ? await files.ExistingIdsAsync(references.AttachmentFileIds, cancellationToken)
             : (IReadOnlySet<Guid>)new HashSet<Guid>();
-        // Issue #428 §3.3: a reference resolves to an existing photo (by photo id, legacy file id or backfilled file
-        // id) and never creates one. Linking photos needs photos.read.
+        // Issue #428 §3.3: a reference resolves to an existing photo (by photo id, or by the file id a photo wrapped
+        // before the move) and never creates one. Linking photos needs photos.read.
         var photoIdByReference = canReadPhotos && references.PhotoFileIds.Count > 0
             ? await photos.ResolveReferencesAsync(references.PhotoFileIds, cancellationToken)
             : new Dictionary<Guid, Guid>();

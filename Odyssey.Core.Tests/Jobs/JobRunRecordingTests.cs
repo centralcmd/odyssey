@@ -95,8 +95,7 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
     public void The_catalogue_lists_each_job_once_with_its_derived_thresholds()
     {
         Assert.Equal(
-            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.PhotoOriginalBackfill,
-                JobType.FileAnalysis, JobType.FileBlobBackfill,
+            [JobType.ExchangeRateSync, JobType.Weather, JobType.FileStorageMaintenance, JobType.PhotoThumbnails, JobType.FileAnalysis,
                 JobType.InstrumentPriceSync, JobType.NewsFeedFetch, JobType.RecurrenceKeyBackfill],
             JobCatalogue.Entries.Select(entry => entry.JobType));
         Assert.Equal(JobCatalogue.Entries.Count, JobCatalogue.Entries.Select(entry => entry.JobClass).Distinct().Count());
@@ -104,7 +103,6 @@ public sealed class JobRunRecordingTests : IAsyncDisposable
         Assert.Equal(TimeSpan.FromHours(1), JobCatalogue.Get(JobType.FileStorageMaintenance).Cadence);
         Assert.True(JobCatalogue.Get(JobType.Weather).IsWorkDriven);
         Assert.True(JobCatalogue.Get(JobType.PhotoThumbnails).IsWorkDriven);
-        Assert.True(JobCatalogue.Get(JobType.PhotoOriginalBackfill).IsWorkDriven);
         Assert.False(JobCatalogue.Get(JobType.ExchangeRateSync).IsWorkDriven);
         Assert.False(JobCatalogue.Get(JobType.InstrumentPriceSync).IsWorkDriven);
         Assert.DoesNotContain(typeof(JobRunMaintenanceJob), JobCatalogue.Entries.Select(entry => entry.JobClass));

@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Odyssey.Context;
+using Odyssey.Testing.FileStorage;
 using Odyssey.Core;
 using Odyssey.Core.Finance;
 using Odyssey.Core.Journal;
@@ -126,7 +127,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             AccountType = ContextAccountType.CheckingAccount,
             CurrencyCode = "USD",
         });
-        context.FileBlob.Add(new FileBlob { Id = blobId, Content = [1, 2, 3] });
+        StoredFileFixtures.AddStoredObjectRow(context, blobId);
         context.FileMetadata.Add(new FileMetadata
         {
             Id = fileId,
@@ -136,7 +137,7 @@ public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
             SizeBytes = 3,
             Sha256Hash = Guid.NewGuid().ToString("N"),
             UploadedAtUtc = DateTime.UtcNow,
-            FileBlobId = blobId,
+            FinanceStoredObjectId = blobId,
         });
         context.AccountFiles.Add(new AccountFile
         {
