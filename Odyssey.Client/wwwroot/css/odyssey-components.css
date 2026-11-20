@@ -1967,26 +1967,12 @@
 .odc-meta-tile-value { font: var(--fw-regular) var(--fs-body1)/1.45 var(--font-sans); color: var(--mud-palette-text-primary); overflow-wrap: anywhere; text-wrap: pretty; }
 .odc-meta-tile-value.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-/* Inline edit panel inside a RecordTable's RenderEdit (head · field grid · actions). */
 .odc-rec td.odc-rec-muted { color: var(--mud-palette-text-secondary); }
-.odc-rec-edit-head { display: flex; align-items: center; gap: 8px; font: var(--fw-medium) var(--fs-body2)/1 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.material-icons.odc-rec-edit-ic { font-size: 18px; }
-.odc-rec-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); align-items: start; }
-/* DS record-anatomy: edit-mode fields each occupy a single column — no full-width
-   spanning (mirrors the design system's .edit-wide → grid-column: auto). The .wide
-   wrappers stay as no-ops, matching how the DS keeps its .edit-wide divs. */
-.odc-rec-edit-grid .wide { grid-column: auto; }
-/* MudBlazor's dense outlined control carries an 8px top margin (vestigial label-notch
-   space). Custom-wrapped fields (OdsTagMultiSelect's .odc-field) lack it, so beside a
-   MudBlazor field in a row they ride 8px high — match the offset so labels and boxes line up. */
-.odc-rec-edit-grid > .odc-field { margin-top: 8px; }
-/* The collapsible body is now flush (no padding); inset the advanced-reveal grid. */
-.odc-collapsible-body .odc-rec-edit-grid { padding: 12px 14px 14px; }
-.odc-rec-edit-actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+/* Inline validation error line inside an edit form (OdsFilesEditDialog). */
 .odc-rec-edit-err { font: var(--fw-regular) var(--fs-caption)/1.4 var(--font-sans); color: var(--mud-palette-error); }
 
 @media (max-width: 600px) {
-    .odc-meta-grid, .odc-rec-edit-grid { grid-template-columns: 1fr; }
+    .odc-meta-grid { grid-template-columns: 1fr; }
 }
 
 /* ---------- File section upload zone (account / transaction detail panels) ----------
@@ -2363,8 +2349,6 @@ tr:focus-within > .odc-rowactions.reveal,
 .trm-na-note .material-icons { font-size: 16px; margin-top: 1px; }
 .trm-kind-switch { font: 400 12px/1.45 var(--font-sans); color: var(--mud-palette-text-secondary); }
 .trm-kind-switch b { color: var(--mud-palette-text-primary); font-weight: 500; }
-.trm-dt-help { font: 400 12px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.trm-dt-help b { color: var(--mud-palette-text-primary); font-weight: 500; }
 .trm-dt-utc { font-family: var(--font-mono); color: var(--mud-palette-text-primary); }
 
 /* =============================================================
@@ -2678,211 +2662,10 @@ tr:focus-within > .odc-rowactions.reveal,
   .odc-progress.indeterminate .odc-progress-fill { animation: none; left: 0; width: 100%; }
 }
 
-/* ============================================================
-   Insurance Policies (/insurance-policies) — feature styles (issue #175).
-   Global (not scoped) because the renewal-history table + files live in child
-   components (InsuranceRenewalHistory / InsurancePolicyFilesSection); like the
-   Terms trm-* styles, they must cross the component boundary. Mirrors the design
-   system's insurance.css. The feature accent is indigo (oklch hue 282) — distinct
-   from brand tide and from Tax's magenta.
-   ============================================================ */
-:root, [data-theme] {
-  --ins-accent: oklch(0.72 0.16 282);
-  --ins-accent-soft: oklch(0.72 0.16 282 / 0.16);
-  --ins-accent-line: oklch(0.72 0.16 282 / 0.42);
-}
-
-/* Portfolio summary strip (header Overview region) */
-.ins-summary { display: flex; flex-direction: column; gap: 14px; }
-.ins-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 12px; }
-.ins-stat {
-  border: 1px solid var(--mud-palette-divider); border-radius: 10px;
-  background: var(--mud-palette-background); padding: 14px 16px;
-  display: flex; flex-direction: column; gap: 8px;
-}
-.ins-stat-ov { font: 500 10.5px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.ins-stat-rows { display: flex; flex-direction: column; gap: 3px; }
-.ins-stat-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font: 400 12.5px/1.5 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.ins-stat-row .amt { font: 500 13px/1.4 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary); white-space: nowrap; }
-
-/* Converted-total caption + unconverted note under the premium/coverage tiles */
-.ins-conv { font: 400 11.5px/1.4 var(--font-sans); color: var(--mud-palette-text-secondary); }
-.ins-conv .b { color: var(--mud-palette-text-primary); font-weight: 500; }
-.ins-unconv { display: inline-flex; align-items: center; gap: 5px; color: var(--pending-text); }
-.ins-unconv .material-icons { font-size: 14px; }
-
-/* ONE ACCENT PER RECORD (the RecordCard accent rule). Inside an open card every accented
-   piece resolves to the record's own type colour, which RecordCard publishes as --rec /
-   --rec-soft; the feature indigo stays the fallback for anything drawn outside a card
-   (the portfolio summary strip, page chrome). Re-pointing the three feature vars here
-   fixes every consumer at once — the current-period row tint, the per-row document chips,
-   the documents panel and the premium trend line. */
-.odc-record-body {
-  --ins-accent: var(--rec, var(--brand-text));
-  --ins-accent-soft: var(--rec-soft, color-mix(in srgb, var(--brand-text) 16%, transparent));
-  --ins-accent-line: color-mix(in srgb, var(--rec, var(--brand-text)) 42%, transparent);
-}
-
-/* The collapsed headline figure is the record card's own `.odc-record-value` /
-   `.odc-record-caption` now, tinted through RecordCard's FigureTone — one figure treatment
-   across every record list rather than a per-feature copy. */
-
-/* Insurer + policy-number entries inside the record card's meta line */
-.ins-sub-insurer, .ins-sub-polno { display: inline-flex; align-items: center; gap: 5px; }
-.ins-sub-insurer .material-icons, .ins-sub-polno .material-icons { font-size: 14px; opacity: 0.8; }
-.ins-sub-insurer { max-width: 260px; overflow: hidden; }
-.ins-sub-insurer > span:not(.material-icons) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* The "+N more" affordance on a link-collection tile that names its first five (issue #27 §3
-   State 3), so a collection at the cap of 50 has a defined rendering. */
-.ins-linkmore {
-  margin-top: 1px; padding: 2px 6px; border: 1px solid var(--mud-palette-divider);
-  border-radius: var(--radius-pill); background: transparent; cursor: pointer;
-  color: var(--mud-palette-text-secondary); font: var(--fw-medium) 11.5px/1.4 var(--font-sans);
-}
-.ins-linkmore:hover { color: var(--mud-palette-text-primary); border-color: var(--mud-palette-text-secondary); }
-.ins-linkmore:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: 2px; }
-
-/* Renewal history — shared */
-.ins-empty-cover {
-  display: flex; align-items: center; gap: 10px; padding: 18px 16px;
-  border: 1px dashed var(--mud-palette-divider); border-radius: 10px;
-  color: var(--mud-palette-text-secondary); font: 400 13px/1.4 var(--font-sans);
-  background: var(--mud-palette-background);
-}
-.ins-empty-cover .material-icons { font-size: 20px; opacity: 0.7; }
-/* The empty state carries the action that unblocks documents, so it needs room for a button beside
-   the sentence — and that button's own icon must not inherit the state row's dimming. */
-.ins-empty-cover { flex-wrap: wrap; }
-.ins-empty-cover .mud-button-root .material-icons { opacity: 1; }
-/* The empty state's call to action sits at the trailing edge and keeps its own colour — the state
-   text around it is muted, and the button must not read as part of the same dimmed sentence. */
-.ins-empty-cover .mud-button-root { flex: none; }
-
-/* "Attaching to" — the target period named in the upload dialog's body, for the two cases with no
-   choice to make: opened from a period's own panel, or a policy with a single period. Where the
-   target was inferred AND there is more than one period, an OdsSelect stands here instead. Either
-   way it sits in the body, not the modal's small secondary subtitle. */
-.ins-attach-target {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
-  padding: 10px 12px; border-radius: 8px;
-  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-background);
-}
-.ins-attach-target .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); }
-.ins-attach-target-label {
-  font: 500 11px/1 var(--font-sans); letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--mud-palette-text-secondary);
-}
-.ins-attach-target-value { font: 500 13px/1.3 var(--font-sans); color: var(--mud-palette-text-primary); }
-
-/* Terms-style history (mirrors AccountTerms) */
-/* The 16px was the old disclosure body's inner padding; a section's content sits flush
-   with its divider label, so it only applies standalone. */
-.ins-terms { display: flex; flex-direction: column; gap: 22px; padding: 16px; }
-.ins-section .ins-terms, .odc-record-body .ins-terms { padding: 0; }
-
-/* The old `.ins-sub` sub-divider was promoted to the design system as SectionDivider
-   (OdsSectionDivider, `.odc-sectiondivider`) — one divider across every record body. */
-
-/* A party tile's role TERM sits on its own small line under the uppercase label, in the space
-   the icon leaves — so the type caption below stays one line and a long range never wraps. */
-.ins-section .odc-infotile-k:has(.ins-term) { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; flex: 1; min-width: 0; }
-.ins-section .ins-term {
-  font: 400 9.5px/1 var(--font-mono); letter-spacing: 0; text-transform: none;
-  color: var(--mud-palette-text-secondary); white-space: nowrap;
-}
-/* Every party tile carries the same ⋯ menu the contact-method tiles do — same corner, same 24px
-   target, always visible rather than hover-revealed: a menu that appears only on hover is invisible
-   to a touch user and to anyone reading the grid without a pointer. */
-.ins-section .odc-tilegrid > .odc-infotile { position: relative; }
-.ins-tile-menu { position: absolute; top: 6px; right: 6px; z-index: 1; }
-
-/* Tile grids — the tiles are OdsInfoTile (.odc-infotile). The grid sets the
-   InfoTile icon-chip accent to the feature's indigo unless a tile sets its own. */
-.ins-tiles {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(min(200px, 100%), 1fr)); gap: 10px;
-  --odc-infotile-accent: var(--ins-accent);
-  --odc-infotile-accent-soft: var(--ins-accent-soft);
-}
-/* The renewal and document tables framed like the trend chart beside them — same surface,
-   border, radius and elevation; each table keeps its own cell padding, so the frame only
-   adds the inset. */
-.ins-terms .ins-tbl-frame, .ins-section > .ins-tbl-frame {
-  background: var(--mud-palette-surface);
-  border: 1px solid var(--mud-palette-divider);
-  border-radius: var(--radius-md);
-  box-shadow: var(--mud-elevation-1);
-  padding: var(--space-2) var(--space-2) var(--space-1);
-}
-
-/* Current-period snapshot, and a body section: divider + its content, no disclosure and
-   no action slot. */
-.ins-current { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-.ins-section { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-
-/* Status pill in the renewal table (In force / Upcoming / Past) */
-.ins-status { display: inline-flex; align-items: center; gap: 4px; font: 500 10px/1 var(--font-sans); letter-spacing: 0.03em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
-.ins-status .material-icons { font-size: 12px; }
-.ins-status.current  { color: var(--finance-income);  background: var(--finance-income-soft); }
-.ins-status.upcoming { color: var(--warning-text);     background: var(--finance-pending-soft); }
-.ins-status.past     { color: var(--mud-palette-text-secondary); background: var(--mud-palette-action-default-hover); }
-
-/* Inline row actions — reveal on hover */
-.ins-rowbtns { display: inline-flex; gap: 2px; opacity: 0; transition: opacity var(--duration-fast) var(--ease-standard); }
-.ins-tbl tbody tr:hover .ins-rowbtns, .ins-tbl tbody tr:focus-within .ins-rowbtns { opacity: 1; }
-
-/* History table (mirrors .trm-tbl) */
-.ins-tbl { width: 100%; border-collapse: collapse; }
-.ins-tbl thead th { text-align: left; font: 600 10px/1 var(--font-sans); letter-spacing: 0.07em; text-transform: uppercase; color: var(--mud-palette-text-secondary); padding: 0 12px 9px; border-bottom: 1px solid var(--mud-palette-divider); }
-.ins-tbl thead th.num { text-align: right; }
-.ins-tbl thead th.act { width: 56px; }
-.ins-tbl tbody td { padding: 11px 12px; border-bottom: 1px solid var(--mud-palette-divider-light); font: 400 13px/1.4 var(--font-sans); color: var(--mud-palette-text-primary); vertical-align: middle; }
-.ins-tbl tbody tr:last-child td { border-bottom: none; }
-.ins-tbl tbody tr.current td { background: color-mix(in srgb, var(--ins-accent) 5%, transparent); }
-.ins-row-period { display: flex; align-items: center; gap: 10px; }
-.ins-row-period > .material-icons { font-size: 16px; color: var(--mud-palette-text-secondary); flex: none; }
-.ins-row-period > .material-icons.cur { color: var(--ins-accent); }
-.ins-row-range { font: 400 13px/1.2 var(--font-sans); color: var(--mud-palette-text-primary); white-space: nowrap; }
-.ins-row-note { font: 400 11.5px/1.35 var(--font-sans); color: var(--mud-palette-text-secondary); margin-top: 2px; }
-.ins-cell-num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 500; }
-.ins-cell-act { text-align: right; }
-
-/* Per-row documents chip + expandable documents sub-row */
-.ins-docchip {
-  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
-  padding: 4px 7px 4px 9px; border-radius: var(--radius-pill);
-  border: 1px solid var(--mud-palette-divider); background: var(--mud-palette-surface);
-  font: 500 12.5px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--mud-palette-text-primary);
-  transition: border-color var(--duration-fast) var(--ease-standard), background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
-}
-.ins-docchip:hover { border-color: var(--ins-accent-line); color: var(--ins-accent); }
-.ins-docchip:focus-visible { outline: var(--focus-ring-width) solid var(--focus-ring, var(--mud-palette-primary)); outline-offset: var(--focus-ring-offset); }
-.ins-docchip.on { border-color: var(--ins-accent-line); background: var(--ins-accent-soft); color: var(--ins-accent); }
-.ins-docchip.empty { color: var(--mud-palette-text-secondary); }
-.ins-docchip .material-icons { font-size: 15px; }
-.ins-docchip-chev { transition: transform var(--duration-base) var(--ease-standard); opacity: 0.7; }
-.ins-docchip-chev.open { transform: rotate(180deg); }
-.ins-tbl tbody tr.docs-open > td { border-bottom-color: transparent; }
-.ins-docs-row > td { padding: 0 12px 12px !important; border-bottom: 1px solid var(--mud-palette-divider-light); }
-.ins-docs-panel { border: 1px solid var(--ins-accent-line); border-radius: 10px; background: color-mix(in srgb, var(--ins-accent) 4%, transparent); overflow: hidden; }
-.ins-docs-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--mud-palette-divider-light); }
-.ins-docs-title { font: 600 11px/1 var(--font-sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--mud-palette-text-secondary); }
-.ins-docs-head .ins-docs-attach { margin-left: auto; }
-.ins-docs-body { padding: 8px 12px 12px; }
-
-/* Insurer / insured-account read chips */
-
-/* Renewal mini-modal money field: vertically center the digits in the tall box
-   (pure `align-items: baseline` floats the group to the top), keeping the smaller
-   currency symbol sitting on the digits' baseline via a small downward nudge. */
-/* New-renewal dialog: the two-up date/money rows must shrink to the 520px modal.
-   MudBlazor's select carries an intrinsic min-width, so without min-width:0 the grid
-   columns overflow the modal's right edge instead of fitting. The contract party
-   dialog carries the same two-up "In the role" date row and needs the same. */
-.ins-dialog .odc-form-row,
-.con-dialog .odc-form-row { min-width: 0; }
-.ins-dialog .odc-form-row > *,
-.ins-dialog .trm-field,
-.ins-dialog .odc-form-row .mud-input-control,
+/* Two-up date/money rows inside the contract party and event dialogs must shrink to the
+   520px modal. MudBlazor's select carries an intrinsic min-width, so without min-width:0 the
+   grid columns overflow the modal's right edge instead of fitting. */
+.con-dialog .odc-form-row,
 .con-dialog .odc-form-row > *,
 .con-dialog .odc-form-row .mud-input-control { min-width: 0; }
 
@@ -2891,8 +2674,8 @@ tr:focus-within > .odc-rowactions.reveal,
    contracts.css. Global (not scoped) because these classes live in the page,
    the detail child, the summary child and the dialogs. The page scaffold
    (.acct-*) is in the scoped ContractsCard.razor.css. The feature accent is a
-   warm clay/bronze (oklch hue 42) — distinct from brand tide, Insurance's
-   indigo and Tax's magenta; it never encodes money.
+   warm clay/bronze (oklch hue 42) — distinct from brand tide
+   and Tax's magenta; it never encodes money.
    ============================================================ */
 :root, [data-theme] {
   --con-accent: oklch(0.70 0.13 42);
@@ -4104,7 +3887,7 @@ tr:focus-within > .odc-rowactions.reveal,
 .pf-note-body b { color: var(--mud-palette-text-primary); font-weight: 500; }
 
 /* ── Expandable record card (issue #367) — Components/OdsExpandableCard.razor ──────────
-   THE expand-in-place list row: Accounts, Contracts, Insurance policies, Tax statements,
+   THE expand-in-place list row: Accounts, Contracts, Tax statements,
    Budgets, Journal entries and the analysis log. Ported from the design
    system's kit.css `.acct-list` / `.acct-item` scaffold, which this file previously
    carried in eight scoped copies.
@@ -4178,10 +3961,6 @@ tr:focus-within > .odc-rowactions.reveal,
     margin-top: 2px;
 }
 .acct-tags .mono { font-family: var(--font-mono); }
-/* Custodian name, account type and friends read as plain muted meta text — the design
-   system reserves chips on the row for status / problem signals. */
-.acct-meta { color: var(--mud-palette-text-secondary); }
-
 /* ── Per-record problem chip, in the name row ── */
 .acct-flag {
     display: inline-flex; align-items: center; gap: 4px; flex: none;
@@ -4585,9 +4364,9 @@ tr:focus-within > .odc-rowactions.reveal,
 /* ---------- RecordCard (OdsRecordCard — the expandable record list item) ----------
    Mirrors the design system (components/bundle.css · .odc-record*). ROW HEIGHT IS ONE NUMBER
    ACROSS EVERY RECORD LIST: the header is at least 88px, set here rather than left to
-   each page's content. Insurance is the reference — its meta line carries linked-record
-   pill chips, which are worth the height — and a list of plainer records breathes the
-   same way instead of collapsing to a tighter row. Lists scan as one product when their
+   each page's content, so a list whose meta line carries linked-record pill chips and a
+   list of plainer records breathe the same way instead of the plainer one collapsing to
+   a tighter row. Lists scan as one product when their
    rows share a rhythm; a page that needs more says so by wrapping, not by shrinking.
    The header is the record's identity; the body order is fixed by the component (alert
    then details then content then sections). ONE ACCENT PER RECORD: --rec / --rec-soft
@@ -5114,7 +4893,6 @@ tr:focus-within > .odc-rowactions.reveal,
 }
 @keyframes odc-switch-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .odc-switch-busy .mud-switch-button::after { animation: none; } }
-
 
 /* ---------- RadioGroup (issue #383 — Odyssey Design System · components/RadioGroup) ----------
    Native <input type="radio"> under a styled dot, in a <fieldset> whose <legend> is the field label.
