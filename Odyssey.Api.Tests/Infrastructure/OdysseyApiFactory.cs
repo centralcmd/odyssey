@@ -317,22 +317,37 @@ public class OdysseyApiFactory(
             }
         }
 
-        if (OwnsFileVolume && Directory.Exists(fileVolumePath))
+        if (OwnsFileVolume)
         {
-            foreach (var entry in Directory.EnumerateFileSystemEntries(fileVolumePath))
+            ClearVolume(fileVolumePath);
+        }
+    }
+
+    /// <summary>
+    /// Deletes every file on a test volume except the volume marker, <c>lost+found</c> and the store's own folders
+    /// (whose contents go), so a file name a previous test used cannot turn the next one's into <c>name (2)</c>. For a
+    /// factory with volumes of its own to call from its <see cref="ResetStoreAsync"/> override.
+    /// </summary>
+    protected static void ClearVolume(string root)
+    {
+        if (!Directory.Exists(root))
+        {
+            return;
+        }
+
+        foreach (var entry in Directory.EnumerateFileSystemEntries(root))
+        {
+            var name = Path.GetFileName(entry);
+            if (name is StorageNames.TempFolder or StorageNames.QuarantineFolder)
             {
-                var name = Path.GetFileName(entry);
-                if (name is StorageNames.TempFolder or StorageNames.QuarantineFolder)
+                foreach (var inner in Directory.EnumerateFileSystemEntries(entry))
                 {
-                    foreach (var inner in Directory.EnumerateFileSystemEntries(entry))
-                    {
-                        DeleteEntry(inner);
-                    }
+                    DeleteEntry(inner);
                 }
-                else if (name is not (StorageNames.MarkerFileName or StorageNames.LostAndFound))
-                {
-                    DeleteEntry(entry);
-                }
+            }
+            else if (name is not (StorageNames.MarkerFileName or StorageNames.LostAndFound))
+            {
+                DeleteEntry(entry);
             }
         }
 

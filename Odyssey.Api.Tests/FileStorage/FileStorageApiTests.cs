@@ -21,14 +21,14 @@ namespace Odyssey.Api.Tests.FileStorage;
 /// The store over HTTP (issue #346): the status endpoint and its claim, the serving rules through a consumer
 /// endpoint, the problem mapping, the reservation context factory and the no-op rule (AC 7, 21, 24, 26, 27, 29, A3-5).
 /// </summary>
-public class FileStorageApiTests
+public class FileStorageApiTests(FileStorageApiTests.Host host) : SharedApiHostTests<FileStorageApiTests.Host>(host)
 {
     private const string VolumesPath = "/api/file-storage/volumes";
 
     [Fact]
     public async Task An_admin_gets_every_configured_volume_with_no_path_file_name_or_object_id()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var id = await PutAsync(client, "Passport_Ola_Nordmann.jpg", 3000);
 
@@ -61,7 +61,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task Both_entries_carry_the_same_instance_wide_maintenance_fields()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var completed = new DateTime(2026, 10, 29, 17, 20, 0, DateTimeKind.Utc);
         await using (var scope = factory.Services.CreateAsyncScope())
@@ -100,8 +100,7 @@ public class FileStorageApiTests
             _ => Odyssey.Context.Authorization.RolePermissions.GuestClaims,
         };
         Assert.DoesNotContain(PermissionClaims.FileStorageRead, claims);
-        await using var factory = FileStorageApiFactory.Create(claims);
-        using var client = factory.CreateClient();
+        using var client = Factory.ClientFor(claims);
 
         Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(VolumesPath)).StatusCode);
     }
@@ -109,20 +108,19 @@ public class FileStorageApiTests
     [Fact]
     public async Task Without_the_claim_it_is_a_403_and_unauthenticated_a_401()
     {
-        await using var forbidden = FileStorageApiFactory.Create([PermissionClaims.SystemSettingsRead, PermissionClaims.FilesRead]);
-        using (var client = forbidden.CreateClient())
+        using (var client = Factory.ClientFor([PermissionClaims.SystemSettingsRead, PermissionClaims.FilesRead]))
         {
             Assert.Equal(HttpStatusCode.Forbidden, (await client.GetAsync(VolumesPath)).StatusCode);
         }
 
-        await using var anonymous = FileStorageApiFactory.Create(permissions: null);
-        using var anonymousClient = anonymous.CreateClient();
+        using var anonymousClient = Factory.AnonymousClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymousClient.GetAsync(VolumesPath)).StatusCode);
     }
 
     [Fact]
     public async Task With_no_volumes_configured_the_store_is_a_no_op_and_the_endpoint_returns_an_empty_list()
     {
+        // A host of its own: no volume is configuration.
         await using var factory = new OdysseyApiFactory([PermissionClaims.FileStorageRead],
             configuration: new Dictionary<string, string?> { [OdysseyApiFactory.NoFileVolumeKey] = "true" });
         using var client = factory.CreateClient();
@@ -136,7 +134,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task A_range_request_through_a_consumer_endpoint_returns_206_with_exactly_those_bytes()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         using var client = factory.CreateClient();
         var payload = Enumerable.Range(0, 100_000).Select(i => (byte)(i * 7)).ToArray();
         var id = await PutAsync(client, "range.jpg", payload);
@@ -158,6 +156,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task A_degraded_volume_is_a_503_with_retry_after_and_shows_as_degraded()
     {
+        // A host of its own: deleting the marker is host-wide state no reset restores.
         await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
         using var client = factory.CreateClient();
         await PutAsync(client, "first.jpg", 10);
@@ -179,7 +178,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task A_full_volume_is_a_507_and_an_oversized_body_a_413()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         using var client = factory.CreateClient();
 
         factory.Space.Override = (1024, 1L << 40);
@@ -196,7 +195,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task A_reservation_made_through_the_factory_is_visible_from_the_requests_own_context()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         _ = factory.CreateClient();
         await using var scope = factory.Services.CreateAsyncScope();
         var store = scope.ServiceProvider.GetRequiredService<IObjectStore>();
@@ -212,7 +211,7 @@ public class FileStorageApiTests
     [Fact]
     public async Task The_api_registers_no_hosted_service_for_the_store()
     {
-        await using var factory = FileStorageApiFactory.Create([PermissionClaims.FileStorageRead]);
+        var factory = Factory;
         _ = factory.CreateClient();
 
         var hosted = factory.Services.GetServices<IHostedService>().Select(s => s.GetType().FullName!).ToList();
@@ -231,6 +230,9 @@ public class FileStorageApiTests
         Assert.Contains("builder.Services.AddFileStorage();", program, StringComparison.Ordinal);
     }
 
+    /// <summary>The class's shared host: a <c>file-storage.read</c> holder on the store's own volumes.</summary>
+    public sealed class Host() : FileStorageApiFactory([PermissionClaims.FileStorageRead]);
+
     private static Task<Guid> PutAsync(HttpClient client, string name, int length) =>
         PutAsync(client, name, new byte[length]);
 
@@ -243,7 +245,8 @@ public class FileStorageApiTests
 }
 
 /// <summary>The deletion grace through the settings endpoints (issue #346 §3.9, §4.3; AC 12, 31).</summary>
-public class FileStorageGraceSettingApiTests
+public class FileStorageGraceSettingApiTests(FileStorageGraceSettingApiTests.Host host)
+    : SharedApiHostTests<FileStorageGraceSettingApiTests.Host>(host)
 {
     private const string Path = "/api/system-settings";
 
@@ -255,7 +258,7 @@ public class FileStorageGraceSettingApiTests
     [InlineData(169)]
     public async Task Out_of_range_values_are_a_400(int hours)
     {
-        await using var factory = new LoggingFactory(AdminClaims);
+        var factory = Factory;
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileStorageDeletionGraceHours = hours });
@@ -270,7 +273,7 @@ public class FileStorageGraceSettingApiTests
     [InlineData(72, false)]
     public async Task The_bounds_are_accepted_audited_and_advised_outside_24_to_72(int hours, bool advised)
     {
-        await using var factory = new LoggingFactory(AdminClaims);
+        var factory = Factory;
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileStorageDeletionGraceHours = hours });
@@ -289,7 +292,7 @@ public class FileStorageGraceSettingApiTests
     [Fact]
     public async Task Changing_it_needs_the_security_claim()
     {
-        await using var factory = new LoggingFactory([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
+        var factory = Factory.ForCaller([PermissionClaims.SystemSettingsRead, PermissionClaims.SystemSettingsUpdate]);
         using var client = factory.CreateClient();
 
         var response = await client.PutAsJsonAsync(Path, new SystemSettingsUpdate { FileStorageDeletionGraceHours = 48 });
@@ -302,7 +305,7 @@ public class FileStorageGraceSettingApiTests
     [InlineData("abc")]
     public async Task A_stored_value_the_sweeper_would_not_use_shows_as_a_projection_fault(string stored)
     {
-        await using var factory = new LoggingFactory(AdminClaims);
+        var factory = Factory;
         using var client = factory.CreateClient();
         await using (var scope = factory.Services.CreateAsyncScope())
         {
@@ -329,7 +332,10 @@ public class FileStorageGraceSettingApiTests
         Assert.Contains(nameof(SystemSettingsUpdate.FileStorageDeletionGraceHours), dto.Warnings.Keys);
     }
 
-    private sealed class LoggingFactory : OdysseyApiFactory
+    /// <summary>The class's shared host: an administrator holding the security claim, with logs captured.</summary>
+    public sealed class Host() : LoggingFactory(AdminClaims);
+
+    public class LoggingFactory : OdysseyApiFactory
     {
         public LoggingFactory(IReadOnlyCollection<string> permissions)
             : this(permissions, new CapturingLoggerProvider())
@@ -341,5 +347,12 @@ public class FileStorageGraceSettingApiTests
             Logs = logs;
 
         public CapturingLoggerProvider Logs { get; }
+
+        /// <summary>A shared host forgets the previous test's audit lines.</summary>
+        public override async Task ResetStoreAsync()
+        {
+            await base.ResetStoreAsync();
+            Logs.Clear();
+        }
     }
 }
