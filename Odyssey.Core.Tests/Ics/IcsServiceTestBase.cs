@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Odyssey.Context;
 using Odyssey.Core.FileStorage.Files;
 using Odyssey.Core.Finance;
@@ -30,6 +31,12 @@ public abstract class IcsServiceTestBase : FileStorageTestBase
 
     protected SettableUploadLimits UploadLimits { get; } = new();
 
+    /// <summary>
+    /// The services' clock when a test class needs one it can also move backwards from the store's start; null keeps the
+    /// store's own forward-only <see cref="FileStorageTestBase.Clock"/>.
+    /// </summary>
+    protected virtual TimeProvider? ServiceClock => null;
+
     /// <summary>The store "process" every helper runs in, started on first use.</summary>
     protected async Task<FileStorageTestHost> HostAsync() =>
         host ??= await NewFilesHostAsync(configure: services =>
@@ -47,7 +54,14 @@ public abstract class IcsServiceTestBase : FileStorageTestBase
             services.AddScoped<JournalEntryIcsService>();
             services.AddScoped<JournalTaskService>();
             services.AddScoped<TaskIcsService>();
+            services.AddScoped<CalendarService>();
+            services.AddScoped<CalendarEventService>();
+            services.AddScoped<RecurrencePatternService>();
             services.AddScoped<CalendarIcsService>();
+            if (ServiceClock is { } clock)
+            {
+                services.Replace(ServiceDescriptor.Singleton(clock));
+            }
         });
 
     protected async Task<T> InScopeAsync<T>(Func<IServiceProvider, Task<T>> action)
