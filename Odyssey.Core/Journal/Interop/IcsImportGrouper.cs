@@ -79,9 +79,6 @@ internal sealed class IcsImportGrouper : IAsyncDisposable
     /// <summary>The <c>ATTACH</c> kinds the whole file carries (issue #521 §8.3): what the import's claim check reads.</summary>
     public IcsAttachmentKinds AttachmentKinds { get; private set; } = new();
 
-    /// <summary>Spill bytes on disk now: a merge round's inputs are subtracted as they are deleted.</summary>
-    public long SpilledBytes => spilledBytes;
-
     /// <summary>The most spill bytes on disk at any one time.</summary>
     public long PeakSpilledBytes { get; private set; }
 

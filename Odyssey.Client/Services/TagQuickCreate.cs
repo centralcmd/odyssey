@@ -53,9 +53,9 @@ public sealed class TagQuickCreate<TTag>(
     IReferenceDataCache referenceData,
     ISnackbar snackbar) : ITagQuickCreate<TTag>
 {
-    private readonly List<Task> _pending = [];
-    private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
+    private readonly List<Task> pending = [];
+    private readonly Dictionary<string, string> resolved = new(StringComparer.Ordinal);
+    private readonly HashSet<string> staged = new(StringComparer.Ordinal);
 
     public Action<string>? OnCreateFailed { get; set; }
 
@@ -68,20 +68,20 @@ public sealed class TagQuickCreate<TTag>(
             clean = clean[..TagWrite.MaxNameLength];
 
         var tempId = Guid.NewGuid().ToString();
-        _staged.Add(tempId);
-        _pending.Add(CreateAsync(clean, tempId));
+        staged.Add(tempId);
+        pending.Add(CreateAsync(clean, tempId));
         return new OdsOption(tempId, clean);
     }
 
-    public Task WhenSettledAsync() => Task.WhenAll(_pending.ToArray());
+    public Task WhenSettledAsync() => Task.WhenAll(pending.ToArray());
 
     public string? Resolve(string? id)
     {
         if (string.IsNullOrEmpty(id))
             return null;
-        if (!_staged.Contains(id))
+        if (!staged.Contains(id))
             return id;
-        return _resolved.GetValueOrDefault(id);
+        return resolved.GetValueOrDefault(id);
     }
 
     private async Task CreateAsync(string name, string tempId)
@@ -91,7 +91,7 @@ public sealed class TagQuickCreate<TTag>(
             var result = await tags.CreateAsync(new TagWrite(name, null, false, Icon: null, Color: null));
             if (result.IsSuccess && result.CreatedId is { } id)
             {
-                _resolved[tempId] = id.ToString();
+                resolved[tempId] = id.ToString();
                 InvalidateCachedTags();
                 return;
             }

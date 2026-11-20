@@ -101,10 +101,9 @@ public class PasswordResetMailTests
     [InlineData("Production")]
     public async Task WithNoSmtpHost_TheLinkIsNeverLoggedElsewhere(string environmentName)
     {
-        // A reset token is a direct account-takeover primitive. Production additionally refuses to
-        // start with no SMTP host (EmailOptionsProductionValidationTests), so it should never reach
-        // this branch at all — but the gate is what makes that a defence in depth rather than the
-        // only thing standing between a misconfiguration and a token in the log.
+        // A reset token is a direct account-takeover primitive. Since issue #8 startup no longer
+        // requires an SMTP host (EmailTransportStartupTests), so an unconfigured relay does reach this
+        // branch — and this gate is the only thing standing between that and a token in the log.
         var logger = new CapturingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: environmentName);
 

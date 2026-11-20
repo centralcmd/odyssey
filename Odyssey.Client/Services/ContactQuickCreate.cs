@@ -73,13 +73,13 @@ public sealed class ContactQuickCreate(
     // over that is truncated rather than rejected, so the gesture still completes.
     private const int MaxNameLength = 128;
 
-    private readonly List<Task> _pending = [];
-    private readonly Dictionary<string, string> _resolved = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _staged = new(StringComparer.Ordinal);
+    private readonly List<Task> pending = [];
+    private readonly Dictionary<string, string> resolved = new(StringComparer.Ordinal);
+    private readonly HashSet<string> staged = new(StringComparer.Ordinal);
 
     public Action<string>? OnCreateFailed { get; set; }
 
-    public bool HasPending => _pending.Any(t => !t.IsCompleted);
+    public bool HasPending => pending.Any(t => !t.IsCompleted);
 
     public OdsOption? Begin(string name, string? kind)
     {
@@ -93,21 +93,21 @@ public sealed class ContactQuickCreate(
         var tempId = Guid.NewGuid().ToString();
         var meta = OdsTypeRegistries.ContactTypeOf(type.ToString());
 
-        _staged.Add(tempId);
-        _pending.Add(CreateAsync(clean, type, tempId));
+        staged.Add(tempId);
+        pending.Add(CreateAsync(clean, type, tempId));
 
         return new OdsOption(tempId, clean) { Icon = meta.Icon, IconColor = meta.Color };
     }
 
-    public Task WhenSettledAsync() => Task.WhenAll(_pending.ToArray());
+    public Task WhenSettledAsync() => Task.WhenAll(pending.ToArray());
 
     public string? Resolve(string? id)
     {
         if (string.IsNullOrEmpty(id))
             return null;
-        if (!_staged.Contains(id))
+        if (!staged.Contains(id))
             return id;
-        return _resolved.GetValueOrDefault(id);
+        return resolved.GetValueOrDefault(id);
     }
 
     private async Task CreateAsync(string name, ContactType type, string tempId)
@@ -120,7 +120,7 @@ public sealed class ContactQuickCreate(
                 // The session-wide contact cache is now stale — the next picker must re-fetch.
                 referenceData.InvalidateContacts();
                 if (result.CreatedId is { } id)
-                    _resolved[tempId] = id.ToString();
+                    resolved[tempId] = id.ToString();
                 return;
             }
 

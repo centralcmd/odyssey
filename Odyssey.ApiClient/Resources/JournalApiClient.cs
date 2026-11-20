@@ -111,18 +111,8 @@ public interface ITaskApiClient
     /// </summary>
     Task<ApiResult<ExistingJournalTask>> GetResultAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>Exports the tasks matching the given filters as a VTODO <c>.ics</c> file (issue #337).
-    /// A non-success status yields a failure result rather than a body that would download as a fake
-    /// <c>.ics</c>.</summary>
-    Task<ApiResult<ApiFile>> ExportIcsAsync(
-        string? search = null,
-        IReadOnlyCollection<string>? tagIds = null,
-        IReadOnlyCollection<string>? statuses = null,
-        IReadOnlyCollection<string>? ids = null,
-        CancellationToken ct = default);
-
     /// <summary>
-    /// What <see cref="ExportIcsAsync"/> would contain, refused for the same reasons (a cap, or attached files without
+    /// What the VTODO <c>.ics</c> export at <see cref="ExportIcsUrl"/> would contain, refused for the same reasons (a cap, or attached files without
     /// <c>files.read</c>) — asked before a browser-native download, which cannot report an error itself.
     /// </summary>
     Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
@@ -134,7 +124,7 @@ public interface ITaskApiClient
 
     /// <summary>
     /// The absolute URL of the export, for a download the browser streams to disk itself — an export carrying
-    /// attached files can be far larger than <see cref="ExportIcsAsync"/> can hold in memory.
+    /// attached files can be far larger than a client can hold in memory.
     /// </summary>
     string ExportIcsUrl(
         string? search = null,
@@ -193,19 +183,6 @@ public sealed class TaskApiClient(IOdysseyApi api) : ITaskApiClient
 
     public Task<ApiResult<ExistingJournalTask>> GetResultAsync(Guid id, CancellationToken ct = default) =>
         api.GetAsync<ExistingJournalTask>($"{Base}/{id}", ct);
-
-    public Task<ApiResult<ApiFile>> ExportIcsAsync(
-        string? search = null,
-        IReadOnlyCollection<string>? tagIds = null,
-        IReadOnlyCollection<string>? statuses = null,
-        IReadOnlyCollection<string>? ids = null,
-        CancellationToken ct = default)
-    {
-        // The export endpoint binds the list filter surface minus paging (it's never paginated), so build
-        // just search/tag/status (+ optional ids for the single-task row action) — same param names the
-        // list query uses.
-        return api.GetFileAsync(ExportQuery("ics", search, tagIds, statuses, ids), "odyssey-tasks.ics", completenessMarker: "BEGIN:VTODO", ct: ct);
-    }
 
     public Task<ApiResult<TaskIcsExportSummary>> SummarizeIcsExportAsync(
         string? search = null,

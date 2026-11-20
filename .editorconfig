@@ -179,15 +179,17 @@ dotnet_naming_rule.constants_should_be_pascal_case.symbols  = constants
 dotnet_naming_rule.constants_should_be_pascal_case.style    = pascal_case_style
 dotnet_naming_rule.constants_should_be_pascal_case.severity = warning
 
-dotnet_naming_rule.private_static_fields_should_be_camel_case.symbols  = private_static_fields
-dotnet_naming_rule.private_static_fields_should_be_camel_case.style    = camel_case_style
-dotnet_naming_rule.private_static_fields_should_be_camel_case.severity = warning
+# PascalCase whatever the visibility (CLAUDE.md, Code Style): every private const and private static
+# readonly in the tree already is.
+dotnet_naming_rule.private_static_fields_should_be_pascal_case.symbols  = private_static_fields
+dotnet_naming_rule.private_static_fields_should_be_pascal_case.style    = pascal_case_style
+dotnet_naming_rule.private_static_fields_should_be_pascal_case.severity = warning
 
 dotnet_naming_rule.private_instance_fields_should_be_camel_case.symbols  = private_instance_fields
 dotnet_naming_rule.private_instance_fields_should_be_camel_case.style    = camel_case_style
 # error (not warning): the camelCase-no-underscore field convention is documented in CLAUDE.md
-# and must be enforced, not merely suggested. The Blazor client (Odyssey.Client) predates this and
-# uses a leading-underscore convention throughout; it is carved out below until it is migrated.
+# and must be enforced, not merely suggested. Blazor components are the one deliberate exception;
+# see the carve-out below.
 dotnet_naming_rule.private_instance_fields_should_be_camel_case.severity = error
 
 dotnet_naming_rule.locals_should_be_camel_case.symbols  = locals_and_parameters
@@ -202,11 +204,11 @@ dotnet_naming_rule.members_should_be_pascal_case.symbols  = all_members
 dotnet_naming_rule.members_should_be_pascal_case.style    = pascal_case_style
 dotnet_naming_rule.members_should_be_pascal_case.severity = warning
 
-# The Blazor client predates the camelCase-no-underscore field convention and uses a leading
-# underscore throughout (~260 fields). Relax the rule here to a suggestion so backend enforcement
-# (error, above) stays strict without flagging every client field. Drop this section when the
-# client is migrated.
-[Odyssey.Client/**.cs]
+# Blazor components use _camelCase for private fields on purpose (CLAUDE.md, "The Blazor-component
+# carve-out"): the prefix keeps component-local state distinct from [Parameter] properties. The
+# components and their code-behind partials live under Pages/, Components/ and Layout/; the rest of
+# the client (Services/, Auth/, Authorization/, Theme/) follows the plain camelCase rule above.
+[Odyssey.Client/{Pages,Components,Layout}/**.cs]
 dotnet_naming_rule.private_instance_fields_should_be_camel_case.severity = suggestion
 
 [*.{json,xml,yml,yaml}]

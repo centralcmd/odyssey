@@ -151,9 +151,6 @@ public sealed class JobRunRecorder(
         await FinishAsync<JobRun>(jobType, openId, _ => { }, outcome: null, cancellationToken);
     }
 
-    /// <summary>The id of this process's open burst of <paramref name="jobType"/>, if any.</summary>
-    public Guid? OpenBurst(JobType jobType) => openBursts.TryGetValue(jobType, out var id) ? id : null;
-
     // ── Held periods ──────────────────────────────────────────────────────────────────────────────────
 
     /// <summary>

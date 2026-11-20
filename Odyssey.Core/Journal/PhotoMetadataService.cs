@@ -34,11 +34,6 @@ public sealed class PhotoMetadataService(
     IJournalLimitsLookup limits,
     ILogger<PhotoMetadataService> logger)
 {
-    /// <summary>Extraction for a stored photo, reading a bounded prefix through the content source (issue #428).</summary>
-    public Task<PhotoMetadata> ExtractForPhotoAsync(
-        Guid photoId, Originals.PhotoOriginalSource source, CancellationToken cancellationToken = default) =>
-        ExtractAsync(readBytes => source.ReadPrefixAsync(photoId, readBytes, cancellationToken), cancellationToken);
-
     /// <summary>
     /// Extraction for an upload not yet stored (issue #428 §3.2): a bounded prefix of <paramref name="content"/>,
     /// which is left positioned at its start for the write that follows.

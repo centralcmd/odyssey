@@ -51,7 +51,7 @@ Effort: **S** = small, **M** = medium. "Confirm?" means the item may be a delibe
 |---|---|---|---|---|---|---|
 | P1 | M | `Swashbuckle.AspNetCore.Filters` | `Odyssey.Api.csproj:19`, `Directory.Packages.props:65` | No code uses it. | Remove from both files. | — |
 | P2 | M | `Microsoft.AspNetCore.OpenApi` | `Odyssey.Api.csproj:11` | No `AddOpenApi`/`MapOpenApi`; Swashbuckle generates the OpenAPI document. | Remove, then build. | Yes |
-| P3 | L | `Moq`, `AwesomeAssertions` | `Odyssey.Core.Tests.csproj:44,46` | Moq is unused there. AwesomeAssertions has 2 calls, in one file. | Rewrite the 2 calls with `Assert` and drop both packages. | — |
+| P3 | L | `Moq`, `AwesomeAssertions` | `Odyssey.Core.Tests.csproj:44,46` | Moq is unused there. AwesomeAssertions is used by one file, `DemoDataSetTests.cs`, with about 30 assertions (the review first counted 2). | Drop Moq. Keep AwesomeAssertions unless that file is rewritten. | — |
 | P4 | L | `Ical.Net`, `Mapster`, `DataProtection.Abstractions`, `Extensions.DependencyInjection`, `MySqlConnector` | `Odyssey.TestData.csproj:15-21` | No direct use; they arrive through Core/Context anyway. | Remove, then build. | — |
 
 **Checked and kept:**
@@ -91,6 +91,24 @@ Effort: **S** = small, **M** = medium. "Confirm?" means the item may be a delibe
 | 8 | `Odyssey.Core/Journal/Thumbnails/PhotoThumbnailJob.cs` | 1496 | claiming, rendering, crash breaker |
 | 9 | `Odyssey.Client/Pages/Finance/ContractsCard.razor.cs` | 1292 | summary header vs list |
 | 10 | `Odyssey.Api/SystemSettings/SystemSettingsRegistry.cs` | 1254 | one partial per settings group |
+
+## Phase 1 status
+
+Phase 1 is done, on the branch for this PR.
+
+| Item | Result |
+|---|---|
+| D6 | Both stale `.csproj` items removed. |
+| P1, P4 | Packages removed. |
+| P3 | `Moq` removed. `AwesomeAssertions` kept (see P3). |
+| D1, D3 | Removed. |
+| D4 | Removed, except `ExchangeRateIds` (still waiting on a decision). |
+| O1–O5 | Comments and templates rewritten. |
+| O2 | `contextName`/`ContextName` dropped. The remarks now reflect the single context. |
+| M1 | `EnableAnnotations()` added. A new test, `OpenApiSecuritySchemeTests.SwaggerOperationAnnotations_ReachTheDocument`, failed before the change and passes after it. |
+| M2 | `.editorconfig` updated: private statics are PascalCase, and the `_camelCase` carve-out is limited to `Pages/`, `Components/` and `Layout/`. The fields in `ContactQuickCreate`/`TagQuickCreate` were renamed to match. This is the naming half of U2; the shared base class is still open. |
+
+Out of scope and left as they are: comments in `Odyssey.TestData/Catalog/Contacts.cs` that explain the demo contacts in terms of insurance "link collections". Rewriting them needs the demo-data context, so they belong with O6 in Phase 2.
 
 ## Implementation plan
 
