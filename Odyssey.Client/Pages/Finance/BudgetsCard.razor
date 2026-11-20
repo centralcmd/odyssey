@@ -235,7 +235,6 @@
                                                    Meta="@($"{budget.TransactionCount} matched · in range and tagged")" />
                                 <div class="acct-txn-table acct-table-frame odc-scroll">
                                     <BudgetTransactionsSection @key="@($"txns:{budget.BudgetId}")"
-                                                               BudgetId="@budget.BudgetId"
                                                                StartDate="@budget.StartDate"
                                                                EndDate="@budget.EndDate"
                                                                TagIds="@BudgetTagIds(budget)"

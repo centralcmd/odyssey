@@ -306,7 +306,7 @@
                         {
                             <div class="tax-section">
                                 <OdsSectionDivider Label="Reconciliation" Meta="@($"declared vs. recorded · {s.BaseCurrencyCode}")" />
-                                <TaxReconciliation Statement="s" Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))"
+                                <TaxReconciliation Report="report" Money="@(n => TaxMoney(n, s.BaseCurrencyCode))"
                                                    SignedMoney="@(n => TaxSignedMoney(n, s.BaseCurrencyCode))" />
                             </div>
                         }

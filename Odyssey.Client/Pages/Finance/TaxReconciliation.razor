@@ -83,9 +83,6 @@
 </div>
 
 @code {
-    /// <summary>The statement whose reconciliation report is shown.</summary>
-    [Parameter, EditorRequired] public ExistingTaxStatement Statement { get; set; } = default!;
-
     /// <summary>The computed report (declared / derived figures + variances).</summary>
     [Parameter, EditorRequired] public TaxStatementReport Report { get; set; } = default!;
 
