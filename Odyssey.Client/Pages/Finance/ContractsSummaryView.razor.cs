@@ -1,0 +1,165 @@
+using Microsoft.AspNetCore.Components;
+using MudBlazor;
+using Odyssey.Client.Components;
+using Odyssey.Dtos.Finance;
+
+namespace Odyssey.Client.Pages.Finance;
+
+public partial class ContractsSummaryView
+{
+    [Parameter, EditorRequired] public ContractSummary Summary { get; set; } = default!;
+
+    /// <summary>Formats a base-currency amount. Supplied by the page, which owns the currency cache.</summary>
+    [Parameter, EditorRequired] public Func<decimal, string?, string> FormatMoney { get; set; } = default!;
+
+    private IReadOnlyList<OdsBreakdownRow> TypeRows => Summary.CountsByType
+        .Where(r => r.Count > 0)
+        .Select(r =>
+        {
+            var info = OdsTypeRegistries.ContractTypeOf(r.Type);
+            return new OdsBreakdownRow { Key = r.Type, Icon = info.Icon, IconColor = info.Color, Label = info.Label, Count = r.Count };
+        })
+        .ToList();
+
+    // The rollup's status rows, with "Ending soon" spliced in directly after Active. It is a SLICE of
+    // Active, not a sixth status — the server counts it that way too, so the five real buckets still
+    // sum to the total and this row deliberately does not. Paused, by contrast, IS one of the five.
+    // The window is interpolated from the server's effective value; a literal here would go stale the
+    // moment an administrator changed it.
+    private IReadOnlyList<OdsBreakdownRow> StatusRows
+    {
+        get
+        {
+            var rows = OdsContractStatus.Order
+                .Select(status =>
+                {
+                    var meta = OdsContractStatus.Meta(status);
+                    return new OdsBreakdownRow { Key = status, Icon = meta.Icon, IconColor = meta.DotColor, Label = meta.Label, Count = CountFor(status) };
+                })
+                .ToList();
+
+            var afterActive = rows.FindIndex(r => Equals(r.Key, ContractStatus.Active)) + 1;
+            rows.Insert(afterActive, new OdsBreakdownRow
+            {
+                Key = "EndingSoon",
+                Icon = "hourglass_bottom",
+                // Pending (amber), not Upcoming's info blue: a cliff is a thing to act on, and the
+                // design system tints this row with the pending tone for exactly that reason.
+                IconColor = "var(--finance-pending)",
+                Label = $"Ending soon · {Summary.EndingWindowDays}d",
+                Count = Summary.CountsByStatus.EndingSoon,
+            });
+
+            return rows;
+        }
+    }
+
+    private IReadOnlyList<OdsBreakdownRow> MonthlyNetRows => NetRows(r => r.Monthly);
+
+    private IReadOnlyList<OdsBreakdownRow> YearlyNetRows => NetRows(r => r.Yearly);
+
+    /// <summary>
+    /// One row per contract type that carries a rate on EITHER side, holding that type's net. A type
+    /// present on only one side still gets a row — its net is simply the whole of that side — which is
+    /// why the key set is the union rather than the outgoing rows alone.
+    /// </summary>
+    private IReadOnlyList<OdsBreakdownRow> NetRows(Func<ContractRunRateTypeRow, decimal> pick)
+    {
+        var outgoing = Summary.RunRate.ByType.ToDictionary(r => r.Type);
+        var incoming = Summary.RunRate.IncomingByType.ToDictionary(r => r.Type);
+
+        return
+        [
+            // Registry READING order, which is not ordinal order — Other keeps ordinal 3 and reads
+            // last, and Loan reads after Purchase. Parsing the registry's own key is what keeps this
+            // list in the same order as every other contract-type surface.
+            .. OdsTypeRegistries.ContractTypes
+                .Select(t => Enum.TryParse<ContractType>(t.Key, out var parsed) ? parsed : (ContractType?)null)
+                .Where(type => type is { } t && (outgoing.ContainsKey(t) || incoming.ContainsKey(t)))
+                .Select(type => type!.Value)
+                .Select(type =>
+                {
+                    var info = OdsTypeRegistries.ContractTypeOf(type);
+                    var inValue = incoming.TryGetValue(type, out var i) ? pick(i) : 0m;
+                    var outValue = outgoing.TryGetValue(type, out var o) ? pick(o) : 0m;
+                    return new OdsBreakdownRow
+                    {
+                        Key = type,
+                        Icon = info.Icon,
+                        IconColor = info.Color,
+                        Label = info.Label,
+                        Count = NetCell(inValue - outValue),
+                    };
+                }),
+        ];
+    }
+
+    /// <summary>
+    /// A net figure, signed and coloured. The net is the only signed figure in the payload, so it is
+    /// the only one that ever carries a leading <c>+</c> — and the sign is what makes the colour a
+    /// second cue rather than the only one (WCAG 1.4.1).
+    /// </summary>
+    private RenderFragment NetCell(decimal? value) => builder =>
+    {
+        var tone = value is null or 0m ? "net-flat" : value > 0m ? "net-pos" : "net-neg";
+        var text = value is { } v
+            ? (v > 0m ? "+ " : v < 0m ? "− " : string.Empty) + FormatMoney(Math.Abs(v), Summary.RunRate.BaseCurrency)
+            : "—";
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "class", $"con-bd-net {tone}");
+        builder.AddContent(2, text);
+        builder.CloseElement();
+    };
+
+    // Null is "nothing convertible carries a recurring price", which is a legitimate healthy state —
+    // an em dash, never a zero, which would claim the agreements on file are free.
+    private string RunRate(decimal? value) =>
+        value is { } amount ? FormatMoney(amount, Summary.RunRate.BaseCurrency) : "—";
+
+    // A household that records only costs has no incoming side, and that is healthy rather than
+    // partial — so the tile says so in its own words instead of repeating the exclusion list, which
+    // would read as though something had been left out of a figure that has nothing in it.
+    private string IncomingFoot(decimal? value) =>
+        value is null ? "no incoming terms in force" : RunRateFoot;
+
+    // An unconvertible currency is NAMED rather than folded in at 1:1, so a partial total always says
+    // so on its own tile instead of reading as the whole picture. A paused contract keeps its price
+    // on file and contributes nothing here, so it is named for the same reason — a run rate that
+    // quietly dropped between two visits would otherwise read as a pricing error. An UNSIGNED one
+    // (issue #145) is named on exactly the same terms: a draft may be fully priced, and its price is
+    // a quote rather than a commitment.
+    private string RunRateFoot
+    {
+        get
+        {
+            var basis = Summary.RunRate.UnconvertedCurrencies.Count > 0
+                ? $"in {Summary.RunRate.BaseCurrency} · {string.Join(", ", Summary.RunRate.UnconvertedCurrencies)} excluded"
+                : $"in {Summary.RunRate.BaseCurrency}";
+
+            var paused = Summary.CountsByStatus.Paused;
+            var unsigned = Summary.CountsByStatus.Draft + Summary.CountsByStatus.Ready;
+            var excluded = new List<string>(2);
+            if (paused > 0)
+            {
+                excluded.Add($"{paused} paused");
+            }
+            if (unsigned > 0)
+            {
+                excluded.Add($"{unsigned} unsigned");
+            }
+
+            return excluded.Count > 0 ? $"{basis} · {string.Join(", ", excluded)} excluded" : basis;
+        }
+    }
+
+    private int CountFor(ContractStatus status) => status switch
+    {
+        ContractStatus.Active => Summary.CountsByStatus.Active,
+        ContractStatus.Upcoming => Summary.CountsByStatus.Upcoming,
+        ContractStatus.Expired => Summary.CountsByStatus.Expired,
+        ContractStatus.Paused => Summary.CountsByStatus.Paused,
+        ContractStatus.Draft => Summary.CountsByStatus.Draft,
+        ContractStatus.Ready => Summary.CountsByStatus.Ready,
+        _ => Summary.CountsByStatus.Archived,
+    };
+}

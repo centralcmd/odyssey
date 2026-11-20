@@ -450,6 +450,7 @@ public partial class Users
         {
             _users.RemoveAll(u => u.Id == user.Id);
             _allUsers.RemoveAll(u => u.Id == user.Id);
+            _totalCount = Math.Max(0, _totalCount - 1);
             if (_expandedId == user.Id)
             {
                 _expandedId = null;
@@ -460,7 +461,6 @@ public partial class Users
                 _editingId = null;
             }
 
-            _totalCount = Math.Max(0, _totalCount - 1);
             if (_page > 1 && PageStartIndex >= FilteredCount)
             {
                 _page--;
