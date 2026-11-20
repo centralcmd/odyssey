@@ -10,6 +10,7 @@ using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContractType = Odyssey.Dtos.Finance.ContractType;
 
@@ -219,7 +220,7 @@ public class ContractReferenceNumberApiTests(ContractReferenceNumberApiTests.Hos
         const string Accepted = "LOGPROBE-ACCEPTED-7731";
         const string Refused = "LOGPROBE-REFUSED\n-7731";
 
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(ReadWrite, services => services.AddSingleton<ILoggerProvider>(logs));
         using var client = factory.CreateClient();
 

@@ -21,6 +21,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContextCalendar = Odyssey.Context.Calendar;
 using ContextCalendarEvent = Odyssey.Context.CalendarEvent;
@@ -1088,12 +1089,12 @@ public class CalendarIcsStreamingApiTests(CalendarIcsStreamingApiTests.Host host
     }
 
     /// <summary>The class's shared host: a calendar editor, with logs captured and cleared per test.</summary>
-    public sealed class Host() : ApiFactory(ReadWrite, new CapturingLoggerProvider());
+    public sealed class Host() : ApiFactory(ReadWrite, new RecordingLoggerProvider());
 
     public class ApiFactory : OdysseyApiFactory
     {
         public ApiFactory(
-            IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null,
+            IReadOnlyCollection<string> permissions, RecordingLoggerProvider? logs = null, TimeProvider? clock = null,
             IStartupFilter? startup = null, int? importBatchGroups = null)
             : base(permissions, ActorUserId, configureServices: services =>
             {
@@ -1129,7 +1130,7 @@ public class CalendarIcsStreamingApiTests(CalendarIcsStreamingApiTests.Host host
             }) =>
             Logs = logs;
 
-        public CapturingLoggerProvider? Logs { get; }
+        public RecordingLoggerProvider? Logs { get; }
 
         public override async Task ResetStoreAsync()
         {

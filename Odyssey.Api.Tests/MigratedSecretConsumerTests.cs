@@ -8,6 +8,7 @@ using Odyssey.Context.Secrets;
 using Odyssey.Core.SystemSettings;
 using Odyssey.Dtos.Application;
 using Odyssey.Testing.Http;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 using Odyssey.Core.Finance;
@@ -77,7 +78,7 @@ public class MigratedSecretConsumerTests
     public async Task AnUnreadableApiKey_FailsClosed_AndNeverFallsBackToConfiguration()
     {
         var reader = new StubSecretSettingsReader().Unreadable(SecretSettingKeys.FileAnalysisApiKey);
-        var logger = new CapturingLogger<FileAnalysisApiKeyHandler>();
+        var logger = new RecordingLogger<FileAnalysisApiKeyHandler>();
         var (client, inner) = RecordingClientFor(reader, logger);
 
         var exception = await Assert.ThrowsAsync<Odyssey.Core.Finance.FileAnalysisCredentialException>(
@@ -157,7 +158,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task WithNeitherHalfStored_TheSendIsAttemptedUnauthenticated()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -182,7 +183,7 @@ public class MigratedSecretConsumerTests
             .Found(SecretSettingKeys.EmailPassword, "relay-password");
         secrets.Unreadable(unreadableKey);
 
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost, secrets: secrets);
 
@@ -207,7 +208,7 @@ public class MigratedSecretConsumerTests
     [InlineData(SecretSettingKeys.EmailPassword)]
     public async Task WithOnlyOneHalfStored_TheSendIsSkipped(string storedKey)
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -227,7 +228,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task WithBothHalvesStored_TheSendReachesTheTransport()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -249,7 +250,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task ASendCycle_NeverLogsTheStoredCredential()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -273,7 +274,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task AnUnsetHashKey_UsesAPerProcessKey_AndSaysSo()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var first = HashKeyFor(new StubSecretSettingsReader(), logger);
         var second = HashKeyFor(new StubSecretSettingsReader());
 
@@ -299,7 +300,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task AnUnreadableHashKey_LogsAnError_AndIsDistinguishableFromUnset()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var provider = HashKeyFor(
             new StubSecretSettingsReader().Unreadable(SecretSettingKeys.EmailRecipientHashKey), logger);
 
@@ -333,7 +334,7 @@ public class MigratedSecretConsumerTests
     [Fact]
     public async Task TheHashKeyProvider_NeverLogsTheKey()
     {
-        var logger = new CapturingLogger<EmailRecipientHashKey>();
+        var logger = new RecordingLogger<EmailRecipientHashKey>();
         var provider = HashKeyFor(
             new StubSecretSettingsReader().Found(SecretSettingKeys.EmailRecipientHashKey, Sentinel), logger);
 
@@ -429,7 +430,7 @@ public class MigratedSecretConsumerTests
     // ── Harness ─────────────────────────────────────────────────────────────────────────────────
 
     private static (HttpClient Client, RecordingHttpHandler Inner) RecordingClientFor(
-        StubSecretSettingsReader reader, CapturingLogger<FileAnalysisApiKeyHandler>? logger = null)
+        StubSecretSettingsReader reader, RecordingLogger<FileAnalysisApiKeyHandler>? logger = null)
     {
         var inner = new RecordingHttpHandler();
         return (ClientFor(reader, logger, inner), inner);
@@ -442,7 +443,7 @@ public class MigratedSecretConsumerTests
     /// </summary>
     private static HttpClient ClientFor(
         StubSecretSettingsReader reader,
-        CapturingLogger<FileAnalysisApiKeyHandler>? logger = null,
+        RecordingLogger<FileAnalysisApiKeyHandler>? logger = null,
         RecordingHttpHandler? inner = null)
     {
         var services = new ServiceCollection();
@@ -450,7 +451,7 @@ public class MigratedSecretConsumerTests
 
         var handler = new FileAnalysisApiKeyHandler(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            logger ?? new CapturingLogger<FileAnalysisApiKeyHandler>())
+            logger ?? new RecordingLogger<FileAnalysisApiKeyHandler>())
         {
             InnerHandler = inner ?? new RecordingHttpHandler(),
         };
@@ -459,13 +460,13 @@ public class MigratedSecretConsumerTests
     }
 
     private static EmailRecipientHashKey HashKeyFor(
-        StubSecretSettingsReader reader, CapturingLogger<EmailRecipientHashKey>? logger = null)
+        StubSecretSettingsReader reader, RecordingLogger<EmailRecipientHashKey>? logger = null)
     {
         var services = new ServiceCollection();
         services.AddSingleton<ISecretSettingsReader>(reader);
 
         return new EmailRecipientHashKey(
             services.BuildServiceProvider().GetRequiredService<IServiceScopeFactory>(),
-            logger ?? new CapturingLogger<EmailRecipientHashKey>());
+            logger ?? new RecordingLogger<EmailRecipientHashKey>());
     }
 }

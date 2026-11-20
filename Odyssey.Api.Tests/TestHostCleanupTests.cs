@@ -6,6 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -69,7 +70,7 @@ public class TestHostCleanupTests
     [Fact]
     public async Task A_tests_own_logger_provider_survives_the_strip()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new OdysseyApiFactory(
             configureServices: services => services.AddSingleton<ILoggerProvider>(logs));
 

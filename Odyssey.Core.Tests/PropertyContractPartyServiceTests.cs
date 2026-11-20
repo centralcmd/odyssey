@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using ContextContractEventType = Odyssey.Context.ContractEventType;
 using ContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
@@ -32,19 +33,6 @@ public class PropertyContractPartyServiceTests
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
-    }
-
-    private sealed class RecordingLogger<T> : ILogger<T>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
     private ContractService Contracts(OdysseyContext context, ILogger<ContractService>? logger = null) =>
@@ -197,8 +185,8 @@ public class PropertyContractPartyServiceTests
             Assert.Equal(FixedToday, e.CreatedAtUtc);
         });
 
-        Assert.Equal(3, logger.Lines.Count);
-        Assert.All(logger.Lines, line =>
+        Assert.Equal(3, logger.Messages.Count);
+        Assert.All(logger.Messages, line =>
         {
             Assert.StartsWith($"Contract party {ContractPartyAudit.DetachedByPropertyDelete}:", line);
             Assert.Contains($"target Property {propertyId}", line);
@@ -218,7 +206,7 @@ public class PropertyContractPartyServiceTests
         Assert.True(await Properties(context, logger).Delete(propertyId, UserId));
 
         Assert.Empty(await context.ContractEvents.ToListAsync());
-        Assert.Empty(logger.Lines);
+        Assert.Empty(logger.Messages);
     }
 
     [Fact]
@@ -235,7 +223,7 @@ public class PropertyContractPartyServiceTests
 
         ContractPartyAudit.Log(logger, "added", party, previousRole: null, "user\r\nContract party forged");
 
-        var line = Assert.Single(logger.Lines);
+        var line = Assert.Single(logger.Messages);
         Assert.DoesNotContain('\n', line);
         Assert.DoesNotContain('\r', line);
         Assert.EndsWith("by user userContract party forged.", line);
@@ -253,7 +241,7 @@ public class PropertyContractPartyServiceTests
 
         Assert.Equal(
             [$"target Account {targetId}", $"target Institution {targetId}", $"target Property {targetId}"],
-            logger.Lines.Select(l => l[l.IndexOf("target ", StringComparison.Ordinal)..l.IndexOf(", role", StringComparison.Ordinal)]));
+            logger.Messages.Select(l => l[l.IndexOf("target ", StringComparison.Ordinal)..l.IndexOf(", role", StringComparison.Ordinal)]));
 
         static ContractParty Party(Guid? accountId = null, Guid? contactId = null, Guid? propertyId = null) => new()
         {

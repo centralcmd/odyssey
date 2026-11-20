@@ -1,3 +1,4 @@
+using Odyssey.Testing.Logging;
 using Xunit;
 using System.Net;
 using System.Net.Http.Json;
@@ -104,7 +105,7 @@ public sealed class CookieOnlyIdentityTests(CookieOnlyIdentityTests.SharedHost f
     [Fact]
     public void ARenamedRoute_IsReportedAsAnError_AndAPresentOneIsNot()
     {
-        var logger = new CapturingLogger<CookieOnlyIdentityTests>();
+        var logger = new RecordingLogger<CookieOnlyIdentityTests>();
         var builder = new FakeConventionBuilder();
         builder.RequireCookieOnlyIdentity();
 
@@ -118,7 +119,7 @@ public sealed class CookieOnlyIdentityTests(CookieOnlyIdentityTests.SharedHost f
     [Fact]
     public void WithBothRoutesPresent_NothingIsReported()
     {
-        var logger = new CapturingLogger<CookieOnlyIdentityTests>();
+        var logger = new RecordingLogger<CookieOnlyIdentityTests>();
         var builder = new FakeConventionBuilder();
         builder.RequireCookieOnlyIdentity();
 

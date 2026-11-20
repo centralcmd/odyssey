@@ -5,6 +5,7 @@ using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 using DtoContractEventType = Odyssey.Dtos.Finance.ContractEventType;
@@ -40,19 +41,6 @@ public class ContractSignatureTests
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
-    }
-
-    private sealed class RecordingLogger : ILogger<ContractService>
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add(formatter(state, exception));
     }
 
     private ContractService CreateService(OdysseyContext context, ILogger<ContractService>? logger = null) =>
@@ -557,17 +545,17 @@ public class ContractSignatureTests
     public async Task EveryTransition_EmitsOneAttributedLine_OnCreateAndOnUpdate()
     {
         await using var context = TestContextFactory.Create();
-        var log = new RecordingLogger();
+        var log = new RecordingLogger<ContractService>();
         var service = CreateService(context, log);
 
         var created = await service.Create(
             New(FixedToday.AddDays(-10), ready: ReadyOn, signed: SignedOn, name: "Fibre broadband"),
             userId: TestUserId);
 
-        Assert.Equal(2, log.Lines.Count);
-        Assert.Contains(log.Lines, l => l.Contains("Ready set", StringComparison.Ordinal));
-        Assert.Contains(log.Lines, l => l.Contains("Signed set", StringComparison.Ordinal));
-        Assert.All(log.Lines, l =>
+        Assert.Equal(2, log.Messages.Count);
+        Assert.Contains(log.Messages, l => l.Contains("Ready set", StringComparison.Ordinal));
+        Assert.Contains(log.Messages, l => l.Contains("Signed set", StringComparison.Ordinal));
+        Assert.All(log.Messages, l =>
         {
             Assert.Contains(created.ContractId.ToString(), l, StringComparison.Ordinal);
             Assert.Contains(TestUserId, l, StringComparison.Ordinal);
@@ -577,14 +565,14 @@ public class ContractSignatureTests
         });
 
         // A write that changes NEITHER stamp emits nothing.
-        log.Lines.Clear();
+        log.Clear();
         await service.Update(created.ContractId, Write(created, ReadyOn, SignedOn), userId: TestUserId);
-        Assert.Empty(log.Lines);
+        Assert.Empty(log.Messages);
 
         // Clearing one emits one line, naming the clear.
-        log.Lines.Clear();
+        log.Clear();
         await service.Update(created.ContractId, Write(created, ready: ReadyOn), userId: TestUserId);
-        var cleared = Assert.Single(log.Lines);
+        var cleared = Assert.Single(log.Messages);
         Assert.Contains("Signed cleared", cleared, StringComparison.Ordinal);
         Assert.Contains(TestUserId, cleared, StringComparison.Ordinal);
     }

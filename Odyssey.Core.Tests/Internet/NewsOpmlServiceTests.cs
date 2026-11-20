@@ -13,6 +13,7 @@ using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
 using Odyssey.Testing;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Core.Tests.Internet;
@@ -202,7 +203,7 @@ public sealed class NewsOpmlServiceTests : IDisposable
 
         Assert.Equal(3, document.Feeds.Count);
         Assert.Equal(["Alpha", "Beta"], document.Folders);
-        Assert.Contains(logs.Lines, l => l.Contains("(filtered)", StringComparison.Ordinal) && l.Contains(": 3 feeds", StringComparison.Ordinal));
+        Assert.Contains(logs.Messages, l => l.Contains("(filtered)", StringComparison.Ordinal) && l.Contains(": 3 feeds", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -521,8 +522,8 @@ public sealed class NewsOpmlServiceTests : IDisposable
             Feed("https://secret-import.example/rss", text: "Secret Import Title", category: "/SecretImportTag"),
             Feed("ftp://secret-invalid.example/")));
 
-        Assert.Equal(2, logs.Lines.Count);
-        foreach (var line in logs.Lines)
+        Assert.Equal(2, logs.Messages.Count);
+        foreach (var line in logs.Messages)
         {
             foreach (var secret in new[] { "secret", "Secret", "token", ".opml" })
             {
@@ -762,18 +763,5 @@ public sealed class NewsOpmlServiceTests : IDisposable
         public Task<NewsSettings> GetAsync(CancellationToken cancellationToken = default) => Task.FromResult(Settings);
 
         public Task<IReadOnlyList<NewsPrivateHostGrant>> GetAllowListAsync(CancellationToken cancellationToken = default) => Task.FromResult(Grants);
-    }
-
-    private sealed class RecordingLogger : ILogger
-    {
-        public List<string> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Lines.Add(formatter(state, exception));
     }
 }

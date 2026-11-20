@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Odyssey.Api.Email;
 using Odyssey.Api.Identity;
 using Odyssey.Api.Tests.Infrastructure;
+using Odyssey.Testing.Logging;
 using Xunit;
 using Odyssey.Core.Email;
 
@@ -94,7 +95,7 @@ public class ManageInfoWriteBlockTests
         // The per-recipient budget can be spent anonymously through /forgotPassword; a throttled notice
         // could be suppressed by exactly the person it warns about. The unreachable host is the probe: an
         // attempted delivery logs an error, a skipped one logs nothing.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, new ClosedThrottle(), smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -109,7 +110,7 @@ public class ManageInfoWriteBlockTests
     {
         // An address is PII and these logs are shipped and retained; DeliverAsync logs the same keyed
         // digest the throttle does. The failed send is the probe — it is the line that names a recipient.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -124,7 +125,7 @@ public class ManageInfoWriteBlockTests
     public async Task TheConfirmation_RespectsTheThrottle()
     {
         // It goes to an address the caller names, so it must not be a way around the mail-bombing bound.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, new ClosedThrottle(), smtpHost: SmtpEmailSenderTestHarness.UnreachableHost);
 
@@ -137,7 +138,7 @@ public class ManageInfoWriteBlockTests
     public async Task TheConfirmationLink_IsRewrittenOntoTheClientPage()
     {
         // No relay: the composed link is logged, which is what makes it observable here.
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger);
 
         await sender.SendChangeConfirmationAsync(

@@ -10,6 +10,7 @@ using Odyssey.Core.Finance;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -201,7 +202,7 @@ public class PromptAdditionSettingsApiTests(PromptAdditionSettingsApiTests.Host 
     private sealed class LoggingApiFactory(IReadOnlyCollection<string>? permissions)
         : OdysseyApiFactory(permissions, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {

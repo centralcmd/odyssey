@@ -5,6 +5,7 @@ using Microsoft.Extensions.Time.Testing;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using DtoContractType = Odyssey.Dtos.Finance.ContractType;
 
@@ -118,19 +119,6 @@ public class ContractSmartTagScopeServiceTests
 
     private readonly OdysseyContext context = TestContextFactory.Create();
 
-    private sealed class RecordingLogger : ILogger<ContractService>
-    {
-        public List<(LogLevel Level, string Message)> Lines { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(
-            LogLevel logLevel, EventId eventId, TState state, Exception? exception,
-            Func<TState, Exception?, string> formatter) => Lines.Add((logLevel, formatter(state, exception)));
-    }
-
     private ContractService Service(ILogger<ContractService>? logger = null) =>
         new(context, TestContextFactory.ContactLookup(context), new FakeTimeProvider(FixedToday),
             logger ?? NullLogger<ContractService>.Instance);
@@ -184,10 +172,10 @@ public class ContractSmartTagScopeServiceTests
     [Fact]
     public async Task Create_DoesNotLogAScopeChange()
     {
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<ContractService>();
         await Service(logger).Create(new NewContract { Name = "x", StartDate = Day(2021, 3, 1) }, UserId);
 
-        Assert.DoesNotContain(logger.Lines, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Entries, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -229,13 +217,13 @@ public class ContractSmartTagScopeServiceTests
     public async Task Update_LogsWhichBoundsChanged_WithoutTheDates()
     {
         var created = await Create(Day(2021, 3, 1), Day(2026, 8, 31));
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<ContractService>();
 
         var request = CarryForward(created);
         request.SmartTagScopeEnd = Day(2027, 6, 30);
         await Service(logger).Update(created.ContractId, request, UserId);
 
-        var line = Assert.Single(logger.Lines, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
+        var line = Assert.Single(logger.Entries, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
         Assert.Equal(LogLevel.Information, line.Level);
         Assert.Contains(created.ContractId.ToString(), line.Message, StringComparison.Ordinal);
         Assert.Contains(UserId, line.Message, StringComparison.Ordinal);
@@ -250,13 +238,13 @@ public class ContractSmartTagScopeServiceTests
     public async Task Update_LeavingTheScopeUnchanged_LogsNothingAboutIt()
     {
         var created = await Create(Day(2021, 3, 1), Day(2026, 8, 31));
-        var logger = new RecordingLogger();
+        var logger = new RecordingLogger<ContractService>();
 
         var request = CarryForward(created);
         request.Name = "Renamed";
         await Service(logger).Update(created.ContractId, request, UserId);
 
-        Assert.DoesNotContain(logger.Lines, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
+        Assert.DoesNotContain(logger.Entries, l => l.Message.Contains("smart-tag scope", StringComparison.Ordinal));
     }
 
     [Fact]

@@ -13,6 +13,7 @@ using Odyssey.Dtos.Application;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -787,7 +788,7 @@ public class BackgroundJobsApiTests(BackgroundJobsApiTests.Host host) : SharedAp
             configureServices: services => services.AddSingleton<TimeProvider>(new FakeTimeProvider(new DateTimeOffset(Now, TimeSpan.Zero))),
             sharingStoreWith: sharingStoreWith)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         protected override void ConfigureWebHost(Microsoft.AspNetCore.Hosting.IWebHostBuilder builder)
         {

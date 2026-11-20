@@ -11,6 +11,7 @@ using Odyssey.Context;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Logging;
 using Xunit;
 using static Odyssey.Api.Tests.PropertyApiTestSupport;
 using ContextAccountType = Odyssey.Context.AccountType;
@@ -378,7 +379,7 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task DeleteProperty_OnTwoContracts_EventsEachRemoval_AndLogsEachRow_WithTheCallerAndOneTimestamp()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell");
         var loanId = await SeedContractAsync(factory, "Mortgage", ContextContractType.Loan,
@@ -425,7 +426,7 @@ public class PropertyContractPartiesApiTests(PropertyContractPartiesApiTests.Hos
     [Fact]
     public async Task PartyWriteLogLine_ForAPropertyParty_NamesTheKindAndGuid_AndNoPropertyField()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var factory = new ApiFactory(FullAccess, services => services.AddSingleton<ILoggerProvider>(logs));
         var propertyId = await SeedPropertyAsync(factory, "Cabin at Hafjell", city: "Øyer");
         var contractId = await SeedContractAsync(factory, "Cover", ContextContractType.Insurance);

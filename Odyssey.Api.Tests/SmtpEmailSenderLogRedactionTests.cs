@@ -3,6 +3,7 @@ using Odyssey.Api.Email;
 using Odyssey.Api.Tests.Infrastructure;
 using Odyssey.Context;
 using Odyssey.Dtos.Application;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -24,7 +25,7 @@ public class SmtpEmailSenderLogRedactionTests
     [InlineData("Staging")]
     public async Task Unconfigured_OutsideDevelopment_LogsNeitherTheAddressNorTheLink(string environment)
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: environment);
 
         await sender.SendPasswordResetCodeAsync(User, Address, Code);
@@ -39,7 +40,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task Unconfigured_InDevelopment_LogsTheLink_ButStillNotTheAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: "Development");
 
         await sender.SendPasswordResetCodeAsync(User, Address, Code);
@@ -52,7 +53,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task TheLoggedDigest_IsTheThrottlesKeyedDigest_OfTheNormalizedAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(logger, environmentName: "Production");
 
         await sender.SendPasswordResetCodeAsync(User, Address, Code);
@@ -66,7 +67,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task FailedDelivery_DoesNotLogTheAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger, smtpHost: SmtpEmailSenderTestHarness.UnreachableHost, environmentName: "Production");
 
@@ -79,7 +80,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task UnusableTransport_DoesNotLogTheAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -95,7 +96,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task IncompleteCredential_DoesNotLogTheAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             smtpHost: SmtpEmailSenderTestHarness.UnreachableHost,
@@ -111,7 +112,7 @@ public class SmtpEmailSenderLogRedactionTests
     [Fact]
     public async Task ConfirmationDisabled_SkipLine_DoesNotLogTheAddress()
     {
-        var logger = new CapturingLogger<SmtpEmailSender>();
+        var logger = new RecordingLogger<SmtpEmailSender>();
         var sender = SmtpEmailSenderTestHarness.Create(
             logger,
             environmentName: "Production",
@@ -185,7 +186,7 @@ public class SmtpEmailSenderLogRedactionTests
         line.TrimStart().StartsWith('"') || line.TrimStart().StartsWith("+ \"", StringComparison.Ordinal)
         || line.TrimStart().StartsWith("$\"", StringComparison.Ordinal);
 
-    private static void AssertNoAddress(CapturingLogger<SmtpEmailSender> logger)
+    private static void AssertNoAddress(RecordingLogger<SmtpEmailSender> logger)
     {
         Assert.DoesNotContain(logger.Messages, m => m.Contains(Address, StringComparison.OrdinalIgnoreCase));
         Assert.DoesNotContain(logger.Messages, m => m.Contains("example.test", StringComparison.OrdinalIgnoreCase)

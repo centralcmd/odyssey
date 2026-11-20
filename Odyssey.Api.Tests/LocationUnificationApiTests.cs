@@ -12,6 +12,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 using LocationEntity = Odyssey.Context.Location;
 
@@ -1177,7 +1178,7 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
     [Fact]
     public async Task No_log_line_carries_a_name_an_address_or_a_detail_and_address_changes_name_the_actor()
     {
-        var logs = new CapturingLoggerProvider();
+        var logs = new RecordingLoggerProvider();
         await using var host = await Host.StartAsync(Everything, logs);
         var contactId = await host.PostContactAsync("Zyxwvut Person");
         var address = await host.PostAddressAsync(contactId, Address("Qwertygata 17", "Plughville"));
@@ -1532,7 +1533,7 @@ public class LocationUnificationApiTests(LocationUnificationApiTests.SharedHost 
 
         public HttpClient Client { get; }
 
-        public static async Task<Host> StartAsync(IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null)
+        public static async Task<Host> StartAsync(IReadOnlyCollection<string> permissions, RecordingLoggerProvider? logs = null)
         {
             var factory = new OdysseyApiFactory(permissions, Actor, configureServices: services =>
             {

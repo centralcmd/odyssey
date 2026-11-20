@@ -12,6 +12,7 @@ using Odyssey.Dtos;
 using Odyssey.Dtos.Authorization;
 using Odyssey.Dtos.Finance;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing.Logging;
 using Xunit;
 
 namespace Odyssey.Api.Tests;
@@ -179,7 +180,7 @@ public class ContactConversionAuditTests(ContactConversionAuditTests.Host host) 
 
     public class LoggingApiFactory() : OdysseyApiFactory(Claims, ActorUserId)
     {
-        public CapturingLoggerProvider Logs { get; } = new();
+        public RecordingLoggerProvider Logs { get; } = new();
 
         /// <summary>A shared host forgets the previous test's log lines.</summary>
         public override async Task ResetStoreAsync()
