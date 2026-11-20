@@ -89,8 +89,6 @@ public partial class ContactMethodDialog
 
     private Dictionary<string, string> _errors = new(StringComparer.OrdinalIgnoreCase);
 
-    private IReadOnlyDictionary<string, string> Errors => _errors;
-
     private string LabelFieldId = default!;
 
     private string? Err(string key) => _errors.GetValueOrDefault(key);

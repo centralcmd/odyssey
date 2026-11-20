@@ -484,7 +484,6 @@ public class ContactAvatarIntegrationTests(MariaDbFixture fixture)
     // temp volume on the same database.
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            FileServiceFor(context),
             new FixedUploadLimits(64L * 1024 * 1024),
             logger: NullLogger<ContactAvatarService>.Instance,
             writer: TestFileStores.For(context).Writer,

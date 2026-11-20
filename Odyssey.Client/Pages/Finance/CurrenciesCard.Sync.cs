@@ -232,12 +232,6 @@ public partial class CurrenciesCard
         return null;
     }
 
-    private string AvailableFromText(ExistingExchangeRateSyncCurrency s) => s.Locked
-        ? $"Every {ProviderName} rate is quoted against {s.CurrencyCode}"
-        : s.FirstAvailableDate is { } first
-            ? $"{ProviderName} has data from {RunTime.Date(first)}"
-            : $"{ProviderName} doesn’t publish {s.CurrencyCode}";
-
     // Patches both lists: the cards read _currencies, the "By status" tile _allCurrencies.
     private void ReplaceSync(ExistingExchangeRateSyncCurrency updated)
     {

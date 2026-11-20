@@ -1649,7 +1649,7 @@ public class FileAnalysisServiceTests
 
         var provider = FakeProvider.Matching((_, _, _) => []);
         var aliasesOnly = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            settingsLookup, NullLogger<FileAnalysisService>.Instance,
             FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 1000 };
 
@@ -1662,7 +1662,7 @@ public class FileAnalysisServiceTests
         Assert.Equal(0, first.AliasCount);
 
         var tiny = new FileAnalysisService(context, provider, TestContextFactory.ContactLookup(journal),
-            Options.Create(MatchOptions()), settingsLookup, NullLogger<FileAnalysisService>.Instance,
+            settingsLookup, NullLogger<FileAnalysisService>.Instance,
             FileAnalysisTestHarness.Queue(context), FileAnalysisTestHarness.Template)
         { MatchVocabularyBudget = 10 };
 

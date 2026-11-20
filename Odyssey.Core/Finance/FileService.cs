@@ -12,7 +12,6 @@ public class FileService
 {
     private readonly OdysseyContext context;
     private readonly FileValidationService validationService;
-    private readonly TimeProvider timeProvider;
 
     /// <summary>A rename that collides with a concurrent write an observer depends on is re-run at most this often.</summary>
     public const int RenameAttempts = 3;
@@ -27,7 +26,6 @@ public class FileService
     public FileService(
         OdysseyContext context,
         FileValidationService validationService,
-        TimeProvider? timeProvider = null,
         IEnumerable<IFileRenameObserver>? observers = null,
         StoredFileWriter? writer = null,
         IObjectStore? store = null,
@@ -35,7 +33,6 @@ public class FileService
     {
         this.context = context;
         this.validationService = validationService;
-        this.timeProvider = timeProvider ?? TimeProvider.System;
         renameObservers = [.. observers ?? []];
         this.writer = writer;
         this.store = store;

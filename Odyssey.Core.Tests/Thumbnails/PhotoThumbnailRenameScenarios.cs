@@ -206,7 +206,7 @@ public abstract class PhotoThumbnailRenameScenarios : PhotoThumbnailTestBase
     }
 
     private static FileService Service(IServiceProvider services, OdysseyContext context, params IFileRenameObserver[] extra) =>
-        new(context, new FileValidationService(), TimeProvider.System,
+        new(context, new FileValidationService(),
             [.. services.GetServices<IFileRenameObserver>(), .. extra]);
 
     private static async Task RenameAsync(FileStorageTestHost host, Guid photoId, string name)
