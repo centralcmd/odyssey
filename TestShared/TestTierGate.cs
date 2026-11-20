@@ -1,6 +1,6 @@
-// Linked (not referenced) into Odyssey.IntegrationTests, Odyssey.E2ETests, Odyssey.E2ETests.Api and
-// Odyssey.Client.Tests, so the self-skipping tiers share one decision rule without a project any of them
-// must depend on.
+// Linked (not referenced) into Odyssey.IntegrationTests, Odyssey.E2ETests, Odyssey.E2ETests.Api,
+// Odyssey.Client.Tests and Odyssey.Core.Tests, so the self-skipping tiers share one decision rule without a
+// project any of them must depend on.
 // Every type here is internal: each test assembly compiles its own copy.
 
 namespace Odyssey.Testing;
@@ -52,9 +52,15 @@ internal sealed class TestTierUnavailableException(string message, Exception? in
 /// </para>
 /// <para>
 /// <c>ODYSSEY_REQUIRE_TIER</c> is the opt-in that turns the absent case into a failure too. It is a
-/// comma-separated list of tier names — <c>integration</c>, <c>e2e</c>, <c>e2e-api</c>, <c>design-system</c>, or <c>all</c> —
-/// and an unknown name is itself an error, so a typo in a workflow cannot silently leave a tier
-/// unrequired.
+/// comma-separated list of tier names — <c>integration</c>, <c>e2e</c>, <c>e2e-api</c>, <c>design-system</c>,
+/// <c>perf</c>, or <c>all</c> — and an unknown name is itself an error, so a typo in a workflow cannot silently
+/// leave a tier unrequired.
+/// </para>
+/// <para>
+/// <c>perf</c> is the one tier whose skip does not wait for a missing prerequisite: its tests (volume, memory
+/// and time-budget checks) skip whenever the tier is NOT named, so the per-PR run stays fast, and run only in
+/// the nightly job that names it. Once named, a prerequisite they also need — MariaDB, for the ones in
+/// <c>Odyssey.IntegrationTests</c> — failing to come up is a failure, as for any required tier.
 /// </para>
 /// </remarks>
 internal static class TestTierGate
@@ -76,10 +82,16 @@ internal static class TestTierGate
     /// </summary>
     public const string DesignSystem = "design-system";
 
+    /// <summary>
+    /// The opt-in volume, memory and time-budget tests (<c>[Trait("Category", "Perf")]</c>) in
+    /// <c>Odyssey.Core.Tests</c> and <c>Odyssey.IntegrationTests</c>: skipped unless named, run nightly.
+    /// </summary>
+    public const string Perf = "perf";
+
     /// <summary>Shorthand for every tier above.</summary>
     public const string All = "all";
 
-    public static readonly IReadOnlyList<string> KnownTiers = [Integration, E2E, E2EApi, DesignSystem];
+    public static readonly IReadOnlyList<string> KnownTiers = [Integration, E2E, E2EApi, DesignSystem, Perf];
 
     /// <summary>
     /// Parses an <c>ODYSSEY_REQUIRE_TIER</c> value. Blank means nothing is required. Throws on an unknown
@@ -149,6 +161,26 @@ internal static class TestTierGate
             _ => throw Fault(tier, reason, cause),
         };
     }
+
+    /// <summary>
+    /// Why a <see cref="Perf"/> test skips, or <c>null</c> when <c>ODYSSEY_REQUIRE_TIER</c> names the tier and it
+    /// must run.
+    /// </summary>
+    public static string? PerfSkipReason(string? requireTierValue) =>
+        IsRequired(Perf, requireTierValue)
+            ? null
+            : $"A perf-tier test (volume, memory or time budget): it runs only when {RequireTierEnvVar} names " +
+              $"'{Perf}', as the nightly perf job does, so the per-PR run stays fast.";
+
+    public static string? PerfSkipReason() => PerfSkipReason(Environment.GetEnvironmentVariable(RequireTierEnvVar));
+
+    /// <summary>
+    /// The failure for a required <see cref="Perf"/> test whose own prerequisite (MariaDB, say) is absent: once
+    /// the tier is named, a test that cannot run must not pass as a skip.
+    /// </summary>
+    public static TestTierUnavailableException PerfPrerequisiteMissing(string? reason) =>
+        new($"Test tier '{Perf}' is required ({RequireTierEnvVar}) but a prerequisite of this test is unavailable: " +
+            (reason ?? "no reason given"));
 
     /// <summary>
     /// The failure for a tier whose prerequisite is present but which could not be brought up — thrown

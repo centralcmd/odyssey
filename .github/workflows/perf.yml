@@ -1,0 +1,75 @@
+name: Perf (nightly)
+
+# The perf tier (TestShared/PerfTier.cs): volume, memory and time-budget tests — the 100,000-row calendar
+# export, the 50,000-event import, the 100,000-transaction net-worth budget, the weather batch P95 targets and
+# the 100,000-feed OPML import. They skip in the per-PR CI run, where they cost minutes and say nothing a
+# small sibling does not, and run here once a night against main. Setup mirrors ci.yml.
+on:
+  schedule:
+    - cron: '23 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: perf-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore dependencies
+        run: dotnet restore Odyssey.sln
+
+      - name: Build
+        run: dotnet build Odyssey.sln -c Release --no-restore -warnaserror
+
+      # Requiring `perf` is what un-skips these tests; requiring `integration` too makes a missing Docker daemon
+      # fail the MariaDB-backed half instead of skipping it (issue #257's rule, extended to the perf tier).
+      - name: Perf tests
+        env:
+          ODYSSEY_REQUIRE_TIER: integration,perf
+        run: |
+          for project in Odyssey.Core.Tests Odyssey.IntegrationTests; do
+            dotnet test "$project" --no-build -c Release --filter "Category=Perf" \
+              --blame-hang-timeout 15m --blame-hang-dump-type none \
+              --logger "trx;LogFilePrefix=perf-results" --results-directory ./TestResults
+          done
+
+      # A filter that matched nothing would leave this job green having run nothing, which is the failure
+      # ODYSSEY_REQUIRE_TIER exists to prevent. Every perf test must have executed, none skipped.
+      - name: Check that the perf tests ran
+        run: |
+          python3 - <<'EOF'
+          import glob, sys, xml.etree.ElementTree as ET
+          ns = '{http://microsoft.com/schemas/VisualStudio/TeamTest/2010}'
+          executed = skipped = 0
+          for path in glob.glob('TestResults/**/*.trx', recursive=True):
+              counters = ET.parse(path).getroot().find(f'{ns}ResultSummary/{ns}Counters')
+              # A skipped test counts in `total` but not in `executed`; `notExecuted` stays 0 for it.
+              executed += int(counters.get('executed', 0))
+              skipped += int(counters.get('total', 0)) - int(counters.get('executed', 0))
+          print(f'perf tests executed: {executed}, skipped: {skipped}')
+          sys.exit(0 if executed > 0 and skipped == 0 else 1)
+          EOF
+
+      - name: Upload test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: perf-results
+          path: |
+            TestResults/**/*.trx
+            **/Sequence_*.xml
+          retention-days: 14

@@ -12,6 +12,7 @@ using Odyssey.Core.Internet.News.Opml;
 using Odyssey.Core.Internet.News.Reading;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Internet;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.Core.Tests.Internet;
@@ -542,22 +543,39 @@ public sealed class NewsOpmlServiceTests : IDisposable
         }
     }
 
-    [Fact]
+    /// <summary>
+    /// AC 28 at its stated volume, nightly: the 100,000-feed file is a perf-tier test (<see cref="PerfTier"/>). The
+    /// per-PR run keeps the same import, its truncation and the memory bound on 5,000 feeds below.
+    /// </summary>
+    [SkippableFact]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task AC28_A_60_MB_file_with_100000_distinct_feeds_stays_under_the_memory_target()
+    {
+        PerfTier.SkipUnlessRequested();
+        await AssertDistinctFeedsImportUnderTheMemoryTargetAsync(feeds: 100_000, minimumBytes: 60_000_000, minimumSamples: 57);
+    }
+
+    [Fact]
+    public async Task AC28_A_3_MB_file_with_5000_distinct_feeds_stays_under_the_memory_target()
+    {
+        await AssertDistinctFeedsImportUnderTheMemoryTargetAsync(feeds: 5_000, minimumBytes: 3_000_000, minimumSamples: 2);
+    }
+
+    private async Task AssertDistinctFeedsImportUnderTheMemoryTargetAsync(int feeds, long minimumBytes, int minimumSamples)
     {
         // The file is generated as it is read, so the only large thing alive is what the import keeps.
         var padding = new string('p', 520);
-        var lines = Enumerable.Range(0, 100_000)
+        var lines = Enumerable.Range(0, feeds)
             .Select(i => $"<outline text=\"Feed {i} {padding}\" xmlUrl=\"https://f{i}.example/rss\" category=\"/A,/B\"/>\n");
         var probe = new HeapProbe();
         await using var stream = new LineStream("<opml version=\"2.0\"><body>\n", lines, "</body></opml>", probe);
 
         var (result, peak) = await MeasurePeakAsync(probe, () => Import().ImportAsync(stream, true, "user-1", CancellationToken.None));
 
-        Assert.True(stream.BytesRead > 60_000_000, $"only {stream.BytesRead} bytes were generated");
-        Assert.Equal((100_000, NewsSettings.Defaults.MaxFeeds), (result.Feeds, result.Created));
+        Assert.True(stream.BytesRead > minimumBytes, $"only {stream.BytesRead} bytes were generated");
+        Assert.Equal((feeds, NewsSettings.Defaults.MaxFeeds), (result.Feeds, result.Created));
         Assert.True(result.ItemsTruncated);
-        Assert.True(probe.Samples >= 57, $"only {probe.Samples} heap samples were taken");
+        Assert.True(probe.Samples >= minimumSamples, $"only {probe.Samples} heap samples were taken");
         Assert.True(peak < 50L * 1024 * 1024, $"peak {peak / (1024 * 1024)} MB above the baseline");
     }
 

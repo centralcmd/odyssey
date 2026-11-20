@@ -43,6 +43,37 @@ public sealed class TestTierGateTests
     }
 
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("integration")]
+    [InlineData("integration,e2e,e2e-api,design-system")]
+    public void A_perf_test_skips_unless_the_perf_tier_is_named(string? value)
+    {
+        var reason = TestTierGate.PerfSkipReason(value);
+
+        Assert.NotNull(reason);
+        Assert.Contains($"{TestTierGate.RequireTierEnvVar} names '{TestTierGate.Perf}'", reason);
+    }
+
+    [Theory]
+    [InlineData("perf")]
+    [InlineData("integration, PERF")]
+    [InlineData("all")]
+    public void A_perf_test_runs_when_the_perf_tier_is_named(string value)
+    {
+        Assert.Null(TestTierGate.PerfSkipReason(value));
+    }
+
+    [Fact]
+    public void A_required_perf_test_whose_prerequisite_is_missing_fails()
+    {
+        var ex = TestTierGate.PerfPrerequisiteMissing("no Docker");
+
+        Assert.Contains(TestTierGate.Perf, ex.Message);
+        Assert.Contains("no Docker", ex.Message);
+    }
+
+    [Theory]
     [InlineData("integraton")]
     [InlineData("e2e_api")]
     [InlineData("integration,browser")]
