@@ -17,8 +17,7 @@ namespace Odyssey.Core.Tests;
 /// Fast coverage for <see cref="PropertyFileService"/> (issue #210): attach, list order and scoping,
 /// the full-replacement update, detach, the duplicate conflict, the issuer check, the shared
 /// <see cref="DocumentValidity"/> rules, and the unknown-property answers. Also AC 17 (a property delete
-/// removes its document links but not the files), AC 18 (<see cref="FileReferenceGuard"/> names a
-/// property document), and the Context/Dtos enum parity the Mapster registration relies on.
+/// removes its document links but not the files), and the Context/Dtos enum parity the Mapster registration relies on.
 /// </summary>
 public class PropertyFileServiceTests
 {

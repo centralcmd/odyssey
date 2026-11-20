@@ -87,12 +87,12 @@ public class OdsMoneyFieldTests : IAsyncLifetime
         Assert.Empty(cut.FindAll("button.odc-money-cur"));
     }
 
-    [Fact]
     /// <summary>
     /// The popover is a search box plus a listbox, so it is a non-modal dialog and the trigger says
     /// <c>aria-haspopup="dialog"</c> (issue #255 — a trigger promising a bare listbox misdescribed
     /// it). The name starts with the visible code, so a speech user can say "NOK" (WCAG 2.5.3).
     /// </summary>
+    [Fact]
     public void An_editable_currency_is_a_dialog_trigger_that_names_its_selection()
     {
         var cut = Render();

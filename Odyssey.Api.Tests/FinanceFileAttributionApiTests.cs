@@ -16,7 +16,7 @@ namespace Odyssey.Api.Tests;
 /// Contract coverage for issue #106: the two finance file surfaces used to return a raw user id with
 /// no name attached, which — since Guest holds <c>transactions.read</c>, <c>accounts.read</c> and
 /// <c>files.read</c> — was a harvesting primitive for ids the application never names to that caller.
-/// These tests pin that both surfaces now carry a label resolved by <see cref="IUserDisplayNameResolver"/>
+/// These tests pin that both surfaces now carry a label resolved by <see cref="Odyssey.Core.Identity.IUserDisplayNameResolver"/>
 /// under the CALLER's own claims, that the id is still there (round-tripping needs it), and that a
 /// caller whose claims do not license the name gets the resolver's neutral label rather than an email.
 /// </summary>

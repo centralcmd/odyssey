@@ -333,7 +333,7 @@ public class SystemSettingsLookupTests
 
     /// <summary>
     /// A watermark older than the TTL is not "last known good", it is "last known". The expiry lives in
-    /// the shared <see cref="IntSettingResolver"/>, so what this lookup must guarantee is that it reaches
+    /// the shared <see cref="Odyssey.Core.SystemSettings.IntSettingResolver"/>, so what this lookup must guarantee is that it reaches
     /// that resolver rather than keeping a private parse.
     /// </summary>
     [Fact]

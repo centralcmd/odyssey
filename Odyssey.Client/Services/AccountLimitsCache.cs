@@ -18,7 +18,7 @@ namespace Odyssey.Client.Services;
 /// <para>
 /// <b>Failures are never cached, and never surfaced as null.</b> A failed load — including the degraded
 /// <c>503</c> — leaves the slot empty so the next reader retries, and this attempt resolves to
-/// <see cref="Fallback"/>. There is deliberately <b>no disable branch</b> in the consuming section:
+/// <see cref="AccountLimitsCache.Fallback"/>. There is deliberately <b>no disable branch</b> in the consuming section:
 /// this method cannot fail, the upload surfaces it mirrors do not disable either, and the server
 /// remains the control — <c>AccountSmartTagService</c> rejects an over-cap add whatever the client
 /// believes. A local pre-check is a convenience, never the gate.

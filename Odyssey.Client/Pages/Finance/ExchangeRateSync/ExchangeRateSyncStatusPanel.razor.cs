@@ -321,7 +321,7 @@ public partial class ExchangeRateSyncStatusPanel
     // ── Text, built only from status fields ───────────────────────────────────────────────────────
 
     /// <summary>
-    /// The forward-looking row: the state as coloured text (<see cref="Word"/>), then when. The state's own
+    /// The forward-looking row: the state as coloured text (<c>Word</c>), then when. The state's own
     /// label leads, shortened where the full one would not read as a sentence.
     /// </summary>
     private (string Word, string Tail) NextRun(ExchangeRateSyncStatus s) => s.State switch

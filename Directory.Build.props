@@ -28,6 +28,23 @@
   </PropertyGroup>
 
   <!--
+    XML doc comments are compiled so a stale reference breaks the build: a <see cref> or <paramref>
+    naming a type, member or parameter that was removed or renamed (CS1574, CS1734), badly formed
+    XML (CS1570) and a doc comment on nothing (CS1587). Without this the compiler never reads doc
+    comments, and they drifted unchecked until a review found ~50 of them (docs/maintainability-review-2026-11.md).
+    Three doc warnings are silenced because they say nothing about staleness:
+      * CS1591 — a public member has no doc comment. Comments are used sparingly here, by design.
+      * CS1573 — a <param> tag is missing for one parameter when others have one (~490 sites).
+      * CS0419 — a cref names an overloaded method without picking one. It still links.
+    A cref to a type in a project this one cannot reference (Core naming an Api type) cannot
+    resolve; write it as <c>Name</c> instead.
+  -->
+  <PropertyGroup>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591;CS1573;CS0419</NoWarn>
+  </PropertyGroup>
+
+  <!--
     NuGet audit, solution-wide and test projects included, over transitive packages too (issue #362 §7.5.8). The
     thumbnail decoder (Magick.NET, in Odyssey.Worker) parses untrusted uploads, so an ImageMagick or libwebp
     advisory has to stop the build. `moderate` is deliberately narrower than the default `low`. It runs only when

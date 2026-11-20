@@ -110,6 +110,19 @@ Phase 1 is done, on the branch for this PR.
 
 Out of scope and left as they are: comments in `Odyssey.TestData/Catalog/Contacts.cs` that explain the demo contacts in terms of insurance "link collections". Rewriting them needs the demo-data context, so they belong with O6 in Phase 2.
 
+## Phase 2 status
+
+Phase 2 is done, on the branch for this PR.
+
+| Item | Result |
+|---|---|
+| O6 | About 50 stale or malformed doc references fixed. A reference to a type in a project this one cannot reference (Core naming an Api type) became `<c>Name</c>`; the rest now point at the right type or member. Two orphaned doc blocks were removed (`JobRuns.cs`, `WeatherFetchService.cs`). |
+| M3 | `Directory.Build.props` turns on `GenerateDocumentationFile` for every project. A stale `cref`/`paramref` or malformed doc XML now fails the build. Three doc warnings are silenced, with the reason written beside them: CS1591 (member has no doc comment), CS1573 (one `<param>` tag missing, ~490 sites) and CS0419 (a cref to an overloaded method, which still links). A client publish was checked: no `.xml` doc files ship to the browser. |
+| M6 | `ContactImageFixtures.cs` moved to `TestShared/Fixtures/` (namespace `Odyssey.Testing.Fixtures`) and linked into Api.Tests, Core.Tests, IntegrationTests and E2ETests.Api. It no longer builds into the MigrationService and Worker images. |
+| U2 | `ContactQuickCreate` and `TagQuickCreate` share a `QuickCreateLedger` (temporary ids, pending creates, resolution). Composition, not a base class. |
+| P3 | `DemoDataSetTests.cs` rewritten with xUnit `Assert`. `AwesomeAssertions` removed from the project, `Directory.Packages.props`, `dependabot.yml` and `THIRD-PARTY-NOTICES.md`. The notices now say tests use `Assert` only and that FluentAssertions 8+ should not come back (Xceed licence). |
+| Contacts.cs | The insurance "link collection" comments now say what the household contacts are for today. The seeded description strings (demo data) are unchanged. |
+
 ## Implementation plan
 
 **Phase 1: quick wins** (S effort, safe, one PR)

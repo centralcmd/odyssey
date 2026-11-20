@@ -53,36 +53,22 @@ public sealed class TagQuickCreate<TTag>(
     IReferenceDataCache referenceData,
     ISnackbar snackbar) : ITagQuickCreate<TTag>
 {
-    private readonly List<Task> pending = [];
-    private readonly Dictionary<string, string> resolved = new(StringComparer.Ordinal);
-    private readonly HashSet<string> staged = new(StringComparer.Ordinal);
+    private readonly QuickCreateLedger ledger = new();
 
     public Action<string>? OnCreateFailed { get; set; }
 
     public OdsOption? Begin(string name)
     {
-        var clean = (name ?? string.Empty).Trim();
-        if (clean.Length == 0)
+        if (QuickCreateLedger.CleanName(name, TagWrite.MaxNameLength) is not { } clean)
             return null;
-        if (clean.Length > TagWrite.MaxNameLength)
-            clean = clean[..TagWrite.MaxNameLength];
 
-        var tempId = Guid.NewGuid().ToString();
-        staged.Add(tempId);
-        pending.Add(CreateAsync(clean, tempId));
+        var tempId = ledger.Stage(id => CreateAsync(clean, id));
         return new OdsOption(tempId, clean);
     }
 
-    public Task WhenSettledAsync() => Task.WhenAll(pending.ToArray());
+    public Task WhenSettledAsync() => ledger.WhenSettledAsync();
 
-    public string? Resolve(string? id)
-    {
-        if (string.IsNullOrEmpty(id))
-            return null;
-        if (!staged.Contains(id))
-            return id;
-        return resolved.GetValueOrDefault(id);
-    }
+    public string? Resolve(string? id) => ledger.Resolve(id);
 
     private async Task CreateAsync(string name, string tempId)
     {
@@ -91,7 +77,7 @@ public sealed class TagQuickCreate<TTag>(
             var result = await tags.CreateAsync(new TagWrite(name, null, false, Icon: null, Color: null));
             if (result.IsSuccess && result.CreatedId is { } id)
             {
-                resolved[tempId] = id.ToString();
+                ledger.Complete(tempId, id);
                 InvalidateCachedTags();
                 return;
             }

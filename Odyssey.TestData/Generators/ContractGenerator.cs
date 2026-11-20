@@ -122,9 +122,9 @@ public static class ContractGenerator
         DateTime? EndDate,
         bool Archived,
         IReadOnlyList<PartySpec> Parties,
-        /// <summary>Offset in months from the anchor at which this contract was paused; null is not paused.</summary>
+        // Offset in months from the anchor at which this contract was paused; null is not paused.
         int? PausedMonths = null,
-        /// <summary>Where this contract sits in the signature lifecycle (issue #145).</summary>
+        // Where this contract sits in the signature lifecycle (issue #145).
         SignatureState Signature = SignatureState.Signed);
 
     /// <summary>

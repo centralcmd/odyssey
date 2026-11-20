@@ -15,7 +15,7 @@ namespace Odyssey.ApiClient;
 /// </remarks>
 public readonly record struct ApiResult
 {
-    /// <summary>The response status. <see cref="default"/> when the request never completed (network error).</summary>
+    /// <summary>The response status. <c>default</c> when the request never completed (network error).</summary>
     public HttpStatusCode Status { get; init; }
 
     /// <summary>The parsed problem body on failure; <c>null</c> on success.</summary>

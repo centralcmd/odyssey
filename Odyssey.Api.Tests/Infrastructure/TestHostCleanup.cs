@@ -17,7 +17,7 @@ namespace Odyssey.Api.Tests.Infrastructure;
 /// <list type="bullet">
 /// <item><description>
 /// <b>The rate limiter's timer.</b> ASP.NET Core's rate-limiting middleware builds a partitioned limiter
-/// for the endpoint policies and keeps <see cref="RateLimiterOptions.GlobalLimiter"/>. Each runs a 100 ms
+/// for the endpoint policies and keeps <see cref="Microsoft.AspNetCore.RateLimiting.RateLimiterOptions.GlobalLimiter"/>. Each runs a 100 ms
 /// heartbeat on the process-wide timer queue, and the middleware never disposes either (it is not
 /// <see cref="IDisposable"/> and has no lifetime hook). The endpoint limiter's partitioner captures the
 /// middleware, so the timer roots the whole request pipeline, and through it the host.

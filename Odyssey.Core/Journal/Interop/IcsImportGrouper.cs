@@ -512,7 +512,7 @@ internal readonly record struct ComponentRef(long Offset, int Length, bool IsOve
     public bool HasInline { get; init; }
 }
 
-/// <summary>A read-only window of <paramref name="length"/> bytes over <paramref name="inner"/> from its position.</summary>
+/// <summary>A read-only window of <paramref name="window"/> bytes over <paramref name="inner"/> from its position.</summary>
 internal sealed class BoundedReadStream(Stream inner, long window) : Stream
 {
     private readonly long length = window;

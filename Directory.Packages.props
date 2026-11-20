@@ -66,10 +66,6 @@
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerGen" Version="10.3.1" />
     <PackageVersion Include="Swashbuckle.AspNetCore.SwaggerUI" Version="10.3.1" />
     <PackageVersion Include="coverlet.collector" Version="10.1.1" />
-    <!-- The Apache-2.0 community fork of FluentAssertions. FluentAssertions 8.0 moved to the
-         Xceed license, which is free for open source but charges for commercial use; the fork
-         continues the 7.x lineage under the original terms. See THIRD-PARTY-NOTICES.md. -->
-    <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <!-- The Blazor component renderer for Odyssey.Client.Tests (issue #444 §13 step 4a). That project
          had no renderer at all, so a component could ship unable to render and still "pass" — the
          OdsPasswordChangeForm precedent is exact: it threw on every render, took down two live pages,

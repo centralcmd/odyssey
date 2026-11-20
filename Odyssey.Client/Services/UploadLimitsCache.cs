@@ -18,7 +18,7 @@ namespace Odyssey.Client.Services;
 /// <para>
 /// <b>Failures are never cached, and never surfaced as null.</b> A failed load — including the
 /// degraded <c>503</c> — leaves the slot empty so the next reader retries, and this attempt resolves to
-/// <see cref="Fallback"/>.
+/// <see cref="UploadLimitsCache.Fallback"/>.
 /// </para>
 /// <para>
 /// <b>Mutations must invalidate.</b> A successful save on <c>/settings</c> calls

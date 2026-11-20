@@ -4,7 +4,7 @@ namespace Odyssey.Core.Email;
 /// Caps how often transactional mail may be sent to one address (issue #393). The per-IP limiter in
 /// <c>IdentityRateLimiting</c> cannot do this: the recipient lives in the request body, which would
 /// have to be buffered and parsed ahead of model binding, and an attacker rotating IPs slips it
-/// entirely. <see cref="SmtpEmailSender"/> is handed the address as a parameter, which makes it the
+/// entirely. <c>SmtpEmailSender</c> is handed the address as a parameter, which makes it the
 /// natural enforcement point.
 /// </summary>
 public interface IEmailSendThrottle

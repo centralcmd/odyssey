@@ -189,7 +189,7 @@ public static class ContractPartyRoleMatrix
     public static IReadOnlyCollection<ContractType> DeclaredTypes => Cells.Keys;
 
     /// <summary>
-    /// One column of the matrix. <paramref name="allowedBeyondUniversal"/> is what this type permits
+    /// One column of the matrix. <c>allowedBeyondUniversal</c> is what this type permits
     /// <em>in addition to</em> <see cref="UniversallyAllowed"/>, which is appended here rather than
     /// repeated on all ten columns.
     /// </summary>

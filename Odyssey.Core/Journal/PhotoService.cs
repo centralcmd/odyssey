@@ -291,7 +291,7 @@ public class PhotoService
     /// The first half of an import's photo upload (issue #521 v5 §1, implementation note 3): the library upload's checks,
     /// hash and metadata extraction, and the original's write as a reservation — outside any transaction, once. No tag is
     /// created, no album item is staged and no duplicate is refused here: the importer has already matched existing
-    /// content, and re-checks it under its lock before <see cref="AttachPrepared"/>.
+    /// content, and re-checks it under its lock before <see cref="AttachPreparedAsync"/>.
     /// </summary>
     internal async Task<PreparedPhoto> PrepareUploadAsync(
         FileUpload upload, string? title, string? caption, CancellationToken cancellationToken = default)
