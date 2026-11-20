@@ -23,7 +23,7 @@ namespace Odyssey.IntegrationTests;
 /// two replicas claiming at once each get a different job, and a stale sweep that fails a row while its
 /// provider call is in flight leaves the run's candidate rows rolled back with the lost job update.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class FileAnalysisQueueRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_file_analysis_queue";

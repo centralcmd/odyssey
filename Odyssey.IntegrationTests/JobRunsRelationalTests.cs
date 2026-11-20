@@ -15,7 +15,7 @@ namespace Odyssey.IntegrationTests;
 /// token (the requester's <c>SET NULL</c> key is pinned with the others by <c>UserAttributionForeignKeyTests</c>).
 /// None of it is observable on EF InMemory, which computes no column and enforces no index, CHECK or key.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbPrivateDatabaseCollection.Name)]
 public class JobRunsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_job_runs";

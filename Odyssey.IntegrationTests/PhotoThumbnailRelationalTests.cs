@@ -20,7 +20,7 @@ namespace Odyssey.IntegrationTests;
 /// <summary>
 /// Issue #362 on MariaDB: the migration's seed, CHECKs and keys (AC 20), which EF InMemory cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class PhotoThumbnailRelationalTests(MariaDbFixture fixture)
 {
     [SkippableFact]

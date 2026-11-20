@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// ambient transaction instead of opening a second one. None of it is observable on EF InMemory, which
 /// honours neither transactions nor the execution strategy.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContactConversionIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contact_conversion";

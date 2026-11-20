@@ -22,7 +22,7 @@ namespace Odyssey.IntegrationTests;
 /// never having been owned by an administrator, which is how the "last changed by" line renders.
 /// </para>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class SystemSettingsSeedIntegrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_system_settings_seed";

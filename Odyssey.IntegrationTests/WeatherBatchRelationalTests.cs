@@ -24,7 +24,7 @@ namespace Odyssey.IntegrationTests;
 /// §10 performance targets — all of which depend on what Pomelo sends to MariaDB, which the EF InMemory provider
 /// cannot show.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbTimingCollection.Name)]
 public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelper output)
 {
     private const string Database = "odyssey_weather_batch";

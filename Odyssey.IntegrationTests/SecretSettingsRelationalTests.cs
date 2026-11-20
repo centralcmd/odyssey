@@ -34,7 +34,7 @@ namespace Odyssey.IntegrationTests;
 /// </item>
 /// </list>
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class SecretSettingsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_secret_settings_relational";

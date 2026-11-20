@@ -29,7 +29,7 @@ namespace Odyssey.IntegrationTests;
 /// application-code twin (<c>ContractService.Delete</c>'s <c>.Include(c =&gt; c.Terms)</c>) asserted in
 /// <c>Odyssey.Api.Tests</c>; this is the other half of AC 13, where the database does the work.
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class ContractTermRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_terms";

@@ -22,7 +22,7 @@ namespace Odyssey.IntegrationTests;
 /// rolls back with it. The InMemory tier sees the conflict but not the rollback — it has no
 /// transactions — so the "exactly one ledger row" half lives here.
 /// </summary>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class FileAnalysisImportConcurrencyTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_file_analysis_import";

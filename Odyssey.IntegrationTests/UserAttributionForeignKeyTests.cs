@@ -26,7 +26,7 @@ namespace Odyssey.IntegrationTests;
 /// backed by an observation of them firing.
 /// </para>
 /// </remarks>
-[Collection(MariaDbCollection.Name)]
+[Collection(MariaDbSharedDatabaseCollection.Name)]
 public class UserAttributionForeignKeyTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_user_attribution";
