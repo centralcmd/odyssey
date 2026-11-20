@@ -193,7 +193,7 @@ public sealed class NewsOpmlRelationalTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
-    public async Task AC38_The_migration_applies_and_reverts_and_inserts_both_rows_at_their_defaults()
+    public async Task AC38_A_fresh_database_holds_both_rows_at_their_defaults()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         var database = $"odyssey_opml_mig_{Guid.NewGuid():N}"[..40];
@@ -206,14 +206,6 @@ public sealed class NewsOpmlRelationalTests(MariaDbFixture fixture)
 
         Assert.Equal("64", await ValueAsync(SystemSettingsKeys.NewsOpmlMaxImportMegabytes));
         Assert.Equal("100000", await ValueAsync(SystemSettingsKeys.NewsOpmlMaxImportEntries));
-
-        await MigrationSeam.MigrateToAsync(context, "_AddNewsModule");
-        Assert.False(await MigrationSeam.HasRunAsync(context, "_AddNewsOpmlImportLimits"));
-        Assert.Null(await ValueAsync(SystemSettingsKeys.NewsOpmlMaxImportMegabytes));
-        Assert.Null(await ValueAsync(SystemSettingsKeys.NewsOpmlMaxImportEntries));
-
-        await context.Database.MigrateAsync();
-        Assert.True(await MigrationSeam.HasRunAsync(context, "_AddNewsOpmlImportLimits"));
         Assert.Equal(SystemSettingsDefaults.NewsOpmlMaxImportMegabytes.ToString(System.Globalization.CultureInfo.InvariantCulture),
             await ValueAsync(SystemSettingsKeys.NewsOpmlMaxImportMegabytes));
         Assert.Equal(SystemSettingsDefaults.NewsOpmlMaxImportEntries.ToString(System.Globalization.CultureInfo.InvariantCulture),

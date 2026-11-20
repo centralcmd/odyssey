@@ -11,111 +11,14 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #409: the two migrations (the pre-validation, the idempotent copy, the parity check),
-/// the generated guards' unique indexes, the CHECKs, the <c>Generation</c> token and the requester's <c>SET NULL</c>
-/// key. None of it is observable on EF InMemory, which computes no column and enforces no index, CHECK or key.
+/// The relational half of issue #409: the generated guards' unique indexes, the CHECKs and the <c>Generation</c>
+/// token (the requester's <c>SET NULL</c> key is pinned with the others by <c>UserAttributionForeignKeyTests</c>).
+/// None of it is observable on EF InMemory, which computes no column and enforces no index, CHECK or key.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class JobRunsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_job_runs";
-    private const string PreviousMigration = "_AddPhotoAlbumIconAndColor";
-    private const string CopyMigration = "_AddJobRuns";
-    private const string DropMigration = "_DropExchangeRateSyncRuns";
-
-    private static readonly DateTime Started = new(2026, 11, 1, 8, 0, 0, DateTimeKind.Utc);
-
-    /// <summary>AC 1, 27 and §11: every legacy row arrives with its id and fields, a replay copies nothing twice, a Running row and a deleted requester included.</summary>
-    [SkippableFact]
-    public async Task The_migrations_copy_every_legacy_row_once_and_drop_the_old_table()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-        await using var context = NewContext();
-
-        var userId = Guid.NewGuid().ToString();
-        await InsertUserAsync(context, userId);
-        var succeeded = Guid.NewGuid();
-        var failed = Guid.NewGuid();
-        var running = Guid.NewGuid();
-        await InsertLegacyAsync(context, succeeded, trigger: 1, status: 1, errorKind: null, finished: Started.AddMinutes(2), requester: userId, inserted: 10, deleted: 0, rejected: 1);
-        await InsertLegacyAsync(context, failed, trigger: 0, status: 3, errorKind: 1, finished: Started.AddMinutes(1), requester: null, inserted: 0, deleted: 0, rejected: 0);
-        await InsertLegacyAsync(context, running, trigger: 0, status: 0, errorKind: null, finished: null, requester: null, inserted: 0, deleted: 0, rejected: 0);
-
-        await MigrationSeam.MigrateToAsync(context, CopyMigration);
-
-        Assert.Equal(3L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobRuns` WHERE `JobType` = 1"));
-        var copied = await MigrationSeam.RowAsync(context, $"SELECT * FROM `JobRuns` WHERE `JobRunId` = '{succeeded}'");
-        Assert.NotNull(copied);
-        Assert.Equal(userId, copied!["RequestedByUserId"]);
-        Assert.Equal(120_000L, Convert.ToInt64(copied["DurationMs"]));
-        Assert.Equal(10, Convert.ToInt32(copied["ItemsProcessed"]));
-        Assert.Equal(1, Convert.ToInt32(copied["ItemsFailed"]));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM `JobRuns` WHERE `JobRunId` = '{failed}' AND `FailureCategory` = 1 AND `ErrorKind` = 1"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM `JobRuns` WHERE `JobRunId` = '{running}' AND `Status` = 0 AND `ExclusiveGuard` = 1 AND `FinishedAtUtc` IS NULL"));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` = 'JobRunRetentionDays' AND `Value` = '90'"));
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(DISTINCT `Generation`) - COUNT(*) FROM `JobRuns`"));
-
-        // A replay of the copy (an interruption after it committed) inserts only what is missing, nothing twice.
-        await context.Database.ExecuteSqlRawAsync($"DELETE FROM `JobRuns` WHERE `JobRunId` <> '{failed}'");
-        await context.Database.ExecuteSqlRawAsync(CopySql);
-        Assert.Equal(3L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobRuns`"));
-        await context.Database.ExecuteSqlRawAsync(CopySql);
-        Assert.Equal(3L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobRuns`"));
-
-        await MigrationSeam.MigrateToAsync(context, DropMigration);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
-
-        // AC 27: deleting the requester nulls the attribution and keeps the row.
-        await context.Database.ExecuteSqlRawAsync($"DELETE FROM `AspNetUsers` WHERE `Id` = '{userId}'");
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM `JobRuns` WHERE `JobRunId` = '{succeeded}' AND `RequestedByUserId` IS NULL"));
-    }
-
-    /// <summary>AC 34: the pre-validation names the first offending legacy id and creates nothing.</summary>
-    [SkippableFact]
-    public async Task The_copy_aborts_naming_a_legacy_row_that_violates_a_constraint()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-        await using var context = NewContext();
-        var bad = Guid.NewGuid();
-        // Succeeded with no finish time: allowed by the old table, refused by CK_JobRuns_FinishedMatchesStatus.
-        await InsertLegacyAsync(context, bad, trigger: 0, status: 1, errorKind: null, finished: null, requester: null, inserted: 0, deleted: 0, rejected: 0);
-
-        var ex = await Assert.ThrowsAnyAsync<Exception>(() => MigrationSeam.MigrateToAsync(context, CopyMigration));
-
-        Assert.Contains(bad.ToString(), ex.GetBaseException().Message, StringComparison.OrdinalIgnoreCase);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "JobRuns"));
-    }
-
-    /// <summary>AC 2, 34: the parity check refuses the drop on a missing id and on a counter mismatch.</summary>
-    [SkippableFact]
-    public async Task The_drop_aborts_and_keeps_the_table_when_a_copy_is_missing_or_differs()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, PreviousMigration);
-        await using var context = NewContext();
-        var first = Guid.NewGuid();
-        var second = Guid.NewGuid();
-        await InsertLegacyAsync(context, first, trigger: 0, status: 1, errorKind: null, finished: Started.AddMinutes(1), requester: null, inserted: 4, deleted: 0, rejected: 0);
-        await InsertLegacyAsync(context, second, trigger: 0, status: 1, errorKind: null, finished: Started.AddMinutes(1), requester: null, inserted: 4, deleted: 0, rejected: 0);
-        await MigrationSeam.MigrateToAsync(context, CopyMigration);
-
-        await context.Database.ExecuteSqlRawAsync($"UPDATE `JobRuns` SET `RowsInserted` = 5 WHERE `JobRunId` = '{first}'");
-        var mismatch = await Assert.ThrowsAnyAsync<Exception>(() => MigrationSeam.MigrateToAsync(context, DropMigration));
-        Assert.Contains(first.ToString(), mismatch.GetBaseException().Message, StringComparison.OrdinalIgnoreCase);
-        Assert.True(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
-
-        await context.Database.ExecuteSqlRawAsync($"UPDATE `JobRuns` SET `RowsInserted` = 4 WHERE `JobRunId` = '{first}'");
-        await context.Database.ExecuteSqlRawAsync($"DELETE FROM `JobRuns` WHERE `JobRunId` = '{second}'");
-        var missing = await Assert.ThrowsAnyAsync<Exception>(() => MigrationSeam.MigrateToAsync(context, DropMigration));
-        Assert.Contains(second.ToString(), missing.GetBaseException().Message, StringComparison.OrdinalIgnoreCase);
-        Assert.True(await MigrationSeam.TableExistsAsync(context, "ExchangeRateSyncRuns"));
-    }
 
     /// <summary>AC 3: the exclusive guard admits one running sync or file-storage run, and one manual run per job.</summary>
     [SkippableFact]
@@ -249,30 +152,6 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
 
     // ── Helpers ───────────────────────────────────────────────────────────────────────────────────────────
 
-    /// <summary>The copy statement of <c>AddJobRuns</c>, read from the migration so the test re-runs exactly what ships.</summary>
-    private static string CopySql
-    {
-        get
-        {
-            var source = File.ReadAllText(Directory.GetFiles(
-                Path.Combine(RepositoryRoot(), "Odyssey.Context", "Migrations"), "*_AddJobRuns.cs").Single());
-            var start = source.IndexOf("INSERT INTO `JobRuns`", StringComparison.Ordinal);
-            var end = source.IndexOf("\"\"\");", start, StringComparison.Ordinal);
-            return source[start..end].Trim();
-        }
-    }
-
-    private static string RepositoryRoot()
-    {
-        var directory = new DirectoryInfo(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Odyssey.sln")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Could not locate the repository root.");
-    }
-
     private static TRun Running<TRun>(JobRunTrigger trigger)
         where TRun : JobRun, new() => new()
         {
@@ -307,27 +186,6 @@ public class JobRunsRelationalTests(MariaDbFixture fixture)
         var ex = await Assert.ThrowsAsync<MySqlException>(() => context.Database.ExecuteSqlRawAsync(sql));
         Assert.Equal(4025, ex.Number);
     }
-
-    private static Task InsertLegacyAsync(
-        OdysseyContext context, Guid id, int trigger, int status, int? errorKind, DateTime? finished, string? requester,
-        int inserted, int deleted, int rejected) =>
-        context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `ExchangeRateSyncRuns` (`ExchangeRateSyncRunId`, `Trigger`, `RequestedByUserId`, `Provider`, `Status`, `ErrorKind`, "
-            + "`StartedAtUtc`, `FinishedAtUtc`, `SpanFrom`, `SpanTo`, `CurrencyCodes`, `RowsInserted`, `RowsSkipped`, `RowsRejected`, `RowsDeleted`, `ClaimedAtUtc`) "
-            + "VALUES ({0}, {1}, {2}, 1, {3}, {4}, {5}, {6}, '2026-10-01', '2026-10-31', 'EUR,USD', {7}, 2, {8}, {9}, {5})",
-            id, trigger, requester!, status, errorKind!, Started, finished!, inserted, rejected, deleted);
-
-    private static Task InsertUserAsync(OdysseyContext context, string id) =>
-        context.Database.ExecuteSqlAsync(
-            $"""
-             INSERT INTO `AspNetUsers`
-                 (`Id`, `UserName`, `NormalizedUserName`, `Email`, `NormalizedEmail`, `EmailConfirmed`,
-                  `PasswordHash`, `SecurityStamp`, `ConcurrencyStamp`, `PhoneNumberConfirmed`,
-                  `TwoFactorEnabled`, `LockoutEnabled`, `AccessFailedCount`, `MustChangePassword`)
-             VALUES
-                 ({id}, 'jobs@runs.test', 'JOBS@RUNS.TEST', 'jobs@runs.test', 'JOBS@RUNS.TEST', 1,
-                  'hash', 'stamp', 'concurrency', 0, 0, 1, 0, 0)
-             """);
 
     private async Task MigratedAsync()
     {

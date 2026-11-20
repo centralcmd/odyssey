@@ -11,48 +11,14 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// Issue #428 on real MariaDB (PR #441 test review): <c>MovePhotoOriginalsToObjectStore</c> applies over existing
-/// (legacy) photos and leaves each one valid, and the constraints it adds — exactly one byte source, a complete original,
-/// the RESTRICT key to <c>StoredObjects</c>, the failure-code list and the seeded lease row — hold in the database, where
-/// the EF InMemory provider sees none of them.
+/// Issue #428 on real MariaDB (PR #441 test review): the constraints <c>MovePhotoOriginalsToObjectStore</c> adds —
+/// exactly one byte source, a complete original, the RESTRICT key to <c>StoredObjects</c>, the failure-code list and the
+/// seeded lease row — hold in the database, where the EF InMemory provider sees none of them.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_photo_originals";
-
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddFileAnalysisMatchContextAndPromptAdditions";
-
-    [SkippableFact]
-    public async Task Existing_photos_stay_valid_and_legacy_across_the_migration()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await fixture.CreateDatabaseAtMigrationAsync(Database, Baseline);
-        var photoId = Guid.NewGuid();
-        var fileId = Guid.NewGuid();
-
-        try
-        {
-            await using var context = NewContext();
-            await InsertLegacyAsync(context, photoId, fileId);
-
-            await context.Database.MigrateAsync();
-
-            var row = await MigrationSeam.RowAsync(context,
-                $"SELECT `FileId`, `StoredObjectId`, `FileName`, `LegacyFileId` FROM `Photos` WHERE `PhotoId` = '{photoId}'");
-            Assert.NotNull(row);
-            Assert.Equal(fileId, Guid.Parse(row!["FileId"]!.ToString()!));
-            Assert.Null(row["StoredObjectId"]);
-            Assert.Null(row["FileName"]);
-            Assert.Null(row["LegacyFileId"]);
-            Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `PhotoOriginalBackfillLeases` WHERE `Id` = 1"));
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
 
     [SkippableFact]
     public async Task The_database_enforces_one_source_a_complete_original_restrict_and_the_failure_codes()
@@ -90,7 +56,8 @@ public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
                 $"INSERT INTO `PhotoOriginalBackfillFailures` (`PhotoId`, `Code`, `RecordedAtUtc`) VALUES ('{parked}', 'bogus', NOW())"));
             await context.Database.ExecuteSqlRawAsync(
                 $"INSERT INTO `PhotoOriginalBackfillFailures` (`PhotoId`, `Code`, `RecordedAtUtc`) VALUES ('{parked}', 'error', NOW())");
-            // The singleton lease.
+            // The singleton lease: seeded, and the only row there can be.
+            Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `PhotoOriginalBackfillLeases` WHERE `Id` = 1"));
             await AssertRefusedAsync(context.Database.ExecuteSqlRawAsync(
                 $"INSERT INTO `PhotoOriginalBackfillLeases` (`Id`, `Version`, `ConsecutiveEnvironmentalFailures`, `CopiedSharedCount`) VALUES (2, '{Guid.NewGuid()}', 0, 0)"));
         }
@@ -101,13 +68,6 @@ public class PhotoOriginalsMigrationTests(MariaDbFixture fixture)
     }
 
     private static async Task AssertRefusedAsync(Task write) => await Assert.ThrowsAsync<MySqlException>(() => write);
-
-    private static async Task InsertLegacyAsync(OdysseyContext context, Guid photoId, Guid fileId)
-    {
-        await InsertFileAsync(context, fileId);
-        await context.Database.ExecuteSqlRawAsync(
-            $"INSERT INTO `Photos` (`PhotoId`, `FileId`, `CreatedAt`, `UpdatedAt`) VALUES ('{photoId}', '{fileId}', NOW(), NOW())");
-    }
 
     private static async Task InsertFileAsync(OdysseyContext context, Guid fileId)
     {

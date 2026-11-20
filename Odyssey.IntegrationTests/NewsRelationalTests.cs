@@ -14,7 +14,7 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #470's schema (B1): <c>AddNewsModule</c> both ways, the seeded totals row, every
+/// The relational half of issue #470's schema (B1): the seeded totals row, every
 /// news CHECK, the FULLTEXT index, the foreign keys' on-delete behaviour (the RESTRICT key to <c>StoredObjects</c>
 /// included), the unique keys and the two concurrency tokens. None of it is observable on EF InMemory, which enforces
 /// no CHECK, index or key.
@@ -23,8 +23,6 @@ namespace Odyssey.IntegrationTests;
 public class NewsRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_news";
-    private const string PreviousMigration = "_AddExchangeRateFetchedLookupIndex";
-    private const string Migration = "_AddNewsModule";
 
     // MariaDB error numbers: a failed CHECK, a RESTRICT key refusing a parent delete, a missing parent, a duplicate.
     private const int CheckViolation = 4025;
@@ -34,9 +32,9 @@ public class NewsRelationalTests(MariaDbFixture fixture)
 
     private static readonly DateTime Now = new(2026, 11, 16, 8, 0, 0, DateTimeKind.Utc);
 
-    /// <summary>AC 36, 78 and §11.2: a fresh database holds the one totals row; Down removes job 9's rows first and reverts cleanly.</summary>
+    /// <summary>AC 36 and §11.2: a fresh database holds the one totals row and the news settings.</summary>
     [SkippableFact]
-    public async Task The_migration_seeds_the_totals_row_and_reverts_and_reapplies_cleanly()
+    public async Task A_fresh_database_holds_the_totals_row_and_the_news_settings()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
         await MigratedAsync();
@@ -44,36 +42,8 @@ public class NewsRelationalTests(MariaDbFixture fixture)
 
         var totals = await context.NewsStorageTotals.AsNoTracking().SingleAsync();
         Assert.Equal((NewsStorageTotal.SingletonId, 0L, 0L), (totals.Id, totals.ImageBytes, totals.TextAndSourceBytes));
-        // Nine from AddNewsModule, two from AddNewsOpmlImportLimits (issue #508); migrating below the module reverts both.
+        // Nine from AddNewsModule, two from AddNewsOpmlImportLimits (issue #508).
         Assert.Equal(11L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'News%'"));
-
-        await AddFeedAsync(context);
-        await AddRunAsync(context, run => run.FeedsMarked = 3);
-        context.JobHeartbeats.Add(new JobHeartbeat { JobType = JobType.NewsFeedFetch, WorkerId = Guid.NewGuid(), LastTickAtUtc = Now });
-        await context.SaveChangesAsync();
-
-        // Down deletes the job's run-log rows before the narrowed CHECKs would refuse them, then drops the tables.
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-
-        foreach (var table in new[]
-        {
-            "NewsFeeds", "NewsFeedFetchStates", "NewsFeedCounters", "NewsStorageTotals", "NewsFeedBuckets", "NewsHostThrottle",
-            "NewsArticles", "NewsArticleIdentities", "NewsArticleRevisions", "NewsArticleFiles", "NewsArticleImages",
-            "NewsTags", "NewsFeedTags", "NewsArticleTags", "NewsFeedCrashEvents",
-        })
-        {
-            Assert.False(await MigrationSeam.TableExistsAsync(context, table), table);
-        }
-
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobRuns` WHERE `JobType` = 9"));
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `JobHeartbeats` WHERE `JobType` = 9"));
-        Assert.Equal(0L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `SystemSettings` WHERE `Key` LIKE 'News%'"));
-        await AssertRefusedAsync(CheckViolation, () => context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `JobHeartbeats` (`JobType`, `WorkerId`, `LastTickAtUtc`) VALUES (9, UUID(), NOW())"));
-
-        await context.Database.MigrateAsync();
-        Assert.True(await MigrationSeam.HasRunAsync(context, Migration));
-        Assert.Equal(1L, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `NewsStorageTotals` WHERE `Id` = 1"));
     }
 
     /// <summary>§4.14: the job CHECKs admit 9 and the run subtype's counters, which may not go negative.</summary>

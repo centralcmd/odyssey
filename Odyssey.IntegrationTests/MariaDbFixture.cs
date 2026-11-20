@@ -74,33 +74,16 @@ public sealed class MariaDbFixture : IAsyncLifetime
     /// <remarks>Use it wherever a test would otherwise drop and create a private database, then
     /// <c>MigrationSeam.MigrateToAsync</c> it from empty to its baseline.</remarks>
     public Task<string> CreateDatabaseAtMigrationAsync(string database, string nameSuffix) =>
-        CopyAsync(database, ResolveMigrationId(nameSuffix, offset: 0));
+        CopyAsync(database, ResolveMigrationId(nameSuffix));
 
-    /// <summary>
-    /// As <see cref="CreateDatabaseAtMigrationAsync"/>, at the migration directly BEFORE the one whose name ends with
-    /// <paramref name="nameSuffix"/> — for a test that names its subject rather than its baseline.
-    /// </summary>
-    public Task<string> CreateDatabaseBeforeMigrationAsync(string database, string nameSuffix) =>
-        CopyAsync(database, ResolveMigrationId(nameSuffix, offset: -1));
-
-    private static string ResolveMigrationId(string nameSuffix, int offset)
+    private static string ResolveMigrationId(string nameSuffix)
     {
         // Resolving an id needs the migrations assembly but no connection, so the server version is pinned rather
         // than auto-detected and the connection string is never dialled.
         using var context = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql("server=localhost;database=odyssey", new MariaDbServerVersion(new Version(11, 4, 0)))
             .Options);
-        var id = MigrationSeam.IdOf(context, nameSuffix);
-        if (offset == 0)
-        {
-            return id;
-        }
-
-        var all = context.Database.GetMigrations().ToList();
-        var index = all.IndexOf(id) + offset;
-        return index >= 0
-            ? all[index]
-            : throw new InvalidOperationException($"No migration precedes '{id}'.");
+        return MigrationSeam.IdOf(context, nameSuffix);
     }
 
     private async Task<string> CopyAsync(string database, string? migrationId)
