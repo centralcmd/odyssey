@@ -347,13 +347,7 @@ public partial class PropertiesCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(p.PropertyId.ToString(), "Property ID copied.")),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(p.PropertyId.ToString(), OdsCopied.Id("Property")))));
 
         if (_canUpdate || _canDelete)
             items.Add(new OdsMenuItem { Divider = true });
@@ -632,14 +626,13 @@ public partial class PropertiesCard
     /// contact — that state and since when, so it is stated in text and never by tone alone.
     /// </summary>
     internal static string AssociationFoot(PropertyHomeownerAssociation association) =>
-        association.Archived is { } archived ? $"Archived contact · since {LongDate(archived)}" : "Organization";
+        association.Archived is { } archived ? $"Archived contact · since {OdsDates.Long(archived)}" : "Organization";
 
     private static readonly OdsTypeOption OrganizationMeta =
         OdsTypeRegistries.ContactTypeOf(nameof(Odyssey.Dtos.ContactType.Organization));
 
     private static string Area(decimal sqm) => $"{sqm.ToString("#,##0.#", CultureInfo.InvariantCulture)} m²";
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.InvariantCulture);
 
     private string? CurrencyName(string code) =>
         _currenciesByCode.TryGetValue(code, out var currency) ? currency.Name : null;

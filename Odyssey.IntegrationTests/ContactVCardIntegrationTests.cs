@@ -30,7 +30,6 @@ public class ContactVCardIntegrationTests(MariaDbFixture fixture)
     /// </summary>
     private static ContactAvatarService AvatarServiceFor(OdysseyContext context) =>
         new(context,
-            new FileService(context, new FileValidationService()),
             new FixedUploadLimits(64L * 1024 * 1024),
             writer: Odyssey.Testing.FileStorage.TestFileStores.For(context).Writer,
             store: Odyssey.Testing.FileStorage.TestFileStores.For(context).Store,

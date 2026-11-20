@@ -20,8 +20,8 @@ namespace Odyssey.Context.Migrations
         /// which is what the old window computation did. <c>DATE()</c> truncates explicitly, matching
         /// the calendar day the old window read. An inverted legacy term keeps its start and opens its
         /// end, since an inverted scope would fail the CHECK added next. Every value derives from the
-        /// term columns alone, so re-running it is idempotent; public so the integration test runs the
-        /// same text.
+        /// term columns alone, so re-running it is idempotent. Public so a seam test could run the same
+        /// text; that test was retired once every production database had applied this migration.
         /// </summary>
         public const string BackfillSql = """
             UPDATE `Contracts` SET

@@ -5,28 +5,22 @@ using Xunit;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// <c>AddTransactionTagIcon</c> (issue #279) applied over a database that already holds tags — the
-/// state every production database is in. The column must arrive as <c>varchar(64) NULL</c> with no
-/// default and no backfill, so every existing tag reads as the default icon.
+/// The transaction-tag icon column (issue #279) on real MariaDB: <c>varchar(64) NULL</c> with no default, so a
+/// tag written without one reads as the default icon, and a set icon round-trips.
 /// </summary>
 /// <remarks>
-/// Unobservable on the fast tiers: the EF InMemory provider has no schema and no migrations.
+/// Unobservable on the fast tiers: the EF InMemory provider has no schema.
 /// </remarks>
 [Collection(MariaDbCollection.Name)]
 public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_transaction_tag_icon";
 
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddCurrencyForeignKeys";
-
-    private const string Subject = "_AddTransactionTagIcon";
-
     [SkippableFact]
-    public async Task A_pre_existing_tag_survives_the_upgrade_with_no_icon_and_the_column_is_nullable_varchar_64()
+    public async Task A_tag_written_without_an_icon_reads_none_and_the_column_is_nullable_varchar_64()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
+        await fixture.CreateMigratedDatabaseAsync(Database);
 
         var tagId = Guid.NewGuid();
 
@@ -34,18 +28,9 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
         {
             await using (var context = NewContext())
             {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
-                Assert.Null(await ColumnAsync(context));
-                // Raw SQL: the entity already carries Icon, which the baseline schema does not have.
-                await MigrationSeam.InsertTransactionTagAsync(context, tagId, "Groceries");
-            }
-
-            await using (var context = NewContext())
-            {
-                // To the latest schema, not just the subject: the entity read below maps every column the
-                // model has now, including ones later migrations add (issue #392 added tag colours).
-                await context.Database.MigrateAsync();
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
+                // Raw SQL, naming no icon: the column's own default is what is under test.
+                await context.Database.ExecuteSqlAsync(
+                    $"INSERT INTO `TransactionTags` (`TransactionTagId`, `Name`) VALUES ({tagId}, {"Groceries"})");
 
                 var column = await ColumnAsync(context);
                 Assert.NotNull(column);
@@ -85,13 +70,6 @@ public class TransactionTagIconMigrationTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

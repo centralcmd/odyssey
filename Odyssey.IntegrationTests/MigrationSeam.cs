@@ -23,9 +23,22 @@ namespace Odyssey.IntegrationTests;
 /// </para>
 ///
 /// <para>
+/// The "migrate to N−1" step is not replayed from empty by each test:
+/// <see cref="MariaDbFixture.CreateDatabaseAtMigrationAsync"/> hands out a copy of a template migrated to that point,
+/// built once per container (<see cref="MigratedSchemaTemplate"/>). <see cref="MigrateToAsync"/> is what the test
+/// then runs, up to its subject or back down across it.
+/// </para>
+///
+/// <para>
 /// Migration ids are resolved by their NAME suffix rather than written out with their timestamps. A
 /// re-scaffold changes the timestamp and nothing else; a test that hardcoded it would fail for a reason
 /// that has nothing to do with what it asserts.
+/// </para>
+///
+/// <para>
+/// A data migration's seam tests are temporary: they are removed in the first PR after the release containing the
+/// migration reaches production, keeping only their assertions about the current schema (see the README). The raw
+/// query helpers below outlive them and are used at head throughout the project.
 /// </para>
 /// </summary>
 internal static class MigrationSeam
@@ -36,13 +49,6 @@ internal static class MigrationSeam
     {
         var migrator = context.GetService<IMigrator>();
         await migrator.MigrateAsync(IdOf(context, nameSuffix), ct);
-    }
-
-    /// <summary>Reverts everything, i.e. migrates down past the first migration.</summary>
-    public static async Task MigrateToEmptyAsync(OdysseyContext context, CancellationToken ct = default)
-    {
-        var migrator = context.GetService<IMigrator>();
-        await migrator.MigrateAsync(Migration.InitialDatabase, ct);
     }
 
     /// <summary>The full id (timestamp + name) of the migration whose name ends with the suffix.</summary>
@@ -139,32 +145,4 @@ internal static class MigrationSeam
             await context.Database.CloseConnectionAsync();
         }
     }
-
-    /// <summary>
-    /// Inserts a contract's scalar columns with raw SQL, for a "before" state seeded below head. The
-    /// entity cannot be used there: EF writes every column the CURRENT model maps, so a column a later
-    /// migration adds (<c>CreatedByUserId</c> was the first to break this) makes the insert fail
-    /// against the older schema. Only <c>ContractId</c>, <c>Name</c>, <c>Type</c>, <c>StartDate</c>,
-    /// <c>Signed</c> and <c>CreatedAtUtc</c> are written — every other property on
-    /// <paramref name="contract"/>, <c>Parties</c> included, is IGNORED, so a test needing another
-    /// column writes it itself. Parties go in through <c>context.ContractParties</c>.
-    /// </summary>
-    public static Task InsertContractAsync(OdysseyContext context, Contract contract, CancellationToken ct = default) =>
-        context.Database.ExecuteSqlAsync(
-            $"""
-            INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `StartDate`, `Signed`, `CreatedAtUtc`)
-            VALUES ({contract.ContractId}, {contract.Name}, {(int)contract.Type}, {contract.StartDate}, {contract.Signed}, {contract.CreatedAtUtc})
-            """,
-            ct);
-
-    /// <summary>
-    /// Inserts a transaction tag's <c>TransactionTagId</c>, <c>Name</c> and <c>Description</c> with raw SQL, for a "before"
-    /// state seeded below head — the same reason as <see cref="InsertContractAsync"/>: the current
-    /// model maps <c>Icon</c> (issue #279), which an older schema does not have.
-    /// </summary>
-    public static Task InsertTransactionTagAsync(
-        OdysseyContext context, Guid id, string name, string? description = null, CancellationToken ct = default) =>
-        context.Database.ExecuteSqlAsync(
-            $"INSERT INTO `TransactionTags` (`TransactionTagId`, `Name`, `Description`) VALUES ({id}, {name}, {description})",
-            ct);
 }

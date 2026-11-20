@@ -26,7 +26,7 @@
                         <span class="fvm-dot">·</span>
                         <span class="fvm-muted mono">@FormatFileSize(SizeBytes)</span>
                         <span class="fvm-dot">·</span>
-                        <span class="fvm-muted">@UploadedAtUtc.ToLocalTime().ToString("MMM dd, yyyy")</span>
+                        <span class="fvm-muted">@OdsDates.Long(UploadedAtUtc.ToLocalTime())</span>
                     </div>
                 </div>
                 <button type="button" class="aam-x" aria-label="Close" @onclick="CloseAsync">

@@ -84,15 +84,15 @@ public static class MapsterConfig
             //
             // HEADS-UP (Mapster version): this MapWith converter is registered for the NON-nullable
             // Interval pair, but Term.Interval is nullable and maps to the (different) nullable
-            // Dtos.Interval. Mapster 10.0.8 lifts this converter over Nullable<T> with a
-            // null guard (null -> null); Mapster 10.0.9 regressed that lifting and calls src.Value
-            // unconditionally, throwing "Nullable object must have a value" for null intervals
-            // (interest-rate/expected-return terms legitimately have none). That broke 17 term
-            // tests, so Mapster is pinned to 10.0.8 in Directory.Packages.props. Before accepting a bump
-            // to >= 10.0.9, register null-guarded nullable converters here, e.g.
+            // Dtos.Interval, so it relies on Mapster lifting the converter over Nullable<T> with a
+            // null guard (null -> null). Mapster 10.0.9 regressed that lifting and threw "Nullable
+            // object must have a value" for null intervals (interest-rate/expected-return terms
+            // legitimately have none); the version pinned in Directory.Packages.props lifts correctly
+            // again, and the term suites pin the behaviour. If a future bump fails them that way,
+            // register null-guarded nullable converters here, e.g.
             //   TypeAdapterConfig<ContextInterval?, DtoInterval?>.NewConfig()
             //       .MapWith(src => src.HasValue ? EnumMirror.Convert(src.Value, DtoInterval.OneTime) : null);
-            // (and the reverse), then re-verify the term suites stay green.
+            // (and the reverse).
             Mirror(DtoInterval.OneTime, ContextInterval.OneTime);
 
             // A budget item's identity IS its tag (issue #75), so the read model embeds it — and this

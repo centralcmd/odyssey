@@ -34,12 +34,22 @@ public class TagColorApiTests
 
     public static TheoryData<Kind> Kinds => new() { Kind.Transaction, Kind.Journal, Kind.Task, Kind.Photo };
 
+    /// <summary>
+    /// Representatives only: the full <see cref="HexColorNegativeCorpus"/> is asserted in
+    /// <c>Odyssey.Core.Tests</c> against the attribute stack on every <c>[HexColor]</c> property
+    /// (<c>HexColorTests</c>) and against every tag service (<c>TagColorServiceTests</c>). Here it is
+    /// enough to prove both attributes are wired on each endpoint: a control character reaches
+    /// <c>[HexColor]</c> (and exercises the never-echoes check on an escaped value), and an over-long
+    /// value reaches <c>[StringLength]</c>, which must report the same single message.
+    /// </summary>
+    public static IReadOnlyList<string> RepresentativeInvalidColors { get; } = ["#FFFFF\u0000", "#FFFFFFFF"];
+
     public static TheoryData<Kind, string> KindsByInvalidColor()
     {
         var data = new TheoryData<Kind, string>();
         foreach (var kind in new[] { Kind.Transaction, Kind.Journal, Kind.Task, Kind.Photo })
         {
-            foreach (var value in HexColorNegativeCorpus.All)
+            foreach (var value in RepresentativeInvalidColors)
             {
                 data.Add(kind, value);
             }
@@ -288,8 +298,8 @@ public class TagColorApiTests
         Assert.Equal("#C2185B", await ColorOf(custom));
     }
 
-    public static TheoryData<string> NonEmptyInvalidColors() =>
-        [.. HexColorNegativeCorpus.All.Where(color => color.Length > 0)];
+    // Representatives, as for the tags above; an empty string is the [Required] case below.
+    public static TheoryData<string> NonEmptyInvalidColors() => [.. RepresentativeInvalidColors];
 
     [Theory]
     [MemberData(nameof(NonEmptyInvalidColors))]

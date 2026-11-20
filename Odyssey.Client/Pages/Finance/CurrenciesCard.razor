@@ -177,7 +177,7 @@
 @* Stays mounted once opened (only its Open flips), so the close runs the modal's own focus restore. *@
 @if (_purging is { } purge)
 {
-    <ConfirmDeleteDialog @key="purge.CurrencyCode"
+    <OdsConfirmDialog @key="purge.CurrencyCode"
                          Open="_purgeOpen"
                          OpenChanged="OnPurgeOpenChanged"
                          Icon="delete_sweep"
@@ -191,7 +191,7 @@
 @* A record list has no inline confirm, so Delete asks first, in the same anatomy as the purge. *@
 @if (_deleting is { } doomed)
 {
-    <ConfirmDeleteDialog @key="@($"delete-{doomed.CurrencyCode}")"
+    <OdsConfirmDialog @key="@($"delete-{doomed.CurrencyCode}")"
                          Open="_deleteOpen"
                          OpenChanged="OnDeleteOpenChanged"
                          Title="@($"Delete {doomed.CurrencyCode}?")"

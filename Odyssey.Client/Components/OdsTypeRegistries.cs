@@ -805,11 +805,6 @@ public static partial class OdsTypeRegistries
             [new("photo", "Photo tag") { Icon = "photo" }];
     }
 
-    /// <summary>Project a registry to the inline-create rows a picker offers (Odyssey Design System ·
-    /// <c>CONTACT_CREATE_KINDS</c>) — one row per member, in the registry's own order.</summary>
-    public static IReadOnlyList<OdsCreateKind> ToCreateKinds(IReadOnlyList<OdsTypeOption> types) =>
-        [.. types.Select(t => new OdsCreateKind(t.Key, t.Label) { Icon = t.Icon })];
-
     /// <summary>
     /// The create rows every contact picker offers — <b>Organization first</b>, then Person.
     ///

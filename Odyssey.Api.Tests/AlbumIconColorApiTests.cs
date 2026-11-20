@@ -113,16 +113,11 @@ public class AlbumIconColorApiTests
         Assert.Equal(1, await AlbumCountAsync(factory));
     }
 
-    public static TheoryData<string> InvalidColors()
-    {
-        var data = new TheoryData<string>();
-        foreach (var value in HexColorNegativeCorpus.All)
-        {
-            data.Add(value);
-        }
-
-        return data;
-    }
+    // Representatives only — the full HexColorNegativeCorpus runs in Odyssey.Core.Tests against the
+    // attribute stack on every [HexColor] property (HexColorTests) and the shared TagColorGuard the album
+    // service calls. A control character reaches [HexColor] and the never-echoes check; an over-long value
+    // reaches [StringLength], which must report the same single message.
+    public static TheoryData<string> InvalidColors() => [.. TagColorApiTests.RepresentativeInvalidColors];
 
     [Theory]
     [MemberData(nameof(InvalidColors))]

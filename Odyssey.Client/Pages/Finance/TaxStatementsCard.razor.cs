@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingTaxStatement> _statements = [];
     // Server-computed rollup backing the header count + the year-over-year overview charts (issue
@@ -24,10 +26,8 @@ public partial class TaxStatementsCard
     private TaxStatementSummary? _summary;
     private readonly Dictionary<Guid, TaxStatementReport> _reports = new();
     private List<ExistingCurrency> _currencies = [];
-    private Dictionary<string, ExistingCurrency> _currenciesByCode = new(StringComparer.OrdinalIgnoreCase);
     private List<ExistingTransactionTag> _tags = [];
     private Dictionary<Guid, ExistingTransactionTag> _tagById = new();
-    private IReadOnlyList<OdsOption> _tagOptions = [];
 
     // Per-statement problems (derived-net-worth pending / off-currency excluded).
     private Dictionary<Guid, List<TaxProblem>> _problems = new();
@@ -223,7 +223,6 @@ public partial class TaxStatementsCard
     private async Task LoadCurrencies()
     {
         _currencies = [.. await ReferenceData.ActiveCurrenciesAsync()];
-        _currenciesByCode = _currencies.ToDictionary(c => c.CurrencyCode, StringComparer.OrdinalIgnoreCase);
     }
 
     private async Task LoadTags()
@@ -231,7 +230,6 @@ public partial class TaxStatementsCard
         var tags = await ReferenceData.TransactionTagsAsync();
         _tags = tags.Where(t => t.Archived is null).OrderBy(t => t.Name, StringComparer.CurrentCulture).ToList();
         _tagById = tags.ToDictionary(t => t.TransactionTagId);
-        _tagOptions = [.. _tags.Select(OdsTransactionTagOptions.From)];
     }
 
     // Per-statement reconciliation reports (derived figures + variances). Fetched in
@@ -439,11 +437,8 @@ public partial class TaxStatementsCard
     private async Task ConfirmDelete(ExistingTaxStatement s)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete tax statement",
-            $"Delete '{s.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
+        var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
+        if (confirmed && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {
             _statements.Remove(s);
             _reports.Remove(s.TaxStatementId);
@@ -457,7 +452,7 @@ public partial class TaxStatementsCard
         }
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Tax statement ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Tax statement"));
 
     /// <summary>The row action menu. Every section-level action lives here — a section header inside a
     /// record body labels, it does not act — so "Attach documents" is the documents section's only entry
@@ -509,13 +504,7 @@ public partial class TaxStatementsCard
             });
         }
 
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint",
-            Label = "Copy ID",
-            TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(s.TaxStatementId))));
 
         if (_canUpdate)
         {
@@ -578,7 +567,6 @@ public partial class TaxStatementsCard
 
     private static string? StatusFoot(ExistingTaxStatement s) => TaxStatementStatusVisuals.Foot(s);
 
-    private static string LongDate(DateTime date) => date.ToString("MMM dd, yyyy", CultureInfo.CurrentCulture);
 
     // ── Money ────────────────────────────────────────────────────────────────
     // Mirrors the design system's taxMoney: the amount with its ISO code trailing (e.g.

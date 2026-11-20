@@ -404,8 +404,26 @@
         // so nested dialogs unwind correctly. Lives entirely on the JS side — Blazor never needs to
         // hold the DOM reference, only call capture on open and restore on close, in that order.
         window.odsFocusOwnerStack = [];
+        // A dialog opened from a row's ⋯ menu would capture the menu ITEM, which unmounts with its
+        // popover, so the close edge had nothing to return to (WCAG 2.4.3). The open menu's trigger is
+        // remembered the moment one of its items is activated, and captured in the item's place.
+        window.odsMenuTrigger = null;
+        const odsRememberMenuTrigger = function (e) {
+            if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+            if (!(e.target instanceof Element) || !e.target.closest('[role^="menuitem"]')) return;
+            const trigger = document.querySelector('[aria-haspopup][aria-expanded="true"]');
+            window.odsMenuTrigger = trigger ? { el: trigger, at: Date.now() } : null;
+        };
+        document.addEventListener('pointerdown', odsRememberMenuTrigger, true);
+        document.addEventListener('keydown', odsRememberMenuTrigger, true);
         window.odsCaptureFocusOwner = function () {
-            window.odsFocusOwnerStack.push(document.activeElement);
+            let owner = document.activeElement;
+            const lost = !owner || owner === document.body || !document.contains(owner) || !!owner.closest('[role="menu"]');
+            const remembered = window.odsMenuTrigger;
+            if (lost && remembered && Date.now() - remembered.at < 5000 && document.contains(remembered.el))
+                owner = remembered.el;
+            window.odsMenuTrigger = null;
+            window.odsFocusOwnerStack.push(owner);
         };
         window.odsRestoreFocusOwner = function (preferredId) {
             const el = window.odsFocusOwnerStack.pop();
@@ -423,10 +441,9 @@
                 if (focusable(target)) { target.focus(); return; }
             }
             if (focusable(el) && el !== document.body) { el.focus(); return; }
-            if (preferredId) {
-                const h1 = document.querySelector('main h1, h1');
-                if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
-            }
+            // Whatever opened the dialog is gone (a deleted row's menu): the page heading, never <body>.
+            const h1 = document.querySelector('main h1, h1');
+            if (h1) { if (!h1.hasAttribute('tabindex')) h1.setAttribute('tabindex', '-1'); h1.focus(); }
         };
         window.odsDialogA11y = function (modalKey, role, describedById) {
             // OdsModal Role / DescribedById (issue #383): set THIS dialog's role (alertdialog for a

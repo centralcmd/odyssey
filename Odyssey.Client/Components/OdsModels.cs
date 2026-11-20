@@ -246,8 +246,8 @@ public sealed record OdsOption(string Value, string Label)
 
     /// <summary>
     /// Secondary text after the label on an option row — a type ("Person", "Property"), an account
-    /// number. What tells two same-named records apart in a picker, which is the whole job of the
-    /// insurance link pickers. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
+    /// number. What tells two same-named records apart in a picker, which is the whole job of an
+    /// entity picker. Rendered by <c>OdsTagMultiSelect</c>; ignored elsewhere.
     /// </summary>
     public string? Sub { get; init; }
 
@@ -389,6 +389,20 @@ public sealed record OdsTabItem(string Value, string Label);
 /// <summary>One item in a <see cref="OdsMenu"/> — a normal item, a divider, or a group header.</summary>
 public sealed class OdsMenuItem
 {
+    /// <summary>
+    /// The "Copy ID" row every record menu ends with (Odyssey Design System · ActionMenu): the
+    /// fingerprint glyph, the label and the trailing <c>content_copy</c> affordance. The caller
+    /// supplies what copying does.
+    /// </summary>
+    public static OdsMenuItem CopyId(EventCallback onClick, string? ariaLabel = null) => new()
+    {
+        Icon = "fingerprint",
+        TrailingIcon = "content_copy",
+        Label = "Copy ID",
+        AriaLabel = ariaLabel,
+        OnClick = onClick,
+    };
+
     /// <summary>Visible label. Omitted for dividers / headers.</summary>
     public string? Label { get; set; }
 

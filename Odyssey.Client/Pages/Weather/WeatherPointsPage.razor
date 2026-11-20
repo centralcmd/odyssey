@@ -126,7 +126,7 @@
                         Deleting this point was interrupted. Weather for it stays paused, and nothing new is stored, until it completes.
                         @if (_canDelete)
                         {
-                            <button type="button" class="loc-link" @onclick="() => OpenPurge(p, WeatherPurgeMode.Full, fromNotice: true)">Continue deleting</button>
+                            <button type="button" class="loc-link" @onclick="() => OpenPurge(p, WeatherPurgeMode.Full)">Continue deleting</button>
                         }
                     </OdsAlert>
                 }

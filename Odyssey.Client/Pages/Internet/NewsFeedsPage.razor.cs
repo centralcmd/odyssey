@@ -45,8 +45,6 @@ public partial class NewsFeedsPage
 
     [Inject] private IJSRuntime JS { get; set; } = default!;
 
-    [Inject] private TimeProvider Time { get; set; } = default!;
-
     [Inject] private IClaimsRefresher ClaimsRefresher { get; set; } = default!;
 
     [Inject] private NavigationManager Nav { get; set; } = default!;
@@ -899,7 +897,7 @@ public partial class NewsFeedsPage
 
             try
             {
-                await JS.InvokeVoidAsync("downloadFileFromBytes", export.File.Bytes, export.File.FileName, OpmlContentType);
+                await JS.SaveFileAsync(export.File.Bytes, export.File.FileName, OpmlContentType);
             }
             catch (JSException)
             {

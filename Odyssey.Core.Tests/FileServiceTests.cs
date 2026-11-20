@@ -24,7 +24,7 @@ public class FileServiceTests : FileStorage.FileStorageTestBase
         var sp = scope.ServiceProvider;
         var context = sp.GetRequiredService<OdysseyContext>();
         var service = new FileService(
-            context, new FileValidationService(), Clock, observers: null,
+            context, new FileValidationService(), observers: null,
             writer: sp.GetRequiredService<StoredFileWriter>(), store: sp.GetRequiredService<IObjectStore>(),
             source: sp.GetRequiredService<StoredFileContentSource>());
         return (scope, context, service);

@@ -1,7 +1,7 @@
 // EF1002 flags interpolation into ExecuteSqlRawAsync. Every value interpolated below is a Guid or a
-// literal this test generated itself — there is no external input — and the deletes and pre-migration
-// inserts are deliberately issued outside the services, which is the whole point: the foreign key
-// exists so the engine, and not application code, is what resolves it.
+// literal this test generated itself — there is no external input — and the deletes are deliberately
+// issued outside the services, which is the whole point: the foreign key exists so the engine, and not
+// application code, is what resolves it.
 #pragma warning disable EF1002
 
 using System.Globalization;
@@ -15,9 +15,8 @@ using ContextContractType = Odyssey.Context.ContractType;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The relational half of issue #146 (AC 13, 14): the <c>ContractFiles.IssuedBy</c> foreign key's
-/// <c>SET NULL</c> behaviour, the reference guard's matching statement, and the migration applying to
-/// a database that already holds <c>ContractFile</c> rows.
+/// The relational half of issue #146 (AC 13): the <c>ContractFiles.IssuedBy</c> foreign key's
+/// <c>SET NULL</c> behaviour and the reference guard's matching statement.
 /// </summary>
 /// <remarks>
 /// None of this is observable on the fast tiers. The EF InMemory provider enforces no foreign keys at
@@ -29,11 +28,6 @@ namespace Odyssey.IntegrationTests;
 public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_contract_file_validity";
-
-    /// <summary>The migration immediately before the one under test.</summary>
-    private const string Baseline = "_AddContractSignatureDates";
-
-    private const string Subject = "_AddContractFileValidity";
 
     private static readonly DateTime Anchor = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
@@ -129,69 +123,6 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
     }
 
     /// <summary>
-    /// AC 14 — the migration applies to a database already populated with <c>ContractFile</c> rows.
-    /// Every pre-existing row reads back with <c>NULL</c> in all four columns, and its other columns
-    /// unchanged: all four are nullable, so <c>NULL</c> throughout is the correct, healthy state for a
-    /// document attached before this feature existed. Nothing is seeded and nothing is backfilled.
-    /// </summary>
-    [SkippableFact]
-    public async Task The_migration_applies_over_pre_existing_rows_and_leaves_them_null()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        var contractFileId = Guid.NewGuid();
-        var attachedAt = new DateTime(2025, 11, 3, 14, 22, 5, DateTimeKind.Utc);
-
-        try
-        {
-            await using (var context = NewContext())
-            {
-                await MigrationSeam.MigrateToAsync(context, Baseline);
-                Assert.False(await ColumnExistsAsync(context, "ValidFrom"));
-                Assert.False(await ColumnExistsAsync(context, "IssuedBy"));
-
-                await AttributionUsers.EnsureAsync(context, "doc-attacher");
-                var contractId = await SeedBaselineContractAsync(context, "Pre-existing agreement");
-                var fileId = await SeedFileMetadataAsync(context, "doc-attacher");
-
-                // Raw SQL, so the row is written exactly as one existed before the columns did.
-                await context.Database.ExecuteSqlRawAsync($"""
-                    INSERT INTO `ContractFiles`
-                        (`ContractFileId`, `ContractId`, `FileMetadataId`, `FileType`,
-                         `AttachedByUserId`, `AttachedAtUtc`)
-                    VALUES
-                        ('{contractFileId}', '{contractId}', '{fileId}', 1, 'doc-attacher',
-                         '{attachedAt.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture)}');
-                    """);
-            }
-
-            await using (var context = NewContext())
-            {
-                await context.Database.MigrateAsync();
-                Assert.True(await MigrationSeam.HasRunAsync(context, Subject));
-
-                var row = await context.ContractFiles.AsNoTracking()
-                    .SingleAsync(f => f.ContractFileId == contractFileId);
-
-                Assert.Null(row.ValidFrom);
-                Assert.Null(row.ValidTo);
-                Assert.Null(row.IssuedAt);
-                Assert.Null(row.IssuedBy);
-
-                // Its other columns are untouched — the migration is purely additive.
-                Assert.Equal(ContractFileType.Amendment, row.FileType);
-                Assert.Equal("doc-attacher", row.AttachedByUserId);
-                Assert.Equal(attachedAt, row.AttachedAtUtc);
-            }
-        }
-        finally
-        {
-            await DropAsync();
-        }
-    }
-
-    /// <summary>
     /// Issue #309 AC 9 — the appended <c>Draft</c> ordinal round-trips through the real engine with no
     /// migration: the column is a plain <c>int</c> with no CHECK constraint, so <c>4</c> is stored and
     /// read back as itself. Read raw as well as through EF, so a value converter cannot be what agrees.
@@ -266,26 +197,18 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         return contract.ContractId;
     }
 
-    /// <summary>
-    /// A contract written as raw SQL naming only the columns the baseline has. Through EF it would
-    /// name every column the CURRENT model maps, and a column added by a later migration
-    /// (<c>ReferenceNumber</c>, issue #181) fails with <c>Unknown column … in 'INSERT INTO'</c> on
-    /// a schema that predates it — the trap <c>BaselineContacts</c> records for contacts.
-    /// </summary>
-    private static async Task<Guid> SeedBaselineContractAsync(OdysseyContext context, string name)
-    {
-        var contractId = Guid.NewGuid();
-        var anchor = Anchor.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
-        await context.Database.ExecuteSqlRawAsync(
-            "INSERT INTO `Contracts` (`ContractId`, `Name`, `Type`, `StartDate`, `CreatedAtUtc`) VALUES ({0}, {1}, {2}, {3}, {4})",
-            contractId, name, (int)ContextContractType.Rental, anchor, anchor);
-        return contractId;
-    }
-
     private static async Task<Guid> SeedFileMetadataAsync(OdysseyContext context, string uploaderId)
     {
+        // A database-held file (FileBlob + FileMetadata), by raw SQL.
         var id = Guid.NewGuid();
-        await LegacyFileRows.InsertAsync(context, id, Anchor, "agreement.pdf", uploadedByUserId: uploaderId);
+        var blobId = Guid.NewGuid();
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"INSERT INTO `FileBlob` (`Id`, `Content`) VALUES ({blobId}, {new byte[] { 1, 2, 3 }})");
+        await context.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO `FileMetadata`
+                (`Id`, `UploadedByUserId`, `FileName`, `ContentType`, `SizeBytes`, `Sha256Hash`, `FileBlobId`, `UploadedAtUtc`)
+            VALUES ({id}, {uploaderId}, {"agreement.pdf"}, {"application/pdf"}, {3L}, {Guid.NewGuid().ToString("N")}, {blobId}, {Anchor})
+            """);
         return id;
     }
 
@@ -309,12 +232,6 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         await context.SaveChangesAsync();
         return link.ContractFileId;
     }
-
-    private static async Task<bool> ColumnExistsAsync(OdysseyContext context, string column) =>
-        await MigrationSeam.CountAsync(context, $"""
-            SELECT COUNT(*) FROM information_schema.COLUMNS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ContractFiles' AND COLUMN_NAME = '{column}'
-            """) > 0;
 
     private static async Task<List<string>> ReadIndexColumnsAsync(OdysseyContext context, string indexName)
     {
@@ -364,13 +281,6 @@ public class ContractFileValidityRelationalTests(MariaDbFixture fixture)
         new(new DbContextOptionsBuilder<OdysseyContext>()
             .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
             .Options);
-
-    private async Task RecreateAsync()
-    {
-        await DropAsync();
-        await using var server = ServerContext();
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private async Task DropAsync()
     {

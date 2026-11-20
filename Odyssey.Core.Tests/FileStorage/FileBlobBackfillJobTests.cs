@@ -290,16 +290,21 @@ public sealed class FileBlobBackfillJobTests : FileStorageTestBase
         Assert.Contains(await RunsAsync(host), r => (r.Status, r.HeldReason) == (JobRunStatus.Held, JobHeldReason.StorageUnavailable));
     }
 
-    /// <summary>AC 35: one tick never examines more than <see cref="FileBlobBackfillJob.ScanLimit"/> rows.</summary>
+    /// <summary>
+    /// AC 35: one tick never examines more than its scan limit. The limit is lowered from
+    /// <see cref="FileBlobBackfillJob.ScanLimit"/> to one that is not a multiple of the scan page, so the scan crosses a
+    /// page boundary and its last page is clamped — at a fraction of the rows the production limit would need.
+    /// </summary>
     [Fact]
     public async Task A_scan_examines_at_most_the_scan_limit()
     {
+        const int scanLimit = 55;
         var host = await NewFilesHostAsync(configure: services =>
             services.Replace(ServiceDescriptor.Singleton<IFileStorageSpaceProbe>(new FullFor("finance-full"))));
         BindFinanceTo(host, "finance-full");
         await InContextAsync(host, async c =>
         {
-            for (var i = 0; i < FileBlobBackfillJob.ScanLimit + 50; i++)
+            for (var i = 0; i < scanLimit + 10; i++)
             {
                 var blob = new FileBlob { Id = Guid.NewGuid(), Content = PdfBytes };
                 c.FileBlob.Add(blob);
@@ -314,10 +319,12 @@ public sealed class FileBlobBackfillJobTests : FileStorageTestBase
             await c.SaveChangesAsync();
         });
 
-        var scan = await Job(host).NextCandidatesAsync(default);
+        var job = Job(host);
+        job.ScanRowLimit = scanLimit;
+        var scan = await job.NextCandidatesAsync(default);
 
         Assert.Empty(scan.Eligible);
-        Assert.Equal(FileBlobBackfillJob.ScanLimit, scan.Examined);
+        Assert.Equal(scanLimit, scan.Examined);
     }
 
     /// <summary>With every area unhealthy, the scan reports the hold without classifying a single row.</summary>

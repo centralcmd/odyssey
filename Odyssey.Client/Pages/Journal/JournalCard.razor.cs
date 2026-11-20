@@ -18,6 +18,8 @@ namespace Odyssey.Client.Pages.Journal;
 
 public partial class JournalCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<JournalEntrySummary> _entries = [];                       // server-filtered display list
     private readonly Dictionary<Guid, ExistingJournalEntry> _details = new();
@@ -73,7 +75,6 @@ public partial class JournalCard
     private PhotoImageAccess _imageAccess = new(false);
     private bool _canReadContacts;
     private bool _canCreateContacts;
-    private bool _canReadJournalTags;
 
     // ── Persisted page state ───────────────────────────────────────────────────
     private const string PageStateKey = "journal-page";
@@ -192,10 +193,6 @@ public partial class JournalCard
         // The gallery's thumbnail needs photos.read, read once here rather than per tile (issue #365 B5).
         _imageAccess = PhotoImageAccess.From(user);
         _canReadContacts = user.HasPermission(PermissionClaims.ContactsRead);
-        // /journal-tags is gated on its OWN claim, which journal.read does not imply. Without this the
-        // tag tile's "Open journal tags" item is a dead end for a caller who holds one and not the
-        // other — the same reason "Open contact" is gated on contacts.read.
-        _canReadJournalTags = user.HasPermission(PermissionClaims.JournalTagsRead);
         _canCreateContacts = user.HasPermission(PermissionClaims.ContactsCreate);
         _canUpdatePhotos = user.HasPermission(PermissionClaims.PhotosUpdate);
         _canDeletePhotos = user.HasPermission(PermissionClaims.PhotosDelete);
@@ -698,12 +695,9 @@ public partial class JournalCard
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete entry",
-            DeleteMessage(e.Title),
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete entry", DeleteMessage(e.Title), "Delete");
 
-        if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
+        if (confirmed && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
         {
             _announce = "Entry deleted.";
             _details.Remove(e.JournalEntryId);
@@ -721,7 +715,7 @@ public partial class JournalCard
         await LoadEntries();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Entry ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Entry"));
 
     // ── Create ──────────────────────────────────────────────────────────────────
     private Guid _createKey;
@@ -862,11 +856,7 @@ public partial class JournalCard
             Icon = "event_note", Label = "Export VJOURNAL",
             OnClick = EventCallback.Factory.Create(this, () => ExportEntryAsync(e)),
         });
-        items.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", Label = "Copy ID", TrailingIcon = "content_copy",
-            OnClick = EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId)),
-        });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(e.JournalEntryId))));
 
         if (_canUpdate)
         {

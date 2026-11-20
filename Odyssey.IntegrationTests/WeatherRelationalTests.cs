@@ -13,115 +13,17 @@ namespace Odyssey.IntegrationTests;
 
 /// <summary>
 /// The relational half of issue #348 (AC 43, 44 and the N2 purge) and of the weather points of issue #387
-/// (AC 11, 21, 22, 25): the historical migrations, the point keys and their on-delete behaviour, the bulk purge
-/// in batches and its resumption, the link races, and write fencing on the real concurrency token. None of it is observable on the EF
-/// InMemory provider, which runs no migrations, enforces no key and cannot run <c>ExecuteDelete</c>.
+/// (AC 11, 21, 22, 25): the point keys and their on-delete behaviour, the bulk purge in batches and its
+/// resumption, the link races, and write fencing on the real concurrency token. None of it is observable on the
+/// EF InMemory provider, which enforces no key and cannot run <c>ExecuteDelete</c>.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class WeatherRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_weather";
-    private const string PreviousMigration = "_AddLocations";
-    private const string ThisMigration = "_AddWeather";
-    private const string SplitMigration = "_SplitWeatherForecastAndHistory";
-    private const string StationMigration = "_WeatherStationPerMeasure";
     private const string AdminId = "weather-admin";
 
     private static readonly DateTime Noon = new(2026, 10, 23, 12, 0, 0, DateTimeKind.Utc);
-
-    [SkippableFact]
-    public async Task The_migration_creates_the_tables_and_seeds_the_four_settings()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-        Assert.False(await MigrationSeam.TableExistsAsync(context, "WeatherLocations"));
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
-
-        foreach (var table in new[] { "WeatherLocations", "WeatherLocationSites", "WeatherLocationSchedules", "WeatherForecastRuns",
-                     "WeatherForecastSteps", "WeatherObservations", "WeatherDays" })
-        {
-            Assert.True(await MigrationSeam.TableExistsAsync(context, table), table);
-        }
-
-        var keys = await context.SystemSettings.Where(s => s.Key.StartsWith("Weather")).Select(s => s.Key).ToListAsync();
-        // The keys as this migration seeded them; WeatherPointsContract renames the last two (issue #387).
-        Assert.Equal(
-            ["WeatherDefaultLocationId", "WeatherMaxTrackedLocations",
-             SystemSettingsKeys.WeatherRefreshIntervalMinutes, SystemSettingsKeys.WeatherUserAgentContact],
-            keys.Order(StringComparer.Ordinal));
-    }
-
-    [SkippableFact]
-    public async Task The_split_migration_gives_both_halves_the_old_switch()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, ThisMigration);
-        var on = Guid.NewGuid();
-        var off = Guid.NewGuid();
-        await context.Database.ExecuteSqlRawAsync($"""
-            SET FOREIGN_KEY_CHECKS = 0;
-            INSERT INTO `WeatherLocations` (`LocationId`, `Enabled`, `IsTracked`, `HistoryFrom`, `EnabledAt`, `CurrentSiteVersion`, `CreatedAt`, `UpdatedAt`)
-            VALUES ('{on}', 1, 1, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01'),
-                   ('{off}', 0, 0, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01');
-            SET FOREIGN_KEY_CHECKS = 1;
-            """);
-
-        await MigrationSeam.MigrateToAsync(context, SplitMigration);
-
-        // The entity maps the weather-points schema now (issue #387), so this pre-#387 shape is read raw.
-        Assert.Equal(2L, await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM `WeatherLocations` WHERE `LocationId` = '{on}' AND `ForecastEnabled` = 1 AND `HistoryEnabled` = 1")
-            + await MigrationSeam.CountAsync(context,
-            $"SELECT COUNT(*) FROM `WeatherLocations` WHERE `LocationId` = '{off}' AND `ForecastEnabled` = 0 AND `HistoryEnabled` = 0"));
-    }
-
-    [SkippableFact]
-    public async Task The_station_migration_starts_measured_history_over_and_keeps_the_forecast()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        await using var context = NewContext();
-        await MigrationSeam.MigrateToAsync(context, SplitMigration);
-        var id = Guid.NewGuid();
-        await context.Database.ExecuteSqlRawAsync($"""
-            SET FOREIGN_KEY_CHECKS = 0;
-            INSERT INTO `WeatherLocations` (`LocationId`, `ForecastEnabled`, `HistoryEnabled`, `IsTracked`, `HistoryFrom`, `EnabledAt`, `CurrentSiteVersion`, `CreatedAt`, `UpdatedAt`, `FrostStationId`, `StationResolvedAtUtc`)
-            VALUES ('{id}', 1, 1, 1, '2025-01-01', '2026-10-01', 1, '2026-10-01', '2026-10-01', 'SN18700', '2026-10-01');
-            INSERT INTO `WeatherLocationSchedules` (`LocationId`, `Version`, `ObservationsCheckedThroughDate`, `ForecastConsecutiveFailures`, `ObservationConsecutiveFailures`, `ArchivedSkipLogged`)
-            VALUES ('{id}', '{Guid.NewGuid()}', '2026-10-22', 0, 2, 0);
-            INSERT INTO `WeatherObservations` (`WeatherObservationId`, `LocationId`, `SiteVersion`, `Provider`, `StationId`, `LocalDate`, `MeanTempC`, `FetchedAtUtc`)
-            VALUES ('{Guid.NewGuid()}', '{id}', 1, 1, 'SN18700', '2026-10-22', 6.8, '2026-10-23 08:02:00');
-            INSERT INTO `WeatherDays` (`LocationId`, `LocalDate`, `ObservedMeanTempC`, `ObservedFetchedAtUtc`, `UpdatedAtUtc`)
-            VALUES ('{id}', '2026-10-22', 6.8, '2026-10-23 08:02:00', '2026-10-23 08:02:00');
-            INSERT INTO `WeatherDays` (`LocationId`, `LocalDate`, `ForecastCoverageHours`, `ForecastMaxTempC`, `ObservedMeanTempC`, `ObservedFetchedAtUtc`, `UpdatedAtUtc`)
-            VALUES ('{id}', '2026-10-23', 24, 9.0, 4.1, '2026-10-23 08:02:00', '2026-10-23 08:02:00');
-            SET FOREIGN_KEY_CHECKS = 1;
-            """);
-
-        await MigrationSeam.MigrateToAsync(context, StationMigration);
-
-        // Read raw: the entities map the weather-points schema now (issue #387).
-        Assert.True(await MigrationSeam.TableExistsAsync(context, "WeatherStations"));
-        Assert.Equal(0, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `WeatherObservations`"));
-        Assert.Equal(1, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `WeatherLocations` WHERE `StationResolvedAtUtc` IS NULL"));
-        var schedule = (await MigrationSeam.RowAsync(context, "SELECT * FROM `WeatherLocationSchedules`"))!;
-        Assert.Null(schedule["ObservationsCheckedThroughDate"]);
-        Assert.Equal(0, Convert.ToInt32(schedule["ObservationConsecutiveFailures"]));
-        // The measured-only day goes; the forecast's day keeps its forecast and loses only the measured half.
-        Assert.Equal(1, await MigrationSeam.CountAsync(context, "SELECT COUNT(*) FROM `WeatherDays`"));
-        var day = (await MigrationSeam.RowAsync(context, "SELECT * FROM `WeatherDays`"))!;
-        Assert.Equal(new DateTime(2026, 10, 23), Convert.ToDateTime(day["LocalDate"]));
-        Assert.Equal(9.0m, Convert.ToDecimal(day["ForecastMaxTempC"]));
-        Assert.Null(day["ObservedMeanTempC"]);
-        Assert.Null(day["ObservedFetchedAtUtc"]);
-    }
 
     [SkippableFact]
     public async Task With_the_forecast_on_a_history_purge_removes_only_the_measured_data()
@@ -609,15 +511,6 @@ public class WeatherRelationalTests(MariaDbFixture fixture)
     private OdysseyContext NewContext() => new(new DbContextOptionsBuilder<OdysseyContext>()
         .UseMySql(fixture.ConnectionStringFor(Database), ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
         .Options);
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
-    }
 
     private sealed class FixedTime : TimeProvider
     {

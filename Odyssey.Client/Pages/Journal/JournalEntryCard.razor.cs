@@ -59,7 +59,7 @@ public partial class JournalEntryCard
     // Focus return across a file removal (WCAG 2.4.3). The row's ⋯ menu is destroyed by its own action,
     // and the whole row list is unmounted when the last file goes — so the CARD, which outlives both,
     // is what picks the landing spot beforehand and puts focus back afterwards. Same shape as
-    // InsurancePolicyLinkTiles, which solved this for the policy party tiles.
+    // TileRemovalFocus, which does this for the contract party tiles.
     private string? _focusAfterRemoval;
     private bool _pendingFocus;
     private IJSObjectReference? _focusReturnJs;

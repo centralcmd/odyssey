@@ -16,6 +16,8 @@ namespace Odyssey.Client.Pages.Journal;
 
 public partial class TasksPage
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data (the whole shared list; filtering/partitioning happen client-side so the board can show
     //    every column at once, matching the design system) ────────────────────────────────────────
     private List<JournalTaskSummary> _allTasks = [];
@@ -329,11 +331,8 @@ public partial class TasksPage
     {
         if (!_canDelete) return;
         var task = _allTasks.FirstOrDefault(t => t.JournalTaskId == id);
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete task",
-            $"Permanently delete '{task?.Title}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
-        if (confirmed == true && (await Tasks.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Task deleted."))
+        var confirmed = await _confirm.AskAsync("Delete task", $"Permanently delete '{task?.Title}'? This cannot be undone.", "Delete");
+        if (confirmed && (await Tasks.DeleteAsync(id)).Toast(Snackbar, "Delete failed", "Task deleted."))
         {
             _announce = "Task deleted.";
             _details.Remove(id);
@@ -347,7 +346,7 @@ public partial class TasksPage
         await LoadTasks();
     }
 
-    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), "Task ID copied.");
+    private Task CopyId(Guid id) => Clipboard.CopyAsync(id.ToString(), OdsCopied.Id("Task"));
 
     // ── VTODO/.ics export + import (issue #337) ────────────────────────────────────
     // Import creates or updates, so it needs BOTH claims (mirrors the server's stacked policies).

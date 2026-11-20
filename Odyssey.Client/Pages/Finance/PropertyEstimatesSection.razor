@@ -3,7 +3,6 @@
 @using Odyssey.Dtos.Finance
 @inject IPropertiesApiClient Properties
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 
 @*
     PropertyEstimatesSection — a property's value history (issue #167; design system ·
@@ -45,7 +44,7 @@ else
 {
     <div class="con-section">
         <OdsSectionDivider Label="Current value"
-                           Meta="@(_current is null ? "none in force" : $"in force · {LongDate(Today)}")" />
+                           Meta="@(_current is null ? "none in force" : $"in force · {OdsDates.Long(Today)}")" />
         @if (_current is { } current)
         {
             <OdsInfoTileGrid>
@@ -75,7 +74,7 @@ else
                 @if (_scheduled is { } scheduled)
                 {
                     <OdsInfoTile Icon="schedule" Label="Scheduled" Tone="OdsInfoTileTone.Pending"
-                                 Foot="@OdsInfoTile.Caption($"from {LongDate(scheduled.EffectiveFrom)}")">
+                                 Foot="@OdsInfoTile.Caption($"from {OdsDates.Long(scheduled.EffectiveFrom)}")">
                         <Value>@Money(scheduled.Value)</Value>
                     </OdsInfoTile>
                 }
@@ -127,7 +126,7 @@ else
                                     </div>
                                 </div>
                             </td>
-                            <td class="trm-cell-date">@LongDate(estimate.EffectiveFrom)</td>
+                            <td class="trm-cell-date">@OdsDates.Long(estimate.EffectiveFrom)</td>
                             <td class="trm-cell-value">@Money(estimate.Value)</td>
                             <td>
                                 @if (isScheduled)
@@ -166,3 +165,5 @@ else
                        ExistingPropertyEstimates="_estimates"
                        OnSaved="OnEstimateChanged" />
 }
+
+<OdsConfirm @ref="_confirm" />

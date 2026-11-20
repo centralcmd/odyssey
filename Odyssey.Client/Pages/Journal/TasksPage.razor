@@ -7,7 +7,6 @@
 @inject ITaskApiClient Tasks
 @inject IFilesApiClient Files
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
@@ -216,3 +215,5 @@
                            Attach="AttachOne"
                            OnAttached="OnTaskFilesAttached" />
 }
+
+<OdsConfirm @ref="_confirm" />

@@ -304,7 +304,7 @@ public partial class ExchangeRatesCard
             items.Add(new OdsMenuItem { Icon = "edit", Label = "Edit", OnClick = EventCallback.Factory.Create(this, () => EditClicked(r)) });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(r.ExchangeRateId)) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(r.ExchangeRateId))));
 
         // Nor is one deleted on its own (a 422 keyed source): the sync would never refill the gap, so fetched
         // rates leave only through the per-currency purge on Currencies.
@@ -366,7 +366,7 @@ public partial class ExchangeRatesCard
     }
 
     private Task CopyId(Guid exchangeRateId) =>
-        Clipboard.CopyAsync(exchangeRateId.ToString(), "Exchange rate ID copied to clipboard.");
+        Clipboard.CopyAsync(exchangeRateId.ToString(), OdsCopied.Id("Exchange rate"));
 
     public void Dispose() => _listLoader.Dispose();
 }

@@ -6,5 +6,5 @@
 *@
 @if (Deadline is { } d)
 {
-    <OdsChip Tone="Tone(d)" Icon="event">@d.ToString("MMM d, yyyy") · @RelativeLabel(d)</OdsChip>
+    <OdsChip Tone="Tone(d)" Icon="event">@OdsDates.LongUnpadded(d) · @RelativeLabel(d)</OdsChip>
 }

@@ -1,6 +1,5 @@
 @page "/instruments"
 @using Odyssey.Dtos.Finance
-@using Odyssey.Client.Pages.Finance.ExchangeRateSync
 @attribute [Authorize(Policy = PermissionClaims.InstrumentsRead)]
 @implements IDisposable
 @inject ISnackbar Snackbar
@@ -138,7 +137,7 @@
 
 @if (_deleting is { } doomed)
 {
-    <ConfirmDeleteDialog @key="@($"delete-{doomed.InstrumentId}")"
+    <OdsConfirmDialog @key="@($"delete-{doomed.InstrumentId}")"
                          Open="_deleteOpen"
                          OpenChanged="@(open => _deleteOpen = open)"
                          Title="@($"Delete {doomed.Symbol}?")"

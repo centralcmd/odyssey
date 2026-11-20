@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
 using DotNet.Testcontainers.Builders;
+using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
+using Odyssey.Context;
 using Odyssey.Testing;
 using Testcontainers.MySql;
 using Xunit;
@@ -58,32 +61,51 @@ public sealed class MariaDbFixture : IAsyncLifetime
     /// collection migrates once (<see cref="MigratedSchemaTemplate"/>). Returns its connection string.
     /// </summary>
     /// <remarks>Use it wherever a test would otherwise drop, create and <c>MigrateAsync</c> a private database. A test
-    /// that needs a database before head (a <see cref="MigrationSeam"/> test) still migrates from empty.</remarks>
-    public async Task<string> CreateMigratedDatabaseAsync(string database)
+    /// that needs a database before head (a <see cref="MigrationSeam"/> test) uses
+    /// <see cref="CreateDatabaseAtMigrationAsync"/>.</remarks>
+    public Task<string> CreateMigratedDatabaseAsync(string database) => CopyAsync(database, migrationId: null);
+
+    /// <summary>
+    /// Drops <paramref name="database"/> if it exists and recreates it migrated to exactly the migration whose name
+    /// ends with <paramref name="nameSuffix"/>, every later migration left pending — the "before" state of a
+    /// <see cref="MigrationSeam"/> test. A copy of a template built once per container and per migration. Returns its
+    /// connection string.
+    /// </summary>
+    /// <remarks>Use it wherever a test would otherwise drop and create a private database, then
+    /// <c>MigrationSeam.MigrateToAsync</c> it from empty to its baseline.</remarks>
+    public Task<string> CreateDatabaseAtMigrationAsync(string database, string nameSuffix) =>
+        CopyAsync(database, ResolveMigrationId(nameSuffix));
+
+    private static string ResolveMigrationId(string nameSuffix)
     {
-        var source = await TemplateAsync();
+        // Resolving an id needs the migrations assembly but no connection, so the server version is pinned rather
+        // than auto-detected and the connection string is never dialled.
+        using var context = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
+            .UseMySql("server=localhost;database=odyssey", new MariaDbServerVersion(new Version(11, 4, 0)))
+            .Options);
+        return MigrationSeam.IdOf(context, nameSuffix);
+    }
+
+    private async Task<string> CopyAsync(string database, string? migrationId)
+    {
+        var source = await TemplateAsync(migrationId);
         await using var server = new MySqlConnection(OdysseyConnectionString);
         await server.OpenAsync();
         await source.CopyToAsync(server, database);
         return ConnectionStringFor(database);
     }
 
-    private readonly SemaphoreSlim templateGate = new(1, 1);
-    private MigratedSchemaTemplate? template;
+    // One build per target migration, shared by every caller asking for it: a Lazy per key, so two tests wanting the
+    // same template wait on one build while a test wanting a different one builds its own alongside. A failed build
+    // stays failed for the container, like any other fixture fault.
+    private readonly ConcurrentDictionary<string, Lazy<Task<MigratedSchemaTemplate>>> templates = new(StringComparer.Ordinal);
 
-    private async Task<MigratedSchemaTemplate> TemplateAsync()
-    {
-        await templateGate.WaitAsync();
-        try
-        {
-            return template ??= await MigratedSchemaTemplate.BuildAsync(
-                OdysseyConnectionString, ConnectionStringFor(MigratedSchemaTemplate.Database));
-        }
-        finally
-        {
-            templateGate.Release();
-        }
-    }
+    private Task<MigratedSchemaTemplate> TemplateAsync(string? migrationId) =>
+        templates.GetOrAdd(
+            migrationId ?? "",
+            _ => new Lazy<Task<MigratedSchemaTemplate>>(
+                () => MigratedSchemaTemplate.BuildAsync(OdysseyConnectionString, ConnectionStringFor, migrationId),
+                LazyThreadSafetyMode.ExecutionAndPublication)).Value;
 
     public async Task InitializeAsync()
     {
@@ -104,6 +126,10 @@ public sealed class MariaDbFixture : IAsyncLifetime
                 // disk, so on a slow-fsync host (btrfs on LUKS) the tier took 5 hours with the CPU
                 // idle, and 3.5 minutes in memory. The data is discarded with the container anyway.
                 .WithTmpfsMount("/var/lib/mysql")
+                // Every private database is its own connection-string pool, and a pool keeps its idle connections
+                // for three minutes. With most private databases now a template copy, the tier opens them faster
+                // than they idle out and passed the default ceiling of 151 ("Too many connections").
+                .WithCommand("--max-connections=1000")
                 // The MySql module's default readiness probe shells out to the `mysql` client, which the
                 // mariadb image no longer ships — it would loop until timeout. Use the image's own
                 // healthcheck script instead (same one docker-compose uses).

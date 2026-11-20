@@ -151,7 +151,7 @@
                             </OdsInfoTile>
                             <OdsInfoTile Icon="event_available" Label="Acquired"
                                          ValueVariant="@(p.AcquiredDate is null ? OdsInfoTileVariant.Text : OdsInfoTileVariant.Sm)">
-                                <Value>@(p.AcquiredDate is { } acquired ? LongDate(acquired) : "Unknown")</Value>
+                                <Value>@(p.AcquiredDate is { } acquired ? OdsDates.Long(acquired) : "Unknown")</Value>
                             </OdsInfoTile>
                             @if (p.DisposedDate is { } disposed)
                             {
@@ -159,14 +159,14 @@
                                              ValueVariant="OdsInfoTileVariant.Sm"
                                              Tone="@(disposedFuture ? OdsInfoTileTone.Info : OdsInfoTileTone.Default)"
                                              Foot="@OdsInfoTile.Caption(disposedFuture ? "still owned until then" : "sold, written off or scrapped")">
-                                    <Value>@LongDate(disposed)</Value>
+                                    <Value>@OdsDates.Long(disposed)</Value>
                                 </OdsInfoTile>
                             }
                             @if (p.Archived is { } archivedAt)
                             {
                                 <OdsInfoTile Icon="inventory_2" Label="Archived" ValueVariant="OdsInfoTileVariant.Sm"
                                              Tone="OdsInfoTileTone.Muted" Foot="@OdsInfoTile.Caption("hidden from the default list")">
-                                    <Value>@LongDate(archivedAt)</Value>
+                                    <Value>@OdsDates.Long(archivedAt)</Value>
                                 </OdsInfoTile>
                             }
                         </OdsInfoTileGrid>
@@ -203,7 +203,7 @@
                                         @if (v.FirstRegisteredDate is { } firstRegistered)
                                         {
                                             <OdsInfoTile Icon="app_registration" Label="First registered" ValueVariant="OdsInfoTileVariant.Sm">
-                                                <Value>@LongDate(firstRegistered)</Value>
+                                                <Value>@OdsDates.Long(firstRegistered)</Value>
                                             </OdsInfoTile>
                                         }
                                     </OdsInfoTileGrid>

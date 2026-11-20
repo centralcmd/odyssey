@@ -347,6 +347,13 @@ public class InstrumentPriceSyncTests
         // so the fourth instrument is never requested.
         Assert.Equal(9, harness.Handler.Requests.Count);
         Assert.Equal(9, run.RequestsMade);
+        // Each instrument backs off twice between its three attempts, exponentially with up to 250 ms of jitter.
+        Assert.Equal(6, harness.Clock.RequestedDelays.Count);
+        Assert.All(harness.Clock.RequestedDelays.Chunk(2), pair =>
+        {
+            Assert.InRange(pair[0], TimeSpan.FromMilliseconds(500), TimeSpan.FromMilliseconds(750));
+            Assert.InRange(pair[1], TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(1250));
+        });
         Assert.Equal(3, run.InstrumentsFailed);
         Assert.Equal(JobFailureCategory.ProviderUnavailable, run.FailureCategory);
         var state = await harness.Store.InstrumentPriceSourceStates.AsNoTracking().SingleAsync();
@@ -542,13 +549,15 @@ public class InstrumentPriceSyncTests
     }
 
     /// <summary>
-    /// A clock fixed at a settable instant. Its timers are real, so the transport's short retry delays elapse — unless
-    /// <see cref="Jumping"/> is set: then every timer fires at once and moves the clock forward by its due time, so a
-    /// paced run (issue #447 A7) takes no wall time and the spacing it kept can be read off the clock.
+    /// A wall clock the test sets. Its timers fire at once and record what they were asked to wait: the transport's
+    /// retry back-off is asserted by its requested length rather than slept through. When <see cref="Jumping"/> is set
+    /// (issue #447 A7), each timer also moves the clock forward by its due time, so a paced run takes no wall time and
+    /// the spacing it kept can be read off the clock.
     /// </summary>
     internal sealed class SettableClock(DateTime now) : TimeProvider
     {
         private readonly object sync = new();
+        private readonly System.Collections.Concurrent.ConcurrentQueue<TimeSpan> requestedDelays = new();
         private DateTime current = now;
 
         public DateTime Now
@@ -572,13 +581,21 @@ public class InstrumentPriceSyncTests
 
         public bool Jumping { get; set; }
 
+        public IReadOnlyList<TimeSpan> RequestedDelays => [.. requestedDelays];
+
         public override DateTimeOffset GetUtcNow() => new(Now, TimeSpan.Zero);
 
         public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
         {
-            if (!Jumping || dueTime == Timeout.InfiniteTimeSpan)
+            requestedDelays.Enqueue(dueTime);
+            if (dueTime == Timeout.InfiniteTimeSpan)
             {
                 return base.CreateTimer(callback, state, dueTime, period);
+            }
+
+            if (!Jumping)
+            {
+                return base.CreateTimer(callback, state, TimeSpan.Zero, period);
             }
 
             lock (sync)

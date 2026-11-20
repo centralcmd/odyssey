@@ -23,62 +23,17 @@ using ContractPartyRole = Odyssey.Dtos.Finance.ContractPartyRole;
 namespace Odyssey.IntegrationTests;
 
 /// <summary>
-/// The real-engine half of issue #208: the migration over existing parties (AC 18), the widened
+/// The real-engine half of issue #208: the widened
 /// <c>CK_ContractParties_ExactlyOneTarget</c> and the new unique index (AC 17), the property delete on
 /// MariaDB (AC 16), and the property Contracts section / count translating to SQL. None of this is
-/// observable on EF InMemory, which runs no migrations and enforces no constraint at all.
+/// observable on EF InMemory, which enforces no constraint at all.
 /// </summary>
 [Collection(MariaDbCollection.Name)]
 public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
 {
     private const string Database = "odyssey_property_parties";
-    private const string PreviousMigration = "_AddProperties";
-    private const string ThisMigration = "_AddPropertyContractParties";
 
     private static readonly DateTime Anchor = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-
-    // ── Migration (AC 18) ─────────────────────────────────────────────────────
-
-    [SkippableFact]
-    public async Task The_migration_keeps_every_existing_account_and_contact_party_unchanged()
-    {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
-        await RecreateAsync();
-
-        Guid accountPartyId = Guid.NewGuid(), contactPartyId = Guid.NewGuid(), accountId, contactId, contractId;
-        await using (var context = NewContext())
-        {
-            await MigrationSeam.MigrateToAsync(context, PreviousMigration);
-            accountId = await SeedAccountAsync(context);
-            contactId = await SeedContactAsync(context);
-            // Raw SQL, like the parties below: this schema predates columns the model now maps.
-            contractId = Guid.NewGuid();
-            await MigrationSeam.InsertContractAsync(context, new Contract
-            {
-                ContractId = contractId, Name = "Mortgage", Type = ContextContractType.Loan,
-                StartDate = Anchor, Signed = Anchor, CreatedAtUtc = Anchor,
-            });
-
-            // Raw SQL: the model now maps PropertyId, a column this schema does not have yet.
-            await context.Database.ExecuteSqlRawAsync(
-                "INSERT INTO `ContractParties` (`ContractPartyId`, `ContractId`, `AccountId`, `ContactId`, `Role`) VALUES " +
-                $"('{accountPartyId}', '{contractId}', '{accountId}', NULL, {(int)ContextContractPartyRole.Borrower}), " +
-                $"('{contactPartyId}', '{contractId}', NULL, '{contactId}', {(int)ContextContractPartyRole.Lender})");
-
-            await MigrationSeam.MigrateToAsync(context, ThisMigration);
-        }
-
-        await using (var context = NewContext())
-        {
-            var parties = await context.ContractParties.AsNoTracking().OrderBy(p => p.Role).ToListAsync();
-
-            Assert.Equal(2, parties.Count);
-            Assert.Contains(parties, p => p.ContractPartyId == accountPartyId && p.AccountId == accountId
-                && p.ContactId == null && p.PropertyId == null && p.Role == ContextContractPartyRole.Borrower);
-            Assert.Contains(parties, p => p.ContractPartyId == contactPartyId && p.ContactId == contactId
-                && p.AccountId == null && p.PropertyId == null && p.Role == ContextContractPartyRole.Lender);
-        }
-    }
 
     // ── Constraints (AC 17) ───────────────────────────────────────────────────
 
@@ -235,21 +190,6 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
         return account.AccountId;
     }
 
-    private static async Task<Guid> SeedContactAsync(OdysseyContext context)
-    {
-        var contact = new Contact
-        {
-            ContactId = Guid.NewGuid(),
-            ExternalUid = $"urn:uuid:{Guid.NewGuid()}",
-            NormalizedName = "acme bank",
-            Type = ContactType.Organization,
-            OrganizationDetails = new() { LegalName = "Acme Bank" },
-        };
-        context.Contacts.Add(contact);
-        await context.SaveChangesAsync();
-        return contact.ContactId;
-    }
-
     private static async Task<Guid> SeedPropertyAsync(OdysseyContext context, string name = "Storgata 14")
     {
         var property = new Property
@@ -304,15 +244,6 @@ public class PropertyContractPartyRelationalTests(MariaDbFixture fixture)
 
         public Task<ContractSummarySettings> GetContractSummarySettingsAsync(CancellationToken cancellationToken = default) =>
             Task.FromResult(new ContractSummarySettings(45, 45, 6));
-    }
-
-    private async Task RecreateAsync()
-    {
-        await using var server = new OdysseyContext(new DbContextOptionsBuilder<OdysseyContext>()
-            .UseMySql(fixture.OdysseyConnectionString, ServerVersion.AutoDetect(fixture.OdysseyConnectionString))
-            .Options);
-        await server.Database.ExecuteSqlRawAsync($"DROP DATABASE IF EXISTS `{Database}`");
-        await server.Database.ExecuteSqlRawAsync($"CREATE DATABASE `{Database}`");
     }
 
     private async Task MigrateAsync()

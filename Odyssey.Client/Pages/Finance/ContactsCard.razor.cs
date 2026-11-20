@@ -14,6 +14,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContactsCard
 {
+    private OdsConfirm _confirm = default!;
+
     private List<ExistingContact> _contacts = new();
     private List<ExistingContact> _allContacts = new();
     private bool _isLoading = true;
@@ -37,7 +39,6 @@ public partial class ContactsCard
     private bool _canUpdate;
     private bool _canDelete;
 
-    [Inject] private IDialogService DialogService { get; set; } = default!;
     // The other halves of the composed detach gate (issue #27 §7 #6, widened by issue #157 §7.3).
     // The server enforces them with a 403 — per blocker class actually present — and these only keep
     // the blocked-delete dialog from offering an action it knows will fail.
@@ -322,7 +323,7 @@ public partial class ContactsCard
             });
         }
 
-        items.Add(new OdsMenuItem { Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID", OnClick = EventCallback.Factory.Create(this, () => CopyId(c.ContactId)) });
+        items.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => CopyId(c.ContactId))));
 
         if (_canDelete)
         {
@@ -480,9 +481,8 @@ public partial class ContactsCard
         if (!_canDelete)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete contact", DeleteMessage(contact.ResolvedDisplayName), yesText: "Delete", cancelText: "Cancel");
-        if (confirmed != true)
+        var confirmed = await _confirm.AskAsync("Delete contact", DeleteMessage(contact.ResolvedDisplayName), "Delete");
+        if (!confirmed)
             return;
 
         // On success, a full refresh rather than a local Remove: the delete changes the header counts
@@ -644,7 +644,7 @@ public partial class ContactsCard
     }
 
     private Task CopyId(Guid contactId) =>
-        Clipboard.CopyAsync(contactId.ToString(), "Contact ID copied to clipboard.");
+        Clipboard.CopyAsync(contactId.ToString(), OdsCopied.Id("Contact"));
 
     // ── vCard export/import (issue #338) ──────────────────────────────────────
 
@@ -662,7 +662,7 @@ public partial class ContactsCard
             if (result.OrToast(Snackbar, "Unable to export the contact") is not { } file)
                 return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
+            await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
@@ -689,7 +689,7 @@ public partial class ContactsCard
             if (result.OrToast(Snackbar, "Unable to export contacts") is not { } file)
                 return;
 
-            await JS.InvokeVoidAsync("downloadFileFromBytes", file.Bytes, file.FileName, "text/vcard");
+            await JS.SaveFileAsync(file.Bytes, file.FileName, "text/vcard");
             Snackbar.Add(includeImages ? $"Exported {file.FileName} with pictures" : $"Exported {file.FileName}", Severity.Success);
         }
         finally
