@@ -412,25 +412,62 @@ public class NewsHtmlPrescanTests
     /// cap is never accepted. The pre-scan refuses it, or — where the scan's model of the tree builder is not exact —
     /// the walk's own depth check does, because AngleSharp's depth limit sits above the cap.
     /// </summary>
+    /// <remarks>
+    /// Random repeat counts mostly land far from the cap (about one round in a hundred came within 16 levels of it),
+    /// so every deep fragment is also bisected down to the fewest repeats of its soup that still exceed the cap — the
+    /// boundary case, where a mis-modelled tree-builder rule is likeliest to let a fragment through. That is what lets
+    /// this run 100 rounds where it once ran 1,500 without exercising the boundary less: 18 boundary cases now, 13 then.
+    /// </remarks>
     [Fact]
     public void Composite_no_fragment_deeper_than_the_cap_is_ever_accepted()
     {
         var random = new Random(4_700);
         var deep = 0;
-        for (var round = 0; round < 1_500; round++)
+        var nearCap = 0;
+        for (var round = 0; round < 100; round++)
         {
             var soup = RandomSoup(random, random.Next(5, 60), Vocabulary, cdata: true);
-            var html = string.Concat(Enumerable.Repeat(soup, random.Next(10, 120)));
+            var repeats = random.Next(10, 120);
+            var html = Repeat(soup, repeats);
             if (ParsedDepth(html) <= Cap)
             {
                 continue;
             }
 
             deep++;
-            Assert.True(NewsHtmlText.ToPlainText(html, null).IsRefused, $"A fragment deeper than {Cap} was accepted: {html[..Math.Min(html.Length, 400)]}");
+            AssertRefused(html);
+
+            // The fewest repeats still over the cap: lo is a count at or under it (or none), hi one over it.
+            var (lo, hi) = (0, repeats);
+            while (hi - lo > 1)
+            {
+                var mid = (lo + hi) / 2;
+                if (ParsedDepth(Repeat(soup, mid)) > Cap)
+                {
+                    hi = mid;
+                }
+                else
+                {
+                    lo = mid;
+                }
+            }
+
+            var boundary = Repeat(soup, hi);
+            if (ParsedDepth(boundary) <= Cap + 16)
+            {
+                nearCap++;
+            }
+
+            AssertRefused(boundary);
         }
 
-        Assert.True(deep > 100, $"Only {deep} generated fragments were deeper than the cap: the property was barely exercised.");
+        Assert.True(deep > 10, $"Only {deep} generated fragments were deeper than the cap: the property was barely exercised.");
+        Assert.True(nearCap > 10, $"Only {nearCap} fragments were within 16 levels above the cap: the boundary was barely exercised.");
+
+        static string Repeat(string soup, int count) => string.Concat(Enumerable.Repeat(soup, count));
+
+        static void AssertRefused(string html) =>
+            Assert.True(NewsHtmlText.ToPlainText(html, null).IsRefused, $"A fragment deeper than {Cap} was accepted: {html[..Math.Min(html.Length, 400)]}");
     }
 
     private static readonly string[] Vocabulary =

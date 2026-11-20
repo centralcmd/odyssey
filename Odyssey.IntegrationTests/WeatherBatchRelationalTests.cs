@@ -12,6 +12,7 @@ using Odyssey.Context;
 using Odyssey.Context.Secrets;
 using Odyssey.Core.Weather;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -240,10 +241,10 @@ public class WeatherBatchRelationalTests(MariaDbFixture fixture, ITestOutputHelp
     /// each, target 250 ms. Calendar: 50 timed events over 5 points within 62 days, target 350 ms.
     /// </summary>
     [SkippableFact]
-    [Trait("Category", "Perf")]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task The_batch_reads_meet_their_P95_targets()
     {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        PerfTier.SkipUnlessRequested(fixture.Available, fixture.SkipReason);
         await MigratedAsync();
         var places = await PointsAndPlacesAsync(5);
         var origin = new DateTime(2026, 8, 20, 0, 0, 0, DateTimeKind.Utc);

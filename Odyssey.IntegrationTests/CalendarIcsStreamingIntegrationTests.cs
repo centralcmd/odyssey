@@ -8,6 +8,7 @@ using Odyssey.Context;
 using Odyssey.Core.Journal;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
+using Odyssey.Testing;
 using Xunit;
 
 namespace Odyssey.IntegrationTests;
@@ -19,6 +20,8 @@ namespace Odyssey.IntegrationTests;
 /// transaction under the execution strategy, a failure after a commit keeps the earlier batches (AC 17), and memory
 /// stays flat on a large export and import (AC 1, AC 16, at reduced scale). The EF InMemory provider honours neither
 /// transactions nor the execution strategy and runs no interceptor, so none of this is observable on the fast tiers.
+/// The two memory checks need 100,000- and 50,000-event calendars, so they are perf-tier tests (<see cref="PerfTier"/>)
+/// that run on the Release PR; the per-PR run keeps the no-transaction assertion on a calendar small enough to seed in seconds.
 /// </summary>
 [Collection(MariaDbTimingCollection.Name)]
 public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
@@ -26,13 +29,31 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
     private const string User = "calendar-ics-streaming";
     private const long MiB = 1024 * 1024;
 
+    /// <summary>
+    /// AC 1's transaction half, per PR: every export scope streams without opening a transaction. Enough rows that the
+    /// writer fetches several id chunks, which is where a retry under the execution strategy would re-emit chunks.
+    /// </summary>
     [SkippableFact]
-    public async Task No_export_opens_a_transaction_and_a_large_calendar_streams_in_bounded_memory()
+    public async Task No_export_opens_a_transaction()
     {
         Skip.IfNot(fixture.Available, fixture.SkipReason);
+        await ExportEveryScopeAsync(rows: 3 * Odyssey.Core.Journal.Interop.ExportChunking.ChunkSize + 1, peakHeapBound: null);
+    }
+
+    /// <summary>AC 1 at volume, Release PR only: a 100,000-row calendar streams in bounded memory, still without a transaction.</summary>
+    [SkippableFact]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
+    public async Task A_large_calendar_export_streams_in_bounded_memory_and_opens_no_transaction()
+    {
+        PerfTier.SkipUnlessRequested(fixture.Available, fixture.SkipReason);
+        await ExportEveryScopeAsync(rows: 100_000, peakHeapBound: 64 * MiB);
+    }
+
+    private async Task ExportEveryScopeAsync(int rows, long? peakHeapBound)
+    {
         var transactions = new TransactionCounter();
         var options = await OptionsAsync(transactions);
-        var calendarId = await SeedCalendarAsync(options, rows: 100_000, series: 3);
+        var calendarId = await SeedCalendarAsync(options, rows: rows, series: 3);
         try
         {
             await using var context = new OdysseyContext(options);
@@ -51,9 +72,12 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
             var planned = 0;
             Assert.True(await service.ExportStreamingAsync(
                 CalendarIcsExportScope.ForCalendar(calendarId), output, (_, count) => planned = count));
-            Assert.Equal(100_000 + 3, planned);
-            Assert.True(output.PeakLiveBytes - baseline < 64 * MiB,
-                $"Peak live heap grew by {(output.PeakLiveBytes - baseline) / MiB} MiB.");
+            Assert.Equal(rows + 3, planned);
+            if (peakHeapBound is { } bound)
+            {
+                Assert.True(output.PeakLiveBytes - baseline < bound,
+                    $"Peak live heap grew by {(output.PeakLiveBytes - baseline) / MiB} MiB.");
+            }
 
             foreach (var scope in new[]
             {
@@ -175,9 +199,10 @@ public class CalendarIcsStreamingIntegrationTests(MariaDbFixture fixture)
     }
 
     [SkippableFact]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task A_large_import_streams_in_bounded_memory()
     {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        PerfTier.SkipUnlessRequested(fixture.Available, fixture.SkipReason);
         var options = await OptionsAsync();
         var calendarId = await SeedCalendarAsync(options, rows: 0, series: 0);
         try

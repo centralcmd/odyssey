@@ -766,13 +766,17 @@ public class CalendarIcsStreamingApiTests
     [Fact]
     public async Task A_failure_in_batch_three_keeps_batches_one_and_two_and_a_rerun_completes_the_file()
     {
-        // Groups commit in UID-hash order since issue #519 (AR3), so the failure is one every group spends alike: 1,500
-        // single-occurrence series against an occurrence budget of 1,000 fail in batch three whatever the order.
-        await using var factory = new ApiFactory(WithSettings);
+        // Groups commit in UID-hash order since issue #519 (AR3), so the failure is one every group spends alike: three
+        // batches' worth of single-occurrence series against an occurrence budget of two batches fail in batch three
+        // whatever the order. This copy pins the HTTP error shape and the re-run on EF InMemory, so it lowers the batch
+        // size to keep the file small; the committed-batch semantics at the production batch size are
+        // CalendarIcsStreamingIntegrationTests' twin on MariaDB.
+        const int batchSize = 5;
+        await using var factory = new ApiFactory(WithSettings, importBatchGroups: batchSize);
         using var client = factory.CreateClient();
         var calendar = await CreateCalendarAsync(client, "Partial");
-        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 1000 });
-        var file = Vcalendar([.. Enumerable.Range(0, 1500).Select(i => Vevent(
+        await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 2 * batchSize });
+        var file = Vcalendar([.. Enumerable.Range(0, 3 * batchSize).Select(i => Vevent(
             $"{SyntheticGuid(i)}@odyssey.local", "DTSTART:20300101T090000Z", "DTEND:20300101T100000Z", $"SUMMARY:Row {i}",
             "RRULE:FREQ=DAILY;COUNT=1"))]);
 
@@ -782,12 +786,12 @@ public class CalendarIcsStreamingApiTests
         var problem = (await failed.Content.ReadFromJsonAsync<ProblemDetails>())!;
         Assert.Equal(CalendarIcsImportPartiallyAppliedException.DiscriminatorCode, problem.Extensions["code"]?.ToString());
         Assert.Equal("2", problem.Extensions["committedBatches"]?.ToString());
-        Assert.Equal("1000", problem.Extensions["committedEvents"]?.ToString());
+        Assert.Equal($"{2 * batchSize}", problem.Extensions["committedEvents"]?.ToString());
         await using (var scope = factory.Services.CreateAsyncScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<OdysseyContext>();
             var series = await db.RecurrencePatterns.Where(p => p.CalendarId == calendar.CalendarId).ToListAsync();
-            Assert.Equal(1000, series.Count);
+            Assert.Equal(2 * batchSize, series.Count);
             // The match keys were written in the same batch as their rows, so the re-run finds them.
             Assert.All(series, p => Assert.NotNull(p.ImportSourceUid));
         }
@@ -795,8 +799,8 @@ public class CalendarIcsStreamingApiTests
         await SetAsync(client, new SystemSettingsUpdate { CalendarIcsMaxAggregateOccurrences = 20000 });
         var rerun = await ImportAsync(client, calendar.CalendarId, file);
 
-        Assert.Equal(1000, rerun.UpdatedCount);
-        Assert.Equal(500, rerun.ImportedCount);
+        Assert.Equal(2 * batchSize, rerun.UpdatedCount);
+        Assert.Equal(batchSize, rerun.ImportedCount);
     }
 
     [Fact]
@@ -1083,12 +1087,23 @@ public class CalendarIcsStreamingApiTests
     {
         public ApiFactory(
             IReadOnlyCollection<string> permissions, CapturingLoggerProvider? logs = null, TimeProvider? clock = null,
-            IStartupFilter? startup = null)
+            IStartupFilter? startup = null, int? importBatchGroups = null)
             : base(permissions, ActorUserId, configureServices: services =>
             {
                 if (startup is not null)
                 {
                     services.AddSingleton(startup);
+                }
+
+                if (importBatchGroups is { } groups)
+                {
+                    services.RemoveAll<CalendarIcsService>();
+                    services.AddScoped(provider =>
+                    {
+                        var service = ActivatorUtilities.CreateInstance<CalendarIcsService>(provider);
+                        service.ImportBatchGroups = groups;
+                        return service;
+                    });
                 }
 
                 if (clock is not null)

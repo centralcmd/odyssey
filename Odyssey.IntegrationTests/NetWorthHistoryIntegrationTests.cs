@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Odyssey.Context;
 using Odyssey.Core.Finance;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing;
 using Xunit;
 using AccountType = Odyssey.Context.AccountType;
 
@@ -374,9 +375,10 @@ public class NetWorthHistoryIntegrationTests(MariaDbFixture fixture)
     // ── §12 — the performance targets, and the peak the reconstruction holds ───────────────────
 
     [SkippableFact]
+    [Trait(PerfTier.TraitName, PerfTier.TraitValue)]
     public async Task OneHundredThousandTransactions_StayWithinTheStatedBudget()
     {
-        Skip.IfNot(fixture.Available, fixture.SkipReason);
+        PerfTier.SkipUnlessRequested(fixture.Available, fixture.SkipReason);
         var counter = new CommandCounter();
         var options = await MigratedSchemaAsync(counter);
 

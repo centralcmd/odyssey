@@ -245,7 +245,11 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
             await command.ExecuteScalarAsync();
         }
 
+        // The production policy is three attempts of a 5 s statement wait (about 15 s); a 1 s wait and one retry reach the
+        // same give-up path on the same real 1205 in about 3 s.
+        const int lockWaitSeconds = 1;
         var watch = Stopwatch.StartNew();
+        using (CalendarSeriesTransactions.UseTestPolicy(lockWaitSeconds, maxRetryCount: 1))
         await using (var context = new OdysseyContext(options))
         {
             var busy = await Assert.ThrowsAsync<CalendarSeriesConflictException>(() =>
@@ -253,15 +257,16 @@ public class CalendarRecurrenceFidelityIntegrationTests(MariaDbFixture fixture)
             Assert.Equal(CalendarSeriesConflictException.Busy, busy.Code);
         }
 
-        // Three attempts of a 5 s statement wait, plus the strategy's short backoff: far below the server's 50 s default.
-        Assert.InRange(watch.Elapsed, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(40));
+        // Two attempts that each waited out the bounded statement wait, plus the strategy's short backoff: far below the
+        // server's 50 s default, which is what an unbounded wait would have taken.
+        Assert.InRange(watch.Elapsed, TimeSpan.FromSeconds(2 * lockWaitSeconds), TimeSpan.FromSeconds(20));
         await held.RollbackAsync();
 
         // The session setting did not leak into the pool: a plain connection still reads the server default.
         await using var probe = new MySqlConnection(fixture.ConnectionStringFor(Database));
         await probe.OpenAsync();
         await using var read = new MySqlCommand("SELECT @@SESSION.innodb_lock_wait_timeout", probe);
-        Assert.NotEqual(CalendarSeriesTransactions.LockWaitSeconds, Convert.ToInt32(await read.ExecuteScalarAsync()));
+        Assert.NotEqual(lockWaitSeconds, Convert.ToInt32(await read.ExecuteScalarAsync()));
     }
 
     [SkippableFact]

@@ -44,8 +44,15 @@ public static class OdysseyDatabaseRetry
     /// retrying strategy with <see cref="InteractiveMaxRetryCount"/> and the same transient set.
     /// </summary>
     public static IExecutionStrategy InteractiveStrategy(DbContext context) =>
+        InteractiveStrategy(context, InteractiveMaxRetryCount);
+
+    /// <summary>
+    /// <see cref="InteractiveStrategy(DbContext)"/> with an explicit retry count — only a test that must reach the
+    /// give-up path quickly passes anything but <see cref="InteractiveMaxRetryCount"/>.
+    /// </summary>
+    public static IExecutionStrategy InteractiveStrategy(DbContext context, int maxRetryCount) =>
         context.Database.IsRelational()
             ? new MySqlRetryingExecutionStrategy(
-                context, InteractiveMaxRetryCount, TimeSpan.FromSeconds(2), [.. TransientErrorNumbers])
+                context, maxRetryCount, TimeSpan.FromSeconds(2), [.. TransientErrorNumbers])
             : context.Database.CreateExecutionStrategy();
 }
