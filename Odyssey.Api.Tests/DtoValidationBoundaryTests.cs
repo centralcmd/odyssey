@@ -132,345 +132,141 @@ public class DtoValidationBoundaryTests(DtoValidationBoundaryTests.Host host) : 
         await context.Database.EnsureCreatedAsync();
     }
 
-    private async Task PostExpectingBadRequest(string path, object body)
+    // ── Accepted bodies ────────────────────────────────────────────────────────
+    // The positive controls: each baseline genuinely POSTs (201), so a 400 below is attributable to the
+    // one field it changes. The two exact-limit cases prove the boundary sits AT the limit, not one
+    // below it. NewTransaction and NewBudgetItem have no control — a successful create needs a seeded
+    // account/budget — but model validation runs before that lookup, so their 400s still isolate.
+
+    private static readonly Dictionary<string, (string Path, Func<object> Body)> AcceptedCases = new()
     {
+        ["Account baseline"] = ("/api/accounts", () => ValidAccount()),
+        ["Account Name at [StringLength(256)]"] = ("/api/accounts", () => ValidAccount() with { Name = new string('x', 256) }),
+        ["Contract baseline"] = ("/api/contracts", () => ValidContract()),
+        ["ExchangeRate baseline"] = ("/api/exchange-rates", () => ValidExchangeRate()),
+        ["Currency baseline"] = ("/api/currencies", () => ValidCurrency()),
+        ["Currency MinorUnits at [Range(0, 12)] max"] = ("/api/currencies", () => ValidCurrency() with { MinorUnits = 12 }),
+        ["Contact baseline"] = ("/api/contacts", () => ValidContact()),
+        ["TransactionTag baseline"] = ("/api/transaction-tags", () => ValidTransactionTag()),
+        ["Budget baseline"] = ("/api/budgets", () => ValidBudget()),
+    };
+
+    public static TheoryData<string> AcceptedCaseNames => [.. AcceptedCases.Keys];
+
+    [Theory]
+    [MemberData(nameof(AcceptedCaseNames))]
+    public async Task Create_WithinEveryAnnotation_IsAccepted(string caseName)
+    {
+        var (path, body) = AcceptedCases[caseName];
+        var factory = Factory.ForCaller(CreateClaims);
+        await EnsureReferenceDataAsync(factory);
+        using var client = factory.CreateClient();
+
+        var response = await client.PostAsJsonAsync(path, body());
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    // ── Rejected bodies ────────────────────────────────────────────────────────
+    // Each violates exactly one annotation (or, where noted, one service rule) and names the field the
+    // ValidationProblemDetails must be keyed on.
+
+    private static readonly Dictionary<string, (string Path, string Field, Func<object> Body)> RejectedCases = new()
+    {
+        // NewAccount
+        ["Account Name over [StringLength(256)]"] =
+            ("/api/accounts", nameof(NewAccount.Name), () => ValidAccount() with { Name = new string('x', 257) }),
+        ["Account CurrencyCode over [StringLength(3)]"] =
+            ("/api/accounts", nameof(NewAccount.CurrencyCode), () => ValidAccount() with { CurrencyCode = "USDD" }),
+
+        // NewContract
+        ["Contract Name empty, [StringLength(256, MinimumLength = 1)]"] =
+            ("/api/contracts", nameof(NewContract.Name), () => ValidContract() with { Name = "" }),
+        ["Contract Description over [StringLength(1024)]"] =
+            ("/api/contracts", nameof(NewContract.Description), () => ValidContract() with { Description = new string('x', 1025) }),
+        ["Contract Type undefined, [EnumDataType]"] =
+            ("/api/contracts", nameof(NewContract.Type), () => ValidContract() with { Type = (ContractType)999 }),
+
+        // NewTransaction
+        ["Transaction Description over [StringLength(256)]"] =
+            ("/api/transactions", nameof(NewTransaction.Description), () => ValidTransaction(Guid.NewGuid()) with { Description = new string('x', 257) }),
+        ["Transaction ExternalId over [StringLength(64)]"] =
+            ("/api/transactions", nameof(NewTransaction.ExternalId), () => ValidTransaction(Guid.NewGuid()) with { ExternalId = new string('x', 65) }),
+        ["Transaction StatusComment over [StringLength(256)]"] =
+            ("/api/transactions", nameof(NewTransaction.StatusComment), () => ValidTransaction(Guid.NewGuid()) with { StatusComment = new string('x', 257) }),
+
+        // NewExchangeRate. Rate's [Range] starts at the rate column's smallest step
+        // (MoneyBounds.ExchangeRateMin), so zero is rejected; the precision cases live in MoneyBoundsTests (#240).
+        ["ExchangeRate Rate zero, [Range(ExchangeRateMin, …)]"] =
+            ("/api/exchange-rates", nameof(NewExchangeRate.Rate), () => ValidExchangeRate() with { Rate = 0m }),
+        ["ExchangeRate FromCurrencyCode over [StringLength(3)]"] =
+            ("/api/exchange-rates", nameof(NewExchangeRate.FromCurrencyCode), () => ValidExchangeRate() with { FromCurrencyCode = "USDD" }),
+
+        // NewCurrency
+        ["Currency MinorUnits over [Range(0, 12)]"] =
+            ("/api/currencies", nameof(NewCurrency.MinorUnits), () => ValidCurrency() with { MinorUnits = 13 }),
+        ["Currency Symbol over [StringLength(8)]"] =
+            ("/api/currencies", nameof(NewCurrency.Symbol), () => ValidCurrency() with { Symbol = new string('$', 9) }),
+
+        // NewContact
+        ["Contact DisplayName over [StringLength(128)]"] =
+            ("/api/contacts", nameof(NewContact.DisplayName), () => ValidContact() with { DisplayName = new string('x', 129) }),
+        ["Contact Type undefined, [EnumDataType]"] =
+            ("/api/contacts", nameof(NewContact.Type), () => ValidContact() with { Type = (ContactType)999 }),
+
+        // NewTransactionTag
+        ["TransactionTag Name over [StringLength(64)]"] =
+            ("/api/transaction-tags", nameof(NewTransactionTag.Name), () => ValidTransactionTag() with { Name = new string('x', 65) }),
+        ["TransactionTag Description over [StringLength(256)]"] =
+            ("/api/transaction-tags", nameof(NewTransactionTag.Description), () => ValidTransactionTag() with { Description = new string('x', 257) }),
+
+        // NewBudget
+        ["Budget Name over [StringLength(64)]"] =
+            ("/api/budgets", nameof(NewBudget.Name), () => ValidBudget() with { Name = new string('x', 65) }),
+        ["Budget Description over [StringLength(256)]"] =
+            ("/api/budgets", nameof(NewBudget.Description), () => ValidBudget() with { Description = new string('x', 257) }),
+
+        // NewBudgetItem. The item has no Name or Description of its own any more (issue #75): its REQUIRED
+        // transaction tag is its identity, so the boundary cases sit on that field.
+        // AC 7 — omitting the tag is caught by [Required] in model validation, before the service runs.
+        ["BudgetItem TransactionTagId missing, [Required]"] =
+            ("/api/budget-items", nameof(NewBudgetItem.TransactionTagId), () => new
+            {
+                budgetId = Guid.NewGuid(),
+                categoryType = Odyssey.Dtos.Finance.BudgetCategoryType.Expense,
+                plannedAmount = 1000m,
+            }),
+        // AC 8 — [Required] does NOT reject Guid.Empty on a non-nullable Guid, so this is the service's own
+        // rejection, keyed to the same field.
+        ["BudgetItem TransactionTagId empty (service rule)"] =
+            ("/api/budget-items", nameof(NewBudgetItem.TransactionTagId), () => ValidBudgetItem(Guid.NewGuid()) with { TransactionTagId = Guid.Empty }),
+        // AC 9 — an unknown tag is a 400, not a 500, on the FK-free InMemory tier.
+        ["BudgetItem TransactionTagId unknown (service rule)"] =
+            ("/api/budget-items", nameof(NewBudgetItem.TransactionTagId), () => ValidBudgetItem(Guid.NewGuid())),
+        ["BudgetItem CategoryType undefined, [EnumDataType]"] =
+            ("/api/budget-items", nameof(NewBudgetItem.CategoryType), () => ValidBudgetItem(Guid.NewGuid()) with { CategoryType = (Odyssey.Dtos.Finance.BudgetCategoryType)999 }),
+    };
+
+    public static TheoryData<string> RejectedCaseNames => [.. RejectedCases.Keys];
+
+    [Theory]
+    [MemberData(nameof(RejectedCaseNames))]
+    public async Task Create_ViolatingOneAnnotation_Returns400KeyedOnTheField(string caseName)
+    {
+        var (path, field, body) = RejectedCases[caseName];
         using var client = Factory.ClientFor(CreateClaims);
 
-        var response = await client.PostAsJsonAsync(path, body);
+        var response = await client.PostAsJsonAsync(path, body());
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
         var problem = await response.Content.ReadFromJsonAsync<ValidationProblemDetails>();
         Assert.Equal(StatusCodes.Status400BadRequest, problem?.Status);
-        Assert.NotEmpty(problem!.Errors);
-    }
-
-    // ── NewAccount ─────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreateAccount_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/accounts", ValidAccount());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateAccount_NameOverStringLength_Returns400()
-    {
-        var body = ValidAccount();
-        body.Name = new string('x', 257); // [StringLength(256)]
-        await PostExpectingBadRequest("/api/accounts", body);
-    }
-
-    [Fact]
-    public async Task CreateAccount_NameAtExactStringLength_IsAccepted()
-    {
-        // The boundary is 256, not 255 — the max-length value must still be accepted.
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var body = ValidAccount();
-        body.Name = new string('x', 256);
-        var response = await client.PostAsJsonAsync("/api/accounts", body);
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateAccount_CurrencyCodeOverStringLength_Returns400()
-    {
-        var body = ValidAccount();
-        body.CurrencyCode = "USDD"; // [StringLength(3)]
-        await PostExpectingBadRequest("/api/accounts", body);
-    }
-
-    // ── NewContract ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreateContract_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/contracts", ValidContract());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateContract_EmptyName_Returns400()
-    {
-        var body = ValidContract();
-        body.Name = ""; // [StringLength(256, MinimumLength = 1)]
-        await PostExpectingBadRequest("/api/contracts", body);
-    }
-
-    [Fact]
-    public async Task CreateContract_DescriptionOverStringLength_Returns400()
-    {
-        var body = ValidContract();
-        body.Description = new string('x', 1025); // [StringLength(1024)]
-        await PostExpectingBadRequest("/api/contracts", body);
-    }
-
-    [Fact]
-    public async Task CreateContract_UndefinedEnumType_Returns400()
-    {
-        var body = ValidContract();
-        body.Type = (ContractType)999; // [EnumDataType(typeof(ContractType))]
-        await PostExpectingBadRequest("/api/contracts", body);
-    }
-
-
-    // ── NewTransaction ─────────────────────────────────────────────────────────
-    // As above, a successful create needs a seeded account; the annotation 400 precedes that.
-
-    [Fact]
-    public async Task CreateTransaction_DescriptionOverStringLength_Returns400()
-    {
-        var body = ValidTransaction(Guid.NewGuid());
-        body.Description = new string('x', 257); // [StringLength(256)]
-        await PostExpectingBadRequest("/api/transactions", body);
-    }
-
-    [Fact]
-    public async Task CreateTransaction_ExternalIdOverStringLength_Returns400()
-    {
-        var body = ValidTransaction(Guid.NewGuid());
-        body.ExternalId = new string('x', 65); // [StringLength(64)]
-        await PostExpectingBadRequest("/api/transactions", body);
-    }
-
-    [Fact]
-    public async Task CreateTransaction_StatusCommentOverStringLength_Returns400()
-    {
-        var body = ValidTransaction(Guid.NewGuid());
-        body.StatusComment = new string('x', 257); // [StringLength(256)]
-        await PostExpectingBadRequest("/api/transactions", body);
-    }
-
-    // ── NewExchangeRate ────────────────────────────────────────────────────────
-    // Rate's [Range] starts at the rate column's smallest step (MoneyBounds.ExchangeRateMin), so zero
-    // is invalid; the column-precision cases live in MoneyBoundsTests (issue #240).
-
-    [Fact]
-    public async Task CreateExchangeRate_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/exchange-rates", ValidExchangeRate());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateExchangeRate_ZeroRate_Returns400()
-    {
-        var body = ValidExchangeRate();
-        body.Rate = 0m; // [Range(typeof(decimal), MoneyBounds.ExchangeRateMin, …)] — zero is rejected, not accepted.
-        await PostExpectingBadRequest("/api/exchange-rates", body);
-    }
-
-    [Fact]
-    public async Task CreateExchangeRate_FromCurrencyOverStringLength_Returns400()
-    {
-        var body = ValidExchangeRate();
-        body.FromCurrencyCode = "USDD"; // [StringLength(3)]
-        await PostExpectingBadRequest("/api/exchange-rates", body);
-    }
-
-    // ── NewCurrency ────────────────────────────────────────────────────────────
-    // MinorUnits carries a bounded [Range(0, 12)] — exercise both the reject and the exact-max accept.
-
-    [Fact]
-    public async Task CreateCurrency_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/currencies", ValidCurrency());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateCurrency_MinorUnitsOverRange_Returns400()
-    {
-        var body = ValidCurrency();
-        body.MinorUnits = 13; // [Range(0, 12)]
-        await PostExpectingBadRequest("/api/currencies", body);
-    }
-
-    [Fact]
-    public async Task CreateCurrency_MinorUnitsAtExactMax_IsAccepted()
-    {
-        // The boundary is 12, not 11 — the max value must still be accepted.
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var body = ValidCurrency();
-        body.MinorUnits = 12;
-        var response = await client.PostAsJsonAsync("/api/currencies", body);
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateCurrency_SymbolOverStringLength_Returns400()
-    {
-        var body = ValidCurrency();
-        body.Symbol = new string('$', 9); // [StringLength(8)]
-        await PostExpectingBadRequest("/api/currencies", body);
-    }
-
-    // ── NewContact ────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreateContact_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/contacts", ValidContact());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateContact_DisplayNameOverStringLength_Returns400()
-    {
-        var body = ValidContact();
-        body.DisplayName = new string('x', 129); // [StringLength(128)]
-        await PostExpectingBadRequest("/api/contacts", body);
-    }
-
-    [Fact]
-    public async Task CreateContact_UndefinedEnumType_Returns400()
-    {
-        var body = ValidContact();
-        body.Type = (ContactType)999; // [EnumDataType(typeof(ContactType))]
-        await PostExpectingBadRequest("/api/contacts", body);
-    }
-
-    // ── NewTransactionTag ──────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreateTransactionTag_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/transaction-tags", ValidTransactionTag());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateTransactionTag_NameOverStringLength_Returns400()
-    {
-        var body = ValidTransactionTag();
-        body.Name = new string('x', 65); // [StringLength(64)]
-        await PostExpectingBadRequest("/api/transaction-tags", body);
-    }
-
-    [Fact]
-    public async Task CreateTransactionTag_DescriptionOverStringLength_Returns400()
-    {
-        var body = ValidTransactionTag();
-        body.Description = new string('x', 257); // [StringLength(256)]
-        await PostExpectingBadRequest("/api/transaction-tags", body);
-    }
-
-    // ── NewBudget ──────────────────────────────────────────────────────────────
-
-    [Fact]
-    public async Task CreateBudget_BaselineIsAccepted()
-    {
-        var factory = Factory.ForCaller(CreateClaims);
-        await EnsureReferenceDataAsync(factory);
-        using var client = factory.CreateClient();
-
-        var response = await client.PostAsJsonAsync("/api/budgets", ValidBudget());
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task CreateBudget_NameOverStringLength_Returns400()
-    {
-        var body = ValidBudget();
-        body.Name = new string('x', 65); // [StringLength(64)]
-        await PostExpectingBadRequest("/api/budgets", body);
-    }
-
-    [Fact]
-    public async Task CreateBudget_DescriptionOverStringLength_Returns400()
-    {
-        var body = ValidBudget();
-        body.Description = new string('x', 257); // [StringLength(256)]
-        await PostExpectingBadRequest("/api/budgets", body);
-    }
-
-    // ── NewBudgetItem ──────────────────────────────────────────────────────────
-    // No positive control: a successful create needs a seeded budget (FK). Model-binding validation
-    // runs before that lookup, so an annotation violation still short-circuits to 400.
-
-    // The item has no Name or Description of its own any more (issue #75): its REQUIRED transaction
-    // tag is its identity, and the boundary cases moved onto that field.
-
-    /// <summary>
-    /// AC 7. Omitting the tag entirely is caught by <c>[Required]</c> in model validation, before the
-    /// service ever runs.
-    /// </summary>
-    [Fact]
-    public async Task CreateBudgetItem_MissingTransactionTagId_Returns400()
-    {
-        await PostExpectingBadRequest("/api/budget-items", new
-        {
-            budgetId = Guid.NewGuid(),
-            categoryType = Odyssey.Dtos.Finance.BudgetCategoryType.Expense,
-            plannedAmount = 1000m,
-        });
-    }
-
-    /// <summary>
-    /// AC 8. <c>[Required]</c> does NOT reject <see cref="Guid.Empty"/> on a non-nullable
-    /// <see cref="Guid"/>, so this one is the service's own rejection, keyed to the same field.
-    /// </summary>
-    [Fact]
-    public async Task CreateBudgetItem_EmptyTransactionTagId_Returns400()
-    {
-        var body = ValidBudgetItem(Guid.NewGuid());
-        body.TransactionTagId = Guid.Empty;
-        await PostExpectingBadRequest("/api/budget-items", body);
-    }
-
-    /// <summary>AC 9 — an unknown tag is a 400, not a 500, on the FK-free InMemory tier.</summary>
-    [Fact]
-    public async Task CreateBudgetItem_UnknownTransactionTagId_Returns400()
-    {
-        await PostExpectingBadRequest("/api/budget-items", ValidBudgetItem(Guid.NewGuid()));
-    }
-
-    [Fact]
-    public async Task CreateBudgetItem_UndefinedEnumCategory_Returns400()
-    {
-        var body = ValidBudgetItem(Guid.NewGuid());
-        body.CategoryType = (Odyssey.Dtos.Finance.BudgetCategoryType)999; // [EnumDataType]
-        await PostExpectingBadRequest("/api/budget-items", body);
+        // An annotation failure is keyed on the property. A missing C# `required` member fails earlier, in
+        // System.Text.Json, whose error is keyed on the body and names the member in its message instead.
+        Assert.Contains(problem!.Errors, error =>
+            error.Key.EndsWith(field, StringComparison.OrdinalIgnoreCase)
+            || error.Value.Any(message => message.Contains(field, StringComparison.OrdinalIgnoreCase)));
     }
 
     /// <summary>The class's shared host: every caller's claims travel per request (<see cref="SharedApiHostClients"/>).</summary>
