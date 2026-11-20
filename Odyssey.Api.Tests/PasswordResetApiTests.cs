@@ -27,24 +27,45 @@ namespace Odyssey.Api.Tests;
 /// <c>/resetPassword</c> — so what these tests pin is the contract the client is written against and
 /// the three things Odyssey does own: the composed link, the completion log, and the fact that none
 /// of it discloses whether an address is registered.
+///
+/// <para>
+/// Two hosts serve the class, one per service shape: <see cref="SharedHost"/> (the real sender, which logs the link)
+/// and <see cref="RecordingHost"/> (a recording sender). Both are returned to their seeded transport, with no log
+/// lines and no recorded sends, before every test (<see cref="InitializeAsync"/>). Their stores are not emptied, so
+/// every test signs up addresses of its own — which also keeps each test inside its own window of the per-recipient
+/// send throttle, an in-process singleton. A test that replaces the throttle, or changes a setting other than the
+/// transport, keeps a host of its own.
+/// </para>
 /// </summary>
-public class PasswordResetApiTests
+public class PasswordResetApiTests(PasswordResetApiTests.SharedHost sharedHost, PasswordResetApiTests.RecordingHost recordingHost)
+    : IClassFixture<PasswordResetApiTests.SharedHost>, IClassFixture<PasswordResetApiTests.RecordingHost>, IAsyncLifetime
 {
     private const string Password = "Password123!Safe";
     private const string NewPassword = "Renewed987!Passphrase";
     private const string ClientBaseUrl = "https://app.example.test";
 
-    private const string Registered = "registered@example.com";
+    /// <summary>This test's registered address: one per test, so no two tests share an account or a throttle window.</summary>
+    private readonly string registered = UniqueAddress("registered");
+
+    private static string UniqueAddress(string label) => $"{label}-{Guid.NewGuid():N}@example.com";
+
+    public async Task InitializeAsync()
+    {
+        await sharedHost.ResetAsync();
+        await recordingHost.ResetAsync();
+    }
+
+    public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
     public async Task ForgotPassword_HandsTheCodeToTheSender_AndNeverTheDeadLinkCallback()
     {
-        var sender = new RecordingEmailSender();
-        await using var factory = new ApiFactory(emailSender: sender);
-        await CreateUserAsync(factory, Registered);
+        var factory = recordingHost;
+        var sender = factory.Recorder;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = Registered });
+        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = registered });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(1, sender.CodeCalls);
@@ -55,12 +76,12 @@ public class PasswordResetApiTests
     [Fact]
     public async Task ForgotPassword_ForAnUnknownAddress_SendsNothing()
     {
-        var sender = new RecordingEmailSender();
-        await using var factory = new ApiFactory(emailSender: sender);
-        await CreateUserAsync(factory, Registered);
+        var factory = recordingHost;
+        var sender = factory.Recorder;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = "nobody@example.com" });
+        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = UniqueAddress("nobody") });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, sender.CodeCalls);
@@ -72,12 +93,13 @@ public class PasswordResetApiTests
         // Identity refuses both endpoints for an unconfirmed address — otherwise registering an
         // address you don't control would be a route to taking it over. Such a user is served by the
         // existing resend-confirmation flow instead.
-        var sender = new RecordingEmailSender();
-        await using var factory = new ApiFactory(emailSender: sender);
-        await CreateUserAsync(factory, "unconfirmed@example.com", confirmed: false);
+        var factory = recordingHost;
+        var sender = factory.Recorder;
+        var unconfirmed = UniqueAddress("unconfirmed");
+        await CreateUserAsync(factory, unconfirmed, confirmed: false);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = "unconfirmed@example.com" });
+        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = unconfirmed });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal(0, sender.CodeCalls);
@@ -89,6 +111,7 @@ public class PasswordResetApiTests
         // The whole point of the flow: nothing a caller can observe may differ between an address
         // that exists and one that doesn't. A status-code check alone would miss a differing header or
         // body, so all three are compared.
+        // A host of its own: the throttle is a replaced service.
         var throttle = new SelectiveThrottle("throttled@example.com");
         await using var factory = new ApiFactory(
             throttle: throttle,
@@ -96,12 +119,12 @@ public class PasswordResetApiTests
             // attempt delivery here, and this keeps that attempt fast and deterministic.
             smtpHost: "127.0.0.1",
             smtpPort: 1);
-        await CreateUserAsync(factory, Registered);
+        await CreateUserAsync(factory, registered);
         await CreateUserAsync(factory, "throttled@example.com");
         await CreateUserAsync(factory, "unconfirmed@example.com", confirmed: false);
         using var client = factory.CreateClient();
 
-        var registered = await client.PostAsJsonAsync("/forgotPassword", new { email = Registered });
+        var registeredResponse = await client.PostAsJsonAsync("/forgotPassword", new { email = registered });
         var unregistered = await client.PostAsJsonAsync("/forgotPassword", new { email = "nobody@example.com" });
         var unconfirmed = await client.PostAsJsonAsync("/forgotPassword", new { email = "unconfirmed@example.com" });
         var throttled = await client.PostAsJsonAsync("/forgotPassword", new { email = "throttled@example.com" });
@@ -109,9 +132,9 @@ public class PasswordResetApiTests
         Assert.Contains("throttled@example.com", throttle.Seen);
         foreach (var other in new[] { unregistered, unconfirmed, throttled })
         {
-            Assert.Equal(registered.StatusCode, other.StatusCode);
-            Assert.Equal(await registered.Content.ReadAsStringAsync(), await other.Content.ReadAsStringAsync());
-            Assert.Equal(Comparable(registered), Comparable(other));
+            Assert.Equal(registeredResponse.StatusCode, other.StatusCode);
+            Assert.Equal(await registeredResponse.Content.ReadAsStringAsync(), await other.Content.ReadAsStringAsync());
+            Assert.Equal(Comparable(registeredResponse), Comparable(other));
         }
     }
 
@@ -120,46 +143,45 @@ public class PasswordResetApiTests
     {
         // The full chain, through the real SmtpEmailSender: Identity's token → the composed client
         // link → the code the client would read out of the query → /resetPassword.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
-        Assert.True(await LoginAsync(factory, Registered, NewPassword), "The new password should sign in.");
-        Assert.False(await LoginAsync(factory, Registered, Password), "The old password should be refused.");
+        Assert.True(await LoginAsync(factory, registered, NewPassword), "The new password should sign in.");
+        Assert.False(await LoginAsync(factory, registered, Password), "The old password should be refused.");
     }
 
     [Fact]
     public async Task TheEmailedLink_PointsAtTheClientResetPage_WithoutTheAddress()
     {
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        await client.PostAsJsonAsync("/forgotPassword", new { email = Registered });
+        await client.PostAsJsonAsync("/forgotPassword", new { email = registered });
 
         var link = new Uri(LoggedLink(factory));
         Assert.Equal("app.example.test", link.Host);
         Assert.Equal("/reset-password", link.AbsolutePath);
         Assert.Contains("code=", link.Query, StringComparison.Ordinal);
-        Assert.DoesNotContain(Registered, link.ToString(), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(registered, link.ToString(), StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
     public async Task WithoutAClientBaseUrl_TheCodeStillReachesTheUser()
     {
-        var sender = new RecordingEmailSender();
-        await using var factory = new ApiFactory(
-            emailSender: sender,
-            clientBaseUrl: string.Empty);
-        await CreateUserAsync(factory, Registered);
+        var factory = recordingHost;
+        var sender = factory.Recorder;
+        await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.EmailClientBaseUrl, string.Empty);
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = Registered });
+        var response = await client.PostAsJsonAsync("/forgotPassword", new { email = registered });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var message = PasswordResetMail.Compose(sender.LastResetCode!, clientBaseUrl: null);
@@ -175,17 +197,17 @@ public class PasswordResetApiTests
     [Fact]
     public async Task ATamperedCode_IsRejectedWithTheInvalidTokenErrorKey()
     {
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var response = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code + "tampered", newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code + "tampered", newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("InvalidToken", await ErrorKeysAsync(response));
-        Assert.False(await LoginAsync(factory, Registered, NewPassword), "A rejected reset must not change the password.");
+        Assert.False(await LoginAsync(factory, registered, NewPassword), "A rejected reset must not change the password.");
     }
 
     [Fact]
@@ -193,19 +215,19 @@ public class PasswordResetApiTests
     {
         // Single-use falls out of the security-stamp rotation a successful reset performs — the token
         // embeds the stamp it was minted against.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var first = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = NewPassword });
         var second = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = "Another765!Passphrase" });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = "Another765!Passphrase" });
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
-        Assert.True(await LoginAsync(factory, Registered, NewPassword), "The first reset's password still stands.");
+        Assert.True(await LoginAsync(factory, registered, NewPassword), "The first reset's password still stands.");
     }
 
     [Fact]
@@ -215,17 +237,17 @@ public class PasswordResetApiTests
         // rather than to a single issued token — so both links work until one of them is redeemed,
         // which is the correct behaviour for the two-tab and delayed-delivery cases. Single-use here
         // means single-use-per-successful-reset, not single-outstanding-link.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var first = await RequestCodeAsync(client, factory, Registered);
-        var second = await RequestCodeAsync(client, factory, Registered);
+        var first = await RequestCodeAsync(client, factory, registered);
+        var second = await RequestCodeAsync(client, factory, registered);
 
         var usingSecond = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = second, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = second, newPassword = NewPassword });
         var usingFirst = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = first, newPassword = "Another765!Passphrase" });
+            "/resetPassword", new { email = registered, resetCode = first, newPassword = "Another765!Passphrase" });
 
         Assert.Equal(HttpStatusCode.OK, usingSecond.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, usingFirst.StatusCode);
@@ -234,19 +256,19 @@ public class PasswordResetApiTests
     [Fact]
     public async Task APolicyViolatingPassword_IsRejected_AndLeavesThePasswordAlone()
     {
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var response = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = "Short1!aa" });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = "Short1!aa" });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var keys = await ErrorKeysAsync(response);
         Assert.DoesNotContain("InvalidToken", keys);
         Assert.NotEmpty(keys);
-        Assert.True(await LoginAsync(factory, Registered, Password), "The old password must still work.");
+        Assert.True(await LoginAsync(factory, registered, Password), "The old password must still work.");
     }
 
     [Fact]
@@ -254,48 +276,48 @@ public class PasswordResetApiTests
     {
         // A reset must not double as a lockout-clearing side channel, so LockoutEnd is left alone and
         // the subsequent sign-in still fails until it elapses.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
 
         using (var scope = factory.Services.CreateScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = (await users.FindByEmailAsync(Registered))!;
+            var user = (await users.FindByEmailAsync(registered))!;
             await users.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddHours(1));
         }
 
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
-        Assert.False(await LoginAsync(factory, Registered, NewPassword), "Lockout still bars the sign-in.");
+        Assert.False(await LoginAsync(factory, registered, NewPassword), "Lockout still bars the sign-in.");
     }
 
     [Fact]
     public async Task ATwoFactorAccount_StillFacesTheChallengeAfterAReset()
     {
         // A future "sign the user in for convenience" change here would silently become a 2FA bypass.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using (var scope = factory.Services.CreateScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            var user = (await users.FindByEmailAsync(Registered))!;
+            var user = (await users.FindByEmailAsync(registered))!;
             await users.ResetAuthenticatorKeyAsync(user);
             await users.SetTwoFactorEnabledAsync(user, true);
         }
 
         using var client = factory.CreateClient();
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = NewPassword });
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
 
         using var loginClient = factory.CreateClient();
         var login = await loginClient.PostAsJsonAsync(
-            "/login?useCookies=true", new { email = Registered, password = NewPassword });
+            "/login?useCookies=true", new { email = registered, password = NewPassword });
 
         Assert.Equal(HttpStatusCode.Unauthorized, login.StatusCode);
         Assert.Contains("RequiresTwoFactor", await login.Content.ReadAsStringAsync(), StringComparison.Ordinal);
@@ -304,19 +326,20 @@ public class PasswordResetApiTests
     [Fact]
     public async Task ExhaustingTheRecipientThrottle_ChangesNothingTheCallerSees_AndStopsSending()
     {
+        // A host of its own: the per-recipient limit it lowers is a store-wide setting.
         await using var factory = new ApiFactory(smtpHost: "127.0.0.1", smtpPort: 1);
 
         // The per-recipient limit moved into the settings store (issue #421 Wave 2), so setting it in
         // configuration would assert against a key nothing reads — and this test would pass three
         // sends while claiming to prove the throttle stops at one.
         await SystemSettingsSeed.SetAsync(factory.Services, SystemSettingsKeys.EmailPerRecipientLimit, "1");
-        await CreateUserAsync(factory, Registered);
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
         var responses = new List<HttpResponseMessage>();
         for (var attempt = 0; attempt < 3; attempt++)
         {
-            responses.Add(await client.PostAsJsonAsync("/forgotPassword", new { email = Registered }));
+            responses.Add(await client.PostAsJsonAsync("/forgotPassword", new { email = registered }));
         }
 
         Assert.All(responses, response => Assert.Equal(HttpStatusCode.OK, response.StatusCode));
@@ -332,31 +355,31 @@ public class PasswordResetApiTests
     [Fact]
     public async Task ACompletedReset_LogsTheUserId_AndNeitherTheAddressNorTheToken()
     {
-        await using var factory = new ApiFactory();
-        var userId = await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        var userId = await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var reset = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code, newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code, newPassword = NewPassword });
         Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
 
         var entry = Assert.Single(CompletionLines(factory));
         Assert.Contains(userId, entry.Message, StringComparison.Ordinal);
-        Assert.DoesNotContain(Registered, entry.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(registered, entry.Message, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(code, entry.Message, StringComparison.Ordinal);
     }
 
     [Fact]
     public async Task ARejectedReset_LogsNoCompletion()
     {
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var code = await RequestCodeAsync(client, factory, Registered);
+        var code = await RequestCodeAsync(client, factory, registered);
         var response = await client.PostAsJsonAsync(
-            "/resetPassword", new { email = Registered, resetCode = code + "tampered", newPassword = NewPassword });
+            "/resetPassword", new { email = registered, resetCode = code + "tampered", newPassword = NewPassword });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(CompletionLines(factory));
@@ -368,17 +391,17 @@ public class PasswordResetApiTests
         // MapIdentityApi hands back one convention builder for its whole group, so a filter added to
         // that builder would fire on every Identity route — this is the assertion that the filter is
         // attached to /resetPassword alone.
-        await using var factory = new ApiFactory();
-        await CreateUserAsync(factory, Registered);
+        var factory = sharedHost;
+        await CreateUserAsync(factory, registered);
         using var client = factory.CreateClient();
 
-        var login = await client.PostAsJsonAsync("/login?useCookies=true", new { email = Registered, password = Password });
+        var login = await client.PostAsJsonAsync("/login?useCookies=true", new { email = registered, password = Password });
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         // GET, since issue #246 closed the POST (it answers 405 before any handler runs).
         var manage = await client.GetAsync("/manage/info");
         Assert.Equal(HttpStatusCode.OK, manage.StatusCode);
         var register = await client.PostAsJsonAsync(
-            "/register", new { email = "fresh@example.com", password = Password });
+            "/register", new { email = UniqueAddress("fresh"), password = Password });
         Assert.Equal(HttpStatusCode.OK, register.StatusCode);
 
         Assert.Empty(CompletionLines(factory));
@@ -475,13 +498,20 @@ public class PasswordResetApiTests
     /// <summary>
     /// Records what Identity asks the sender to deliver, without composing or sending anything.
     /// </summary>
-    private sealed class RecordingEmailSender : IEmailSender<ApplicationUser>
+    public sealed class RecordingEmailSender : IEmailSender<ApplicationUser>
     {
         public int CodeCalls { get; private set; }
 
         public int LinkCalls { get; private set; }
 
         public string? LastResetCode { get; private set; }
+
+        public void Reset()
+        {
+            CodeCalls = 0;
+            LinkCalls = 0;
+            LastResetCode = null;
+        }
 
         public Task SendConfirmationLinkAsync(ApplicationUser user, string email, string confirmationLink) =>
             Task.CompletedTask;
@@ -528,7 +558,16 @@ public class PasswordResetApiTests
     /// what most of them assert on.
     /// </para>
     /// </summary>
-    private sealed class ApiFactory(
+    /// <summary>The class's host with the real sender: no relay, so the composed link is logged.</summary>
+    public sealed class SharedHost() : ApiFactory();
+
+    /// <summary>The class's host with a recording sender, for what Identity hands the sender.</summary>
+    public sealed class RecordingHost() : ApiFactory(emailSender: new RecordingEmailSender())
+    {
+        public RecordingEmailSender Recorder => (RecordingEmailSender)EmailSender!;
+    }
+
+    public class ApiFactory(
         IEmailSender<ApplicationUser>? emailSender = null,
         IEmailSendThrottle? throttle = null,
         IReadOnlyDictionary<string, string?>? configuration = null,
@@ -540,6 +579,19 @@ public class PasswordResetApiTests
         private readonly string databaseName = $"PasswordResetApiTests-{Guid.NewGuid()}";
 
         public CapturingLoggerProvider Logs { get; } = new();
+
+        protected IEmailSender<ApplicationUser>? EmailSender => emailSender;
+
+        /// <summary>
+        /// Returns a host shared across tests to what it was built with: the transport this factory seeds (a test may
+        /// have rewritten a row), no captured log lines and no recorded sends. Accounts stay; each test makes its own.
+        /// </summary>
+        public async Task ResetAsync()
+        {
+            await SystemSettingsSeed.SetTransportAsync(Services, smtpHost, smtpPort, clientBaseUrl);
+            Logs.Clear();
+            (emailSender as RecordingEmailSender)?.Reset();
+        }
 
         /// <summary>
         /// Seeds the transport once, on the host this factory builds, before any client can issue a
