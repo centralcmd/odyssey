@@ -5,9 +5,10 @@
     the currency delete, Instruments for the instrument delete, and OdsConfirm wraps it for every
     page that asks a plain yes/no before a delete or detach.
 
-    Focus returns to the row's menu trigger (ReturnFocusToId), since the menu item that opened the
-    dialog unmounts with its popover. A refusal keeps the dialog open with the server's message in an
-    alert, bound as text — never markup.
+    It is an alertdialog described by its body copy. Focus returns to ReturnFocusToId when given,
+    else to the row menu trigger that opened it (odsCaptureFocusOwner remembers it, because the menu
+    item itself unmounts with its popover), else to the page heading. A refusal keeps the dialog
+    open with the server's message in an alert, bound as text — never markup.
 *@
 
 <OdsFormDialog Open="Open" OpenChanged="OpenChanged"
@@ -16,12 +17,16 @@
                Title="@Title"
                RequiredLegend="false"
                InitialFocus="OdsModalInitialFocus.Cancel"
+               Role="OdsModalRole.AlertDialog"
+               DescribedById="@_bodyId"
                ReturnFocusToId="@ReturnFocusToId"
                SubmitLabel="@ConfirmLabel"
                SubmitIcon="@SubmitIcon"
                SubmitVariant="OdsButtonVariant.Danger"
                OnSubmit="SubmitAsync">
-    <p class="odc-confirm-body">@Body</p>
+    @* The body is the dialog's description: focus opens on Cancel, so without it a screen-reader
+       user would never hear what is about to be deleted or detached (WCAG 4.1.2, 1.3.1). *@
+    <p id="@_bodyId" class="odc-confirm-body">@Body</p>
     @if (!string.IsNullOrEmpty(_error))
     {
         <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_error</OdsAlert>
@@ -53,6 +58,7 @@
     /// </summary>
     [Parameter, EditorRequired] public Func<Task<string?>> OnConfirm { get; set; } = default!;
 
+    private readonly string _bodyId = $"odc-confirm-{Guid.NewGuid():N}";
     private string? _error;
     private bool _wasOpen;
 

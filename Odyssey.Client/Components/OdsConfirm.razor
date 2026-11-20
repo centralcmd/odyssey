@@ -3,8 +3,10 @@
 
     A page renders one <OdsConfirm @ref="_confirm" /> and awaits _confirm.AskAsync(…): true when the
     danger action was chosen, false on Cancel, Esc, the scrim or the close button. It wraps
-    OdsConfirmDialog, so every such prompt gets the error-toned icon, Cancel focused on open and the
-    focus return OdsModal does, instead of MudBlazor's unstyled message box.
+    OdsConfirmDialog, so every such prompt is an alertdialog described by its body, with the
+    error-toned icon and Cancel focused on open, instead of MudBlazor's unstyled message box. On close,
+    focus goes to returnFocusToId when given, else back to the row menu trigger that opened it, else
+    to the page heading.
 
     Use OdsConfirmDialog directly when the dialog should stay open with the server's refusal.
 *@
@@ -30,7 +32,7 @@
     /// Opens the confirmation. A question still open when another is asked is answered false.
     /// </summary>
     /// <param name="icon">The lead and button glyph: <c>delete</c>, or <c>link_off</c> for a detach.</param>
-    /// <param name="returnFocusToId">Where focus lands on close; by default the element that had it.</param>
+    /// <param name="returnFocusToId">Where focus lands on close; by default the menu trigger or control that opened it.</param>
     public Task<bool> AskAsync(
         string title, string body, string confirmLabel, string icon = "delete", string? returnFocusToId = null)
     {
