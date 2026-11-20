@@ -55,6 +55,9 @@ public sealed class FileBlobBackfillJob(
 
     private const int ScanPage = 50;
 
+    /// <summary>The scan's row limit: always <see cref="ScanLimit"/> in production; only a test lowers it.</summary>
+    internal int ScanRowLimit { get; set; } = ScanLimit;
+
     /// <summary>The back-off after consecutive environmental failures: 1, 5, 15, then 60 minutes.</summary>
     public static TimeSpan Backoff(int consecutiveFailures) => consecutiveFailures switch
     {
@@ -327,12 +330,12 @@ public sealed class FileBlobBackfillJob(
             return new CandidateScan(eligible, any ? 1 : 0, 0);
         }
 
-        while (eligible.Count < BatchSize && examined < ScanLimit)
+        while (eligible.Count < BatchSize && examined < ScanRowLimit)
         {
             var page = await Movable(context)
                 .OrderBy(f => f.UploadedAtUtc).ThenBy(f => f.Id)
                 .Skip(examined)
-                .Take(Math.Min(ScanPage, ScanLimit - examined))
+                .Take(Math.Min(ScanPage, ScanRowLimit - examined))
                 .Select(f => new { f.Id, f.ContentType })
                 .ToListAsync(cancellationToken);
             if (page.Count == 0)

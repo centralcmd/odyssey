@@ -233,6 +233,12 @@ public class CalendarIcsService
     /// <summary>The grouper's records per run, so a test can force spilled runs and merge rounds on a small file.</summary>
     internal int GroupingRecordsPerRun { get; set; } = IcsImportGrouper.RunBufferBytes / IcsImportGrouper.RecordSize;
 
+    /// <summary>
+    /// The groups per import batch: always <see cref="ImportBatchSize"/> in production. Only a test lowers it, so a
+    /// multi-batch scenario needs a handful of groups rather than thousands.
+    /// </summary>
+    internal int ImportBatchGroups { get; set; } = ImportBatchSize;
+
     // ---------------------------------------------------------------- Export planning
 
     // The columns the collapse decision reads, and nothing else: a planner that loaded entities would hold every
@@ -1358,7 +1364,7 @@ public class CalendarIcsService
         // SF1, A2). An ATTACH on a component that will turn out to be ignored still counts: pass 1 cannot know the target.
         EnsureAttachmentClaims(grouper.AttachmentKinds, attachmentClaims ?? CalendarIcsImportClaims.None);
 
-        var batch = new List<ImportGroup>(ImportBatchSize);
+        var batch = new List<ImportGroup>(ImportBatchGroups);
         var batchComponents = 0;
         var batchRows = 0;
         long batchChars = 0;
@@ -1375,7 +1381,7 @@ public class CalendarIcsService
                     batchRows += group.EstimatedRows;
                 }
 
-                if (batch.Count >= ImportBatchSize || batchRows >= ImportBatchEntityBudget || batchChars >= ImportBatchCharBudget
+                if (batch.Count >= ImportBatchGroups || batchRows >= ImportBatchEntityBudget || batchChars >= ImportBatchCharBudget
                     || run.Importer.BatchReservedBytes >= BatchReservedBytesCeiling)
                 {
                     await ApplyBatchAndClearAsync(batch, batchComponents, run, cancellationToken);

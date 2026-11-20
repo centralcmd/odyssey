@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.IO.Compression;
 using System.Net;
 using System.Text;
+using Microsoft.Extensions.Time.Testing;
 using Odyssey.Core.Journal.Geocoding;
 using Odyssey.Dtos;
 using Odyssey.Dtos.Journal;
@@ -20,7 +21,8 @@ public class LocationSearchTests
 
     private static (LocationSearchService Service, StubHandler Kartverket, StubHandler OpenMeteo) Build(
         Func<HttpRequestMessage, Task<HttpResponseMessage>>? kartverket = null,
-        Func<HttpRequestMessage, Task<HttpResponseMessage>>? openMeteo = null)
+        Func<HttpRequestMessage, Task<HttpResponseMessage>>? openMeteo = null,
+        TimeProvider? time = null)
     {
         var k = new StubHandler(kartverket ?? (request => Task.FromResult(Json(
             request.RequestUri!.AbsolutePath.StartsWith("/adresser", StringComparison.Ordinal)
@@ -29,8 +31,8 @@ public class LocationSearchTests
         var o = new StubHandler(openMeteo ?? (_ => Task.FromResult(Json(Fixture("openmeteo-lisbon.json")))));
         var sources = new ILocationSearchSource[]
         {
-            new KartverketLocationSearch(new HttpClient(k) { BaseAddress = new Uri(KartverketLocationSearch.BaseAddress) }),
-            new OpenMeteoLocationSearch(new HttpClient(o) { BaseAddress = new Uri(OpenMeteoLocationSearch.BaseAddress) }),
+            new KartverketLocationSearch(new HttpClient(k) { BaseAddress = new Uri(KartverketLocationSearch.BaseAddress) }, time),
+            new OpenMeteoLocationSearch(new HttpClient(o) { BaseAddress = new Uri(OpenMeteoLocationSearch.BaseAddress) }, time),
         };
         return (new LocationSearchService(sources, new LocationSearchCache()), k, o);
     }
@@ -309,28 +311,43 @@ public class LocationSearchTests
         return Json("{}");
     }
 
-    // The 3 s budget is the contract: the lower bound proves the call was not abandoned early for some
-    // other reason, the upper one that it was not left to the 30 s the stub would take.
+    // The 3 s budget is the contract, crossed on a fake clock: still pending a tick before it proves the call
+    // was not abandoned early for some other reason, failed at it that it was not left to the 30 s the stub
+    // would take.
     [Fact]
     public async Task A_provider_that_does_not_answer_in_three_seconds_is_geocoding_unavailable()
     {
-        var (service, _, _) = Build(openMeteo: Hang);
+        var time = new FakeTimeProvider();
+        var (service, _, openMeteo) = Build(openMeteo: Hang, time: time);
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(World("lisbon")));
-
-        Assert.InRange(clock.Elapsed, TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(5));
+        await AssertUnavailableAtTheBudgetAsync(time, openMeteo, 1, service.SearchAsync(World("lisbon")));
     }
 
     [Fact]
     public async Task Kartverket_not_answering_in_three_seconds_is_geocoding_unavailable()
     {
-        var (service, _, _) = Build(kartverket: Hang);
+        var time = new FakeTimeProvider();
+        var (service, kartverket, _) = Build(kartverket: Hang, time: time);
 
-        var clock = System.Diagnostics.Stopwatch.StartNew();
-        await Assert.ThrowsAsync<GeocodingUnavailableException>(() => service.SearchAsync(Norway("storgata 1")));
+        await AssertUnavailableAtTheBudgetAsync(time, kartverket, 2, service.SearchAsync(Norway("storgata 1")));
+    }
 
-        Assert.InRange(clock.Elapsed, TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(5));
+    private static async Task AssertUnavailableAtTheBudgetAsync(
+        FakeTimeProvider time, StubHandler provider, int requests, Task<LocationSearchResponse> search)
+    {
+        // The budget starts before the provider is called, so once the requests are in flight it is running.
+        var deadline = DateTime.UtcNow.AddSeconds(10);
+        while (provider.Requests.Count < requests && DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(10);
+        }
+
+        Assert.Equal(requests, provider.Requests.Count);
+        time.Advance(GeocodingHttp.Timeout - TimeSpan.FromMilliseconds(1));
+        Assert.False(search.IsCompleted, "The search ended before its provider budget ran out.");
+
+        time.Advance(TimeSpan.FromMilliseconds(1));
+        await Assert.ThrowsAsync<GeocodingUnavailableException>(() => search.WaitAsync(TimeSpan.FromSeconds(10)));
     }
 
     [Fact]

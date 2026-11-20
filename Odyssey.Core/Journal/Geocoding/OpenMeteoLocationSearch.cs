@@ -7,7 +7,7 @@ namespace Odyssey.Core.Journal.Geocoding;
 /// <c>https://geocoding-api.open-meteo.com/</c> (issue #350 §3). A response with no matches omits
 /// <c>results</c> entirely, which reads as an empty list.
 /// </summary>
-public sealed class OpenMeteoLocationSearch(HttpClient http) : ILocationSearchSource
+public sealed class OpenMeteoLocationSearch(HttpClient http, TimeProvider? time = null) : ILocationSearchSource
 {
     public const string BaseAddress = "https://geocoding-api.open-meteo.com/";
 
@@ -15,8 +15,8 @@ public sealed class OpenMeteoLocationSearch(HttpClient http) : ILocationSearchSo
 
     public async Task<LocationSourceResult> SearchAsync(string query, CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(GeocodingHttp.Timeout);
+        using var budget = GeocodingHttp.Budget(time);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
 
         try
         {

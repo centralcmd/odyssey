@@ -20,7 +20,7 @@ namespace Odyssey.Core.Journal.Geocoding;
 /// <c>adressetekst</c> as line 1, <c>postnummer</c>, <c>poststed</c> as the city, and country <c>NO</c>; a
 /// place name carries none.
 /// </remarks>
-public sealed class KartverketLocationSearch(HttpClient http) : ILocationSearchSource
+public sealed class KartverketLocationSearch(HttpClient http, TimeProvider? time = null) : ILocationSearchSource
 {
     public const string BaseAddress = "https://ws.geonorge.no/";
 
@@ -33,8 +33,8 @@ public sealed class KartverketLocationSearch(HttpClient http) : ILocationSearchS
 
     public async Task<LocationSourceResult> SearchAsync(string query, CancellationToken cancellationToken)
     {
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(GeocodingHttp.Timeout);
+        using var budget = GeocodingHttp.Budget(time);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, budget.Token);
 
         var q = GeocodingHttp.Encode(query);
         var addresses = Half(() => SearchAddressesAsync(q, timeout.Token));
