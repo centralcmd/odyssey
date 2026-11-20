@@ -315,22 +315,16 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     [Fact]
     public async Task The_preview_needs_calendar_update()
     {
-        Guid calendarId;
-        Guid patternId;
-        await using (var writer = new ApiFactory(ReadWrite))
-        {
-            using var client = writer.CreateClient();
-            calendarId = (await CreateCalendarAsync(client, "Preview auth")).CalendarId;
-            patternId = (await WeeklyMondaysAsync(client, calendarId, count: 3)).RecurrencePatternId;
+        using var client = Factory.ClientFor(ReadWrite);
+        var calendarId = (await CreateCalendarAsync(client, "Preview auth")).CalendarId;
+        var patternId = (await WeeklyMondaysAsync(client, calendarId, count: 3)).RecurrencePatternId;
 
-            await using var reader = new ApiFactory(
-                [PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarDelete], sharing: writer);
-            using var readOnly = reader.CreateClient();
-            var refused = await readOnly.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3));
+        using var readOnly = Factory.ClientFor(
+            [PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarDelete]);
+        var refused = await readOnly.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3));
 
-            Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
-            Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3))).StatusCode);
-        }
+        Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsJsonAsync($"{PatternsPath}/{patternId}/preview", Rule(calendarId, count: 3))).StatusCode);
     }
 
     [Fact]
@@ -338,8 +332,8 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
     {
         // v3 §B.6: an interactive series PUT discards exceptions under calendar.update, because the user previewed and
         // confirmed them; only an import's discards join removals under allowRemovals + calendar.delete.
-        await using var factory = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarUpdate]);
-        using var client = factory.CreateClient();
+        var factory = Factory;
+        using var client = factory.ClientFor([PermissionClaims.CalendarRead, PermissionClaims.CalendarCreate, PermissionClaims.CalendarUpdate]);
         var calendar = await CreateCalendarAsync(client, "Update alone");
         var series = await WeeklyMondaysAsync(client, calendar.CalendarId, count: 3);
         var rows = await SeriesRowsAsync(client, series.RecurrencePatternId);
@@ -351,8 +345,7 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
         Assert.Equal(1, result.DroppedOverrideCount);
         Assert.Equal(HttpStatusCode.Forbidden, (await client.DeleteAsync($"{EventsPath}/{rows[0].CalendarEventId}")).StatusCode);
 
-        await using var withoutUpdate = new ApiFactory([PermissionClaims.CalendarRead, PermissionClaims.CalendarDelete], sharing: factory);
-        using var other = withoutUpdate.CreateClient();
+        using var other = factory.ClientFor([PermissionClaims.CalendarRead, PermissionClaims.CalendarDelete]);
         Assert.Equal(HttpStatusCode.Forbidden,
             (await other.PutAsJsonAsync($"{PatternsPath}/{series.RecurrencePatternId}", Rule(calendar.CalendarId, count: 3))).StatusCode);
     }
@@ -1011,16 +1004,11 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
 
     public class ApiFactory : OdysseyApiFactory
     {
-        // One root, so two factories naming one database share its store.
+        // One root, as the base factory keeps: a fresh root per factory would build EF a service provider per factory.
         private static readonly Microsoft.EntityFrameworkCore.Storage.InMemoryDatabaseRoot StoreRoot = new();
 
-        private readonly string databaseName;
-
-        // sharing: a second factory over the same InMemory store, with other permissions.
-        public ApiFactory(
-            IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null,
-            ApiFactory? sharing = null)
-            : this(permissions, clock, logs, sharing?.databaseName ?? $"calendar-recurrence-{Guid.NewGuid()}")
+        public ApiFactory(IReadOnlyCollection<string> permissions, TimeProvider? clock = null, CapturingLoggerProvider? logs = null)
+            : this(permissions, clock, logs, $"calendar-recurrence-{Guid.NewGuid()}")
         {
         }
 
@@ -1037,7 +1025,6 @@ public class CalendarRecurrenceFidelityApiTests(CalendarRecurrenceFidelityApiTes
                 }
             })
         {
-            databaseName = name;
         }
     }
 
