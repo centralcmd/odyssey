@@ -394,8 +394,7 @@ public partial class Files
                 return;
             }
 
-            var contentType = content.ContentType ?? "application/octet-stream";
-            await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, file.FileName, contentType);
+            await JsRuntime.SaveFileAsync(content, file.FileName);
         }
         catch (Exception ex)
         {
@@ -481,7 +480,7 @@ public partial class Files
             switch (result.Outcome)
             {
                 case FileExportOutcome.Success when result.File is not null:
-                    await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", result.File.Bytes, result.File.FileName, "application/zip");
+                    await JsRuntime.SaveFileAsync(result.File.Bytes, result.File.FileName, "application/zip");
                     Snackbar.Add($"Exported {result.File.FileName}", Severity.Success);
                     break;
                 case FileExportOutcome.Forbidden:

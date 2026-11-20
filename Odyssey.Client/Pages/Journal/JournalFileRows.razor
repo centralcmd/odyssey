@@ -127,11 +127,7 @@
             });
         }
 
-        menu.Add(new OdsMenuItem
-        {
-            Icon = "fingerprint", TrailingIcon = "content_copy", Label = "Copy ID",
-            OnClick = EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), "File ID copied.")),
-        });
+        menu.Add(OdsMenuItem.CopyId(EventCallback.Factory.Create(this, () => Clipboard.CopyAsync(f.Id.ToString(), "File ID copied."))));
 
         if (OnRemove is { } remove)
         {
@@ -155,7 +151,6 @@
             return;
         }
 
-        var contentType = content.ContentType ?? f.ContentType;
-        await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, f.FileName, contentType);
+        await JsRuntime.SaveFileAsync(content, f.FileName, f.ContentType);
     }
 }

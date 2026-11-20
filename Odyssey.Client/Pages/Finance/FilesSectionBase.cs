@@ -204,8 +204,7 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
             var content = await Files.GetContentAsync(meta.Id);
             if (content is null) { Snackbar.Add("Download failed.", Severity.Error); return; }
 
-            var contentType = content.ContentType ?? "application/octet-stream";
-            await JsRuntime.InvokeVoidAsync("downloadFileFromBytes", content.Bytes, meta.FileName, contentType);
+            await JsRuntime.SaveFileAsync(content, meta.FileName);
         }
         catch (Exception ex) { Snackbar.Add($"Download failed: {ex.Message}", Severity.Error); }
         finally { downloadingFiles.Remove(meta.Id); }

@@ -899,7 +899,7 @@ public partial class NewsFeedsPage
 
             try
             {
-                await JS.InvokeVoidAsync("downloadFileFromBytes", export.File.Bytes, export.File.FileName, OpmlContentType);
+                await JS.SaveFileAsync(export.File.Bytes, export.File.FileName, OpmlContentType);
             }
             catch (JSException)
             {
