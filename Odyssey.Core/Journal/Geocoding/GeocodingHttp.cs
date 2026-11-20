@@ -13,6 +13,12 @@ internal static class GeocodingHttp
 
     public static readonly TimeSpan Timeout = TimeSpan.FromSeconds(3);
 
+    /// <summary>
+    /// A source that cancels after <see cref="Timeout"/> on <paramref name="time"/> — the system clock unless a test
+    /// supplies a fake one, so the budget can be crossed without waiting it out.
+    /// </summary>
+    public static CancellationTokenSource Budget(TimeProvider? time) => new(Timeout, time ?? TimeProvider.System);
+
     private static readonly JsonDocumentOptions DocumentOptions = new() { MaxDepth = 32 };
 
     /// <summary>
