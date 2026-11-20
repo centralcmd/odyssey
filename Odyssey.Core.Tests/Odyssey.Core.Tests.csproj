@@ -26,6 +26,7 @@
   <ItemGroup>
     <!-- The file store's test features and host (issue #346), shared by the store's test tiers. -->
     <Compile Include="..\TestShared\TestTierGate.cs" Link="TestShared\TestTierGate.cs" />
+    <Compile Include="..\TestShared\Http\*.cs" Link="TestShared\Http\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\PerfTier.cs" Link="TestShared\PerfTier.cs" />
     <Compile Include="..\TestShared\FileStorage\*.cs" Link="TestShared\FileStorage\%(Filename)%(Extension)" />
     <Compile Include="..\TestShared\News\*.cs" Link="TestShared\News\%(Filename)%(Extension)" />

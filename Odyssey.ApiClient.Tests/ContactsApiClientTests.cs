@@ -2,34 +2,13 @@ using System.Net;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Journal;
 using Odyssey.Dtos;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
 
 public class ContactsApiClientTests
 {
-    private sealed class RecordingHandler : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        /// <summary>The request body, read before the client disposes the content.</summary>
-        public string? LastBody { get; private set; }
-
-        public HttpResponseMessage Response { get; set; } =
-            new(HttpStatusCode.OK)
-            {
-                Content = new StringContent("""{"items":[],"offset":0,"limit":50,"totalCount":0}""",
-                                            System.Text.Encoding.UTF8, "application/json"),
-            };
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return Response;
-        }
-    }
-
     private static NewContact SampleContact() =>
         new()
         {
@@ -38,9 +17,9 @@ public class ContactsApiClientTests
             OrganizationDetails = new OrganizationDetailsDto { LegalName = "Acme" },
         };
 
-    private static (ContactsApiClient Client, RecordingHandler Handler) Create()
+    private static (ContactsApiClient Client, RecordingHttpHandler Handler) Create()
     {
-        var handler = new RecordingHandler();
+        var handler = new RecordingHttpHandler("""{"items":[],"offset":0,"limit":50,"totalCount":0}""");
         return (new ContactsApiClient(new OdysseyApi(
             new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") })), handler);
     }

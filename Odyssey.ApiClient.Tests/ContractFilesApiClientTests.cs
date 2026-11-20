@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Odyssey.ApiClient.Resources;
 using Odyssey.Dtos.Finance;
+using Odyssey.Testing.Http;
 using Xunit;
 
 namespace Odyssey.ApiClient.Tests;
@@ -16,30 +17,11 @@ public class ContractFilesApiClientTests
     private static readonly Guid FileId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly Guid ContactId = Guid.Parse("33333333-3333-3333-3333-333333333333");
 
-    private sealed class RecordingHandler(string body, HttpStatusCode status = HttpStatusCode.OK) : HttpMessageHandler
-    {
-        public HttpRequestMessage? LastRequest { get; private set; }
-
-        public string? LastBody { get; private set; }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
-        {
-            LastRequest = request;
-            LastBody = request.Content is null ? null : await request.Content.ReadAsStringAsync(ct);
-            return new HttpResponseMessage(status)
-            {
-                Content = new StringContent(
-                    body,
-                    Encoding.UTF8,
-                    status == HttpStatusCode.BadRequest ? "application/problem+json" : "application/json"),
-            };
-        }
-    }
-
-    private static (IContractsApiClient Client, RecordingHandler Handler) Create(
+    private static (IContractsApiClient Client, RecordingHttpHandler Handler) Create(
         string body, HttpStatusCode status = HttpStatusCode.OK)
     {
-        var handler = new RecordingHandler(body, status);
+        var handler = new RecordingHttpHandler(body, status,
+            status == HttpStatusCode.BadRequest ? RecordingHttpHandler.ProblemMediaType : RecordingHttpHandler.JsonMediaType);
         var api = new OdysseyApi(new HttpClient(handler) { BaseAddress = new Uri("http://localhost/") });
         return (new ContractsApiClient(api), handler);
     }
