@@ -7,7 +7,6 @@
 @implements IDisposable
 @inject IContractsApiClient Contracts
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IScrollManager ScrollManager
@@ -427,6 +426,8 @@
                            Attach="AttachContractFileAsync"
                            OnAttached="@(_ => ReloadContract(_uploadContract.ContractId))" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The contact entry on the card's meta line. An inline render fragment is Razor syntax, so it

@@ -15,6 +15,8 @@ namespace Odyssey.Client.Pages;
 
 public partial class Files
 {
+    private OdsConfirm _confirm = default!;
+
     private bool _isLoading = true;
     private bool _loadError;
 
@@ -408,11 +410,7 @@ public partial class Files
 
     private async Task ConfirmDeleteAsync(FileListItem file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete file",
-            $"Permanently delete '{file.FileName}'? This can't be undone.",
-            yesText: "Delete",
-            cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete file", $"Permanently delete '{file.FileName}'? This can't be undone.", "Delete");
 
         if (confirmed == true)
             await DeleteFileAsync(file);

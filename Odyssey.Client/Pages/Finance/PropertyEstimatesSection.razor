@@ -3,7 +3,6 @@
 @using Odyssey.Dtos.Finance
 @inject IPropertiesApiClient Properties
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 
 @*
     PropertyEstimatesSection — a property's value history (issue #167; design system ·
@@ -166,3 +165,5 @@ else
                        ExistingPropertyEstimates="_estimates"
                        OnSaved="OnEstimateChanged" />
 }
+
+<OdsConfirm @ref="_confirm" />

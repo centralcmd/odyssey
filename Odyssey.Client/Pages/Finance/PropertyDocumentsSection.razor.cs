@@ -17,10 +17,11 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class PropertyDocumentsSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Inject] private IPropertiesApiClient Properties { get; set; } = default!;
     [Inject] private IFilesApiClient FilesApi { get; set; } = default!;
     [Inject] private ISnackbar Snackbar { get; set; } = default!;
-    [Inject] private IDialogService DialogService { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private IJSRuntime JsRuntime { get; set; } = default!;
     [Inject] private IReferenceDataCache ReferenceData { get; set; } = default!;
@@ -295,10 +296,7 @@ public partial class PropertyDocumentsSection
 
     private async Task ConfirmDetachAsync(ExistingPropertyFile file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileMetadata.FileName}' from {Property.Name}? The file itself is kept in Files.",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from {Property.Name}? The file itself is kept in Files.", "Detach", "link_off");
         if (confirmed != true)
             return;
 

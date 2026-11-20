@@ -8,6 +8,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractDetailView : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     [Inject] private IJSRuntime JS { get; set; } = default!;
     [Inject] private IClipboardService Clipboard { get; set; } = default!;
     [Inject] private TimeProvider Time { get; set; } = default!;
@@ -344,10 +346,7 @@ public partial class ContractDetailView : IAsyncDisposable
     {
         if (!CanWrite) return;
         var r = Resolve(party);
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach party",
-            $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach party", $"Detach '{r.Name}' from this contract? The {r.KindLabel.ToLowerInvariant()} itself is not affected.", "Detach", "link_off");
 
         if (confirmed != true) return;
 

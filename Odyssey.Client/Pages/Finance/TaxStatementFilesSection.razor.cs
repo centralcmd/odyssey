@@ -12,6 +12,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementFilesSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public Guid StatementId { get; set; }
 
     /// <summary>Statement name — shown as the context line in the file viewer.</summary>
@@ -206,10 +208,7 @@ public partial class TaxStatementFilesSection
 
     private async Task ConfirmDetachAsync(ExistingTaxStatementFile file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileMetadata.FileName}' from this tax statement?",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileMetadata.FileName}' from this tax statement?", "Detach", "link_off");
 
         if (confirmed == true
             && (await TaxStatements.DetachFileAsync(StatementId, file.FileMetadata.Id)).Toast(Snackbar, "Detach failed", "Document detached."))

@@ -10,6 +10,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class AccountEstimatesSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public ExistingAccount Account { get; set; } = default!;
 
     /// <summary>Gates the New estimate / edit / delete affordances (accounts.estimates.write).</summary>
@@ -150,10 +152,7 @@ public partial class AccountEstimatesSection
 
     private async Task DeleteAsync(ExistingAccountEstimate estimate)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete estimate?",
-            $"Remove the estimate effective {estimate.EffectiveFrom:MMM dd, yyyy}? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete estimate?", $"Remove the estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? This can’t be undone.", "Delete");
 
         if (confirmed != true)
             return;
@@ -209,8 +208,8 @@ public partial class AccountEstimatesSection
         }
 
         var subLine = scheduledOnly
-            ? $"{points.Count} scheduled estimate{(points.Count == 1 ? "" : "s")} · effective {current.Date:MMM dd, yyyy}"
-            : $"{points.Count} estimate{(points.Count == 1 ? "" : "s")} since {MonthYear(points[0].Date)} · in force since {current.Date:MMM dd, yyyy}";
+            ? $"{points.Count} scheduled estimate{(points.Count == 1 ? "" : "s")} · effective {OdsDates.Long(current.Date)}"
+            : $"{points.Count} estimate{(points.Count == 1 ? "" : "s")} since {MonthYear(points[0].Date)} · in force since {OdsDates.Long(current.Date)}";
 
         return new HeroModel(current.Value, subLine, deltaLabel, deltaDir, deltaIcon, BuildChartSvg(points), scheduledOnly);
     }

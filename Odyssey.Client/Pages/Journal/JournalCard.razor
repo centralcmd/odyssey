@@ -13,7 +13,6 @@
 @inject IPhotoTagsApiClient PhotoTags
 @inject IAlbumsApiClient Albums
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -186,3 +185,5 @@
                  TagOptions="_photoTagOptions" TagNameBlocked="_photoTagNameBlocked" PeopleOptions="_photoPeopleOptions" AlbumOptions="_photoAlbumOptions"
                  CanCreateTags="_canCreatePhotoTags" CanCreateContacts="_canCreateContacts"
                  OnSaved="OnPhotoSaved" />
+
+<OdsConfirm @ref="_confirm" />

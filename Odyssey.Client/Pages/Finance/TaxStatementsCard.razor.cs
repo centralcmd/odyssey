@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class TaxStatementsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ExistingTaxStatement> _statements = [];
     // Server-computed rollup backing the header count + the year-over-year overview charts (issue
@@ -439,10 +441,7 @@ public partial class TaxStatementsCard
     private async Task ConfirmDelete(ExistingTaxStatement s)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete tax statement",
-            $"Delete '{s.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete tax statement", $"Delete '{s.Name}'? This cannot be undone.", "Delete");
         if (confirmed == true && (await TaxStatements.DeleteAsync(s.TaxStatementId)).Toast(Snackbar, "Delete failed", "Tax statement deleted."))
         {
             _statements.Remove(s);

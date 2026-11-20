@@ -313,10 +313,10 @@ public partial class ExchangeRateSyncSurfaceTests
 
         ClickRowAction(cut, "USD", "Delete fetched rates…");
         cut.WaitForAssertion(() => Assert.Equal("cur-USD-menu",
-            cut.FindComponents<ConfirmDeleteDialog>().Single().Instance.ReturnFocusToId));
+            cut.FindComponents<OdsConfirmDialog>().Single().Instance.ReturnFocusToId));
 
         ClickRowAction(cut, "USD", "Delete");
-        cut.WaitForAssertion(() => Assert.All(cut.FindComponents<ConfirmDeleteDialog>(),
+        cut.WaitForAssertion(() => Assert.All(cut.FindComponents<OdsConfirmDialog>(),
             dialog => Assert.Equal("cur-USD-menu", dialog.Instance.ReturnFocusToId)));
     }
 

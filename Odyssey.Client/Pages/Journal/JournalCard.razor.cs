@@ -18,6 +18,8 @@ namespace Odyssey.Client.Pages.Journal;
 
 public partial class JournalCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<JournalEntrySummary> _entries = [];                       // server-filtered display list
     private readonly Dictionary<Guid, ExistingJournalEntry> _details = new();
@@ -698,10 +700,7 @@ public partial class JournalCard
     private async Task ConfirmDelete(JournalEntrySummary e)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete entry",
-            DeleteMessage(e.Title),
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete entry", DeleteMessage(e.Title), "Delete");
 
         if (confirmed == true && (await Journal.DeleteAsync(e.JournalEntryId)).Toast(Snackbar, "Delete failed", "Entry deleted."))
         {

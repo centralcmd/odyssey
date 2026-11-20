@@ -999,10 +999,10 @@ public class ContractEventSurfaceTests
 
         cut.Find("button[aria-label='Delete Doomed']").Click();
 
-        // MudBlazor's message box renders into the provider in the same tree; confirming it lets
-        // DeleteAsync run on past its await.
-        var confirm = cut.FindAll("button").First(b => b.TextContent.Trim() == "Delete");
-        confirm.Click();
+        // Answering the OdsConfirm prompt lets DeleteAsync run on past its await.
+        var confirm = cut.FindComponents<OdsConfirmDialog>().Single();
+        cut.WaitForAssertion(() => Assert.True(confirm.Instance.Open));
+        await cut.InvokeAsync(() => confirm.Instance.OnConfirm());
         cut.WaitForAssertion(() => Assert.Single(announced));
 
         Assert.Equal("Event deleted. 1 entry in the log.", announced[0]);

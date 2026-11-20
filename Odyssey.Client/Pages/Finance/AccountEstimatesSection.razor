@@ -1,7 +1,6 @@
 @using System.Globalization
 @using System.Text
 @using Odyssey.Dtos.Finance
-@inject IDialogService DialogService
 @inject IAccountsApiClient Accounts
 @inject ISnackbar Snackbar
 
@@ -222,6 +221,8 @@
                        Existing="_estimates"
                        OnSaved="OnEstimateChanged" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // ── Change + status cells ─────────────────────────────────────────────────

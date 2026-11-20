@@ -19,6 +19,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetsCard
 {
+    private OdsConfirm _confirm = default!;
+
     private List<ExistingBudget> _budgets = [];
     // Server-computed rollup backing the header count + planned balance (issue #372) — it spans every
     // budget, unlike the server-filtered display list, without fetching one.
@@ -442,10 +444,7 @@ public partial class BudgetsCard
         if (!_canDelete)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget",
-            $"Delete '{budget.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete budget", $"Delete '{budget.Name}'? This cannot be undone.", "Delete");
         if (confirmed == true)
             await DeleteBudget(budget);
     }

@@ -8,6 +8,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class BudgetItemsSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter] public Guid BudgetId { get; set; }
     [Parameter] public string? BudgetName { get; set; }
     [Parameter] public List<ExistingBudgetItem> Items { get; set; } = new();
@@ -255,10 +257,7 @@ public partial class BudgetItemsSection
         if (!CanDelete || _isBusy)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete budget item",
-            $"Delete '{item.Tag.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete budget item", $"Delete '{item.Tag.Name}'? This cannot be undone.", "Delete");
         if (confirmed != true)
             return;
 

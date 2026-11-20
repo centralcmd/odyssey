@@ -1,6 +1,5 @@
 @using Odyssey.Dtos.Finance
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject IBudgetItemsApiClient BudgetItems
 
@@ -189,3 +188,5 @@
                             ExistingItem="_editItem"
                             OnSaved="OnItemSaved" />
 }
+
+<OdsConfirm @ref="_confirm" />

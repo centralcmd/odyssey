@@ -10,6 +10,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class PropertyEstimatesSection
 {
+    private OdsConfirm _confirm = default!;
+
     [Parameter, EditorRequired] public ExistingProperty Property { get; set; } = default!;
 
     /// <summary>Gates the row edit/delete buttons (<c>properties.estimates.write</c>).</summary>
@@ -98,10 +100,7 @@ public partial class PropertyEstimatesSection
 
     private async Task DeleteAsync(ExistingPropertyEstimate estimate)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete estimate?",
-            $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete estimate?", $"Delete the {Money(estimate.Value)} estimate effective {OdsDates.Long(estimate.EffectiveFrom)}? The history keeps every other entry.", "Delete");
         if (confirmed != true)
             return;
 

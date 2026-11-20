@@ -13,6 +13,8 @@ namespace Odyssey.Client.Pages.Calendar;
 
 public partial class CalendarEventDialog
 {
+    private OdsConfirm _deleteConfirm = default!;
+
 
     private RenderFragment TitleContent => builder => builder.AddContent(0, DialogTitleText);
 
@@ -1042,10 +1044,7 @@ public partial class CalendarEventDialog
 
     private async Task<bool> ConfirmDeleteAsync(string noun)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            $"Delete {noun}",
-            noun == "event" && OccurrenceOfSeries ? DeleteOccurrenceMessage(_draft.Title) : DeleteMessage(noun, _draft.Title),
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _deleteConfirm.AskAsync($"Delete {noun}", noun == "event" && OccurrenceOfSeries ? DeleteOccurrenceMessage(_draft.Title) : DeleteMessage(noun, _draft.Title), "Delete");
         return confirmed == true;
     }
 

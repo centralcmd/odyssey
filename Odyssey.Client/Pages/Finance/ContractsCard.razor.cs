@@ -17,6 +17,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ────────────────────────────────────────────────────────────────
     private List<ContractListItem> _contracts = [];
     private readonly Dictionary<Guid, ExistingContract> _details = new();
@@ -373,7 +375,7 @@ public partial class ContractsCard
                     && c.EndDate is { } end && DaysUntil(end) >= 0 && DaysUntil(end) <= EndingWindowDays)
                 .OrderBy(c => c.EndDate)
                 .Select(c => Dated(c, "Ending soon", PageHeaderSeverity.Warning,
-                    $"Term ends {c.EndDate:MMM dd, yyyy}.")));
+                    $"Term ends {OdsDates.Long(c.EndDate!.Value)}.")));
 
             problems.AddRange(live
                 .Where(c => c.Status == ContractStatus.Upcoming
@@ -819,10 +821,7 @@ public partial class ContractsCard
     private async Task ConfirmDelete(ContractListItem c)
     {
         if (!_canDelete) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete contract",
-            $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete contract", $"Permanently delete '{c.Name}' and all its party and document links? This cannot be undone.", "Delete");
 
         if (confirmed == true && (await Contracts.DeleteAsync(c.ContractId)).Toast(Snackbar, "Delete failed", "Contract deleted."))
         {

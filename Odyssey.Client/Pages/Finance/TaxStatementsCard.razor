@@ -6,7 +6,6 @@
 @implements IDisposable
 @inject NavigationManager NavigationManager
 @inject ISnackbar Snackbar
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject IScrollManager ScrollManager
@@ -107,7 +106,7 @@
                     var problems = _problems.GetValueOrDefault(s.TaxStatementId) ?? [];
                     var settle = SettlementFigure(s);
                     var tagCount = s.TaxTagIds.Count + s.IncomeTagIds.Count + s.SettlementTagIds.Count;
-                    var period = $"{s.StartDate:MMM dd, yyyy} → {s.EndDate:MMM dd, yyyy}";
+                    var period = $"{OdsDates.Long(s.StartDate)} → {OdsDates.Long(s.EndDate)}";
                     var settled = s.SettledAtUtc is not null;
 
                     @* The single meta line: period · base currency. *@
@@ -376,6 +375,8 @@
                            Attach="AttachTaxFileAsync"
                            OnAttached="@(_ => OnFilesChanged())" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the

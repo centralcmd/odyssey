@@ -21,6 +21,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class AccountsCard
 {
+    private OdsConfirm _confirm = default!;
+
     // ── Data ───────────────────────────────────────────────────────────────
     private List<ExistingAccount> _accounts  = [];
     // Server-computed rollup backing the overview donuts + header count/balance (issue #372). It
@@ -546,10 +548,7 @@ public partial class AccountsCard
     private async Task ConfirmDeleteAccount(ExistingAccount account)
     {
         if (!_canDeleteAccounts) return;
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete account",
-            $"Delete '{account.Name}'? This cannot be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete account", $"Delete '{account.Name}'? This cannot be undone.", "Delete");
         if (confirmed == true)
             await DeleteAccount(account);
     }

@@ -14,6 +14,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContactsCard
 {
+    private OdsConfirm _confirm = default!;
+
     private List<ExistingContact> _contacts = new();
     private List<ExistingContact> _allContacts = new();
     private bool _isLoading = true;
@@ -37,7 +39,6 @@ public partial class ContactsCard
     private bool _canUpdate;
     private bool _canDelete;
 
-    [Inject] private IDialogService DialogService { get; set; } = default!;
     // The other halves of the composed detach gate (issue #27 §7 #6, widened by issue #157 §7.3).
     // The server enforces them with a 403 — per blocker class actually present — and these only keep
     // the blocked-delete dialog from offering an action it knows will fail.
@@ -480,8 +481,7 @@ public partial class ContactsCard
         if (!_canDelete)
             return;
 
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete contact", DeleteMessage(contact.ResolvedDisplayName), yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete contact", DeleteMessage(contact.ResolvedDisplayName), "Delete");
         if (confirmed != true)
             return;
 

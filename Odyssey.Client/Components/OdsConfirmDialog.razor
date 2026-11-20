@@ -1,9 +1,9 @@
 @*
-    The destructive confirmations on Currencies (Odyssey Design System ·
-    components/DialogFetchedRates): "Delete fetched rates for {code}?" for a purge, and the currency
-    delete. One shell, because the anatomy is the SecretClearDialog's in both: the error-toned lead icon,
-    Cancel first and focused on open, the danger action on the right. A single fetched rate is never
-    deleted on its own, so /exchange-rates has no such dialog.
+    OdsConfirmDialog — the destructive confirmation (Odyssey Design System ·
+    components/DialogFetchedRates, the SecretClearDialog anatomy): the error-toned lead icon, Cancel
+    first and focused on open, the danger action on the right. Currencies uses it for the purge and
+    the currency delete, Instruments for the instrument delete, and OdsConfirm wraps it for every
+    page that asks a plain yes/no before a delete or detach.
 
     Focus returns to the row's menu trigger (ReturnFocusToId), since the menu item that opened the
     dialog unmounts with its popover. A refusal keeps the dialog open with the server's message in an
@@ -18,10 +18,10 @@
                InitialFocus="OdsModalInitialFocus.Cancel"
                ReturnFocusToId="@ReturnFocusToId"
                SubmitLabel="@ConfirmLabel"
-               SubmitIcon="delete"
+               SubmitIcon="@SubmitIcon"
                SubmitVariant="OdsButtonVariant.Danger"
                OnSubmit="SubmitAsync">
-    <p class="xrs-confirm-body">@Body</p>
+    <p class="odc-confirm-body">@Body</p>
     @if (!string.IsNullOrEmpty(_error))
     {
         <OdsAlert Severity="Severity.Error" Live="OdsAlertLive.Alert">@_error</OdsAlert>
@@ -40,6 +40,9 @@
     [Parameter, EditorRequired] public string ConfirmLabel { get; set; } = string.Empty;
 
     [Parameter] public string Icon { get; set; } = "delete";
+
+    /// <summary>The danger button's glyph.</summary>
+    [Parameter] public string SubmitIcon { get; set; } = "delete";
 
     /// <summary>The row menu trigger's id (<c>OdsRecordActionContext.MenuTriggerId</c>).</summary>
     [Parameter] public string? ReturnFocusToId { get; set; }

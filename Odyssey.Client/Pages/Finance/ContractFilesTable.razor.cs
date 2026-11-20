@@ -12,6 +12,8 @@ namespace Odyssey.Client.Pages.Finance;
 
 public partial class ContractFilesTable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>The owning contract id (the download/update/detach route's <c>{id}</c>).</summary>
     [Parameter, EditorRequired] public Guid ContractId { get; set; }
 
@@ -226,10 +228,7 @@ public partial class ContractFilesTable
 
     private async Task ConfirmDetachAsync(ContractFileItem file)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach document",
-            $"Detach '{file.FileName}'? The file itself is kept in your files.",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Detach document", $"Detach '{file.FileName}'? The file itself is kept in your files.", "Detach", "link_off");
 
         if (confirmed != true)
             return;

@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using Odyssey.ApiClient;
 using Odyssey.ApiClient.Resources;
 using Microsoft.AspNetCore.Components;
@@ -24,13 +25,13 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     [Inject] protected ISnackbar Snackbar { get; set; } = default!;
     [Inject] protected IJSRuntime JsRuntime { get; set; } = default!;
     [Inject] protected IClipboardService Clipboard { get; set; } = default!;
-    [Inject] protected IDialogService DialogService { get; set; } = default!;
     [Inject] protected IUploadLimitsCache UploadLimits { get; set; } = default!;
 
     [Parameter] public bool CanUpload { get; set; }
     [Parameter] public bool CanDelete { get; set; }
     [Parameter] public bool CanDownload { get; set; }
 
+    protected OdsConfirm confirm = default!;
     protected List<TFile> items = [];
     protected bool isLoading;
     protected bool isUploading;
@@ -213,10 +214,7 @@ public abstract class FilesSectionBase<TFile> : ComponentBase
     protected async Task ConfirmDeleteAsync(TFile file)
     {
         var meta = MetadataOf(file);
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Detach file",
-            $"Detach '{meta.FileName}' from this {EntityNoun}?",
-            yesText: "Detach", cancelText: "Cancel");
+        var confirmed = await confirm.AskAsync("Detach file", $"Detach '{meta.FileName}' from this {EntityNoun}?", "Detach", "link_off");
 
         if (confirmed == true) await DeleteFileAsync(file);
     }

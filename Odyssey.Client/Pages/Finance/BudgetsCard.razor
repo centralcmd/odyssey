@@ -4,7 +4,6 @@
 @using Odyssey.Client.Authorization
 @attribute [Authorize(Policy = PermissionClaims.BudgetsRead)]
 @implements IDisposable
-@inject IDialogService DialogService
 @inject IClipboardService Clipboard
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject Odyssey.Client.Services.IPageStateService PageState
@@ -72,7 +71,7 @@
                     var expenseItemCount = budget.BudgetItems.Count(i => i.CategoryType == BudgetCategoryType.Expense);
                     var itemCount = budget.BudgetItems.Count;
                     var editingItems = _editingItemsId == budget.BudgetId;
-                    var period = $"{budget.StartDate:MMM dd, yyyy} → {budget.EndDate:MMM dd, yyyy}";
+                    var period = $"{OdsDates.Long(budget.StartDate)} → {OdsDates.Long(budget.EndDate)}";
 
                     @* The single meta line: period · base currency. *@
                     var meta = new List<RenderFragment?> { PeriodMeta(period), CurrencyMeta(budget.BaseCurrencyCode) };
@@ -292,6 +291,8 @@
                             OnRetryTags="LoadTransactionTags"
                             OnSaved="OnItemSaved" />
 }
+
+<OdsConfirm @ref="_confirm" />
 
 @code {
     // The two meta-line entries. An inline render fragment is Razor syntax, so it cannot live in the

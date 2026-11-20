@@ -1,3 +1,4 @@
+using Odyssey.Client.Components;
 using System.Globalization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -31,6 +32,8 @@ namespace Odyssey.Client.Pages.Finance;
 /// </remarks>
 public partial class ContractEventsSection : IAsyncDisposable
 {
+    private OdsConfirm _confirm = default!;
+
     /// <summary>
     /// Rows per page. Matches the design system's <c>pageSize</c> default; the endpoint's own default
     /// is not relied on, because the pager has to ask for a window it can then describe.
@@ -206,10 +209,7 @@ public partial class ContractEventsSection : IAsyncDisposable
     private async Task DeleteAsync(ExistingContractEvent ev)
     {
         // Named by what the user called it, so a log with several entries says which one is going.
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            "Delete event?",
-            $"Remove “{ev.Title}” from this contract's log? This can’t be undone.",
-            yesText: "Delete", cancelText: "Cancel");
+        var confirmed = await _confirm.AskAsync("Delete event?", $"Remove “{ev.Title}” from this contract's log? This can’t be undone.", "Delete");
 
         if (confirmed != true)
             return;
