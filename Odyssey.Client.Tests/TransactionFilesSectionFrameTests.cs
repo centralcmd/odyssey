@@ -19,7 +19,6 @@ namespace Odyssey.Client.Tests;
 /// empty Documents section shows its line unframed — as a contract's does — including once the last
 /// file is detached. The disclosure form (<c>Chrome="true"</c>) never takes the frame.
 /// </summary>
-[Collection(TransactionDialogCollection.Name)]
 public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
 {
     private readonly BunitContext ctx = new();
@@ -28,7 +27,7 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
 
     public TransactionFilesSectionFrameTests()
     {
-        FilesSectionBase<ExistingTransactionFile>.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         ctx.JSInterop.Mode = JSRuntimeMode.Loose;
         ctx.Services.AddMudServices();
         var uploadLimits = new Mock<IUploadLimitsCache>();
@@ -43,7 +42,6 @@ public sealed class TransactionFilesSectionFrameTests : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        FilesSectionBase<ExistingTransactionFile>.InteractiveCheck = static () => OperatingSystem.IsBrowser();
         await ctx.DisposeAsync();
     }
 

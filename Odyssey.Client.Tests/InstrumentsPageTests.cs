@@ -17,22 +17,12 @@ using Xunit;
 
 namespace Odyssey.Client.Tests;
 
-/// <summary>Serialises the classes that move <c>InstrumentsPage.InteractiveCheck</c>, a process-wide static.</summary>
-[CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class InstrumentsPageCollection
-{
-    public const string Name = "Instruments page";
-}
-
 /// <summary>
 /// The <c>/instruments</c> page (issue #452 §3): claim gating (absent, never greyed), the list states, the row menu,
 /// the saving row, deep links with their pin and focus, and the source rules for the new files.
 /// </summary>
-[Collection(InstrumentsPageCollection.Name)]
-public sealed class InstrumentsPageTests : IDisposable
+public sealed class InstrumentsPageTests
 {
-    public void Dispose() => InstrumentsPage.InteractiveCheck = static () => OperatingSystem.IsBrowser();
-
     private static readonly string[] Guest = [PermissionClaims.InstrumentsRead];
 
     private static readonly string[] Owner =
@@ -99,7 +89,7 @@ public sealed class InstrumentsPageTests : IDisposable
         ctx.Services.AddSingleton(sources.Object);
         ctx.Services.AddSingleton(reference.Object);
         ctx.Services.AddSingleton<ISnackbar>(snackbar);
-        InstrumentsPage.InteractiveCheck = static () => true;
+        ctx.UseInteractivity();
         return new Harness { Ctx = ctx, Api = api, Sources = sources, Snackbar = snackbar };
     }
 

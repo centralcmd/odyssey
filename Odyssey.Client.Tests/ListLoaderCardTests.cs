@@ -69,6 +69,8 @@ public class ListLoaderCardTests
     private static CurrenciesHarness RenderCurrencies()
     {
         var ctx = NewContext(PermissionClaims.CurrenciesRead);
+        // The card's first load stays off, so each test starts the requests it races itself.
+        ctx.UseInteractivity(false);
         CurrenciesHarness? harness = null;
 
         var currencies = new Mock<ICurrenciesApiClient>();

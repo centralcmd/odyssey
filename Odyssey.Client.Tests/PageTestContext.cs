@@ -28,6 +28,7 @@ internal static class PageTestContext
         ctx.Services.AddSingleton<AuthenticationStateProvider>(new SignedIn(permissions));
         ctx.Services.AddSingleton(TimeProvider.System);
         ctx.Services.AddSingleton<IImportLimitsCache>(new FixedImportLimits());
+        ctx.UseInteractivity();
 
         // Everything else a page (or a dialog it keeps mounted) injects is an auto-mock answering with
         // an empty success, so only the list under test is ever in flight.
